@@ -8,7 +8,6 @@ declare(strict_types=1);
 
 // 🔗 Dependencies (explicit + safe)
 require_once __DIR__ . '/../dbConnect.php';
-require_once __DIR__ . '/actions.php';
 
 // ─────────────────────────────────────────
 // 🌐 REQUEST HELPERS
@@ -44,58 +43,52 @@ function updateLastActivity(): void
 // ─────────────────────────────────────────
 // 📜 AUTH ACTION LOGGER - FIXED (No undefined constants)
 // ─────────────────────────────────────────
+// 🔐 logAuthAction() — Adapter to new action system
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
 {
-    // Safe debug logging
-    file_put_contents(__DIR__ . '/../auth_debug.log',
-        json_encode([
-            'time'      => date('Y-m-d H:i:s'),
-            'stage'     => 'entered_logAuthAction',
-            'actionKey' => $actionKey,
-            'contactId' => $contactId,
-            'meta'      => $meta
-        ]) . PHP_EOL,
-        FILE_APPEND
-    );
-
-    if ($contactId === null && strpos($actionKey, '.fail') === false) {
-        error_log('[auth] missing contactId — skipping log for ' . $actionKey);
-        return;
-    }
-
-    // Safe origin (fallback to 2 = SYSTEM)
-    $origin = $meta['actionOrigin'] ?? 2;
-
-    // Intent mapping
-    $intent = match ($actionKey) {
-        'auth.login'      => 'ui_login',
-        'auth.logout'     => ($meta['actionOrigin'] ?? '') === 'idle_timeout' 
-            ? 'idle_logout' 
-            : 'ui_logout',
-        'auth.login.fail' => 'auth_fail',
-        default           => 'auth_event'
-    };
-
-    $payload = [
-        "contactId"        => $contactId,
-        "promptText"       => $actionKey,
-        "responseText"     => !empty($meta) 
-            ? json_encode($meta, JSON_UNESCAPED_SLASHES) 
-            : null,
-        "intent"           => $intent,
-        "origin"           => $origin,                    // Fixed
-        "intentConfidence" => 1.0,
-        "createdUnixTime"  => time(),
-        "latitude"         => $meta['latitude']  ?? null,
-        "longitude"        => $meta['longitude'] ?? null
-    ];
-
     try {
-        insertActionPrompt($payload, $pdo);
+
+        // --- Map OLD keys → NEW actionNames
+        $actionName = match ($actionKey) {
+            'auth.login'       => 'auth.session.login',
+            'auth.logout'      => 'auth.session.logout',
+            'auth.login.fail'  => 'auth.session.login', // still log attempt
+            default            => 'auth.session.login'  // fallback (safe)
+        };
+
+        // --- Intent mapping
+        $intent = match ($actionKey) {
+            'auth.login'       => 'ui_login',
+            'auth.logout'      => ($meta['actionOrigin'] ?? '') === 'idle_timeout'
+                                    ? 'idle_logout'
+                                    : 'ui_logout',
+            'auth.login.fail'  => 'auth_fail',
+            default            => 'auth_event'
+        };
+
+        // --- Prompt + response
+        $prompt = $actionKey;
+        $response = !empty($meta)
+            ? json_encode($meta, JSON_UNESCAPED_SLASHES)
+            : null;
+
+        // --- Call NEW system
+        logAction($pdo, [
+            'actionName' => $actionName,
+            'contactId'  => $contactId,
+            'intent'     => $intent,
+            'prompt'     => $prompt,
+            'response'   => $response,
+            'confidence' => 1.0,
+            'lat'        => $meta['latitude']  ?? null,
+            'lng'        => $meta['longitude'] ?? null
+        ]);
+
     } catch (Throwable $e) {
-        error_log('[logAuthAction INSERT ERROR] ' . $e->getMessage());
+        error_log('[logAuthAction ERROR] ' . $e->getMessage());
     }
 }
+// 🔐 logAction() — Core logger (from actionLogger.php, adapted for auth)
 function getContactName(?int $contactId): array {
 
     if ($contactId === null) {

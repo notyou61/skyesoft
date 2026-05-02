@@ -6,6 +6,9 @@ declare(strict_types=1);
 // Centralized action logging (ELC-compliant, consistent)
 // ============================================================
 
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 // 🧾 logAction() — User action logger (name → ID resolved)
 function logAction(PDO $db, array $p): void
 {
