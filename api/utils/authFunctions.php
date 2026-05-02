@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 // 🔗 Dependencies (explicit + safe)
 require_once __DIR__ . '/../dbConnect.php';
+require_once __DIR__ . '/actionLogger.php';  // ✅ REQUIRED
+require_once __DIR__ . '/authFunctions.php'; // if used
 
 // ─────────────────────────────────────────
 // 🌐 REQUEST HELPERS
