@@ -82,6 +82,9 @@ if ($action === "check") {
 #endregion
 
 #region SECTION 5 — 🔐 LOGIN
+
+$pdo = getPDO();  // 🔥 REQUIRED
+
 if ($input['action'] === 'login') {
 
     $username = trim($input['username'] ?? '');
@@ -96,7 +99,7 @@ if ($input['action'] === 'login') {
     }
 
     // 🔍 Lookup user
-    $stmt = $db->prepare("SELECT * FROM tblContacts WHERE contactEmail = :email LIMIT 1");
+    $stmt = $pdo->prepare("SELECT * FROM tblContacts WHERE contactEmail = :email LIMIT 1");
     $stmt->execute(['email' => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -117,8 +120,8 @@ if ($input['action'] === 'login') {
     $_SESSION['contactId']     = $user['contactId'];
     $_SESSION['username']      = $user['contactEmail'];
 
-    // 🔥 LOG ACTION (NEW MODEL)
-    logAction($db, [
+    // 🔥 LOG ACTION
+    logAction($pdo, [
         'actionName' => 'auth.session.login',
         'contactId'  => $user['contactId'],
         'intent'     => 'ui_login',
@@ -138,7 +141,10 @@ if ($input['action'] === 'login') {
 #endregion
 
 #region SECTION 6 — 🔓 LOGOUT
+
 if ($input['action'] === 'logout') {
+
+    $pdo = getPDO(); // 🔥 ensure DB exists (safe even if already set)
 
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
@@ -147,7 +153,7 @@ if ($input['action'] === 'logout') {
     $contactId = $_SESSION['contactId'] ?? null;
 
     // 🔥 LOG ACTION (BEFORE DESTROY)
-    logAction($db, [
+    logAction($pdo, [
         'actionName' => 'auth.session.logout',
         'contactId'  => $contactId,
         'intent'     => 'ui_logout',
@@ -165,6 +171,7 @@ if ($input['action'] === 'logout') {
     ]);
     exit;
 }
+
 #endregion
 
 #region SECTION 7 — INVALID
