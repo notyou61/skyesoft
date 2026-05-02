@@ -37,24 +37,32 @@ function logAction(PDO $db, array $p): void
         // --- Resolve actionTypeId (cached)
         static $actionCache = [];
 
+        // 🔎 Resolve actionTypeId (cached + validated)
         if (!isset($actionCache[$actionName])) {
 
             $stmt = $db->prepare("
-                SELECT actionTypeId 
-                FROM tblActionTypes 
-                WHERE actionName = :name 
+                SELECT actionTypeId
+                FROM tblActionTypes
+                WHERE actionName = :name
                 LIMIT 1
             ");
+
             $stmt->execute(['name' => $actionName]);
 
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $actionTypeId = $stmt->fetchColumn();
 
-            if (!$row) {
-                error_log("logAction: invalid actionName '{$actionName}'");
+            if ($actionTypeId === false) {
+                error_log("[logAction] Invalid actionName: {$actionName}");
+
+                // Optional strict mode (dev)
+                if (ini_get('display_errors')) {
+                    throw new RuntimeException("Invalid actionName: {$actionName}");
+                }
+
                 return;
             }
 
-            $actionCache[$actionName] = (int)$row['actionTypeId'];
+            $actionCache[$actionName] = (int)$actionTypeId;
         }
 
         $actionTypeId = $actionCache[$actionName];
@@ -63,8 +71,11 @@ function logAction(PDO $db, array $p): void
         $contactId = !empty($p['contactId']) ? (int)$p['contactId'] : null;
 
         $allowedOrigins = [1, 2, 3];
-        $origin = in_array(($p['origin'] ?? 1), $allowedOrigins, true)
-            ? (int)$p['origin']
+
+        $originValue = $p['origin'] ?? 1;
+
+        $origin = in_array($originValue, $allowedOrigins, true)
+            ? (int)$originValue
             : 1;
 
         $response = isset($p['response'])
