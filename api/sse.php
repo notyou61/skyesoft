@@ -174,7 +174,8 @@ while (true) {
 
         $lastSecond = $now;
 
-        // Resume existing session safely — NEVER start after headers have been sent
+        // NO session_start() here — session is already active from bootstrap
+        // Only resume if truly closed (rare)
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
