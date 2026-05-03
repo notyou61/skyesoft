@@ -20,6 +20,9 @@ ini_set('error_log', __DIR__ . '/debug.log');
 error_log('=== DEBUG START detectAndProposeContact v1.5.0 ===');
 
 require_once __DIR__ . '/askOpenAI.php';
+require_once __DIR__ . '/dbConnect.php'; // must expose $pdo
+
+$pdo = getPDO();
 
 #endregion
 
@@ -46,15 +49,26 @@ if (empty($rawInput)) {
 #endregion
 
 #region SECTION 04 — 🧠 AI Prompt Construction
+
 $systemPrompt = <<<EOT
-You are a strict data extraction engine.
+You are a strict structured data extraction engine.
 
 CRITICAL RULES:
 - Respond ONLY with valid JSON
-- Do NOT include explanations, text, markdown, or comments
-- Output must begin with { and end with }
-- If unsure, leave fields empty
-- Never summarize
+- Do NOT include explanations, markdown, or comments
+- Output MUST begin with { and end with }
+- You MUST return ALL fields in the schema
+- NEVER omit keys
+- If a value is unknown, return "" (empty string)
+- NEVER return partial objects
+
+EXTRACTION RULES:
+- Extract the FIRST valid full name as firstName and lastName
+- Extract email if present
+- Extract phone numbers exactly as shown
+- Extract company/entity name if present
+- Extract address, city, state, zip if present
+- If unsure, leave value as ""
 
 Return EXACTLY this structure:
 
@@ -62,7 +76,9 @@ Return EXACTLY this structure:
   "intent": "contact_proposal",
   "confidence": 90,
   "parsed": {
-    "entity": { "name": "" },
+    "entity": {
+      "name": ""
+    },
     "contact": {
       "firstName": "",
       "lastName": "",
@@ -75,13 +91,24 @@ Return EXACTLY this structure:
       "address": "",
       "city": "",
       "state": "",
-      "zip": ""
+      "zip": "",
+      "locationName": ""
     }
   }
 }
 EOT;
 
-$extractionPrompt = "Extract structured contact data from the following text:\n\n{$rawInput}";
+$extractionPrompt = <<<EOT
+Extract structured contact data from the following text.
+
+IMPORTANT:
+- Always return ALL fields
+- Never omit fields
+- Use empty string "" if unknown
+
+INPUT:
+{$rawInput}
+EOT;
 
 #endregion
 
@@ -131,6 +158,101 @@ if (empty($matches[0])) jsonError('Invalid AI response format');
 $aiData = json_decode($matches[0], true);
 
 if (!$aiData || !isset($aiData['parsed'])) jsonError('Invalid AI response format');
+
+#endregion
+
+#region SECTION 05.5 — 🛡️ Schema Enforcement + Fallback Recovery
+
+// -------------------------------------------------
+// 🧩 Ensure Full Schema (prevents partial AI output)
+// -------------------------------------------------
+$parsed = $aiData['parsed'] ?? [];
+
+$parsed = array_merge_recursive([
+    'entity' => ['name' => ''],
+    'contact' => [
+        'firstName' => '',
+        'lastName' => '',
+        'salutation' => '',
+        'title' => '',
+        'primaryPhone' => '',
+        'primaryPhoneRaw' => '',
+        'secondaryPhone' => '',
+        'secondaryPhoneRaw' => '',
+        'email' => ''
+    ],
+    'location' => [
+        'address' => '',
+        'city' => '',
+        'state' => '',
+        'zip' => '',
+        'locationName' => ''
+    ]
+], $parsed);
+
+// -------------------------------------------------
+// 🧠 FIX #3 — Name Fallback (repair AI miss)
+// -------------------------------------------------
+$parsed = fallbackExtractName($parsed, $rawInput);
+
+// -------------------------------------------------
+// 🧠 Email fallback (recommended)
+// -------------------------------------------------
+if (empty($parsed['contact']['email'])) {
+
+    if (preg_match('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', $rawInput, $m)) {
+
+        $email = strtolower(trim($m[0]));
+
+        // Validate before assigning
+        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
+            $parsed['contact']['email'] = $email;
+            $parsed['contact']['emailNormalized'] = $email;
+        }
+    }
+}
+
+// -------------------------------------------------
+// 🧠 Location Fallback (recover city/state/zip)
+// -------------------------------------------------
+if (
+    empty($parsed['location']['city']) ||
+    empty($parsed['location']['state'])
+) {
+
+    // Pattern: "City, ST ZIP"
+    if (preg_match('/([A-Za-z\s]+),\s*([A-Z]{2})\s*(\d{5})?/', $rawInput, $m)) {
+
+        $city  = ucwords(strtolower(trim($m[1])));
+        $state = strtoupper(trim($m[2]));
+        $zip   = isset($m[3]) ? substr($m[3], 0, 5) : '';
+
+        if (empty($parsed['location']['city'])) {
+            $parsed['location']['city'] = $city;
+        }
+
+        if (empty($parsed['location']['state'])) {
+            $parsed['location']['state'] = $state;
+        }
+
+        if (empty($parsed['location']['zip']) && !empty($zip)) {
+            $parsed['location']['zip'] = $zip;
+        }
+    }
+}
+// -------------------------------------------------
+// 🧠 Street Address Fallback
+// -------------------------------------------------
+if (empty($parsed['location']['address'])) {
+
+    if (preg_match('/^\s*(\d{1,6}\s+[A-Za-z0-9\s\.\-]+(?:Ave|Avenue|Rd|Road|St|Street|Blvd|Lane|Ln|Dr|Drive|Way))/mi', $rawInput, $m)) {
+
+        $address = trim(preg_replace('/\s+/', ' ', $m[1]));
+
+        $parsed['location']['address'] = $address;
+    }
+}
 
 #endregion
 
@@ -257,6 +379,8 @@ $locationValidation = [
     'placeIdResolved' => false,
     'latLonResolved' => false,
     'isMaricopa' => false,
+    'apnResolved' => false,
+    'jurisdictionResolved' => false,
     'issues' => []
 ];
 
@@ -338,6 +462,8 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
             'confidence' => 95
         ];
 
+        $locationValidation['apnResolved'] = true;
+
         $jurisdiction = $mca['jurisdiction'] ?? null;
 
     } else {
@@ -345,13 +471,23 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
     }
 }
 
-if ($isMaricopa && empty($jurisdiction)) {
-    $locationValidation['issues'][] = 'jurisdiction_not_resolved';
-}
-
 if (!empty($jurisdiction)) {
     $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
+    $locationValidation['jurisdictionResolved'] = true;
 }
+
+if ($isMaricopa && !$locationValidation['apnResolved']) {
+    $locationValidation['issues'][] = 'maricopa_parcel_required';
+}
+
+if ($isMaricopa && !$locationValidation['jurisdictionResolved']) {
+    $locationValidation['issues'][] = 'maricopa_jurisdiction_required';
+}
+
+// -------------------------------------------------
+// 🔁 DUPLICATE DETECTION (DB)
+// -------------------------------------------------
+$duplicate = evaluateDuplicate($parsed, $pdo);
 
 #endregion
 
@@ -817,6 +953,142 @@ function inferLocationName(array $parsed): array {
     }
 
     return $parsed;
+}
+// 🧠 fallbackExtractName — recover name if AI fails
+function fallbackExtractName(array $parsed, string $rawInput): array {
+
+    $first = $parsed['contact']['firstName'] ?? '';
+    $last  = $parsed['contact']['lastName'] ?? '';
+
+    if (empty($first) || empty($last)) {
+
+        // Look for first valid "First Last" pattern
+        if (preg_match('/^\s*([A-Za-z]{2,})\s+([A-Za-z]{2,})/m', $rawInput, $m)) {
+
+            if (empty($first)) {
+                $parsed['contact']['firstName'] = ucfirst(strtolower($m[1]));
+            }
+
+            if (empty($last)) {
+                $parsed['contact']['lastName'] = ucfirst(strtolower($m[2]));
+            }
+        }
+    }
+
+    return $parsed;
+}
+// 🔁 evaluateDuplicate — DB-backed duplicate detection
+function evaluateDuplicate(array $parsed, PDO $pdo): array {
+
+    $email = strtolower(trim($parsed['contact']['email'] ?? ''));
+    $phone = preg_replace('/\D/', '', $parsed['contact']['primaryPhoneRaw'] ?? '');
+    $first = strtolower(trim($parsed['contact']['firstName'] ?? ''));
+    $last  = strtolower(trim($parsed['contact']['lastName'] ?? ''));
+    $entityName = strtolower(trim($parsed['entity']['name'] ?? ''));
+
+    // -------------------------------------------------
+    // 1. Exact Email Match (STRONGEST)
+    // -------------------------------------------------
+    if (!empty($email)) {
+        $stmt = $pdo->prepare("
+            SELECT contactId, entityId
+            FROM tblContacts
+            WHERE LOWER(contactEmail) = :email
+            LIMIT 1
+        ");
+        $stmt->execute(['email' => $email]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return [
+                'status' => 'exact',
+                'contactId' => $row['contactId'],
+                'entityId' => $row['entityId'],
+                'matchType' => 'email'
+            ];
+        }
+    }
+
+    // -------------------------------------------------
+    // 2. Phone Match
+    // -------------------------------------------------
+    if (!empty($phone)) {
+        $stmt = $pdo->prepare("
+            SELECT contactId, entityId
+            FROM tblContacts
+            WHERE contactPrimaryPhoneRaw = :phone
+            LIMIT 1
+        ");
+        $stmt->execute(['phone' => $phone]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return [
+                'status' => 'possible',
+                'contactId' => $row['contactId'],
+                'entityId' => $row['entityId'],
+                'matchType' => 'phone'
+            ];
+        }
+    }
+
+    // -------------------------------------------------
+    // 3. Name + Entity Match
+    // -------------------------------------------------
+    if ($first && $last && $entityName) {
+
+        $stmt = $pdo->prepare("
+            SELECT c.contactId, c.entityId
+            FROM tblContacts c
+            JOIN tblEntities e ON c.entityId = e.entityId
+            WHERE LOWER(c.contactFirstName) = :first
+              AND LOWER(c.contactLastName) = :last
+              AND LOWER(e.entityName) = :entity
+            LIMIT 1
+        ");
+        $stmt->execute([
+            'first' => $first,
+            'last' => $last,
+            'entity' => $entityName
+        ]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return [
+                'status' => 'possible',
+                'contactId' => $row['contactId'],
+                'entityId' => $row['entityId'],
+                'matchType' => 'name_entity'
+            ];
+        }
+    }
+
+    return [
+        'status' => 'none',
+        'contactId' => null,
+        'entityId' => null,
+        'matchType' => null
+    ];
+}
+// Get PDO connection (singleton)
+function getPDO(): PDO {
+
+    static $pdo = null;
+
+    if ($pdo === null) {
+
+        $dsn = "mysql:host=localhost;dbname=your_db;charset=utf8mb4";
+        $user = "your_user";
+        $pass = "your_pass";
+
+        $pdo = new PDO($dsn, $user, $pass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]);
+    }
+
+    return $pdo;
 }
 
 #endregion
