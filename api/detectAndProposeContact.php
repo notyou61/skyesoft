@@ -322,17 +322,39 @@ if (!empty($phones[1])) {
 
 #region SECTION 09 — 🧠 PCM + Final Response + AI Narrative
 
-/** @var array $dataIntegrityStatus */
-/** @var array $locationValidation */
-/** @var array $parsed */
-/** @var array $parcel */
-/** @var mixed $jurisdiction */
-/** @var bool $parcelLookupAttempted */
-/** @var array $aiData */
-/** @var string $activitySessionId */
+// -------------------------------------------------
+// 🛡️ SAFETY INITIALIZATION (CRITICAL — Prevents Undefined Variables)
+// -------------------------------------------------
+$dataIntegrityStatus = isset($dataIntegrityStatus) ? $dataIntegrityStatus : [
+    'status' => 'incomplete',
+    'missing' => []
+];
 
-$duplicate = isset($duplicate) ? $duplicate : array('status' => 'none');
-$locationDuplicate = isset($locationDuplicate) ? $locationDuplicate : array('status' => 'none');
+$locationValidation = isset($locationValidation) ? $locationValidation : [
+    'status'               => 'invalid',
+    'isMaricopa'           => false,
+    'apnResolved'          => false,
+    'jurisdictionResolved' => false,
+    'issues'               => []
+];
+
+$parsed = isset($parsed) ? $parsed : [];
+$parcel = isset($parcel) ? $parcel : null;
+$jurisdiction = isset($jurisdiction) ? $jurisdiction : null;
+$parcelLookupAttempted = isset($parcelLookupAttempted) ? $parcelLookupAttempted : false;
+
+$duplicate = isset($duplicate) ? $duplicate : ['status' => 'none'];
+$locationDuplicate = isset($locationDuplicate) ? $locationDuplicate : ['status' => 'none'];
+
+$aiData = isset($aiData) ? $aiData : [];
+$activitySessionId = isset($activitySessionId) ? $activitySessionId : 'no_session';
+
+// -------------------------------------------------
+// FAIL FAST IF PIPELINE DID NOT COMPLETE
+// -------------------------------------------------
+if (!isset($parsed) || empty($parsed)) {
+    jsonError('Processing pipeline failed before enrichment stage.');
+}
 
 // -------------------------------------------------
 // PCM DECISION
@@ -356,7 +378,7 @@ if (isset($dataIntegrityStatus['status']) && $dataIntegrityStatus['status'] !== 
 }
 
 // -------------------------------------------------
-// CLEAN DATA PAYLOAD + DECISION + META + ISSUES + NARRATIVE
+// CLEAN DATA PAYLOAD
 // -------------------------------------------------
 $data = array(
     'entity' => array('entityName' => isset($parsed['entity']['name']) ? trim($parsed['entity']['name']) : ''),
@@ -374,7 +396,7 @@ $data = array(
         'locationCountyFips'      => '',
         'locationParcelNumber'    => isset($parcel['apnDisplay']) ? $parcel['apnDisplay'] : null,
         'locationParcelNumberRaw' => isset($parcel['apnRaw']) ? $parcel['apnRaw'] : null,
-        'locationJurisdiction'    => isset($jurisdiction) ? $jurisdiction : null,
+        'locationJurisdiction'    => $jurisdiction,
         'locationIsBilling'       => 0,
         'locationNote'            => '',
         'locationZone'            => '',
@@ -400,6 +422,9 @@ $data = array(
     )
 );
 
+// -------------------------------------------------
+// DECISION + META + ISSUES
+// -------------------------------------------------
 $decision = array(
     'ready'     => isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false,
     'action'    => isset($pcm['action']) ? $pcm['action'] : 'review',
@@ -472,7 +497,7 @@ if (empty($narrativeText)) {
 }
 
 // -------------------------------------------------
-// FINAL OUTPUT
+// FINAL OUTPUT (Single Exit Point)
 // -------------------------------------------------
 echo json_encode(array(
     'status'        => 'proposed',
@@ -486,8 +511,10 @@ echo json_encode(array(
     'issues'        => $issues,
     'narrative'     => array('text' => trim($narrativeText)),
 
-    'activitySessionId' => isset($activitySessionId) ? $activitySessionId : 'no_session'
+    'activitySessionId' => $activitySessionId
 ), JSON_UNESCAPED_SLASHES);
+
+exit;   // ← Prevents any further output / warnings
 
 #endregion
 
