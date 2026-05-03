@@ -1071,24 +1071,5 @@ function evaluateDuplicate(array $parsed, PDO $pdo): array {
         'matchType' => null
     ];
 }
-// Get PDO connection (singleton)
-function getPDO(): PDO {
-
-    static $pdo = null;
-
-    if ($pdo === null) {
-
-        $dsn = "mysql:host=localhost;dbname=your_db;charset=utf8mb4";
-        $user = "your_user";
-        $pass = "your_pass";
-
-        $pdo = new PDO($dsn, $user, $pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-        ]);
-    }
-
-    return $pdo;
-}
 
 #endregion
