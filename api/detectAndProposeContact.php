@@ -168,7 +168,8 @@ if (!$aiData || !isset($aiData['parsed'])) jsonError('Invalid AI response format
 // -------------------------------------------------
 $parsed = $aiData['parsed'] ?? [];
 
-$parsed = array_merge_recursive([
+// 🛡️ Schema enforcement (SAFE)
+$parsed = array_replace_recursive([
     'entity' => ['name' => ''],
     'contact' => [
         'firstName' => '',
@@ -188,7 +189,7 @@ $parsed = array_merge_recursive([
         'zip' => '',
         'locationName' => ''
     ]
-], $parsed);
+], $parsed ?? []);
 
 // -------------------------------------------------
 // 🧠 FIX #3 — Name Fallback (repair AI miss)
