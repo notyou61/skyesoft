@@ -161,7 +161,7 @@ if (!$aiData || !isset($aiData['parsed'])) jsonError('Invalid AI response format
 
 #endregion
 
-#region SECTION 05.5 — 🛡️ Schema Enforcement + Fallback Recovery
+#region SECTION 06 — 🛡️ Schema Enforcement + Fallback Recovery
 
 // -------------------------------------------------
 // 🧩 Ensure Full Schema (prevents partial AI output)
@@ -257,7 +257,7 @@ if (empty($parsed['location']['address'])) {
 
 #endregion
 
-#region SECTION 06 — 🔍 Intent Validation
+#region SECTION 07 — 🔍 Intent Validation
 
 if (($aiData['intent'] ?? '') !== 'contact_proposal') {
     echo json_encode([
@@ -270,7 +270,7 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #endregion
 
-#region SECTION 07 — 📞 Assign Primary + Secondary Phones
+#region SECTION 08 — 📞 Assign Primary + Secondary Phones
 
 $phones = extractPhones($rawInput);
 
@@ -320,244 +320,178 @@ if (!empty($phones[1])) {
 
 #endregion
 
-#region SECTION 08 — 🧩 Data Processing & Enrichment
+#region SECTION 09 — 🧠 PCM + Final Response + AI Narrative
+
+/** @var array $dataIntegrityStatus */
+/** @var array $locationValidation */
+/** @var array $parsed */
+/** @var array $parcel */
+/** @var mixed $jurisdiction */
+/** @var bool $parcelLookupAttempted */
+/** @var array $aiData */
+/** @var string $activitySessionId */
+
+$duplicate = isset($duplicate) ? $duplicate : array('status' => 'none');
+$locationDuplicate = isset($locationDuplicate) ? $locationDuplicate : array('status' => 'none');
 
 // -------------------------------------------------
-// 🧩 CORE NORMALIZATION PIPELINE
+// PCM DECISION
 // -------------------------------------------------
-$parsed = normalizeParsed($parsed);
-$parsed = inferMissingFields($parsed);
-$parsed = inferLocationName($parsed); // Early inference
-
-// -------------------------------------------------
-// 🧠 SALUTATION
-// -------------------------------------------------
-$firstName = trim($parsed['contact']['firstName'] ?? '');
-$lastName  = trim($parsed['contact']['lastName'] ?? '');
-
-$existingSalutation = trim($parsed['contact']['salutation'] ?? '');
-
-if ($existingSalutation !== '') {
-    $parsed['contact']['salutation'] = $existingSalutation;
-    $parsed['contact']['salutationInferred'] = false;
+if (isset($dataIntegrityStatus['status']) && $dataIntegrityStatus['status'] !== 'complete') {
+    $pcm = array('status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields');
+} elseif (isset($locationValidation['status']) && 
+         ($locationValidation['status'] === 'invalid' || 
+          (isset($locationValidation['isMaricopa']) && $locationValidation['isMaricopa'] && $locationValidation['status'] === 'partial'))) {
+    $pcm = array('status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location');
+} elseif (isset($duplicate['status']) && $duplicate['status'] === 'exact') {
+    $pcm = array('status' => 'duplicate_contact', 'readyForCommit' => false, 'requiresReview' => false, 'blocksCommit' => true, 'action' => 'reject_duplicate');
+} elseif (isset($duplicate['status']) && $duplicate['status'] === 'possible') {
+    $pcm = array('status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate');
+} elseif (isset($locationDuplicate['status']) && $locationDuplicate['status'] === 'exact') {
+    $pcm = array('status' => 'existing_location', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'link_existing_location');
+} elseif (isset($locationDuplicate['status']) && $locationDuplicate['status'] === 'possible') {
+    $pcm = array('status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location');
 } else {
-    $salutation = inferSalutation($firstName, $lastName);
-    if ($salutation !== null) {
-        $parsed['contact']['salutation'] = $salutation;
-        $parsed['contact']['salutationInferred'] = true;
-    } else {
-        $parsed['contact']['salutation'] = null;
-        $parsed['contact']['salutationInferred'] = null;
-    }
+    $pcm = array('status' => 'new_elc', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'insert_new');
 }
 
 // -------------------------------------------------
-// 📍 ADDRESS PREP
+// CLEAN DATA PAYLOAD + DECISION + META + ISSUES + NARRATIVE
 // -------------------------------------------------
-$fullAddress = trim(implode(' ', array_filter([
-    $parsed['location']['address'] ?? '',
-    $parsed['location']['city'] ?? '',
-    $parsed['location']['state'] ?? '',
-    $parsed['location']['zip'] ?? ''
-])));
+$data = array(
+    'entity' => array('entityName' => isset($parsed['entity']['name']) ? trim($parsed['entity']['name']) : ''),
+    'location' => array(
+        'locationName'            => isset($parsed['location']['locationName']) ? trim($parsed['location']['locationName']) : '',
+        'locationPlaceId'         => isset($parsed['location']['locationPlaceId']) ? $parsed['location']['locationPlaceId'] : null,
+        'locationLatitude'        => isset($parsed['location']['latitude']) ? $parsed['location']['latitude'] : null,
+        'locationLongitude'       => isset($parsed['location']['longitude']) ? $parsed['location']['longitude'] : null,
+        'locationAddress'         => isset($parsed['location']['address']) ? trim($parsed['location']['address']) : '',
+        'locationAddressSuite'    => '',
+        'locationCity'            => isset($parsed['location']['city']) ? trim($parsed['location']['city']) : '',
+        'locationState'           => isset($parsed['location']['state']) ? strtoupper(trim($parsed['location']['state'])) : '',
+        'locationZip'             => isset($parsed['location']['zip']) ? trim($parsed['location']['zip']) : '',
+        'locationCounty'          => isset($parsed['location']['county']) ? trim($parsed['location']['county']) : '',
+        'locationCountyFips'      => '',
+        'locationParcelNumber'    => isset($parcel['apnDisplay']) ? $parcel['apnDisplay'] : null,
+        'locationParcelNumberRaw' => isset($parcel['apnRaw']) ? $parcel['apnRaw'] : null,
+        'locationJurisdiction'    => isset($jurisdiction) ? $jurisdiction : null,
+        'locationIsBilling'       => 0,
+        'locationNote'            => '',
+        'locationZone'            => '',
+        'locationIsNotValid'      => (isset($locationValidation['status']) && $locationValidation['status'] === 'invalid') ? 1 : 0
+    ),
+    'contact' => array(
+        'contactSalutation'             => isset($parsed['contact']['salutation']) ? $parsed['contact']['salutation'] : null,
+        'contactFirstName'              => isset($parsed['contact']['firstName']) ? trim($parsed['contact']['firstName']) : '',
+        'contactLastName'               => isset($parsed['contact']['lastName']) ? trim($parsed['contact']['lastName']) : '',
+        'contactTitle'                  => isset($parsed['contact']['title']) ? trim($parsed['contact']['title']) : '',
+        'contactIsBilling'              => 0,
+        'contactPrimaryPhone'           => isset($parsed['contact']['primaryPhone']) ? $parsed['contact']['primaryPhone'] : '',
+        'contactPrimaryPhoneRaw'        => isset($parsed['contact']['primaryPhoneRaw']) ? $parsed['contact']['primaryPhoneRaw'] : '',
+        'contactPrimaryPhoneExtension'  => '',
+        'contactSecondaryPhone'         => isset($parsed['contact']['secondaryPhone']) ? $parsed['contact']['secondaryPhone'] : '',
+        'contactSecondaryPhoneRaw'      => isset($parsed['contact']['secondaryPhoneRaw']) ? $parsed['contact']['secondaryPhoneRaw'] : '',
+        'contactEmail'                  => isset($parsed['contact']['email']) ? $parsed['contact']['email'] : '',
+        'contactEmailNormalized'        => isset($parsed['contact']['emailNormalized']) ? $parsed['contact']['emailNormalized'] : '',
+        'contactEmailConfirmed'         => 0,
+        'contactNote'                   => '',
+        'contactIsNotValid'             => 0,
+        'isActive'                      => 1
+    )
+);
 
-$lookupAddress = sanitizeAddressForLookup($fullAddress);
+$decision = array(
+    'ready'     => isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false,
+    'action'    => isset($pcm['action']) ? $pcm['action'] : 'review',
+    'pcmStatus' => isset($pcm['status']) ? $pcm['status'] : 'new_elc'
+);
+
+$issues = array();
+if (isset($dataIntegrityStatus['missing'])) $issues = array_merge($issues, $dataIntegrityStatus['missing']);
+if (isset($locationValidation['issues'])) $issues = array_merge($issues, $locationValidation['issues']);
+$issues = array_values(array_unique($issues));
+
+$issuesText = !empty($issues) ? implode(', ', $issues) : 'none';
+
+$meta = array(
+    'inferences' => array(
+        'salutationInferred'   => isset($parsed['contact']['salutationInferred']) ? $parsed['contact']['salutationInferred'] : false,
+        'locationNameInferred' => isset($parsed['location']['locationNameInferred']) ? $parsed['location']['locationNameInferred'] : false,
+        'entityNameInferred'   => isset($parsed['entity']['nameInferred']) ? $parsed['entity']['nameInferred'] : false,
+    ),
+    'enrichments' => array_values(array_filter(array(
+        (isset($parsed['location']['locationPlaceId']) && !empty($parsed['location']['locationPlaceId'])) ? 'google_geocode' : null,
+        (isset($parsed['location']['county']) && !empty($parsed['location']['county'])) ? 'census_county' : null,
+        (isset($parcelLookupAttempted) && $parcelLookupAttempted) ? 'maricopa_parcel_attempted' : null,
+        (isset($locationValidation['apnResolved']) && $locationValidation['apnResolved']) ? 'maricopa_parcel' : null,
+    ))),
+    'flags' => array(
+        'isMaricopa'           => isset($locationValidation['isMaricopa']) ? $locationValidation['isMaricopa'] : false,
+        'locationValid'        => isset($locationValidation['status']) ? $locationValidation['status'] : 'unknown_status',
+        'apnResolved'          => isset($locationValidation['apnResolved']) ? $locationValidation['apnResolved'] : false,
+        'jurisdictionResolved' => isset($locationValidation['jurisdictionResolved']) ? $locationValidation['jurisdictionResolved'] : false,
+        'parcelLookupAttempted'=> isset($parcelLookupAttempted) ? $parcelLookupAttempted : false
+    )
+);
 
 // -------------------------------------------------
-// 🌍 GOOGLE LOCATION VALIDATION
+// AI NARRATIVE
 // -------------------------------------------------
-$locationValidation = [
-    'status'               => 'invalid',
-    'confidence'           => 0,
-    'placeIdResolved'      => false,
-    'latLonResolved'       => false,
-    'isMaricopa'           => false,
-    'apnResolved'          => false,
-    'jurisdictionResolved' => false,
-    'issues'               => []
-];
+$entityName  = isset($parsed['entity']['name']) ? trim($parsed['entity']['name']) : '';
+$fullName    = trim((isset($parsed['contact']['firstName']) ? trim($parsed['contact']['firstName']) : '') . ' ' . 
+                 (isset($parsed['contact']['lastName']) ? trim($parsed['contact']['lastName']) : ''));
+$locationStr = isset($parsed['location']['locationName']) ? trim($parsed['location']['locationName']) : '';
 
-$googleData = null;
+$narrativePrompt = 'You are summarizing a structured contact proposal result for a business system.' . "\n\n" .
+'RULES:' . "\n" .
+'- Maricopa County requires valid parcel (APN) + jurisdiction for commit.' . "\n" .
+'- Be concise, professional, and actionable.' . "\n\n" .
+'DATA:' . "\n" .
+'- Entity: ' . $entityName . "\n" .
+'- Contact: ' . $fullName . "\n" .
+'- Location: ' . $locationStr . "\n" .
+'- Location Status: ' . (isset($locationValidation['status']) ? $locationValidation['status'] : 'unknown_status') . "\n" .
+'- Maricopa: ' . (isset($locationValidation['isMaricopa']) ? ($locationValidation['isMaricopa'] ? 'true' : 'false') : 'false') . "\n" .
+'- APN Resolved: ' . (isset($locationValidation['apnResolved']) ? ($locationValidation['apnResolved'] ? 'true' : 'false') : 'false') . "\n" .
+'- Jurisdiction Resolved: ' . (isset($locationValidation['jurisdictionResolved']) ? ($locationValidation['jurisdictionResolved'] ? 'true' : 'false') : 'false') . "\n" .
+'- Decision: ' . (isset($decision['pcmStatus']) ? $decision['pcmStatus'] : 'new_elc') . "\n" .
+'- Ready: ' . (isset($decision['ready']) ? ($decision['ready'] ? 'true' : 'false') : 'false') . "\n" .
+'- Issues: ' . $issuesText . "\n\n" .
+'Write a clear 2-3 sentence explanation for the user. Explain successes, issues, and next steps. Return ONLY plain text.';
 
-if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
+$apiKey = skyesoftGetEnv("OPENAI_API_KEY") ?: getenv("OPENAI_API_KEY");
+$narrativeText = '';
+if ($apiKey && function_exists('callOpenAI')) {
+    $narrativeText = callOpenAI($narrativePrompt, $apiKey);
+}
 
-    $googleData = validateLocationWithGoogle([
-        'address' => $lookupAddress,
-        'city'    => $parsed['location']['city'],
-        'state'   => $parsed['location']['state'],
-        'zip'     => $parsed['location']['zip'] ?? ''
-    ]);
-
-    if (empty($googleData['placeId'])) {
-        $googleData = validateLocationWithGoogle([
-            'address' => $fullAddress,
-            'city'    => $parsed['location']['city'],
-            'state'   => $parsed['location']['state'],
-            'zip'     => $parsed['location']['zip'] ?? ''
-        ]);
-    }
-
-    if (!empty($googleData['placeId'])) {
-
-        $parsed['location']['locationPlaceId']  = $googleData['placeId'];
-        $parsed['location']['latitude']         = $googleData['lat'] ?? null;
-        $parsed['location']['longitude']        = $googleData['lng'] ?? null;
-        $parsed['location']['formattedAddress'] = str_replace(', USA', '', $googleData['address'] ?? $fullAddress);
-
-        $locationValidation['status']          = 'valid';
-        $locationValidation['placeIdResolved'] = true;
-        $locationValidation['latLonResolved']  = true;
-        $locationValidation['confidence']      = 90;
-
-    } else {
-        $locationValidation['issues'][] = 'google_place_not_resolved';
-    }
+if (empty($narrativeText)) {
+    $narrativeText = (isset($decision['ready']) && $decision['ready'])
+        ? 'Contact proposal is complete and ready for database insertion.'
+        : 'Contact proposal requires review due to missing or invalid information.';
 }
 
 // -------------------------------------------------
-// 🗺️ CENSUS GEO
+// FINAL OUTPUT
 // -------------------------------------------------
-$geo = resolveGeographyFromAddress($parsed['location']['formattedAddress'] ?? $lookupAddress);
+echo json_encode(array(
+    'status'        => 'proposed',
+    'confidence'    => isset($aiData['confidence']) ? $aiData['confidence'] : 82,
+    'success'       => true,
 
-if ($geo) {
-    if (!empty($geo['county'])) $parsed['location']['county'] = trim($geo['county']);
-    if (!empty($geo['state']))  $parsed['location']['state']  = $geo['state'];
-}
+    'data'          => $data,
+    'parcelDetails' => isset($parcel) ? $parcel : (object)array(),
+    'decision'      => $decision,
+    'meta'          => $meta,
+    'issues'        => $issues,
+    'narrative'     => array('text' => trim($narrativeText)),
 
-// -------------------------------------------------
-// 🌵 MARICOPA LOGIC
-// -------------------------------------------------
-$county = strtoupper(trim($parsed['location']['county'] ?? ''));
-$state  = strtoupper(trim($parsed['location']['state'] ?? ''));
-
-$isMaricopa = ($county === 'MARICOPA' && $state === 'AZ');
-
-$locationValidation['isMaricopa'] = $isMaricopa;
-
-$parcel = null;
-$parcelCandidates = null;
-$jurisdiction = null;
-
-// Track lookup attempt explicitly
-$parcelLookupAttempted = false;
-
-// -------------------------------------------------
-// 🧭 Only attempt lookup when valid context exists
-// -------------------------------------------------
-if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
-
-    $parcelLookupAttempted = true;
-
-    $parcelLookupAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
-
-    $mca = lookupMaricopaParcel($parcelLookupAddress);
-
-    if ($mca && !empty($mca['apn'])) {
-
-        $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
-
-        $parcel = [
-            'apnRaw'     => $apnRaw,
-            'apnDisplay' => formatAPN($apnRaw),
-            'source'     => $mca['source'],
-            'confidence' => 95
-        ];
-
-        $jurisdiction = $mca['jurisdiction'] ?? null;
-
-    } else {
-
-        // Only flag if lookup was attempted and failed
-        $locationValidation['issues'][] = 'parcel_lookup_failed';
-    }
-}
-
-// Normalize jurisdiction
-if (!empty($jurisdiction)) {
-    $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
-}
-
-// -------------------------------------------------
-// Final resolution flags (AUTHORITATIVE)
-// -------------------------------------------------
-$locationValidation['apnResolved']          = !empty($parcel);
-$locationValidation['jurisdictionResolved'] = !empty($jurisdiction);
-
-// -------------------------------------------------
-// Hard requirements + Issues logging (WHY)
-// -------------------------------------------------
-if ($isMaricopa) {
-
-    if (!$locationValidation['apnResolved']) {
-        $locationValidation['issues'][] = 'maricopa_parcel_required';
-    }
-
-    if (!$locationValidation['jurisdictionResolved']) {
-        $locationValidation['issues'][] = 'maricopa_jurisdiction_required';
-    }
-}
-
-// -------------------------------------------------
-// Business-level status refinement (STATE)
-// -------------------------------------------------
-if (!$locationValidation['placeIdResolved']) {
-
-    // 🚨 Cannot trust location at all
-    $locationValidation['status'] = 'invalid';
-
-} elseif ($isMaricopa && (
-    !$locationValidation['apnResolved'] ||
-    !$locationValidation['jurisdictionResolved']
-)) {
-
-    // ⚠️ Valid geo, but missing required Maricopa data
-    $locationValidation['status'] = 'partial';
-
-} else {
-
-    // ✅ Fully valid for context
-    $locationValidation['status'] = 'valid';
-}
-
-// -------------------------------------------------
-// 🧾 FINAL INFERENCE PASS (AUTHORITATIVE)
-// -------------------------------------------------
-$parsed = inferLocationName($parsed);
-
-// -------------------------------------------------
-// 🧾 DATA INTEGRITY STATUS (DIS)
-// -------------------------------------------------
-$dataIntegrityStatus = [
-    'status' => 'complete',
-    'missing' => []
-];
-
-$missing = validateParsed($parsed);
-
-if (!empty($missing)) {
-    $dataIntegrityStatus['status'] = 'incomplete';
-    $dataIntegrityStatus['missing'] = $missing;
-}
-
-// -------------------------------------------------
-// 🔁 DUPLICATE DETECTION
-// -------------------------------------------------
-if (!$pdo) {
-
-    error_log('PDO connection missing — skipping duplicate detection');
-
-    $duplicate = ['status' => 'none'];
-    $locationDuplicate = ['status' => 'none'];
-
-} else {
-
-    $duplicate = evaluateDuplicate($parsed, $pdo);
-    $locationDuplicate = evaluateLocationDuplicate($parsed, $pdo);
-}
+    'activitySessionId' => isset($activitySessionId) ? $activitySessionId : 'no_session'
+), JSON_UNESCAPED_SLASHES);
 
 #endregion
 
-#region SECTION 09 — 🧠 PCM + Final Response + AI Narrative
+#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative
 
 // -------------------------------------------------
 // 🔁 DUPLICATE (contact-level)
@@ -733,7 +667,7 @@ echo json_encode([
 
 #endregion
 
-#region SECTION 10 — 🛠️ Internal Utilities
+#region SECTION 11 — 🛠️ Internal Utilities
 
 // 🧩 normalizeParsed — standardize parsed contact structure
 function normalizeParsed(array $parsed): array {
