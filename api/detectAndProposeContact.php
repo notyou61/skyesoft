@@ -327,7 +327,7 @@ if (!empty($phones[1])) {
 // -------------------------------------------------
 $parsed = normalizeParsed($parsed);
 $parsed = inferMissingFields($parsed);
-$parsed = inferLocationName($parsed);           // Early inference
+$parsed = inferLocationName($parsed); // Early inference
 
 // -------------------------------------------------
 // 🧠 SALUTATION
@@ -398,22 +398,21 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
     }
 
     if (!empty($googleData['placeId'])) {
+
         $parsed['location']['locationPlaceId']  = $googleData['placeId'];
         $parsed['location']['latitude']         = $googleData['lat'] ?? null;
         $parsed['location']['longitude']        = $googleData['lng'] ?? null;
         $parsed['location']['formattedAddress'] = str_replace(', USA', '', $googleData['address'] ?? $fullAddress);
 
         $locationValidation['status']          = 'valid';
-        $locationValidation['confidence']      = !empty($googleData['placeId']) ? 90 : 0;                    // Dynamic below if needed
         $locationValidation['placeIdResolved'] = true;
         $locationValidation['latLonResolved']  = true;
+        $locationValidation['confidence']      = 90;
+
     } else {
         $locationValidation['issues'][] = 'google_place_not_resolved';
     }
 }
-
-// Dynamic confidence (improved)
-$locationValidation['confidence'] = !empty($googleData['placeId']) ? 90 : 0;
 
 // -------------------------------------------------
 // 🗺️ CENSUS GEO
@@ -436,7 +435,7 @@ $isMaricopa = ($county === 'MARICOPA' && $state === 'AZ');
 $locationValidation['isMaricopa'] = $isMaricopa;
 
 $parcel = null;
-$parcelCandidates = null;        // ← Restored for future multi-APN support
+$parcelCandidates = null;
 $jurisdiction = null;
 
 if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
@@ -446,6 +445,7 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
     $mca = lookupMaricopaParcel($parcelLookupAddress);
 
     if ($mca && !empty($mca['apn'])) {
+
         $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
 
         $parcel = [
@@ -456,6 +456,7 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
         ];
 
         $jurisdiction = $mca['jurisdiction'] ?? null;
+
     } else {
         $locationValidation['issues'][] = 'parcel_not_found';
     }
@@ -466,10 +467,11 @@ if (!empty($jurisdiction)) {
     $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
 }
 
-// Final resolution flags
+// Final resolution flags (AUTHORITATIVE)
 $locationValidation['apnResolved']          = !empty($parcel);
 $locationValidation['jurisdictionResolved'] = !empty($jurisdiction);
 
+// Hard requirements (used by PCM)
 if ($isMaricopa && !$locationValidation['apnResolved']) {
     $locationValidation['issues'][] = 'maricopa_parcel_required';
 }
@@ -478,9 +480,9 @@ if ($isMaricopa && !$locationValidation['jurisdictionResolved']) {
 }
 
 // -------------------------------------------------
-// 🧾 FINAL INFERENCE PASS
+// 🧾 FINAL INFERENCE PASS (AUTHORITATIVE)
 // -------------------------------------------------
-$parsed = inferLocationName($parsed);   // Authoritative pass after enrichment
+$parsed = inferLocationName($parsed);
 
 // -------------------------------------------------
 // 🧾 DATA INTEGRITY STATUS (DIS)
@@ -501,10 +503,14 @@ if (!empty($missing)) {
 // 🔁 DUPLICATE DETECTION
 // -------------------------------------------------
 if (!$pdo) {
+
     error_log('PDO connection missing — skipping duplicate detection');
+
     $duplicate = ['status' => 'none'];
     $locationDuplicate = ['status' => 'none'];
+
 } else {
+
     $duplicate = evaluateDuplicate($parsed, $pdo);
     $locationDuplicate = evaluateLocationDuplicate($parsed, $pdo);
 }
