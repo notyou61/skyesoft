@@ -504,9 +504,32 @@ if (!empty($jurisdiction)) {
     $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
 }
 
-// Normalize jurisdiction
-if (!empty($jurisdiction)) {
-    $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
+// -------------------------------------------------
+// Parcel Status Classification (NEW — Critical)
+// -------------------------------------------------
+$mca = null;   // ← Declare to satisfy linter + safety
+
+$locationValidation['parcelStatus'] = 'not_attempted'; // default
+
+if ($parcelLookupAttempted) {
+    if (isset($mca) && !empty($mca['apn'])) {
+
+        $matchedAddress = strtoupper(trim($mca['matched'] ?? ''));
+        $inputAddress   = strtoupper(trim($parsed['location']['formattedAddress'] ?? $fullAddress));
+
+        // Normalize for comparison
+        $matchedAddress = preg_replace('/[^A-Z0-9 ]/', '', $matchedAddress);
+        $inputAddress   = preg_replace('/[^A-Z0-9 ]/', '', $inputAddress);
+
+        if (strpos($matchedAddress, substr($inputAddress, 0, 15)) !== false) {
+            $locationValidation['parcelStatus'] = 'resolved';
+        } else {
+            $locationValidation['parcelStatus'] = 'not_parcelable';
+        }
+
+    } else {
+        $locationValidation['parcelStatus'] = 'not_found';
+    }
 }
 
 // -------------------------------------------------
@@ -564,10 +587,16 @@ $duplicate = isset($duplicate) ? $duplicate : ['status' => 'none'];
 $locationDuplicate = isset($locationDuplicate) ? $locationDuplicate : ['status' => 'none'];
 
 // -------------------------------------------------
-// 🚫 LOCATION VALIDATION BLOCK (CRITICAL)
+// 🚫 LOCATION VALIDATION BLOCK (CRITICAL — Updated)
 // -------------------------------------------------
 if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
+} elseif (
+    isset($locationValidation['parcelStatus']) && 
+    $locationValidation['parcelStatus'] !== 'resolved'
+) {
+    // New parcel-aware logic
+    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
 } elseif ($locationValidation['isMaricopa'] && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
     $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
 } elseif ($duplicate['status'] === 'exact') {
@@ -674,16 +703,16 @@ $fullName    = trim((isset($parsed['contact']['firstName']) ? trim($parsed['cont
 $locationStr = isset($parsed['location']['locationName']) ? trim($parsed['location']['locationName']) : '';
 
 $narrativePrompt = 'You are summarizing a structured contact proposal result for a business system. ' .
-'ONLY use the facts below. Do not infer business context like "electric service" or "commitments".' . "\n\n" .
+'ONLY use the facts below. Do not infer business context.' . "\n\n" .
 'RULES:' . "\n" .
 '- Maricopa County requires valid parcel (APN) + jurisdiction for commit.' . "\n" .
-'- Be concise, professional, and factual.' . "\n\n" .
+'- Be concise and factual.' . "\n\n" .
 'DATA:' . "\n" .
 '- Entity: ' . $entityName . "\n" .
 '- Contact: ' . $fullName . "\n" .
 '- Location: ' . $locationStr . "\n" .
 '- Location Status: ' . (isset($locationValidation['status']) ? $locationValidation['status'] : 'unknown_status') . "\n" .
-'- Maricopa: ' . (isset($locationValidation['isMaricopa']) ? ($locationValidation['isMaricopa'] ? 'true' : 'false') : 'false') . "\n" .
+'- Parcel Status: ' . (isset($locationValidation['parcelStatus']) ? $locationValidation['parcelStatus'] : 'unknown') . "\n" .
 '- APN Resolved: ' . (isset($locationValidation['apnResolved']) ? ($locationValidation['apnResolved'] ? 'true' : 'false') : 'false') . "\n" .
 '- Jurisdiction Resolved: ' . (isset($locationValidation['jurisdictionResolved']) ? ($locationValidation['jurisdictionResolved'] ? 'true' : 'false') : 'false') . "\n" .
 '- Decision: ' . (isset($decision['pcmStatus']) ? $decision['pcmStatus'] : 'new_elc') . "\n" .
