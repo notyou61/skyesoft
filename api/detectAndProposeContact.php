@@ -475,6 +475,7 @@ $jurisdiction = null;
 $parcelLookupAttempted = false;
 
 if ($isMaricopa && !empty($parsed['location']['address'])) {
+
     $parcelLookupAttempted = true;
     $parcelLookupAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress ?? $fullAddress;
 
@@ -490,10 +491,17 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
             'confidence' => 95
         ];
 
+        // ✅ PARCEL IS AUTHORITATIVE
         $jurisdiction = $mca['jurisdiction'] ?? null;
+
     } else {
         $locationValidation['issues'][] = 'parcel_lookup_failed';
     }
+}
+
+// Normalize jurisdiction (only if not from parcel)
+if (!empty($jurisdiction)) {
+    $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
 }
 
 // Normalize jurisdiction
@@ -658,17 +666,18 @@ $meta = [
 ];
 
 // -------------------------------------------------
-// AI NARRATIVE (Full Prompt + callOpenAI)
+// AI NARRATIVE (Tighter — No Hallucination)
 // -------------------------------------------------
 $entityName  = isset($parsed['entity']['name']) ? trim($parsed['entity']['name']) : '';
 $fullName    = trim((isset($parsed['contact']['firstName']) ? trim($parsed['contact']['firstName']) : '') . ' ' . 
                  (isset($parsed['contact']['lastName']) ? trim($parsed['contact']['lastName']) : ''));
 $locationStr = isset($parsed['location']['locationName']) ? trim($parsed['location']['locationName']) : '';
 
-$narrativePrompt = 'You are summarizing a structured contact proposal result for a business system.' . "\n\n" .
+$narrativePrompt = 'You are summarizing a structured contact proposal result for a business system. ' .
+'ONLY use the facts below. Do not infer business context like "electric service" or "commitments".' . "\n\n" .
 'RULES:' . "\n" .
 '- Maricopa County requires valid parcel (APN) + jurisdiction for commit.' . "\n" .
-'- Be concise, professional, and actionable.' . "\n\n" .
+'- Be concise, professional, and factual.' . "\n\n" .
 'DATA:' . "\n" .
 '- Entity: ' . $entityName . "\n" .
 '- Contact: ' . $fullName . "\n" .
@@ -683,8 +692,7 @@ $narrativePrompt = 'You are summarizing a structured contact proposal result for
 'Write a clear 2-3 sentence explanation for the user. Explain successes, issues, and next steps. Return ONLY plain text.';
 
 $apiKey = skyesoftGetEnv("OPENAI_API_KEY") ?: getenv("OPENAI_API_KEY");
-$narrativeText = 'Contact proposal processed.';
-
+$narrativeText = '';
 if ($apiKey && function_exists('callOpenAI')) {
     $narrativeText = callOpenAI($narrativePrompt, $apiKey);
 }
