@@ -4582,6 +4582,21 @@
                 },
                 "locationValidationStrategy": {
                     "description": "Defines mandatory validation behavior for all location inputs.",
+                    "locationFailureModes": {
+                        "blocking": [
+                            "missing_placeId",
+                            "incomplete_address",
+                            "multiple_parcels_unresolved",
+                            "invalid_parcel_match"
+                        ],
+                        "review": [
+                            "ambiguous_address",
+                            "low_confidence_geocode",
+                            "parcel_mismatch",
+                            "jurisdiction_mismatch",
+                            "entity_location_mismatch"
+                        ]
+                    },
                     "rules": [
                         "All proposed locations must undergo validation via Google Places prior to any duplicate detection, resolution, or persistence.",
                         "locationPlaceId must be resolved from Google Places and is required for all persisted location records.",
@@ -5413,28 +5428,28 @@
                     },
                     "pipeline": {
                     "description": "Defines the ordered execution pipeline for transforming raw input into a validated, classified proposal.",
-                    "steps": [
-                        "captureRawInput",
-                        "parseInputToELC",
-                        "normalizeFields",
-                        "inferMissingFields",
-                        "validateRequiredFields",
-                        "resolveGeography",
-                        "resolveParcelConditionally",
-                        "evaluateDuplicates",
-                        "classifyPCM",
-                        "determineResolutionOutcome",
-                        "evaluateLegitimacy",
-                        "returnStructuredProposal"
-                    ],
-                    "rules": [
-                        "All steps must execute in strict order.",
-                        "No database operations may occur prior to commitPhase.",
-                        "Inference must occur before validation.",
-                        "Validation must complete before duplicate detection.",
-                        "PCM classification must occur before resolutionOutcome.",
-                        "resolutionOutcome must be determined before decisionPhase."
-                    ]
+                        "steps": [
+                            "captureRawInput",
+                            "parseInputToELC",
+                            "normalizeFields",
+                            "inferMissingFields",
+                            "validateRequiredFields",
+                            "resolveGeography",
+                            "resolveParcelConditionally",
+                            "evaluateDuplicates",
+                            "classifyPCM",
+                            "determineResolutionOutcome",
+                            "evaluateLegitimacy",
+                            "returnStructuredProposal"
+                        ],
+                        "rules": [
+                            "All steps must execute in strict order.",
+                            "No database operations may occur prior to commitPhase.",
+                            "Inference must occur before validation.",
+                            "Validation must complete before duplicate detection.",
+                            "PCM classification must occur before resolutionOutcome.",
+                            "resolutionOutcome must be determined before decisionPhase."
+                        ]
                     },
                     "requiredFieldsModel": {
                     "description": "Defines required fields for commit eligibility.",
@@ -5458,18 +5473,20 @@
                     ]
                     },
                     "dataIntegrityStatus": {
-                    "description": "Defines completeness validation prior to PCM classification.",
-                    "statuses": [
-                        "complete",
-                        "incomplete",
-                        "invalid",
-                        "ambiguous_location"
-                    ],
-                    "rules": [
-                        "Incomplete status blocks commitPhase.",
-                        "Invalid data must result in reject status.",
-                        "All missing fields must be explicitly listed."
-                    ]
+                        "description": "Defines completeness validation prior to PCM classification.",
+                        "statuses": [
+                            "complete",
+                            "incomplete",
+                            "invalid",
+                            "ambiguous_location",
+                            "location_invalid",
+                            "location_requires_review"
+                        ],
+                        "rules": [
+                            "Incomplete status blocks commitPhase.",
+                            "Invalid data must result in reject status.",
+                            "All missing fields must be explicitly listed."
+                        ]
                     },
                     "parcelResolutionModel": {
                     "description": "Defines parcel resolution behavior for Maricopa County.",
@@ -5522,16 +5539,19 @@
                     ]
                     },
                     "legitimacyGate": {
-                    "description": "Defines final acceptance criteria prior to commitPhase.",
-                    "rules": [
-                        "All required fields must be present.",
-                        "Location must be validated with locationPlaceId.",
-                        "Parcel and jurisdiction must be resolved when required.",
-                        "Duplicate contacts must not be inserted.",
-                        "PCM must not be duplicate_contact unless handled as update.",
-                        "All blocking issues must be resolved before commit.",
-                        "Commit is only allowed when resolutionOutcome.status = 'resolved'."
-                    ]
+                        "description": "Defines final acceptance criteria prior to commitPhase.",
+                        "rules": [
+                            "All required fields must be present and dataIntegrityStatus.status must equal 'complete'.",
+                            "Location must pass full locationValidation, including a resolved locationPlaceId and no blocking location issues.",
+                            "If state = 'AZ' AND county = 'Maricopa', parcel and jurisdiction must be resolved and validated.",
+                            "If multiple parcels are returned, user selection is required before commit.",
+                            "Duplicate contacts (exact match) must not be inserted and must resolve as resolved_duplicate.",
+                            "PCM must represent a valid relational state and must not be 'duplicate_contact' unless explicitly handled as an update operation.",
+                            "Location validation failures must be resolved independently and must not be absorbed into PCM classification.",
+                            "All blocking issues across dataIntegrityStatus, locationValidation, and parcel resolution must be resolved before commit.",
+                            "resolutionOutcome.status must be one of ['resolved_new', 'resolved_duplicate'] to allow commit.",
+                            "Commit is prohibited when resolutionOutcome.status is 'partial', 'reject', or 'resolved_conflict'."
+                        ]
                     },
                     "outputModel": {
                     "description": "Defines required structure of the proposed contact response object.",
