@@ -985,14 +985,13 @@ function evaluateDuplicate(array $parsed, PDO $pdo): array {
     $phone = preg_replace('/\D/', '', $parsed['contact']['primaryPhoneRaw'] ?? '');
     $first = strtolower(trim($parsed['contact']['firstName'] ?? ''));
     $last  = strtolower(trim($parsed['contact']['lastName'] ?? ''));
-    $entityName = strtolower(trim($parsed['entity']['name'] ?? ''));
 
     // -------------------------------------------------
     // 1. Exact Email Match (STRONGEST)
     // -------------------------------------------------
     if (!empty($email)) {
         $stmt = $pdo->prepare("
-            SELECT contactId, entityId
+            SELECT contactId, contactEntityId
             FROM tblContacts
             WHERE LOWER(contactEmail) = :email
             LIMIT 1
@@ -1004,7 +1003,7 @@ function evaluateDuplicate(array $parsed, PDO $pdo): array {
             return [
                 'status' => 'exact',
                 'contactId' => $row['contactId'],
-                'entityId' => $row['entityId'],
+                'entityId' => $row['contactEntityId'], // ✅ FIXED
                 'matchType' => 'email'
             ];
         }
@@ -1015,7 +1014,7 @@ function evaluateDuplicate(array $parsed, PDO $pdo): array {
     // -------------------------------------------------
     if (!empty($phone)) {
         $stmt = $pdo->prepare("
-            SELECT contactId, entityId
+            SELECT contactId, contactEntityId
             FROM tblContacts
             WHERE contactPrimaryPhoneRaw = :phone
             LIMIT 1
@@ -1027,30 +1026,28 @@ function evaluateDuplicate(array $parsed, PDO $pdo): array {
             return [
                 'status' => 'possible',
                 'contactId' => $row['contactId'],
-                'entityId' => $row['entityId'],
+                'entityId' => $row['contactEntityId'], // ✅ FIXED
                 'matchType' => 'phone'
             ];
         }
     }
 
     // -------------------------------------------------
-    // 3. Name + Entity Match
+    // 3. Name Match (Entity-aware)
     // -------------------------------------------------
-    if ($first && $last && $entityName) {
+    if ($first && $last) {
 
         $stmt = $pdo->prepare("
-            SELECT c.contactId, c.entityId
-            FROM tblContacts c
-            JOIN tblEntities e ON c.entityId = e.entityId
-            WHERE LOWER(c.contactFirstName) = :first
-              AND LOWER(c.contactLastName) = :last
-              AND LOWER(e.entityName) = :entity
+            SELECT contactId, contactEntityId
+            FROM tblContacts
+            WHERE LOWER(contactFirstName) = :first
+              AND LOWER(contactLastName) = :last
             LIMIT 1
         ");
+
         $stmt->execute([
             'first' => $first,
-            'last' => $last,
-            'entity' => $entityName
+            'last' => $last
         ]);
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -1059,8 +1056,8 @@ function evaluateDuplicate(array $parsed, PDO $pdo): array {
             return [
                 'status' => 'possible',
                 'contactId' => $row['contactId'],
-                'entityId' => $row['entityId'],
-                'matchType' => 'name_entity'
+                'entityId' => $row['contactEntityId'], // ✅ FIXED
+                'matchType' => 'name'
             ];
         }
     }
