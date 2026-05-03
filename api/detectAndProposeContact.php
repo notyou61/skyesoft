@@ -467,17 +467,32 @@ if (!empty($jurisdiction)) {
     $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
 }
 
+// -------------------------------------------------
 // Final resolution flags (AUTHORITATIVE)
+// -------------------------------------------------
 $locationValidation['apnResolved']          = !empty($parcel);
 $locationValidation['jurisdictionResolved'] = !empty($jurisdiction);
 
-// Hard requirements (used by PCM)
-if ($isMaricopa && !$locationValidation['apnResolved']) {
-    $locationValidation['issues'][] = 'maricopa_parcel_required';
+// -------------------------------------------------
+// Hard requirements + Issues logging (used by PCM)
+// -------------------------------------------------
+if ($isMaricopa) {
+    if (!$locationValidation['apnResolved']) {
+        $locationValidation['issues'][] = 'maricopa_parcel_required';
+    }
+    if (!$locationValidation['jurisdictionResolved']) {
+        $locationValidation['issues'][] = 'maricopa_jurisdiction_required';
+    }
 }
-if ($isMaricopa && !$locationValidation['jurisdictionResolved']) {
-    $locationValidation['issues'][] = 'maricopa_jurisdiction_required';
-}
+
+// -------------------------------------------------
+// Business-level status refinement (important for UI/PCM)
+// -------------------------------------------------
+if ($locationValidation['isMaricopa'] && 
+    (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
+    
+    $locationValidation['status'] = 'partial';   // Google succeeded, but Maricopa rules failed
+} 
 
 // -------------------------------------------------
 // 🧾 FINAL INFERENCE PASS (AUTHORITATIVE)
@@ -530,67 +545,80 @@ $duplicate = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 
 // -------------------------------------------------
-// 🧠 PCM (UNIFIED DECISION OBJECT)
-// PRIORITY ORDER MATTERS
+// 🚫 LOCATION VALIDATION BLOCK (CRITICAL — NEW)
 // -------------------------------------------------
 if ($dataIntegrityStatus['status'] !== 'complete') {
 
     $pcm = [
-        'status' => 'incomplete',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => true,
-        'action' => 'resolve_missing_fields'
+        'status'          => 'incomplete',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => true,
+        'action'          => 'resolve_missing_fields'
+    ];
+
+} elseif (
+    $locationValidation['isMaricopa'] &&
+    (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])
+) {
+
+    // MARICOPA HARD BLOCK
+    $pcm = [
+        'status'          => 'invalid_location',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => true,
+        'action'          => 'resolve_location'
     ];
 
 } elseif ($duplicate['status'] === 'exact') {
 
     $pcm = [
-        'status' => 'duplicate_contact',
-        'readyForCommit' => false,
-        'requiresReview' => false,
-        'blocksCommit' => true,
-        'action' => 'reject_duplicate'
+        'status'          => 'duplicate_contact',
+        'readyForCommit'  => false,
+        'requiresReview'  => false,
+        'blocksCommit'    => true,
+        'action'          => 'reject_duplicate'
     ];
 
 } elseif ($duplicate['status'] === 'possible') {
 
     $pcm = [
-        'status' => 'possible_duplicate_contact',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => false,
-        'action' => 'confirm_duplicate'
+        'status'          => 'possible_duplicate_contact',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => false,
+        'action'          => 'confirm_duplicate'
     ];
 
 } elseif ($locationDuplicate['status'] === 'exact') {
 
     $pcm = [
-        'status' => 'existing_location',
-        'readyForCommit' => true,
-        'requiresReview' => false,
-        'blocksCommit' => false,
-        'action' => 'link_existing_location'
+        'status'          => 'existing_location',
+        'readyForCommit'  => true,
+        'requiresReview'  => false,
+        'blocksCommit'    => false,
+        'action'          => 'link_existing_location'
     ];
 
 } elseif ($locationDuplicate['status'] === 'possible') {
 
     $pcm = [
-        'status' => 'possible_location_duplicate',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => false,
-        'action' => 'confirm_location'
+        'status'          => 'possible_location_duplicate',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => false,
+        'action'          => 'confirm_location'
     ];
 
 } else {
 
     $pcm = [
-        'status' => 'new_elc',
-        'readyForCommit' => true,
-        'requiresReview' => false,
-        'blocksCommit' => false,
-        'action' => 'insert_new'
+        'status'          => 'new_elc',
+        'readyForCommit'  => true,
+        'requiresReview'  => false,
+        'blocksCommit'    => false,
+        'action'          => 'insert_new'
     ];
 }
 
@@ -610,7 +638,7 @@ echo json_encode([
     'jurisdiction' => $jurisdiction,
 
     'duplicate' => $duplicate,
-    'locationDuplicate' => $locationDuplicate, // ✅ NEW
+    'locationDuplicate' => $locationDuplicate,
     'pcm' => $pcm,
 
     'activitySessionId' => $activitySessionId,
