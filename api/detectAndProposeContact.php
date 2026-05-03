@@ -495,14 +495,18 @@ $duplicate = evaluateDuplicate($parsed, $pdo);
 #region SECTION 09 — 🧠 PCM + Final Response
 
 // -------------------------------------------------
-// 🔁 DUPLICATE (placeholder)
+// 🔁 DUPLICATE (contact-level)
 // -------------------------------------------------
-$duplicate = [
-    'status' => 'none'
-];
+$duplicate = $duplicate ?? ['status' => 'none'];
+
+// -------------------------------------------------
+// 📍 LOCATION DUPLICATE
+// -------------------------------------------------
+$locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 
 // -------------------------------------------------
 // 🧠 PCM (UNIFIED DECISION OBJECT)
+// PRIORITY ORDER MATTERS
 // -------------------------------------------------
 if ($dataIntegrityStatus['status'] !== 'complete') {
 
@@ -522,6 +526,36 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
         'requiresReview' => false,
         'blocksCommit' => true,
         'action' => 'reject_duplicate'
+    ];
+
+} elseif ($duplicate['status'] === 'possible') {
+
+    $pcm = [
+        'status' => 'possible_duplicate_contact',
+        'readyForCommit' => false,
+        'requiresReview' => true,
+        'blocksCommit' => false,
+        'action' => 'confirm_duplicate'
+    ];
+
+} elseif ($locationDuplicate['status'] === 'exact') {
+
+    $pcm = [
+        'status' => 'existing_location',
+        'readyForCommit' => true,
+        'requiresReview' => false,
+        'blocksCommit' => false,
+        'action' => 'link_existing_location'
+    ];
+
+} elseif ($locationDuplicate['status'] === 'possible') {
+
+    $pcm = [
+        'status' => 'possible_location_duplicate',
+        'readyForCommit' => false,
+        'requiresReview' => true,
+        'blocksCommit' => false,
+        'action' => 'confirm_location'
     ];
 
 } else {
@@ -551,6 +585,7 @@ echo json_encode([
     'jurisdiction' => $jurisdiction,
 
     'duplicate' => $duplicate,
+    'locationDuplicate' => $locationDuplicate, // ✅ NEW
     'pcm' => $pcm,
 
     'activitySessionId' => $activitySessionId,
@@ -937,21 +972,54 @@ function extractPhones(string $input): array {
 
     return $phones;
 }
-// Infer Location Name - if locationName is missing, create it from address + city
+// 📍 Infer Location Name - priority:
 function inferLocationName(array $parsed): array {
+
+    // -------------------------------------------------
+    // 1. Already provided → confirmed
+    // -------------------------------------------------
     if (!empty($parsed['location']['locationName'])) {
         $parsed['location']['locationNameConfirmed'] = true;
+        $parsed['location']['locationNameInferred'] = false;
         return $parsed;
     }
 
+    $entity  = trim($parsed['entity']['name'] ?? '');
     $address = trim($parsed['location']['address'] ?? '');
     $city    = trim($parsed['location']['city'] ?? '');
 
-    if ($address && $city) {
-        $parsed['location']['locationName'] = $address . ' - ' . $city;
+    // -------------------------------------------------
+    // 2. Entity + City (PREFERRED)
+    // -------------------------------------------------
+    if (!empty($entity) && !empty($city)) {
+
+        $parsed['location']['locationName'] = $entity . ' - ' . $city;
+
         $parsed['location']['locationNameInferred'] = true;
         $parsed['location']['locationNameConfirmed'] = false;
+
+        return $parsed;
     }
+
+    // -------------------------------------------------
+    // 3. Address + City (FALLBACK)
+    // -------------------------------------------------
+    if (!empty($address) && !empty($city)) {
+
+        $parsed['location']['locationName'] = $address . ' - ' . $city;
+
+        $parsed['location']['locationNameInferred'] = true;
+        $parsed['location']['locationNameConfirmed'] = false;
+
+        return $parsed;
+    }
+
+    // -------------------------------------------------
+    // 4. Nothing usable
+    // -------------------------------------------------
+    $parsed['location']['locationName'] = '';
+    $parsed['location']['locationNameInferred'] = false;
+    $parsed['location']['locationNameConfirmed'] = false;
 
     return $parsed;
 }
@@ -981,93 +1049,255 @@ function fallbackExtractName(array $parsed, string $rawInput): array {
 // 🔁 evaluateDuplicate — DB-backed duplicate detection
 function evaluateDuplicate(array $parsed, PDO $pdo): array {
 
+    #region Normalize Inputs
+
     $email = strtolower(trim($parsed['contact']['email'] ?? ''));
     $phone = preg_replace('/\D/', '', $parsed['contact']['primaryPhoneRaw'] ?? '');
     $first = strtolower(trim($parsed['contact']['firstName'] ?? ''));
     $last  = strtolower(trim($parsed['contact']['lastName'] ?? ''));
 
-    // -------------------------------------------------
-    // 1. Exact Email Match (STRONGEST)
-    // -------------------------------------------------
+    #endregion
+
+    #region 1. Exact Email Match
+
     if (!empty($email)) {
-        $stmt = $pdo->prepare("
+
+        $sql = "
             SELECT contactId, contactEntityId
             FROM tblContacts
             WHERE LOWER(contactEmail) = :email
             LIMIT 1
-        ");
+        ";
+
+        $stmt = $pdo->prepare($sql);
         $stmt->execute(['email' => $email]);
+
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
             return [
-                'status' => 'exact',
+                'status'    => 'exact',
                 'contactId' => $row['contactId'],
-                'entityId' => $row['contactEntityId'], // ✅ FIXED
+                'entityId'  => $row['contactEntityId'],
                 'matchType' => 'email'
             ];
         }
     }
 
-    // -------------------------------------------------
-    // 2. Phone Match
-    // -------------------------------------------------
+    #endregion
+
+    #region 2. Phone Match
+
     if (!empty($phone)) {
-        $stmt = $pdo->prepare("
+
+        $sql = "
             SELECT contactId, contactEntityId
             FROM tblContacts
             WHERE contactPrimaryPhoneRaw = :phone
             LIMIT 1
-        ");
+        ";
+
+        $stmt = $pdo->prepare($sql);
         $stmt->execute(['phone' => $phone]);
+
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
             return [
-                'status' => 'possible',
+                'status'    => 'possible',
                 'contactId' => $row['contactId'],
-                'entityId' => $row['contactEntityId'], // ✅ FIXED
+                'entityId'  => $row['contactEntityId'],
                 'matchType' => 'phone'
             ];
         }
     }
 
-    // -------------------------------------------------
-    // 3. Name Match (Entity-aware)
-    // -------------------------------------------------
-    if ($first && $last) {
+    #endregion
 
-        $stmt = $pdo->prepare("
+    #region 3. Name Match
+
+    if (!empty($first) && !empty($last)) {
+
+        $sql = "
             SELECT contactId, contactEntityId
             FROM tblContacts
             WHERE LOWER(contactFirstName) = :first
               AND LOWER(contactLastName) = :last
             LIMIT 1
-        ");
+        ";
 
+        $stmt = $pdo->prepare($sql);
         $stmt->execute([
             'first' => $first,
-            'last' => $last
+            'last'  => $last
         ]);
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
             return [
-                'status' => 'possible',
+                'status'    => 'possible',
                 'contactId' => $row['contactId'],
-                'entityId' => $row['contactEntityId'], // ✅ FIXED
+                'entityId'  => $row['contactEntityId'],
                 'matchType' => 'name'
             ];
         }
     }
 
+    #endregion
+
+    #region Default Result
+
     return [
-        'status' => 'none',
+        'status'    => 'none',
         'contactId' => null,
-        'entityId' => null,
+        'entityId'  => null,
         'matchType' => null
     ];
+
+    #endregion
+}
+// 🧼 normalizeLocationName — standardize for comparison
+function normalizeLocationName(string $name): string {
+
+    $name = strtolower($name);
+
+    // Remove punctuation
+    $name = preg_replace('/[^a-z0-9\s]/', '', $name);
+
+    // Normalize whitespace
+    $name = preg_replace('/\s+/', ' ', $name);
+
+    return trim($name);
+}
+// 📍 evaluateLocationDuplicate
+function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
+
+    $entityName = trim($parsed['entity']['name'] ?? '');
+    $locationName = trim($parsed['location']['locationName'] ?? '');
+    $city = strtolower(trim($parsed['location']['city'] ?? ''));
+    $placeId = $parsed['location']['locationPlaceId'] ?? null;
+
+    if (empty($entityName) || empty($locationName)) {
+        return ['status' => 'none'];
+    }
+
+    $entityId = resolveEntityIdByName($entityName, $pdo);
+
+    if (!$entityId) {
+        return [
+            'status' => 'new_entity',
+            'entityId' => null
+        ];
+    }
+
+    $normalizedInput = normalizeLocationName($locationName);
+
+    // -------------------------------------------------
+    // 1. Exact PlaceId match (STRONGEST)
+    // -------------------------------------------------
+    if (!empty($placeId)) {
+
+        $stmt = $pdo->prepare("
+            SELECT locationId, locationName
+            FROM tblLocations
+            WHERE locationPlaceId = :placeId
+            AND entityId = :entityId
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'placeId' => $placeId,
+            'entityId' => $entityId
+        ]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return [
+                'status' => 'exact',
+                'locationId' => $row['locationId'],
+                'matchType' => 'placeId'
+            ];
+        }
+    }
+
+    // -------------------------------------------------
+    // 2. Name + City match (normalized)
+    // -------------------------------------------------
+    $stmt = $pdo->prepare("
+        SELECT locationId, locationName, city
+        FROM tblLocations
+        WHERE entityId = :entityId
+    ");
+
+    $stmt->execute(['entityId' => $entityId]);
+
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+
+        $dbName = normalizeLocationName($row['locationName']);
+        $dbCity = strtolower(trim($row['city'] ?? ''));
+
+        if ($dbName === $normalizedInput && $dbCity === $city) {
+
+            return [
+                'status' => 'exact',
+                'locationId' => $row['locationId'],
+                'matchType' => 'name_city'
+            ];
+        }
+    }
+
+    // -------------------------------------------------
+    // 3. Loose match (same city, similar name)
+    // -------------------------------------------------
+    foreach ($pdo->query("
+        SELECT locationId, locationName, city
+        FROM tblLocations
+        WHERE entityId = {$entityId}
+    ") as $row) {
+
+        $dbName = normalizeLocationName($row['locationName']);
+        $dbCity = strtolower(trim($row['city'] ?? ''));
+
+        if ($dbCity === $city) {
+
+            similar_text($dbName, $normalizedInput, $percent);
+
+            if ($percent > 85) {
+                return [
+                    'status' => 'possible',
+                    'locationId' => $row['locationId'],
+                    'matchType' => 'fuzzy'
+                ];
+            }
+        }
+    }
+
+    return [
+        'status' => 'none',
+        'entityId' => $entityId
+    ];
+}
+// 🔍 resolveEntityIdByName
+function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
+
+    if (empty($entityName)) return null;
+
+    $stmt = $pdo->prepare("
+        SELECT entityId
+        FROM tblEntities
+        WHERE LOWER(entityName) = :name
+        LIMIT 1
+    ");
+
+    $stmt->execute([
+        'name' => strtolower(trim($entityName))
+    ]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row['entityId'] ?? null;
 }
 
 #endregion
