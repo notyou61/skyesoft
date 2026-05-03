@@ -505,31 +505,14 @@ if (!empty($jurisdiction)) {
 }
 
 // -------------------------------------------------
-// Parcel Status Classification (NEW — Critical)
+// 🧠 PARCEL STATUS (Authoritative — Simple & Correct)
 // -------------------------------------------------
-$mca = null;   // ← Declare to satisfy linter + safety
-
-$locationValidation['parcelStatus'] = 'not_attempted'; // default
-
-if ($parcelLookupAttempted) {
-    if (isset($mca) && !empty($mca['apn'])) {
-
-        $matchedAddress = strtoupper(trim($mca['matched'] ?? ''));
-        $inputAddress   = strtoupper(trim($parsed['location']['formattedAddress'] ?? $fullAddress));
-
-        // Normalize for comparison
-        $matchedAddress = preg_replace('/[^A-Z0-9 ]/', '', $matchedAddress);
-        $inputAddress   = preg_replace('/[^A-Z0-9 ]/', '', $inputAddress);
-
-        if (strpos($matchedAddress, substr($inputAddress, 0, 15)) !== false) {
-            $locationValidation['parcelStatus'] = 'resolved';
-        } else {
-            $locationValidation['parcelStatus'] = 'not_parcelable';
-        }
-
-    } else {
-        $locationValidation['parcelStatus'] = 'not_found';
-    }
+if (!empty($parcel) && !empty($parcel['apnRaw'])) {
+    $locationValidation['parcelStatus'] = 'resolved';
+} elseif ($parcelLookupAttempted) {
+    $locationValidation['parcelStatus'] = 'not_found';
+} else {
+    $locationValidation['parcelStatus'] = 'not_attempted';
 }
 
 // -------------------------------------------------
