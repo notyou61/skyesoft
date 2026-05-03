@@ -7,7 +7,7 @@ declare(strict_types=1);
 // ======================================================================
 
 // 🔗 Dependencies (explicit + safe)
-require_once __DIR__ . '/../sessionBootstrap.php';   // This should call session_start()
+//require_once __DIR__ . '/../sessionBootstrap.php';   // This should call session_start()
 require_once __DIR__ . '/../dbConnect.php';
 require_once __DIR__ . '/actionLogger.php';  // ✅ REQUIRED
 
