@@ -625,28 +625,46 @@ $duplicate = isset($duplicate) ? $duplicate : ['status' => 'none'];
 $locationDuplicate = isset($locationDuplicate) ? $locationDuplicate : ['status' => 'none'];
 
 // -------------------------------------------------
-// 🚫 LOCATION VALIDATION BLOCK (CRITICAL — Updated)
+// 🚫 AUTHORITATIVE PCM DECISION (Single Source of Truth)
 // -------------------------------------------------
+// Priority order: Data Integrity → Parcel Status → Duplicates → New
+
 if ($dataIntegrityStatus['status'] !== 'complete') {
+
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
+
 } elseif (
     isset($locationValidation['parcelStatus']) && 
     $locationValidation['parcelStatus'] !== 'resolved'
 ) {
-    // New parcel-aware logic
+
+    // Parcel-level failure takes precedence (most business-critical)
     $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
+
 } elseif ($locationValidation['isMaricopa'] && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
+
     $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
+
 } elseif ($duplicate['status'] === 'exact') {
+
     $pcm = ['status' => 'duplicate_contact', 'readyForCommit' => false, 'requiresReview' => false, 'blocksCommit' => true, 'action' => 'reject_duplicate'];
+
 } elseif ($duplicate['status'] === 'possible') {
+
     $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
+
 } elseif ($locationDuplicate['status'] === 'exact') {
+
     $pcm = ['status' => 'existing_location', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'link_existing_location'];
+
 } elseif ($locationDuplicate['status'] === 'possible') {
+
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
+
 } else {
+
     $pcm = ['status' => 'new_elc', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'insert_new'];
+
 }
 
 // -------------------------------------------------
@@ -712,7 +730,7 @@ $issues = array_values(array_unique(array_merge(
 
 $issuesText = !empty($issues) ? implode(', ', $issues) : 'none';
 
-// Meta
+// Meta (Add parcelStatus for UI)
 $meta = [
     'inferences' => [
         'salutationInferred'   => isset($parsed['contact']['salutationInferred']) ? $parsed['contact']['salutationInferred'] : false,
@@ -727,6 +745,7 @@ $meta = [
     'flags' => [
         'isMaricopa'           => $locationValidation['isMaricopa'] ?? false,
         'locationValid'        => $locationValidation['status'] ?? 'invalid',
+        'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',   // ← ADD THIS
         'apnResolved'          => $locationValidation['apnResolved'] ?? false,
         'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false
     ]
