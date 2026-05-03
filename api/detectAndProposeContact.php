@@ -533,36 +533,74 @@ if ($parcelLookupAttempted) {
 }
 
 // -------------------------------------------------
-// Final resolution flags + Status
+// Final resolution flags (AUTHORITATIVE)
 // -------------------------------------------------
 $locationValidation['apnResolved']          = !empty($parcel);
 $locationValidation['jurisdictionResolved'] = !empty($jurisdiction);
 
+// -------------------------------------------------
+// Issue Reset (prevents duplication across passes)
+// -------------------------------------------------
+$locationValidation['issues'] = array_values(array_unique($locationValidation['issues'] ?? []));
+
+// -------------------------------------------------
+// Maricopa Requirements
+// -------------------------------------------------
 if ($isMaricopa) {
-    if (!$locationValidation['apnResolved']) $locationValidation['issues'][] = 'maricopa_parcel_required';
-    if (!$locationValidation['jurisdictionResolved']) $locationValidation['issues'][] = 'maricopa_jurisdiction_required';
+    if (!$locationValidation['apnResolved']) {
+        $locationValidation['issues'][] = 'maricopa_parcel_required';
+    }
+    if (!$locationValidation['jurisdictionResolved']) {
+        $locationValidation['issues'][] = 'maricopa_jurisdiction_required';
+    }
 }
 
+// -------------------------------------------------
+// STATUS (Single Source of Truth)
+// -------------------------------------------------
 if (!$locationValidation['placeIdResolved']) {
+
     $locationValidation['status'] = 'invalid';
-} elseif ($isMaricopa && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
+
+} elseif ($isMaricopa && (
+    !$locationValidation['apnResolved'] ||
+    !$locationValidation['jurisdictionResolved']
+)) {
+
     $locationValidation['status'] = 'partial';
+
 } else {
+
     $locationValidation['status'] = 'valid';
 }
 
 // -------------------------------------------------
-// 🧾 FINAL INFERENCE + DIS + DUPLICATES
+// OPTIONAL (HIGH VALUE) — Explicit Readiness Flag
+// -------------------------------------------------
+$locationValidation['readyForCommit'] = (
+    $locationValidation['status'] === 'valid'
+);
+
+// -------------------------------------------------
+// 🧾 FINAL INFERENCE
 // -------------------------------------------------
 $parsed = inferLocationName($parsed);
 
+// -------------------------------------------------
+// 🧾 DATA INTEGRITY STATUS (DIS)
+// -------------------------------------------------
 $dataIntegrityStatus = ['status' => 'complete', 'missing' => []];
+
 $missing = validateParsed($parsed);
+
 if (!empty($missing)) {
     $dataIntegrityStatus['status'] = 'incomplete';
     $dataIntegrityStatus['missing'] = $missing;
 }
 
+// -------------------------------------------------
+// 🔁 DUPLICATES
+// -------------------------------------------------
 if (!$pdo) {
     error_log('PDO connection missing — skipping duplicate detection');
     $duplicate = ['status' => 'none'];
