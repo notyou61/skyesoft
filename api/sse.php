@@ -176,9 +176,9 @@ while (true) {
 
         // NO session_start() here — session is already active from bootstrap
         // Only resume if truly closed (rare)
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        //if (session_status() === PHP_SESSION_NONE) {
+        //    session_start();
+        //}
 
         $activitySessionId = session_id();
 
