@@ -270,40 +270,61 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #endregion
 
-#region SECTION 08 — 📞 Assign Primary + Secondary Phones
+#region SECTION 08 — 📞 Assign Primary + Secondary Phones (Enhanced)
 
+// -------------------------------------------------
+// 📞 Extract Phones + Extension
+// -------------------------------------------------
 $phones = extractPhones($rawInput);
+$extension = extractPhoneExtension($rawInput);
 
-// Normalize extracted phones into unique list (by raw)
+// -------------------------------------------------
+// 🧹 Deduplicate Phones (by raw)
+// -------------------------------------------------
 $uniquePhones = [];
+
 foreach ($phones as $p) {
     if (!empty($p['raw']) && !isset($uniquePhones[$p['raw']])) {
         $uniquePhones[$p['raw']] = $p;
     }
 }
+
 $phones = array_values($uniquePhones);
 
-// Prefer "Cell" as primary if label exists
-if (stripos($rawInput, 'cell') !== false && count($phones) >= 2) {
+// -------------------------------------------------
+// 🧠 Label-Based Priority (Cell > Mobile > Office)
+// -------------------------------------------------
+$hasCellLabel = preg_match('/\b(cell|mobile)\b/i', $rawInput);
+
+if ($hasCellLabel && count($phones) >= 2) {
+    // Move likely mobile to primary
     [$phones[0], $phones[1]] = [$phones[1], $phones[0]];
 }
 
-// -----------------------------
-// PRIMARY PHONE
-// -----------------------------
+// -------------------------------------------------
+// 📱 PRIMARY PHONE
+// -------------------------------------------------
 if (!empty($phones[0])) {
 
     $existingPrimary = $parsed['contact']['primaryPhoneRaw'] ?? null;
 
     if (empty($existingPrimary)) {
+
         $parsed['contact']['primaryPhone']    = $phones[0]['formatted'];
         $parsed['contact']['primaryPhoneRaw'] = $phones[0]['raw'];
+
+        // -------------------------------------------------
+        // ☎️ Extension (only applies to primary)
+        // -------------------------------------------------
+        if (!empty($extension)) {
+            $parsed['contact']['primaryPhoneExtension'] = $extension;
+        }
     }
 }
 
-// -----------------------------
-// SECONDARY PHONE
-// -----------------------------
+// -------------------------------------------------
+// 📞 SECONDARY PHONE
+// -------------------------------------------------
 if (!empty($phones[1])) {
 
     $existingSecondary = $parsed['contact']['secondaryPhoneRaw'] ?? null;
@@ -316,6 +337,13 @@ if (!empty($phones[1])) {
         $parsed['contact']['secondaryPhone']    = $phones[1]['formatted'];
         $parsed['contact']['secondaryPhoneRaw'] = $phones[1]['raw'];
     }
+}
+
+// -------------------------------------------------
+// 🛡️ Ensure Extension Field Exists (schema safety)
+// -------------------------------------------------
+if (!isset($parsed['contact']['primaryPhoneExtension'])) {
+    $parsed['contact']['primaryPhoneExtension'] = '';
 }
 
 #endregion
@@ -414,11 +442,25 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {   // Broader condition
 // -------------------------------------------------
 // 🗺️ CENSUS GEO (Always Attempt)
 // -------------------------------------------------
-$geo = resolveGeographyFromAddress($parsed['location']['formattedAddress'] ?? $lookupAddress ?? $fullAddress);
+$geo = resolveGeographyFromAddress(
+    $parsed['location']['formattedAddress'] ?? 
+    $lookupAddress ?? 
+    $fullAddress
+);
 
 if ($geo) {
-    if (!empty($geo['county'])) $parsed['location']['county'] = trim($geo['county']);
-    if (!empty($geo['state']))  $parsed['location']['state']  = $geo['state'];
+    if (!empty($geo['county'])) {
+        $parsed['location']['county'] = trim($geo['county']);
+    }
+
+    if (!empty($geo['state'])) {
+        $parsed['location']['state'] = $geo['state'];
+    }
+
+    // ✅ ADD THIS
+    if (!empty($geo['countyFips'])) {
+        $parsed['location']['countyFips'] = $geo['countyFips'];
+    }
 }
 
 // -------------------------------------------------
@@ -564,16 +606,16 @@ $data = [
         'locationPlaceId'         => $parsed['location']['locationPlaceId'] ?? null,
         'locationLatitude'        => $parsed['location']['latitude'] ?? null,
         'locationLongitude'       => $parsed['location']['longitude'] ?? null,
-        'locationAddress'         => isset($parsed['location']['address']) ? trim($parsed['location']['address']) : '',
-        'locationAddressSuite'    => '',
+        'locationAddress'         => isset($parsed['location']['address']) ? preg_replace('/\s+/', ' ', trim($parsed['location']['address'])) : '',
+        'locationAddressSuite'    => isset($parsed['location']['addressSuite']) ? trim($parsed['location']['addressSuite'])  : '',
         'locationCity'            => isset($parsed['location']['city']) ? trim($parsed['location']['city']) : '',
         'locationState'           => isset($parsed['location']['state']) ? strtoupper(trim($parsed['location']['state'])) : '',
         'locationZip'             => isset($parsed['location']['zip']) ? trim($parsed['location']['zip']) : '',
         'locationCounty'          => isset($parsed['location']['county']) ? trim($parsed['location']['county']) : '',
-        'locationCountyFips'      => '',
-        'locationParcelNumber'    => isset($parcel['apnDisplay']) ? $parcel['apnDisplay'] : null,
-        'locationParcelNumberRaw' => isset($parcel['apnRaw']) ? $parcel['apnRaw'] : null,
-        'locationJurisdiction'    => $jurisdiction,
+        'locationCountyFips'      => isset($parsed['location']['countyFips']) ? trim($parsed['location']['countyFips']) : '',
+        'locationParcelNumber'    => $parcel['apnDisplay'] ?? null,
+        'locationParcelNumberRaw' => $parcel['apnRaw'] ?? null,
+        'locationJurisdiction'    => isset($jurisdiction) ? $jurisdiction : null,
         'locationIsBilling'       => 0,
         'locationNote'            => '',
         'locationZone'            => '',
@@ -587,7 +629,7 @@ $data = [
         'contactIsBilling'              => 0,
         'contactPrimaryPhone'           => $parsed['contact']['primaryPhone'] ?? '',
         'contactPrimaryPhoneRaw'        => $parsed['contact']['primaryPhoneRaw'] ?? '',
-        'contactPrimaryPhoneExtension'  => '',
+        'contactPrimaryPhoneExtension'  => isset($parsed['contact']['primaryPhoneExtension']) ? trim($parsed['contact']['primaryPhoneExtension']) : '',
         'contactSecondaryPhone'         => $parsed['contact']['secondaryPhone'] ?? '',
         'contactSecondaryPhoneRaw'      => $parsed['contact']['secondaryPhoneRaw'] ?? '',
         'contactEmail'                  => $parsed['contact']['email'] ?? '',
@@ -684,7 +726,6 @@ echo json_encode([
     'status'        => 'proposed',
     'confidence'    => isset($aiData['confidence']) ? $aiData['confidence'] : 82,
     'success'       => true,
-
     'data'          => $data,
     'parcelDetails' => isset($parcel) ? $parcel : (object)[],
     'decision'      => $decision,
@@ -864,12 +905,14 @@ function resolveGeographyFromAddress(string $address): ?array {
     $geo = $result['geographies'] ?? [];
     $countyRaw = $geo['Counties'][0]['NAME'] ?? null;
     $state = $geo['States'][0]['STUSAB'] ?? null;
+    $countyFips = $geo['Counties'][0]['COUNTY'] ?? null;
 
     $county = $countyRaw ? str_replace(' County', '', $countyRaw) : null;
 
     return [
         'county'         => $county,
         'state'          => $state,
+        'countyFips'     => $countyFips, // ✅ REQUIRED
         'matchedAddress' => $result['matchedAddress'] ?? null
     ];
 }
@@ -1425,6 +1468,24 @@ function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $row['entityId'] ?? null;
+}
+// 🏢 extractSuite — extract suite/unit from address
+function extractSuite(string $input): ?string {
+
+    if (preg_match('/\b(Suite|Ste|Unit|Apt|#)\s*([A-Za-z0-9\-]+)/i', $input, $m)) {
+        return strtoupper(trim($m[1] . ' ' . $m[2]));
+    }
+
+    return null;
+}
+// 📞 extractPhoneExtension — extract phone extension
+function extractPhoneExtension(string $input): ?string {
+
+    if (preg_match('/\b(ext\.?|x|extension)\s*[:\-]?\s*(\d{1,6})\b/i', $input, $m)) {
+        return trim($m[2]);
+    }
+
+    return null;
 }
 
 #endregion
