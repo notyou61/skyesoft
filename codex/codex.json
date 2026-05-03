@@ -4772,78 +4772,78 @@
                     ]
                 },
                 "inputVariabilityModel": {
-                "description": "Defines all real-world input variations for proposed contacts and how the system must interpret them prior to ELC resolution.",
-                "categories": {
-                    "structured": {
-                    "description": "Fully structured input with clearly defined fields.",
-                    "examples": [
-                        "John Smith, Project Manager, Christy Signs, john@christysigns.com, 602-555-1234"
-                    ],
-                    "behavior": "Direct parsing and ELC resolution."
+                    "description": "Defines all real-world input variations for proposed contacts and how the system must interpret them prior to ELC resolution.",
+                    "categories": {
+                        "structured": {
+                        "description": "Fully structured input with clearly defined fields.",
+                        "examples": [
+                            "John Smith, Project Manager, Christy Signs, john@christysigns.com, 602-555-1234"
+                        ],
+                        "behavior": "Direct parsing and ELC resolution."
+                        },
+                        "signature": {
+                        "description": "Email signature or semi-structured input.",
+                        "examples": [
+                            "John Smith\nProject Manager\nChristy Signs\n602.555.1234\njohn@christysigns.com"
+                        ],
+                        "behavior": "Requires parsing and normalization before resolution."
+                        },
+                        "partial": {
+                        "description": "Missing one or more required ELC components.",
+                        "examples": [
+                            "John Smith, Christy Signs",
+                            "john@christysigns.com"
+                        ],
+                        "behavior": "Must result in partial status and request additional input."
+                        },
+                        "duplicate": {
+                        "description": "Input matches an existing contact within the same entity-location context.",
+                        "behavior": "Must not create a new record. Must resolve as resolved_duplicate."
+                        },
+                        "ambiguous": {
+                        "description": "Entity or location cannot be uniquely determined.",
+                        "examples": [
+                            "City of Phoenix",
+                            "Starbucks, Tempe"
+                        ],
+                        "behavior": "Must trigger conflict or partial state and require clarification."
+                        },
+                        "multiContact": {
+                        "description": "Multiple contacts provided in a single input.",
+                        "examples": [
+                            "John Smith\njohn@a.com\n\nSarah Lee\nsarah@b.com"
+                        ],
+                        "behavior": "System must split and process each contact independently."
+                        },
+                        "roleBased": {
+                        "description": "Non-person contacts such as departments or roles.",
+                        "examples": [
+                            "Permits Department, City of Phoenix, permits@phoenix.gov"
+                        ],
+                        "behavior": "Must be classified as non-individual contact type."
+                        },
+                        "conflicting": {
+                        "description": "Conflicting identity signals within the same input.",
+                        "examples": [
+                            "John Smith, Company A, john@companyB.com"
+                        ],
+                        "behavior": "Must be flagged for review and not auto-resolved."
+                        },
+                        "noiseHeavy": {
+                        "description": "Input includes signatures, disclaimers, or irrelevant content.",
+                        "examples": [
+                            "Sent from my iPhone\nCONFIDENTIAL...\nJohn Smith\n..."
+                        ],
+                        "behavior": "System must strip noise prior to parsing."
+                        }
                     },
-                    "signature": {
-                    "description": "Email signature or semi-structured input.",
-                    "examples": [
-                        "John Smith\nProject Manager\nChristy Signs\n602.555.1234\njohn@christysigns.com"
-                    ],
-                    "behavior": "Requires parsing and normalization before resolution."
-                    },
-                    "partial": {
-                    "description": "Missing one or more required ELC components.",
-                    "examples": [
-                        "John Smith, Christy Signs",
-                        "john@christysigns.com"
-                    ],
-                    "behavior": "Must result in partial status and request additional input."
-                    },
-                    "duplicate": {
-                    "description": "Input matches an existing contact within the same entity-location context.",
-                    "behavior": "Must not create a new record. Must resolve as resolved_duplicate."
-                    },
-                    "ambiguous": {
-                    "description": "Entity or location cannot be uniquely determined.",
-                    "examples": [
-                        "City of Phoenix",
-                        "Starbucks, Tempe"
-                    ],
-                    "behavior": "Must trigger conflict or partial state and require clarification."
-                    },
-                    "multiContact": {
-                    "description": "Multiple contacts provided in a single input.",
-                    "examples": [
-                        "John Smith\njohn@a.com\n\nSarah Lee\nsarah@b.com"
-                    ],
-                    "behavior": "System must split and process each contact independently."
-                    },
-                    "roleBased": {
-                    "description": "Non-person contacts such as departments or roles.",
-                    "examples": [
-                        "Permits Department, City of Phoenix, permits@phoenix.gov"
-                    ],
-                    "behavior": "Must be classified as non-individual contact type."
-                    },
-                    "conflicting": {
-                    "description": "Conflicting identity signals within the same input.",
-                    "examples": [
-                        "John Smith, Company A, john@companyB.com"
-                    ],
-                    "behavior": "Must be flagged for review and not auto-resolved."
-                    },
-                    "noiseHeavy": {
-                    "description": "Input includes signatures, disclaimers, or irrelevant content.",
-                    "examples": [
-                        "Sent from my iPhone\nCONFIDENTIAL...\nJohn Smith\n..."
-                    ],
-                    "behavior": "System must strip noise prior to parsing."
-                    }
-                },
-                "rules": [
-                    "All input must be classified into one of the defined categories before processing.",
-                    "Parsing must normalize input into structured ELC components prior to resolution.",
-                    "Ambiguous or conflicting inputs must not proceed to commitPhase.",
-                    "Multi-contact inputs must be decomposed into individual proposals.",
-                    "Noise must be removed before any parsing or validation occurs."
-                ]
+                    "rules": [
+                        "All input must be classified into one of the defined categories before processing.",
+                        "Parsing must normalize input into structured ELC components prior to resolution.",
+                        "Ambiguous or conflicting inputs must not proceed to commitPhase.",
+                        "Multi-contact inputs must be decomposed into individual proposals.",
+                        "Noise must be removed before any parsing or validation occurs."
+                    ]
                 },
                 "duplicateDetection": {
                     "location": {
@@ -5395,6 +5395,163 @@
                     "Duplicate prevention and data validation are core enforcement mechanisms.",
                     "This model ensures alignment between AI parsing and application-level enforcement."
                     ]
+                },
+                "proposedContactIntakeModel": {
+                    "title": {
+                    "icon": 15,
+                    "text": "Proposed Contact Intake, Validation & PCM Classification Model"
+                    },
+                    "tier": 2,
+                    "type": "Pre-Commit Processing & Classification Standard",
+                    "hierarchyOrder": 5,
+                    "preamble": {
+                    "text": "Defines the complete intake pipeline for proposed contacts, including parsing, normalization, inference, validation, parcel resolution, duplicate detection, and Proposed Contact Matrix (PCM) classification. This model ensures that all proposed contacts are fully structured, validated, and relationally classified prior to decisionPhase and commitPhase."
+                    },
+                    "purpose": {
+                    "icon": 6,
+                    "text": "Ensure all proposed contacts meet required data completeness, pass validation, resolve correctly within the Entity–Location–Contact (ELC) model, and are classified into a deterministic PCM state prior to commit eligibility."
+                    },
+                    "pipeline": {
+                    "description": "Defines the ordered execution pipeline for transforming raw input into a validated, classified proposal.",
+                    "steps": [
+                        "captureRawInput",
+                        "parseInputToELC",
+                        "normalizeFields",
+                        "inferMissingFields",
+                        "validateRequiredFields",
+                        "resolveGeography",
+                        "resolveParcelConditionally",
+                        "evaluateDuplicates",
+                        "classifyPCM",
+                        "determineResolutionOutcome",
+                        "evaluateLegitimacy",
+                        "returnStructuredProposal"
+                    ],
+                    "rules": [
+                        "All steps must execute in strict order.",
+                        "No database operations may occur prior to commitPhase.",
+                        "Inference must occur before validation.",
+                        "Validation must complete before duplicate detection.",
+                        "PCM classification must occur before resolutionOutcome.",
+                        "resolutionOutcome must be determined before decisionPhase."
+                    ]
+                    },
+                    "requiredFieldsModel": {
+                    "description": "Defines required fields for commit eligibility.",
+                    "rules": [
+                        "contactFirstName and contactLastName are required.",
+                        "At least one contact method is required (contactEmail OR contactPrimaryPhone).",
+                        "entityName is required and must be resolved or inferred.",
+                        "locationName is required and must be inferred if not provided.",
+                        "locationAddress, locationCity, and locationState are required.",
+                        "If state = 'AZ' AND county = 'Maricopa', parcel and jurisdiction are required.",
+                        "If multiple parcels are returned, user selection is required before commit."
+                    ]
+                    },
+                    "inferenceModel": {
+                    "description": "Defines deterministic inference rules for missing required fields.",
+                    "rules": [
+                        "Entity name may be inferred from email domain when not explicitly provided.",
+                        "Location name must be inferred using 'address - city' format when missing.",
+                        "Explicit user-provided values must never be overwritten.",
+                        "Inference must complete before validation begins."
+                    ]
+                    },
+                    "dataIntegrityStatus": {
+                    "description": "Defines completeness validation prior to PCM classification.",
+                    "statuses": [
+                        "complete",
+                        "incomplete",
+                        "invalid",
+                        "ambiguous_location"
+                    ],
+                    "rules": [
+                        "Incomplete status blocks commitPhase.",
+                        "Invalid data must result in reject status.",
+                        "All missing fields must be explicitly listed."
+                    ]
+                    },
+                    "parcelResolutionModel": {
+                    "description": "Defines parcel resolution behavior for Maricopa County.",
+                    "rules": [
+                        "Parcel lookup executes only when Census resolves state = 'AZ' AND county = 'Maricopa'.",
+                        "Single parcel match may be auto-assigned.",
+                        "Multiple parcel matches must require user selection.",
+                        "Parcel must be validated against input address.",
+                        "Invalid parcel matches must be rejected.",
+                        "Jurisdiction must be derived from validated parcel data when available."
+                    ]
+                    },
+                    "duplicateDetectionModel": {
+                    "description": "Defines duplicate detection prior to PCM classification.",
+                    "rules": [
+                        "Primary match: entityId + locationId + firstName + lastName.",
+                        "Secondary match: entityId + email OR phone.",
+                        "Duplicate detection must occur before classification.",
+                        "Exact matches must resolve as duplicate_contact.",
+                        "Secondary matches must resolve as partial_match or conflict."
+                    ]
+                    },
+                    "pcmModel": {
+                    "title": "Proposed Contact Matrix (PCM)",
+                    "description": "Defines deterministic classification of proposed contacts within the ELC relational model.",
+                    "statuses": [
+                        "new_elc",
+                        "existing_entity_new_contact",
+                        "existing_entity_existing_location_new_contact",
+                        "partial_match",
+                        "duplicate_contact"
+                    ],
+                    "rules": [
+                        "PCM classification must occur after duplicate detection.",
+                        "PCM must represent relational state, not data completeness.",
+                        "PCM must be deterministic and finite.",
+                        "PCM must drive resolutionOutcome mapping."
+                    ]
+                    },
+                    "resolutionOutcomeMapping": {
+                    "description": "Maps PCM and validation results to Codex resolutionOutcome.",
+                    "rules": [
+                        "new_elc → resolved_new",
+                        "existing_entity_new_contact → resolved_new",
+                        "existing_entity_existing_location_new_contact → resolved_new",
+                        "duplicate_contact → resolved_duplicate",
+                        "partial_match → resolved_conflict",
+                        "incomplete data → partial",
+                        "invalid data → reject"
+                    ]
+                    },
+                    "legitimacyGate": {
+                    "description": "Defines final acceptance criteria prior to commitPhase.",
+                    "rules": [
+                        "All required fields must be present.",
+                        "Location must be validated with locationPlaceId.",
+                        "Parcel and jurisdiction must be resolved when required.",
+                        "Duplicate contacts must not be inserted.",
+                        "PCM must not be duplicate_contact unless handled as update.",
+                        "All blocking issues must be resolved before commit.",
+                        "Commit is only allowed when resolutionOutcome.status = 'resolved'."
+                    ]
+                    },
+                    "outputModel": {
+                    "description": "Defines required structure of the proposed contact response object.",
+                    "fields": [
+                        "parsed",
+                        "dataIntegrityStatus",
+                        "parcel",
+                        "parcelCandidates",
+                        "duplicate",
+                        "pcm",
+                        "resolutionOutcome",
+                        "legitimacy"
+                    ],
+                    "rules": [
+                        "All validation results must be included.",
+                        "PCM status must always be present.",
+                        "resolutionOutcome must always be present.",
+                        "legitimacy must determine commit eligibility."
+                    ]
+                    }
                 },
                 "notes": [
                     "ELC enforcement guarantees that all contacts are fully qualified relational objects.",
