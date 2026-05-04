@@ -405,7 +405,9 @@ $locationSuite = extractSuite($parsed['location']['address'] ?? '');
 if ($locationSuite) {
     $parsed['location']['locationAddressSuite'] = $locationSuite;
     // Clean suite from main address
-    $parsed['location']['address'] = trim(preg_replace('/\b(Suite|Ste|Unit|Apt|#)\s*[A-Za-z0-9\-]+\b/i', '', $parsed['location']['address']));
+    $parsed['location']['address'] = trim(
+        preg_replace('/(?:#|Suite|Ste|Unit|Apt)\s*[A-Za-z0-9\-]+/i', '', $parsed['location']['address'])
+    );
 }
 
 // -------------------------------------------------
