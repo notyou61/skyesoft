@@ -1326,7 +1326,7 @@ if (
             insertActionPrompt([
                 'contactId'        => $sessionContactId,
                 'promptText'       => $query,
-                'responseText'     => "[CONTACT_PROPOSAL_ROUTED]",
+                'responseText'     => "contact_propose_routed",
                 'intent'           => $intent,
                 'intentConfidence' => $confidence,
                 'activitySessionId'=> $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
