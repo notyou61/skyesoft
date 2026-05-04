@@ -403,32 +403,82 @@ $lookupAddress = sanitizeAddressForLookup($fullAddress);
 // -------------------------------------------------
 // 🌍 GOOGLE LOCATION VALIDATION (Always Attempt)
 // -------------------------------------------------
-$locationValidation = [ /* ... your existing locationValidation init ... */ ];
+$locationValidation = [
+    'status'               => 'invalid',
+    'confidence'           => 0,
+    'placeIdResolved'      => false,      // ← Default here
+    'latLonResolved'       => false,
+    'isMaricopa'           => false,
+    'apnResolved'          => false,
+    'jurisdictionResolved' => false,
+    'issues'               => []
+];
 
 $googleData = null;
+$fullAddress = trim(implode(' ', array_filter([
+    $parsed['location']['address'] ?? '',
+    $parsed['location']['city'] ?? '',
+    $parsed['location']['state'] ?? '',
+    $parsed['location']['zip'] ?? ''
+])));
+
+$lookupAddress = sanitizeAddressForLookup($fullAddress);
+
 if (!empty($googleApiKey) && !empty($fullAddress)) {
-    // ... your existing Google logic unchanged ...
+
+    $googleData = validateLocationWithGoogle([
+        'address' => $lookupAddress,
+        'city'    => $parsed['location']['city'] ?? '',
+        'state'   => $parsed['location']['state'] ?? '',
+        'zip'     => $parsed['location']['zip'] ?? ''
+    ]);
+
+    if (empty($googleData['placeId']) && !empty($fullAddress)) {
+        $googleData = validateLocationWithGoogle([
+            'address' => $fullAddress,
+            'city'    => $parsed['location']['city'] ?? '',
+            'state'   => $parsed['location']['state'] ?? '',
+            'zip'     => $parsed['location']['zip'] ?? ''
+        ]);
+    }
+
+    if (!empty($googleData['placeId'])) {
+        $parsed['location']['locationPlaceId']  = $googleData['placeId'];
+        $parsed['location']['latitude']         = $googleData['lat'] ?? null;
+        $parsed['location']['longitude']        = $googleData['lng'] ?? null;
+        $parsed['location']['formattedAddress'] = str_replace(', USA', '', $googleData['address'] ?? $fullAddress);
+
+        $locationValidation['status']          = 'valid';
+        $locationValidation['placeIdResolved'] = true;
+        $locationValidation['latLonResolved']  = true;
+        $locationValidation['confidence']      = 90;
+    } else {
+        $locationValidation['issues'][] = 'google_place_not_resolved';
+        $locationValidation['placeIdResolved'] = false;   // ← Explicit
+    }
 }
 
 // -------------------------------------------------
-// 🔑 SUITE EXTRACTION — RAW INPUT IS THE SOURCE OF TRUTH
+// 🔑 SUITE EXTRACTION — RAW INPUT IS SOURCE OF TRUTH
 // -------------------------------------------------
 $rawInputText = $rawInputOriginal ?: $rawInput ?? '';
 
-// 1. Try AI-parsed address first
+// 1. Try parsed address
 $locationSuite = extractSuite($parsed['location']['address'] ?? '');
 
-// 2. Fallback to raw input (most reliable)
+// 2. Strong fallback to raw input
 if (empty($locationSuite)) {
     $locationSuite = extractSuite($rawInputText);
 }
 
 if (!empty($locationSuite)) {
     $parsed['location']['locationAddressSuite'] = $locationSuite;
+} else {
+    $parsed['location']['locationAddressSuite'] = '';
 }
 
 // -------------------------------------------------
-// 📍 FINAL ADDRESS NORMALIZATION (Google-cleaned, suite removed)
+// 📍 FINAL ADDRESS NORMALIZATION
 // -------------------------------------------------
 $fullAddress = $parsed['location']['formattedAddress'] 
     ?? $parsed['location']['address'] 
@@ -439,7 +489,7 @@ $fullAddress = $parsed['location']['formattedAddress']
         $parsed['location']['zip'] ?? ''
     ])));
 
-// Remove any lingering suite from Google address
+// Remove suite from final address
 $address = preg_replace(
     '/(?:#|Suite|Ste|Unit|Apt)\s*[A-Za-z0-9\-]+/i',
     '',
@@ -449,12 +499,7 @@ $address = preg_replace(
 $address = trim(preg_replace('/\s+/', ' ', $address));
 
 $parsed['location']['address'] = $address;
-$parsed['location']['locationAddressRaw'] = $rawInputText;   // Audit trail
-
-// Defensive: Ensure suite field always exists
-if (!isset($parsed['location']['locationAddressSuite'])) {
-    $parsed['location']['locationAddressSuite'] = '';
-}
+$parsed['location']['locationAddressRaw'] = $rawInputText;
 
 // -------------------------------------------------
 // 🗺️ CENSUS GEO (Always Attempt)
@@ -1505,7 +1550,8 @@ function extractSuite(string $input): ?string {
 
     $patterns = [
         '/(?:#|Suite|Ste|Unit|Apt|Suite #|Unit #)\s*([A-Za-z0-9\-]+)/i',
-        '/\b#([A-Za-z0-9\-]{1,6})\b/i'
+        '/\b#([A-Za-z0-9\-]{1,6})\b/i',
+        '/#?\s*([A-Za-z0-9\-]{1,6})\s*$/i'
     ];
 
     foreach ($patterns as $pattern) {
