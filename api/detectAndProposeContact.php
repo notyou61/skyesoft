@@ -415,12 +415,6 @@ $locationValidation = [
 ];
 
 $googleData = null;
-$fullAddress = trim(implode(' ', array_filter([
-    $parsed['location']['address'] ?? '',
-    $parsed['location']['city'] ?? '',
-    $parsed['location']['state'] ?? '',
-    $parsed['location']['zip'] ?? ''
-])));
 
 $lookupAddress = sanitizeAddressForLookup($fullAddress);
 
@@ -459,42 +453,45 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
 }
 
 // -------------------------------------------------
-// 🔑 SUITE EXTRACTION — RAW INPUT IS SOURCE OF TRUTH
+// 🔑 SUITE EXTRACTION — RAW INPUT IS SOURCE OF TRUTH (Bulletproof)
 // -------------------------------------------------
-$rawInputText = $rawInputOriginal ?: $rawInput ?? '';
+$rawInputText = !empty($rawInputOriginal) ? $rawInputOriginal : 
+                (!empty($rawInput) ? $rawInput : '');
 
-// 1. Try parsed address
-$locationSuite = extractSuite($parsed['location']['address'] ?? '');
+// Prioritized sources - RAW FIRST
+$suiteSources = [
+    $rawInputText,                          // Best chance
+    $parsed['location']['address'] ?? '', 
+    $fullAddress ?? ''
+];
 
-// 2. Strong fallback to raw input
-if (empty($locationSuite)) {
-    $locationSuite = extractSuite($rawInputText);
+$locationSuite = '';
+foreach ($suiteSources as $source) {
+    if (!empty($source) && ($suite = extractSuite($source))) {
+        $locationSuite = $suite;
+        break;
+    }
 }
 
-if (!empty($locationSuite)) {
-    $parsed['location']['locationAddressSuite'] = $locationSuite;
-} else {
-    $parsed['location']['locationAddressSuite'] = '';
-}
+$parsed['location']['locationAddressSuite'] = $locationSuite;   // Already "#305" format
+
 
 // -------------------------------------------------
-// 📍 FINAL ADDRESS NORMALIZATION
+// 📍 FINAL ADDRESS NORMALIZATION (Street-only for consistency)
 // -------------------------------------------------
-$fullAddress = $parsed['location']['formattedAddress'] 
+$fullAddressFinal = $parsed['location']['formattedAddress'] 
     ?? $parsed['location']['address'] 
-    ?? trim(implode(' ', array_filter([
-        $parsed['location']['address'] ?? '',
-        $parsed['location']['city'] ?? '',
-        $parsed['location']['state'] ?? '',
-        $parsed['location']['zip'] ?? ''
-    ])));
+    ?? ($fullAddress ?? '');
 
 // Remove suite from final address
 $address = preg_replace(
     '/(?:#|Suite|Ste|Unit|Apt)\s*[A-Za-z0-9\-]+/i',
     '',
-    $fullAddress
+    $fullAddressFinal
 );
+
+// Keep ONLY street portion (recommended for DB + parcel lookup)
+$address = explode(',', $address)[0] ?? $address;
 
 $address = trim(preg_replace('/\s+/', ' ', $address));
 
@@ -1550,8 +1547,7 @@ function extractSuite(string $input): ?string {
 
     $patterns = [
         '/(?:#|Suite|Ste|Unit|Apt|Suite #|Unit #)\s*([A-Za-z0-9\-]+)/i',
-        '/\b#([A-Za-z0-9\-]{1,6})\b/i',
-        '/#?\s*([A-Za-z0-9\-]{1,6})\s*$/i'
+        '/\b#([A-Za-z0-9\-]{2,6})\b/i'
     ];
 
     foreach ($patterns as $pattern) {
