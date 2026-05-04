@@ -459,6 +459,36 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
 }
 
 // -------------------------------------------------
+// 📍 FINAL ADDRESS + SUITE NORMALIZATION (AUTHORITATIVE)
+// -------------------------------------------------
+
+$fullAddress = $parsed['location']['formattedAddress'] 
+    ?? $parsed['location']['address'] 
+    ?? '';
+
+$address = $fullAddress;
+$suite   = '';
+
+// Extract suite (Suite, Ste, Unit, Apt, #)
+if (preg_match('/(?:#|Suite|Ste|Unit|Apt)\s*([A-Za-z0-9\-]+)/i', $fullAddress, $m)) {
+
+    $suite = '#' . $m[1];
+
+    $address = preg_replace(
+        '/(?:#|Suite|Ste|Unit|Apt)\s*[A-Za-z0-9\-]+/i',
+        '',
+        $fullAddress
+    );
+}
+
+// Clean spacing
+$address = trim(preg_replace('/\s+/', ' ', $address));
+
+// FINAL assignment (overrides earlier values)
+$parsed['location']['address'] = $address;
+$parsed['location']['locationAddressSuite'] = strtoupper($suite);
+
+// -------------------------------------------------
 // 🗺️ CENSUS GEO (Always Attempt)
 // -------------------------------------------------
 $geoAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress ?? $fullAddress;
