@@ -389,7 +389,7 @@ if ($existingSalutation !== '') {
 }
 
 // -------------------------------------------------
-// 📍 ADDRESS PREP + SUITE EXTRACTION
+// 📍 ADDRESS PREP + SUITE EXTRACTION (Early)
 // -------------------------------------------------
 $fullAddress = trim(implode(' ', array_filter([
     $parsed['location']['address'] ?? '',
@@ -399,16 +399,6 @@ $fullAddress = trim(implode(' ', array_filter([
 ])));
 
 $lookupAddress = sanitizeAddressForLookup($fullAddress);
-
-// Extract suite
-$locationSuite = extractSuite($parsed['location']['address'] ?? '');
-if ($locationSuite) {
-    $parsed['location']['locationAddressSuite'] = $locationSuite;
-    // Clean suite from main address
-    $parsed['location']['address'] = trim(
-        preg_replace('/(?:#|Suite|Ste|Unit|Apt)\s*[A-Za-z0-9\-]+/i', '', $parsed['location']['address'])
-    );
-}
 
 // -------------------------------------------------
 // 🌍 GOOGLE LOCATION VALIDATION (Always Attempt)
@@ -459,24 +449,38 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
 }
 
 // -------------------------------------------------
+// 🔑 EARLY SUITE EXTRACTION FROM RAW INPUT (Critical Fix)
+// -------------------------------------------------
+$rawInputText = $rawInputOriginal ?: $rawInput;  // ← Define EARLY
+
+// Try to get suite from AI-parsed address first
+$locationSuite = extractSuite($parsed['location']['address'] ?? '');
+if (!$locationSuite) {
+    // Fallback to raw input (this is where #305, Suite 210, etc. live)
+    $locationSuite = extractSuite($rawInputText);
+}
+
+if ($locationSuite) {
+    $parsed['location']['locationAddressSuite'] = $locationSuite;
+}
+
+// -------------------------------------------------
 // 📍 FINAL ADDRESS + SUITE NORMALIZATION (CORRECT SOURCE)
 // -------------------------------------------------
 
-$rawInputText = $rawInputOriginal ?? '';
-
-// Extract suite from RAW input (not Google, not parsed)
-$suite = '';
-
-if (preg_match('/(?:#|Suite|Ste|Unit|Apt)\s*([A-Za-z0-9\-]+)/i', $rawInputText, $m)) {
-    $suite = '#' . $m[1];
-}
-
-// Use Google for address
+// -------------------------------------------------
+// 1. Use Google Formatted Address as Base
+// -------------------------------------------------
 $fullAddress = $parsed['location']['formattedAddress'] 
     ?? $parsed['location']['address'] 
-    ?? '';
+    ?? trim(implode(' ', array_filter([
+        $parsed['location']['address'] ?? '',
+        $parsed['location']['city'] ?? '',
+        $parsed['location']['state'] ?? '',
+        $parsed['location']['zip'] ?? ''
+    ])));
 
-// Clean suite from address (safety)
+// Clean any residual suite from Google address
 $address = preg_replace(
     '/(?:#|Suite|Ste|Unit|Apt)\s*[A-Za-z0-9\-]+/i',
     '',
@@ -486,9 +490,16 @@ $address = preg_replace(
 // Clean spacing
 $address = trim(preg_replace('/\s+/', ' ', $address));
 
-// Assign FINAL values
+// -------------------------------------------------
+// 2. Final Assignment
+// -------------------------------------------------
 $parsed['location']['address'] = $address;
-$parsed['location']['locationAddressSuite'] = strtoupper($suite);
+$parsed['location']['locationAddressRaw'] = $rawInputText;   // For audit
+
+// Suite should already be set from early extraction, but reinforce it
+if (empty($parsed['location']['locationAddressSuite'] ?? '')) {
+    $parsed['location']['locationAddressSuite'] = ''; 
+}
 
 // -------------------------------------------------
 // 🗺️ CENSUS GEO (Always Attempt)
@@ -513,7 +524,6 @@ $isMaricopa = ($county === 'MARICOPA' || $state === 'AZ');
 $locationValidation['isMaricopa'] = $isMaricopa;
 
 $parcel = null;
-$parcelCandidates = null;
 $jurisdiction = null;
 $parcelLookupAttempted = false;
 
@@ -534,21 +544,19 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
             'confidence' => 95
         ];
 
-        // ✅ PARCEL IS AUTHORITATIVE
         $jurisdiction = $mca['jurisdiction'] ?? null;
-
     } else {
         $locationValidation['issues'][] = 'parcel_lookup_failed';
     }
 }
 
-// Normalize jurisdiction (only if not from parcel)
+// Normalize jurisdiction
 if (!empty($jurisdiction)) {
     $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
 }
 
 // -------------------------------------------------
-// 🧠 PARCEL STATUS (Authoritative — Simple & Correct)
+// Remaining code (PARCEL STATUS, Final resolution, etc.) remains unchanged
 // -------------------------------------------------
 if (!empty($parcel) && !empty($parcel['apnRaw'])) {
     $locationValidation['parcelStatus'] = 'resolved';
@@ -558,20 +566,11 @@ if (!empty($parcel) && !empty($parcel['apnRaw'])) {
     $locationValidation['parcelStatus'] = 'not_attempted';
 }
 
-// -------------------------------------------------
-// Final resolution flags (AUTHORITATIVE)
-// -------------------------------------------------
 $locationValidation['apnResolved']          = !empty($parcel);
 $locationValidation['jurisdictionResolved'] = !empty($jurisdiction);
 
-// -------------------------------------------------
-// Issue Reset (prevents duplication across passes)
-// -------------------------------------------------
 $locationValidation['issues'] = array_values(array_unique($locationValidation['issues'] ?? []));
 
-// -------------------------------------------------
-// Maricopa Requirements
-// -------------------------------------------------
 if ($isMaricopa) {
     if (!$locationValidation['apnResolved']) {
         $locationValidation['issues'][] = 'maricopa_parcel_required';
@@ -581,52 +580,27 @@ if ($isMaricopa) {
     }
 }
 
-// -------------------------------------------------
-// STATUS (Single Source of Truth)
-// -------------------------------------------------
 if (!$locationValidation['placeIdResolved']) {
-
     $locationValidation['status'] = 'invalid';
-
-} elseif ($isMaricopa && (
-    !$locationValidation['apnResolved'] ||
-    !$locationValidation['jurisdictionResolved']
-)) {
-
+} elseif ($isMaricopa && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
     $locationValidation['status'] = 'partial';
-
 } else {
-
     $locationValidation['status'] = 'valid';
 }
 
-// -------------------------------------------------
-// OPTIONAL (HIGH VALUE) — Explicit Readiness Flag
-// -------------------------------------------------
-$locationValidation['readyForCommit'] = (
-    $locationValidation['status'] === 'valid'
-);
+$locationValidation['readyForCommit'] = ($locationValidation['status'] === 'valid');
 
-// -------------------------------------------------
-// 🧾 FINAL INFERENCE
-// -------------------------------------------------
+// Final inference
 $parsed = inferLocationName($parsed);
 
-// -------------------------------------------------
-// 🧾 DATA INTEGRITY STATUS (DIS)
-// -------------------------------------------------
+// Data Integrity + Duplicates (unchanged)
 $dataIntegrityStatus = ['status' => 'complete', 'missing' => []];
-
 $missing = validateParsed($parsed);
-
 if (!empty($missing)) {
     $dataIntegrityStatus['status'] = 'incomplete';
     $dataIntegrityStatus['missing'] = $missing;
 }
 
-// -------------------------------------------------
-// 🔁 DUPLICATES
-// -------------------------------------------------
 if (!$pdo) {
     error_log('PDO connection missing — skipping duplicate detection');
     $duplicate = ['status' => 'none'];
@@ -1571,13 +1545,16 @@ function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
     return $row['entityId'] ?? null;
 }
 // 🏢 extractSuite — extract suite/unit from address
-// 🏢 extractSuite — extract suite/unit from address
 function extractSuite(string $input): ?string {
-    if (preg_match('/\b(Suite|Ste|Unit|Apt|#|Suite #|Ste #)\s*([A-Za-z0-9\-]+)\b/i', $input, $m)) {
-        return trim($m[1] . ' ' . $m[2]);
-    }
-    if (preg_match('/\b#?\s*([A-Za-z0-9\-]{1,6})\s*$/i', $input, $m)) {
-        return '#' . trim($m[1]);
+    $patterns = [
+        '/(?:#|Suite|Ste|Unit|Apt|Suite #|Unit #)\s*([A-Za-z0-9\-]+)/i',
+        '/\b#([A-Za-z0-9\-]{1,6})\b/i'
+    ];
+    
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern, $input, $m)) {
+            return '#' . strtoupper(trim($m[1]));
+        }
     }
     return null;
 }
