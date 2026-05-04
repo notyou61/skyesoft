@@ -1501,11 +1501,13 @@ function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
 }
 // 🏢 extractSuite — extract suite/unit from address
 function extractSuite(string $input): ?string {
+    if (empty($input)) return null;
+
     $patterns = [
         '/(?:#|Suite|Ste|Unit|Apt|Suite #|Unit #)\s*([A-Za-z0-9\-]+)/i',
         '/\b#([A-Za-z0-9\-]{1,6})\b/i'
     ];
-    
+
     foreach ($patterns as $pattern) {
         if (preg_match($pattern, $input, $m)) {
             return '#' . strtoupper(trim($m[1]));
