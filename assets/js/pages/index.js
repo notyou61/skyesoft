@@ -1095,8 +1095,8 @@ window.SkyIndex = {
         // 📇 Contact Creation (EOP + add)
         // --------------------------------------------------
         if (await this.isContactCreationIntent(text, normalized)) {
-            console.log('📇 Contact Intent → Proposal Flow');
-            await this.handleContactProposal(text);
+            console.log('📇 Contact Intent → AI Intake Flow');
+            await this.executeAICommand(text, activitySessionId);
             return;
         }
 
