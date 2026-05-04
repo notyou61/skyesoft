@@ -39,7 +39,16 @@ function jsonError(string $msg): void {
 
 $input = json_decode(file_get_contents('php://input'), true);
 
-$rawInput          = trim($input['input'] ?? '');
+// -------------------------------------------------
+// RAW INPUT (DO NOT MODIFY)
+// -------------------------------------------------
+$rawInputOriginal = $input['input'] ?? '';
+
+// -------------------------------------------------
+// WORKING INPUT (SAFE TO MODIFY)
+// -------------------------------------------------
+$rawInput = trim($rawInputOriginal);
+
 $activitySessionId = $input['activitySessionId'] ?? 'no_session';
 
 if (empty($rawInput)) {
@@ -779,6 +788,11 @@ echo json_encode([
     'status'        => 'proposed',
     'confidence'    => isset($aiData['confidence']) ? $aiData['confidence'] : 82,
     'success'       => true,
+    'rawInput'      => [
+        'original' => $rawInputOriginal,
+        'type'     => 'signature',
+        'source'   => 'skyebot_prompt'
+    ],
     'data'          => $data,
     'parcelDetails' => isset($parcel) ? $parcel : (object)[],
     'decision'      => $decision,
