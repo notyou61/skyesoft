@@ -1321,23 +1321,22 @@ if (
 
     // Still log the action for audit trail
     $sessionContactId = $_SESSION["contactId"] ?? null;
-    if ($sessionContactId) {
-        try {
-            insertActionPrompt([
-                'contactId'        => $sessionContactId,
-                'promptText'       => $query,
-                'responseText'     => "contact_propose_routed",
-                'intent'           => $intent,
-                'intentConfidence' => $confidence,
-                'latitude'         => $latitude,
-                'longitude'        => $longitude,
-                'activitySessionId'=> $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
-                'actionTypeId'     => 3,
-                'origin'           => ACTION_ORIGIN_USER
-            ], $db);
-        } catch (Throwable $e) {
-            error_log("[actions] contact_proposal logging: " . $e->getMessage());
-        }
+    
+    try {
+        insertActionPrompt([
+            'contactId'        => $sessionContactId,
+            'promptText'       => $query,
+            'responseText'     => "contact_propose_routed",
+            'intent'           => $intent,
+            'intentConfidence' => $confidence,
+            'latitude'         => $latitude,
+            'longitude'        => $longitude,
+            'activitySessionId'=> $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
+            'actionTypeId'     => 3,
+            'origin'           => ACTION_ORIGIN_USER
+        ], $db);
+    } catch (Throwable $e) {
+        error_log("[actions] contact_proposal logging: " . $e->getMessage());
     }
 
     session_write_close();
