@@ -459,32 +459,33 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
 }
 
 // -------------------------------------------------
-// 📍 FINAL ADDRESS + SUITE NORMALIZATION (AUTHORITATIVE)
+// 📍 FINAL ADDRESS + SUITE NORMALIZATION (CORRECT)
 // -------------------------------------------------
 
-$fullAddress = $parsed['location']['formattedAddress'] 
-    ?? $parsed['location']['address'] 
-    ?? '';
+// Use ORIGINAL parsed address (before Google wipes suite)
+$originalAddress = $parsed['location']['address'] ?? '';
 
-$address = $fullAddress;
-$suite   = '';
+$suite = '';
 
-// Extract suite (Suite, Ste, Unit, Apt, #)
-if (preg_match('/(?:#|Suite|Ste|Unit|Apt)\s*([A-Za-z0-9\-]+)/i', $fullAddress, $m)) {
-
+// Extract suite from ORIGINAL address
+if (preg_match('/(?:#|Suite|Ste|Unit|Apt)\s*([A-Za-z0-9\-]+)/i', $originalAddress, $m)) {
     $suite = '#' . $m[1];
-
-    $address = preg_replace(
-        '/(?:#|Suite|Ste|Unit|Apt)\s*[A-Za-z0-9\-]+/i',
-        '',
-        $fullAddress
-    );
 }
+
+// Now use Google for clean base address
+$fullAddress = $parsed['location']['formattedAddress'] ?? $originalAddress;
+
+// Remove any suite remnants just in case
+$address = preg_replace(
+    '/(?:#|Suite|Ste|Unit|Apt)\s*[A-Za-z0-9\-]+/i',
+    '',
+    $fullAddress
+);
 
 // Clean spacing
 $address = trim(preg_replace('/\s+/', ' ', $address));
 
-// FINAL assignment (overrides earlier values)
+// Assign FINAL values
 $parsed['location']['address'] = $address;
 $parsed['location']['locationAddressSuite'] = strtoupper($suite);
 
