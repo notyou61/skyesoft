@@ -1329,6 +1329,8 @@ if (
                 'responseText'     => "contact_propose_routed",
                 'intent'           => $intent,
                 'intentConfidence' => $confidence,
+                'latitude'         => $latitude,
+                'longitude'        => $longitude,
                 'activitySessionId'=> $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
                 'actionTypeId'     => 3,
                 'origin'           => ACTION_ORIGIN_USER
