@@ -19,6 +19,8 @@ declare(strict_types=1);
 //   • Standing Orders must be injected from Codex SOT
 // ======================================================================
 
+#region SECTION 0 — Environment Bootstrap
+
 // Ensure logs directory exists
 $logDir = __DIR__ . '/logs';
 if (!is_dir($logDir)) {
@@ -30,8 +32,6 @@ ini_set('error_log', $logFile);
 
 error_log("=== askOpenAI.php LOADED SUCCESSFULLY ===");
 error_log("Current time: " . date('Y-m-d H:i:s'));
-
-#region SECTION 0 — Environment Bootstrap
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -1245,7 +1245,7 @@ PROMPT;
     }
 
     // ─────────────────────────────────────────────
-    // 6. Conversational Fallback — SIMPLIFIED DEBUG
+    // 6. Conversational Fallback
     // ─────────────────────────────────────────────
     error_log("[DEBUG] Entering conversational fallback. Query: " . substr($query, 0, 150));
 
@@ -1263,8 +1263,13 @@ PROMPT;
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
         $apiKey,
-        "gpt-4o"
+        "gpt-4o-mini"        // ← switched to cheaper model
     );
+
+    // Graceful Quota Handling
+    if (!$response) {
+        $response = "I'm here, but OpenAI is currently out of credits on this account. Try again in a few minutes or let Steve know to top up the balance.";
+    }
 
     $type = "skyebot";
 
