@@ -128,6 +128,10 @@ if (!function_exists('skyesoftLoadEnv')) {
 }
 skyesoftLoadEnv();
 
+// 🔍 DEBUG — Smarty ENV Check (PLACE HERE)
+error_log('[smarty-test] AUTH_ID=' . skyesoftGetEnv('SMARTY_AUTH_ID'));
+error_log('[smarty-test] AUTH_TOKEN=' . substr(skyesoftGetEnv('SMARTY_AUTH_TOKEN'), 0, 5));
+
 $apiKey = getenv("OPENAI_API_KEY");
 $googleApiKey = skyesoftGetEnv("GOOGLE_MAPS_BACKEND_API_KEY") ?? getenv("GOOGLE_MAPS_BACKEND_API_KEY");
 
