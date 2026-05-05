@@ -776,11 +776,12 @@ function injectSemanticIntentContext(string $basePrompt): string
 function callOpenAI(
     string $prompt,
     ?string $apiKey,
-    string $model = "gpt-4.1",
+    string $model = "gpt-4o",           // ← Changed default
     ?array $responseFormat = null
 ): ?string {
 
     if (!$apiKey) {
+        error_log('[callOpenAI] ❌ Missing API key');
         return null;
     }
 
@@ -789,14 +790,8 @@ function callOpenAI(
     $payload = [
         "model" => $model,
         "messages" => [
-            [
-                "role"    => "system",
-                "content" => injectStandingOrders("You are a precise, Codex-aligned assistant.")
-            ],
-            [
-                "role"    => "user",
-                "content" => $prompt
-            ]
+            ["role" => "system", "content" => injectStandingOrders("You are a precise, Codex-aligned assistant.")],
+            ["role" => "user",   "content" => $prompt]
         ],
         "max_tokens"  => 600,
         "temperature" => 0.1
@@ -806,10 +801,9 @@ function callOpenAI(
         $payload["response_format"] = $responseFormat;
     }
 
-    // ✅ Safe JSON encoding
-    $encodedPayload = json_encode($payload);
+    $encodedPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
     if ($encodedPayload === false) {
-        error_log("[askOpenAI] JSON encode failed");
+        error_log('[callOpenAI] ❌ JSON encode failed');
         return null;
     }
 
@@ -821,38 +815,54 @@ function callOpenAI(
                 "Authorization: Bearer {$apiKey}"
             ],
             "content"       => $encodedPayload,
-            "timeout"       => 30,
+            "timeout"       => 45,
             "ignore_errors" => true
         ]
     ]);
 
-    $response = @file_get_contents($url, false, $context);
+    $rawResponse = @file_get_contents($url, false, $context);
+    $statusLine  = $http_response_header[0] ?? 'No HTTP response';
 
-    $statusLine = isset($http_response_header[0])
-        ? $http_response_header[0]
-        : "no-status";
+    // === FULL VISIBILITY LOGGING ===
+    error_log("[callOpenAI] Model: {$model} | HTTP: {$statusLine}");
+    if ($rawResponse) {
+        error_log("[callOpenAI] Raw response length: " . strlen($rawResponse));
+    } else {
+        error_log("[callOpenAI] ❌ No body received");
+    }
 
-    // ✅ FIXED
-    $is200 = (strpos($statusLine, " 200 ") !== false);
+    $is200 = strpos($statusLine, " 200 ") !== false;
 
-    if (!$response || !$is200) {
-
-        error_log("[askOpenAI:callOpenAI] OpenAI request failed " . json_encode([
-            "httpStatus" => $statusLine,
-            "hasBody"    => (bool)$response
-        ], JSON_UNESCAPED_SLASHES));
-
+    if (!$rawResponse || !$is200) {
+        error_log("[callOpenAI] ❌ Request failed - Status: {$statusLine}");
+        if ($rawResponse) {
+            error_log("[callOpenAI] Error body: " . $rawResponse);
+        }
         return null;
     }
 
-    $json = json_decode($response, true);
+    $json = json_decode($rawResponse, true);
 
     if (!is_array($json)) {
-        error_log("[askOpenAI:callOpenAI] invalid JSON response");
+        error_log("[callOpenAI] ❌ Invalid JSON response");
         return null;
     }
 
-    return trim((string)($json["choices"][0]["message"]["content"] ?? ""));
+    if (isset($json['error'])) {
+        error_log("[callOpenAI] ❌ OpenAI API Error: " . json_encode($json['error'], JSON_UNESCAPED_SLASHES));
+        return null;
+    }
+
+    $content = $json["choices"][0]["message"]["content"] ?? '';
+    $content = trim($content);
+
+    if ($content === '') {
+        error_log("[callOpenAI] ⚠️ Empty content returned. Full JSON: " . json_encode($json, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+        return null;
+    }
+
+    error_log("[callOpenAI] ✅ Success ({$model}) - " . strlen($content) . " chars");
+    return $content;
 }
 #endregion
 
@@ -1113,34 +1123,32 @@ PROMPT;
 if ($type === "skyebot") {
 
     // Query
-    $query =
-    $input["userQuery"]
-    ?? $_GET["userQuery"]
-    ?? ($argv[3] ?? null);
+    $query = $input["userQuery"]
+          ?? $_GET["userQuery"]
+          ?? ($argv[3] ?? null);
     
-    // Query Conditional
     if (!$query) {
         aiFail("userQuery required for skyebot mode.");
     }
 
-    // Defaults (centralized output model)
+    // Defaults
     $role = "askOpenAI";
     $narrativeGenerated = false;
     $reportPath = null;
 
+    error_log("[skyebot] Processing query: " . substr($query, 0, 250));
+
     // ─────────────────────────────────────────────
     // 1. Load Runtime Domain Registry
     // ─────────────────────────────────────────────
-
     $streamedDomains = loadRuntimeDomainRegistryKeys();
     $allowedDomainsList = !empty($streamedDomains)
         ? implode(", ", $streamedDomains)
         : "none";
 
     // ─────────────────────────────────────────────
-    // 2. Semantic Intent
+    // 2. Semantic Intent Classification
     // ─────────────────────────────────────────────
-
     $intentPrompt = <<<PROMPT
 Analyze the following user input and return semantic intent metadata only.
 
@@ -1162,9 +1170,9 @@ PROMPT;
                 "additionalProperties" => false,
                 "required" => ["intent", "confidence", "reasoning"],
                 "properties" => [
-                    "intent" => ["type" => "string"],
-                    "confidence" => ["type" => "number"],
-                    "reasoning" => ["type" => "string"]
+                    "intent"      => ["type" => "string"],
+                    "confidence"  => ["type" => "number"],
+                    "reasoning"   => ["type" => "string"]
                 ]
             ]
         ]
@@ -1173,17 +1181,23 @@ PROMPT;
     $intentRaw = callOpenAI(
         injectSemanticIntentContext($intentPrompt),
         $apiKey,
-        "gpt-4o-mini",
+        "gpt-4o-mini",           // ← reliable + cheap for classification
         $semanticIntentSchema
     );
 
+    error_log("[semantic-intent] Raw response: " . ($intentRaw ? substr($intentRaw, 0, 600) : "NULL"));
+
     $intentMeta = json_decode($intentRaw ?? "", true);
 
-    if (!is_array($intentMeta)) {
+    if (!is_array($intentMeta) || !isset($intentMeta['intent']) || !isset($intentMeta['confidence'])) {
+        error_log("[semantic-intent] ❌ Failed to parse JSON or missing keys");
         $intentMeta = [
-            "intent" => "uncertain",
-            "confidence" => 0.0
+            "intent"     => "uncertain",
+            "confidence" => 0.0,
+            "reasoning"  => "JSON parse / schema failure"
         ];
+    } else {
+        error_log("[semantic-intent] ✅ Intent: {$intentMeta['intent']} | Confidence: {$intentMeta['confidence']}");
     }
 
     $intent     = $intentMeta["intent"] ?? "unknown";
@@ -1192,7 +1206,6 @@ PROMPT;
     // ─────────────────────────────────────────────
     // 3. UI ACTIONS
     // ─────────────────────────────────────────────
-
     $execution = executeIntent($intent, $confidence);
 
     if ($execution) {
@@ -1204,24 +1217,20 @@ PROMPT;
     // ─────────────────────────────────────────────
     // 4. DOMAIN SHORT-CIRCUIT
     // ─────────────────────────────────────────────
-
     if (
         $confidence >= 0.70 &&
         preg_match('/^([a-z]+)_(inquiry|repair_request|execute|amendment_request)$/', $intent, $m)
     ) {
-
         $domainKey = $m[1];
         $mode      = $m[2];
 
         if (in_array($domainKey, $streamedDomains, true)) {
-
             $type = "domain_intent";
             $response = json_encode([
                 "domain"     => $domainKey,
                 "mode"       => $mode,
                 "confidence" => $confidence
             ], JSON_UNESCAPED_SLASHES);
-
             goto SKY_OUTPUT;
         }
     }
@@ -1229,36 +1238,31 @@ PROMPT;
     // ─────────────────────────────────────────────
     // 5. GOVERNANCE SHORT-CIRCUIT
     // ─────────────────────────────────────────────
-
     $lowerQuery = strtolower($query);
-
     if (
         str_contains($lowerQuery, "deviation") ||
         str_contains($lowerQuery, "violation") ||
         str_contains($lowerQuery, "structural")
     ) {
-
         $role = "governance";
         $type = "structural_state";
         $response = buildGovernanceResponse();
-
         goto SKY_OUTPUT;
     }
 
     // ─────────────────────────────────────────────
     // 6. Conversational Fallback
     // ─────────────────────────────────────────────
-
     $sseSnapshot = loadSseSnapshot();
-
     $responsePrompt = loadResponseGenerationPrompt();
+
     if ($responsePrompt === "") {
         aiFail("Response generation prompt not available.");
     }
 
-$systemContext = buildSystemContext($sseSnapshot);
+    $systemContext = buildSystemContext($sseSnapshot);
 
-$basePrompt = <<<PROMPT
+    $basePrompt = <<<PROMPT
 {$responsePrompt}
 
 You are operating with real-time system data.
@@ -1276,14 +1280,17 @@ User Input:
 {$query}
 PROMPT;
 
+    // IMPORTANT: Use a valid model
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
-        $apiKey
+        $apiKey,
+        "gpt-4o"          // ← Changed from invalid "gpt-4.1"
     );
 
     $type = "skyebot";
 
     SKY_OUTPUT:
+    error_log("[skyebot] Final response type: {$type} | Length: " . strlen($response ?? ''));
 }
 #endregion
 
