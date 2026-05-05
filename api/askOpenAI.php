@@ -19,6 +19,18 @@ declare(strict_types=1);
 //   • Standing Orders must be injected from Codex SOT
 // ======================================================================
 
+// Ensure logs directory exists
+$logDir = __DIR__ . '/logs';
+if (!is_dir($logDir)) {
+    @mkdir($logDir, 0777, true);
+}
+
+$logFile = $logDir . '/php-error.log';
+ini_set('error_log', $logFile);
+
+error_log("=== askOpenAI.php LOADED SUCCESSFULLY ===");
+error_log("Current time: " . date('Y-m-d H:i:s'));
+
 #region SECTION 0 — Environment Bootstrap
 
 ini_set('display_errors', 1);
@@ -1179,7 +1191,7 @@ PROMPT;
     $intentRaw = callOpenAI(
         injectSemanticIntentContext($intentPrompt),
         $apiKey,
-        "gpt-4o-mini",           // ← reliable + cheap for classification
+        "gpt-4o-mini",
         $semanticIntentSchema
     );
 
@@ -1202,46 +1214,30 @@ PROMPT;
     $confidence = (float)($intentMeta["confidence"] ?? 0.0);
 
     // ─────────────────────────────────────────────
-    // 3. UI ACTIONS
+    // 3. UI ACTIONS + SHORT-CIRCUITS
     // ─────────────────────────────────────────────
     $execution = executeIntent($intent, $confidence);
-
     if ($execution) {
         $type     = $execution['type'];
         $response = $execution['response'];
         goto SKY_OUTPUT;
     }
 
-    // ─────────────────────────────────────────────
-    // 4. DOMAIN SHORT-CIRCUIT
-    // ─────────────────────────────────────────────
     if (
         $confidence >= 0.70 &&
         preg_match('/^([a-z]+)_(inquiry|repair_request|execute|amendment_request)$/', $intent, $m)
     ) {
         $domainKey = $m[1];
         $mode      = $m[2];
-
         if (in_array($domainKey, $streamedDomains, true)) {
             $type = "domain_intent";
-            $response = json_encode([
-                "domain"     => $domainKey,
-                "mode"       => $mode,
-                "confidence" => $confidence
-            ], JSON_UNESCAPED_SLASHES);
+            $response = json_encode(["domain" => $domainKey, "mode" => $mode, "confidence" => $confidence], JSON_UNESCAPED_SLASHES);
             goto SKY_OUTPUT;
         }
     }
 
-    // ─────────────────────────────────────────────
-    // 5. GOVERNANCE SHORT-CIRCUIT
-    // ─────────────────────────────────────────────
     $lowerQuery = strtolower($query);
-    if (
-        str_contains($lowerQuery, "deviation") ||
-        str_contains($lowerQuery, "violation") ||
-        str_contains($lowerQuery, "structural")
-    ) {
+    if (str_contains($lowerQuery, "deviation") || str_contains($lowerQuery, "violation") || str_contains($lowerQuery, "structural")) {
         $role = "governance";
         $type = "structural_state";
         $response = buildGovernanceResponse();
@@ -1249,40 +1245,25 @@ PROMPT;
     }
 
     // ─────────────────────────────────────────────
-    // 6. Conversational Fallback
+    // 6. Conversational Fallback — SIMPLIFIED DEBUG
     // ─────────────────────────────────────────────
+    error_log("[DEBUG] Entering conversational fallback. Query: " . substr($query, 0, 150));
+
     $sseSnapshot = loadSseSnapshot();
     $responsePrompt = loadResponseGenerationPrompt();
 
     if ($responsePrompt === "") {
-        aiFail("Response generation prompt not available.");
+        error_log("[DEBUG] ❌ Response generation prompt file is missing or empty!");
+        $basePrompt = "You are a helpful assistant. User said: " . $query;
+    } else {
+        $systemContext = buildSystemContext($sseSnapshot);
+        $basePrompt = $responsePrompt . "\n\nSYSTEM DATA (JSON):\n" . $systemContext . "\n\nUser Input:\n" . $query;
     }
 
-    $systemContext = buildSystemContext($sseSnapshot);
-
-    $basePrompt = <<<PROMPT
-{$responsePrompt}
-
-You are operating with real-time system data.
-
-Guidelines:
-- Prefer "priority" data when available
-- Use "extended" only if needed
-- If required data is missing, explicitly say so
-- Do NOT infer values not present in SYSTEM DATA
-
-SYSTEM DATA (JSON):
-{$systemContext}
-
-User Input:
-{$query}
-PROMPT;
-
-    // IMPORTANT: Use a valid model
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
         $apiKey,
-        "gpt-4o"          // ← Changed from invalid "gpt-4o"
+        "gpt-4o"
     );
 
     $type = "skyebot";
