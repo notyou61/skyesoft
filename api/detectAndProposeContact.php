@@ -19,8 +19,8 @@ ini_set('error_log', __DIR__ . '/debug.log');
 
 error_log('=== DEBUG START detectAndProposeContact v1.5.0 ===');
 
-require_once __DIR__ . '/askOpenAI.php';
 require_once __DIR__ . '/dbConnect.php'; // must expose $pdo
+require_once __DIR__ . '/askOpenAI.php';
 
 $pdo = getPDO();
 
@@ -127,10 +127,6 @@ if (!function_exists('skyesoftLoadEnv')) {
     require_once __DIR__ . '/utils/envLoader.php';
 }
 skyesoftLoadEnv();
-
-// 🔍 DEBUG — Smarty ENV Check (PLACE HERE)
-error_log('[smarty-test] AUTH_ID=' . skyesoftGetEnv('SMARTY_AUTH_ID'));
-error_log('[smarty-test] AUTH_TOKEN=' . substr(skyesoftGetEnv('SMARTY_AUTH_TOKEN'), 0, 5));
 
 $apiKey = getenv("OPENAI_API_KEY");
 $googleApiKey = skyesoftGetEnv("GOOGLE_MAPS_BACKEND_API_KEY") ?? getenv("GOOGLE_MAPS_BACKEND_API_KEY");
