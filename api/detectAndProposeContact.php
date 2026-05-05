@@ -134,7 +134,7 @@ $googleApiKey = skyesoftGetEnv("GOOGLE_MAPS_BACKEND_API_KEY") ?? getenv("GOOGLE_
 if (!$apiKey) jsonError('OPENAI_API_KEY not found');
 
 $payload = [
-    "model"       => "gpt-4.1-mini",
+    "model"       => "gpt-4o-mini",
     "messages"    => [
         ["role" => "system", "content" => $systemPrompt],
         ["role" => "user",   "content" => $extractionPrompt]

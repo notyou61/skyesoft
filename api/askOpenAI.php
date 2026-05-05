@@ -279,7 +279,7 @@ PROMPT;
     }
 
     try {
-        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4.1');
+        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4o');
     } catch (Throwable $e) {
         error_log('[SALUTATION AI ERROR] ' . $e->getMessage());
         return null;
@@ -322,7 +322,7 @@ PROMPT;
     }
 
     try {
-        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4.1');
+        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4o');
     } catch (Throwable $e) {
         error_log('[TITLE AI ERROR] ' . $e->getMessage());
         return null;
@@ -616,13 +616,16 @@ function loadRecentActions(int $limit = 30, bool $todayOnly = false): array {
         // ⏱ Optional time filter (today)
         // ─────────────────────────────────────────
         $whereTime = "";
+        $params    = [':limit' => $limit];
+
         if ($todayOnly) {
             $todayStart = strtotime("today midnight");
-            $whereTime = "AND actionUnix >= :todayStart";
+            $whereTime  = "AND actionUnix >= :todayStart";
+            $params[':todayStart'] = $todayStart;
         }
 
         // ─────────────────────────────────────────
-        // 📊 Query (expanded fields, still lightweight)
+        // 📊 Query
         // ─────────────────────────────────────────
         $sql = "
             SELECT 
@@ -640,25 +643,20 @@ function loadRecentActions(int $limit = 30, bool $todayOnly = false): array {
 
         $stmt = $pdo->prepare($sql);
 
-        if ($todayOnly) {
-            $stmt->bindValue(':todayStart', $todayStart, PDO::PARAM_INT);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
-
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 
         $stmt->execute();
 
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // ─────────────────────────────────────────
-        // 📦 Add lightweight metadata (no logic)
-        // ─────────────────────────────────────────
         return [
             "rows" => $results,
             "meta" => [
-                "count" => count($results),
-                "latest" => $results[0]["actionUnix"] ?? null,
-                "earliest" => $results[count($results) - 1]["actionUnix"] ?? null,
+                "count"    => count($results),
+                "latest"   => $results[0]["actionUnix"] ?? null,
+                "earliest" => $results ? $results[count($results)-1]["actionUnix"] ?? null : null,
                 "filtered" => $todayOnly ? "today" : "recent"
             ]
         ];
@@ -1284,7 +1282,7 @@ PROMPT;
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
         $apiKey,
-        "gpt-4o"          // ← Changed from invalid "gpt-4.1"
+        "gpt-4o"          // ← Changed from invalid "gpt-4o"
     );
 
     $type = "skyebot";
@@ -1298,7 +1296,22 @@ PROMPT;
 
 if (!isset($response) || trim((string)$response) === '') {
     error_log('[askOpenAI] EMPTY AI RESPONSE — forcing fallback');
-    $response = "I'm here and ready — try asking that again.";
+
+    // TEMPORARY DEBUG - REMOVE AFTER FIX
+    $debugInfo = [
+        "reason"          => "callOpenAI returned null or empty",
+        "intent"          => $intent ?? 'null',
+        "confidence"      => $confidence ?? 'null',
+        "query"           => substr($query ?? '', 0, 100),
+        "sse_available"   => isset($sseSnapshot) ? ($sseSnapshot !== null) : false,
+        "responsePrompt"  => isset($responsePrompt) ? !empty($responsePrompt) : false,
+        "systemContext"   => isset($systemContext) ? !empty($systemContext) : false,
+        "type"            => $type ?? 'unknown'
+    ];
+
+    error_log('[askOpenAI] DEBUG INFO: ' . json_encode($debugInfo, JSON_UNESCAPED_SLASHES));
+
+    $response = "I'm here and ready — try asking that again. (Check php-error.log for details)";
 }
 
 // ───────────────────────────────────────────────

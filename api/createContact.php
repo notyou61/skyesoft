@@ -810,7 +810,7 @@ PROMPT;
         $response = callOpenAI(
             $prompt,
             $apiKey,
-            'gpt-4.1',
+            'gpt-4o',
             ["type" => "json_object"]
         );
 
