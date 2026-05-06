@@ -1287,52 +1287,70 @@ if (!isset($response) || trim((string)$response) === '') {
     $response = "I'm here and ready — try asking that again. (Check php-error.log for details)";
 }
 
-// ───────────────────────────────────────────────
-// 📇 CONTACT PROPOSAL ROUTING BRIDGE
-//    AI-detected contact signature → detectAndProposeContact.php
-// ───────────────────────────────────────────────
-$detectedIntent = strtolower(trim($intent ?? ''));
+    // ───────────────────────────────────────────────
+    // 📇 CONTACT PROPOSAL ROUTING BRIDGE
+    //    AI-detected contact signature → detectAndProposeContact.php
+    // ───────────────────────────────────────────────
+    $detectedIntent = strtolower(trim($intent ?? ''));
 
-if (
-    in_array($detectedIntent, ['contact_proposal', 'contact_propose'], true) &&
-    ($confidence ?? 0) >= 0.70 &&
-    !empty($query)
-) {
+    if (
+        in_array($detectedIntent, ['contact_proposal', 'contact_propose'], true) &&
+        ($confidence ?? 0) >= 0.70 &&
+        !empty($query)
+    ) {
 
-    error_log("[askOpenAI] CONTACT_PROPOSAL detected (confidence: {$confidence}) — routing to pipeline");
+    // --------------------------------------------------
+    // 📇 Internal Contact Proposal Execution
+    // --------------------------------------------------
+    error_log(
+        "[askOpenAI] CONTACT_PROPOSAL detected "
+        . "(confidence: {$confidence}) — executing internally"
+    );
 
-    echo json_encode([
-        "success"            => true,
-        "role"               => "askOpenAI",
-        "type"               => "contact_proposal",
-        "intent"             => $intent,
-        "intentConfidence"   => $confidence,
-        "input"              => $query,
-        "activitySessionId"  => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
-        "message"            => "Contact signature detected. Forwarding to proposal engine."
-    ], JSON_UNESCAPED_SLASHES);
+    // Normalize request into proposal pipeline format
+    $_POST['input'] = $query;
 
-    // Still log the action for audit trail
+    $_POST['activitySessionId'] =
+        $activitySessionId
+        ?? ($_SESSION['activitySessionId'] ?? session_id());
+
+    $_POST['mode'] = 'propose';
+
+    // --------------------------------------------------
+    // 📌 Audit Logging
+    // --------------------------------------------------
     $sessionContactId = $_SESSION["contactId"] ?? null;
-    
+
     try {
+
         insertActionPrompt([
-            'contactId'        => $sessionContactId,
-            'promptText'       => $query,
-            'responseText'     => "contact_propose_routed",
-            'intent'           => $intent,
-            'intentConfidence' => $confidence,
-            'latitude'         => $latitude,
-            'longitude'        => $longitude,
-            'activitySessionId'=> $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
-            'actionTypeId'     => 3,
-            'origin'           => ACTION_ORIGIN_USER
+            'contactId'         => $sessionContactId,
+            'promptText'        => $query,
+            'responseText'      => 'contact_propose_execute',
+            'intent'            => $intent,
+            'intentConfidence'  => $confidence,
+            'latitude'          => $latitude,
+            'longitude'         => $longitude,
+            'activitySessionId' =>
+                $activitySessionId
+                ?? ($_SESSION['activitySessionId'] ?? session_id()),
+            'actionTypeId'      => 3,
+            'origin'            => ACTION_ORIGIN_USER
         ], $db);
+
     } catch (Throwable $e) {
-        error_log("[actions] contact_proposal logging: " . $e->getMessage());
+
+        error_log(
+            '[actions] contact proposal execution logging: '
+            . $e->getMessage()
+        );
     }
 
+    // --------------------------------------------------
+    // 🚀 Execute Proposal Engine Directly
+    // --------------------------------------------------
     session_write_close();
+    require __DIR__ . '/detectAndProposeContact.php';
     exit;
 }
 
