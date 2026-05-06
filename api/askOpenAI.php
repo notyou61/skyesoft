@@ -76,36 +76,19 @@ const ACTION_ORIGIN_SYSTEM     = 2;
 const ACTION_ORIGIN_AUTOMATION = 3;
 
 // ─────────────────────────────────────────
-// 🗄️ DB Connection
+// 🗄️ DB Connection (Single Source of Truth)
 // ─────────────────────────────────────────
-$dbUser = skyesoftGetEnv("DB_USER");
-$dbPass = skyesoftGetEnv("DB_PASS");
-$dbHost = skyesoftGetEnv("DB_HOST") ?? "localhost";
-$dbName = skyesoftGetEnv("DB_NAME") ?? "skyesoft";
+require_once __DIR__ . '/dbConnect.php';
 
-if (!$dbUser || !$dbPass) {
-    error_log('[env] DB credentials missing');
-    aiFail("Database configuration error.");
+if (!function_exists('getPDO')) {
+    error_log('[bootstrap-error] getPDO not available after dbConnect load');
+    aiFail("Database initialization error.");
 }
 
-try {
-    $db = new PDO(
-        "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4",
-        $dbUser,
-        $dbPass,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_PERSISTENT => true
-        ]
-    );
+$db = getPDO();
 
-    if (skyesoftGetEnv("APP_ENV") === "local") {
-        error_log('[db] connection established');
-    }
-
-} catch (Throwable $e) {
-    error_log("[db] connection failed: " . $e->getMessage());
-    aiFail("Database connection failed.");
+if (skyesoftGetEnv("APP_ENV") === "local") {
+    error_log('[db] connection established via getPDO()');
 }
 
 // ─────────────────────────────────────────
