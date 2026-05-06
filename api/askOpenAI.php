@@ -244,6 +244,7 @@ function loadUnresolvedStructuralViolations(): ?array {
     return $summary;
 }
 
+// Infer Salutation (Mr/Ms) based on first and last name using AI — includes robust normalization and error handling to ensure clean output.
 function inferSalutation(string $firstName, string $lastName): ?string {
 
     // 🔒 Guard — do not call AI with empty names
@@ -445,7 +446,6 @@ function loadRuntimeDomainRegistryKeys(): array {
         )
     );
 }
-
 // Build Governance Surface Summary (for AI injection and developer visibility) based on unresolved structural violations — includes Merkle integrity status, inventory deviation details, and actionable next steps for developers.
 function buildGovernanceSurface(?array $summary): string {
 
@@ -526,6 +526,7 @@ function buildGovernanceSurface(?array $summary): string {
 
     return trim($output);
 }
+
 // Build Governance Response HTML (for AI injection and developer visibility) based on unresolved structural violations — includes Merkle integrity status, inventory deviation details, and actionable next steps for developers with direct links to remediation actions.
 function buildGovernanceResponse(): string {
 
@@ -584,6 +585,7 @@ function buildGovernanceResponse(): string {
 
     return $html;
 }
+
 // Discover Domains from payload (for dynamic intent classification) — excludes known system/meta fields and returns a clean list of candidate domains for AI processing.
 function discoverDomains(array $payload): array {
 
@@ -601,6 +603,7 @@ function discoverDomains(array $payload): array {
         fn($key) => !in_array($key, $exclude, true)
     ));
 }
+
 // Load recent user/system actions (context + behavioral insight)
 function loadRecentActions(int $limit = 30, bool $todayOnly = false): array {
 
@@ -667,6 +670,7 @@ function loadRecentActions(int $limit = 30, bool $todayOnly = false): array {
         ];
     }
 }
+
 // Build Authoritative System Context from SSE snapshot + activity
 function buildSystemContext(?array $sse): string {
 

@@ -19,7 +19,7 @@ ini_set('error_log', __DIR__ . '/debug.log');
 
 error_log('=== DEBUG START detectAndProposeContact v1.5.0 ===');
 
-require_once __DIR__ . '/dbConnect.php'; // must expose $pdo
+//require_once __DIR__ . '/dbConnect.php'; // must expose $pdo
 require_once __DIR__ . '/askOpenAI.php';
 
 $pdo = getPDO();
@@ -499,6 +499,35 @@ $parsed['location']['address'] = $address;
 $parsed['location']['locationAddressRaw'] = $rawInputText;
 
 // -------------------------------------------------
+// 📬 SMARTY VALIDATION (ONLY IF PARCEL NOT FOUND)
+// -------------------------------------------------
+
+$parcelResolved = !empty($parsed['location']['locationParcelNumber']);
+
+$smartyResult = null;
+$dpv = null;
+
+if (!$parcelResolved) {
+
+    $street = $parsed['location']['address'] ?? '';
+    $city   = $parsed['location']['city'] ?? '';
+    $state  = $parsed['location']['state'] ?? '';
+    $zip    = $parsed['location']['zip'] ?? '';
+
+    $smartyResult = validateAddressSmarty($street, $city, $state, $zip);
+
+    if ($smartyResult) {
+        $dpv = $smartyResult['analysis']['dpv_match_code'] ?? null;
+        error_log('[smarty] dpv=' . $dpv);
+    }
+}
+
+// Attach to parsed location
+$parsed['location']['locationDpvCode'] = $dpv;
+$parsed['location']['locationDeliverable'] = ($dpv === 'Y');
+$parsed['location']['locationRequiresSuite'] = ($dpv === 'D');
+
+// -------------------------------------------------
 // 🗺️ CENSUS GEO (Always Attempt)
 // -------------------------------------------------
 $geoAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress ?? $fullAddress;
@@ -725,6 +754,22 @@ $issues = array_values(array_unique(array_merge(
     isset($locationValidation['issues']) ? $locationValidation['issues'] : []
 )));
 
+// -------------------------------------------------
+// 📬 Smarty Awareness (Issues Layer)
+// -------------------------------------------------
+$dpv = $parsed['location']['locationDpvCode'] ?? null;
+
+if ($dpv === 'N') {
+    $issues[] = 'usps_invalid_address';
+}
+
+if ($dpv === 'D') {
+    $issues[] = 'usps_secondary_required';
+}
+
+// Normalize again after adding
+$issues = array_values(array_unique($issues));
+
 $issuesText = !empty($issues) ? implode(', ', $issues) : 'none';
 
 // Meta (Add parcelStatus for UI)
@@ -744,9 +789,47 @@ $meta = [
         'locationValid'        => $locationValidation['status'] ?? 'invalid',
         'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',   // ← ADD THIS
         'apnResolved'          => $locationValidation['apnResolved'] ?? false,
-        'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false
+        'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false,
+        'uspsValidated'        => !empty($parsed['location']['locationDpvCode']),
+        'dpvCode'              => $parsed['location']['locationDpvCode'] ?? null
     ]
 ];
+
+// -------------------------------------------------
+// 📬 Smarty Override (Decision Layer)
+// -------------------------------------------------
+$dpv = $parsed['location']['locationDpvCode'] ?? null;
+$parcelResolved = !empty($parsed['location']['locationParcelNumber']);
+
+if (!$parcelResolved) {
+
+    switch ($dpv) {
+
+        case 'Y':
+            $decision['ready']     = true;
+            $decision['action']    = 'insert_new';
+            $decision['pcmStatus'] = 'valid_usps';
+            break;
+
+        case 'D':
+            $decision['ready']     = false;
+            $decision['action']    = 'request_suite';
+            $decision['pcmStatus'] = 'needs_suite';
+            break;
+
+        case 'S':
+            $decision['ready']     = false;
+            $decision['action']    = 'request_secondary';
+            $decision['pcmStatus'] = 'missing_secondary';
+            break;
+
+        case 'N':
+        default:
+            $decision['ready']     = false;
+            $decision['action']    = 'invalid_address';
+            $decision['pcmStatus'] = 'invalid_location';
+    }
+}
 
 // -------------------------------------------------
 // AI NARRATIVE (Tighter — No Hallucination)
@@ -1565,6 +1648,44 @@ function extractPhoneExtension(string $input): ?string {
     }
 
     return null;
+}
+// 📬 Smarty — USPS Validation
+function validateAddressSmarty(string $street, string $city, string $state, string $zip): ?array {
+
+    $authId    = skyesoftGetEnv('SMARTY_AUTH_ID');
+    $authToken = skyesoftGetEnv('SMARTY_AUTH_TOKEN');
+
+    if (!$authId || !$authToken) {
+        error_log('[smarty] missing credentials');
+        return null;
+    }
+
+    $url = "https://us-street.api.smarty.com/street-address?"
+        . http_build_query([
+            'auth-id'    => $authId,
+            'auth-token' => $authToken,
+            'street'     => $street,
+            'city'       => $city,
+            'state'      => $state,
+            'zipcode'    => $zip
+        ]);
+
+    $opts = [
+        "http" => [
+            "method"  => "GET",
+            "timeout" => 10,
+            "header"  => "User-Agent: Skyesoft/1.0\r\n"
+        ]
+    ];
+
+    $res = @file_get_contents($url, false, stream_context_create($opts));
+    if (!$res) {
+        error_log('[smarty] request failed');
+        return null;
+    }
+
+    $json = json_decode($res, true);
+    return $json[0] ?? null;
 }
 
 #endregion
