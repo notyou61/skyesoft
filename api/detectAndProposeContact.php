@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft — detectAndProposeContact.php
-// Version: 1.5.4
+// Version: 1.5.5
 // Last Updated: 2026-05-06
 // Status: Production Stable
 // =====================================================
@@ -81,12 +81,17 @@ function validateAddressSmarty(string $street, string $city, string $state, stri
 
 #endregion
 
-#region SECTION 03 — 📥 Input Resolution (v1.5.4)
+#region SECTION 03 — 📥 Input Resolution (v1.5.5 - Session Fix)
 
 $rawInput         = '';
 $rawInputOriginal = '';
-$activitySessionId = 'no_session';
 $executionMode    = 'unknown';
+
+// -------------------------------------------------
+// Preserve inherited $activitySessionId from askOpenAI.php FIRST
+// -------------------------------------------------
+$activitySessionId = $activitySessionId 
+    ?? ($_POST['activitySessionId'] ?? $_SESSION['activitySessionId'] ?? session_id());
 
 // -------------------------------------------------
 // PRIORITY 1: Internal execution from askOpenAI.php
@@ -96,12 +101,8 @@ if (isset($query) && is_string($query) && trim($query) !== '') {
     $rawInputOriginal = $query;
     $rawInput         = trim($rawInputOriginal);
 
-    // Inherit session ID from askOpenAI.php
-    $activitySessionId = $activitySessionId 
-        ?? ($_POST['activitySessionId'] ?? $_SESSION['activitySessionId'] ?? session_id());
-
     $executionMode = 'INTERNAL';
-    error_log('[detectAndProposeContact] INTERNAL EXECUTION — using $query + activitySessionId');
+    error_log('[detectAndProposeContact] INTERNAL EXECUTION — using $query from askOpenAI.php | Session: ' . $activitySessionId);
 }
 
 // -------------------------------------------------
@@ -120,11 +121,13 @@ else {
     $rawInputOriginal = $input['input'] ?? '';
     $rawInput         = trim($rawInputOriginal);
 
-    $activitySessionId = $input['activitySessionId'] 
-        ?? ($_POST['activitySessionId'] ?? $_SESSION['activitySessionId'] ?? session_id());
+    // Allow override from direct HTTP payload
+    if (!empty($input['activitySessionId'])) {
+        $activitySessionId = $input['activitySessionId'];
+    }
 
     $executionMode = 'DIRECT';
-    error_log('[detectAndProposeContact] DIRECT HTTP CALL — using php://input');
+    error_log('[detectAndProposeContact] DIRECT HTTP CALL — using php://input | Session: ' . $activitySessionId);
 }
 
 // -------------------------------------------------
