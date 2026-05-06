@@ -8,6 +8,8 @@
 
 #region SECTION 01 — ⚙️ Runtime Configuration
 
+error_log('[pipeline-entry] detectAndProposeContact START ' . microtime(true));
+
 header('Content-Type: application/json');
 
 error_reporting(E_ALL);
