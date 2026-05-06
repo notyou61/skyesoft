@@ -603,7 +603,14 @@ if (!empty($parcel) && !empty($parcel['apnRaw'])) {
     $locationValidation['parcelStatus'] = 'not_attempted';
 }
 
-$locationValidation['apnResolved'] = !empty($parcel['apnRaw']);
+$locationValidation['apnResolved'] = (
+    is_array($parcel) &&
+    !empty($parcel['apnRaw'])
+);
+
+error_log('[parcel-debug] parcel=' . json_encode($parcel));
+error_log('[parcel-debug] apnResolved=' . ($locationValidation['apnResolved'] ? 'YES' : 'NO'));
+
 $locationValidation['jurisdictionResolved'] = !empty($jurisdiction);
 
 $locationValidation['issues'] = array_values(array_unique($locationValidation['issues'] ?? []));
