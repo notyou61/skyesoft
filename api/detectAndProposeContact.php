@@ -10,7 +10,9 @@
 
 error_log('[pipeline-entry] detectAndProposeContact START ' . microtime(true));
 
-header('Content-Type: application/json');
+if (!headers_sent()) {
+    header('Content-Type: application/json');
+}
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -21,9 +23,10 @@ ini_set('error_log', __DIR__ . '/debug.log');
 
 error_log('=== DEBUG START detectAndProposeContact v1.5.0 ===');
 
-//require_once __DIR__ . '/dbConnect.php'; // must expose $pdo
-require_once __DIR__ . '/askOpenAI.php';
+require_once __DIR__ . '/dbConnect.php';
+require_once __DIR__ . '/utils/envLoader.php';
 
+skyesoftLoadEnv();
 $pdo = getPDO();
 
 #endregion
