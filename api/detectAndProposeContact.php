@@ -81,23 +81,73 @@ function validateAddressSmarty(string $street, string $city, string $state, stri
 
 #region SECTION 03 — 📥 Input Resolution
 
-$input = json_decode(file_get_contents('php://input'), true);
+/**
+ * INPUT RESOLUTION — Dual Mode Support (EOP)
+ * 
+ * Priority 1: Internal execution from askOpenAI.php (via $query)
+ * Priority 2: Legacy direct HTTP calls (php://input)
+ * 
+ * This design avoids php://input consumption conflicts and $_POST mutation.
+ */
+
+$rawInput         = '';
+$rawInputOriginal = '';
+$activitySessionId = 'no_session';
+$executionMode    = 'unknown';
 
 // -------------------------------------------------
-// RAW INPUT (DO NOT MODIFY)
+// PRIORITY 1: Internal execution from askOpenAI.php
 // -------------------------------------------------
-$rawInputOriginal = $input['input'] ?? '';
+if (isset($query) && is_string($query) && trim($query) !== '') {
+
+    $rawInputOriginal = $query;
+    $rawInput         = trim($rawInputOriginal);
+
+    $activitySessionId = $activitySessionId 
+        ?? ($_POST['activitySessionId'] ?? $_SESSION['activitySessionId'] ?? session_id());
+
+    $executionMode = 'INTERNAL';
+
+    error_log('[detectAndProposeContact] INTERNAL EXECUTION — using $query from askOpenAI.php');
+}
 
 // -------------------------------------------------
-// WORKING INPUT (SAFE TO MODIFY)
+// PRIORITY 2: Legacy direct HTTP POST (php://input)
 // -------------------------------------------------
-$rawInput = trim($rawInputOriginal);
+else {
 
-$activitySessionId = $input['activitySessionId'] ?? 'no_session';
+    $rawJson = file_get_contents('php://input');
 
-if (empty($rawInput)) {
+    if ($rawJson !== false && $rawJson !== '') {
+        $input = json_decode($rawJson, true) ?? [];
+    } else {
+        $input = [];
+    }
+
+    $rawInputOriginal = $input['input'] ?? '';
+    $rawInput         = trim($rawInputOriginal);
+
+    $activitySessionId = $input['activitySessionId'] 
+        ?? ($_POST['activitySessionId'] ?? $_SESSION['activitySessionId'] ?? session_id());
+
+    $executionMode = 'DIRECT';
+
+    error_log('[detectAndProposeContact] DIRECT HTTP CALL — using php://input');
+}
+
+// -------------------------------------------------
+// FINAL VALIDATION
+// -------------------------------------------------
+if ($rawInput === '') {
+    error_log('[detectAndProposeContact] ❌ No input provided in either mode');
     jsonError('No input provided');
 }
+
+error_log(sprintf(
+    '[detectAndProposeContact] ✅ Input resolved | Mode: %s | Length: %d chars',
+    $executionMode,
+    strlen($rawInput)
+));
 
 #endregion
 
