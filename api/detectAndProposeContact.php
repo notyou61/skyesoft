@@ -564,7 +564,7 @@ if (!empty($parcel) && !empty($parcel['apnRaw'])) {
     $locationValidation['parcelStatus'] = 'not_attempted';
 }
 
-$locationValidation['apnResolved']          = !empty($parcel);
+$locationValidation['apnResolved'] = !empty($parcel['apnRaw']);
 $locationValidation['jurisdictionResolved'] = !empty($jurisdiction);
 
 $locationValidation['issues'] = array_values(array_unique($locationValidation['issues'] ?? []));
@@ -592,7 +592,10 @@ $locationValidation['readyForCommit'] = ($locationValidation['status'] === 'vali
 // 📬 SMARTY VALIDATION (ONLY IF PARCEL NOT FOUND)
 // -------------------------------------------------
 
-$parcelResolved = !empty($parsed['location']['locationParcelNumber']);
+$parcelResolved = $locationValidation['apnResolved'] ?? false;
+
+error_log('[smarty-debug] ENTERED');
+error_log('[smarty-check] apnResolved=' . ($parcelResolved ? 'YES' : 'NO'));
 
 $smartyResult = null;
 $dpv = null;
