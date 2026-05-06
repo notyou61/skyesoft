@@ -641,6 +641,9 @@ $dpv = null;
 
 if (!$parcelResolved) {
 
+    error_log('[smarty-debug] ENTERED');
+    error_log('[smarty-check] apnResolved=NO');
+
     $street = $parsed['location']['address'] ?? '';
     $city   = $parsed['location']['city'] ?? '';
     $state  = $parsed['location']['state'] ?? '';
@@ -650,8 +653,17 @@ if (!$parcelResolved) {
 
     if ($smartyResult) {
         $dpv = $smartyResult['analysis']['dpv_match_code'] ?? null;
-        error_log('[smarty] dpv=' . $dpv);
+
+        $parsed['location']['smartyValidatedAddress'] =
+            ($smartyResult['delivery_line_1'] ?? '') . ' ' .
+            ($smartyResult['last_line'] ?? '');
+
+        $parsed['location']['smartyFootnotes'] =
+            $smartyResult['analysis']['dpv_footnotes'] ?? null;
     }
+
+} else {
+    error_log('[smarty-check] SKIPPED (parcel resolved)');
 }
 
 // Attach to parsed location
