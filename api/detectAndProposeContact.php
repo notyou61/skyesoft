@@ -28,9 +28,48 @@ $pdo = getPDO();
 
 #region SECTION 02 — 🧰 Helper Functions
 
+// JSON ERROR RESPONSE (Single Source of Truth)
 function jsonError(string $msg): void {
     echo json_encode(['status' => 'error', 'message' => $msg]);
     exit;
+}
+// 📬 Smarty — USPS Validation
+function validateAddressSmarty(string $street, string $city, string $state, string $zip): ?array {
+
+    $authId    = skyesoftGetEnv('SMARTY_AUTH_ID');
+    $authToken = skyesoftGetEnv('SMARTY_AUTH_TOKEN');
+
+    if (!$authId || !$authToken) {
+        error_log('[smarty] missing credentials');
+        return null;
+    }
+
+    $url = "https://us-street.api.smarty.com/street-address?"
+        . http_build_query([
+            'auth-id'    => $authId,
+            'auth-token' => $authToken,
+            'street'     => $street,
+            'city'       => $city,
+            'state'      => $state,
+            'zipcode'    => $zip
+        ]);
+
+    $opts = [
+        "http" => [
+            "method"  => "GET",
+            "timeout" => 10,
+            "header"  => "User-Agent: Skyesoft/1.0\r\n"
+        ]
+    ];
+
+    $res = @file_get_contents($url, false, stream_context_create($opts));
+    if (!$res) {
+        error_log('[smarty] request failed');
+        return null;
+    }
+
+    $json = json_decode($res, true);
+    return $json[0] ?? null;
 }
 
 #endregion
@@ -1653,44 +1692,6 @@ function extractPhoneExtension(string $input): ?string {
     }
 
     return null;
-}
-// 📬 Smarty — USPS Validation
-function validateAddressSmarty(string $street, string $city, string $state, string $zip): ?array {
-
-    $authId    = skyesoftGetEnv('SMARTY_AUTH_ID');
-    $authToken = skyesoftGetEnv('SMARTY_AUTH_TOKEN');
-
-    if (!$authId || !$authToken) {
-        error_log('[smarty] missing credentials');
-        return null;
-    }
-
-    $url = "https://us-street.api.smarty.com/street-address?"
-        . http_build_query([
-            'auth-id'    => $authId,
-            'auth-token' => $authToken,
-            'street'     => $street,
-            'city'       => $city,
-            'state'      => $state,
-            'zipcode'    => $zip
-        ]);
-
-    $opts = [
-        "http" => [
-            "method"  => "GET",
-            "timeout" => 10,
-            "header"  => "User-Agent: Skyesoft/1.0\r\n"
-        ]
-    ];
-
-    $res = @file_get_contents($url, false, stream_context_create($opts));
-    if (!$res) {
-        error_log('[smarty] request failed');
-        return null;
-    }
-
-    $json = json_decode($res, true);
-    return $json[0] ?? null;
 }
 
 #endregion
