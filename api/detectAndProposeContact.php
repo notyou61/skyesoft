@@ -1,9 +1,11 @@
 <?php
+declare(strict_types=1);
+
 // =====================================================
 // Skyesoft — detectAndProposeContact.php
-// Version: 1.5.0
-// Last Updated: 2026-05-01
-// Status: Production Ready for UI
+// Version: 1.5.4
+// Last Updated: 2026-05-06
+// Status: Production Stable
 // =====================================================
 
 #region SECTION 01 — ⚙️ Runtime Configuration
@@ -79,16 +81,7 @@ function validateAddressSmarty(string $street, string $city, string $state, stri
 
 #endregion
 
-#region SECTION 03 — 📥 Input Resolution
-
-/**
- * INPUT RESOLUTION — Dual Mode Support (EOP)
- * 
- * Priority 1: Internal execution from askOpenAI.php (via $query)
- * Priority 2: Legacy direct HTTP calls (php://input)
- * 
- * This design avoids php://input consumption conflicts and $_POST mutation.
- */
+#region SECTION 03 — 📥 Input Resolution (v1.5.4)
 
 $rawInput         = '';
 $rawInputOriginal = '';
@@ -103,12 +96,12 @@ if (isset($query) && is_string($query) && trim($query) !== '') {
     $rawInputOriginal = $query;
     $rawInput         = trim($rawInputOriginal);
 
+    // Inherit session ID from askOpenAI.php
     $activitySessionId = $activitySessionId 
         ?? ($_POST['activitySessionId'] ?? $_SESSION['activitySessionId'] ?? session_id());
 
     $executionMode = 'INTERNAL';
-
-    error_log('[detectAndProposeContact] INTERNAL EXECUTION — using $query from askOpenAI.php');
+    error_log('[detectAndProposeContact] INTERNAL EXECUTION — using $query + activitySessionId');
 }
 
 // -------------------------------------------------
@@ -131,7 +124,6 @@ else {
         ?? ($_POST['activitySessionId'] ?? $_SESSION['activitySessionId'] ?? session_id());
 
     $executionMode = 'DIRECT';
-
     error_log('[detectAndProposeContact] DIRECT HTTP CALL — using php://input');
 }
 
@@ -144,9 +136,10 @@ if ($rawInput === '') {
 }
 
 error_log(sprintf(
-    '[detectAndProposeContact] ✅ Input resolved | Mode: %s | Length: %d chars',
+    '[detectAndProposeContact] ✅ Input resolved | Mode: %s | Length: %d | Session: %s',
     $executionMode,
-    strlen($rawInput)
+    strlen($rawInput),
+    $activitySessionId
 ));
 
 #endregion
@@ -546,15 +539,11 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
     }
 }
 
-// -------------------------------------------------
-// 🔑 SUITE EXTRACTION — RAW INPUT IS SOURCE OF TRUTH (Bulletproof)
-// -------------------------------------------------
-$rawInputText = !empty($rawInputOriginal) ? $rawInputOriginal : 
-                (!empty($rawInput) ? $rawInput : '');
+// 🔑 SUITE EXTRACTION — RAW INPUT IS SOURCE OF TRUTH (Standardized)
+$rawInputText = !empty($rawInputOriginal) ? $rawInputOriginal : $rawInput;
 
-// Prioritized sources - RAW FIRST
 $suiteSources = [
-    $rawInputText,                          // Best chance
+    $rawInputText,                          // Best source
     $parsed['location']['address'] ?? '', 
     $fullAddress ?? ''
 ];
@@ -567,7 +556,8 @@ foreach ($suiteSources as $source) {
     }
 }
 
-$parsed['location']['locationAddressSuite'] = $locationSuite;   // Already "#305" format
+// Authoritative field
+$parsed['location']['locationAddressSuite'] = $locationSuite;
 
 
 // -------------------------------------------------
@@ -606,7 +596,7 @@ if ($geo) {
 }
 
 // -------------------------------------------------
-// 🌵 MARICOPA LOGIC (Broader Trigger)
+// 🌵 MARICOPA LOGIC — STRENGTHENED VALIDATION
 // -------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
@@ -622,21 +612,32 @@ $parcelLookupAttempted = false;
 if ($isMaricopa && !empty($parsed['location']['address'])) {
 
     $parcelLookupAttempted = true;
-    $parcelLookupAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress ?? $fullAddress;
+    $parcelLookupAddress = $parsed['location']['formattedAddress'] 
+        ?? $lookupAddress 
+        ?? $fullAddress;
 
     $mca = lookupMaricopaParcel($parcelLookupAddress);
 
     if ($mca && !empty($mca['apn'])) {
-        $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
+        // STRICT CITY VALIDATION
+        $parsedCity = strtoupper(trim($parsed['location']['city'] ?? ''));
+        $mcaCity    = strtoupper(trim($mca['city'] ?? $mca['matched'] ?? ''));
 
-        $parcel = [
-            'apnRaw'     => $apnRaw,
-            'apnDisplay' => formatAPN($apnRaw),
-            'source'     => $mca['source'],
-            'confidence' => 95
-        ];
+        if (stripos($mcaCity, $parsedCity) !== false || empty($parsedCity)) {
+            $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
 
-        $jurisdiction = $mca['jurisdiction'] ?? null;
+            $parcel = [
+                'apnRaw'     => $apnRaw,
+                'apnDisplay' => formatAPN($apnRaw),
+                'source'     => $mca['source'],
+                'confidence' => 95
+            ];
+
+            $jurisdiction = $mca['jurisdiction'] ?? null;
+        } else {
+            error_log('[parcel-debug] Rejected loose match - city mismatch: ' . $mcaCity . ' vs ' . $parsedCity);
+            $locationValidation['issues'][] = 'parcel_city_mismatch';
+        }
     } else {
         $locationValidation['issues'][] = 'parcel_lookup_failed';
     }
@@ -781,7 +782,6 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
     $locationValidation['parcelStatus'] !== 'resolved'
 ) {
 
-    // Parcel-level failure takes precedence (most business-critical)
     $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
 
 } elseif ($locationValidation['isMaricopa'] && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
@@ -823,7 +823,7 @@ $data = [
         'locationLatitude'        => $parsed['location']['latitude'] ?? null,
         'locationLongitude'       => $parsed['location']['longitude'] ?? null,
         'locationAddress'         => isset($parsed['location']['address']) ? preg_replace('/\s+/', ' ', trim($parsed['location']['address'])) : '',
-        'locationAddressSuite'    => isset($parsed['location']['addressSuite']) ? trim($parsed['location']['addressSuite'])  : '',
+        'locationAddressSuite'    => $parsed['location']['locationAddressSuite'] ?? '',   // ← FIXED: Use correct field
         'locationCity'            => isset($parsed['location']['city']) ? trim($parsed['location']['city']) : '',
         'locationState'           => isset($parsed['location']['state']) ? strtoupper(trim($parsed['location']['state'])) : '',
         'locationZip'             => isset($parsed['location']['zip']) ? trim($parsed['location']['zip']) : '',
@@ -871,7 +871,6 @@ $issues = array_values(array_unique(array_merge(
     isset($locationValidation['issues']) ? $locationValidation['issues'] : []
 )));
 
-
 // -------------------------------------------------
 // 📬 Smarty Awareness (Issues Layer)
 // -------------------------------------------------
@@ -885,12 +884,10 @@ if ($dpv === 'D') {
     $issues[] = 'usps_secondary_required';
 }
 
-// Normalize again after adding
 $issues = array_values(array_unique($issues));
-
 $issuesText = !empty($issues) ? implode(', ', $issues) : 'none';
 
-// Meta (Add parcelStatus for UI)
+// Meta
 $meta = [
     'inferences' => [
         'salutationInferred'   => isset($parsed['contact']['salutationInferred']) ? $parsed['contact']['salutationInferred'] : false,
@@ -905,7 +902,7 @@ $meta = [
     'flags' => [
         'isMaricopa'           => $locationValidation['isMaricopa'] ?? false,
         'locationValid'        => $locationValidation['status'] ?? 'invalid',
-        'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',   // ← ADD THIS
+        'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',
         'apnResolved'          => $locationValidation['apnResolved'] ?? false,
         'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false,
         'uspsValidated'        => !empty($parsed['location']['locationDpvCode']),
@@ -920,27 +917,22 @@ $dpv = $parsed['location']['locationDpvCode'] ?? null;
 $parcelResolved = $locationValidation['apnResolved'] ?? false;
 
 if (!$parcelResolved) {
-
     switch ($dpv) {
-
         case 'Y':
             $decision['ready']     = true;
             $decision['action']    = 'insert_new';
             $decision['pcmStatus'] = 'valid_usps';
             break;
-
         case 'D':
             $decision['ready']     = false;
             $decision['action']    = 'request_suite';
             $decision['pcmStatus'] = 'needs_suite';
             break;
-
         case 'S':
             $decision['ready']     = false;
             $decision['action']    = 'request_secondary';
             $decision['pcmStatus'] = 'missing_secondary';
             break;
-
         case 'N':
         default:
             $decision['ready']     = false;
@@ -950,7 +942,7 @@ if (!$parcelResolved) {
 }
 
 // -------------------------------------------------
-// AI NARRATIVE (Tighter — No Hallucination)
+// AI NARRATIVE
 // -------------------------------------------------
 $entityName  = isset($parsed['entity']['name']) ? trim($parsed['entity']['name']) : '';
 $fullName    = trim((isset($parsed['contact']['firstName']) ? trim($parsed['contact']['firstName']) : '') . ' ' . 
@@ -1005,7 +997,6 @@ echo json_encode([
     'meta'          => $meta,
     'issues'        => $issues,
     'narrative'     => ['text' => $narrativeText],
-
     'activitySessionId' => $activitySessionId
 ], JSON_UNESCAPED_SLASHES);
 
