@@ -498,34 +498,6 @@ $address = trim(preg_replace('/\s+/', ' ', $address));
 $parsed['location']['address'] = $address;
 $parsed['location']['locationAddressRaw'] = $rawInputText;
 
-// -------------------------------------------------
-// 📬 SMARTY VALIDATION (ONLY IF PARCEL NOT FOUND)
-// -------------------------------------------------
-
-$parcelResolved = !empty($parsed['location']['locationParcelNumber']);
-
-$smartyResult = null;
-$dpv = null;
-
-if (!$parcelResolved) {
-
-    $street = $parsed['location']['address'] ?? '';
-    $city   = $parsed['location']['city'] ?? '';
-    $state  = $parsed['location']['state'] ?? '';
-    $zip    = $parsed['location']['zip'] ?? '';
-
-    $smartyResult = validateAddressSmarty($street, $city, $state, $zip);
-
-    if ($smartyResult) {
-        $dpv = $smartyResult['analysis']['dpv_match_code'] ?? null;
-        error_log('[smarty] dpv=' . $dpv);
-    }
-}
-
-// Attach to parsed location
-$parsed['location']['locationDpvCode'] = $dpv;
-$parsed['location']['locationDeliverable'] = ($dpv === 'Y');
-$parsed['location']['locationRequiresSuite'] = ($dpv === 'D');
 
 // -------------------------------------------------
 // 🗺️ CENSUS GEO (Always Attempt)
@@ -615,6 +587,35 @@ if (!$locationValidation['placeIdResolved']) {
 }
 
 $locationValidation['readyForCommit'] = ($locationValidation['status'] === 'valid');
+
+// -------------------------------------------------
+// 📬 SMARTY VALIDATION (ONLY IF PARCEL NOT FOUND)
+// -------------------------------------------------
+
+$parcelResolved = !empty($parsed['location']['locationParcelNumber']);
+
+$smartyResult = null;
+$dpv = null;
+
+if (!$parcelResolved) {
+
+    $street = $parsed['location']['address'] ?? '';
+    $city   = $parsed['location']['city'] ?? '';
+    $state  = $parsed['location']['state'] ?? '';
+    $zip    = $parsed['location']['zip'] ?? '';
+
+    $smartyResult = validateAddressSmarty($street, $city, $state, $zip);
+
+    if ($smartyResult) {
+        $dpv = $smartyResult['analysis']['dpv_match_code'] ?? null;
+        error_log('[smarty] dpv=' . $dpv);
+    }
+}
+
+// Attach to parsed location
+$parsed['location']['locationDpvCode'] = $dpv;
+$parsed['location']['locationDeliverable'] = ($dpv === 'Y');
+$parsed['location']['locationRequiresSuite'] = ($dpv === 'D');
 
 // Final inference
 $parsed = inferLocationName($parsed);
@@ -754,6 +755,7 @@ $issues = array_values(array_unique(array_merge(
     isset($locationValidation['issues']) ? $locationValidation['issues'] : []
 )));
 
+
 // -------------------------------------------------
 // 📬 Smarty Awareness (Issues Layer)
 // -------------------------------------------------
@@ -799,7 +801,7 @@ $meta = [
 // 📬 Smarty Override (Decision Layer)
 // -------------------------------------------------
 $dpv = $parsed['location']['locationDpvCode'] ?? null;
-$parcelResolved = !empty($parsed['location']['locationParcelNumber']);
+$parcelResolved = $locationValidation['apnResolved'] ?? false;
 
 if (!$parcelResolved) {
 
