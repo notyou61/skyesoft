@@ -1615,23 +1615,27 @@ function normalizeLocationName(string $name): string {
 
     return trim($name);
 }
-// 📍 evaluateLocationDuplicate
+/**
+ * Evaluate if this location already exists for the entity
+ * Uses correct schema: locationEntityId (NOT entityId)
+ */
 function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
 
-    $entityName = trim($parsed['entity']['name'] ?? '');
+    $entityName   = trim($parsed['entity']['name'] ?? '');
     $locationName = trim($parsed['location']['locationName'] ?? '');
-    $city = strtolower(trim($parsed['location']['city'] ?? ''));
-    $placeId = $parsed['location']['locationPlaceId'] ?? null;
+    $city         = strtolower(trim($parsed['location']['city'] ?? ''));
+    $placeId      = $parsed['location']['locationPlaceId'] ?? null;
 
     if (empty($entityName) || empty($locationName)) {
         return ['status' => 'none'];
     }
 
+    // Resolve entity first
     $entityId = resolveEntityIdByName($entityName, $pdo);
 
     if (!$entityId) {
         return [
-            'status' => 'new_entity',
+            'status'   => 'new_entity',
             'entityId' => null
         ];
     }
@@ -1642,85 +1646,80 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
     // 1. Exact PlaceId match (STRONGEST)
     // -------------------------------------------------
     if (!empty($placeId)) {
-
         $stmt = $pdo->prepare("
             SELECT locationId, locationName
             FROM tblLocations
             WHERE locationPlaceId = :placeId
-            AND entityId = :entityId
+              AND locationEntityId = :entityId
             LIMIT 1
         ");
 
         $stmt->execute([
-            'placeId' => $placeId,
-            'entityId' => $entityId
+            'placeId'    => $placeId,
+            'entityId'   => $entityId
         ]);
 
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row) {
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             return [
-                'status' => 'exact',
+                'status'     => 'exact',
                 'locationId' => $row['locationId'],
-                'matchType' => 'placeId'
+                'matchType'  => 'placeId'
             ];
         }
     }
 
     // -------------------------------------------------
-    // 2. Name + City match (normalized)
+    // 2. Exact Name + City match
     // -------------------------------------------------
     $stmt = $pdo->prepare("
-        SELECT locationId, locationName, city
+        SELECT locationId, locationName, locationCity
         FROM tblLocations
-        WHERE entityId = :entityId
+        WHERE locationEntityId = :entityId
     ");
-
     $stmt->execute(['entityId' => $entityId]);
 
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-
-        $dbName = normalizeLocationName($row['locationName']);
-        $dbCity = strtolower(trim($row['city'] ?? ''));
+        $dbName = normalizeLocationName($row['locationName'] ?? '');
+        $dbCity = strtolower(trim($row['locationCity'] ?? ''));
 
         if ($dbName === $normalizedInput && $dbCity === $city) {
-
             return [
-                'status' => 'exact',
+                'status'     => 'exact',
                 'locationId' => $row['locationId'],
-                'matchType' => 'name_city'
+                'matchType'  => 'name_city'
             ];
         }
     }
 
     // -------------------------------------------------
-    // 3. Loose match (same city, similar name)
+    // 3. Fuzzy match (same city, similar name)
     // -------------------------------------------------
-    foreach ($pdo->query("
-        SELECT locationId, locationName, city
+    $stmt = $pdo->prepare("
+        SELECT locationId, locationName, locationCity
         FROM tblLocations
-        WHERE entityId = {$entityId}
-    ") as $row) {
+        WHERE locationEntityId = :entityId
+    ");
+    $stmt->execute(['entityId' => $entityId]);
 
-        $dbName = normalizeLocationName($row['locationName']);
-        $dbCity = strtolower(trim($row['city'] ?? ''));
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $dbName = normalizeLocationName($row['locationName'] ?? '');
+        $dbCity = strtolower(trim($row['locationCity'] ?? ''));
 
         if ($dbCity === $city) {
-
             similar_text($dbName, $normalizedInput, $percent);
 
             if ($percent > 85) {
                 return [
-                    'status' => 'possible',
+                    'status'     => 'possible',
                     'locationId' => $row['locationId'],
-                    'matchType' => 'fuzzy'
+                    'matchType'  => 'fuzzy'
                 ];
             }
         }
     }
 
     return [
-        'status' => 'none',
+        'status'   => 'none',
         'entityId' => $entityId
     ];
 }
@@ -1737,24 +1736,17 @@ function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
     }
 
     $stmt = $pdo->prepare("
-        SELECT entityId
-        FROM tblEntities
-        WHERE LOWER(entityName) = :name
+        SELECT entityId 
+        FROM tblEntities 
+        WHERE LOWER(entityName) = :name 
         LIMIT 1
     ");
 
-    $stmt->execute([
-        'name' => strtolower(trim($entityName))
-    ]);
+    $stmt->execute(['name' => strtolower(trim($entityName))]);
 
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($row && isset($row['entityId'])) {
-        // Force integer return — critical for type hint
-        return (int) $row['entityId'];
-    }
-
-    return null;
+    return $row ? (int)$row['entityId'] : null;
 }
 // 🏢 extractSuite — extract suite/unit from address
 function extractSuite(string $input): ?string {
