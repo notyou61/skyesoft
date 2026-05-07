@@ -621,6 +621,12 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
 
     $parcelDetails = lookupMaricopaParcel($parcelLookupAddress);   // ALWAYS array now
 
+    error_log("[MARICOPA] Address: " . $parcelLookupAddress);
+    error_log("[MARICOPA] Candidates found: " . count($parcelDetails));
+    if (!empty($parcelDetails)) {
+        error_log("[MARICOPA] Best APN: " . ($parcelDetails[0]['apnDisplay'] ?? ''));
+    }
+
     if (!empty($parcelDetails)) {
 
         $bestMatch = $parcelDetails[0];
@@ -713,6 +719,8 @@ if (!$pdo) {
 } else {
     $duplicate = evaluateDuplicate($parsed, $pdo);
     $locationDuplicate = evaluateLocationDuplicate($parsed, $pdo);
+    error_log("[PCM-DECISION] Location Duplicate: " . json_encode($locationDuplicate));
+    error_log("[PCM-DECISION] Parcel Status: " . ($locationValidation['parcelStatus'] ?? 'none'));
 }
 
 #endregion
@@ -723,22 +731,25 @@ $duplicate        = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 
 // -------------------------------------------------
-// 🚫 AUTHORITATIVE PCM DECISION
+// 🚫 AUTHORITATIVE PCM DECISION (Updated EOP Logic)
 // -------------------------------------------------
+// Priority: Integrity → Contact Dup → Location Dup → New/Parcel Rules
+
 if ($dataIntegrityStatus['status'] !== 'complete') {
+
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
-} elseif (
-    isset($locationValidation['parcelStatus']) && 
-    $locationValidation['parcelStatus'] !== 'resolved'
-) {
-    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
-} elseif ($locationValidation['isMaricopa'] && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
-    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
+
 } elseif ($duplicate['status'] === 'exact') {
+
     $pcm = ['status' => 'duplicate_contact', 'readyForCommit' => false, 'requiresReview' => false, 'blocksCommit' => true, 'action' => 'reject_duplicate'];
+
 } elseif ($duplicate['status'] === 'possible') {
+
     $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
+
 } elseif ($locationDuplicate['status'] === 'exact') {
+
+    // EXISTING LOCATION TAKES PRECEDENCE — even if parcel lookup fails this time
     $pcm = [
         'status'          => 'existing_location',
         'readyForCommit'  => true,
@@ -746,9 +757,24 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
         'blocksCommit'    => false,
         'action'          => 'link_existing_location'
     ];
+
 } elseif ($locationDuplicate['status'] === 'possible') {
+
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
+
+} elseif (
+    isset($locationValidation['parcelStatus']) && 
+    $locationValidation['parcelStatus'] !== 'resolved'
+) {
+
+    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
+
+} elseif ($locationValidation['isMaricopa'] && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
+
+    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
+
 } else {
+
     $pcm = ['status' => 'new_elc', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'insert_new'];
 }
 
@@ -1141,115 +1167,59 @@ function lookupMaricopaParcel(string $address): array {
 
     $cleanAddress = str_replace(', USA', '', trim($address));
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
+    $upperAddr = strtoupper($cleanAddress);
 
-    // -------------------------------------------------
-    // 1. Structured Parse
-    // -------------------------------------------------
-    $parts = [];
-    if (preg_match('/^(\d+)\s*(?:([NSEW])\s*)?([A-Za-z0-9\s]+?)\s*(?:,|\s+)([A-Za-z\s]+?)(?:,\s*AZ)?/i', $cleanAddress, $m)) {
-        $parts = [
-            'num'   => trim($m[1]),
-            'dir'   => trim($m[2] ?? ''),
-            'name'  => trim($m[3]),
-            'city'  => trim($m[4])
-        ];
-    }
+    $candidates = [];
 
-    // -------------------------------------------------
-    // 2. Safe WHERE clause building (SQL Injection protected)
-    // -------------------------------------------------
-    $whereClauses = [];
-    if (!empty($parts['num'])) {
-        $whereClauses[] = "PHYSICAL_STREET_NUM = '{$parts['num']}'";
-    }
-    if (!empty($parts['name'])) {
-        $safeName = str_replace("'", "''", $parts['name']);           // ArcGIS escaping
-        $whereClauses[] = "UPPER(PHYSICAL_STREET_NAME) LIKE UPPER('%{$safeName}%')";
-    }
-    if (!empty($parts['city'])) {
-        $safeCity = str_replace("'", "''", $parts['city']);
-        $whereClauses[] = "UPPER(PHYSICAL_CITY) = UPPER('{$safeCity}')";
-    }
-
-    $where = $whereClauses ? implode(' AND ', $whereClauses) : "1=1";
+    // Strategy 1: Loose full address search (most reliable)
+    $safeAddr = str_replace("'", "''", $cleanAddress);
+    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
 
     $params = http_build_query([
         'where'          => $where,
         'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
         'returnGeometry' => 'false',
-        'f'              => 'json',
-        'orderByFields'  => 'PHYSICAL_STREET_NUM ASC'
+        'f'              => 'json'
     ]);
 
     $response = @file_get_contents("{$url}?{$params}");
-    if (!$response) {
-        error_log("[lookupMaricopaParcel] HTTP failed: $cleanAddress");
-        return [];
-    }
+    if ($response) {
+        $data = json_decode($response, true);
+        $features = $data['features'] ?? [];
 
-    $data = json_decode($response, true);
-    $features = $data['features'] ?? [];
+        foreach ($features as $feature) {
+            $attr = $feature['attributes'] ?? [];
+            if (empty($attr['APN'])) continue;
 
-    // Fallback loose match
-    if (empty($features)) {
-        $safeAddress = str_replace("'", "''", $cleanAddress);
-        $fallbackWhere = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddress}%')";
-        $params = http_build_query([
-            'where'     => $fallbackWhere,
-            'outFields' => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-            'f'         => 'json'
-        ]);
+            $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
 
-        $response = @file_get_contents("{$url}?{$params}");
-        if ($response) {
-            $data = json_decode($response, true);
-            $features = $data['features'] ?? [];
+            $candidates[] = [
+                'apnRaw'       => $apnRaw,
+                'apnDisplay'   => formatAPN($apnRaw),
+                'address'      => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
+                'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
+                'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
+                'owner'        => trim($attr['OWNER_NAME'] ?? ''),
+                'source'       => 'mca_arcgis_mcassessor',
+                'confidence'   => 90,
+                'matchedInput' => $cleanAddress
+            ];
         }
     }
 
-    if (empty($features)) {
-        return [];
-    }
-
-    // -------------------------------------------------
-    // 3. Normalize + Score
-    // -------------------------------------------------
-    $candidates = [];
-    $inputNormalized = normalizeLocationName($cleanAddress);
-
-    foreach ($features as $feature) {
-        $attr = $feature['attributes'] ?? [];
-        if (empty($attr['APN'])) continue;
-
-        $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($attr['APN']));
-        $displayAddress = trim($attr['PHYSICAL_ADDRESS'] ?? '');
-
-        $dbNormalized = normalizeLocationName($displayAddress);
-
-        similar_text($inputNormalized, $dbNormalized, $percent);
-        $score = $percent;
-
-        if (!empty($parts['num']) && strpos($displayAddress, $parts['num']) !== false) {
-            $score += 25;   // Bonus for exact house number
+    // Deduplicate + sort
+    $unique = [];
+    foreach ($candidates as $c) {
+        $key = $c['apnRaw'];
+        if (!isset($unique[$key]) || $c['confidence'] > $unique[$key]['confidence']) {
+            $unique[$key] = $c;
         }
-
-        $score = min(100, round($score, 1));   // ← Normalized 0-100
-
-        $candidates[] = [
-            'apnRaw'       => $apnRaw,
-            'apnDisplay'   => formatAPN($apnRaw),
-            'address'      => $displayAddress,
-            'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
-            'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
-            'owner'        => trim($attr['OWNER_NAME'] ?? ''),
-            'source'       => 'mca_arcgis_mcassessor',
-            'confidence'   => $score,
-            'matchedInput' => $cleanAddress
-        ];
     }
 
-    // Sort best → worst
+    $candidates = array_values($unique);
     usort($candidates, fn($a, $b) => $b['confidence'] <=> $a['confidence']);
+
+    error_log("[lookupMaricopaParcel] Found " . count($candidates) . " candidates for: $cleanAddress");
 
     return $candidates;
 }
