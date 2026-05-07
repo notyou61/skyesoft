@@ -1725,24 +1725,28 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
     ];
 }
 // 🔍 resolveEntityIdByName
-function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
+function resolveEntityIdByName(string $name): ?int {
 
-    if (empty($entityName)) return null;
+    global $pdo;
 
     $stmt = $pdo->prepare("
         SELECT entityId
         FROM tblEntities
-        WHERE LOWER(entityName) = :name
+        WHERE entityName = :name
         LIMIT 1
     ");
 
     $stmt->execute([
-        'name' => strtolower(trim($entityName))
+        ':name' => trim($name)
     ]);
 
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    return $row['entityId'] ?? null;
+    if (!$row || empty($row['entityId'])) {
+        return null;
+    }
+
+    return (int)$row['entityId'];
 }
 // 🏢 extractSuite — extract suite/unit from address
 function extractSuite(string $input): ?string {
