@@ -5581,6 +5581,181 @@
                     "This standard governs all contact ingestion including AI-driven parsing and manual entry."
                 ]
             },
+            "elcParcelZoningArchitecture": {
+                "title": {
+                    "icon": 15,
+                    "text": "ELC Parcel & Zoning Architecture Standard"
+                },
+                "tier": 2,
+                "type": "Relational GIS & Parcel Intelligence Standard",
+                "hierarchyOrder": 6,
+                "preamble": {
+                    "text": "Defines the parcel-aware architecture governing operational locations, parcel intelligence, and zoning relationships within the Entity–Location–Contact (ELC) framework. This model separates operational identity from parcel-centric GIS intelligence to preserve DRY principles, relational integrity, and long-term scalability."
+                },
+                "purpose": {
+                    "icon": 6,
+                    "text": "Establish a scalable and parcel-aware relational model that supports multiple suites, multiple parcels, zoning intelligence, GIS enrichment, and jurisdictional reasoning without polluting operational location identity."
+                },
+                "corePrinciples": {
+                    "rules": [
+                        "Operational locations and parcel intelligence are separate concerns.",
+                        "tblLocations represents operational identity, not GIS authority.",
+                        "Parcel intelligence must remain parcel-centric.",
+                        "Zoning belongs to parcels, not operational locations.",
+                        "One operational location may reference multiple parcels.",
+                        "One parcel may support multiple operational locations.",
+                        "Address strings are descriptive and must not be treated as authoritative identifiers.",
+                        "The architecture must remain DRY and avoid duplicating parcel intelligence across operational records."
+                    ]
+                },
+                "locationModel": {
+                    "description": "Defines operational business locations within the ELC system.",
+                    "table": "tblLocations",
+                    "rules": [
+                        "tblLocations represents operational locations such as suites, storefronts, offices, pads, and tenant spaces.",
+                        "Operational identity is defined by address + suite + entity context.",
+                        "Duplicate street addresses are allowed.",
+                        "Suite numbers differentiate operational locations sharing the same address.",
+                        "locationPlaceId remains the authoritative external identity reference.",
+                        "locationCity represents mailing/postal city and must remain independent from jurisdiction logic.",
+                        "locationJurisdiction represents governing authority and must not be inferred solely from locationCity."
+                    ],
+                    "duplicatePolicy": {
+                        "allowed": [
+                            "Same address across multiple suites",
+                            "Same address across multiple entities",
+                            "Same parcel supporting multiple operational tenants"
+                        ],
+                        "prohibited": [
+                            "Duplicate operational locations within identical entity + placeId + suite context"
+                        ]
+                    },
+                    "examples": [
+                        "3111 W Chandler Blvd Suite 120",
+                        "3111 W Chandler Blvd Suite 220",
+                        "3111 W Chandler Blvd PAD-3"
+                    ]
+                },
+                "parcelModel": {
+                    "description": "Defines parcel-centric GIS and assessor intelligence.",
+                    "table": "tblLocationParcelDetails",
+                    "rules": [
+                        "Parcel intelligence must be stored separately from tblLocations.",
+                        "Parcel records are tied to operational locations through locationId relationships.",
+                        "Multiple parcel records may exist for a single operational location.",
+                        "Parcel data must remain authoritative for zoning and jurisdiction enrichment.",
+                        "Parcel-derived jurisdiction overrides county fallback.",
+                        "Parcel identity must be normalized using apnRaw."
+                    ],
+                    "fields": {
+                        "apnRaw": {
+                            "description": "Normalized parcel identifier"
+                        },
+                        "ownerName": {
+                            "description": "Assessor owner information"
+                        },
+                        "subdivision": {
+                            "description": "Subdivision or tract name"
+                        },
+                        "lotSize": {
+                            "description": "Lot area or assessor square footage"
+                        },
+                        "yearBuilt": {
+                            "description": "Assessor year built"
+                        },
+                        "source": {
+                            "description": "Originating parcel data source"
+                        },
+                        "confidence": {
+                            "description": "Parcel resolution confidence score"
+                        }
+                    }
+                },
+                "zoningModel": {
+                    "description": "Defines zoning storage and zoning ownership rules.",
+                    "rules": [
+                        "Zoning is parcel-centric and must reside with parcel intelligence.",
+                        "Phase 1 zoning stores only the primary zoning designation.",
+                        "One parcel is assumed to have one primary zoning designation.",
+                        "Zoning must never block ELC insertion.",
+                        "Overlay districts and PAD metadata are deferred to future expansion phases."
+                    ],
+                    "recommendedFields": [
+                        "zoningCode",
+                        "zoningDescription",
+                        "zoningSource",
+                        "zoningVerifiedAt"
+                    ],
+                    "examples": [
+                        "PAD",
+                        "C-2",
+                        "I-1",
+                        "R-3"
+                    ]
+                },
+                "relationshipModel": {
+                    "description": "Defines operational-to-parcel relationship behavior.",
+                    "rules": [
+                        "One location may reference multiple parcels.",
+                        "One parcel may support multiple operational locations.",
+                        "Operational identity must remain stable even when parcel intelligence changes.",
+                        "Parcel records must not redefine operational location identity.",
+                        "Parcel resolution must not overwrite Google-derived location identity."
+                    ],
+                    "examples": [
+                        "Chandler Fashion Center may contain dozens of operational locations across multiple parcels.",
+                        "A retail center may contain shared parking parcels and separate pad parcels."
+                    ]
+                },
+                "futureExpansion": {
+                    "description": "Defines planned GIS and ordinance intelligence expansion.",
+                    "plannedCapabilities": [
+                        "Automated zoning reports",
+                        "Jurisdiction sign ordinance indexing",
+                        "PAD overlay support",
+                        "GIS polygon intelligence",
+                        "Parcel overlay relationships",
+                        "AI zoning reasoning",
+                        "Automated permitting feasibility analysis"
+                    ],
+                    "potentialFutureTables": [
+                        "tblJurisdictionZones",
+                        "tblParcelZoningOverlays",
+                        "tblJurisdictionOrdinances"
+                    ]
+                },
+                "gisResolutionFlow": {
+                    "steps": [
+                        "resolveAddress",
+                        "validateLocationWithGoogle",
+                        "resolveCensusGeography",
+                        "conditionallyResolveParcel",
+                        "resolveJurisdiction",
+                        "resolveZoning",
+                        "storeParcelIntelligence"
+                    ],
+                    "rules": [
+                        "Parcel lookup executes only after geography resolution completes.",
+                        "Zoning resolution must execute only after parcel resolution succeeds.",
+                        "GIS enrichment must never overwrite operational identity fields."
+                    ]
+                },
+                "databaseRules": {
+                    "rules": [
+                        "tblLocations remains operational and ELC-focused.",
+                        "tblLocationParcelDetails remains parcel-centric.",
+                        "Parcel intelligence must not be duplicated across locations unnecessarily.",
+                        "Operational location uniqueness must remain independent from parcel identity.",
+                        "Location and parcel intelligence must maintain loose coupling."
+                    ]
+                },
+                "notes": [
+                    "This architecture preserves DRY principles while supporting scalable GIS enrichment.",
+                    "Operational identity and parcel intelligence intentionally remain separated.",
+                    "The architecture supports future AI-driven zoning and sign ordinance analysis.",
+                    "Phase 1 zoning intentionally stores minimal normalized zoning intelligence."
+                ]
+            },
             "systemInitializationStandard": {
                 "title": {
                     "icon": 68,
