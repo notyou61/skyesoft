@@ -739,7 +739,13 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
 } elseif ($duplicate['status'] === 'possible') {
     $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
 } elseif ($locationDuplicate['status'] === 'exact') {
-    $pcm = ['status' => 'existing_location', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'link_existing_location'];
+    $pcm = [
+        'status'          => 'existing_location',
+        'readyForCommit'  => true,
+        'requiresReview'  => false,
+        'blocksCommit'    => false,
+        'action'          => 'link_existing_location'
+    ];
 } elseif ($locationDuplicate['status'] === 'possible') {
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
 } else {
@@ -1619,35 +1625,31 @@ function normalizeLocationName(string $name): string {
  * Evaluate if this location already exists for the entity
  * Uses correct schema: locationEntityId (NOT entityId)
  */
+/**
+ * Evaluate Location Duplicate — Schema-Aware + PlaceId First
+ */
 function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
 
     $entityName   = trim($parsed['entity']['name'] ?? '');
     $locationName = trim($parsed['location']['locationName'] ?? '');
-    $city         = strtolower(trim($parsed['location']['city'] ?? ''));
     $placeId      = $parsed['location']['locationPlaceId'] ?? null;
+    $address      = trim($parsed['location']['address'] ?? '');
 
-    if (empty($entityName) || empty($locationName)) {
+    if (empty($entityName)) {
         return ['status' => 'none'];
     }
 
-    // Resolve entity first
     $entityId = resolveEntityIdByName($entityName, $pdo);
-
     if (!$entityId) {
-        return [
-            'status'   => 'new_entity',
-            'entityId' => null
-        ];
+        return ['status' => 'new_entity', 'entityId' => null];
     }
 
-    $normalizedInput = normalizeLocationName($locationName);
-
     // -------------------------------------------------
-    // 1. Exact PlaceId match (STRONGEST)
+    // 1. STRONGEST: PlaceId Match (Google Place ID)
     // -------------------------------------------------
     if (!empty($placeId)) {
         $stmt = $pdo->prepare("
-            SELECT locationId, locationName
+            SELECT locationId, locationName, locationPlaceId
             FROM tblLocations
             WHERE locationPlaceId = :placeId
               AND locationEntityId = :entityId
@@ -1660,6 +1662,7 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
         ]);
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            error_log("[evaluateLocationDuplicate] EXACT MATCH via PlaceId: {$row['locationId']}");
             return [
                 'status'     => 'exact',
                 'locationId' => $row['locationId'],
@@ -1669,8 +1672,40 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
     }
 
     // -------------------------------------------------
-    // 2. Exact Name + City match
+    // 2. Fallback: Address Match
     // -------------------------------------------------
+    if (!empty($address)) {
+        $stmt = $pdo->prepare("
+            SELECT locationId, locationName
+            FROM tblLocations
+            WHERE locationEntityId = :entityId
+              AND locationAddress = :address
+              AND locationCity = :city
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'entityId' => $entityId,
+            'address'  => $address,
+            'city'     => $parsed['location']['city'] ?? ''
+        ]);
+
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            error_log("[evaluateLocationDuplicate] MATCH via Address: {$row['locationId']}");
+            return [
+                'status'     => 'exact',
+                'locationId' => $row['locationId'],
+                'matchType'  => 'address'
+            ];
+        }
+    }
+
+    // -------------------------------------------------
+    // 3. Final fallback: Name match (your original logic)
+    // -------------------------------------------------
+    $normalizedInput = normalizeLocationName($locationName);
+    $city = strtolower(trim($parsed['location']['city'] ?? ''));
+
     $stmt = $pdo->prepare("
         SELECT locationId, locationName, locationCity
         FROM tblLocations
@@ -1688,33 +1723,6 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
                 'locationId' => $row['locationId'],
                 'matchType'  => 'name_city'
             ];
-        }
-    }
-
-    // -------------------------------------------------
-    // 3. Fuzzy match (same city, similar name)
-    // -------------------------------------------------
-    $stmt = $pdo->prepare("
-        SELECT locationId, locationName, locationCity
-        FROM tblLocations
-        WHERE locationEntityId = :entityId
-    ");
-    $stmt->execute(['entityId' => $entityId]);
-
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $dbName = normalizeLocationName($row['locationName'] ?? '');
-        $dbCity = strtolower(trim($row['locationCity'] ?? ''));
-
-        if ($dbCity === $city) {
-            similar_text($dbName, $normalizedInput, $percent);
-
-            if ($percent > 85) {
-                return [
-                    'status'     => 'possible',
-                    'locationId' => $row['locationId'],
-                    'matchType'  => 'fuzzy'
-                ];
-            }
         }
     }
 
