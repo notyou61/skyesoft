@@ -1725,28 +1725,36 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
     ];
 }
 // 🔍 resolveEntityIdByName
-function resolveEntityIdByName(string $name): ?int {
+/**
+ * Resolve entityId by exact name match (case-insensitive)
+ *
+ * @return int|null  entityId if found, null otherwise
+ */
+function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
 
-    global $pdo;
+    if (empty(trim($entityName))) {
+        return null;
+    }
 
     $stmt = $pdo->prepare("
         SELECT entityId
         FROM tblEntities
-        WHERE entityName = :name
+        WHERE LOWER(entityName) = :name
         LIMIT 1
     ");
 
     $stmt->execute([
-        ':name' => trim($name)
+        'name' => strtolower(trim($entityName))
     ]);
 
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$row || empty($row['entityId'])) {
-        return null;
+    if ($row && isset($row['entityId'])) {
+        // Force integer return — critical for type hint
+        return (int) $row['entityId'];
     }
 
-    return (int)$row['entityId'];
+    return null;
 }
 // 🏢 extractSuite — extract suite/unit from address
 function extractSuite(string $input): ?string {
