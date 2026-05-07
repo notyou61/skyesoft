@@ -1652,22 +1652,24 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
             SELECT locationId, locationName, locationPlaceId
             FROM tblLocations
             WHERE locationPlaceId = :placeId
-              AND locationEntityId = :entityId
+            AND locationEntityId = :entityId
             LIMIT 1
         ");
 
         $stmt->execute([
-            'placeId'    => $placeId,
-            'entityId'   => $entityId
+            'placeId'  => $placeId,
+            'entityId' => $entityId
         ]);
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            error_log("[evaluateLocationDuplicate] EXACT MATCH via PlaceId: {$row['locationId']}");
+            error_log("✅ EXACT LOCATION MATCH FOUND via PlaceId! locationId = " . $row['locationId']);
             return [
                 'status'     => 'exact',
                 'locationId' => $row['locationId'],
                 'matchType'  => 'placeId'
             ];
+        } else {
+            error_log("❌ PlaceId match failed for: " . $placeId . " (entityId=" . $entityId . ")");
         }
     }
 
@@ -1739,19 +1741,32 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
  */
 function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
 
-    if (empty(trim($entityName))) {
+    $entityName = trim($entityName);
+    if (empty($entityName)) {
         return null;
     }
 
+    // Try exact match first
     $stmt = $pdo->prepare("
         SELECT entityId 
         FROM tblEntities 
-        WHERE LOWER(entityName) = :name 
+        WHERE LOWER(entityName) = LOWER(:name) 
         LIMIT 1
     ");
+    $stmt->execute(['name' => $entityName]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        return (int)$row['entityId'];
+    }
 
-    $stmt->execute(['name' => strtolower(trim($entityName))]);
-
+    // Fallback: LIKE match (for slight variations)
+    $stmt = $pdo->prepare("
+        SELECT entityId 
+        FROM tblEntities 
+        WHERE LOWER(entityName) LIKE LOWER(:name)
+        LIMIT 1
+    ");
+    $stmt->execute(['name' => '%' . $entityName . '%']);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $row ? (int)$row['entityId'] : null;
