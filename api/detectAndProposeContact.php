@@ -665,6 +665,7 @@ if ($geo) {
 // -------------------------------------------------
 // 🌵 MARICOPA LOGIC — MULTI-PARCEL + USER SELECTION REQUIRED (Heavy Debug)
 // -------------------------------------------------
+error_log("=== NEW SECTION 9 IS LIVE ===");
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
