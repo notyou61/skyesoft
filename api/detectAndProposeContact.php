@@ -1225,40 +1225,35 @@ function lookupMaricopaParcel(string $address): array {
 
     $cleanAddress = str_replace(', USA', '', trim($address));
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
-    $upperClean   = strtoupper($cleanAddress);
+
+    // Debug logging
+    error_log("[Parcel DEBUG] Raw input: " . $address);
+    error_log("[Parcel DEBUG] Cleaned: " . $cleanAddress);
 
     $candidates = [];
 
-    // Strategy 1: Loose full PHYSICAL_ADDRESS match (most effective)
+    // Strategy 1: Loose full address match
     $safeAddr = str_replace("'", "''", $cleanAddress);
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
 
     $params = http_build_query([
-        'where'          => $where,
-        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-        'returnGeometry' => 'false',
-        'f'              => 'json'
+        'where'     => $where,
+        'outFields' => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+        'f'         => 'json'
     ]);
 
     $response = @file_get_contents("{$url}?{$params}");
 
-    // Strategy 2: Fallback — search only street number + name
+    // Strategy 2: Fallback - Search by street number only
     if (!$response || empty($data['features'] ?? [])) {
-        if (preg_match('/^(\d+)\s+(.+?)(?:,\s*|\s+)([A-Za-z\s]+)/i', $cleanAddress, $m)) {
-            $num  = trim($m[1]);
-            $name = trim($m[2]);
-            $city = trim($m[3] ?? '');
-
+        if (preg_match('/^(\d+)/', $cleanAddress, $m)) {
+            $num = $m[1];
             $where = "PHYSICAL_STREET_NUM = '{$num}'";
-            if ($name) $where .= " AND UPPER(PHYSICAL_STREET_NAME) LIKE UPPER('%{$name}%')";
-            if ($city) $where .= " AND UPPER(PHYSICAL_CITY) LIKE UPPER('%{$city}%')";
-
             $params = http_build_query([
                 'where'     => $where,
                 'outFields' => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
                 'f'         => 'json'
             ]);
-
             $response = @file_get_contents("{$url}?{$params}");
         }
     }
@@ -1290,16 +1285,13 @@ function lookupMaricopaParcel(string $address): array {
     // Deduplicate by APN
     $unique = [];
     foreach ($candidates as $c) {
-        $key = $c['apnRaw'];
-        if (!isset($unique[$key]) || $c['confidence'] > $unique[$key]['confidence']) {
-            $unique[$key] = $c;
-        }
+        $unique[$c['apnRaw']] = $c;
     }
 
     $candidates = array_values($unique);
     usort($candidates, fn($a, $b) => $b['confidence'] <=> $a['confidence']);
 
-    error_log("[lookupMaricopaParcel] Found " . count($candidates) . " candidate(s) for: {$cleanAddress}");
+    error_log("[lookupMaricopaParcel] Found " . count($candidates) . " candidate(s) for: " . $cleanAddress);
 
     return $candidates;
 }
