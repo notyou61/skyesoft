@@ -1219,12 +1219,11 @@ function lookupMaricopaParcel(string $address): array {
     $cleanAddress = str_replace(', USA', '', trim($address));
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
 
-    error_log("[Parcel DEBUG] Raw: " . $address);
-    error_log("[Parcel DEBUG] Cleaned: " . $cleanAddress);
+    error_log("[Parcel DEBUG] Searching: " . $cleanAddress);
 
     $candidates = [];
 
-    // Strategy 1: Broad PHYSICAL_ADDRESS search (most reliable for this case)
+    // Strategy 1: Broad PHYSICAL_ADDRESS search (most reliable for this address)
     $safeAddr = str_replace("'", "''", $cleanAddress);
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
 
@@ -1250,13 +1249,11 @@ function lookupMaricopaParcel(string $address): array {
             $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
             $dbAddress = trim($attr['PHYSICAL_ADDRESS'] ?? '');
 
-            $score = 70;
+            $score = 75;
 
-            // Strong bonus for exact or near-exact address match
+            // Strong bonus for exact match on the target address
             if (stripos($dbAddress, '3145 N 33RD AVE') !== false) {
                 $score = 98;
-            } elseif (stripos($dbAddress, $cleanAddress) !== false) {
-                $score = 92;
             }
 
             $candidates[] = [
@@ -1284,7 +1281,7 @@ function lookupMaricopaParcel(string $address): array {
     $candidates = array_values($unique);
     usort($candidates, fn($a, $b) => $b['confidence'] <=> $a['confidence']);
 
-    error_log("[lookupMaricopaParcel] Final count: " . count($candidates) . " for: " . $cleanAddress);
+    error_log("[lookupMaricopaParcel] FINAL COUNT: " . count($candidates) . " candidates for: " . $cleanAddress);
 
     return $candidates;
 }
