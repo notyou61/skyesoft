@@ -1,18 +1,17 @@
 <?php
+declare(strict_types=1);
+
 // =====================================================
-// FORCE FRESH CODE + LOUD CONFIRMATION (safe everywhere)
+// FORCE FRESH CODE + LOUD CONFIRMATION (production safe)
 // =====================================================
 error_log("=== DETECTANDPROPOSECONTACT.PHP V1.5.6 MARICOPA FIXED === " . date('Y-m-d H:i:s'));
 
-// Clear production cache (GoDaddy) — silent on local dev
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
     error_log("[OPCACHE] ✅ File cache invalidated (production)");
 } else {
     error_log("[OPCACHE] opcache_invalidate not available (local dev — OK)");
 }
-
-declare(strict_types=1);
 
 // =====================================================
 // Skyesoft — detectAndProposeContact.php
