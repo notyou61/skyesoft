@@ -663,7 +663,7 @@ if ($geo) {
 }
 
 // -------------------------------------------------
-// 🌵 MARICOPA LOGIC — MULTI-PARCEL + SMART SELECTION
+// 🌵 MARICOPA LOGIC — MULTI-PARCEL + USER SELECTION REQUIRED (with debug)
 // -------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
@@ -676,34 +676,38 @@ $parcelDetails = [];
 $jurisdiction = null;
 $parcelLookupAttempted = false;
 
+error_log("[MARICOPA-DEBUG] county='$county' | state='$state' | isMaricopa=" . ($isMaricopa ? 'YES' : 'NO'));
+error_log("[MARICOPA-DEBUG] address='" . ($parsed['location']['address'] ?? '') . "'");
+
 if ($isMaricopa && !empty($parsed['location']['address'])) {
 
     $parcelLookupAttempted = true;
+
     $parcelLookupAddress = $parsed['location']['formattedAddress'] 
         ?? $lookupAddress 
-        ?? $fullAddress;
+        ?? $fullAddress 
+        ?? $parsed['location']['address'];
+
+    error_log("[MARICOPA-DEBUG] Calling lookupMaricopaParcel with: " . $parcelLookupAddress);
 
     $parcelDetails = lookupMaricopaParcel($parcelLookupAddress);
+
+    error_log("[MARICOPA-DEBUG] lookupMaricopaParcel returned " . count($parcelDetails) . " candidates");
 
     if (!empty($parcelDetails)) {
 
         $bestMatch = $parcelDetails[0];
 
-        // Smart auto-selection: very high confidence + good address match
-        $inputAddr = strtoupper($parsed['location']['address']);
-        $bestAddr  = strtoupper($bestMatch['address'] ?? '');
-
-        if (count($parcelDetails) === 1 || 
-            (stripos($bestAddr, $inputAddr) !== false && $bestMatch['confidence'] >= 85)) {
-            
+        if (count($parcelDetails) === 1) {
             $parcel = $bestMatch;
             $locationValidation['parcelStatus'] = 'resolved';
             $locationValidation['apnResolved'] = true;
-            error_log("[Parcel] Auto-selected best match: " . $bestMatch['apnDisplay']);
+            error_log("[Parcel] Auto-selected single match: " . $bestMatch['apnDisplay']);
         } else {
             $locationValidation['parcelStatus'] = 'multiple_matches';
             $locationValidation['apnResolved'] = false;
-            error_log("[Parcel] Multiple matches found (" . count($parcelDetails) . "), user selection required");
+            $locationValidation['jurisdictionResolved'] = false;
+            error_log("[Parcel] Multiple matches found (" . count($parcelDetails) . ") — user selection required");
         }
 
         $jurisdiction = $bestMatch['jurisdiction'] ?? null;
@@ -711,7 +715,10 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
     } else {
         $locationValidation['issues'][] = 'parcel_lookup_failed';
         $locationValidation['parcelStatus'] = 'not_found';
+        error_log("[Parcel] No candidates returned");
     }
+} else {
+    error_log("[MARICOPA-DEBUG] Skipped — not Maricopa or no address");
 }
 
 // -------------------------------------------------
