@@ -19,6 +19,18 @@ if (function_exists('opcache_invalidate')) {
 // Last Updated: 2026-05-08
 // =====================================================
 
+// =====================================================
+// FORCED TEST — PROVE LOOKUP WORKS (remove after we see 2 candidates)
+// =====================================================
+error_log("=== FORCED MARICOPA LOOKUP TEST (bypassing all conditions) ===");
+$forcedAddress = "3145 N 33rd Ave Phoenix AZ 85017";
+$forcedParcelDetails = lookupMaricopaParcel($forcedAddress);
+error_log("[FORCED-TEST] lookupMaricopaParcel returned " . count($forcedParcelDetails) . " candidates");
+if (count($forcedParcelDetails) > 0) {
+    error_log("[FORCED-TEST] First APN: " . ($forcedParcelDetails[0]['apnRaw'] ?? 'none'));
+    error_log("[FORCED-TEST] Jurisdiction: " . ($forcedParcelDetails[0]['jurisdiction'] ?? 'none'));
+}
+
 #region SECTION 01 — ⚙️ Runtime Configuration
 
 error_log('[pipeline-entry] detectAndProposeContact START ' . microtime(true));
