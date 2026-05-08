@@ -663,9 +663,8 @@ if ($geo) {
 }
 
 // -------------------------------------------------
-// 🌵 MARICOPA LOGIC — MULTI-PARCEL + USER SELECTION REQUIRED (Heavy Debug)
+// 🌵 MARICOPA LOGIC — MULTI-PARCEL + USER SELECTION REQUIRED
 // -------------------------------------------------
-error_log("=== NEW SECTION 9 IS LIVE ===");
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
@@ -1211,7 +1210,7 @@ function resolveGeographyFromAddress(string $address): ?array {
         'matchedAddress' => $result['matchedAddress'] ?? null
     ];
 }
-// 🧾 lookupMaricopaParcel — WORKING ArcGIS endpoint (verified by curl)
+// 🧾 lookupMaricopaParcel — WORKING ArcGIS endpoint (verified by test page + curl)
 function lookupMaricopaParcel(string $address): array {
 
     if (empty(trim($address))) {
