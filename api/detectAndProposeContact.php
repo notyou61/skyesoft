@@ -542,11 +542,13 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
     }
 }
 
-// 🔑 SUITE EXTRACTION — RAW INPUT IS SOURCE OF TRUTH (Standardized)
+// -------------------------------------------------
+// 🔑 SUITE EXTRACTION — STRICT & SAFE (RAW INPUT IS SOURCE OF TRUTH)
+// -------------------------------------------------
 $rawInputText = !empty($rawInputOriginal) ? $rawInputOriginal : $rawInput;
 
 $suiteSources = [
-    $rawInputText,                          // Best source
+    $rawInputText,                          // Best source (original signature)
     $parsed['location']['address'] ?? '', 
     $fullAddress ?? ''
 ];
@@ -561,6 +563,14 @@ foreach ($suiteSources as $source) {
 
 // Authoritative field
 $parsed['location']['locationAddressSuite'] = $locationSuite;
+
+// -------------------------------------------------
+// Debug / Monitoring for suspicious extractions
+// -------------------------------------------------
+if (in_array($locationSuite, ['#VE', '#AVE', '#ST', '#DR', '#RD', '#LN', '#CT', '#BLVD'], true)) {
+    error_log("[SUITE-WARNING] Suspicious suite extraction blocked: '{$locationSuite}' from input: " 
+              . substr($rawInputText, 0, 120));
+}
 
 
 // -------------------------------------------------
@@ -1743,8 +1753,8 @@ function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
 }
 // 🏢 extractSuite — extract suite/unit from address
 /**
- * Extract suite/unit number ONLY when a clear indicator is present
- * Very strict to prevent false positives like "Ave", "Dr", "Blvd", etc.
+ * Extract suite/unit ONLY when a clear indicator is present.
+ * Prevents false positives like "Ave", "Dr", "Blvd", etc.
  */
 function extractSuite(string $input): ?string {
 
@@ -1752,28 +1762,27 @@ function extractSuite(string $input): ?string {
         return null;
     }
 
-    // Strong, explicit suite indicators only
     $patterns = [
-        // Standard suite patterns
+        // Explicit indicators + number/letter
         '/\b(?:Suite|Ste|Unit|Apt|Apartment|Bldg|Building|Rm|Room|#)\s*([A-Za-z0-9\-]+)\b/i',
         
-        // Hash-first patterns (very common)
+        // Hash-first (very common in signatures)
         '/#\s*([A-Za-z0-9\-]+)\b/i',
         
-        // Parenthetical units (occasional)
+        // Parenthetical (occasional)
         '/\((?:Suite|Ste|Unit|#)?\s*([A-Za-z0-9\-]+)\)/i'
     ];
 
     foreach ($patterns as $pattern) {
         if (preg_match($pattern, $input, $m)) {
             $suite = strtoupper(trim($m[1]));
-            
-            // Final safety filter — reject obvious street suffixes
-            $rejectList = ['AVE', 'AV', 'ST', 'RD', 'DR', 'LN', 'CT', 'BLVD', 'PL', 'WAY', 'CIR', 'TER'];
-            if (in_array($suite, $rejectList)) {
+
+            // Safety reject list - common street suffixes
+            $reject = ['AVE', 'AV', 'ST', 'RD', 'DR', 'LN', 'CT', 'BLVD', 'PL', 'WAY', 'CIR', 'TER', 'PKWY'];
+            if (in_array($suite, $reject)) {
                 continue;
             }
-            
+
             return '#' . $suite;   // Consistent storage format
         }
     }
