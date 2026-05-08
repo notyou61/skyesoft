@@ -663,7 +663,7 @@ if ($geo) {
 }
 
 // -------------------------------------------------
-// 🌵 MARICOPA LOGIC — MULTI-PARCEL + USER SELECTION REQUIRED (with debug)
+// 🌵 MARICOPA LOGIC — MULTI-PARCEL + USER SELECTION REQUIRED (Heavy Debug)
 // -------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
@@ -674,14 +674,12 @@ $locationValidation['isMaricopa'] = $isMaricopa;
 $parcel = null;
 $parcelDetails = [];
 $jurisdiction = null;
-$parcelLookupAttempted = false;
 
+error_log("[MARICOPA-DEBUG] === START ===");
 error_log("[MARICOPA-DEBUG] county='$county' | state='$state' | isMaricopa=" . ($isMaricopa ? 'YES' : 'NO'));
-error_log("[MARICOPA-DEBUG] address='" . ($parsed['location']['address'] ?? '') . "'");
+error_log("[MARICOPA-DEBUG] address='" . ($parsed['location']['address'] ?? 'EMPTY') . "'");
 
 if ($isMaricopa && !empty($parsed['location']['address'])) {
-
-    $parcelLookupAttempted = true;
 
     $parcelLookupAddress = $parsed['location']['formattedAddress'] 
         ?? $lookupAddress 
@@ -1214,7 +1212,7 @@ function resolveGeographyFromAddress(string $address): ?array {
         'matchedAddress' => $result['matchedAddress'] ?? null
     ];
 }
-// 🧾 lookupMaricopaParcel — Uses the WORKING ArcGIS endpoint (verified in curl)
+// 🧾 lookupMaricopaParcel — WORKING ArcGIS endpoint (verified by curl)
 function lookupMaricopaParcel(string $address): array {
 
     if (empty(trim($address))) {
@@ -1230,7 +1228,6 @@ function lookupMaricopaParcel(string $address): array {
 
     $candidates = [];
 
-    // Exact query that worked in the terminal curl
     $safeAddr = str_replace("'", "''", $cleanAddress);
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
 
@@ -1281,7 +1278,6 @@ function lookupMaricopaParcel(string $address): array {
         ];
     }
 
-    // Deduplicate + sort (correct parcels will be at the top)
     $unique = [];
     foreach ($candidates as $c) {
         $unique[$c['apnRaw']] = $c;
