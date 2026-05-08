@@ -1742,19 +1742,42 @@ function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
     return $row ? (int)$row['entityId'] : null;
 }
 // 🏢 extractSuite — extract suite/unit from address
+/**
+ * Extract suite/unit number ONLY when a clear indicator is present
+ * Very strict to prevent false positives like "Ave", "Dr", "Blvd", etc.
+ */
 function extractSuite(string $input): ?string {
-    if (empty($input)) return null;
 
+    if (empty(trim($input))) {
+        return null;
+    }
+
+    // Strong, explicit suite indicators only
     $patterns = [
-        '/(?:#|Suite|Ste|Unit|Apt|Suite #|Unit #)\s*([A-Za-z0-9\-]+)/i',
-        '/\b#([A-Za-z0-9\-]{2,6})\b/i'
+        // Standard suite patterns
+        '/\b(?:Suite|Ste|Unit|Apt|Apartment|Bldg|Building|Rm|Room|#)\s*([A-Za-z0-9\-]+)\b/i',
+        
+        // Hash-first patterns (very common)
+        '/#\s*([A-Za-z0-9\-]+)\b/i',
+        
+        // Parenthetical units (occasional)
+        '/\((?:Suite|Ste|Unit|#)?\s*([A-Za-z0-9\-]+)\)/i'
     ];
 
     foreach ($patterns as $pattern) {
         if (preg_match($pattern, $input, $m)) {
-            return '#' . strtoupper(trim($m[1]));
+            $suite = strtoupper(trim($m[1]));
+            
+            // Final safety filter — reject obvious street suffixes
+            $rejectList = ['AVE', 'AV', 'ST', 'RD', 'DR', 'LN', 'CT', 'BLVD', 'PL', 'WAY', 'CIR', 'TER'];
+            if (in_array($suite, $rejectList)) {
+                continue;
+            }
+            
+            return '#' . $suite;   // Consistent storage format
         }
     }
+
     return null;
 }
 // 📞 extractPhoneExtension — extract phone extension
