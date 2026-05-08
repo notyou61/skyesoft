@@ -693,9 +693,9 @@ error_log("[MARICOPA-DEBUG] address='" . ($parsed['location']['address'] ?? 'EMP
 if ($isMaricopa && !empty($parsed['location']['address'])) {
 
     $parcelLookupAddress = $parsed['location']['formattedAddress'] 
-        ?? $lookupAddress 
+        ?? $parsed['location']['address'] 
         ?? $fullAddress 
-        ?? $parsed['location']['address'];
+        ?? '';
 
     error_log("[MARICOPA-DEBUG] Calling lookupMaricopaParcel with: " . $parcelLookupAddress);
 
@@ -704,13 +704,13 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
     error_log("[MARICOPA-DEBUG] lookupMaricopaParcel returned " . count($parcelDetails) . " candidates");
 
     if (!empty($parcelDetails)) {
-
         $bestMatch = $parcelDetails[0];
 
         if (count($parcelDetails) === 1) {
             $parcel = $bestMatch;
             $locationValidation['parcelStatus'] = 'resolved';
             $locationValidation['apnResolved'] = true;
+            $locationValidation['jurisdictionResolved'] = true;
         } else {
             $locationValidation['parcelStatus'] = 'multiple_matches';
             $locationValidation['apnResolved'] = false;
@@ -719,7 +719,6 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
         }
 
         $jurisdiction = $bestMatch['jurisdiction'] ?? null;
-
     } else {
         $locationValidation['issues'][] = 'parcel_lookup_failed';
         $locationValidation['parcelStatus'] = 'not_found';
