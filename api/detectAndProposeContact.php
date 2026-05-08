@@ -663,7 +663,7 @@ if ($geo) {
 }
 
 // -------------------------------------------------
-// 🌵 MARICOPA LOGIC — MULTI-PARCEL CANDIDATE RESOLUTION
+// 🌵 MARICOPA LOGIC — MULTI-PARCEL + SMART SELECTION
 // -------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
@@ -671,7 +671,7 @@ $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 $isMaricopa = ($county === 'MARICOPA' || $state === 'AZ');
 $locationValidation['isMaricopa'] = $isMaricopa;
 
-$parcel = null;           // Selected / primary parcel (operational summary)
+$parcel = null;
 $parcelDetails = [];
 $jurisdiction = null;
 $parcelLookupAttempted = false;
@@ -683,37 +683,30 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
         ?? $lookupAddress 
         ?? $fullAddress;
 
-    $parcelDetails = lookupMaricopaParcel($parcelLookupAddress);   // ALWAYS array now
-
-    error_log("[MARICOPA] Address: " . $parcelLookupAddress);
-    error_log("[MARICOPA] Candidates found: " . count($parcelDetails));
-    if (!empty($parcelDetails)) {
-        error_log("[MARICOPA] Best APN: " . ($parcelDetails[0]['apnDisplay'] ?? ''));
-    }
+    $parcelDetails = lookupMaricopaParcel($parcelLookupAddress);
 
     if (!empty($parcelDetails)) {
 
         $bestMatch = $parcelDetails[0];
 
-        if (count($parcelDetails) === 1) {
-            // Strong single match → auto-select
+        // Smart auto-selection: very high confidence + good address match
+        $inputAddr = strtoupper($parsed['location']['address']);
+        $bestAddr  = strtoupper($bestMatch['address'] ?? '');
+
+        if (count($parcelDetails) === 1 || 
+            (stripos($bestAddr, $inputAddr) !== false && $bestMatch['confidence'] >= 85)) {
+            
             $parcel = $bestMatch;
             $locationValidation['parcelStatus'] = 'resolved';
             $locationValidation['apnResolved'] = true;
+            error_log("[Parcel] Auto-selected best match: " . $bestMatch['apnDisplay']);
         } else {
-            // Multiple candidates → NO auto-selection
             $locationValidation['parcelStatus'] = 'multiple_matches';
-            $locationValidation['apnResolved'] = false;        // Important!
-            // $parcel remains null until user selects
+            $locationValidation['apnResolved'] = false;
+            error_log("[Parcel] Multiple matches found (" . count($parcelDetails) . "), user selection required");
         }
 
         $jurisdiction = $bestMatch['jurisdiction'] ?? null;
-
-        // City validation
-        $parsedCity = strtoupper(trim($parsed['location']['city'] ?? ''));
-        if (!empty($parsedCity) && stripos(strtoupper($bestMatch['city'] ?? ''), $parsedCity) === false) {
-            $locationValidation['issues'][] = 'parcel_city_mismatch';
-        }
 
     } else {
         $locationValidation['issues'][] = 'parcel_lookup_failed';
