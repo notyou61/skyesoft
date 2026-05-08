@@ -1219,34 +1219,18 @@ function lookupMaricopaParcel(string $address): array {
     $cleanAddress = str_replace(', USA', '', trim($address));
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
 
-    error_log("[Parcel DEBUG] Searching: " . $cleanAddress);
+    error_log("[Parcel DEBUG] Searching for: " . $cleanAddress);
 
     $candidates = [];
 
-    // Extract components for precise query
-    $num  = '';
-    $name = '';
-    $city = '';
-
-    if (preg_match('/^(\d+)\s+(.*?),?\s*([A-Za-z\s]+)/i', $cleanAddress, $m)) {
-        $num  = trim($m[1]);
-        $name = trim($m[2]);
-        $city = trim($m[3]);
-    }
-
-    // Build precise WHERE clause
-    $whereClauses = [];
-    if ($num)  $whereClauses[] = "PHYSICAL_STREET_NUM = '{$num}'";
-    if ($name) $whereClauses[] = "UPPER(PHYSICAL_STREET_NAME) LIKE UPPER('%{$name}%')";
-    if ($city) $whereClauses[] = "UPPER(PHYSICAL_CITY) = UPPER('{$city}')";
-
-    $where = $whereClauses ? implode(' AND ', $whereClauses) : "1=1";
+    // Strategy 1: Loose full address search
+    $safeAddr = str_replace("'", "''", $cleanAddress);
+    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
 
     $params = http_build_query([
-        'where'          => $where,
-        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-        'returnGeometry' => 'false',
-        'f'              => 'json'
+        'where'     => $where,
+        'outFields' => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+        'f'         => 'json'
     ]);
 
     $response = @file_get_contents("{$url}?{$params}");
@@ -1260,30 +1244,34 @@ function lookupMaricopaParcel(string $address): array {
             if (empty($attr['APN'])) continue;
 
             $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
-            $dbAddr = trim($attr['PHYSICAL_ADDRESS'] ?? '');
+            $dbAddress = trim($attr['PHYSICAL_ADDRESS'] ?? '');
 
-            $score = 90;
+            $score = 75;
 
-            // Extra bonus for very close address match
-            if (stripos($dbAddr, $cleanAddress) !== false) {
+            // Smart scoring based on similarity
+            similar_text(strtoupper($cleanAddress), strtoupper($dbAddress), $percent);
+            $score += round($percent * 0.25);   // up to +25
+
+            // Big bonus for containing the exact input address
+            if (stripos($dbAddress, $cleanAddress) !== false) {
                 $score = 98;
             }
 
             $candidates[] = [
                 'apnRaw'       => $apnRaw,
                 'apnDisplay'   => formatAPN($apnRaw),
-                'address'      => $dbAddr,
+                'address'      => $dbAddress,
                 'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
                 'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
                 'owner'        => trim($attr['OWNER_NAME'] ?? ''),
                 'source'       => 'mca_arcgis_mcassessor',
-                'confidence'   => $score,
+                'confidence'   => min(100, $score),
                 'matchedInput' => $cleanAddress
             ];
         }
     }
 
-    // Deduplicate + sort
+    // Deduplicate + sort by confidence
     $unique = [];
     foreach ($candidates as $c) {
         $unique[$c['apnRaw']] = $c;
