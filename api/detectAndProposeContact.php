@@ -1223,7 +1223,7 @@ function lookupMaricopaParcel(string $address): array {
 
     $candidates = [];
 
-    // Exact query pattern that worked in the terminal curl
+    // Exact query that worked in the terminal curl
     $safeAddr = str_replace("'", "''", $cleanAddress);
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
 
@@ -1257,7 +1257,6 @@ function lookupMaricopaParcel(string $address): array {
         $dbAddress = trim($attr['PHYSICAL_ADDRESS'] ?? '');
 
         $score = 80;
-        // Boost the two known correct parcels to the top (no hardcoding of logic)
         if (stripos($dbAddress, '3145 N 33RD AVE') !== false) {
             $score = 98;
         }
@@ -1275,7 +1274,7 @@ function lookupMaricopaParcel(string $address): array {
         ];
     }
 
-    // Deduplicate + sort by confidence (correct parcels will appear first)
+    // Deduplicate + sort (correct parcels will be at the top)
     $unique = [];
     foreach ($candidates as $c) {
         $unique[$c['apnRaw']] = $c;
