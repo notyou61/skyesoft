@@ -1219,37 +1219,37 @@ function lookupMaricopaParcel(string $address): array {
     $cleanAddress = str_replace(', USA', '', trim($address));
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
 
-    // Debug logging
-    error_log("[Parcel DEBUG] Raw input: " . $address);
-    error_log("[Parcel DEBUG] Cleaned: " . $cleanAddress);
+    error_log("[Parcel DEBUG] Searching: " . $cleanAddress);
 
     $candidates = [];
 
-    // Strategy 1: Loose full address match
-    $safeAddr = str_replace("'", "''", $cleanAddress);
-    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
+    // Extract components for precise query
+    $num  = '';
+    $name = '';
+    $city = '';
+
+    if (preg_match('/^(\d+)\s+(.*?),?\s*([A-Za-z\s]+)/i', $cleanAddress, $m)) {
+        $num  = trim($m[1]);
+        $name = trim($m[2]);
+        $city = trim($m[3]);
+    }
+
+    // Build precise WHERE clause
+    $whereClauses = [];
+    if ($num)  $whereClauses[] = "PHYSICAL_STREET_NUM = '{$num}'";
+    if ($name) $whereClauses[] = "UPPER(PHYSICAL_STREET_NAME) LIKE UPPER('%{$name}%')";
+    if ($city) $whereClauses[] = "UPPER(PHYSICAL_CITY) = UPPER('{$city}')";
+
+    $where = $whereClauses ? implode(' AND ', $whereClauses) : "1=1";
 
     $params = http_build_query([
-        'where'     => $where,
-        'outFields' => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-        'f'         => 'json'
+        'where'          => $where,
+        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+        'returnGeometry' => 'false',
+        'f'              => 'json'
     ]);
 
     $response = @file_get_contents("{$url}?{$params}");
-
-    // Strategy 2: Fallback - Search by street number only
-    if (!$response || empty($data['features'] ?? [])) {
-        if (preg_match('/^(\d+)/', $cleanAddress, $m)) {
-            $num = $m[1];
-            $where = "PHYSICAL_STREET_NUM = '{$num}'";
-            $params = http_build_query([
-                'where'     => $where,
-                'outFields' => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-                'f'         => 'json'
-            ]);
-            $response = @file_get_contents("{$url}?{$params}");
-        }
-    }
 
     if ($response) {
         $data = json_decode($response, true);
@@ -1260,22 +1260,30 @@ function lookupMaricopaParcel(string $address): array {
             if (empty($attr['APN'])) continue;
 
             $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
+            $dbAddr = trim($attr['PHYSICAL_ADDRESS'] ?? '');
+
+            $score = 90;
+
+            // Extra bonus for very close address match
+            if (stripos($dbAddr, $cleanAddress) !== false) {
+                $score = 98;
+            }
 
             $candidates[] = [
                 'apnRaw'       => $apnRaw,
                 'apnDisplay'   => formatAPN($apnRaw),
-                'address'      => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
+                'address'      => $dbAddr,
                 'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
                 'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
                 'owner'        => trim($attr['OWNER_NAME'] ?? ''),
                 'source'       => 'mca_arcgis_mcassessor',
-                'confidence'   => 90,
+                'confidence'   => $score,
                 'matchedInput' => $cleanAddress
             ];
         }
     }
 
-    // Deduplicate by APN
+    // Deduplicate + sort
     $unique = [];
     foreach ($candidates as $c) {
         $unique[$c['apnRaw']] = $c;
