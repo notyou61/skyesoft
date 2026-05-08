@@ -1229,11 +1229,11 @@ function lookupMaricopaParcel(string $address): array {
     }
 
     $data = json_decode($response, true);
-    $features = $data['results'] ?? $data['property'] ?? [];
+    $results = $data['results'] ?? $data['property'] ?? [];
 
     $candidates = [];
 
-    foreach ($features as $item) {
+    foreach ($results as $item) {
         $apn = $item['apn'] ?? $item['parcelNumber'] ?? null;
         if (empty($apn)) continue;
 
