@@ -1214,13 +1214,7 @@ function resolveGeographyFromAddress(string $address): ?array {
         'matchedAddress' => $result['matchedAddress'] ?? null
     ];
 }
-// 🧾 lookupMaricopaParcel — fetch Maricopa parcel data
-/**
- * Lookup Maricopa County parcel candidates
- *
- * @return array Always returns array of candidates (0, 1, or many)
- *               Empty array = no match
- */
+// 🧾 Robust Maricopa Parcel Lookup — Multiple fallback strategies
 function lookupMaricopaParcel(string $address): array {
 
     if (empty(trim($address))) {
@@ -1231,11 +1225,11 @@ function lookupMaricopaParcel(string $address): array {
 
     $cleanAddress = str_replace(', USA', '', trim($address));
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
-    $upperAddr = strtoupper($cleanAddress);
+    $upperClean   = strtoupper($cleanAddress);
 
     $candidates = [];
 
-    // Strategy 1: Loose full address search (most reliable)
+    // Strategy 1: Loose full PHYSICAL_ADDRESS match (most effective)
     $safeAddr = str_replace("'", "''", $cleanAddress);
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
 
@@ -1247,6 +1241,28 @@ function lookupMaricopaParcel(string $address): array {
     ]);
 
     $response = @file_get_contents("{$url}?{$params}");
+
+    // Strategy 2: Fallback — search only street number + name
+    if (!$response || empty($data['features'] ?? [])) {
+        if (preg_match('/^(\d+)\s+(.+?)(?:,\s*|\s+)([A-Za-z\s]+)/i', $cleanAddress, $m)) {
+            $num  = trim($m[1]);
+            $name = trim($m[2]);
+            $city = trim($m[3] ?? '');
+
+            $where = "PHYSICAL_STREET_NUM = '{$num}'";
+            if ($name) $where .= " AND UPPER(PHYSICAL_STREET_NAME) LIKE UPPER('%{$name}%')";
+            if ($city) $where .= " AND UPPER(PHYSICAL_CITY) LIKE UPPER('%{$city}%')";
+
+            $params = http_build_query([
+                'where'     => $where,
+                'outFields' => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+                'f'         => 'json'
+            ]);
+
+            $response = @file_get_contents("{$url}?{$params}");
+        }
+    }
+
     if ($response) {
         $data = json_decode($response, true);
         $features = $data['features'] ?? [];
@@ -1271,7 +1287,7 @@ function lookupMaricopaParcel(string $address): array {
         }
     }
 
-    // Deduplicate + sort
+    // Deduplicate by APN
     $unique = [];
     foreach ($candidates as $c) {
         $key = $c['apnRaw'];
@@ -1283,7 +1299,7 @@ function lookupMaricopaParcel(string $address): array {
     $candidates = array_values($unique);
     usort($candidates, fn($a, $b) => $b['confidence'] <=> $a['confidence']);
 
-    error_log("[lookupMaricopaParcel] Found " . count($candidates) . " candidates for: $cleanAddress");
+    error_log("[lookupMaricopaParcel] Found " . count($candidates) . " candidate(s) for: {$cleanAddress}");
 
     return $candidates;
 }
