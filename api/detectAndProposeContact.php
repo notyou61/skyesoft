@@ -211,7 +211,7 @@ EOT;
 
 #endregion
 
-#region SECTION 05 — 🤖 AI Request Execution
+#region SECTION 05 — 🤖 AI Request Execution (Enhanced)
 
 if (!function_exists('skyesoftLoadEnv')) {
     require_once __DIR__ . '/utils/envLoader.php';
@@ -223,13 +223,62 @@ $googleApiKey = skyesoftGetEnv("GOOGLE_MAPS_BACKEND_API_KEY") ?? getenv("GOOGLE_
 
 if (!$apiKey) jsonError('OPENAI_API_KEY not found');
 
+$systemPrompt = <<<EOT
+You are an extremely precise structured data extraction engine for business contact signatures.
+
+CRITICAL RULES:
+- Respond ONLY with valid JSON. No explanations, no markdown.
+- Output MUST begin with { and end with }
+- Never omit any field. Use "" for unknown values.
+- Be very careful with addresses — street suffixes like Ave, St, Rd, Dr, Blvd are NOT suites.
+
+Return EXACTLY this structure:
+
+{
+  "intent": "contact_proposal",
+  "confidence": 85,
+  "parsed": {
+    "entity": { "name": "" },
+    "contact": {
+      "firstName": "",
+      "lastName": "",
+      "salutation": "",
+      "title": "",
+      "primaryPhone": "",
+      "email": ""
+    },
+    "location": {
+      "address": "",
+      "city": "",
+      "state": "",
+      "zip": "",
+      "suite": "",           // Only real suites: #120, Ste 208, Unit B, etc.
+      "locationName": ""
+    }
+  }
+}
+EOT;
+
+$extractionPrompt = <<<EOT
+Extract structured contact data from the following signature text.
+
+IMPORTANT:
+- If a suite/unit is present, put ONLY the suite in the "suite" field.
+- Do NOT put street suffixes (Ave, St, Rd, Dr, etc.) into the suite field.
+- Extract the clean street address without the suite.
+
+TEXT:
+{$rawInput}
+EOT;
+
 $payload = [
     "model"       => "gpt-4o-mini",
     "messages"    => [
         ["role" => "system", "content" => $systemPrompt],
         ["role" => "user",   "content" => $extractionPrompt]
     ],
-    "temperature" => 0
+    "temperature" => 0,
+    "max_tokens"  => 600
 ];
 
 $ch = curl_init("https://api.openai.com/v1/chat/completions");
@@ -238,7 +287,7 @@ curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER     => ["Content-Type: application/json", "Authorization: Bearer $apiKey"],
     CURLOPT_POSTFIELDS     => json_encode($payload),
-    CURLOPT_TIMEOUT        => 20
+    CURLOPT_TIMEOUT        => 25
 ]);
 
 $response = curl_exec($ch);
@@ -286,6 +335,7 @@ $parsed = array_replace_recursive([
         'city' => '',
         'state' => '',
         'zip' => '',
+        'suite' => '',           // ← NEW
         'locationName' => ''
     ]
 ], $parsed ?? []);
