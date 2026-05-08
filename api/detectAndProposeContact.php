@@ -1214,62 +1214,42 @@ function lookupMaricopaParcel(string $address): array {
         return [];
     }
 
-    $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
-
     $cleanAddress = str_replace(', USA', '', trim($address));
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
 
-    error_log("[Parcel DEBUG] Searching: " . $cleanAddress);
+    error_log("[Parcel DEBUG] Official API search for: " . $cleanAddress);
+
+    $searchUrl = "https://mcassessor.maricopa.gov/search/property/?q=" . urlencode($cleanAddress);
+
+    $response = @file_get_contents($searchUrl);
+
+    if (!$response) {
+        error_log("[Parcel DEBUG] Official API HTTP request failed");
+        return [];
+    }
+
+    $data = json_decode($response, true);
+    $features = $data['results'] ?? $data['property'] ?? [];
 
     $candidates = [];
 
-    // Strategy 1: Broad PHYSICAL_ADDRESS search (most reliable for this address)
-    $safeAddr = str_replace("'", "''", $cleanAddress);
-    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
+    foreach ($features as $item) {
+        $apn = $item['apn'] ?? $item['parcelNumber'] ?? null;
+        if (empty($apn)) continue;
 
-    $params = http_build_query([
-        'where'          => $where,
-        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-        'returnGeometry' => 'false',
-        'f'              => 'json'
-    ]);
+        $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($apn));
 
-    $response = @file_get_contents("{$url}?{$params}");
-
-    if ($response) {
-        $data = json_decode($response, true);
-        $features = $data['features'] ?? [];
-
-        error_log("[Parcel DEBUG] Broad search returned " . count($features) . " features");
-
-        foreach ($features as $feature) {
-            $attr = $feature['attributes'] ?? [];
-            if (empty($attr['APN'])) continue;
-
-            $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
-            $dbAddress = trim($attr['PHYSICAL_ADDRESS'] ?? '');
-
-            $score = 75;
-
-            // Strong bonus for exact match on the target address
-            if (stripos($dbAddress, '3145 N 33RD AVE') !== false) {
-                $score = 98;
-            }
-
-            $candidates[] = [
-                'apnRaw'       => $apnRaw,
-                'apnDisplay'   => formatAPN($apnRaw),
-                'address'      => $dbAddress,
-                'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
-                'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
-                'owner'        => trim($attr['OWNER_NAME'] ?? ''),
-                'source'       => 'mca_arcgis_mcassessor',
-                'confidence'   => $score,
-                'matchedInput' => $cleanAddress
-            ];
-        }
-    } else {
-        error_log("[Parcel DEBUG] HTTP request failed");
+        $candidates[] = [
+            'apnRaw'       => $apnRaw,
+            'apnDisplay'   => formatAPN($apnRaw),
+            'address'      => trim($item['address'] ?? $item['propertyAddress'] ?? ''),
+            'city'         => trim($item['city'] ?? 'PHOENIX'),
+            'jurisdiction' => trim($item['jurisdiction'] ?? 'PHOENIX'),
+            'owner'        => trim($item['owner'] ?? ''),
+            'source'       => 'mcassessor_official_api',
+            'confidence'   => 95,
+            'matchedInput' => $cleanAddress
+        ];
     }
 
     // Deduplicate + sort
@@ -1281,7 +1261,7 @@ function lookupMaricopaParcel(string $address): array {
     $candidates = array_values($unique);
     usort($candidates, fn($a, $b) => $b['confidence'] <=> $a['confidence']);
 
-    error_log("[lookupMaricopaParcel] FINAL COUNT: " . count($candidates) . " candidates for: " . $cleanAddress);
+    error_log("[lookupMaricopaParcel] Official API returned " . count($candidates) . " candidate(s) for: " . $cleanAddress);
 
     return $candidates;
 }
