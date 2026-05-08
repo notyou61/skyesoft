@@ -597,18 +597,21 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
 // -------------------------------------------------
 $rawInputText = !empty($rawInputOriginal) ? $rawInputOriginal : $rawInput;
 
-$suiteSources = [
-    $rawInputText,                          // Best source (original signature)
-    $parsed['location']['address'] ?? '', 
-    $fullAddress ?? ''
-];
+$locationSuite = $parsed['location']['suite'] ?? '';   // Prefer AI result if available
 
-$locationSuite = '';
-foreach ($suiteSources as $source) {
-    if (!empty($source) && ($suite = extractSuite($source))) {
-        $locationSuite = $suite;
-        break;
+if (empty($locationSuite)) {
+    foreach ([$rawInputText, $parsed['location']['address'] ?? '', $fullAddress ?? ''] as $source) {
+        if (!empty($source) && ($suite = extractSuite($source))) {
+            $locationSuite = $suite;
+            break;
+        }
     }
+}
+
+// FINAL SAFETY OVERRIDE — Block known false positives
+if (in_array($locationSuite, ['#VE', '#AVE', '#ST', '#DR', '#RD', '#LN', '#CT', '#BLVD'], true)) {
+    error_log("[SUITE-OVERRIDE] Forced empty suite due to false positive: $locationSuite");
+    $locationSuite = '';
 }
 
 // Authoritative field
@@ -1803,8 +1806,7 @@ function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
 }
 // 🏢 extractSuite — extract suite/unit from address
 /**
- * Extract suite/unit ONLY when a clear indicator is present.
- * Prevents false positives like "Ave", "Dr", "Blvd", etc.
+ * Ultra-strict suite extractor — aggressively blocks street suffixes
  */
 function extractSuite(string $input): ?string {
 
@@ -1812,28 +1814,24 @@ function extractSuite(string $input): ?string {
         return null;
     }
 
+    // Only match when there is a clear suite indicator
     $patterns = [
-        // Explicit indicators + number/letter
-        '/\b(?:Suite|Ste|Unit|Apt|Apartment|Bldg|Building|Rm|Room|#)\s*([A-Za-z0-9\-]+)\b/i',
-        
-        // Hash-first (very common in signatures)
+        '/\b(Suite|Ste|Unit|Apt|Apartment|Bldg|Building|Rm|Room|Lot|Fl|Floor)\s*([A-Za-z0-9\-]+)\b/i',
         '/#\s*([A-Za-z0-9\-]+)\b/i',
-        
-        // Parenthetical (occasional)
         '/\((?:Suite|Ste|Unit|#)?\s*([A-Za-z0-9\-]+)\)/i'
     ];
 
     foreach ($patterns as $pattern) {
         if (preg_match($pattern, $input, $m)) {
-            $suite = strtoupper(trim($m[1]));
+            $suite = strtoupper(trim($m[1] ?? $m[2] ?? ''));
 
-            // Safety reject list - common street suffixes
-            $reject = ['AVE', 'AV', 'ST', 'RD', 'DR', 'LN', 'CT', 'BLVD', 'PL', 'WAY', 'CIR', 'TER', 'PKWY'];
-            if (in_array($suite, $reject)) {
-                continue;
+            // Hard block common street suffixes anywhere in the match
+            if (preg_match('/\b(AVE?|AV|ST|RD|DR|LN|CT|BLVD|PL|WAY|CIR|TER|PKWY|HWY)\b/i', $suite)) {
+                error_log("[SUITE-BLOCKED] Rejected street suffix '$suite' from: " . substr($input, 0, 150));
+                return null;
             }
 
-            return '#' . $suite;   // Consistent storage format
+            return '#' . $suite;
         }
     }
 
