@@ -675,7 +675,7 @@ $parcel = null;
 $parcelDetails = [];
 $jurisdiction = null;
 
-error_log("[MARICOPA-DEBUG] === START ===");
+error_log("[MARICOPA-DEBUG] === SECTION 9 MARICOPA BLOCK IS NOW ACTIVE ===");
 error_log("[MARICOPA-DEBUG] county='$county' | state='$state' | isMaricopa=" . ($isMaricopa ? 'YES' : 'NO'));
 error_log("[MARICOPA-DEBUG] address='" . ($parsed['location']['address'] ?? 'EMPTY') . "'");
 
@@ -700,7 +700,6 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
             $parcel = $bestMatch;
             $locationValidation['parcelStatus'] = 'resolved';
             $locationValidation['apnResolved'] = true;
-            error_log("[Parcel] Auto-selected single match: " . $bestMatch['apnDisplay']);
         } else {
             $locationValidation['parcelStatus'] = 'multiple_matches';
             $locationValidation['apnResolved'] = false;
@@ -713,7 +712,6 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
     } else {
         $locationValidation['issues'][] = 'parcel_lookup_failed';
         $locationValidation['parcelStatus'] = 'not_found';
-        error_log("[Parcel] No candidates returned");
     }
 } else {
     error_log("[MARICOPA-DEBUG] Skipped — not Maricopa or no address");
