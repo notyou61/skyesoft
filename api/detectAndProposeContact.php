@@ -1,4 +1,5 @@
 <?php
+error_log("=== DETECTANDPROPOSECONTACT.PHP V1.5.5 WITH PARCEL DEBUG IS LIVE ===");
 declare(strict_types=1);
 
 // =====================================================
