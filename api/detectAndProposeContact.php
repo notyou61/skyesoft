@@ -700,16 +700,19 @@ $jurisdiction = null;
 
 error_log("[MARICOPA-DEBUG] === SECTION 9 MARICOPA BLOCK IS NOW ACTIVE ===");
 error_log("[MARICOPA-DEBUG] county='$county' | state='$state' | isMaricopa=" . ($isMaricopa ? 'YES' : 'NO'));
-error_log("[MARICOPA-DEBUG] address='" . ($parsed['location']['address'] ?? 'EMPTY') . "'");
+error_log("[MARICOPA-DEBUG] raw address='" . ($parsed['location']['address'] ?? 'EMPTY') . "'");
 
 if ($isMaricopa && !empty($parsed['location']['address'])) {
 
-    $parcelLookupAddress = $parsed['location']['formattedAddress'] 
-        ?? $parsed['location']['address'] 
-        ?? $fullAddress 
-        ?? '';
+    // CLEAN STREET-ONLY ADDRESS (critical for ArcGIS)
+    $parcelLookupAddress = trim($parsed['location']['address']);
 
-    error_log("[MARICOPA-DEBUG] Calling lookupMaricopaParcel with: " . $parcelLookupAddress);
+    // Remove any remaining city/state/zip that might have leaked in
+    $parcelLookupAddress = preg_replace('/\b(Phoenix|AZ|85017|\d{5})\b/i', '', $parcelLookupAddress);
+    $parcelLookupAddress = preg_replace('/\s+/', ' ', $parcelLookupAddress);
+    $parcelLookupAddress = trim($parcelLookupAddress);
+
+    error_log("[MARICOPA-DEBUG] Cleaned lookup address: " . $parcelLookupAddress);
 
     $parcelDetails = lookupMaricopaParcel($parcelLookupAddress);
 
