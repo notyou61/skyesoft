@@ -850,6 +850,79 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
 }
 
 // -------------------------------------------------
+// RESOLUTION MAP — Robust, Dynamic & Detailed (No ?? operators)
+// -------------------------------------------------
+$fullName = '';
+if (isset($parsed['contact']['firstName'])) $fullName .= $parsed['contact']['firstName'];
+if (isset($parsed['contact']['lastName']))  $fullName .= ' ' . $parsed['contact']['lastName'];
+$fullName = trim($fullName);
+
+$entityName = isset($parsed['entity']['name']) ? trim($parsed['entity']['name']) : '';
+
+$proposedAddress = isset($parsed['location']['address']) ? trim($parsed['location']['address']) : '';
+if (!empty($parsed['location']['city']))  $proposedAddress .= ', ' . $parsed['location']['city'];
+if (!empty($parsed['location']['state'])) $proposedAddress .= ' ' . $parsed['location']['state'];
+if (!empty($parsed['location']['zip']))   $proposedAddress .= ' ' . $parsed['location']['zip'];
+
+if (empty($fullName))       $fullName       = 'this contact';
+if (empty($entityName))     $entityName     = 'the entity';
+if (empty($proposedAddress)) $proposedAddress = 'the provided address';
+
+// List of missing fields for 'incomplete' message
+$missingFields = !empty($dataIntegrityStatus['missing']) 
+    ? implode(', ', $dataIntegrityStatus['missing']) 
+    : 'required fields';
+
+$resolutionMap = [
+    'possible_duplicate_contact' => "A contact named {$fullName} already exists for {$entityName}. " .
+                                    "Review the existing record and decide whether to update it or create this as a new contact.",
+
+'duplicate_contact' =>
+    'This is an exact duplicate of an existing contact for ' . $entityName . '. ' .
+    'Existing record: ' . $fullName . ' - ' .
+    (isset($parsed['contact']['contactTitle'])
+        ? $parsed['contact']['contactTitle']
+        : 'No title') . ', ' .
+    (isset($parsed['contact']['contactPrimaryPhone'])
+        ? $parsed['contact']['contactPrimaryPhone']
+        : 'No phone') . ', ' .
+    (isset($parsed['contact']['contactEmail'])
+        ? $parsed['contact']['contactEmail']
+        : 'No email') . '. ' .
+    'No new record will be created.',
+
+'multiple_parcels' => 
+    'This address matches ' .
+    count((is_array($parcelDetails)) ? $parcelDetails : array()) .
+    ' parcels. Please select the correct parcel from the list above before proceeding.',
+
+    'existing_location'          => "This location already exists in the system for {$entityName}. " .
+                                    "Existing location: " . (isset($parsed['location']['locationName']) ? $parsed['location']['locationName'] : 'the same address') . " " .
+                                    "({$proposedAddress}). " .
+                                    "You can link this contact to the existing location record.",
+
+    'parcel_lookup_failed'       => "Unable to automatically resolve the parcel for the address \"{$proposedAddress}\". " .
+                                    "Please manually verify or enter the APN and jurisdiction.",
+
+    'invalid_location'           => "The address \"{$proposedAddress}\" could not be validated. " .
+                                    "Please correct the address details and resubmit the proposal.",
+
+    'usps_invalid_address'       => "The address \"{$proposedAddress}\" is not deliverable according to USPS. " .
+                                    "Please correct the address and resubmit.",
+
+    'usps_secondary_required'    => "The address \"{$proposedAddress}\" requires a suite or unit number. " .
+                                    "Please add the missing suite/unit and resubmit.",
+
+    'incomplete'                 => "The proposed contact is **incomplete**. " .
+                                    "Missing fields: {$missingFields}. " .
+                                    "A valid Proposed Contact requires full name, at least one contact method (email or phone), " .
+                                    "entity name, and a validated location (address + city + state). " .
+                                    "Please complete the missing information and resubmit.",
+
+    'default'                    => "This proposal requires review. Please check the issues listed above and take the appropriate action."
+];
+
+// -------------------------------------------------
 // Scalable ISSUES array
 // -------------------------------------------------
 $issues = [];
@@ -967,28 +1040,39 @@ $meta = [
 ];
 
 // -------------------------------------------------
-// Smart Narrative Prompt (prioritized + accurate)
+// Smart Narrative with Call to Action
 // -------------------------------------------------
+$nextActions = [];
+foreach ($issues as $issue) {
+    if (isset($resolutionMap[$issue])) {
+        $nextActions[] = $resolutionMap[$issue];
+    }
+}
+$nextActionText = $nextActions ? implode(' ', $nextActions) : 'Review all issues above and take the appropriate action.';
+
 $narrativePrompt = 'You are summarizing a structured contact proposal result for a business system. ' .
 'ONLY use the facts below. Do not infer business context. ' .
 'Prioritize issues in this order: duplicate contact first, then parcel/location issues. ' .
 'Never link duplicate contact to Maricopa County requirements.' . "\n\n" .
 'DATA:' . "\n" .
-'- Entity: ' . trim($parsed['entity']['name'] ?? '') . "\n" .
-'- Contact: ' . trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? '')) . "\n" .
+'- Entity: ' . $entityName . "\n" .
+'- Contact: ' . $fullName . "\n" .
 '- Location: ' . trim($parsed['location']['locationName'] ?? '') . "\n" .
 '- Parcel Status: ' . ($locationValidation['parcelStatus'] ?? 'unknown') . "\n" .
 '- Decision: ' . ($decision['pcmStatus'] ?? 'new_elc') . "\n" .
 '- Issues: ' . $issuesText . "\n\n" .
-'Write a clear 2-3 sentence explanation for the user. Return ONLY plain text.';
+'Write a clear 2-3 sentence explanation. End with a specific call to action for the user. Return ONLY plain text.';
 
 $apiKey = skyesoftGetEnv("OPENAI_API_KEY") ?: getenv("OPENAI_API_KEY");
 $narrativeText = '';
 if ($apiKey && function_exists('callOpenAI')) {
     $narrativeText = callOpenAI($narrativePrompt, $apiKey);
 }
+
+// Fallback using resolutionMap
 if (empty($narrativeText)) {
-    $narrativeText = 'Contact proposal requires review due to: ' . $issuesText;
+    $narrativeText = "The contact proposal for {$entityName}, represented by {$fullName}, has the following issues: {$issuesText}. " .
+                     $nextActionText;
 }
 
 // -------------------------------------------------
