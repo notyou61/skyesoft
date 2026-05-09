@@ -616,18 +616,33 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
 }
 
 // -------------------------------------------------
-// 🔑 SUITE EXTRACTION — STRICT & SAFE (RAW INPUT IS SOURCE OF TRUTH)
+// 🔑 SUITE NORMALIZATION — AI IS AUTHORITATIVE
 // -------------------------------------------------
-$rawInputText = !empty($rawInputOriginal) ? $rawInputOriginal : $rawInput;
+$locationSuite = '';
 
-$locationSuite = $parsed['location']['suite'] ?? '';   // AI result if available
+if (
+    isset($parsed['location']['suite']) &&
+    trim($parsed['location']['suite']) !== ''
+) {
 
-if (empty($locationSuite)) {
-    foreach ([$rawInputText, $parsed['location']['address'] ?? '', $fullAddress ?? ''] as $source) {
-        if (!empty($source) && ($suite = extractSuite($source))) {
-            $locationSuite = $suite;
-            break;
-        }
+    $locationSuite = trim($parsed['location']['suite']);
+
+    // Remove leading suite markers
+    $locationSuite = preg_replace(
+        '/^(SUITE|STE|UNIT|APT|APARTMENT|#)\s*/i',
+        '',
+        $locationSuite
+    );
+
+    $locationSuite = strtoupper(trim($locationSuite));
+
+    // Safety validation
+    if (
+        preg_match('/^[A-Z0-9\-]{1,8}$/', $locationSuite)
+    ) {
+        $locationSuite = '#' . $locationSuite;
+    } else {
+        $locationSuite = '';
     }
 }
 
@@ -646,7 +661,7 @@ $parsed['location']['locationAddressSuite'] = $locationSuite;
 // -------------------------------------------------
 if (in_array($locationSuite, ['#VE', '#AVE', '#ST', '#DR', '#RD', '#LN', '#CT', '#BLVD'], true)) {
     error_log("[SUITE-WARNING] Suspicious suite extraction blocked: '{$locationSuite}' from input: " 
-              . substr($rawInputText, 0, 120));
+              . substr($rawInputOriginal, 0, 120));
 }
 
 
@@ -670,7 +685,7 @@ $address = explode(',', $address)[0] ?? $address;
 $address = trim(preg_replace('/\s+/', ' ', $address));
 
 $parsed['location']['address'] = $address;
-$parsed['location']['locationAddressRaw'] = $rawInputText;
+$parsed['location']['locationAddressRaw'] = $rawInputOriginal;
 
 
 // -------------------------------------------------
@@ -1870,47 +1885,6 @@ function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $row ? (int)$row['entityId'] : null;
-}
-// 🏢 extractSuite — extract suite/unit from address
-/**
- * Ultra-strict suite extractor — aggressively blocks street suffixes
- */
-/**
- * Extremely strict suite extractor — blocks ALL street-related false positives
- */
-function extractSuite(string $input): ?string {
-
-    if (empty(trim($input))) {
-        return null;
-    }
-
-    // Only these very explicit patterns
-    $patterns = [
-        '/\b(Suite|Ste\.?|Unit|Apt|Apartment|Bldg|Building|Rm|Room|Lot|Fl|Floor)\s*([A-Za-z0-9\-]+)\b/i',
-        '/#\s*([A-Za-z0-9\-]+)\b/i',
-        '/\((?:Suite|Ste|Unit|#)?\s*([A-Za-z0-9\-]+)\)/i'
-    ];
-
-    foreach ($patterns as $pattern) {
-        if (preg_match($pattern, $input, $m)) {
-            $suite = strtoupper(trim($m[1] ?? $m[2] ?? ''));
-
-            // Extremely aggressive rejection of anything that looks like a street suffix
-            if (preg_match('/\b(AVE?|AV|ST|RD|DR|LN|CT|BLVD|PL|WAY|CIR|TER|PKWY|HWY|STE|SUITE)\b/i', $suite)) {
-                error_log("[SUITE-BLOCKED] Rejected suspicious suite: '$suite' from: " . substr($input, 0, 120));
-                return null;
-            }
-
-            // Additional length + content safety
-            if (strlen($suite) < 1 || strlen($suite) > 8) {
-                return null;
-            }
-
-            return '#' . $suite;
-        }
-    }
-
-    return null;
 }
 // 📞 extractPhoneExtension — extract phone extension
 function extractPhoneExtension(string $input): ?string {
