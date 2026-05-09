@@ -810,7 +810,7 @@ if (!$pdo) {
 
 #endregion
 
-#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — Scalable Issues)
+#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — Scalable Issues + Smart Narrative)
 
 $duplicate        = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
@@ -850,49 +850,93 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
 }
 
 // -------------------------------------------------
-// Scalable ISSUES array — lists EVERY active problem
+// Scalable ISSUES array
 // -------------------------------------------------
 $issues = [];
 
 if (!empty($dataIntegrityStatus['missing'])) {
     $issues = array_merge($issues, $dataIntegrityStatus['missing']);
 }
-
 if (!empty($locationValidation['issues'])) {
     $issues = array_merge($issues, $locationValidation['issues']);
 }
 
-if ($duplicate['status'] === 'exact') {
-    $issues[] = 'duplicate_contact';
-} elseif ($duplicate['status'] === 'possible') {
-    $issues[] = 'possible_duplicate_contact';
-}
+if ($duplicate['status'] === 'exact') $issues[] = 'duplicate_contact';
+elseif ($duplicate['status'] === 'possible') $issues[] = 'possible_duplicate_contact';
 
-if ($locationDuplicate['status'] === 'exact') {
-    $issues[] = 'existing_location';
-} elseif ($locationDuplicate['status'] === 'possible') {
-    $issues[] = 'possible_location_duplicate';
-}
+if ($locationDuplicate['status'] === 'exact') $issues[] = 'existing_location';
+elseif ($locationDuplicate['status'] === 'possible') $issues[] = 'possible_location_duplicate';
 
-if ($locationValidation['parcelStatus'] === 'multiple_matches') {
-    $issues[] = 'multiple_parcels';
-} elseif ($locationValidation['parcelStatus'] === 'not_found') {
-    $issues[] = 'parcel_lookup_failed';
-}
+if ($locationValidation['parcelStatus'] === 'multiple_matches') $issues[] = 'multiple_parcels';
+elseif ($locationValidation['parcelStatus'] === 'not_found') $issues[] = 'parcel_lookup_failed';
 
 $dpv = $parsed['location']['locationDpvCode'] ?? null;
 if ($dpv === 'N') $issues[] = 'usps_invalid_address';
 if ($dpv === 'D') $issues[] = 'usps_secondary_required';
 
-$issues = array_values(array_unique($issues));   // remove duplicates
+$issues = array_values(array_unique($issues));
 $issuesText = $issues ? implode(', ', $issues) : 'none';
 
 // -------------------------------------------------
-// Clean Data + Meta + Narrative (unchanged except issues)
+// Clean DB-Ready Data
 // -------------------------------------------------
 $selectedParcel = $parcel ?? null;
 
-$data = [ /* your existing $data block — unchanged */ ];
+$data = [
+    'entity' => [
+        'entityName' => trim($parsed['entity']['name'] ?? '')
+    ],
+    'location' => [
+        'locationName'            => trim($parsed['location']['locationName'] ?? ''),
+        'locationPlaceId'         => $parsed['location']['locationPlaceId'] ?? null,
+        'locationLatitude'        => $parsed['location']['latitude'] ?? null,
+        'locationLongitude'       => $parsed['location']['longitude'] ?? null,
+        'locationAddress'         => preg_replace('/\s+/', ' ', trim($parsed['location']['address'] ?? '')),
+        'locationAddressSuite'    => $parsed['location']['locationAddressSuite'] ?? '',
+        'locationCity'            => trim($parsed['location']['city'] ?? ''),
+        'locationState'           => strtoupper(trim($parsed['location']['state'] ?? '')),
+        'locationZip'             => trim($parsed['location']['zip'] ?? ''),
+        'locationCounty'          => trim($parsed['location']['county'] ?? ''),
+        'locationCountyFips'      => trim($parsed['location']['countyFips'] ?? ''),
+
+        'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
+        'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
+        'locationJurisdiction'    => $jurisdiction ?? null,
+
+        'parcelDetails'   => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
+        'parcelResolution' => [
+            'status'                => $locationValidation['parcelStatus'] ?? 'none',
+            'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
+            'selectedApn'           => $parcel['apnRaw'] ?? null,
+            'candidateCount'        => count($parcelDetails),
+            'resolutionMethod'      => $parcel ? 'auto_best_match' : ($locationValidation['parcelStatus'] === 'multiple_matches' ? 'user_required' : null),
+            'bestMatchConfidence'   => $parcelDetails[0]['confidence'] ?? null
+        ],
+
+        'locationIsBilling'  => 0,
+        'locationNote'       => '',
+        'locationZone'       => '',
+        'locationIsNotValid' => 0
+    ],
+    'contact' => [
+        'contactSalutation'            => $parsed['contact']['salutation'] ?? null,
+        'contactFirstName'             => trim($parsed['contact']['firstName'] ?? ''),
+        'contactLastName'              => trim($parsed['contact']['lastName'] ?? ''),
+        'contactTitle'                 => trim($parsed['contact']['title'] ?? ''),
+        'contactIsBilling'             => 0,
+        'contactPrimaryPhone'          => $parsed['contact']['primaryPhone'] ?? '',
+        'contactPrimaryPhoneRaw'       => $parsed['contact']['primaryPhoneRaw'] ?? '',
+        'contactPrimaryPhoneExtension' => trim($parsed['contact']['primaryPhoneExtension'] ?? ''),
+        'contactSecondaryPhone'        => $parsed['contact']['secondaryPhone'] ?? '',
+        'contactSecondaryPhoneRaw'     => $parsed['contact']['secondaryPhoneRaw'] ?? '',
+        'contactEmail'                 => $parsed['contact']['email'] ?? '',
+        'contactEmailNormalized'       => $parsed['contact']['emailNormalized'] ?? '',
+        'contactEmailConfirmed'        => 0,
+        'contactNote'                  => '',
+        'contactIsNotValid'            => 0,
+        'isActive'                     => 1
+    ]
+];
 
 $decision = [
     'ready'     => $pcm['readyForCommit'] ?? false,
@@ -900,25 +944,42 @@ $decision = [
     'pcmStatus' => $pcm['status'] ?? 'unknown'
 ];
 
-$meta = [ /* your existing $meta block — unchanged */ ];
+$meta = [
+    'inferences' => [
+        'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
+        'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
+        'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false,
+    ],
+    'enrichments' => array_values(array_filter([
+        !empty($parsed['location']['locationPlaceId']) ? 'google_geocode' : null,
+        !empty($parsed['location']['county']) ? 'census_county' : null,
+        !empty($selectedParcel) ? 'maricopa_parcel' : null,
+    ])),
+    'flags' => [
+        'isMaricopa'           => $locationValidation['isMaricopa'] ?? false,
+        'locationValid'        => $locationValidation['status'] ?? 'invalid',
+        'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',
+        'apnResolved'          => $locationValidation['apnResolved'] ?? false,
+        'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false,
+        'uspsValidated'        => !empty($dpv),
+        'dpvCode'              => $dpv
+    ]
+];
 
-// AI NARRATIVE — now mentions all issues
-$entityName  = trim($parsed['entity']['name'] ?? '');
-$fullName    = trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? ''));
-$locationStr = trim($parsed['location']['locationName'] ?? '');
-
-$narrativePrompt = 'You are summarizing a structured contact proposal result for a business system. ' .
-'ONLY use the facts below. Do not infer business context.' . "\n\n" .
-'RULES:' . "\n" .
-'- Maricopa County requires valid parcel (APN) + jurisdiction for commit.' . "\n" .
-'- Be concise and factual.' . "\n\n" .
+// -------------------------------------------------
+// Smart Narrative Prompt (prioritizes issues correctly)
+// -------------------------------------------------
+$narrativePrompt = 'You are summarizing a structured contact proposal result. ' .
+'ONLY use the facts below. Do not infer business context. ' .
+'Prioritize issues in this order: duplicate contact first, then parcel/location issues. ' .
+'Never link duplicate contact to Maricopa County requirements. ' .
+'Be concise, factual, and actionable.' . "\n\n" .
 'DATA:' . "\n" .
-'- Entity: ' . $entityName . "\n" .
-'- Contact: ' . $fullName . "\n" .
-'- Location: ' . $locationStr . "\n" .
+'- Entity: ' . trim($parsed['entity']['name'] ?? '') . "\n" .
+'- Contact: ' . trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? '')) . "\n" .
+'- Location: ' . trim($parsed['location']['locationName'] ?? '') . "\n" .
 '- Parcel Status: ' . ($locationValidation['parcelStatus'] ?? 'unknown') . "\n" .
 '- Decision: ' . ($decision['pcmStatus'] ?? 'new_elc') . "\n" .
-'- Ready: ' . ($decision['ready'] ? 'true' : 'false') . "\n" .
 '- Issues: ' . $issuesText . "\n\n" .
 'Write a clear 2-3 sentence explanation for the user. Return ONLY plain text.';
 
@@ -928,9 +989,7 @@ if ($apiKey && function_exists('callOpenAI')) {
     $narrativeText = callOpenAI($narrativePrompt, $apiKey);
 }
 if (empty($narrativeText)) {
-    $narrativeText = ($decision['ready'] ?? false)
-        ? 'Contact proposal is complete and ready for database insertion.'
-        : 'Contact proposal requires review due to missing or invalid information.';
+    $narrativeText = 'Contact proposal requires review due to: ' . $issuesText;
 }
 
 // -------------------------------------------------
@@ -948,7 +1007,7 @@ echo json_encode([
     'data'          => $data,
     'decision'      => $decision,
     'meta'          => $meta,
-    'issues'        => $issues,           // ← Now fully scalable
+    'issues'        => $issues,
     'narrative'     => ['text' => $narrativeText],
     'activitySessionId' => $activitySessionId
 ], JSON_UNESCAPED_SLASHES);
