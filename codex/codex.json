@@ -5049,6 +5049,18 @@
                         "Fork evaluation must occur before any database write."
                     ]
                 },
+                "decisionArchitecture": {
+                    "description": "Defines workflow authority and supporting diagnostics.",
+                    "rules": [
+                        "decision is the authoritative workflow controller for all UI behavior.",
+                        "decision.action defines the next required operational step.",
+                        "decision.ready determines commit eligibility.",
+                        "decision.pcmStatus defines the current relational workflow state.",
+                        "issues are subordinate diagnostic metadata and must not independently drive workflow behavior.",
+                        "Workflow ambiguity states (multiple_parcels, existing_location, possible_duplicate_contact) are not considered errors unless accompanied by blocking validation failures.",
+                        "UI flow must primarily follow decision, not issues."
+                    ]
+                },
                 "actionLogging": {
                     "description": "Defines required logging behavior for all contact creation events.",
                     "rules": [
@@ -5525,6 +5537,79 @@
                         "PCM must be deterministic and finite.",
                         "PCM must drive resolutionOutcome mapping."
                     ]
+                    },
+                    "decisionArchitecture": {
+                        "description": "Defines the authoritative workflow control model for all proposed contact intake operations. Decision architecture governs UI behavior, workflow progression, commit eligibility, and operational next-step resolution independently from diagnostic metadata.",
+                        "principles": [
+                            "decision is the authoritative workflow controller for all proposed contact processing.",
+                            "decision.action defines the next required operational step.",
+                            "decision.ready determines whether commit eligibility may proceed.",
+                            "decision.pcmStatus defines the current relational workflow state.",
+                            "issues are subordinate diagnostic metadata and must not independently drive workflow behavior.",
+                            "Workflow ambiguity states are not considered failures unless accompanied by blocking validation conditions.",
+                            "The UI must primarily follow decision state, not issues."
+                        ],
+                        "decisionObjectModel": {
+                            "requiredFields": [
+                                "ready",
+                                "action",
+                                "pcmStatus"
+                            ],
+                            "optionalFields": [
+                                "nextStep",
+                                "blocking",
+                                "reviewRequired",
+                                "userSelectionRequired"
+                            ]
+                        },
+                        "workflowStates": {
+                            "description": "Defines operational workflow states that may require user interaction but are not considered validation failures.",
+                            "states": [
+                                "multiple_parcels",
+                                "existing_location",
+                                "possible_duplicate_contact",
+                                "existing_entity_new_contact",
+                                "existing_entity_existing_location_new_contact"
+                            ],
+                            "rules": [
+                                "Workflow states are considered valid operational branches.",
+                                "Workflow states must not automatically populate issues unless an actual validation failure exists.",
+                                "Workflow states may require user interaction prior to commit.",
+                                "Workflow states must remain deterministic and finite."
+                            ]
+                        },
+                        "issueModel": {
+                            "description": "Defines diagnostic and validation conditions supporting decision evaluation.",
+                            "blockingIssues": [
+                                "invalid_location",
+                                "parcel_lookup_failed",
+                                "usps_invalid_address",
+                                "missing_required_fields",
+                                "location_validation_failed",
+                                "geocode_failed"
+                            ],
+                            "nonBlockingIssues": [
+                                "low_confidence_match",
+                                "secondary_duplicate_match",
+                                "jurisdiction_mismatch"
+                            ],
+                            "rules": [
+                                "Issues are diagnostic metadata and not authoritative workflow controllers.",
+                                "Blocking issues prevent commit eligibility.",
+                                "Non-blocking issues may allow workflow continuation with review.",
+                                "Issues must explain WHY a workflow decision occurred.",
+                                "Issues must never independently determine UI workflow state."
+                            ]
+                        },
+                        "uiBehaviorRules": {
+                            "rules": [
+                                "UI progression must follow decision.action.",
+                                "UI commit eligibility must follow decision.ready.",
+                                "UI review states must follow decision.pcmStatus.",
+                                "UI messaging may incorporate issues for diagnostic explanation.",
+                                "UI must not infer workflow state directly from issues."
+                            ]
+                        }
                     },
                     "resolutionOutcomeMapping": {
                     "description": "Maps PCM and validation results to Codex resolutionOutcome.",
