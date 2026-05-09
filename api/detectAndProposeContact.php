@@ -910,7 +910,7 @@ $resolutionMap = [
 $actionMapping = [
     'new_elc'                    => ['actionTypeId' => 1, 'actionName' => 'contact.proposal.accept'],
     'existing_location'          => ['actionTypeId' => 2, 'actionName' => 'contact.proposal.link'],
-    'multiple_parcels'           => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],   // review → acknowledge
+    'multiple_parcels'           => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
     'possible_duplicate_contact' => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
     'possible_location_duplicate'=> ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
     'duplicate_contact'          => ['actionTypeId' => 6, 'actionName' => 'contact.proposal.reject_duplicate'],
@@ -964,7 +964,7 @@ $resolution = [
     'issues' => [
         'blocking'     => array_values(array_filter($issues, fn($i) => in_array($i, ['duplicate_contact','invalid_location','usps_invalid_address','incomplete','parcel_lookup_failed']))),
         'review'       => array_values(array_filter($issues, fn($i) => in_array($i, ['possible_duplicate_contact','multiple_parcels','existing_location','possible_location_duplicate']))),
-        'informational'=> $meta['enrichments'] ?? []
+        'informational'=> []
     ],
 
     'narratives' => [
@@ -984,7 +984,7 @@ foreach ($resolution['issues']['blocking'] as $issue) {
 }
 
 // -------------------------------------------------
-// Clean DB-Ready Data + Meta (restored full population)
+// Clean DB-Ready Data + Meta (census fields now restored)
 // -------------------------------------------------
 $selectedParcel = $parcel ?? null;
 
@@ -1000,13 +1000,16 @@ $data = [
         'locationCity'            => trim($parsed['location']['city'] ?? ''),
         'locationState'           => strtoupper(trim($parsed['location']['state'] ?? '')),
         'locationZip'             => trim($parsed['location']['zip'] ?? ''),
+        // ── Census fields restored here ──
         'locationCounty'          => trim($parsed['location']['county'] ?? ''),
         'locationCountyFips'      => trim($parsed['location']['countyFips'] ?? ''),
+        // ─────────────────────────────────
         'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
         'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
         'locationJurisdiction'    => $jurisdiction ?? null,
-        'parcelDetails'           => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
-        'parcelResolution'        => [
+
+        'parcelDetails'   => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
+        'parcelResolution' => [
             'status'                => $locationValidation['parcelStatus'] ?? 'none',
             'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
             'selectedApn'           => $parcel['apnRaw'] ?? null,
@@ -1014,6 +1017,7 @@ $data = [
             'resolutionMethod'      => $parcel ? 'auto_best_match' : ($locationValidation['parcelStatus'] === 'multiple_matches' ? 'user_required' : null),
             'bestMatchConfidence'   => $parcelDetails[0]['confidence'] ?? null
         ],
+
         'locationIsBilling'  => 0,
         'locationNote'       => '',
         'locationZone'       => '',
