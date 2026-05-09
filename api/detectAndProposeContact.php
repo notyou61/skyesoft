@@ -967,13 +967,12 @@ $meta = [
 ];
 
 // -------------------------------------------------
-// Smart Narrative Prompt (prioritizes issues correctly)
+// Smart Narrative Prompt (prioritized + accurate)
 // -------------------------------------------------
-$narrativePrompt = 'You are summarizing a structured contact proposal result. ' .
+$narrativePrompt = 'You are summarizing a structured contact proposal result for a business system. ' .
 'ONLY use the facts below. Do not infer business context. ' .
 'Prioritize issues in this order: duplicate contact first, then parcel/location issues. ' .
-'Never link duplicate contact to Maricopa County requirements. ' .
-'Be concise, factual, and actionable.' . "\n\n" .
+'Never link duplicate contact to Maricopa County requirements.' . "\n\n" .
 'DATA:' . "\n" .
 '- Entity: ' . trim($parsed['entity']['name'] ?? '') . "\n" .
 '- Contact: ' . trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? '')) . "\n" .
