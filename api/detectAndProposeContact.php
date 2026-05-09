@@ -816,50 +816,43 @@ $duplicate        = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 
 // -------------------------------------------------
-// 🚫 AUTHORITATIVE PCM DECISION (Updated EOP Logic)
+// 🚫 AUTHORITATIVE PCM DECISION (FINAL — respects multiple_matches)
 // -------------------------------------------------
-// Priority: Integrity → Contact Dup → Location Dup → New/Parcel Rules
-
 if ($dataIntegrityStatus['status'] !== 'complete') {
-
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
 
 } elseif ($duplicate['status'] === 'exact') {
-
     $pcm = ['status' => 'duplicate_contact', 'readyForCommit' => false, 'requiresReview' => false, 'blocksCommit' => true, 'action' => 'reject_duplicate'];
 
 } elseif ($duplicate['status'] === 'possible') {
-
     $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
 
 } elseif ($locationDuplicate['status'] === 'exact') {
-
-    // EXISTING LOCATION TAKES PRECEDENCE — even if parcel lookup fails this time
-    $pcm = [
-        'status'          => 'existing_location',
-        'readyForCommit'  => true,
-        'requiresReview'  => false,
-        'blocksCommit'    => false,
-        'action'          => 'link_existing_location'
-    ];
+    $pcm = ['status' => 'existing_location', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'link_existing_location'];
 
 } elseif ($locationDuplicate['status'] === 'possible') {
-
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
+
+} elseif ($locationValidation['parcelStatus'] === 'multiple_matches') {
+    // ← THIS IS THE NEW CASE WE WANT
+    $pcm = [
+        'status'          => 'multiple_parcels',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => false,
+        'action'          => 'confirm_parcel'          // UI will show parcel picker
+    ];
 
 } elseif (
     isset($locationValidation['parcelStatus']) && 
     $locationValidation['parcelStatus'] !== 'resolved'
 ) {
-
     $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
 
 } elseif ($locationValidation['isMaricopa'] && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
-
     $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
 
 } else {
-
     $pcm = ['status' => 'new_elc', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'insert_new'];
 }
 
