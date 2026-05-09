@@ -906,22 +906,42 @@ $resolutionMap = [
 ];
 
 // -------------------------------------------------
-// Scalable ISSUES array (diagnostic only — workflow states removed)
+// Scalable ISSUES array — diagnostic failures only
 // -------------------------------------------------
 $issues = [];
 
 if (!empty($dataIntegrityStatus['missing'])) {
     $issues = array_merge($issues, $dataIntegrityStatus['missing']);
 }
+
 if (!empty($locationValidation['issues'])) {
     $issues = array_merge($issues, $locationValidation['issues']);
 }
 
-// Only true diagnostic issues go here
+// Duplicate contact is a blocking diagnostic
+if ($duplicate['status'] === 'exact') {
+    $issues[] = 'duplicate_contact';
+}
+
+// Possible duplicate may be diagnostic/review, but not a hard failure
+if ($duplicate['status'] === 'possible') {
+    $issues[] = 'possible_duplicate_contact';
+}
+
+// True location failures
+if (($locationValidation['parcelStatus'] ?? '') === 'not_found') {
+    $issues[] = 'parcel_lookup_failed';
+}
+
 $dpv = $parsed['location']['locationDpvCode'] ?? null;
-if ($dpv === 'N') $issues[] = 'usps_invalid_address';
-if ($dpv === 'D') $issues[] = 'usps_secondary_required';
-if ($locationValidation['parcelStatus'] === 'not_found') $issues[] = 'parcel_lookup_failed';
+
+if ($dpv === 'N') {
+    $issues[] = 'usps_invalid_address';
+}
+
+if ($dpv === 'D') {
+    $issues[] = 'usps_secondary_required';
+}
 
 $issues = array_values(array_unique($issues));
 $issuesText = $issues ? implode(', ', $issues) : 'none';
@@ -991,7 +1011,31 @@ $decision = [
     'pcmStatus' => $pcm['status'] ?? 'unknown'
 ];
 
-$meta = [ /* your existing meta block — unchanged */ ];
+// -------------------------------------------------
+// Meta — restore object structure
+// -------------------------------------------------
+$meta = [
+    'inferences' => [
+        'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
+        'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
+        'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false
+    ],
+    'enrichments' => array_values(array_filter([
+        !empty($parsed['location']['locationPlaceId']) ? 'google_geocode' : null,
+        !empty($parsed['location']['county']) ? 'census_county' : null,
+        !empty($parcelDetails) ? 'maricopa_parcel' : null,
+        !empty($dpv) ? 'smarty_usps' : null
+    ])),
+    'flags' => [
+        'isMaricopa'           => $locationValidation['isMaricopa'] ?? false,
+        'locationValid'        => $locationValidation['status'] ?? 'invalid',
+        'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',
+        'apnResolved'          => $locationValidation['apnResolved'] ?? false,
+        'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false,
+        'uspsValidated'        => !empty($dpv),
+        'dpvCode'              => $dpv
+    ]
+];
 
 // -------------------------------------------------
 // Smart Narrative with Call to Action
