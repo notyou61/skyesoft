@@ -5051,14 +5051,26 @@
                 },
                 "decisionArchitecture": {
                     "description": "Defines workflow authority and supporting diagnostics.",
+                    "reviewIssues": [
+                        "existing_location",
+                        "entity_location_mismatch",
+                        "multiple_parcels",
+                        "possible_duplicate_contact",
+                        "secondary_duplicate_match"
+                    ],                    
                     "rules": [
                         "decision is the authoritative workflow controller for all UI behavior.",
                         "decision.action defines the next required operational step.",
                         "decision.ready determines commit eligibility.",
                         "decision.pcmStatus defines the current relational workflow state.",
-                        "issues are subordinate diagnostic metadata and must not independently drive workflow behavior.",
-                        "Workflow ambiguity states (multiple_parcels, existing_location, possible_duplicate_contact) are not considered errors unless accompanied by blocking validation failures.",
-                        "UI flow must primarily follow decision, not issues."
+                        "issues are subordinate operational and diagnostic metadata and must not independently drive workflow behavior.",
+                        "Workflow ambiguity states (multiple_parcels, existing_location, possible_duplicate_contact) are not considered blocking failures unless accompanied by validation failures.",
+                        "Workflow ambiguity states may still generate reviewIssues requiring operational visibility or user confirmation.",
+                        "Blocking issues prevent commit eligibility. Review issues do not.",
+                        "Review issues may coexist with valid workflow states.",
+                        "UI flow must primarily follow decision, not issues.",
+                        "UI messaging may incorporate issues and reviewIssues for diagnostic explanation and operational guidance.",
+                        "Issues and reviewIssues must never independently override decision.action or decision.ready."
                     ]
                 },
                 "actionLogging": {
