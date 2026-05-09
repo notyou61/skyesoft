@@ -837,6 +837,7 @@ $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 // -------------------------------------------------
 // DECISION ARCHITECTURE — Authoritative workflow controller
 // -------------------------------------------------
+// Priority order (per ELC rules): duplicates → existing location → parcel ambiguity
 if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
 
@@ -984,7 +985,7 @@ foreach ($resolution['issues']['blocking'] as $issue) {
 }
 
 // -------------------------------------------------
-// ROBUST COUNTY/FIPS MAPPING (only change — matches your Census function)
+// ROBUST COUNTY/FIPS MAPPING (matches your Census function)
 // -------------------------------------------------
 $county     = trim($parsed['location']['county'] ?? '');
 $countyFips = trim($parsed['location']['countyFips'] ?? '');
@@ -1011,8 +1012,7 @@ $data = [
         'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
         'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
         'locationJurisdiction'    => $jurisdiction ?? null,
-
-        'parcelDetails'   => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
+        'parcelDetails'           => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
         'parcelResolution' => [
             'status'                => $locationValidation['parcelStatus'] ?? 'none',
             'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
@@ -1021,7 +1021,6 @@ $data = [
             'resolutionMethod'      => $parcel ? 'auto_best_match' : ($locationValidation['parcelStatus'] === 'multiple_matches' ? 'user_required' : null),
             'bestMatchConfidence'   => $parcelDetails[0]['confidence'] ?? null
         ],
-
         'locationIsBilling'  => 0,
         'locationNote'       => '',
         'locationZone'       => '',
