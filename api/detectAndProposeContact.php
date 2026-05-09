@@ -984,7 +984,13 @@ foreach ($resolution['issues']['blocking'] as $issue) {
 }
 
 // -------------------------------------------------
-// Clean DB-Ready Data + Meta (census fields now restored)
+// ROBUST COUNTY/FIPS MAPPING (this is the ONLY change)
+// -------------------------------------------------
+$county     = trim($parsed['location']['locationCounty'] ?? $parsed['location']['county'] ?? $parsed['location']['countyName'] ?? '');
+$countyFips = trim($parsed['location']['locationCountyFips'] ?? $parsed['location']['countyFips'] ?? '');
+
+// -------------------------------------------------
+// Clean DB-Ready Data
 // -------------------------------------------------
 $selectedParcel = $parcel ?? null;
 
@@ -1000,10 +1006,8 @@ $data = [
         'locationCity'            => trim($parsed['location']['city'] ?? ''),
         'locationState'           => strtoupper(trim($parsed['location']['state'] ?? '')),
         'locationZip'             => trim($parsed['location']['zip'] ?? ''),
-        // ── Census fields restored here ──
-        'locationCounty'          => trim($parsed['location']['county'] ?? ''),
-        'locationCountyFips'      => trim($parsed['location']['countyFips'] ?? ''),
-        // ─────────────────────────────────
+        'locationCounty'          => $county,           // ← fixed
+        'locationCountyFips'      => $countyFips,       // ← fixed
         'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
         'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
         'locationJurisdiction'    => $jurisdiction ?? null,
@@ -1051,7 +1055,7 @@ $meta = [
     ],
     'enrichments' => array_values(array_filter([
         !empty($parsed['location']['locationPlaceId']) ? 'google_geocode' : null,
-        !empty($parsed['location']['county']) ? 'census_county' : null,
+        !empty($county) ? 'census_county' : null,
         !empty($parcelDetails) ? 'maricopa_parcel' : null,
         !empty($dpv) ? 'smarty_usps' : null
     ])),
