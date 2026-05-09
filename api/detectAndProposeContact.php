@@ -810,14 +810,15 @@ if (!$pdo) {
 
 #endregion
 
-#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (Multi-Parcel Ready — FINAL)
+#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — Correct Priority)
 
 $duplicate        = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 
 // -------------------------------------------------
-// 🚫 AUTHORITATIVE PCM DECISION (FINAL — respects multiple_matches)
+// 🚫 AUTHORITATIVE PCM DECISION — STRICT PRIORITY (per contactCreationELC)
 // -------------------------------------------------
+// Order: Integrity → Exact Duplicate → Possible Duplicate → Location Duplicate → Multiple Parcels → Other Location Issues → New
 if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
 
@@ -834,6 +835,7 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
 
 } elseif ($locationValidation['parcelStatus'] === 'multiple_matches') {
+    // ← Multiple parcels only reached if no duplicate issues
     $pcm = [
         'status'          => 'multiple_parcels',
         'readyForCommit'  => false,
@@ -958,7 +960,7 @@ $meta = [
     ]
 ];
 
-// AI NARRATIVE
+// AI NARRATIVE — now reflects multiple issues
 $entityName  = trim($parsed['entity']['name'] ?? '');
 $fullName    = trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? ''));
 $locationStr = trim($parsed['location']['locationName'] ?? '');
