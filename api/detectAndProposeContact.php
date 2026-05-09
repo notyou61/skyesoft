@@ -810,7 +810,7 @@ if (!$pdo) {
 
 #endregion
 
-#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (Multi-Parcel Ready v2)
+#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (Multi-Parcel Ready — FINAL)
 
 $duplicate        = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
@@ -834,13 +834,13 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
 
 } elseif ($locationValidation['parcelStatus'] === 'multiple_matches') {
-    // ← THIS IS THE NEW CASE WE WANT
+    // ← THIS IS THE KEY CASE WE WANTED
     $pcm = [
         'status'          => 'multiple_parcels',
         'readyForCommit'  => false,
         'requiresReview'  => true,
         'blocksCommit'    => false,
-        'action'          => 'confirm_parcel'          // UI will show parcel picker
+        'action'          => 'confirm_parcel'   // UI shows parcel picker
     ];
 
 } elseif (
@@ -859,12 +859,10 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
 // -------------------------------------------------
 // 📦 Clean DB-Ready Data — MULTI-PARCEL AWARE
 // -------------------------------------------------
-$selectedParcel = $parcel ?? null;   // Backward compatibility: primary/selected parcel
+$selectedParcel = $parcel ?? null;
 
 $data = [
-    'entity' => [
-        'entityName' => trim($parsed['entity']['name'] ?? '')
-    ],
+    'entity' => ['entityName' => trim($parsed['entity']['name'] ?? '')],
     'location' => [
         'locationName'            => trim($parsed['location']['locationName'] ?? ''),
         'locationPlaceId'         => $parsed['location']['locationPlaceId'] ?? null,
@@ -878,17 +876,17 @@ $data = [
         'locationCounty'          => trim($parsed['location']['county'] ?? ''),
         'locationCountyFips'      => trim($parsed['location']['countyFips'] ?? ''),
 
-        // === OPERATIONAL SUMMARY (Backward Compatible) ===
+        // Operational summary
         'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
         'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
         'locationJurisdiction'    => $jurisdiction ?? null,
 
-        // === GIS / MULTI-PARCEL INTELLIGENCE ===
+        // GIS intelligence
         'parcelDetails'   => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
         'parcelResolution' => [
             'status'                => $locationValidation['parcelStatus'] ?? 'none',
             'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
-            'selectedApn'           => $parcel['apnRaw'] ?? null,           // null when multiple
+            'selectedApn'           => $parcel['apnRaw'] ?? null,
             'candidateCount'        => count($parcelDetails),
             'resolutionMethod'      => $parcel ? 'auto_best_match' : ($locationValidation['parcelStatus'] === 'multiple_matches' ? 'user_required' : null),
             'bestMatchConfidence'   => $parcelDetails[0]['confidence'] ?? null
@@ -899,24 +897,7 @@ $data = [
         'locationZone'       => '',
         'locationIsNotValid' => 0
     ],
-    'contact' => [
-        'contactSalutation'            => $parsed['contact']['salutation'] ?? null,
-        'contactFirstName'             => trim($parsed['contact']['firstName'] ?? ''),
-        'contactLastName'              => trim($parsed['contact']['lastName'] ?? ''),
-        'contactTitle'                 => trim($parsed['contact']['title'] ?? ''),
-        'contactIsBilling'             => 0,
-        'contactPrimaryPhone'          => $parsed['contact']['primaryPhone'] ?? '',
-        'contactPrimaryPhoneRaw'       => $parsed['contact']['primaryPhoneRaw'] ?? '',
-        'contactPrimaryPhoneExtension' => trim($parsed['contact']['primaryPhoneExtension'] ?? ''),
-        'contactSecondaryPhone'        => $parsed['contact']['secondaryPhone'] ?? '',
-        'contactSecondaryPhoneRaw'     => $parsed['contact']['secondaryPhoneRaw'] ?? '',
-        'contactEmail'                 => $parsed['contact']['email'] ?? '',
-        'contactEmailNormalized'       => $parsed['contact']['emailNormalized'] ?? '',
-        'contactEmailConfirmed'        => 0,
-        'contactNote'                  => '',
-        'contactIsNotValid'            => 0,
-        'isActive'                     => 1
-    ]
+    'contact' => [ /* unchanged — keep your existing contact block */ ]
 ];
 
 // -------------------------------------------------
