@@ -905,24 +905,24 @@ $resolutionMap = [
 ];
 
 // -------------------------------------------------
-// DETERMINISTIC DECISION MAPPING
+// DETERMINISTIC DECISION MAPPING (aligned to tblActionTypes)
 // -------------------------------------------------
 $actionMapping = [
-    'new_elc'                    => ['actionTypeId' => 1,  'actionName' => 'contact.proposal.accept'],
-    'existing_location'          => ['actionTypeId' => 2,  'actionName' => 'contact.proposal.link'],
-    'multiple_parcels'           => ['actionTypeId' => 3,  'actionName' => 'contact.proposal.confirm_parcel'],
-    'possible_duplicate_contact' => ['actionTypeId' => 4,  'actionName' => 'contact.proposal.confirm_duplicate'],
-    'possible_location_duplicate'=> ['actionTypeId' => 5,  'actionName' => 'contact.proposal.confirm_location'],
-    'duplicate_contact'          => ['actionTypeId' => 6,  'actionName' => 'contact.proposal.reject_duplicate'],
-    'invalid_location'           => ['actionTypeId' => 7,  'actionName' => 'contact.proposal.resolve_location'],
-    'incomplete'                 => ['actionTypeId' => 8,  'actionName' => 'contact.proposal.acknowledge'],
-    'default'                    => ['actionTypeId' => 8,  'actionName' => 'contact.proposal.acknowledge'],
+    'new_elc'                    => ['actionTypeId' => 1, 'actionName' => 'contact.proposal.accept'],
+    'existing_location'          => ['actionTypeId' => 2, 'actionName' => 'contact.proposal.link'],
+    'multiple_parcels'           => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],   // review → acknowledge
+    'possible_duplicate_contact' => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
+    'possible_location_duplicate'=> ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
+    'duplicate_contact'          => ['actionTypeId' => 6, 'actionName' => 'contact.proposal.reject_duplicate'],
+    'invalid_location'           => ['actionTypeId' => 7, 'actionName' => 'contact.proposal.resolve_location'],
+    'incomplete'                 => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
+    'default'                    => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
 ];
 
 $action = $actionMapping[$pcm['status']] ?? $actionMapping['default'];
 
 // -------------------------------------------------
-// Scalable ISSUES array — diagnostic failures only (declared FIRST)
+// Scalable ISSUES array — diagnostic failures only
 // -------------------------------------------------
 $issues = [];
 
@@ -933,15 +933,10 @@ if (!empty($locationValidation['issues'])) {
     $issues = array_merge($issues, $locationValidation['issues']);
 }
 
-if ($duplicate['status'] === 'exact') {
-    $issues[] = 'duplicate_contact';
-}
-if ($duplicate['status'] === 'possible') {
-    $issues[] = 'possible_duplicate_contact';
-}
-if (($locationValidation['parcelStatus'] ?? '') === 'not_found') {
-    $issues[] = 'parcel_lookup_failed';
-}
+if ($duplicate['status'] === 'exact') $issues[] = 'duplicate_contact';
+if ($duplicate['status'] === 'possible') $issues[] = 'possible_duplicate_contact';
+if (($locationValidation['parcelStatus'] ?? '') === 'not_found') $issues[] = 'parcel_lookup_failed';
+if (($locationValidation['parcelStatus'] ?? '') === 'multiple_matches') $issues[] = 'multiple_parcels';
 
 $dpv = $parsed['location']['locationDpvCode'] ?? null;
 if ($dpv === 'N') $issues[] = 'usps_invalid_address';
@@ -969,11 +964,11 @@ $resolution = [
     'issues' => [
         'blocking'     => array_values(array_filter($issues, fn($i) => in_array($i, ['duplicate_contact','invalid_location','usps_invalid_address','incomplete','parcel_lookup_failed']))),
         'review'       => array_values(array_filter($issues, fn($i) => in_array($i, ['possible_duplicate_contact','multiple_parcels','existing_location','possible_location_duplicate']))),
-        'informational'=> []   // populated from enrichments below
+        'informational'=> $meta['enrichments'] ?? []
     ],
 
     'narratives' => [
-        'decision'     => ["This proposal is ready for the {$action['actionName']} transaction."],
+        'decision'     => ["This proposal requires operational review before acceptance."],
         'blocking'     => [],
         'review'       => [],
         'informational'=> []
@@ -989,14 +984,59 @@ foreach ($resolution['issues']['blocking'] as $issue) {
 }
 
 // -------------------------------------------------
-// Clean DB-Ready Data + Meta (now declared BEFORE final output)
+// Clean DB-Ready Data + Meta (restored full population)
 // -------------------------------------------------
 $selectedParcel = $parcel ?? null;
 
 $data = [
     'entity' => ['entityName' => trim($parsed['entity']['name'] ?? '')],
-    'location' => [ /* ... your full location block ... */ ],   // keep your existing location array here
-    'contact' => [ /* ... your full contact block ... */ ]      // keep your existing contact array here
+    'location' => [
+        'locationName'            => trim($parsed['location']['locationName'] ?? ''),
+        'locationPlaceId'         => $parsed['location']['locationPlaceId'] ?? null,
+        'locationLatitude'        => $parsed['location']['latitude'] ?? null,
+        'locationLongitude'       => $parsed['location']['longitude'] ?? null,
+        'locationAddress'         => preg_replace('/\s+/', ' ', trim($parsed['location']['address'] ?? '')),
+        'locationAddressSuite'    => $parsed['location']['locationAddressSuite'] ?? '',
+        'locationCity'            => trim($parsed['location']['city'] ?? ''),
+        'locationState'           => strtoupper(trim($parsed['location']['state'] ?? '')),
+        'locationZip'             => trim($parsed['location']['zip'] ?? ''),
+        'locationCounty'          => trim($parsed['location']['county'] ?? ''),
+        'locationCountyFips'      => trim($parsed['location']['countyFips'] ?? ''),
+        'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
+        'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
+        'locationJurisdiction'    => $jurisdiction ?? null,
+        'parcelDetails'           => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
+        'parcelResolution'        => [
+            'status'                => $locationValidation['parcelStatus'] ?? 'none',
+            'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
+            'selectedApn'           => $parcel['apnRaw'] ?? null,
+            'candidateCount'        => count($parcelDetails ?? []),
+            'resolutionMethod'      => $parcel ? 'auto_best_match' : ($locationValidation['parcelStatus'] === 'multiple_matches' ? 'user_required' : null),
+            'bestMatchConfidence'   => $parcelDetails[0]['confidence'] ?? null
+        ],
+        'locationIsBilling'  => 0,
+        'locationNote'       => '',
+        'locationZone'       => '',
+        'locationIsNotValid' => 0
+    ],
+    'contact' => [
+        'contactSalutation'            => $parsed['contact']['salutation'] ?? null,
+        'contactFirstName'             => trim($parsed['contact']['firstName'] ?? ''),
+        'contactLastName'              => trim($parsed['contact']['lastName'] ?? ''),
+        'contactTitle'                 => trim($parsed['contact']['title'] ?? ''),
+        'contactIsBilling'             => 0,
+        'contactPrimaryPhone'          => $parsed['contact']['primaryPhone'] ?? '',
+        'contactPrimaryPhoneRaw'       => $parsed['contact']['primaryPhoneRaw'] ?? '',
+        'contactPrimaryPhoneExtension' => trim($parsed['contact']['primaryPhoneExtension'] ?? ''),
+        'contactSecondaryPhone'        => $parsed['contact']['secondaryPhone'] ?? '',
+        'contactSecondaryPhoneRaw'     => $parsed['contact']['secondaryPhoneRaw'] ?? '',
+        'contactEmail'                 => $parsed['contact']['email'] ?? '',
+        'contactEmailNormalized'       => $parsed['contact']['emailNormalized'] ?? '',
+        'contactEmailConfirmed'        => 0,
+        'contactNote'                  => '',
+        'contactIsNotValid'            => 0,
+        'isActive'                     => 1
+    ]
 ];
 
 $meta = [
@@ -1022,7 +1062,6 @@ $meta = [
     ]
 ];
 
-// Add enrichments to informational issues
 $resolution['issues']['informational'] = $meta['enrichments'];
 
 // -------------------------------------------------
