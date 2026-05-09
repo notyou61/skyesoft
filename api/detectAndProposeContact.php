@@ -834,13 +834,12 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
 
 } elseif ($locationValidation['parcelStatus'] === 'multiple_matches') {
-    // ← THIS IS THE KEY CASE WE WANTED
     $pcm = [
         'status'          => 'multiple_parcels',
         'readyForCommit'  => false,
         'requiresReview'  => true,
         'blocksCommit'    => false,
-        'action'          => 'confirm_parcel'   // UI shows parcel picker
+        'action'          => 'confirm_parcel'
     ];
 
 } elseif (
@@ -862,7 +861,9 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
 $selectedParcel = $parcel ?? null;
 
 $data = [
-    'entity' => ['entityName' => trim($parsed['entity']['name'] ?? '')],
+    'entity' => [
+        'entityName' => trim($parsed['entity']['name'] ?? '')
+    ],
     'location' => [
         'locationName'            => trim($parsed['location']['locationName'] ?? ''),
         'locationPlaceId'         => $parsed['location']['locationPlaceId'] ?? null,
@@ -876,12 +877,10 @@ $data = [
         'locationCounty'          => trim($parsed['location']['county'] ?? ''),
         'locationCountyFips'      => trim($parsed['location']['countyFips'] ?? ''),
 
-        // Operational summary
         'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
         'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
         'locationJurisdiction'    => $jurisdiction ?? null,
 
-        // GIS intelligence
         'parcelDetails'   => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
         'parcelResolution' => [
             'status'                => $locationValidation['parcelStatus'] ?? 'none',
@@ -897,11 +896,28 @@ $data = [
         'locationZone'       => '',
         'locationIsNotValid' => 0
     ],
-    'contact' => [ /* unchanged — keep your existing contact block */ ]
+    'contact' => [
+        'contactSalutation'            => $parsed['contact']['salutation'] ?? null,
+        'contactFirstName'             => trim($parsed['contact']['firstName'] ?? ''),
+        'contactLastName'              => trim($parsed['contact']['lastName'] ?? ''),
+        'contactTitle'                 => trim($parsed['contact']['title'] ?? ''),
+        'contactIsBilling'             => 0,
+        'contactPrimaryPhone'          => $parsed['contact']['primaryPhone'] ?? '',
+        'contactPrimaryPhoneRaw'       => $parsed['contact']['primaryPhoneRaw'] ?? '',
+        'contactPrimaryPhoneExtension' => trim($parsed['contact']['primaryPhoneExtension'] ?? ''),
+        'contactSecondaryPhone'        => $parsed['contact']['secondaryPhone'] ?? '',
+        'contactSecondaryPhoneRaw'     => $parsed['contact']['secondaryPhoneRaw'] ?? '',
+        'contactEmail'                 => $parsed['contact']['email'] ?? '',
+        'contactEmailNormalized'       => $parsed['contact']['emailNormalized'] ?? '',
+        'contactEmailConfirmed'        => 0,
+        'contactNote'                  => '',
+        'contactIsNotValid'            => 0,
+        'isActive'                     => 1
+    ]
 ];
 
 // -------------------------------------------------
-// Decision + Meta + Issues
+// Decision + Meta + Issues + Narrative
 // -------------------------------------------------
 $decision = [
     'ready'     => $pcm['readyForCommit'] ?? false,
@@ -914,14 +930,12 @@ $issues = array_values(array_unique(array_merge(
     $locationValidation['issues'] ?? []
 )));
 
-// Smarty DPV
 $dpv = $parsed['location']['locationDpvCode'] ?? null;
 if ($dpv === 'N') $issues[] = 'usps_invalid_address';
 if ($dpv === 'D') $issues[] = 'usps_secondary_required';
 $issues = array_values(array_unique($issues));
 $issuesText = $issues ? implode(', ', $issues) : 'none';
 
-// Meta
 $meta = [
     'inferences' => [
         'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
@@ -944,38 +958,7 @@ $meta = [
     ]
 ];
 
-// -------------------------------------------------
-// Smarty Override (Decision Layer)
-// -------------------------------------------------
-$parcelResolved = $locationValidation['apnResolved'] ?? false;
-if (!$parcelResolved && $dpv) {
-    switch ($dpv) {
-        case 'Y':
-            $decision['ready']     = true;
-            $decision['action']    = 'insert_new';
-            $decision['pcmStatus'] = 'valid_usps';
-            break;
-        case 'D':
-            $decision['ready']     = false;
-            $decision['action']    = 'request_suite';
-            $decision['pcmStatus'] = 'needs_suite';
-            break;
-        case 'S':
-            $decision['ready']     = false;
-            $decision['action']    = 'request_secondary';
-            $decision['pcmStatus'] = 'missing_secondary';
-            break;
-        case 'N':
-        default:
-            $decision['ready']     = false;
-            $decision['action']    = 'invalid_address';
-            $decision['pcmStatus'] = 'invalid_location';
-    }
-}
-
-// -------------------------------------------------
 // AI NARRATIVE
-// -------------------------------------------------
 $entityName  = trim($parsed['entity']['name'] ?? '');
 $fullName    = trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? ''));
 $locationStr = trim($parsed['location']['locationName'] ?? '');
@@ -989,14 +972,11 @@ $narrativePrompt = 'You are summarizing a structured contact proposal result for
 '- Entity: ' . $entityName . "\n" .
 '- Contact: ' . $fullName . "\n" .
 '- Location: ' . $locationStr . "\n" .
-'- Location Status: ' . ($locationValidation['status'] ?? 'unknown_status') . "\n" .
 '- Parcel Status: ' . ($locationValidation['parcelStatus'] ?? 'unknown') . "\n" .
-'- APN Resolved: ' . ($locationValidation['apnResolved'] ? 'true' : 'false') . "\n" .
-'- Jurisdiction Resolved: ' . ($locationValidation['jurisdictionResolved'] ? 'true' : 'false') . "\n" .
 '- Decision: ' . ($decision['pcmStatus'] ?? 'new_elc') . "\n" .
 '- Ready: ' . ($decision['ready'] ? 'true' : 'false') . "\n" .
 '- Issues: ' . $issuesText . "\n\n" .
-'Write a clear 2-3 sentence explanation for the user. Explain successes, issues, and next steps. Return ONLY plain text.';
+'Write a clear 2-3 sentence explanation for the user. Return ONLY plain text.';
 
 $apiKey = skyesoftGetEnv("OPENAI_API_KEY") ?: getenv("OPENAI_API_KEY");
 $narrativeText = '';
@@ -1010,7 +990,7 @@ if (empty($narrativeText)) {
 }
 
 // -------------------------------------------------
-// FINAL OUTPUT — Authoritative structure only
+// FINAL OUTPUT
 // -------------------------------------------------
 echo json_encode([
     'status'        => 'proposed',
@@ -1021,7 +1001,7 @@ echo json_encode([
         'type'     => 'signature',
         'source'   => 'skyebot_prompt'
     ],
-    'data'          => $data,           // ← parcelDetails lives here: data.location.parcelDetails
+    'data'          => $data,
     'decision'      => $decision,
     'meta'          => $meta,
     'issues'        => $issues,
