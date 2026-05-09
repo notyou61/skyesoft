@@ -984,10 +984,10 @@ foreach ($resolution['issues']['blocking'] as $issue) {
 }
 
 // -------------------------------------------------
-// ROBUST COUNTY/FIPS MAPPING (this is the ONLY change)
+// ROBUST COUNTY/FIPS MAPPING (only change — matches your Census function)
 // -------------------------------------------------
-$county     = trim($parsed['location']['locationCounty'] ?? $parsed['location']['county'] ?? $parsed['location']['countyName'] ?? '');
-$countyFips = trim($parsed['location']['locationCountyFips'] ?? $parsed['location']['countyFips'] ?? '');
+$county     = trim($parsed['location']['county'] ?? '');
+$countyFips = trim($parsed['location']['countyFips'] ?? '');
 
 // -------------------------------------------------
 // Clean DB-Ready Data
@@ -1006,8 +1006,8 @@ $data = [
         'locationCity'            => trim($parsed['location']['city'] ?? ''),
         'locationState'           => strtoupper(trim($parsed['location']['state'] ?? '')),
         'locationZip'             => trim($parsed['location']['zip'] ?? ''),
-        'locationCounty'          => $county,           // ← fixed
-        'locationCountyFips'      => $countyFips,       // ← fixed
+        'locationCounty'          => $county,
+        'locationCountyFips'      => $countyFips,
         'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
         'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
         'locationJurisdiction'    => $jurisdiction ?? null,
