@@ -652,47 +652,33 @@ $parsed['location']['locationAddressRaw'] = $rawInputOriginal;
 // -------------------------------------------------
 // CENSUS GEO + RELIABLE GOOGLE FALLBACK (FINAL VERSION)
 // -------------------------------------------------
-$geoAddress = trim(
-    $parsed['location']['formattedAddress'] 
-    ?? ($parsed['location']['address'] . ', ' 
-       . ($parsed['location']['city'] ?? '') . ', ' 
-       . ($parsed['location']['state'] ?? '') . ' ' 
-       . ($parsed['location']['zip'] ?? ''))
-);
+$geoAddress = trim($parsed['location']['formattedAddress'] 
+              ?? ($parsed['location']['address'] . ', ' 
+                 . ($parsed['location']['city'] ?? '') . ', ' 
+                 . ($parsed['location']['state'] ?? '') . ' ' 
+                 . ($parsed['location']['zip'] ?? '')));
 
-error_log("🔍 Geography enrichment for: " . $geoAddress);
-
-// Try Census
 $geo = resolveGeographyFromAddress($geoAddress);
 
 if ($geo && !empty($geo['county'])) {
     $parsed['location']['county']     = trim($geo['county']);
     $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';
-    error_log("✅ Census success: {$geo['county']} ({$geo['countyFips']})");
-
-} 
-// Google Fallback (now works because we store addressComponents)
-elseif (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
+} elseif (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
     foreach ($parsed['location']['googleData']['addressComponents'] as $comp) {
         if (in_array('administrative_area_level_2', $comp['types'] ?? [])) {
-            $countyName = trim(str_replace(' County', '', $comp['long_name']));
-            $parsed['location']['county']     = $countyName;
+            $parsed['location']['county']     = trim(str_replace(' County', '', $comp['long_name']));
             $parsed['location']['countyFips'] = '04013';
-            error_log("✅ Google fallback: {$countyName} (04013)");
             break;
         }
     }
-} 
-// Last resort
-elseif (($locationValidation['isMaricopa'] ?? false) === true) {
+} elseif (($locationValidation['isMaricopa'] ?? false) === true) {
     $parsed['location']['county']     = 'Maricopa';
     $parsed['location']['countyFips'] = '04013';
-    error_log("✅ isMaricopa flag fallback");
 }
 
-// Guarantee fields are never empty
+// Final guarantee
 $parsed['location']['county']     = $parsed['location']['county'] ?? '';
-$parsed['location']['countyFips'] = $parsed['location']['countyFips'] ?? '';'';
+$parsed['location']['countyFips'] = $parsed['location']['countyFips'] ?? '';'';'';
 
 // -------------------------------------------------
 // MARICOPA PARCEL LOOKUP — CLEAN STREET-ONLY
