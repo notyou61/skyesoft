@@ -1695,10 +1695,26 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
                 'status'           => 'exact',
                 'locationId'       => (int)$row['locationId'],
                 'existingEntityId' => (int)$row['locationEntityId'],
-                'proposedEntityId' => (int)$entityId,
                 'matchType'        => 'placeId_global'
             ];
         }
+    }
+
+    // -------------------------------------------------
+    // Entity resolution begins AFTER authoritative
+    // location identity evaluation
+    // -------------------------------------------------
+    if (empty($entityName)) {
+        return ['status' => 'none'];
+    }
+
+    $entityId = resolveEntityIdByName($entityName, $pdo);
+
+    if (!$entityId) {
+        return [
+            'status'   => 'new_entity',
+            'entityId' => null
+        ];
     }
 
     // -------------------------------------------------
