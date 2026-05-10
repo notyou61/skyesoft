@@ -655,7 +655,7 @@ $parsed['location']['address'] = $address;
 $parsed['location']['locationAddressRaw'] = $rawInputOriginal;
 
 // -------------------------------------------------
-// CENSUS GEO + RELIABLE GOOGLE FALLBACK
+// CENSUS GEO + ROBUST GOOGLE FALLBACK
 // -------------------------------------------------
 $geoAddress = trim(
     $parsed['location']['formattedAddress'] 
@@ -679,19 +679,20 @@ elseif (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
         if (in_array('administrative_area_level_2', $comp['types'] ?? [])) {
             $countyName = trim(str_replace(' County', '', $comp['long_name']));
             $parsed['location']['county']     = $countyName;
-            $parsed['location']['countyFips'] = '04013';
-            error_log("✅ Google fallback: {$countyName} (04013)");
+            $parsed['location']['countyFips'] = '04013';   // Maricopa
+            error_log("✅ Google fallback county: {$countyName} (04013)");
             break;
         }
     }
 } 
-elseif (($locationValidation['isMaricopa'] ?? false) === true) {
+// Final safety net
+elseif (stripos($parsed['location']['city'] ?? '', 'Phoenix') !== false || 
+        stripos($parsed['location']['address'] ?? '', 'Phoenix') !== false) {
     $parsed['location']['county']     = 'Maricopa';
     $parsed['location']['countyFips'] = '04013';
-    error_log("✅ isMaricopa flag fallback");
+    error_log("✅ Phoenix city/address fallback applied");
 }
 
-// Guarantee fields exist
 $parsed['location']['county']     = $parsed['location']['county'] ?? '';
 $parsed['location']['countyFips'] = $parsed['location']['countyFips'] ?? '';
 
