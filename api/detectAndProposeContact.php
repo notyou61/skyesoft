@@ -652,12 +652,30 @@ $parsed['location']['locationAddressRaw'] = $rawInputOriginal;
 // -------------------------------------------------
 // CENSUS GEO
 // -------------------------------------------------
-$geoAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress ?? $fullAddress;
+$geoAddress = $parsed['location']['formattedAddress'] 
+           ?? $parsed['location']['address'] . ', ' 
+              . $parsed['location']['city'] . ', ' 
+              . $parsed['location']['state'] . ' ' 
+              . $parsed['location']['zip'];
+
 $geo = resolveGeographyFromAddress($geoAddress);
+
 if ($geo) {
-    if (!empty($geo['county'])) $parsed['location']['county'] = trim($geo['county']);
-    if (!empty($geo['state']))  $parsed['location']['state']  = $geo['state'];
-    if (!empty($geo['countyFips'])) $parsed['location']['countyFips'] = $geo['countyFips'];
+    if (!empty($geo['county'])) {
+        $parsed['location']['county'] = trim($geo['county']);
+    }
+    if (!empty($geo['state'])) {
+        $parsed['location']['state'] = $geo['state'];
+    }
+    if (!empty($geo['countyFips'])) {
+        $parsed['location']['countyFips'] = $geo['countyFips'];
+    }
+
+    // Optional: Store full result for debugging
+    $parsed['location']['censusGeo'] = $geo;
+    
+} else {
+    error_log("⚠️ Census enrichment returned no data for address: " . $geoAddress);
 }
 
 // -------------------------------------------------
@@ -1420,7 +1438,10 @@ function formatAPN(string $apnRaw): string {
 
 // 🗺️ resolveGeographyFromAddress — resolve county/state from address
 function resolveGeographyFromAddress(string $address): ?array {
-    if (!$address) return null;
+    if (empty($address)) {
+        error_log("❌ resolveGeographyFromAddress: Empty address");
+        return null;
+    }
 
     $url = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress" .
            "?address=" . urlencode($address) .
@@ -1429,24 +1450,54 @@ function resolveGeographyFromAddress(string $address): ?array {
            "&format=json";
 
     $ch = curl_init($url);
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5]);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_FAILONERROR    => false,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+
     $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
     curl_close($ch);
 
-    if ($response === false) return null;
+    if ($response === false || $httpCode !== 200) {
+        error_log("❌ Census Geocoder failed [HTTP {$httpCode}]: {$curlErr} | Address: {$address}");
+        return null;
+    }
 
     $data = json_decode($response, true);
-    $result = $data['result']['addressMatches'][0] ?? null;
-    if (!$result) return null;
+    $match = $data['result']['addressMatches'][0] ?? null;
 
-    $geo = $result['geographies'] ?? [];
-    $countyRaw = $geo['Counties'][0]['NAME'] ?? null;
+    if (!$match) {
+        error_log("⚠️ Census: No addressMatches for: " . $address);
+        return null;
+    }
+
+    $geo       = $match['geographies'] ?? [];
+    $countyObj = $geo['Counties'][0] ?? null;
+
+    if (!$countyObj || empty($countyObj['NAME'])) {
+        error_log("⚠️ Census: No county data in response");
+        return null;
+    }
+
+    $stateObj   = $geo['States'][0] ?? [];
+    $countyName = trim(str_replace(' County', '', $countyObj['NAME']));
+    $countyCode = $countyObj['COUNTY'] ?? '';           // "013"
+    $stateFips  = $stateObj['STATE'] ?? '04';           // AZ = 04
+
+    $fullFips = $stateFips . str_pad($countyCode, 3, '0', STR_PAD_LEFT);
+
+    error_log("✅ Census success: {$countyName} County ({$fullFips}) for {$address}");
 
     return [
-        'county'         => $countyRaw ? str_replace(' County', '', $countyRaw) : null,
-        'state'          => $geo['States'][0]['STUSAB'] ?? null,
-        'countyFips'     => $geo['Counties'][0]['COUNTY'] ?? null,
-        'matchedAddress' => $result['matchedAddress'] ?? null
+        'county'         => $countyName,
+        'countyFips'     => $fullFips,
+        'state'          => $stateObj['STUSAB'] ?? null,
+        'matchedAddress' => $match['matchedAddress'] ?? null,
     ];
 }
 
