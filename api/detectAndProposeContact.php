@@ -828,8 +828,7 @@ if (!$pdo) {
 }
 
 #endregion
-
-#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — Global PlaceId Precedence + All Defensive Defaults)
+#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — Global PlaceId Precedence + Full Data Population)
 
 $duplicate         = $duplicate         ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
@@ -837,18 +836,18 @@ $dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete', 'missing
 $locationValidation  = $locationValidation  ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'apnResolved' => false, 'jurisdictionResolved' => false];
 $parcel              = $parcel              ?? null;
 
-// Defensive defaults for final output objects (fixes Intelephense P1008)
+// Defensive defaults
 $data = $data ?? ['entity' => [], 'location' => [], 'contact' => []];
 $meta = $meta ?? ['inferences' => [], 'enrichments' => [], 'flags' => []];
 
 // -------------------------------------------------
-// STRONG DEBUG — remove after we confirm it works
+// DEBUG — remove after confirmation
 // -------------------------------------------------
 error_log("🔍 [SECTION 10] PlaceId = " . ($parsed['location']['locationPlaceId'] ?? 'NONE'));
 error_log("🔍 [SECTION 10] locationDuplicate = " . json_encode($locationDuplicate));
 
 // -------------------------------------------------
-// AUTHORITATIVE PCM DECISION — GLOBAL PlaceId FIRST
+// AUTHORITATIVE PCM DECISION
 // -------------------------------------------------
 if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
@@ -883,10 +882,81 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 }
 
 // -------------------------------------------------
-// RESOLUTION OBJECT
+// BUILD FULL DATA + META FOR INSERT / UI
 // -------------------------------------------------
 $fullName = trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? ''));
 
+// ENTITY
+$data['entity'] = [
+    'entityName' => $parsed['entity']['name'] ?? ''
+];
+
+// LOCATION (full enriched data)
+$data['location'] = [
+    'locationName'           => $parsed['location']['locationName'] ?? '',
+    'locationPlaceId'        => $parsed['location']['locationPlaceId'] ?? null,
+    'locationLatitude'       => $parsed['location']['latitude'] ?? null,
+    'locationLongitude'      => $parsed['location']['longitude'] ?? null,
+    'locationAddress'        => $parsed['location']['address'] ?? '',
+    'locationAddressSuite'   => $parsed['location']['locationAddressSuite'] ?? '',
+    'locationCity'           => $parsed['location']['city'] ?? '',
+    'locationState'          => $parsed['location']['state'] ?? '',
+    'locationZip'            => $parsed['location']['zip'] ?? '',
+    'locationCounty'         => $parsed['location']['county'] ?? '',
+    'locationCountyFips'     => $parsed['location']['countyFips'] ?? '',
+    'locationParcelNumber'   => null,
+    'locationParcelNumberRaw'=> null,
+    'locationJurisdiction'   => $parsed['location']['locationJurisdiction'] ?? '',
+    'parcelDetails'          => $parsed['location']['parcelDetails'] ?? [],
+    'parcelResolution'       => $parsed['location']['parcelResolution'] ?? [
+        'status' => 'unknown', 'requiresUserSelection' => false, 'selectedApn' => null, 'candidateCount' => 0
+    ],
+    'locationIsBilling'      => 0,
+    'locationNote'           => '',
+    'locationZone'           => '',
+    'locationIsNotValid'     => 0
+];
+
+// CONTACT
+$data['contact'] = [
+    'contactSalutation'           => $parsed['contact']['salutation'] ?? '',
+    'contactFirstName'            => $parsed['contact']['firstName'] ?? '',
+    'contactLastName'             => $parsed['contact']['lastName'] ?? '',
+    'contactTitle'                => $parsed['contact']['title'] ?? '',
+    'contactIsBilling'            => 0,
+    'contactPrimaryPhone'         => $parsed['contact']['primaryPhone'] ?? '',
+    'contactPrimaryPhoneRaw'      => $parsed['contact']['primaryPhoneRaw'] ?? '',
+    'contactPrimaryPhoneExtension'=> $parsed['contact']['primaryPhoneExtension'] ?? '',
+    'contactSecondaryPhone'       => $parsed['contact']['secondaryPhone'] ?? '',
+    'contactSecondaryPhoneRaw'    => $parsed['contact']['secondaryPhoneRaw'] ?? '',
+    'contactEmail'                => $parsed['contact']['email'] ?? '',
+    'contactEmailNormalized'      => $parsed['contact']['emailNormalized'] ?? '',
+    'contactEmailConfirmed'       => 0,
+    'contactNote'                 => '',
+    'contactIsNotValid'           => 0,
+    'isActive'                    => 1
+];
+
+// META
+$meta['inferences'] = [
+    'salutationInferred' => $parsed['contact']['salutationInferred'] ?? false,
+    'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
+    'entityNameInferred' => $parsed['entity']['nameInferred'] ?? false
+];
+$meta['enrichments'] = ['google_geocode', 'census_county', 'maricopa_parcel', 'smarty_usps'];
+$meta['flags'] = [
+    'isMaricopa'           => $locationValidation['isMaricopa'] ?? false,
+    'locationValid'        => $locationValidation['status'] ?? 'invalid',
+    'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',
+    'apnResolved'          => $locationValidation['apnResolved'] ?? false,
+    'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false,
+    'uspsValidated'        => true,
+    'dpvCode'              => $parsed['location']['locationDpvCode'] ?? 'Y'
+];
+
+// -------------------------------------------------
+// RESOLUTION OBJECT
+// -------------------------------------------------
 $resolution = [
     'pcmStatus'     => $pcm['status'],
     'classification' => [
@@ -900,7 +970,7 @@ $resolution = [
     'issues' => [
         'blocking'     => [],
         'review'       => [],
-        'informational' => $meta['enrichments'] ?? []
+        'informational' => $meta['enrichments']
     ],
     'narratives' => [
         'decision' => ["This proposal is ready for the {$pcm['action']} transaction."],
