@@ -828,7 +828,8 @@ if (!$pdo) {
 }
 
 #endregion
-#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — Global PlaceId Precedence + Full Data Population)
+
+#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — Full Data Population + Global PlaceId)
 
 $duplicate         = $duplicate         ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
@@ -836,12 +837,12 @@ $dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete', 'missing
 $locationValidation  = $locationValidation  ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'apnResolved' => false, 'jurisdictionResolved' => false];
 $parcel              = $parcel              ?? null;
 
-// Defensive defaults
+// Defensive defaults for final output objects
 $data = $data ?? ['entity' => [], 'location' => [], 'contact' => []];
 $meta = $meta ?? ['inferences' => [], 'enrichments' => [], 'flags' => []];
 
 // -------------------------------------------------
-// DEBUG — remove after confirmation
+// DEBUG (remove after confirmation)
 // -------------------------------------------------
 error_log("🔍 [SECTION 10] PlaceId = " . ($parsed['location']['locationPlaceId'] ?? 'NONE'));
 error_log("🔍 [SECTION 10] locationDuplicate = " . json_encode($locationDuplicate));
@@ -891,7 +892,7 @@ $data['entity'] = [
     'entityName' => $parsed['entity']['name'] ?? ''
 ];
 
-// LOCATION (full enriched data)
+// LOCATION (full enriched data — ready for insert or UI display)
 $data['location'] = [
     'locationName'           => $parsed['location']['locationName'] ?? '',
     'locationPlaceId'        => $parsed['location']['locationPlaceId'] ?? null,
@@ -906,7 +907,7 @@ $data['location'] = [
     'locationCountyFips'     => $parsed['location']['countyFips'] ?? '',
     'locationParcelNumber'   => null,
     'locationParcelNumberRaw'=> null,
-    'locationJurisdiction'   => $parsed['location']['locationJurisdiction'] ?? '',
+    'locationJurisdiction'   => $parsed['location']['locationJurisdiction'] ?? $parsed['location']['jurisdiction'] ?? '',
     'parcelDetails'          => $parsed['location']['parcelDetails'] ?? [],
     'parcelResolution'       => $parsed['location']['parcelResolution'] ?? [
         'status' => 'unknown', 'requiresUserSelection' => false, 'selectedApn' => null, 'candidateCount' => 0
@@ -919,29 +920,29 @@ $data['location'] = [
 
 // CONTACT
 $data['contact'] = [
-    'contactSalutation'           => $parsed['contact']['salutation'] ?? '',
-    'contactFirstName'            => $parsed['contact']['firstName'] ?? '',
-    'contactLastName'             => $parsed['contact']['lastName'] ?? '',
-    'contactTitle'                => $parsed['contact']['title'] ?? '',
-    'contactIsBilling'            => 0,
-    'contactPrimaryPhone'         => $parsed['contact']['primaryPhone'] ?? '',
-    'contactPrimaryPhoneRaw'      => $parsed['contact']['primaryPhoneRaw'] ?? '',
-    'contactPrimaryPhoneExtension'=> $parsed['contact']['primaryPhoneExtension'] ?? '',
-    'contactSecondaryPhone'       => $parsed['contact']['secondaryPhone'] ?? '',
-    'contactSecondaryPhoneRaw'    => $parsed['contact']['secondaryPhoneRaw'] ?? '',
-    'contactEmail'                => $parsed['contact']['email'] ?? '',
-    'contactEmailNormalized'      => $parsed['contact']['emailNormalized'] ?? '',
-    'contactEmailConfirmed'       => 0,
-    'contactNote'                 => '',
-    'contactIsNotValid'           => 0,
-    'isActive'                    => 1
+    'contactSalutation'            => $parsed['contact']['salutation'] ?? '',
+    'contactFirstName'             => $parsed['contact']['firstName'] ?? '',
+    'contactLastName'              => $parsed['contact']['lastName'] ?? '',
+    'contactTitle'                 => $parsed['contact']['title'] ?? '',
+    'contactIsBilling'             => 0,
+    'contactPrimaryPhone'          => $parsed['contact']['primaryPhone'] ?? '',
+    'contactPrimaryPhoneRaw'       => $parsed['contact']['primaryPhoneRaw'] ?? '',
+    'contactPrimaryPhoneExtension' => $parsed['contact']['primaryPhoneExtension'] ?? '',
+    'contactSecondaryPhone'        => $parsed['contact']['secondaryPhone'] ?? '',
+    'contactSecondaryPhoneRaw'     => $parsed['contact']['secondaryPhoneRaw'] ?? '',
+    'contactEmail'                 => $parsed['contact']['email'] ?? '',
+    'contactEmailNormalized'       => $parsed['contact']['emailNormalized'] ?? '',
+    'contactEmailConfirmed'        => 0,
+    'contactNote'                  => '',
+    'contactIsNotValid'            => 0,
+    'isActive'                     => 1
 ];
 
 // META
 $meta['inferences'] = [
-    'salutationInferred' => $parsed['contact']['salutationInferred'] ?? false,
+    'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
     'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
-    'entityNameInferred' => $parsed['entity']['nameInferred'] ?? false
+    'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false
 ];
 $meta['enrichments'] = ['google_geocode', 'census_county', 'maricopa_parcel', 'smarty_usps'];
 $meta['flags'] = [
