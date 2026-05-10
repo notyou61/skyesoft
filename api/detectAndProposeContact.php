@@ -1631,61 +1631,85 @@ function normalizeLocationName(string $name): string {
 
     return trim($name);
 }
-/**
- * Evaluate Location Duplicate — GLOBAL PlaceId First (authoritative identity)
- * 
- * This is the corrected version per the latest architecture notes:
- * - PlaceId check is now GLOBAL (any entity)
- * - existing_location now correctly supersedes multiple_parcels
- * - Keeps original entity-scoped fallbacks for backward compatibility
- */
+// 🔁 evaluateLocationDuplicate — check for existing location by PlaceId or address
 function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
 
-    $entityName   = trim($parsed['entity']['name'] ?? '');
+    $entityName   = trim($parsed['entity']['entityName'] ?? $parsed['entity']['name'] ?? '');
     $locationName = trim($parsed['location']['locationName'] ?? '');
-    $placeId      = $parsed['location']['locationPlaceId'] ?? null;
-    $address      = trim($parsed['location']['address'] ?? '');
+
+    $placeId = $parsed['location']['locationPlaceId'] ?? null;
+
+    $address = trim(
+        $parsed['location']['locationAddress']
+        ?? $parsed['location']['address']
+        ?? ''
+    );
+
+    $city = trim(
+        $parsed['location']['locationCity']
+        ?? $parsed['location']['city']
+        ?? ''
+    );
+
+    error_log('[evaluateLocationDuplicate] placeId = ' . print_r($placeId, true));
+    error_log('[evaluateLocationDuplicate] address = ' . print_r($address, true));
+    error_log('[evaluateLocationDuplicate] city = ' . print_r($city, true));
 
     if (empty($entityName)) {
         return ['status' => 'none'];
     }
 
     $entityId = resolveEntityIdByName($entityName, $pdo);
+
     if (!$entityId) {
-        return ['status' => 'new_entity', 'entityId' => null];
+        return [
+            'status'   => 'new_entity',
+            'entityId' => null
+        ];
     }
 
     // -------------------------------------------------
-    // 1. GLOBAL PlaceId Match — Authoritative location identity (ANY entity)
+    // 1. GLOBAL PlaceId Match — authoritative identity
     // -------------------------------------------------
     if (!empty($placeId)) {
+
         $stmt = $pdo->prepare("
-            SELECT locationId, locationName, locationEntityId
+            SELECT
+                locationId,
+                locationName,
+                locationEntityId
             FROM tblLocations
             WHERE locationPlaceId = :placeId
             LIMIT 1
         ");
 
-        $stmt->execute(['placeId' => $placeId]);
+        $stmt->execute([
+            'placeId' => $placeId
+        ]);
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            error_log("✅ GLOBAL EXISTING LOCATION MATCH via PlaceId! locationId = " . $row['locationId']);
+
+            error_log('✅ GLOBAL EXISTING LOCATION MATCH');
+
             return [
-                'status'     => 'exact',
-                'locationId' => $row['locationId'],
-                'matchType'  => 'placeId_global'
+                'status'           => 'exact',
+                'locationId'       => (int)$row['locationId'],
+                'existingEntityId' => (int)$row['locationEntityId'],
+                'proposedEntityId' => (int)$entityId,
+                'matchType'        => 'placeId_global'
             ];
-        } else {
-            error_log("❌ No global PlaceId match for: " . $placeId);
         }
     }
 
     // -------------------------------------------------
-    // 2. Fallback: Entity-scoped Address Match (backward compatibility)
+    // 2. Entity-scoped address fallback
     // -------------------------------------------------
-    if (!empty($address)) {
+    if (!empty($address) && !empty($city)) {
+
         $stmt = $pdo->prepare("
-            SELECT locationId, locationName
+            SELECT
+                locationId,
+                locationName
             FROM tblLocations
             WHERE locationEntityId = :entityId
               AND locationAddress = :address
@@ -1696,41 +1720,15 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
         $stmt->execute([
             'entityId' => $entityId,
             'address'  => $address,
-            'city'     => $parsed['location']['city'] ?? ''
+            'city'     => $city
         ]);
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            error_log("[evaluateLocationDuplicate] MATCH via Address: {$row['locationId']}");
+
             return [
                 'status'     => 'exact',
-                'locationId' => $row['locationId'],
+                'locationId' => (int)$row['locationId'],
                 'matchType'  => 'address'
-            ];
-        }
-    }
-
-    // -------------------------------------------------
-    // 3. Final fallback: Name + City match (your original logic)
-    // -------------------------------------------------
-    $normalizedInput = normalizeLocationName($locationName);
-    $city = strtolower(trim($parsed['location']['city'] ?? ''));
-
-    $stmt = $pdo->prepare("
-        SELECT locationId, locationName, locationCity
-        FROM tblLocations
-        WHERE locationEntityId = :entityId
-    ");
-    $stmt->execute(['entityId' => $entityId]);
-
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $dbName = normalizeLocationName($row['locationName'] ?? '');
-        $dbCity = strtolower(trim($row['locationCity'] ?? ''));
-
-        if ($dbName === $normalizedInput && $dbCity === $city) {
-            return [
-                'status'     => 'exact',
-                'locationId' => $row['locationId'],
-                'matchType'  => 'name_city'
             ];
         }
     }
