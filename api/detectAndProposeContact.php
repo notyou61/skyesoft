@@ -824,14 +824,43 @@ $data['location'] = [
     'locationCity'           => $parsed['location']['city'] ?? '',
     'locationState'          => $parsed['location']['state'] ?? '',
     'locationZip'            => $parsed['location']['zip'] ?? '',
-    'locationCounty'         => $parsed['location']['county'] ?? '',
-    'locationCountyFips'     => $parsed['location']['countyFips'] ?? '',
-    'locationParcelNumber'   => null,
-    'locationParcelNumberRaw'=> null,
-    'locationJurisdiction'   => $parsed['location']['locationJurisdiction'] ?? $parsed['location']['jurisdiction'] ?? '',
-    'parcelDetails'          => $parsed['location']['parcelDetails'] ?? [],
-    'parcelResolution'       => $parsed['location']['parcelResolution'] ?? [
-        'status' => 'unknown', 'requiresUserSelection' => false, 'selectedApn' => null, 'candidateCount' => 0
+    'locationCounty'          => $parsed['location']['county']
+                                    ?? $censusData['county']
+                                    ?? '',
+
+    'locationCountyFips'      => $parsed['location']['countyFips']
+                                    ?? $censusData['countyFips']
+                                    ?? '',
+
+    'locationParcelNumber'    => $parcel['apnDisplay'] ?? null,
+
+    'locationParcelNumberRaw' => $parcel['apnRaw'] ?? null,
+
+    'locationJurisdiction'    => $parsed['location']['locationJurisdiction']
+                                    ?? $parsed['location']['jurisdiction']
+                                    ?? ($parcelDetails[0]['jurisdiction'] ?? ''),
+
+    'parcelDetails'           => $parcelDetails ?? [],
+
+    'parcelResolution' => [
+        'status' => $locationValidation['parcelStatus'] ?? 'unknown',
+
+        'requiresUserSelection' =>
+            (($locationValidation['parcelStatus'] ?? '') === 'multiple_matches'),
+
+        'selectedApn' =>
+            $parcel['apnRaw'] ?? null,
+
+        'candidateCount' =>
+            count($parcelDetails ?? []),
+
+        'resolutionMethod' =>
+            (($locationValidation['parcelStatus'] ?? '') === 'multiple_matches')
+                ? 'user_required'
+                : 'automatic',
+
+        'bestMatchConfidence' =>
+            $parcel['confidence'] ?? null
     ],
     'locationIsBilling'      => 0,
     'locationNote'           => '',
@@ -933,7 +962,7 @@ echo json_encode([
 
 #region SECTION 11 — 🛠️ Internal Utilities
 
-// 🧩 normalizeParsed — standardize parsed contact structure
+// 🧼 normalizeParsed — standardize parsed contact structure
 function normalizeParsed(array $parsed): array {
     if (!empty($parsed['contact']['email'])) {
         $email = trim($parsed['contact']['email']);
@@ -961,42 +990,25 @@ function normalizeParsed(array $parsed): array {
 
     return $parsed;
 }
-// 🧠 inferMissingFields — infer missing fields with flags (Option A)
+
+// 🧠 inferMissingFields — infer missing fields with flags
 function inferMissingFields(array $parsed): array {
+    // ENTITY — Initialize flags
+    $parsed['entity']['nameInferred'] = $parsed['entity']['nameInferred'] ?? false;
+    $parsed['entity']['nameConfirmed'] = $parsed['entity']['nameConfirmed'] ?? !empty($parsed['entity']['name'] ?? '');
 
-    // -------------------------------------------------
-    // 🏢 ENTITY — Initialize flags
-    // -------------------------------------------------
-    if (!isset($parsed['entity']['nameInferred'])) {
-        $parsed['entity']['nameInferred'] = false;
-    }
-
-    if (!isset($parsed['entity']['nameConfirmed'])) {
-        $parsed['entity']['nameConfirmed'] = !empty($parsed['entity']['name'] ?? '');
-    }
-
-    // -------------------------------------------------
-    // 🏢 ENTITY — Infer from email domain (ONLY if missing)
-    // -------------------------------------------------
+    // ENTITY — Infer from email domain (only if truly missing)
     if (empty($parsed['entity']['name'] ?? '') && !empty($parsed['contact']['email'] ?? '')) {
-
         $email = strtolower(trim($parsed['contact']['email']));
         $atPos = strpos($email, '@');
 
         if ($atPos !== false) {
-
             $domain = substr($email, $atPos + 1);
-
-            // Remove common subdomains
             $domain = preg_replace('/^(mail|email|info|contact|admin)\./i', '', $domain);
-
             $dotPos = strpos($domain, '.');
 
             if ($dotPos !== false) {
-
                 $company = substr($domain, 0, $dotPos);
-
-                // Clean company string
                 $company = str_replace(['-', '_'], ' ', $company);
                 $company = preg_replace('/[^a-zA-Z0-9\s]/', '', $company);
                 $company = trim($company);
@@ -1012,33 +1024,22 @@ function inferMissingFields(array $parsed): array {
 
     return $parsed;
 }
-/**
- * EXPLICIT ENTITY PRESERVATION LAYER — v2 (Aggressive)
- * 
- * Fixes cases where fallback/AI returns concatenated junk like:
- * "David Harper\nFacilities Director\nWest Valley Commerce Center"
- */
-function preserveExplicitEntityName(array $parsed, string $rawInput): array
-{
+
+// 🛡️ preserveExplicitEntityName — enforce explicit source over AI drift
+function preserveExplicitEntityName(array $parsed, string $rawInput): array {
     $currentName = trim($parsed['entity']['name'] ?? '');
 
-    // 1. Split raw input into lines and clean them
     $lines = array_filter(array_map('trim', explode("\n", $rawInput)));
-
-    // 2. Find the best entity name candidate
     $candidates = [];
+
     foreach ($lines as $line) {
-        // Skip obvious contact lines
-        if (preg_match('/^David Harper|^Facilities Director|Director$|Manager$|@|\(\d{3}\)/i', $line)) {
+        // Skip obvious non-entity lines
+        if (preg_match('/^Mr\.? |^Ms\.? |^Dr\.? |Director$|Manager$|Coordinator$|@|^\d+\s+[A-Z]/i', $line)) {
             continue;
         }
 
-        // Strong business name pattern: 2+ title-case words, longer than 12 chars
-        if (strlen($line) > 12 
-            && preg_match('/[A-Z][a-zA-Z0-9&\'-]+(?:\s+[A-Z][a-zA-Z0-9&\'-]+){1,}/', $line)
-            && !preg_match('/^\d/', $line)           // not an address
-            && !str_contains($line, '@')) {
-            
+        // Strong business name pattern
+        if (strlen($line) > 12 && preg_match('/[A-Z][a-zA-Z0-9&\'-]+(?:\s+[A-Z][a-zA-Z0-9&\'-]+){1,}/', $line)) {
             $candidates[] = $line;
         }
     }
@@ -1047,32 +1048,23 @@ function preserveExplicitEntityName(array $parsed, string $rawInput): array
         return $parsed;
     }
 
-    // Prefer the longest / most prominent
     $bestExplicit = $candidates[0];
 
-    // 3. Decide whether to override
     if (shouldOverrideWithExplicit($bestExplicit, $currentName)) {
         $parsed['entity']['name'] = $bestExplicit;
         $parsed['entity']['nameInferred'] = false;
         $parsed['entity']['nameConfirmed'] = true;
         $parsed['entity']['nameSource'] = 'explicit_source_precedence';
-        $parsed['entity']['originalInferredName'] = $currentName;
-
-        // Optional audit
-        // error_log("[Entity Preservation] Restored: '$currentName' → '$bestExplicit'");
+        $parsed['entity']['originalInferredName'] = $currentName ?: null;
     }
 
     return $parsed;
 }
-/**
- * Extract likely business entity names (title-case, multi-word)
- */
-function extractLongFormEntityCandidates(string $rawInput): array
-{
+
+// 📋 extractLongFormEntityCandidates — find likely business names in raw text
+function extractLongFormEntityCandidates(string $rawInput): array {
     $candidates = [];
 
-    // Strong pattern: Lines starting with title-case multi-word phrases
-    // Often business names appear near the top, before address/phone
     preg_match_all(
         '/^[\s]*([A-Z][a-zA-Z0-9&\'\-,]+(?:\s+[A-Z][a-zA-Z0-9&\'\-,]+){2,}(?:\s+(?:Center|Centre|Building|Plaza|Complex|LLC|Inc|Corp|Corporation|Group|Partners|Properties))?)/m',
         $rawInput,
@@ -1081,72 +1073,51 @@ function extractLongFormEntityCandidates(string $rawInput): array
 
     foreach ($matches[1] as $match) {
         $match = trim($match);
-        if (strlen($match) > 12 && !preg_match('/@(|\d{3})/', $match)) { // avoid emails & phones
+        if (strlen($match) > 12 && !preg_match('/@|\d{3}/', $match)) {
             $candidates[] = $match;
         }
     }
 
-    // Dedupe and sort by length (prefer longest)
     $candidates = array_unique($candidates);
     usort($candidates, fn($a, $b) => strlen($b) <=> strlen($a));
 
     return $candidates;
 }
-/**
- * Core decision logic: Should we trust the explicit name over current value?
- */
-function shouldOverrideWithExplicit(string $explicit, string $current): bool
-{
-    if (empty($current)) {
-        return true;
-    }
 
-    // 1. Explicit is much longer
-    if (strlen($explicit) > strlen($current) * 1.6) {
-        return true;
-    }
-
-    // 2. Current looks like an acronym or email-derived short name
-    if (isLikelyAcronymOrShortForm($current)) {
-        return true;
-    }
-
-    // 3. Current is an acronym of the explicit name (wvcc vs West Valley Commerce Center)
-    if (isAcronymOf($current, $explicit)) {
-        return true;
-    }
+// ⚖️ shouldOverrideWithExplicit — decide explicit vs inferred name
+function shouldOverrideWithExplicit(string $explicit, string $current): bool {
+    if (empty($current)) return true;
+    if (strlen($explicit) > strlen($current) * 1.6) return true;
+    if (isLikelyAcronymOrShortForm($current)) return true;
+    if (isAcronymOf($current, $explicit)) return true;
 
     return false;
 }
-// Likely acronym or short form heuristics
-function isLikelyAcronymOrShortForm(string $name): bool
-{
+
+// 🔤 isLikelyAcronymOrShortForm — detect short/acronym names
+function isLikelyAcronymOrShortForm(string $name): bool {
     $clean = trim($name);
     return strlen($clean) <= 10
         || strtoupper($clean) === $clean
         || preg_match('/^[A-Za-z]{2,8}$/', $clean);
 }
-// Acronym matching (e.g., "WVCC" vs "West Valley Commerce Center")
-function isAcronymOf(string $short, string $long): bool
-{
+
+// 🔠 isAcronymOf — check if short form is acronym of long name
+function isAcronymOf(string $short, string $long): bool {
     $shortClean = strtoupper(preg_replace('/[^A-Z0-9]/', '', $short));
     $acronym    = preg_replace('/[^A-Z]/', '', $long);
 
-    if (empty($shortClean)) {
-        return false;
-    }
+    if (empty($shortClean)) return false;
 
     return strcasecmp($shortClean, $acronym) === 0
         || strcasecmp($shortClean, substr($acronym, 0, strlen($shortClean))) === 0;
 }
-// 🔍 validateParsed — validate required parsed fields
-function validateParsed(array $parsed): array {
 
+// ✅ validateParsed — validate required parsed fields
+function validateParsed(array $parsed): array {
     $missing = [];
 
-    // -------------------------
-    // CONTACT
-    // -------------------------
+    // Contact
     if (empty($parsed['contact']['firstName'])) $missing[] = 'contact.firstName';
     if (empty($parsed['contact']['lastName']))  $missing[] = 'contact.lastName';
 
@@ -1157,38 +1128,27 @@ function validateParsed(array $parsed): array {
         $missing[] = 'contact.contactMethod';
     }
 
-    // -------------------------
-    // ENTITY (REQUIRED)
-    // -------------------------
-    if (empty($parsed['entity']['name'])) {
-        $missing[] = 'entity.name';
-    }
+    // Entity
+    if (empty($parsed['entity']['name'])) $missing[] = 'entity.name';
 
-    // -------------------------
-    // LOCATION CORE
-    // -------------------------
+    // Location
     if (empty($parsed['location']['address'])) $missing[] = 'location.address';
     if (empty($parsed['location']['city']))    $missing[] = 'location.city';
     if (empty($parsed['location']['state']))   $missing[] = 'location.state';
-
-    // -------------------------
-    // LOCATION NAME (REQUIRED)
-    // -------------------------
-    if (empty($parsed['location']['locationName'])) {
-        $missing[] = 'location.locationName';
-    }
+    if (empty($parsed['location']['locationName'])) $missing[] = 'location.locationName';
 
     return $missing;
 }
+
 // 🧼 sanitizeAddressForLookup — clean address for lookup
 function sanitizeAddressForLookup(string $input): string {
     $clean = preg_replace('/\s+/', ' ', $input);
     $clean = preg_replace('/#\s*\w+/i', '', $clean);
     $clean = preg_replace('/\b(Suite|Ste|Unit|Apt|#)\b\.?\s*\w+/i', '', $clean);
     $clean = preg_replace('/^[^0-9]*?(?=\d)/', '', $clean);
-    $clean = preg_replace('/\s+/', ' ', $clean);
-    return trim($clean);
+    return trim(preg_replace('/\s+/', ' ', $clean));
 }
+
 // 🏷️ formatAPN — format parcel number
 function formatAPN(string $apnRaw): string {
     $clean = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($apnRaw));
@@ -1201,6 +1161,7 @@ function formatAPN(string $apnRaw): string {
     }
     return $clean;
 }
+
 // 🗺️ resolveGeographyFromAddress — resolve county/state from address
 function resolveGeographyFromAddress(string $address): ?array {
     if (!$address) return null;
@@ -1224,21 +1185,17 @@ function resolveGeographyFromAddress(string $address): ?array {
 
     $geo = $result['geographies'] ?? [];
     $countyRaw = $geo['Counties'][0]['NAME'] ?? null;
-    $state = $geo['States'][0]['STUSAB'] ?? null;
-    $countyFips = $geo['Counties'][0]['COUNTY'] ?? null;
-
-    $county = $countyRaw ? str_replace(' County', '', $countyRaw) : null;
 
     return [
-        'county'         => $county,
-        'state'          => $state,
-        'countyFips'     => $countyFips, // ✅ REQUIRED
+        'county'         => $countyRaw ? str_replace(' County', '', $countyRaw) : null,
+        'state'          => $geo['States'][0]['STUSAB'] ?? null,
+        'countyFips'     => $geo['Counties'][0]['COUNTY'] ?? null,
         'matchedAddress' => $result['matchedAddress'] ?? null
     ];
 }
-// 🧾 lookupMaricopaParcel — WORKING ArcGIS endpoint (verified by test page + curl)
-function lookupMaricopaParcel(string $address): array {
 
+// 📦 lookupMaricopaParcel — ArcGIS parcel lookup for Maricopa County
+function lookupMaricopaParcel(string $address): array {
     if (empty(trim($address))) {
         return [];
     }
@@ -1251,7 +1208,6 @@ function lookupMaricopaParcel(string $address): array {
     error_log("[Parcel DEBUG] Searching for: " . $cleanAddress);
 
     $candidates = [];
-
     $safeAddr = str_replace("'", "''", $cleanAddress);
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
 
@@ -1262,10 +1218,7 @@ function lookupMaricopaParcel(string $address): array {
         'f'              => 'json'
     ]);
 
-    $fullUrl = "{$url}?{$params}";
-    error_log("[Parcel DEBUG] Full query URL: " . $fullUrl);
-
-    $response = @file_get_contents($fullUrl);
+    $response = @file_get_contents($url . '?' . $params);
 
     if (!$response) {
         error_log("[Parcel DEBUG] HTTP request failed");
@@ -1274,8 +1227,6 @@ function lookupMaricopaParcel(string $address): array {
 
     $data = json_decode($response, true);
     $features = $data['features'] ?? [];
-
-    error_log("[Parcel DEBUG] API returned " . count($features) . " features");
 
     foreach ($features as $feature) {
         $attr = $feature['attributes'] ?? [];
@@ -1302,22 +1253,22 @@ function lookupMaricopaParcel(string $address): array {
         ];
     }
 
+    // Deduplicate and sort
     $unique = [];
     foreach ($candidates as $c) {
         $unique[$c['apnRaw']] = $c;
     }
-
     $candidates = array_values($unique);
     usort($candidates, fn($a, $b) => $b['confidence'] <=> $a['confidence']);
 
-    error_log("[lookupMaricopaParcel] FINAL COUNT: " . count($candidates) . " candidates for: " . $cleanAddress);
-
     return $candidates;
 }
+
 // 🏛️ resolveMaricopaJurisdiction — resolve city jurisdiction
 function resolveMaricopaJurisdiction(string $address): ?string {
     return null;
 }
+
 // 📍 validateLocationWithGoogle — resolve placeId and coordinates
 function validateLocationWithGoogle(array $locationInput): array {
     $queryParts = [
@@ -1351,7 +1302,6 @@ function validateLocationWithGoogle(array $locationInput): array {
     }
 
     $data = json_decode($response, true);
-
     if (($data['status'] ?? '') !== 'OK' || empty($data['results'][0])) {
         return ['placeId' => null];
     }
@@ -1365,12 +1315,13 @@ function validateLocationWithGoogle(array $locationInput): array {
         'lng'     => $result['geometry']['location']['lng'] ?? null
     ];
 }
-// ✅ assessContactLegitimacy — evaluate contact against acceptance rules
+
+// ⚖️ assessContactLegitimacy — evaluate contact against acceptance rules
 function assessContactLegitimacy(array $parsed, array $meta, array $issues): array {
     $failures = [];
     $warnings = [];
 
-    // 1. Structural
+    // Structural checks
     if (empty($parsed['contact']['firstName']) || empty($parsed['contact']['lastName'])) {
         $failures[] = 'missing_name';
     }
@@ -1378,36 +1329,29 @@ function assessContactLegitimacy(array $parsed, array $meta, array $issues): arr
     $hasEmail = !empty($parsed['contact']['email']);
     $hasPhone = !empty($parsed['contact']['primaryPhoneRaw']);
 
-    if (!$hasEmail && !$hasPhone) {
-        $failures[] = 'missing_contact_method';
-    }
-
+    if (!$hasEmail && !$hasPhone) $failures[] = 'missing_contact_method';
     if (empty($parsed['location']['address']) || empty($parsed['location']['city']) || empty($parsed['location']['state'])) {
         $failures[] = 'missing_location_core';
     }
 
-    // 2. Critical Location & Maricopa Rules
     if (empty($parsed['location']['locationPlaceId'])) {
         $failures[] = 'missing_placeId';
     }
 
+    // Maricopa-specific rules
     if (!empty($meta['is_maricopa'])) {
-        if (empty($meta['parcel'])) {
-            $failures[] = 'missing_parcel';
-        }
-        if (empty($meta['jurisdiction'])) {
-            $failures[] = 'missing_jurisdiction';
-        }
+        if (empty($meta['parcel'])) $failures[] = 'missing_parcel';
+        if (empty($meta['jurisdiction'])) $failures[] = 'missing_jurisdiction';
     }
 
-    // 3. Identity Sanity (improved)
+    // Identity sanity
     $invalidNames = ['test', 'admin', 'user', 'unknown', 'dummy', 'sample'];
     $firstLower = strtolower(trim($parsed['contact']['firstName'] ?? ''));
     if (strlen($firstLower) < 2 || in_array($firstLower, $invalidNames)) {
         $failures[] = 'invalid_name';
     }
 
-    // 4. Format validation
+    // Format validation
     if ($hasEmail && !filter_var($parsed['contact']['email'], FILTER_VALIDATE_EMAIL)) {
         $failures[] = 'invalid_email';
     }
@@ -1415,81 +1359,40 @@ function assessContactLegitimacy(array $parsed, array $meta, array $issues): arr
         $warnings[] = 'invalid_phone_format';
     }
 
-    // 5. Issue mapping
-    foreach ($issues as $issue) {
-        if (in_array($issue, ['missing_required_fields'])) {
-            $failures[] = $issue;
-        }
-    }
-
-    // Deduplicate
     $failures = array_values(array_unique($failures));
     $warnings = array_values(array_unique($warnings));
 
-    // Severity for UI
     $severity = !empty($failures) ? 'critical' : (!empty($warnings) ? 'warning' : 'none');
 
     if (!empty($failures)) {
-        return [
-            'status'   => 'reject',
-            'severity' => $severity,
-            'failures' => $failures,
-            'warnings' => $warnings,
-            'readyForCommit' => false
-        ];
+        return ['status' => 'reject', 'severity' => $severity, 'failures' => $failures, 'warnings' => $warnings, 'readyForCommit' => false];
     }
-
     if (!empty($warnings)) {
-        return [
-            'status'   => 'partial',
-            'severity' => $severity,
-            'failures' => [],
-            'warnings' => $warnings,
-            'readyForCommit' => false
-        ];
+        return ['status' => 'partial', 'severity' => $severity, 'failures' => [], 'warnings' => $warnings, 'readyForCommit' => false];
     }
 
-    return [
-        'status'   => 'accepted',
-        'severity' => $severity,
-        'failures' => [],
-        'warnings' => [],
-        'readyForCommit' => true
-    ];
+    return ['status' => 'accepted', 'severity' => $severity, 'failures' => [], 'warnings' => [], 'readyForCommit' => true];
 }
+
 // 📞 extractPhones — parse all phone numbers
 function extractPhones(string $input): array {
-
-    // Find all phone-like patterns
     preg_match_all('/\(?\d{3}\)?[\s\.\-]?\d{3}[\.\-]?\d{4}/', $input, $matches);
-
     $phones = [];
 
     foreach ($matches[0] as $raw) {
-
-        // Normalize
         $digits = preg_replace('/\D/', '', $raw);
-
         if (strlen($digits) === 10) {
             $phones[] = [
-                'formatted' => sprintf('(%s) %s-%s',
-                    substr($digits, 0, 3),
-                    substr($digits, 3, 3),
-                    substr($digits, 6, 4)
-                ),
+                'formatted' => sprintf('(%s) %s-%s', substr($digits, 0, 3), substr($digits, 3, 3), substr($digits, 6, 4)),
                 'raw' => $digits
             ];
         }
     }
-
     return $phones;
 }
-// 📍 Infer Location Name - priority:
-function inferLocationName(array $parsed): array {
 
-    // -------------------------------------------------
-    // 1. Already provided → confirmed
-    // -------------------------------------------------
+// 📍 inferLocationName — derive location display name
+function inferLocationName(array $parsed): array {
     if (!empty($parsed['location']['locationName'])) {
         $parsed['location']['locationNameConfirmed'] = true;
         $parsed['location']['locationNameInferred'] = false;
@@ -1500,188 +1403,85 @@ function inferLocationName(array $parsed): array {
     $address = trim($parsed['location']['address'] ?? '');
     $city    = trim($parsed['location']['city'] ?? '');
 
-    // -------------------------------------------------
-    // 2. Entity + City (PREFERRED)
-    // -------------------------------------------------
     if (!empty($entity) && !empty($city)) {
-
         $parsed['location']['locationName'] = $entity . ' - ' . $city;
-
         $parsed['location']['locationNameInferred'] = true;
         $parsed['location']['locationNameConfirmed'] = false;
-
         return $parsed;
     }
 
-    // -------------------------------------------------
-    // 3. Address + City (FALLBACK)
-    // -------------------------------------------------
     if (!empty($address) && !empty($city)) {
-
         $parsed['location']['locationName'] = $address . ' - ' . $city;
-
         $parsed['location']['locationNameInferred'] = true;
         $parsed['location']['locationNameConfirmed'] = false;
-
         return $parsed;
     }
 
-    // -------------------------------------------------
-    // 4. Nothing usable
-    // -------------------------------------------------
     $parsed['location']['locationName'] = '';
     $parsed['location']['locationNameInferred'] = false;
     $parsed['location']['locationNameConfirmed'] = false;
 
     return $parsed;
 }
-// 🧠 fallbackExtractName — recover name if AI fails
-function fallbackExtractName(array $parsed, string $rawInput): array {
 
+// 🛟 fallbackExtractName — recover name if AI fails
+function fallbackExtractName(array $parsed, string $rawInput): array {
     $first = $parsed['contact']['firstName'] ?? '';
     $last  = $parsed['contact']['lastName'] ?? '';
 
     if (empty($first) || empty($last)) {
-
-        // Look for first valid "First Last" pattern
         if (preg_match('/^\s*([A-Za-z]{2,})\s+([A-Za-z]{2,})/m', $rawInput, $m)) {
-
-            if (empty($first)) {
-                $parsed['contact']['firstName'] = ucfirst(strtolower($m[1]));
-            }
-
-            if (empty($last)) {
-                $parsed['contact']['lastName'] = ucfirst(strtolower($m[2]));
-            }
+            if (empty($first)) $parsed['contact']['firstName'] = ucfirst(strtolower($m[1]));
+            if (empty($last))  $parsed['contact']['lastName']  = ucfirst(strtolower($m[2]));
         }
     }
 
     return $parsed;
 }
-// 🔁 evaluateDuplicate — DB-backed duplicate detection
-function evaluateDuplicate(array $parsed, PDO $pdo): array {
 
-    #region Normalize Inputs
-
+// 🔍 evaluateDuplicate — DB-backed contact duplicate detection
+function evaluateDuplicate(array $parsed, PDO $pdo): array
+{
     $email = strtolower(trim($parsed['contact']['email'] ?? ''));
     $phone = preg_replace('/\D/', '', $parsed['contact']['primaryPhoneRaw'] ?? '');
     $first = strtolower(trim($parsed['contact']['firstName'] ?? ''));
     $last  = strtolower(trim($parsed['contact']['lastName'] ?? ''));
 
-    #endregion
-
-    #region 1. Exact Email Match
-
     if (!empty($email)) {
-
-        $sql = "
-            SELECT contactId, contactEntityId
-            FROM tblContacts
-            WHERE LOWER(contactEmail) = :email
-            LIMIT 1
-        ";
-
-        $stmt = $pdo->prepare($sql);
+        $stmt = $pdo->prepare("SELECT contactId, contactEntityId FROM tblContacts WHERE LOWER(contactEmail) = :email LIMIT 1");
         $stmt->execute(['email' => $email]);
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row) {
-            return [
-                'status'    => 'exact',
-                'contactId' => $row['contactId'],
-                'entityId'  => $row['contactEntityId'],
-                'matchType' => 'email'
-            ];
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            return ['status' => 'exact', 'contactId' => $row['contactId'], 'entityId' => $row['contactEntityId'], 'matchType' => 'email'];
         }
     }
-
-    #endregion
-
-    #region 2. Phone Match
 
     if (!empty($phone)) {
-
-        $sql = "
-            SELECT contactId, contactEntityId
-            FROM tblContacts
-            WHERE contactPrimaryPhoneRaw = :phone
-            LIMIT 1
-        ";
-
-        $stmt = $pdo->prepare($sql);
+        $stmt = $pdo->prepare("SELECT contactId, contactEntityId FROM tblContacts WHERE contactPrimaryPhoneRaw = :phone LIMIT 1");
         $stmt->execute(['phone' => $phone]);
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row) {
-            return [
-                'status'    => 'possible',
-                'contactId' => $row['contactId'],
-                'entityId'  => $row['contactEntityId'],
-                'matchType' => 'phone'
-            ];
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            return ['status' => 'possible', 'contactId' => $row['contactId'], 'entityId' => $row['contactEntityId'], 'matchType' => 'phone'];
         }
     }
-
-    #endregion
-
-    #region 3. Name Match
 
     if (!empty($first) && !empty($last)) {
-
-        $sql = "
-            SELECT contactId, contactEntityId
-            FROM tblContacts
-            WHERE LOWER(contactFirstName) = :first
-              AND LOWER(contactLastName) = :last
-            LIMIT 1
-        ";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            'first' => $first,
-            'last'  => $last
-        ]);
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row) {
-            return [
-                'status'    => 'possible',
-                'contactId' => $row['contactId'],
-                'entityId'  => $row['contactEntityId'],
-                'matchType' => 'name'
-            ];
+        $stmt = $pdo->prepare("SELECT contactId, contactEntityId FROM tblContacts WHERE LOWER(contactFirstName) = :first AND LOWER(contactLastName) = :last LIMIT 1");
+        $stmt->execute(['first' => $first, 'last' => $last]);
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            return ['status' => 'possible', 'contactId' => $row['contactId'], 'entityId' => $row['contactEntityId'], 'matchType' => 'name'];
         }
     }
 
-    #endregion
-
-    #region Default Result
-
-    return [
-        'status'    => 'none',
-        'contactId' => null,
-        'entityId'  => null,
-        'matchType' => null
-    ];
-
-    #endregion
+    return ['status' => 'none', 'contactId' => null, 'entityId' => null, 'matchType' => null];
 }
+
 // 🧼 normalizeLocationName — standardize for comparison
 function normalizeLocationName(string $name): string {
-
     $name = strtolower($name);
-
-    // Remove punctuation
     $name = preg_replace('/[^a-z0-9\s]/', '', $name);
-
-    // Normalize whitespace
     $name = preg_replace('/\s+/', ' ', $name);
-
     return trim($name);
 }
+
 // 🔁 evaluateLocationDuplicate — authoritative GLOBAL location identity first
 function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
 
@@ -1867,51 +1667,34 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
         'entityId' => $entityId
     ];
 }
-// 🔍 resolveEntityIdByName
-/**
- * Resolve entityId by exact name match (case-insensitive)
- *
- * @return int|null  entityId if found, null otherwise
- */
+
+// 🔑 resolveEntityIdByName — lookup entity by name
 function resolveEntityIdByName(string $entityName, PDO $pdo): ?int {
-
     $entityName = trim($entityName);
-    if (empty($entityName)) {
-        return null;
-    }
+    if (empty($entityName)) return null;
 
-    // Try exact match first
-    $stmt = $pdo->prepare("
-        SELECT entityId 
-        FROM tblEntities 
-        WHERE LOWER(entityName) = LOWER(:name) 
-        LIMIT 1
-    ");
+    // Exact match
+    $stmt = $pdo->prepare("SELECT entityId FROM tblEntities WHERE LOWER(entityName) = LOWER(:name) LIMIT 1");
     $stmt->execute(['name' => $entityName]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($row) {
+    if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         return (int)$row['entityId'];
     }
 
-    // Fallback: LIKE match (for slight variations)
-    $stmt = $pdo->prepare("
-        SELECT entityId 
-        FROM tblEntities 
-        WHERE LOWER(entityName) LIKE LOWER(:name)
-        LIMIT 1
-    ");
+    // Loose match
+    $stmt = $pdo->prepare("SELECT entityId FROM tblEntities WHERE LOWER(entityName) LIKE LOWER(:name) LIMIT 1");
     $stmt->execute(['name' => '%' . $entityName . '%']);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        return (int)$row['entityId'];
+    }
 
-    return $row ? (int)$row['entityId'] : null;
+    return null;
 }
+
 // 📞 extractPhoneExtension — extract phone extension
 function extractPhoneExtension(string $input): ?string {
-
     if (preg_match('/\b(ext\.?|x|extension)\s*[:\-]?\s*(\d{1,6})\b/i', $input, $m)) {
         return trim($m[2]);
     }
-
     return null;
 }
 
