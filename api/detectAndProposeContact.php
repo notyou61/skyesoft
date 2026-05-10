@@ -831,6 +831,12 @@ if (!$pdo) {
 
 #region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — DecisionArchitecture)
 
+// Defensive defaults (eliminates Intelephense warnings)
+$dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete', 'missing' => []];
+$locationValidation  = $locationValidation  ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'apnResolved' => false, 'jurisdictionResolved' => false, 'issues' => []];
+$parcel              = $parcel              ?? null;
+$dpv                 = $dpv                 ?? null;
+
 $duplicate        = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 
@@ -994,7 +1000,7 @@ foreach ($resolution['issues']['blocking'] as $issue) {
 }
 
 // -------------------------------------------------
-// ROBUST COUNTY/FIPS MAPPING (matches your Census function)
+// ROBUST COUNTY/FIPS MAPPING
 // -------------------------------------------------
 $county     = trim($parsed['location']['county'] ?? '');
 $countyFips = trim($parsed['location']['countyFips'] ?? '');
@@ -1725,11 +1731,12 @@ function normalizeLocationName(string $name): string {
     return trim($name);
 }
 /**
- * Evaluate if this location already exists for the entity
- * Uses correct schema: locationEntityId (NOT entityId)
- */
-/**
- * Evaluate Location Duplicate — Schema-Aware + PlaceId First
+ * Evaluate Location Duplicate — GLOBAL PlaceId First (authoritative identity)
+ * 
+ * This is the corrected version per the latest architecture notes:
+ * - PlaceId check is now GLOBAL (any entity)
+ * - existing_location now correctly supersedes multiple_parcels
+ * - Keeps original entity-scoped fallbacks for backward compatibility
  */
 function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
 
@@ -1748,36 +1755,32 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
     }
 
     // -------------------------------------------------
-    // 1. STRONGEST: PlaceId Match (Google Place ID)
+    // 1. GLOBAL PlaceId Match — Authoritative location identity (ANY entity)
     // -------------------------------------------------
     if (!empty($placeId)) {
         $stmt = $pdo->prepare("
-            SELECT locationId, locationName, locationPlaceId
+            SELECT locationId, locationName, locationEntityId
             FROM tblLocations
             WHERE locationPlaceId = :placeId
-            AND locationEntityId = :entityId
             LIMIT 1
         ");
 
-        $stmt->execute([
-            'placeId'  => $placeId,
-            'entityId' => $entityId
-        ]);
+        $stmt->execute(['placeId' => $placeId]);
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            error_log("✅ EXACT LOCATION MATCH FOUND via PlaceId! locationId = " . $row['locationId']);
+            error_log("✅ GLOBAL EXISTING LOCATION MATCH via PlaceId! locationId = " . $row['locationId']);
             return [
                 'status'     => 'exact',
                 'locationId' => $row['locationId'],
-                'matchType'  => 'placeId'
+                'matchType'  => 'placeId_global'
             ];
         } else {
-            error_log("❌ PlaceId match failed for: " . $placeId . " (entityId=" . $entityId . ")");
+            error_log("❌ No global PlaceId match for: " . $placeId);
         }
     }
 
     // -------------------------------------------------
-    // 2. Fallback: Address Match
+    // 2. Fallback: Entity-scoped Address Match (backward compatibility)
     // -------------------------------------------------
     if (!empty($address)) {
         $stmt = $pdo->prepare("
@@ -1806,7 +1809,7 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
     }
 
     // -------------------------------------------------
-    // 3. Final fallback: Name match (your original logic)
+    // 3. Final fallback: Name + City match (your original logic)
     // -------------------------------------------------
     $normalizedInput = normalizeLocationName($locationName);
     $city = strtolower(trim($parsed['location']['city'] ?? ''));
