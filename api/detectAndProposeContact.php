@@ -527,7 +527,7 @@ if (!isset($parsed['contact']['primaryPhoneExtension'])) {
 
 #endregion
 
-#region SECTION 09 — 🧩 Data Processing & Enrichment (Deterministic)
+#region SECTION 09 — 🧩 Data Processing & Enrichment (Deterministic — Consolidated & Corrected)
 
 // -------------------------------------------------
 // 🧩 CORE NORMALIZATION PIPELINE
@@ -543,7 +543,6 @@ $firstName = trim($parsed['contact']['firstName'] ?? '');
 $lastName  = trim($parsed['contact']['lastName'] ?? '');
 
 $existingSalutation = trim($parsed['contact']['salutation'] ?? '');
-
 if ($existingSalutation !== '') {
     $parsed['contact']['salutation'] = $existingSalutation;
     $parsed['contact']['salutationInferred'] = false;
@@ -609,13 +608,13 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
         $parsed['location']['longitude']        = $googleData['lng'] ?? null;
         $parsed['location']['formattedAddress'] = str_replace(', USA', '', $googleData['address'] ?? $fullAddress);
 
+        // ←←← CRITICAL: Store full Google data for county fallback
+        $parsed['location']['googleData'] = $googleData;
+
         $locationValidation['status']          = 'valid';
         $locationValidation['placeIdResolved'] = true;
         $locationValidation['latLonResolved']  = true;
         $locationValidation['confidence']      = 90;
-    } else {
-        $locationValidation['issues'][] = 'google_place_not_resolved';
-        $locationValidation['placeIdResolved'] = false;
     }
 }
 
@@ -623,14 +622,12 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
 // SUITE NORMALIZATION
 // -------------------------------------------------
 $locationSuite = '';
-if (isset($parsed['location']['suite']) && trim($parsed['location']['suite']) !== '') {
+if (!empty($parsed['location']['suite'])) {
     $locationSuite = trim($parsed['location']['suite']);
     $locationSuite = preg_replace('/^(SUITE|STE|UNIT|APT|APARTMENT|#)\s*/i', '', $locationSuite);
     $locationSuite = strtoupper(trim($locationSuite));
     if (preg_match('/^[A-Z0-9\-]{1,8}$/', $locationSuite)) {
         $locationSuite = '#' . $locationSuite;
-    } else {
-        $locationSuite = '';
     }
 }
 $badSuites = ['#VE', '#AVE', '#ST', '#STE', '#DR', '#RD', '#LN', '#CT', '#BLVD'];
@@ -642,15 +639,19 @@ $parsed['location']['locationAddressSuite'] = $locationSuite;
 // -------------------------------------------------
 // FINAL ADDRESS NORMALIZATION (Street-only)
 // -------------------------------------------------
-$fullAddressFinal = $parsed['location']['formattedAddress'] ?? $parsed['location']['address'] ?? $fullAddress;
+$fullAddressFinal = $parsed['location']['formattedAddress'] 
+                 ?? $parsed['location']['address'] 
+                 ?? $fullAddress;
+
 $address = preg_replace('/(?:#|Suite|Ste|Unit|Apt)\s*[A-Za-z0-9\-]+/i', '', $fullAddressFinal);
 $address = explode(',', $address)[0] ?? $address;
 $address = trim(preg_replace('/\s+/', ' ', $address));
+
 $parsed['location']['address'] = $address;
 $parsed['location']['locationAddressRaw'] = $rawInputOriginal;
 
 // -------------------------------------------------
-// CENSUS GEO + RELIABLE GOOGLE FALLBACK (FINAL VERSION)
+// CENSUS GEO + RELIABLE GOOGLE FALLBACK
 // -------------------------------------------------
 $geoAddress = trim(
     $parsed['location']['formattedAddress'] 
@@ -662,16 +663,13 @@ $geoAddress = trim(
 
 error_log("🔍 Geography enrichment for: " . $geoAddress);
 
-// Try Census
 $geo = resolveGeographyFromAddress($geoAddress);
 
 if ($geo && !empty($geo['county'])) {
     $parsed['location']['county']     = trim($geo['county']);
     $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';
     error_log("✅ Census success: {$geo['county']} ({$geo['countyFips']})");
-
 } 
-// Google Fallback (now works because we store addressComponents)
 elseif (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
     foreach ($parsed['location']['googleData']['addressComponents'] as $comp) {
         if (in_array('administrative_area_level_2', $comp['types'] ?? [])) {
@@ -683,24 +681,23 @@ elseif (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
         }
     }
 } 
-// Last resort
 elseif (($locationValidation['isMaricopa'] ?? false) === true) {
     $parsed['location']['county']     = 'Maricopa';
     $parsed['location']['countyFips'] = '04013';
     error_log("✅ isMaricopa flag fallback");
 }
 
-// Guarantee fields are never empty
+// Guarantee fields exist
 $parsed['location']['county']     = $parsed['location']['county'] ?? '';
-$parsed['location']['countyFips'] = $parsed['location']['countyFips'] ?? '';'';
+$parsed['location']['countyFips'] = $parsed['location']['countyFips'] ?? '';
 
 // -------------------------------------------------
-// MARICOPA PARCEL LOOKUP — CLEAN STREET-ONLY
+// MARICOPA PARCEL LOOKUP + STATEFUL NORMALIZATION
 // -------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
-$isMaricopa = ($county === 'MARICOPA' || $state === 'AZ');
+$isMaricopa = ($county === 'MARICOPA');
 $locationValidation['isMaricopa'] = $isMaricopa;
 
 $parcelDetails = [];
@@ -708,48 +705,70 @@ $parcelDetails = [];
 if ($isMaricopa && !empty($parsed['location']['address'])) {
 
     $parcelLookupAddress = trim($parsed['location']['address']);
-    $parcelLookupAddress = preg_replace('/\b(Phoenix|AZ|85017|\d{5})\b/i', '', $parcelLookupAddress);
-    $parcelLookupAddress = preg_replace('/\s+/', ' ', $parcelLookupAddress);
-    $parcelLookupAddress = trim($parcelLookupAddress);
 
     error_log("[MARICOPA-DEBUG] Cleaned lookup address: " . $parcelLookupAddress);
 
-    $parcelDetails = lookupMaricopaParcel($parcelLookupAddress);
+    $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
 
-    error_log("[MARICOPA-DEBUG] lookupMaricopaParcel returned " . count($parcelDetails) . " candidates");
+    // -------------------------------------------------
+    // STATEFUL PARCEL CANDIDATE NORMALIZATION
+    // -------------------------------------------------
+    $parcelDetails = array_map(function ($p) {
+        return [
+            'apnRaw'          => $p['apnRaw'] ?? null,
+            'apnDisplay'      => $p['apnDisplay'] ?? null,
+            'address'         => $p['address'] ?? '',
+            'city'            => $p['city'] ?? '',
+            'jurisdiction'    => $p['jurisdiction'] ?? '',
+            'owner'           => $p['owner'] ?? '',
+            'source'          => $p['source'] ?? 'mca_arcgis_mcassessor',
+            'confidence'      => $p['confidence'] ?? 70,
+            'matchedInput'    => $p['matchedInput'] ?? '',
 
-    if (!empty($parcelDetails)) {
-        if (count($parcelDetails) === 1) {
-            $locationValidation['parcelStatus'] = 'resolved';
-            $locationValidation['apnResolved'] = true;
-            $locationValidation['jurisdictionResolved'] = true;
-        } else {
-            $locationValidation['parcelStatus'] = 'multiple_matches';
-            $locationValidation['apnResolved'] = false;
-            $locationValidation['jurisdictionResolved'] = false;
-        }
+            // === OPERATIONAL STATE ===
+            'provided'        => true,
+            'selected'        => false,
+            'resolutionSource'=> 'unresolved'
+        ];
+    }, $rawParcels ?? []);
+
+    error_log("[MARICOPA-DEBUG] Normalized " . count($parcelDetails) . " parcel candidates");
+
+    // -------------------------------------------------
+    // Automatic selection when exactly one candidate
+    // -------------------------------------------------
+    if (count($parcelDetails) === 1) {
+        $parcelDetails[0]['selected']         = true;
+        $parcelDetails[0]['resolutionSource'] = 'automatic';
+
+        $locationValidation['parcelStatus']         = 'resolved';
+        $locationValidation['apnResolved']          = true;
+        $locationValidation['jurisdictionResolved'] = true;
+    } elseif (count($parcelDetails) > 1) {
+        $locationValidation['parcelStatus'] = 'multiple_matches';
+        $locationValidation['apnResolved']  = false;
+        $locationValidation['jurisdictionResolved'] = false;
     } else {
         $locationValidation['parcelStatus'] = 'not_found';
     }
 }
 
-// ← CRITICAL: Attach parcelDetails so SECTION 10 can use it
+// Attach to parsed location
 $parsed['location']['parcelDetails'] = $parcelDetails;
 
 // -------------------------------------------------
 // SMARTY USPS VALIDATION (only if parcel not resolved)
 // -------------------------------------------------
 $parcelResolved = $locationValidation['apnResolved'] ?? false;
-$smartyResult = null;
 $dpv = null;
 
 if (!$parcelResolved) {
-    $street = $parsed['location']['address'] ?? '';
-    $city   = $parsed['location']['city'] ?? '';
-    $state  = $parsed['location']['state'] ?? '';
-    $zip    = $parsed['location']['zip'] ?? '';
-
-    $smartyResult = validateAddressSmarty($street, $city, $state, $zip);
+    $smartyResult = validateAddressSmarty(
+        $parsed['location']['address'] ?? '',
+        $parsed['location']['city'] ?? '',
+        $parsed['location']['state'] ?? '',
+        $parsed['location']['zip'] ?? ''
+    );
 
     if ($smartyResult) {
         $dpv = $smartyResult['analysis']['dpv_match_code'] ?? null;
@@ -758,9 +777,8 @@ if (!$parcelResolved) {
     }
 }
 
-// Attach to parsed location
-$parsed['location']['locationDpvCode'] = $dpv;
-$parsed['location']['locationDeliverable'] = ($dpv === 'Y');
+$parsed['location']['locationDpvCode']       = $dpv;
+$parsed['location']['locationDeliverable']   = ($dpv === 'Y');
 $parsed['location']['locationRequiresSuite'] = ($dpv === 'D');
 
 // Final inference
@@ -860,8 +878,6 @@ $data['location'] = [
     'locationZip'             => $parsed['location']['zip'] ?? '',
     'locationCounty'          => isset($parsed['location']['county']) ? $parsed['location']['county'] : '',
     'locationCountyFips'      => isset($parsed['location']['countyFips']) ? $parsed['location']['countyFips'] : '',  
-    'locationParcelNumber'    => $parcel['apnDisplay'] ?? null,
-    'locationParcelNumberRaw' => $parcel['apnRaw'] ?? null,
     'locationJurisdiction'    => $parsed['location']['locationJurisdiction']
                                     ?? $parsed['location']['jurisdiction']
                                     ?? ($parcelDetails[0]['jurisdiction'] ?? ''),
