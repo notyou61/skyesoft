@@ -586,6 +586,7 @@ $locationValidation = [
 $googleData = null;
 
 if (!empty($googleApiKey) && !empty($fullAddress)) {
+
     $googleData = validateLocationWithGoogle([
         'address' => $lookupAddress,
         'city'    => $parsed['location']['city'] ?? '',
@@ -593,6 +594,7 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
         'zip'     => $parsed['location']['zip'] ?? ''
     ]);
 
+    // Retry with full address if first attempt fails
     if (empty($googleData['placeId']) && !empty($fullAddress)) {
         $googleData = validateLocationWithGoogle([
             'address' => $fullAddress,
@@ -608,13 +610,15 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
         $parsed['location']['longitude']        = $googleData['lng'] ?? null;
         $parsed['location']['formattedAddress'] = str_replace(', USA', '', $googleData['address'] ?? $fullAddress);
 
-        // ←←← CRITICAL: Store full Google data for county fallback
-        $parsed['location']['googleData'] = $googleData;
+        // ←←← CRITICAL: Store full Google result for county fallback + future use
+        $parsed['location']['googleData'] = $googleData['googleData'] ?? $googleData;
 
         $locationValidation['status']          = 'valid';
         $locationValidation['placeIdResolved'] = true;
         $locationValidation['latLonResolved']  = true;
         $locationValidation['confidence']      = 90;
+    } else {
+        $locationValidation['issues'][] = 'google_place_not_resolved';
     }
 }
 
@@ -982,10 +986,13 @@ $resolution = [
 // Used only if AI narrative generation fails
 // -------------------------------------------------
 $pcmNarratives = [
-
     'new_elc' => [
         'decision' => [
             'This proposal passed validation and is ready to create a new entity, location, and contact record.'
+        ],
+        'informational' => [
+            'The entity has been confirmed with no conflicting records detected.',
+            'All current operational validation requirements were satisfied.'
         ]
     ],
 
@@ -1612,7 +1619,7 @@ function resolveMaricopaJurisdiction(string $address): ?string {
     return null;
 }
 
-// 📍 validateLocationWithGoogle — Updated to save addressComponents
+// 📍 validateLocationWithGoogle — Properly stores full Google data
 function validateLocationWithGoogle(array $locationInput): array {
     $queryParts = [
         $locationInput['address'] ?? '',
@@ -1622,18 +1629,22 @@ function validateLocationWithGoogle(array $locationInput): array {
     ];
 
     $query = trim(implode(', ', array_filter($queryParts)));
-    if ($query === '') return ['placeId' => null];
+    if ($query === '') {
+        return ['placeId' => null];
+    }
 
     $apiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY');
-    if (!$apiKey) return ['placeId' => null];
+    if (!$apiKey) {
+        return ['placeId' => null];
+    }
 
     $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($query) . '&key=' . $apiKey;
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 8,
-        CURLOPT_CONNECTTIMEOUT => 5
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 5,
     ]);
 
     $response = curl_exec($ch);
@@ -1641,26 +1652,28 @@ function validateLocationWithGoogle(array $locationInput): array {
     curl_close($ch);
 
     if ($response === false || $httpCode !== 200) {
+        error_log("[Google Geocode] HTTP {$httpCode} failed for: {$query}");
         return ['placeId' => null];
     }
 
     $data = json_decode($response, true);
 
     if (($data['status'] ?? '') !== 'OK' || empty($data['results'][0])) {
+        error_log("[Google Geocode] Status: " . ($data['status'] ?? 'UNKNOWN') . " for: {$query}");
         return ['placeId' => null];
     }
 
     $result = $data['results'][0];
 
-    // ←←← SAVE FULL GOOGLE DATA
-    $parsed['location']['googleData'] = $result;   // ← This was missing!
-
+    // Return full enriched data (including addressComponents)
     return [
-        'placeId'          => $result['place_id'] ?? null,
-        'address'          => $result['formatted_address'] ?? $query,
-        'lat'              => $result['geometry']['location']['lat'] ?? null,
-        'lng'              => $result['geometry']['location']['lng'] ?? null,
-        'addressComponents' => $result['address_components'] ?? []   // ← Important
+        'placeId'           => $result['place_id'] ?? null,
+        'address'           => $result['formatted_address'] ?? $query,
+        'lat'               => $result['geometry']['location']['lat'] ?? null,
+        'lng'               => $result['geometry']['location']['lng'] ?? null,
+        'addressComponents' => $result['address_components'] ?? [],
+        'googleData'        => $result,                    // ← Full result for later use
+        'types'             => $result['types'] ?? [],
     ];
 }
 
