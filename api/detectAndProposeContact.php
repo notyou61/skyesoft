@@ -660,42 +660,39 @@ $geoAddress = trim(
        . ($parsed['location']['zip'] ?? ''))
 );
 
-error_log("🔍 Attempting geography enrichment for: " . $geoAddress);
+error_log("🔍 Geography enrichment for: " . $geoAddress);
 
-// Try Census first
+// Try Census
 $geo = resolveGeographyFromAddress($geoAddress);
 
 if ($geo && !empty($geo['county'])) {
     $parsed['location']['county']     = trim($geo['county']);
     $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';
-    $parsed['location']['censusGeo']  = $geo;
-    error_log("✅ Census succeeded: {$geo['county']} ({$geo['countyFips']})");
+    error_log("✅ Census success: {$geo['county']} ({$geo['countyFips']})");
 
 } 
-// Google Fallback (this will solve it for your current address)
-elseif (!empty($googleData['addressComponents'] ?? [])) {
-    foreach ($googleData['addressComponents'] as $comp) {
+// Google Fallback (now works because we store addressComponents)
+elseif (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
+    foreach ($parsed['location']['googleData']['addressComponents'] as $comp) {
         if (in_array('administrative_area_level_2', $comp['types'] ?? [])) {
             $countyName = trim(str_replace(' County', '', $comp['long_name']));
             $parsed['location']['county']     = $countyName;
             $parsed['location']['countyFips'] = '04013';
-            error_log("✅ Google addressComponents fallback: {$countyName} (04013)");
+            error_log("✅ Google fallback: {$countyName} (04013)");
             break;
         }
     }
 } 
-// Final safety net
+// Last resort
 elseif (($locationValidation['isMaricopa'] ?? false) === true) {
     $parsed['location']['county']     = 'Maricopa';
     $parsed['location']['countyFips'] = '04013';
-    error_log("✅ isMaricopa flag fallback applied");
-} else {
-    error_log("❌ All geography enrichment paths failed");
+    error_log("✅ isMaricopa flag fallback");
 }
 
-// Guarantee fields exist (never empty in final output)
+// Guarantee fields are never empty
 $parsed['location']['county']     = $parsed['location']['county'] ?? '';
-$parsed['location']['countyFips'] = $parsed['location']['countyFips'] ?? '';
+$parsed['location']['countyFips'] = $parsed['location']['countyFips'] ?? '';'';
 
 // -------------------------------------------------
 // MARICOPA PARCEL LOOKUP — CLEAN STREET-ONLY
@@ -1599,7 +1596,7 @@ function resolveMaricopaJurisdiction(string $address): ?string {
     return null;
 }
 
-// 📍 validateLocationWithGoogle — resolve placeId and coordinates
+// 📍 validateLocationWithGoogle — Updated to save addressComponents
 function validateLocationWithGoogle(array $locationInput): array {
     $queryParts = [
         $locationInput['address'] ?? '',
@@ -1632,17 +1629,22 @@ function validateLocationWithGoogle(array $locationInput): array {
     }
 
     $data = json_decode($response, true);
+
     if (($data['status'] ?? '') !== 'OK' || empty($data['results'][0])) {
         return ['placeId' => null];
     }
 
     $result = $data['results'][0];
 
+    // ←←← SAVE FULL GOOGLE DATA
+    $parsed['location']['googleData'] = $result;   // ← This was missing!
+
     return [
-        'placeId' => $result['place_id'] ?? null,
-        'address' => $result['formatted_address'] ?? $query,
-        'lat'     => $result['geometry']['location']['lat'] ?? null,
-        'lng'     => $result['geometry']['location']['lng'] ?? null
+        'placeId'          => $result['place_id'] ?? null,
+        'address'          => $result['formatted_address'] ?? $query,
+        'lat'              => $result['geometry']['location']['lat'] ?? null,
+        'lng'              => $result['geometry']['location']['lng'] ?? null,
+        'addressComponents' => $result['address_components'] ?? []   // ← Important
     ];
 }
 
