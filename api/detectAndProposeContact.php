@@ -825,7 +825,7 @@ error_log("🔍 [SECTION 10] PlaceId = " . ($parsed['location']['locationPlaceId
 error_log("🔍 [SECTION 10] locationDuplicate = " . json_encode($locationDuplicate));
 
 // -------------------------------------------------
-// AUTHORITATIVE PCM DECISION (Updated with Parcel Governance)
+// AUTHORITATIVE PCM DECISION — Final Version
 // -------------------------------------------------
 if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
@@ -837,13 +837,7 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
 
 } elseif (($locationDuplicate['status'] ?? '') === 'exact') {
-    $pcm = [
-        'status'          => 'existing_location',
-        'readyForCommit'  => false,
-        'requiresReview'  => true,
-        'blocksCommit'    => true,
-        'action'          => 'link_existing_location'
-    ];
+    $pcm = ['status' => 'existing_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'link_existing_location'];
 
 } elseif (($locationDuplicate['status'] ?? '') === 'possible') {
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
@@ -851,10 +845,9 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 } elseif (isset($locationValidation['parcelStatus']) && $locationValidation['parcelStatus'] === 'multiple_matches') {
     $pcm = ['status' => 'multiple_parcels', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_parcel'];
 
-} 
-// ── NEW: Authoritative Parcel Resolution Check ──
-elseif (
-    ($locationValidation['isMaricopa'] ?? false) && 
+// ── MARICOPA PARCEL GOVERNANCE ──
+} elseif (
+    ($locationValidation['isMaricopa'] ?? false) === true && 
     ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
 ) {
     $pcm = [
@@ -865,11 +858,8 @@ elseif (
         'action'          => 'resolve_parcel'
     ];
 
-} elseif (($locationValidation['isMaricopa'] ?? false) && 
-          (!$locationValidation['apnResolved'] ?? false || !$locationValidation['jurisdictionResolved'] ?? false)) {
-    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
-
 } else {
+    // Default: Non-Maricopa OR fully resolved Maricopa → new_elc
     $pcm = ['status' => 'new_elc', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'insert_new'];
 }
 
