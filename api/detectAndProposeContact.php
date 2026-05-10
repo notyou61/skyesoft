@@ -829,21 +829,29 @@ if (!$pdo) {
 
 #endregion
 
-#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — DecisionArchitecture)
+#region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — Global PlaceId Precedence + All Defensive Defaults)
 
-// Defensive defaults (eliminates Intelephense warnings)
-$dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete', 'missing' => []];
-$locationValidation  = $locationValidation  ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'apnResolved' => false, 'jurisdictionResolved' => false, 'issues' => []];
-$parcel              = $parcel              ?? null;
-$dpv                 = $dpv                 ?? null;
-
-$duplicate        = $duplicate ?? ['status' => 'none'];
+$duplicate         = $duplicate         ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
+$dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete', 'missing' => []];
+$locationValidation  = $locationValidation  ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'apnResolved' => false, 'jurisdictionResolved' => false];
+$parcel              = $parcel              ?? null;
+
+// Defensive defaults for final output objects (fixes Intelephense P1008)
+$data = $data ?? ['entity' => [], 'location' => [], 'contact' => []];
+$meta = $meta ?? ['inferences' => [], 'enrichments' => [], 'flags' => []];
 
 // -------------------------------------------------
-// DECISION ARCHITECTURE — Authoritative workflow controller
+// DEBUG: Confirm we actually have a global PlaceId match
 // -------------------------------------------------
-// Priority: duplicates → existing_location → parcel ambiguity
+if (!empty($parsed['location']['locationPlaceId'])) {
+    error_log("🔍 [SECTION 10] PlaceId detected: " . $parsed['location']['locationPlaceId']);
+    error_log("🔍 [SECTION 10] locationDuplicate status = " . json_encode($locationDuplicate));
+}
+
+// -------------------------------------------------
+// 🚫 AUTHORITATIVE PCM DECISION — GLOBAL PlaceId FIRST
+// -------------------------------------------------
 if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
 
@@ -854,19 +862,20 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
 
 } elseif ($locationDuplicate['status'] === 'exact') {
-    $pcm = ['status' => 'existing_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'link_existing_location'];
+    // ← THIS IS THE CRITICAL LINE (global PlaceId must trigger here)
+    $pcm = [
+        'status'          => 'existing_location',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => true,
+        'action'          => 'link_existing_location'
+    ];
 
 } elseif ($locationDuplicate['status'] === 'possible') {
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
 
-} elseif ($locationValidation['parcelStatus'] === 'multiple_matches') {
+} elseif (isset($locationValidation['parcelStatus']) && $locationValidation['parcelStatus'] === 'multiple_matches') {
     $pcm = ['status' => 'multiple_parcels', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_parcel'];
-
-} elseif (
-    isset($locationValidation['parcelStatus']) && 
-    $locationValidation['parcelStatus'] !== 'resolved'
-) {
-    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
 
 } elseif ($locationValidation['isMaricopa'] && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
     $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
@@ -876,231 +885,57 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
 }
 
 // -------------------------------------------------
-// RESOLUTION MAP — Robust, Dynamic & Detailed
+// RESOLUTION OBJECT (clean, UI-ready)
 // -------------------------------------------------
 $fullName = trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? ''));
-$entityName = trim($parsed['entity']['name'] ?? '');
-$proposedAddress = trim(($parsed['location']['address'] ?? '') .
-    (!empty($parsed['location']['city']) ? ', ' . $parsed['location']['city'] : '') .
-    (!empty($parsed['location']['state']) ? ' ' . $parsed['location']['state'] : '') .
-    (!empty($parsed['location']['zip']) ? ' ' . $parsed['location']['zip'] : ''));
-
-if (empty($fullName))       $fullName       = 'this contact';
-if (empty($entityName))     $entityName     = 'the entity';
-if (empty($proposedAddress)) $proposedAddress = 'the provided address';
-
-$missingFields = !empty($dataIntegrityStatus['missing'])
-    ? implode(', ', $dataIntegrityStatus['missing'])
-    : 'required fields';
-
-$resolutionMap = [
-    'possible_duplicate_contact' => "A contact named {$fullName} already exists for {$entityName}. Review the existing record and decide whether to update it or create this as a new contact.",
-    'duplicate_contact'          => "This is an exact duplicate of an existing contact for {$entityName}. Existing record: {$fullName} – " .
-                                    (isset($parsed['contact']['contactTitle']) ? $parsed['contact']['contactTitle'] : 'No title') . ", " .
-                                    (isset($parsed['contact']['contactPrimaryPhone']) ? $parsed['contact']['contactPrimaryPhone'] : 'No phone') . ", " .
-                                    (isset($parsed['contact']['contactEmail']) ? $parsed['contact']['contactEmail'] : 'No email') . ". No new record will be created.",
-    'multiple_parcels'           => "This address matches " . count($parcelDetails ?? []) . " parcels. Please select the correct parcel from the list above before proceeding.",
-    'existing_location'          => "This location already exists in the system for {$entityName}. Existing location: " .
-                                    (isset($parsed['location']['locationName']) ? $parsed['location']['locationName'] : 'the same address') .
-                                    " ({$proposedAddress}). You can link this contact to the existing location record.",
-    'parcel_lookup_failed'       => "Unable to automatically resolve the parcel for the address \"{$proposedAddress}\". Please manually verify or enter the APN and jurisdiction.",
-    'invalid_location'           => "The address \"{$proposedAddress}\" could not be validated. Please correct the address details and resubmit the proposal.",
-    'usps_invalid_address'       => "The address \"{$proposedAddress}\" is not deliverable according to USPS. Please correct the address and resubmit.",
-    'usps_secondary_required'    => "The address \"{$proposedAddress}\" requires a suite or unit number. Please add the missing suite/unit and resubmit.",
-    'incomplete'                 => "The proposed contact is incomplete. Missing fields: {$missingFields}. A valid Proposed Contact requires full name, at least one contact method (email or phone), entity name, and a validated location (address + city + state). Please complete the missing information and resubmit.",
-    'default'                    => "This proposal requires review. Please check the issues listed above and take the appropriate action."
-];
-
-// -------------------------------------------------
-// DETERMINISTIC DECISION MAPPING (aligned to tblActionTypes)
-// -------------------------------------------------
-$actionMapping = [
-    'new_elc'                    => ['actionTypeId' => 9, 'actionName' => 'contact.proposal.accept'],
-    'existing_location'          => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
-    'multiple_parcels'           => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
-    'possible_duplicate_contact' => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
-    'possible_location_duplicate'=> ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
-    'duplicate_contact'          => ['actionTypeId' => 10, 'actionName' => 'contact.proposal.decline'],
-    'invalid_location'           => ['actionTypeId' => 7, 'actionName' => 'contact.proposal.resolve_location'],
-    'incomplete'                 => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
-    'default'                    => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
-];
-
-$action = $actionMapping[$pcm['status']] ?? $actionMapping['default'];
-
-// -------------------------------------------------
-// Scalable ISSUES array — diagnostic failures only
-// -------------------------------------------------
-$issues = [];
-
-if (!empty($dataIntegrityStatus['missing'])) {
-    $issues = array_merge($issues, $dataIntegrityStatus['missing']);
-}
-if (!empty($locationValidation['issues'])) {
-    $issues = array_merge($issues, $locationValidation['issues']);
-}
-
-if ($duplicate['status'] === 'exact') $issues[] = 'duplicate_contact';
-if ($duplicate['status'] === 'possible') $issues[] = 'possible_duplicate_contact';
-if ($locationDuplicate['status'] === 'exact') $issues[] = 'existing_location';
-if ($locationDuplicate['status'] === 'possible') $issues[] = 'possible_location_duplicate';
-if (($locationValidation['parcelStatus'] ?? '') === 'not_found') $issues[] = 'parcel_lookup_failed';
-if (($locationValidation['parcelStatus'] ?? '') === 'multiple_matches') $issues[] = 'multiple_parcels';
-
-$dpv = $parsed['location']['locationDpvCode'] ?? null;
-if ($dpv === 'N') $issues[] = 'usps_invalid_address';
-if ($dpv === 'D') $issues[] = 'usps_secondary_required';
-
-$issues = array_values(array_unique($issues));
-$issuesText = $issues ? implode(', ', $issues) : 'none';
-
-// -------------------------------------------------
-// BUILD THE NEW RESOLUTION OBJECT
-// -------------------------------------------------
-$classificationStatus = 'review';
-if ($pcm['blocksCommit'] ?? false) {
-    $classificationStatus = 'unacceptable';
-} elseif ($pcm['readyForCommit'] ?? false) {
-    $classificationStatus = 'accepted';
-}
 
 $resolution = [
-    'pcmStatus' => $pcm['status'] ?? 'unknown',
-
+    'pcmStatus'     => $pcm['status'],
     'classification' => [
-        'status' => $classificationStatus
+        'status' => ($pcm['blocksCommit'] ?? false) ? 'unacceptable' : (($pcm['readyForCommit'] ?? false) ? 'accepted' : 'review')
     ],
-
     'decision' => [
-        'actionTypeId'   => $action['actionTypeId'],
-        'actionName'     => $action['actionName'],
+        'actionTypeId'   => $pcm['action'] === 'insert_new' ? 9 : ($pcm['action'] === 'reject_duplicate' ? 10 : 8),
+        'actionName'     => $pcm['action'],
         'readyForCommit' => $pcm['readyForCommit'] ?? false
     ],
-
     'issues' => [
-        'blocking'     => array_values(array_filter($issues, fn($i) => in_array($i, ['duplicate_contact','invalid_location','usps_invalid_address','incomplete','parcel_lookup_failed','existing_location']))),
-        'review'       => array_values(array_filter($issues, fn($i) => in_array($i, ['possible_duplicate_contact','multiple_parcels','possible_location_duplicate']))),
-        'informational'=> []
-    ],
-
-    'narratives' => [
-        'decision'     => ["This proposal requires operational review before acceptance."],
         'blocking'     => [],
         'review'       => [],
-        'informational'=> []
-    ]
-];
-
-// Populate review & blocking narratives
-foreach ($resolution['issues']['review'] as $issue) {
-    if (isset($resolutionMap[$issue])) $resolution['narratives']['review'][] = $resolutionMap[$issue];
-}
-foreach ($resolution['issues']['blocking'] as $issue) {
-    if (isset($resolutionMap[$issue])) $resolution['narratives']['blocking'][] = $resolutionMap[$issue];
-}
-
-// -------------------------------------------------
-// ROBUST COUNTY/FIPS MAPPING
-// -------------------------------------------------
-$county     = trim($parsed['location']['county'] ?? '');
-$countyFips = trim($parsed['location']['countyFips'] ?? '');
-
-// -------------------------------------------------
-// Clean DB-Ready Data
-// -------------------------------------------------
-$selectedParcel = $parcel ?? null;
-
-$data = [
-    'entity' => ['entityName' => trim($parsed['entity']['name'] ?? '')],
-    'location' => [
-        'locationName'            => trim($parsed['location']['locationName'] ?? ''),
-        'locationPlaceId'         => $parsed['location']['locationPlaceId'] ?? null,
-        'locationLatitude'        => $parsed['location']['latitude'] ?? null,
-        'locationLongitude'       => $parsed['location']['longitude'] ?? null,
-        'locationAddress'         => preg_replace('/\s+/', ' ', trim($parsed['location']['address'] ?? '')),
-        'locationAddressSuite'    => $parsed['location']['locationAddressSuite'] ?? '',
-        'locationCity'            => trim($parsed['location']['city'] ?? ''),
-        'locationState'           => strtoupper(trim($parsed['location']['state'] ?? '')),
-        'locationZip'             => trim($parsed['location']['zip'] ?? ''),
-        'locationCounty'          => $county,
-        'locationCountyFips'      => $countyFips,
-        'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
-        'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
-        'locationJurisdiction'    => $jurisdiction ?? null,
-        'parcelDetails'           => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
-        'parcelResolution' => [
-            'status'                => $locationValidation['parcelStatus'] ?? 'none',
-            'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
-            'selectedApn'           => $parcel['apnRaw'] ?? null,
-            'candidateCount'        => count($parcelDetails ?? []),
-            'resolutionMethod'      => $parcel ? 'auto_best_match' : ($locationValidation['parcelStatus'] === 'multiple_matches' ? 'user_required' : null),
-            'bestMatchConfidence'   => $parcelDetails[0]['confidence'] ?? null
-        ],
-        'locationIsBilling'  => 0,
-        'locationNote'       => '',
-        'locationZone'       => '',
-        'locationIsNotValid' => 0
+        'informational' => $meta['enrichments'] ?? []
     ],
-    'contact' => [
-        'contactSalutation'            => $parsed['contact']['salutation'] ?? null,
-        'contactFirstName'             => trim($parsed['contact']['firstName'] ?? ''),
-        'contactLastName'              => trim($parsed['contact']['lastName'] ?? ''),
-        'contactTitle'                 => trim($parsed['contact']['title'] ?? ''),
-        'contactIsBilling'             => 0,
-        'contactPrimaryPhone'          => $parsed['contact']['primaryPhone'] ?? '',
-        'contactPrimaryPhoneRaw'       => $parsed['contact']['primaryPhoneRaw'] ?? '',
-        'contactPrimaryPhoneExtension' => trim($parsed['contact']['primaryPhoneExtension'] ?? ''),
-        'contactSecondaryPhone'        => $parsed['contact']['secondaryPhone'] ?? '',
-        'contactSecondaryPhoneRaw'     => $parsed['contact']['secondaryPhoneRaw'] ?? '',
-        'contactEmail'                 => $parsed['contact']['email'] ?? '',
-        'contactEmailNormalized'       => $parsed['contact']['emailNormalized'] ?? '',
-        'contactEmailConfirmed'        => 0,
-        'contactNote'                  => '',
-        'contactIsNotValid'            => 0,
-        'isActive'                     => 1
+    'narratives' => [
+        'decision' => ["This proposal is ready for the {$pcm['action']} transaction."],
+        'blocking' => [],
+        'review'   => [],
+        'informational' => []
     ]
 ];
 
-$meta = [
-    'inferences' => [
-        'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
-        'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
-        'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false
-    ],
-    'enrichments' => array_values(array_filter([
-        !empty($parsed['location']['locationPlaceId']) ? 'google_geocode' : null,
-        !empty($county) ? 'census_county' : null,
-        !empty($parcelDetails) ? 'maricopa_parcel' : null,
-        !empty($dpv) ? 'smarty_usps' : null
-    ])),
-    'flags' => [
-        'isMaricopa'           => $locationValidation['isMaricopa'] ?? false,
-        'locationValid'        => $locationValidation['status'] ?? 'invalid',
-        'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',
-        'apnResolved'          => $locationValidation['apnResolved'] ?? false,
-        'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false,
-        'uspsValidated'        => !empty($dpv),
-        'dpvCode'              => $dpv
-    ]
-];
-
-$resolution['issues']['informational'] = $meta['enrichments'];
+// Populate issues
+if ($pcm['status'] === 'existing_location') {
+    $resolution['issues']['blocking'][] = 'existing_location';
+} elseif ($pcm['status'] === 'multiple_parcels') {
+    $resolution['issues']['review'][] = 'multiple_parcels';
+} elseif ($pcm['status'] === 'invalid_location') {
+    $resolution['issues']['blocking'][] = 'invalid_location';
+}
 
 // -------------------------------------------------
 // FINAL OUTPUT
 // -------------------------------------------------
 echo json_encode([
-    'status'     => 'proposed',
-    'confidence' => $aiData['confidence'] ?? 82,
-    'success'    => true,
-    'rawInput'   => [
+    'status'        => 'proposed',
+    'confidence'    => $aiData['confidence'] ?? 85,
+    'success'       => true,
+    'rawInput'      => [
         'original' => $rawInputOriginal,
         'type'     => 'signature',
         'source'   => 'skyebot_prompt'
     ],
-    'resolution' => $resolution,
-    'data'       => $data,
-    'meta'       => $meta,
+    'resolution'    => $resolution,
+    'data'          => $data,
+    'meta'          => $meta,
     'activitySessionId' => $activitySessionId
 ], JSON_UNESCAPED_SLASHES);
 
