@@ -931,6 +931,98 @@ $resolution = [
     ]
 ];
 
+// -------------------------------------------------
+// PCM Narrative Translation Layer
+// Source of truth = $pcm['status']
+// -------------------------------------------------
+$pcmNarratives = [
+
+    'new_elc' => [
+        'decision' => [
+            'This proposal passed validation and is ready to create a new entity, location, and contact record.'
+        ]
+    ],
+
+    'existing_location' => [
+        'decision' => [
+            'This proposal references a location that already exists in the system.'
+        ],
+        'blocking' => [
+            'A new location record should not be created for this proposal.'
+        ]
+    ],
+
+    'duplicate_contact' => [
+        'decision' => [
+            'This contact appears to already exist in the system.'
+        ],
+        'blocking' => [
+            'An additional contact record should not be created.'
+        ]
+    ],
+
+    'possible_duplicate_contact' => [
+        'decision' => [
+            'This contact may already exist in the system.'
+        ],
+        'review' => [
+            'Review the possible duplicate before continuing.'
+        ]
+    ],
+
+    'possible_location_duplicate' => [
+        'decision' => [
+            'This proposal may match an existing location record.'
+        ],
+        'review' => [
+            'Review the possible location match before continuing.'
+        ]
+    ],
+
+    'multiple_parcels' => [
+        'decision' => [
+            'Multiple parcel records were identified for this address.'
+        ],
+        'review' => [
+            'Select the correct parcel before continuing.'
+        ]
+    ],
+
+    'invalid_location' => [
+        'decision' => [
+            'The proposed address was validated, but a required authoritative parcel or jurisdiction could not be resolved.'
+        ],
+        'blocking' => [
+            'The proposal cannot proceed until the location is corrected or manually resolved.'
+        ]
+    ],
+
+    'incomplete' => [
+        'decision' => [
+            'This proposal is missing required information.'
+        ],
+        'blocking' => [
+            'Complete the missing fields before continuing.'
+        ]
+    ]
+];
+
+// -------------------------------------------------
+// Apply narrative translation
+// -------------------------------------------------
+$resolvedNarrative = $pcmNarratives[$pcm['status']] ?? [
+    'decision' => [
+        'This proposal requires operational review.'
+    ]
+];
+
+$resolution['narratives'] = array_merge([
+    'decision'      => [],
+    'blocking'      => [],
+    'review'        => [],
+    'informational' => []
+], $resolvedNarrative);
+
 // Populate issues
 if ($pcm['status'] === 'existing_location') {
     $resolution['issues']['blocking'][] = 'existing_location';
