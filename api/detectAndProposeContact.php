@@ -1631,13 +1631,28 @@ function normalizeLocationName(string $name): string {
 
     return trim($name);
 }
-// 🔁 evaluateLocationDuplicate — check for existing location by PlaceId or address
+// 🔁 evaluateLocationDuplicate — authoritative GLOBAL location identity first
 function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
 
-    $entityName   = trim($parsed['entity']['entityName'] ?? $parsed['entity']['name'] ?? '');
-    $locationName = trim($parsed['location']['locationName'] ?? '');
+    // -------------------------------------------------
+    // Normalize input fields (supports legacy + normalized)
+    // -------------------------------------------------
+    $entityName = trim(
+        $parsed['entity']['entityName']
+        ?? $parsed['entity']['name']
+        ?? ''
+    );
 
-    $placeId = $parsed['location']['locationPlaceId'] ?? null;
+    $locationName = trim(
+        $parsed['location']['locationName']
+        ?? ''
+    );
+
+    $placeId = trim(
+        $parsed['location']['locationPlaceId']
+        ?? $parsed['location']['placeId']
+        ?? ''
+    );
 
     $address = trim(
         $parsed['location']['locationAddress']
@@ -1651,53 +1666,50 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
         ?? ''
     );
 
-    error_log('[evaluateLocationDuplicate] placeId = ' . print_r($placeId, true));
-    error_log('[evaluateLocationDuplicate] address = ' . print_r($address, true));
-    error_log('[evaluateLocationDuplicate] city = ' . print_r($city, true));
-
-    if (empty($entityName)) {
-        return ['status' => 'none'];
-    }
-
-    $entityId = resolveEntityIdByName($entityName, $pdo);
-
-    if (!$entityId) {
-        return [
-            'status'   => 'new_entity',
-            'entityId' => null
-        ];
-    }
+    error_log('[evaluateLocationDuplicate] entityName = ' . $entityName);
+    error_log('[evaluateLocationDuplicate] placeId = ' . $placeId);
+    error_log('[evaluateLocationDuplicate] address = ' . $address);
+    error_log('[evaluateLocationDuplicate] city = ' . $city);
 
     // -------------------------------------------------
     // 1. GLOBAL PlaceId Match — authoritative identity
+    // DOES NOT depend on entity resolution
     // -------------------------------------------------
     if (!empty($placeId)) {
 
-        $stmt = $pdo->prepare("
+        $stmt = $pdo->query("
             SELECT
                 locationId,
                 locationName,
+                locationPlaceId,
                 locationEntityId
             FROM tblLocations
-            WHERE locationPlaceId = :placeId
-            LIMIT 1
+            WHERE locationPlaceId IS NOT NULL
         ");
 
-        $stmt->execute([
-            'placeId' => $placeId
-        ]);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
-        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $dbPlaceId = trim($row['locationPlaceId'] ?? '');
 
-            error_log('✅ GLOBAL EXISTING LOCATION MATCH');
+            error_log('[DB PLACEID] = ' . $dbPlaceId);
 
-            return [
-                'status'           => 'exact',
-                'locationId'       => (int)$row['locationId'],
-                'existingEntityId' => (int)$row['locationEntityId'],
-                'matchType'        => 'placeId_global'
-            ];
+            if (
+                !empty($dbPlaceId) &&
+                strcasecmp($dbPlaceId, $placeId) === 0
+            ) {
+
+                error_log('✅ GLOBAL EXISTING LOCATION MATCH');
+
+                return [
+                    'status'           => 'exact',
+                    'locationId'       => (int)$row['locationId'],
+                    'existingEntityId' => (int)$row['locationEntityId'],
+                    'matchType'        => 'placeId_global'
+                ];
+            }
         }
+
+        error_log('❌ NO GLOBAL PLACEID MATCH FOUND');
     }
 
     // -------------------------------------------------
@@ -1705,12 +1717,16 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
     // location identity evaluation
     // -------------------------------------------------
     if (empty($entityName)) {
-        return ['status' => 'none'];
+
+        return [
+            'status' => 'none'
+        ];
     }
 
     $entityId = resolveEntityIdByName($entityName, $pdo);
 
     if (!$entityId) {
+
         return [
             'status'   => 'new_entity',
             'entityId' => null
@@ -1741,6 +1757,8 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
+            error_log('✅ ENTITY ADDRESS MATCH');
+
             return [
                 'status'     => 'exact',
                 'locationId' => (int)$row['locationId'],
@@ -1749,6 +1767,50 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
         }
     }
 
+    // -------------------------------------------------
+    // 3. Optional normalized name fallback
+    // -------------------------------------------------
+    if (!empty($locationName)) {
+
+        $normalizedInput = normalizeLocationName($locationName);
+
+        $stmt = $pdo->prepare("
+            SELECT
+                locationId,
+                locationName,
+                locationCity
+            FROM tblLocations
+            WHERE locationEntityId = :entityId
+        ");
+
+        $stmt->execute([
+            'entityId' => $entityId
+        ]);
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+
+            $dbName = normalizeLocationName($row['locationName'] ?? '');
+            $dbCity = strtolower(trim($row['locationCity'] ?? ''));
+
+            if (
+                $dbName === $normalizedInput &&
+                strtolower($city) === $dbCity
+            ) {
+
+                error_log('✅ NORMALIZED NAME/CITY MATCH');
+
+                return [
+                    'status'     => 'possible',
+                    'locationId' => (int)$row['locationId'],
+                    'matchType'  => 'name_city'
+                ];
+            }
+        }
+    }
+
+    // -------------------------------------------------
+    // No duplicate found
+    // -------------------------------------------------
     return [
         'status'   => 'none',
         'entityId' => $entityId
