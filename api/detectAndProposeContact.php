@@ -815,21 +815,17 @@ $data['entity'] = [
 
 // LOCATION (full enriched data — ready for insert or UI display)
 $data['location'] = [
-    'locationName'           => $parsed['location']['locationName'] ?? '',
-    'locationPlaceId'        => $parsed['location']['locationPlaceId'] ?? null,
-    'locationLatitude'       => $parsed['location']['latitude'] ?? null,
-    'locationLongitude'      => $parsed['location']['longitude'] ?? null,
-    'locationAddress'        => $parsed['location']['address'] ?? '',
-    'locationAddressSuite'   => $parsed['location']['locationAddressSuite'] ?? '',
-    'locationCity'           => $parsed['location']['city'] ?? '',
-    'locationState'          => $parsed['location']['state'] ?? '',
-    'locationZip'            => $parsed['location']['zip'] ?? '',
-    'locationCounty'         => $parsed['location']['locationCounty']
-                                    ?? $parsed['location']['county']
-                                    ?? '',
-    'locationCountyFips'     => $parsed['location']['locationCountyFips']
-                                    ?? $parsed['location']['countyFips']
-                                    ?? '',
+    'locationName'            => $parsed['location']['locationName'] ?? '',
+    'locationPlaceId'         => $parsed['location']['locationPlaceId'] ?? null,
+    'locationLatitude'        => $parsed['location']['latitude'] ?? null,
+    'locationLongitude'       => $parsed['location']['longitude'] ?? null,
+    'locationAddress'         => $parsed['location']['address'] ?? '',
+    'locationAddressSuite'    => $parsed['location']['locationAddressSuite'] ?? '',
+    'locationCity'            => $parsed['location']['city'] ?? '',
+    'locationState'           => $parsed['location']['state'] ?? '',
+    'locationZip'             => $parsed['location']['zip'] ?? '',
+    'locationCounty'          => isset($parsed['location']['county']) ? $parsed['location']['county'] : '',
+    'locationCountyFips'      => isset($parsed['location']['countyFips']) ? $parsed['location']['countyFips'] : '',  
     'locationParcelNumber'    => $parcel['apnDisplay'] ?? null,
     'locationParcelNumberRaw' => $parcel['apnRaw'] ?? null,
     'locationJurisdiction'    => $parsed['location']['locationJurisdiction']
