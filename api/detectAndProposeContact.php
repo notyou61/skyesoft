@@ -650,32 +650,59 @@ $parsed['location']['address'] = $address;
 $parsed['location']['locationAddressRaw'] = $rawInputOriginal;
 
 // -------------------------------------------------
-// CENSUS GEO
+// CENSUS GEO + DEBUG
 // -------------------------------------------------
 $geoAddress = $parsed['location']['formattedAddress'] 
-           ?? $parsed['location']['address'] . ', ' 
+           ?? ($parsed['location']['address'] . ', ' 
               . $parsed['location']['city'] . ', ' 
               . $parsed['location']['state'] . ' ' 
-              . $parsed['location']['zip'];
+              . $parsed['location']['zip']);
+
+error_log("🔍 Census input address: " . $geoAddress);
 
 $geo = resolveGeographyFromAddress($geoAddress);
 
-if ($geo) {
-    if (!empty($geo['county'])) {
-        $parsed['location']['county'] = trim($geo['county']);
-    }
-    if (!empty($geo['state'])) {
-        $parsed['location']['state'] = $geo['state'];
-    }
-    if (!empty($geo['countyFips'])) {
-        $parsed['location']['countyFips'] = $geo['countyFips'];
-    }
+error_log("🔍 Census raw result: " . json_encode($geo));
 
-    // Optional: Store full result for debugging
+if ($geo) {
+    if (!empty($geo['county']))     $parsed['location']['county']     = trim($geo['county']);
+    if (!empty($geo['state']))      $parsed['location']['state']      = $geo['state'];
+    if (!empty($geo['countyFips'])) $parsed['location']['countyFips'] = $geo['countyFips'];
+
     $parsed['location']['censusGeo'] = $geo;
-    
+    error_log("✅ Census enriched: {$geo['county']} ({$geo['countyFips']})");
 } else {
-    error_log("⚠️ Census enrichment returned no data for address: " . $geoAddress);
+    error_log("❌ Census enrichment FAILED for address: " . $geoAddress);
+}
+
+// -------------------------------------------------
+// CENSUS GEO — More Resilient Version
+// -------------------------------------------------
+$geoAddress = trim(
+    ($parsed['location']['formattedAddress'] ?? '') ?: 
+    ($parsed['location']['address'] . ', ' . 
+     $parsed['location']['city'] . ', ' . 
+     $parsed['location']['state'] . ' ' . 
+     $parsed['location']['zip'])
+);
+
+$geo = resolveGeographyFromAddress($geoAddress);
+
+if ($geo && !empty($geo['county'])) {
+    $parsed['location']['county']     = trim($geo['county']);
+    $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';
+    $parsed['location']['censusGeo']  = $geo;
+    
+    error_log("✅ Census success → {$geo['county']} ({$geo['countyFips']})");
+} else {
+    // Fallback: Since we know it's Maricopa from Google + meta
+    if (($meta['flags']['isMaricopa'] ?? false) === true) {
+        $parsed['location']['county']     = 'Maricopa';
+        $parsed['location']['countyFips'] = '04013';
+        error_log("⚠️ Census failed — using Maricopa fallback from flags");
+    } else {
+        error_log("❌ Census completely failed for: " . $geoAddress);
+    }
 }
 
 // -------------------------------------------------
