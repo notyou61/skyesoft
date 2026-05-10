@@ -825,7 +825,7 @@ error_log("🔍 [SECTION 10] PlaceId = " . ($parsed['location']['locationPlaceId
 error_log("🔍 [SECTION 10] locationDuplicate = " . json_encode($locationDuplicate));
 
 // -------------------------------------------------
-// AUTHORITATIVE PCM DECISION
+// AUTHORITATIVE PCM DECISION (Updated with Parcel Governance)
 // -------------------------------------------------
 if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
@@ -850,6 +850,20 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 
 } elseif (isset($locationValidation['parcelStatus']) && $locationValidation['parcelStatus'] === 'multiple_matches') {
     $pcm = ['status' => 'multiple_parcels', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_parcel'];
+
+} 
+// ── NEW: Authoritative Parcel Resolution Check ──
+elseif (
+    ($locationValidation['isMaricopa'] ?? false) && 
+    ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
+) {
+    $pcm = [
+        'status'          => 'unresolved_parcel',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => true,
+        'action'          => 'resolve_parcel'
+    ];
 
 } elseif (($locationValidation['isMaricopa'] ?? false) && 
           (!$locationValidation['apnResolved'] ?? false || !$locationValidation['jurisdictionResolved'] ?? false)) {
@@ -1038,6 +1052,18 @@ $pcmNarratives = [
         ],
         'review' => [
             'Select the correct parcel before continuing.'
+        ]
+    ],
+
+    'unresolved_parcel' => [
+        'decision' => [
+            'This proposal has a valid address but could not resolve an authoritative parcel record.'
+        ],
+        'blocking' => [
+            'Authoritative parcel resolution is required before this proposal can proceed.'
+        ],
+        'review' => [
+            'Operator review is required to verify or manually resolve the parcel.'
         ]
     ],
 

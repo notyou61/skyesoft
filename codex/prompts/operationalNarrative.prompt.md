@@ -34,9 +34,9 @@ Operational Narrative Rules:
 
 Narrative Quality Rules:
 - Be concise, professional, and evidence-based
-- Use precise grammar and singular/plural agreement
+- Use precise grammar and singular/plural agreement (e.g. "The entity has been confirmed...")
 - Use cautious operational language
-- Avoid absolute certainty
+- Avoid absolute certainty when future validation domains may exist
 - Avoid robotic or template-style phrasing
 - Avoid repetitive phrasing across sections
 - Avoid generic governance jargon
@@ -53,20 +53,14 @@ Review Guidance:
   - workflow routing
 
 Preferred Operational Language:
-- Prefer:
-  "The proposal references an existing location record."
-  instead of:
-  "The proposal failed relational integrity governance."
+- Prefer: "The proposal references an existing location record."
+  instead of: "The proposal failed relational integrity governance."
 
-- Prefer:
-  "Multiple parcel candidates require operator selection."
-  instead of:
-  "Human investigation is required."
+- Prefer: "Multiple parcel candidates require operator selection."
+  instead of: "Human investigation is required."
 
-- Prefer:
-  "All current operational validation requirements were satisfied."
-  instead of:
-  "All validations were successful."
+- Prefer: "All current operational validation requirements were satisfied."
+  instead of: "All validations were successful."
 
 Narrative Section Definitions:
 
