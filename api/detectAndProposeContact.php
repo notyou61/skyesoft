@@ -831,6 +831,12 @@ if (!$pdo) {
 
 #region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — DecisionArchitecture)
 
+// Defensive defaults (eliminates Intelephense warnings)
+$dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete', 'missing' => []];
+$locationValidation  = $locationValidation  ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'apnResolved' => false, 'jurisdictionResolved' => false, 'issues' => []];
+$parcel              = $parcel              ?? null;
+$dpv                 = $dpv                 ?? null;
+
 $duplicate        = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 
@@ -847,7 +853,7 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
 
 } elseif ($locationDuplicate['status'] === 'exact') {
-    $pcm = ['status' => 'existing_location', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'link_existing_location'];
+    $pcm = ['status' => 'existing_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'link_existing_location'];
 
 } elseif ($locationDuplicate['status'] === 'possible') {
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
@@ -908,12 +914,12 @@ $resolutionMap = [
 // DETERMINISTIC DECISION MAPPING (aligned to tblActionTypes)
 // -------------------------------------------------
 $actionMapping = [
-    'new_elc'                    => ['actionTypeId' => 1, 'actionName' => 'contact.proposal.accept'],
-    'existing_location'          => ['actionTypeId' => 2, 'actionName' => 'contact.proposal.link'],
+    'new_elc'                    => ['actionTypeId' => 9, 'actionName' => 'contact.proposal.accept'],
+    'existing_location'          => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
     'multiple_parcels'           => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
     'possible_duplicate_contact' => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
     'possible_location_duplicate'=> ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
-    'duplicate_contact'          => ['actionTypeId' => 6, 'actionName' => 'contact.proposal.reject_duplicate'],
+    'duplicate_contact'          => ['actionTypeId' => 10, 'actionName' => 'contact.proposal.decline'],
     'invalid_location'           => ['actionTypeId' => 7, 'actionName' => 'contact.proposal.resolve_location'],
     'incomplete'                 => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
     'default'                    => ['actionTypeId' => 8, 'actionName' => 'contact.proposal.acknowledge'],
@@ -935,6 +941,8 @@ if (!empty($locationValidation['issues'])) {
 
 if ($duplicate['status'] === 'exact') $issues[] = 'duplicate_contact';
 if ($duplicate['status'] === 'possible') $issues[] = 'possible_duplicate_contact';
+if ($locationDuplicate['status'] === 'exact') $issues[] = 'existing_location';
+if ($locationDuplicate['status'] === 'possible') $issues[] = 'possible_location_duplicate';
 if (($locationValidation['parcelStatus'] ?? '') === 'not_found') $issues[] = 'parcel_lookup_failed';
 if (($locationValidation['parcelStatus'] ?? '') === 'multiple_matches') $issues[] = 'multiple_parcels';
 
@@ -948,11 +956,18 @@ $issuesText = $issues ? implode(', ', $issues) : 'none';
 // -------------------------------------------------
 // BUILD THE NEW RESOLUTION OBJECT
 // -------------------------------------------------
+$classificationStatus = 'review';
+if ($pcm['blocksCommit'] ?? false) {
+    $classificationStatus = 'unacceptable';
+} elseif ($pcm['readyForCommit'] ?? false) {
+    $classificationStatus = 'accepted';
+}
+
 $resolution = [
     'pcmStatus' => $pcm['status'] ?? 'unknown',
 
     'classification' => [
-        'status' => ($pcm['readyForCommit'] ?? false) ? 'accepted' : 'review'
+        'status' => $classificationStatus
     ],
 
     'decision' => [
@@ -962,8 +977,8 @@ $resolution = [
     ],
 
     'issues' => [
-        'blocking'     => array_values(array_filter($issues, fn($i) => in_array($i, ['duplicate_contact','invalid_location','usps_invalid_address','incomplete','parcel_lookup_failed']))),
-        'review'       => array_values(array_filter($issues, fn($i) => in_array($i, ['possible_duplicate_contact','multiple_parcels','existing_location','possible_location_duplicate']))),
+        'blocking'     => array_values(array_filter($issues, fn($i) => in_array($i, ['duplicate_contact','invalid_location','usps_invalid_address','incomplete','parcel_lookup_failed','existing_location']))),
+        'review'       => array_values(array_filter($issues, fn($i) => in_array($i, ['possible_duplicate_contact','multiple_parcels','possible_location_duplicate']))),
         'informational'=> []
     ],
 
@@ -984,7 +999,7 @@ foreach ($resolution['issues']['blocking'] as $issue) {
 }
 
 // -------------------------------------------------
-// ROBUST COUNTY/FIPS MAPPING (only change — matches your Census function)
+// ROBUST COUNTY/FIPS MAPPING (matches your Census function)
 // -------------------------------------------------
 $county     = trim($parsed['location']['county'] ?? '');
 $countyFips = trim($parsed['location']['countyFips'] ?? '');
@@ -1011,8 +1026,7 @@ $data = [
         'locationParcelNumber'    => $selectedParcel['apnDisplay'] ?? null,
         'locationParcelNumberRaw' => $selectedParcel['apnRaw'] ?? null,
         'locationJurisdiction'    => $jurisdiction ?? null,
-
-        'parcelDetails'   => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
+        'parcelDetails'           => $parcelDetails ?? ($selectedParcel ? [$selectedParcel] : []),
         'parcelResolution' => [
             'status'                => $locationValidation['parcelStatus'] ?? 'none',
             'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
@@ -1021,7 +1035,6 @@ $data = [
             'resolutionMethod'      => $parcel ? 'auto_best_match' : ($locationValidation['parcelStatus'] === 'multiple_matches' ? 'user_required' : null),
             'bestMatchConfidence'   => $parcelDetails[0]['confidence'] ?? null
         ],
-
         'locationIsBilling'  => 0,
         'locationNote'       => '',
         'locationZone'       => '',
