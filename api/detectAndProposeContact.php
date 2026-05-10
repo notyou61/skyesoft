@@ -824,11 +824,11 @@ $data['location'] = [
     'locationCity'           => $parsed['location']['city'] ?? '',
     'locationState'          => $parsed['location']['state'] ?? '',
     'locationZip'            => $parsed['location']['zip'] ?? '',
-    'locationCounty'          => $parsed['location']['county']
-                                    ?? $censusData['county']
+    'locationCounty'          => $parsed['location']['locationCounty']
+                                    ?? $parsed['location']['county']
                                     ?? '',
-    'locationCountyFips'      => $parsed['location']['countyFips']
-                                    ?? $censusData['countyFips']
+    'locationCountyFips'      => $parsed['location']['locationCountyFips']
+                                    ?? $parsed['location']['countyFips']
                                     ?? '',
     'locationParcelNumber'    => $parcel['apnDisplay'] ?? null,
     'locationParcelNumberRaw' => $parcel['apnRaw'] ?? null,
