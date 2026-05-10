@@ -818,6 +818,15 @@ echo json_encode([
 
 #region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — DecisionArchitecture)
 
+// Defensive defaults (eliminates Intelephense warnings)
+$dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete', 'missing' => []];
+$locationValidation  = $locationValidation  ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'apnResolved' => false, 'jurisdictionResolved' => false, 'issues' => []];
+$parcel              = $parcel              ?? null;
+$dpv                 = $dpv                 ?? null;
+
+$duplicate        = $duplicate ?? ['status' => 'none'];
+$locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
+
 // -------------------------------------------------
 // DECISION ARCHITECTURE — Authoritative workflow controller
 // -------------------------------------------------
