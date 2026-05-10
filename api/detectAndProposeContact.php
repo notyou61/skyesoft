@@ -1469,9 +1469,10 @@ function formatAPN(string $apnRaw): string {
 }
 
 // 🗺️ resolveGeographyFromAddress — resolve county/state from address
+// 🗺️ resolveGeographyFromAddress — Complete & Robust Version
 function resolveGeographyFromAddress(string $address): ?array {
     if (empty($address)) {
-        error_log("❌ Census: Empty address");
+        error_log("❌ Census: Empty address passed to resolveGeographyFromAddress");
         return null;
     }
 
@@ -1486,14 +1487,16 @@ function resolveGeographyFromAddress(string $address): ?array {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 10,
         CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_SSL_VERIFYPEER => true,
     ]);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
     curl_close($ch);
 
-    if ($httpCode !== 200 || $response === false) {
-        error_log("❌ Census HTTP {$httpCode} for: {$address}");
+    if ($response === false || $httpCode !== 200) {
+        error_log("❌ Census Geocoder failed [HTTP {$httpCode}]: {$curlErr} | Address: {$address}");
         return null;
     }
 
@@ -1501,11 +1504,35 @@ function resolveGeographyFromAddress(string $address): ?array {
     $match = $data['result']['addressMatches'][0] ?? null;
 
     if (!$match) {
-        error_log("⚠️ Census: No match found for address: " . $address);
-        return null;   // ← This is currently happening
+        error_log("⚠️ Census: NO MATCH found for address: " . $address);
+        return null;
     }
 
-    // ... rest of your existing parsing code (county, FIPS, etc.)
+    $geo       = $match['geographies'] ?? [];
+    $countyObj = $geo['Counties'][0] ?? null;
+    $stateObj  = $geo['States'][0] ?? null;
+
+    if (!$countyObj || empty($countyObj['NAME'])) {
+        error_log("⚠️ Census: County data missing in response for: " . $address);
+        return null;
+    }
+
+    $countyRaw  = $countyObj['NAME'] ?? '';
+    $countyCode = $countyObj['COUNTY'] ?? '';           // e.g. "013"
+    $stateFips  = $stateObj['STATE'] ?? '04';           // Arizona = 04
+
+    $fullFips = $stateFips . str_pad($countyCode, 3, '0', STR_PAD_LEFT);
+
+    $countyName = trim(str_replace(' County', '', $countyRaw));
+
+    error_log("✅ Census Geocoder SUCCESS: {$countyName} County ({$fullFips}) for: {$address}");
+
+    return [
+        'county'         => $countyName,
+        'countyFips'     => $fullFips,
+        'state'          => $stateObj['STUSAB'] ?? null,
+        'matchedAddress' => $match['matchedAddress'] ?? null,
+    ];
 }
 
 // 📦 lookupMaricopaParcel — ArcGIS parcel lookup for Maricopa County
