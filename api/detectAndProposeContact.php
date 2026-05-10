@@ -676,38 +676,22 @@ if ($geo) {
 }
 
 // -------------------------------------------------
-// CENSUS GEO + GOOGLE FALLBACK
+// CENSUS GEO
 // -------------------------------------------------
-$geoAddress = $parsed['location']['formattedAddress'] 
-           ?? ($parsed['location']['address'] . ', ' 
-              . $parsed['location']['city'] . ', ' 
-              . $parsed['location']['state'] . ' ' 
-              . $parsed['location']['zip']);
+$geoAddress = trim(
+    $parsed['location']['formattedAddress'] 
+    ?? ($parsed['location']['address'] . ', ' 
+       . $parsed['location']['city'] . ', ' 
+       . $parsed['location']['state'] . ' ' 
+       . $parsed['location']['zip'])
+);
 
 $geo = resolveGeographyFromAddress($geoAddress);
 
 if ($geo && !empty($geo['county'])) {
     $parsed['location']['county']     = trim($geo['county']);
     $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';
-    error_log("✅ Census success: {$geo['county']} ({$geo['countyFips']})");
-} 
-// === GOOGLE FALLBACK (most reliable for this case) ===
-elseif (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
-    foreach ($parsed['location']['googleData']['addressComponents'] as $comp) {
-        if (in_array('administrative_area_level_2', $comp['types'] ?? [])) {
-            $countyName = str_replace(' County', '', $comp['long_name']);
-            $parsed['location']['county'] = trim($countyName);
-            $parsed['location']['countyFips'] = '04013';   // Maricopa = 04013 (safe because isMaricopa=true)
-            error_log("✅ Google fallback county: {$countyName} (04013)");
-            break;
-        }
-    }
-} 
-// Final safety net using your existing flag
-elseif (($meta['flags']['isMaricopa'] ?? false) === true) {
-    $parsed['location']['county']     = 'Maricopa';
-    $parsed['location']['countyFips'] = '04013';
-    error_log("✅ Maricopa flag fallback applied");
+    $parsed['location']['censusGeo']  = $geo;           // for debugging
 }
 
 // -------------------------------------------------
@@ -1468,7 +1452,6 @@ function formatAPN(string $apnRaw): string {
     return $clean;
 }
 
-// 🗺️ resolveGeographyFromAddress — resolve county/state from address
 // 🗺️ resolveGeographyFromAddress — Complete & Robust Version
 function resolveGeographyFromAddress(string $address): ?array {
     if (empty($address)) {
