@@ -831,18 +831,13 @@ if (!$pdo) {
 
 #region SECTION 10 — 🧠 PCM + Final Response + AI Narrative (FINAL — DecisionArchitecture)
 
-// Defensive defaults (eliminates Intelephense warnings)
-$dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete', 'missing' => []];
-$locationValidation  = $locationValidation  ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'apnResolved' => false, 'jurisdictionResolved' => false, 'issues' => []];
-$parcel              = $parcel              ?? null;
-$dpv                 = $dpv                 ?? null;
-
 $duplicate        = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 
 // -------------------------------------------------
 // DECISION ARCHITECTURE — Authoritative workflow controller
 // -------------------------------------------------
+// Priority: duplicates → existing_location → parcel ambiguity
 if ($dataIntegrityStatus['status'] !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
 
