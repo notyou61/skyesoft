@@ -1,0 +1,185 @@
+{
+  "registry": "pcmRegistry",
+  "version": "1.0.0",
+  "authority": "Skyesoft Codex",
+  "description": "Canonical operational semantics registry for Proposal Classification Matrix (PCM) states used by detectAndProposeContact.php and related governance workflows.",
+  "lastUpdated": "2026-05-10",
+  "statuses": {
+
+    "new_elc": {
+      "classification": "accepted",
+      "severity": "none",
+      "blocksCommit": false,
+      "readyForCommit": true,
+      "governanceType": "new_record_creation",
+      "actionName": "insert_new",
+      "operatorAction": "Create new entity, location, and contact records.",
+      "systemMeaning": "No conflicting entity, contact, or location records were detected. Validation requirements were satisfied.",
+      "aiNarrativeIntent": [
+        "Explain that validation succeeded.",
+        "Explain that the proposal is operationally eligible for insertion.",
+        "Summarize enrichment and validation success."
+      ]
+    },
+
+    "existing_location": {
+      "classification": "unacceptable",
+      "severity": "blocking",
+      "blocksCommit": true,
+      "readyForCommit": false,
+      "governanceType": "relational_integrity",
+      "actionName": "link_existing_location",
+      "operatorAction": "Review and link the contact to the existing location record.",
+      "systemMeaning": "The submitted proposal matched an authoritative existing location record.",
+      "aiNarrativeIntent": [
+        "Explain that the location already exists.",
+        "Explain that duplicate location creation is prohibited.",
+        "Recommend linking rather than insertion."
+      ]
+    },
+
+    "duplicate_contact": {
+      "classification": "unacceptable",
+      "severity": "blocking",
+      "blocksCommit": true,
+      "readyForCommit": false,
+      "governanceType": "duplicate_prevention",
+      "actionName": "reject_duplicate",
+      "operatorAction": "Review the existing contact record before proceeding.",
+      "systemMeaning": "The submitted contact already exists or strongly matches an existing contact.",
+      "aiNarrativeIntent": [
+        "Explain the duplicate contact detection.",
+        "Explain the operational integrity concern.",
+        "Recommend reviewing the existing contact."
+      ]
+    },
+
+    "possible_duplicate_contact": {
+      "classification": "review",
+      "severity": "review",
+      "blocksCommit": false,
+      "readyForCommit": false,
+      "governanceType": "possible_duplicate_detection",
+      "actionName": "review_possible_duplicate",
+      "operatorAction": "Review the possible duplicate contact match.",
+      "systemMeaning": "A partial or uncertain contact match was identified.",
+      "aiNarrativeIntent": [
+        "Explain that a possible duplicate was detected.",
+        "Explain the uncertainty level.",
+        "Recommend human review before insertion."
+      ]
+    },
+
+    "possible_location_duplicate": {
+      "classification": "review",
+      "severity": "review",
+      "blocksCommit": false,
+      "readyForCommit": false,
+      "governanceType": "possible_duplicate_detection",
+      "actionName": "review_possible_location",
+      "operatorAction": "Review the possible location match before insertion.",
+      "systemMeaning": "The proposal partially matches an existing location record.",
+      "aiNarrativeIntent": [
+        "Explain that a possible location duplicate exists.",
+        "Explain the uncertainty level.",
+        "Recommend operational review."
+      ]
+    },
+
+    "multiple_parcels": {
+      "classification": "review",
+      "severity": "review",
+      "blocksCommit": false,
+      "readyForCommit": false,
+      "governanceType": "parcel_resolution",
+      "actionName": "resolve_parcel",
+      "operatorAction": "Select the correct parcel before continuing.",
+      "systemMeaning": "Multiple authoritative parcel candidates were identified for the proposed address.",
+      "aiNarrativeIntent": [
+        "Explain that multiple parcel candidates were found.",
+        "Explain that authoritative parcel selection is required.",
+        "Recommend selecting the correct APN."
+      ]
+    },
+
+    "invalid_location": {
+      "classification": "unacceptable",
+      "severity": "blocking",
+      "blocksCommit": true,
+      "readyForCommit": false,
+      "governanceType": "location_validation_failure",
+      "actionName": "resolve_location",
+      "operatorAction": "Correct or manually resolve the location before proceeding.",
+      "systemMeaning": "The proposal failed authoritative location validation requirements.",
+      "aiNarrativeIntent": [
+        "Explain which validation components failed.",
+        "Explain why insertion is blocked.",
+        "Recommend operational resolution steps."
+      ]
+    },
+
+    "incomplete": {
+      "classification": "unacceptable",
+      "severity": "blocking",
+      "blocksCommit": true,
+      "readyForCommit": false,
+      "governanceType": "required_data_missing",
+      "actionName": "complete_required_fields",
+      "operatorAction": "Provide the missing required information.",
+      "systemMeaning": "Required proposal data was missing or incomplete.",
+      "aiNarrativeIntent": [
+        "Explain which required information is missing.",
+        "Explain why processing cannot continue.",
+        "Recommend completion of missing fields."
+      ]
+    },
+
+    "valid_usps": {
+      "classification": "accepted",
+      "severity": "none",
+      "blocksCommit": false,
+      "readyForCommit": true,
+      "governanceType": "usps_override_validation",
+      "actionName": "insert_new",
+      "operatorAction": "Proceed with insertion using USPS validation confidence.",
+      "systemMeaning": "USPS validation confirmed a deliverable address despite unresolved parcel enrichment.",
+      "aiNarrativeIntent": [
+        "Explain USPS validation success.",
+        "Explain remaining enrichment limitations.",
+        "Explain why insertion remains operationally permitted."
+      ]
+    },
+
+    "needs_suite": {
+      "classification": "review",
+      "severity": "review",
+      "blocksCommit": false,
+      "readyForCommit": false,
+      "governanceType": "secondary_address_requirement",
+      "actionName": "request_suite",
+      "operatorAction": "Obtain the required suite or unit number.",
+      "systemMeaning": "The authoritative address requires a secondary unit designator.",
+      "aiNarrativeIntent": [
+        "Explain that a suite or unit is required.",
+        "Explain USPS validation findings.",
+        "Recommend obtaining the missing suite information."
+      ]
+    },
+
+    "missing_secondary": {
+      "classification": "review",
+      "severity": "review",
+      "blocksCommit": false,
+      "readyForCommit": false,
+      "governanceType": "secondary_address_requirement",
+      "actionName": "request_secondary",
+      "operatorAction": "Obtain the missing secondary address information.",
+      "systemMeaning": "The authoritative address indicates missing secondary addressing information.",
+      "aiNarrativeIntent": [
+        "Explain that secondary addressing is incomplete.",
+        "Explain the operational implications.",
+        "Recommend completing the address."
+      ]
+    }
+  }
+}

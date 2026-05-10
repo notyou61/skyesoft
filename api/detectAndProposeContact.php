@@ -924,16 +924,16 @@ $resolution = [
         'informational' => $meta['enrichments']
     ],
     'narratives' => [
-        'decision' => ["This proposal is ready for the {$pcm['action']} transaction."],
-        'blocking' => [],
-        'review'   => [],
+        'decision'      => [],
+        'blocking'      => [],
+        'review'        => [],
         'informational' => []
     ]
 ];
 
 // -------------------------------------------------
-// PCM Narrative Translation Layer
-// Source of truth = $pcm['status']
+// PCM Narrative Fallback Infrastructure
+// Used only if AI narrative generation fails
 // -------------------------------------------------
 $pcmNarratives = [
 
@@ -1008,19 +1008,187 @@ $pcmNarratives = [
 ];
 
 // -------------------------------------------------
-// Apply narrative translation
+// Load PCM Registry (authoritative semantics)
 // -------------------------------------------------
-$resolvedNarrative = $pcmNarratives[$pcm['status']] ?? [
-    'decision' => [
-        'This proposal requires operational review.'
+$pcmRegistryPath =
+    __DIR__
+    . '/../data/authoritative/pcmRegistry.json';
+
+$pcmRegistry = [];
+
+if (file_exists($pcmRegistryPath)) {
+
+    $pcmRegistryRaw =
+        file_get_contents($pcmRegistryPath);
+
+    $pcmRegistryDecoded =
+        json_decode($pcmRegistryRaw, true);
+
+    if (
+        is_array($pcmRegistryDecoded) &&
+        isset($pcmRegistryDecoded['statuses'])
+    ) {
+
+        $pcmRegistry =
+            $pcmRegistryDecoded['statuses'];
+
+    } else {
+
+        error_log(
+            '[pcm-registry] Invalid registry structure'
+        );
+    }
+
+} else {
+
+    error_log(
+        '[pcm-registry] Registry file missing'
+    );
+}
+
+// -------------------------------------------------
+// AI Narrative Context
+// -------------------------------------------------
+$aiNarrativeContext = [
+
+    // -------------------------------------------------
+    // Deterministic Governance
+    // -------------------------------------------------
+    'pcm'                => $pcm,
+    'duplicate'          => $duplicate,
+    'locationDuplicate'  => $locationDuplicate,
+    'locationValidation' => $locationValidation,
+
+    // -------------------------------------------------
+    // Canonical PCM Semantics
+    // -------------------------------------------------
+    'pcmDefinition' =>
+        $pcmRegistry[$pcm['status']] ?? null,
+
+    // -------------------------------------------------
+    // Enrichment Metadata
+    // -------------------------------------------------
+    'meta'               => $meta,
+
+    // -------------------------------------------------
+    // Structured Proposal Data
+    // -------------------------------------------------
+    'data'               => $data,
+
+    // -------------------------------------------------
+    // Operational Intelligence Context
+    // -------------------------------------------------
+    'operationalContext' => [
+
+        // -------------------------------------------------
+        // Existing relational identity
+        // -------------------------------------------------
+        'existingLocationId' =>
+            $locationDuplicate['locationId'] ?? null,
+
+        'existingEntityId' =>
+            $locationDuplicate['existingEntityId'] ?? null,
+
+        'duplicateMatchType' =>
+            $locationDuplicate['matchType'] ?? null,
+
+        // -------------------------------------------------
+        // Parcel intelligence
+        // -------------------------------------------------
+        'parcelCandidateCount' =>
+            count($parcelDetails ?? []),
+
+        'parcelOwners' =>
+            array_values(array_unique(array_filter(array_map(
+                fn($p) => trim($p['owner'] ?? ''),
+                $parcelDetails ?? []
+            )))),
+
+        'jurisdictions' =>
+            array_values(array_unique(array_filter(array_map(
+                fn($p) => trim($p['jurisdiction'] ?? ''),
+                $parcelDetails ?? []
+            )))),
+
+        'jurisdictionAgreement' =>
+            count(array_unique(array_filter(array_map(
+                fn($p) => trim($p['jurisdiction'] ?? ''),
+                $parcelDetails ?? []
+            )))) <= 1,
+
+        // -------------------------------------------------
+        // Validation summary
+        // -------------------------------------------------
+        'validationSummary' => [
+
+            'googleValidated' =>
+                in_array(
+                    'google_geocode',
+                    $meta['enrichments'] ?? []
+                ),
+
+            'uspsValidated' =>
+                $meta['flags']['uspsValidated'] ?? false,
+
+            'parcelResolved' =>
+                $meta['flags']['apnResolved'] ?? false,
+
+            'jurisdictionResolved' =>
+                $meta['flags']['jurisdictionResolved'] ?? false,
+
+            'locationValid' =>
+                $meta['flags']['locationValid'] ?? 'unknown'
+
+        ]
+
     ]
 ];
 
+// -------------------------------------------------
+// Generate AI Operational Narratives
+// -------------------------------------------------
+$resolvedNarrative = buildOperationalNarratives($aiNarrativeContext);
+
+error_log(
+    '[operational-narrative] FINAL: '
+    . json_encode($resolvedNarrative)
+);
+
+// -------------------------------------------------
+// Fallback Protection
+// -------------------------------------------------
+if (
+
+    !is_array($resolvedNarrative) ||
+
+    empty($resolvedNarrative['decision']) ||
+
+    !isset($resolvedNarrative['blocking']) ||
+
+    !isset($resolvedNarrative['review']) ||
+
+    !isset($resolvedNarrative['informational'])
+
+) {
+
+    error_log(
+        '[operational-narrative] Falling back to static PCM narrative'
+    );
+
+    $resolvedNarrative =
+        $pcmNarratives[$pcm['status']];
+}
+
+// -------------------------------------------------
+// Normalize Structure
+// -------------------------------------------------
 $resolution['narratives'] = array_merge([
+
     'decision'      => [],
     'blocking'      => [],
     'review'        => [],
     'informational' => []
+
 ], $resolvedNarrative);
 
 // Populate issues
@@ -1788,6 +1956,193 @@ function extractPhoneExtension(string $input): ?string {
         return trim($m[2]);
     }
     return null;
+}
+// 🧠 buildOperationalNarratives — generate narratives based on context
+function buildOperationalNarratives(array $context): array {
+
+    $fallback = [
+        'decision'      => ['This proposal requires operational review.'],
+        'blocking'      => [],
+        'review'        => [],
+        'informational' => []
+    ];
+
+    try {
+
+        // -------------------------------------------------
+        // Load environment
+        // -------------------------------------------------
+        if (!function_exists('skyesoftLoadEnv')) {
+            require_once __DIR__ . '/utils/envLoader.php';
+        }
+
+        skyesoftLoadEnv();
+
+        $apiKey = getenv("OPENAI_API_KEY");
+
+        if (!$apiKey) {
+
+            error_log('[operational-narrative] OPENAI_API_KEY missing');
+
+            return $fallback;
+        }
+
+        // -------------------------------------------------
+        // Load prompt
+        // -------------------------------------------------
+        $promptPath =
+            dirname(__DIR__)
+            . '/codex/prompts/operationalNarrative.prompt.md';
+
+        if (!file_exists($promptPath)) {
+
+            error_log(
+                '[operational-narrative] Prompt file missing: '
+                . $promptPath
+            );
+
+            return $fallback;
+        }
+
+        $systemPrompt = file_get_contents($promptPath);
+
+        if (!$systemPrompt) {
+
+            error_log('[operational-narrative] Prompt load failed');
+
+            return $fallback;
+        }
+
+        // -------------------------------------------------
+        // Build user prompt
+        // -------------------------------------------------
+        $userPrompt = json_encode(
+            $context,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+        );
+
+        if (!$userPrompt) {
+
+            error_log('[operational-narrative] Context encoding failed');
+
+            return $fallback;
+        }
+
+        // -------------------------------------------------
+        // OpenAI payload
+        // -------------------------------------------------
+        $payload = [
+            "model" => "gpt-4o-mini",
+            "messages" => [
+                [
+                    "role" => "system",
+                    "content" => $systemPrompt
+                ],
+                [
+                    "role" => "user",
+                    "content" => $userPrompt
+                ]
+            ],
+            "temperature" => 0.2,
+            "max_tokens" => 500
+        ];
+
+        // -------------------------------------------------
+        // Execute request
+        // -------------------------------------------------
+        $ch = curl_init(
+            "https://api.openai.com/v1/chat/completions"
+        );
+
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                "Content-Type: application/json",
+                "Authorization: Bearer {$apiKey}"
+            ],
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_TIMEOUT => 20
+        ]);
+
+        $response = curl_exec($ch);
+
+        if ($response === false) {
+
+            error_log(
+                '[operational-narrative] CURL ERROR: '
+                . curl_error($ch)
+            );
+
+            curl_close($ch);
+
+            return $fallback;
+        }
+
+        curl_close($ch);
+
+        // -------------------------------------------------
+        // Decode response
+        // -------------------------------------------------
+        $decoded = json_decode($response, true);
+
+        $content =
+            $decoded['choices'][0]['message']['content']
+            ?? '';
+
+        if (!$content) {
+
+            error_log(
+                '[operational-narrative] Empty AI content'
+            );
+
+            return $fallback;
+        }
+
+        // -------------------------------------------------
+        // Extract JSON safely
+        // -------------------------------------------------
+        preg_match('/\{.*\}/s', $content, $matches);
+
+        if (empty($matches[0])) {
+
+            error_log(
+                '[operational-narrative] Invalid JSON response'
+            );
+
+            return $fallback;
+        }
+
+        $parsed = json_decode($matches[0], true);
+
+        if (!is_array($parsed)) {
+
+            error_log(
+                '[operational-narrative] JSON decode failed'
+            );
+
+            return $fallback;
+        }
+
+        // -------------------------------------------------
+        // Normalize structure
+        // -------------------------------------------------
+        return array_merge([
+            'decision'      => [],
+            'blocking'      => [],
+            'review'        => [],
+            'informational' => []
+        ], $parsed);
+
+    } catch (Throwable $e) {
+
+        error_log(
+            '[operational-narrative] ERROR: '
+            . $e->getMessage()
+        );
+
+        return $fallback;
+    }
 }
 
 #endregion
