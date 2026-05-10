@@ -827,38 +827,27 @@ $data['location'] = [
     'locationCounty'          => $parsed['location']['county']
                                     ?? $censusData['county']
                                     ?? '',
-
     'locationCountyFips'      => $parsed['location']['countyFips']
                                     ?? $censusData['countyFips']
                                     ?? '',
-
     'locationParcelNumber'    => $parcel['apnDisplay'] ?? null,
-
     'locationParcelNumberRaw' => $parcel['apnRaw'] ?? null,
-
     'locationJurisdiction'    => $parsed['location']['locationJurisdiction']
                                     ?? $parsed['location']['jurisdiction']
                                     ?? ($parcelDetails[0]['jurisdiction'] ?? ''),
-
     'parcelDetails'           => $parcelDetails ?? [],
-
     'parcelResolution' => [
         'status' => $locationValidation['parcelStatus'] ?? 'unknown',
-
         'requiresUserSelection' =>
             (($locationValidation['parcelStatus'] ?? '') === 'multiple_matches'),
-
         'selectedApn' =>
             $parcel['apnRaw'] ?? null,
-
         'candidateCount' =>
             count($parcelDetails ?? []),
-
         'resolutionMethod' =>
             (($locationValidation['parcelStatus'] ?? '') === 'multiple_matches')
                 ? 'user_required'
                 : 'automatic',
-
         'bestMatchConfidence' =>
             $parcel['confidence'] ?? null
     ],
@@ -867,6 +856,17 @@ $data['location'] = [
     'locationZone'           => '',
     'locationIsNotValid'     => 0
 ];
+
+// -------------------------------------------------
+// Synchronize jurisdiction resolution state
+// after runtime inheritance/hydration
+// -------------------------------------------------
+if (
+    empty($locationValidation['jurisdictionResolved']) &&
+    !empty($data['location']['locationJurisdiction'])
+) {
+    $locationValidation['jurisdictionResolved'] = true;
+}
 
 // CONTACT
 $data['contact'] = [
