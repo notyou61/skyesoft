@@ -852,17 +852,42 @@ if (!empty($parsed['location']['locationPlaceId'])) {
 // -------------------------------------------------
 // 🚫 AUTHORITATIVE PCM DECISION — GLOBAL PlaceId FIRST
 // -------------------------------------------------
-if ($dataIntegrityStatus['status'] !== 'complete') {
-    $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
+if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 
-} elseif ($duplicate['status'] === 'exact') {
-    $pcm = ['status' => 'duplicate_contact', 'readyForCommit' => false, 'requiresReview' => false, 'blocksCommit' => true, 'action' => 'reject_duplicate'];
+    $pcm = [
+        'status'          => 'incomplete',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => true,
+        'action'          => 'resolve_missing_fields'
+    ];
 
-} elseif ($duplicate['status'] === 'possible') {
-    $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
+} elseif (($duplicate['status'] ?? '') === 'exact') {
 
-} elseif ($locationDuplicate['status'] === 'exact') {
-    // ← THIS IS THE CRITICAL LINE (global PlaceId must trigger here)
+    $pcm = [
+        'status'          => 'duplicate_contact',
+        'readyForCommit'  => false,
+        'requiresReview'  => false,
+        'blocksCommit'    => true,
+        'action'          => 'reject_duplicate'
+    ];
+
+} elseif (($duplicate['status'] ?? '') === 'possible') {
+
+    $pcm = [
+        'status'          => 'possible_duplicate_contact',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => false,
+        'action'          => 'confirm_duplicate'
+    ];
+
+// -------------------------------------------------
+// EXISTING authoritative location identity
+// supersedes parcel ambiguity
+// -------------------------------------------------
+} elseif (($locationDuplicate['status'] ?? '') === 'exact') {
+
     $pcm = [
         'status'          => 'existing_location',
         'readyForCommit'  => false,
@@ -871,17 +896,58 @@ if ($dataIntegrityStatus['status'] !== 'complete') {
         'action'          => 'link_existing_location'
     ];
 
-} elseif ($locationDuplicate['status'] === 'possible') {
-    $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
+} elseif (($locationDuplicate['status'] ?? '') === 'possible') {
 
-} elseif (isset($locationValidation['parcelStatus']) && $locationValidation['parcelStatus'] === 'multiple_matches') {
-    $pcm = ['status' => 'multiple_parcels', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_parcel'];
+    $pcm = [
+        'status'          => 'possible_location_duplicate',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => false,
+        'action'          => 'confirm_location'
+    ];
 
-} elseif ($locationValidation['isMaricopa'] && (!$locationValidation['apnResolved'] || !$locationValidation['jurisdictionResolved'])) {
-    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
+// -------------------------------------------------
+// Parcel ambiguity is subordinate to authoritative
+// relational identity concerns
+// -------------------------------------------------
+} elseif (
+    isset($locationValidation['parcelStatus']) &&
+    $locationValidation['parcelStatus'] === 'multiple_matches'
+) {
+
+    $pcm = [
+        'status'          => 'multiple_parcels',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => false,
+        'action'          => 'confirm_parcel'
+    ];
+
+} elseif (
+    ($locationValidation['isMaricopa'] ?? false) &&
+    (
+        !($locationValidation['apnResolved'] ?? false) ||
+        !($locationValidation['jurisdictionResolved'] ?? false)
+    )
+) {
+
+    $pcm = [
+        'status'          => 'invalid_location',
+        'readyForCommit'  => false,
+        'requiresReview'  => true,
+        'blocksCommit'    => true,
+        'action'          => 'resolve_location'
+    ];
 
 } else {
-    $pcm = ['status' => 'new_elc', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'insert_new'];
+
+    $pcm = [
+        'status'          => 'new_elc',
+        'readyForCommit'  => true,
+        'requiresReview'  => false,
+        'blocksCommit'    => false,
+        'action'          => 'insert_new'
+    ];
 }
 
 // -------------------------------------------------
