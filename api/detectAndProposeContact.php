@@ -362,7 +362,7 @@ $parsed = array_replace_recursive([
         'city' => '',
         'state' => '',
         'zip' => '',
-        'suite' => '',           // ← NEW
+        'suite' => '',           
         'locationName' => ''
     ]
 ], $parsed ?? []);
@@ -373,6 +373,12 @@ $parsed = array_replace_recursive([
 $parsed = fallbackExtractName($parsed, $rawInput);
 
 // -------------------------------------------------
+// 🛡️ NEW: EXPLICIT ENTITY PRESERVATION LAYER
+//    Prevents AI drift (e.g. "West Valley Commerce Center" → "Wvcc")
+// -------------------------------------------------
+$parsed = preserveExplicitEntityName($parsed, $rawInput);
+
+// -------------------------------------------------
 // 🧠 Email fallback (recommended)
 // -------------------------------------------------
 if (empty($parsed['contact']['email'])) {
@@ -381,9 +387,7 @@ if (empty($parsed['contact']['email'])) {
 
         $email = strtolower(trim($m[0]));
 
-        // Validate before assigning
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-
             $parsed['contact']['email'] = $email;
             $parsed['contact']['emailNormalized'] = $email;
         }
@@ -398,7 +402,6 @@ if (
     empty($parsed['location']['state'])
 ) {
 
-    // Pattern: "City, ST ZIP"
     if (preg_match('/([A-Za-z\s]+),\s*([A-Z]{2})\s*(\d{5})?/', $rawInput, $m)) {
 
         $city  = ucwords(strtolower(trim($m[1])));
@@ -418,6 +421,7 @@ if (
         }
     }
 }
+
 // -------------------------------------------------
 // 🧠 Street Address Fallback
 // -------------------------------------------------
@@ -426,7 +430,6 @@ if (empty($parsed['location']['address'])) {
     if (preg_match('/^\s*(\d{1,6}\s+[A-Za-z0-9\s\.\-]+(?:Ave|Avenue|Rd|Road|St|Street|Blvd|Lane|Ln|Dr|Drive|Way))/mi', $rawInput, $m)) {
 
         $address = trim(preg_replace('/\s+/', ' ', $m[1]));
-
         $parsed['location']['address'] = $address;
     }
 }
@@ -1008,6 +1011,115 @@ function inferMissingFields(array $parsed): array {
     }
 
     return $parsed;
+}
+/**
+ * EXPLICIT ENTITY PRESERVATION LAYER
+ * 
+ * Enforces authoritative source precedence:
+ * If the raw input contains a clear long-form entity name (like "West Valley Commerce Center"),
+ * it will override any AI-inferred short name or email-domain guess (like "Wvcc" or "wvcc").
+ */
+function preserveExplicitEntityName(array $parsed, string $rawInput): array
+{
+    $currentName = trim($parsed['entity']['name'] ?? '');
+
+    // Extract strong long-form business name candidates from raw source
+    $candidates = extractLongFormEntityCandidates($rawInput);
+
+    if (empty($candidates)) {
+        return $parsed; // No clear entity name in source → do nothing
+    }
+
+    $bestExplicit = $candidates[0]; // Longest / first strong match
+
+    // Decide if we should override the current name
+    if (shouldOverrideWithExplicit($bestExplicit, $currentName)) {
+        $parsed['entity']['name']              = $bestExplicit;
+        $parsed['entity']['nameInferred']      = false;
+        $parsed['entity']['nameConfirmed']     = true;
+        $parsed['entity']['nameSource']        = 'explicit_source_precedence';
+        $parsed['entity']['originalInferredName'] = $currentName ?: null;
+
+        // Optional: audit trail
+        // error_log("Entity name restored: '$currentName' → '$bestExplicit'");
+    }
+
+    return $parsed;
+}
+/**
+ * Extract likely business entity names (title-case, multi-word)
+ */
+function extractLongFormEntityCandidates(string $rawInput): array
+{
+    $candidates = [];
+
+    // Strong pattern: Lines starting with title-case multi-word phrases
+    // Often business names appear near the top, before address/phone
+    preg_match_all(
+        '/^[\s]*([A-Z][a-zA-Z0-9&\'\-,]+(?:\s+[A-Z][a-zA-Z0-9&\'\-,]+){2,}(?:\s+(?:Center|Centre|Building|Plaza|Complex|LLC|Inc|Corp|Corporation|Group|Partners|Properties))?)/m',
+        $rawInput,
+        $matches
+    );
+
+    foreach ($matches[1] as $match) {
+        $match = trim($match);
+        if (strlen($match) > 12 && !preg_match('/@(|\d{3})/', $match)) { // avoid emails & phones
+            $candidates[] = $match;
+        }
+    }
+
+    // Dedupe and sort by length (prefer longest)
+    $candidates = array_unique($candidates);
+    usort($candidates, fn($a, $b) => strlen($b) <=> strlen($a));
+
+    return $candidates;
+}
+/**
+ * Core decision logic: Should we trust the explicit name over current value?
+ */
+function shouldOverrideWithExplicit(string $explicit, string $current): bool
+{
+    if (empty($current)) {
+        return true;
+    }
+
+    // 1. Explicit is much longer
+    if (strlen($explicit) > strlen($current) * 1.6) {
+        return true;
+    }
+
+    // 2. Current looks like an acronym or email-derived short name
+    if (isLikelyAcronymOrShortForm($current)) {
+        return true;
+    }
+
+    // 3. Current is an acronym of the explicit name (wvcc vs West Valley Commerce Center)
+    if (isAcronymOf($current, $explicit)) {
+        return true;
+    }
+
+    return false;
+}
+// Likely acronym or short form heuristics
+function isLikelyAcronymOrShortForm(string $name): bool
+{
+    $clean = trim($name);
+    return strlen($clean) <= 10
+        || strtoupper($clean) === $clean
+        || preg_match('/^[A-Za-z]{2,8}$/', $clean);
+}
+// Acronym matching (e.g., "WVCC" vs "West Valley Commerce Center")
+function isAcronymOf(string $short, string $long): bool
+{
+    $shortClean = strtoupper(preg_replace('/[^A-Z0-9]/', '', $short));
+    $acronym    = preg_replace('/[^A-Z]/', '', $long);
+
+    if (empty($shortClean)) {
+        return false;
+    }
+
+    return strcasecmp($shortClean, $acronym) === 0
+        || strcasecmp($shortClean, substr($acronym, 0, strlen($shortClean))) === 0;
 }
 // 🔍 validateParsed — validate required parsed fields
 function validateParsed(array $parsed): array {
