@@ -1013,35 +1013,53 @@ function inferMissingFields(array $parsed): array {
     return $parsed;
 }
 /**
- * EXPLICIT ENTITY PRESERVATION LAYER
+ * EXPLICIT ENTITY PRESERVATION LAYER — v2 (Aggressive)
  * 
- * Enforces authoritative source precedence:
- * If the raw input contains a clear long-form entity name (like "West Valley Commerce Center"),
- * it will override any AI-inferred short name or email-domain guess (like "Wvcc" or "wvcc").
+ * Fixes cases where fallback/AI returns concatenated junk like:
+ * "David Harper\nFacilities Director\nWest Valley Commerce Center"
  */
 function preserveExplicitEntityName(array $parsed, string $rawInput): array
 {
     $currentName = trim($parsed['entity']['name'] ?? '');
 
-    // Extract strong long-form business name candidates from raw source
-    $candidates = extractLongFormEntityCandidates($rawInput);
+    // 1. Split raw input into lines and clean them
+    $lines = array_filter(array_map('trim', explode("\n", $rawInput)));
 
-    if (empty($candidates)) {
-        return $parsed; // No clear entity name in source → do nothing
+    // 2. Find the best entity name candidate
+    $candidates = [];
+    foreach ($lines as $line) {
+        // Skip obvious contact lines
+        if (preg_match('/^David Harper|^Facilities Director|Director$|Manager$|@|\(\d{3}\)/i', $line)) {
+            continue;
+        }
+
+        // Strong business name pattern: 2+ title-case words, longer than 12 chars
+        if (strlen($line) > 12 
+            && preg_match('/[A-Z][a-zA-Z0-9&\'-]+(?:\s+[A-Z][a-zA-Z0-9&\'-]+){1,}/', $line)
+            && !preg_match('/^\d/', $line)           // not an address
+            && !str_contains($line, '@')) {
+            
+            $candidates[] = $line;
+        }
     }
 
-    $bestExplicit = $candidates[0]; // Longest / first strong match
+    if (empty($candidates)) {
+        return $parsed;
+    }
 
-    // Decide if we should override the current name
+    // Prefer the longest / most prominent
+    $bestExplicit = $candidates[0];
+
+    // 3. Decide whether to override
     if (shouldOverrideWithExplicit($bestExplicit, $currentName)) {
-        $parsed['entity']['name']              = $bestExplicit;
-        $parsed['entity']['nameInferred']      = false;
-        $parsed['entity']['nameConfirmed']     = true;
-        $parsed['entity']['nameSource']        = 'explicit_source_precedence';
-        $parsed['entity']['originalInferredName'] = $currentName ?: null;
+        $parsed['entity']['name'] = $bestExplicit;
+        $parsed['entity']['nameInferred'] = false;
+        $parsed['entity']['nameConfirmed'] = true;
+        $parsed['entity']['nameSource'] = 'explicit_source_precedence';
+        $parsed['entity']['originalInferredName'] = $currentName;
 
-        // Optional: audit trail
-        // error_log("Entity name restored: '$currentName' → '$bestExplicit'");
+        // Optional audit
+        // error_log("[Entity Preservation] Restored: '$currentName' → '$bestExplicit'");
     }
 
     return $parsed;
