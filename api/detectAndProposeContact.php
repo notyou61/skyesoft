@@ -826,7 +826,7 @@ error_log("🔍 [SECTION 10] parcelStatus = " . ($locationValidation['parcelStat
 error_log("🔍 [SECTION 10] isMaricopa = " . ($locationValidation['isMaricopa'] ? 'true' : 'false'));
 
 // -------------------------------------------------
-// AUTHORITATIVE PCM DECISION — Stress-Test Hardened
+// AUTHORITATIVE PCM DECISION — Aligned to ELC Standards
 // -------------------------------------------------
 if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
@@ -843,7 +843,12 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 } elseif (($locationDuplicate['status'] ?? '') === 'possible') {
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
 
-} elseif (isset($locationValidation['parcelStatus']) && $locationValidation['parcelStatus'] === 'multiple_matches') {
+// MULTIPLE PARCELS (Maricopa only)
+} elseif (
+    ($locationValidation['isMaricopa'] ?? false) === true &&
+    isset($locationValidation['parcelStatus']) && 
+    $locationValidation['parcelStatus'] === 'multiple_matches'
+) {
     $pcm = ['status' => 'multiple_parcels', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_parcel'];
 
 // UNRESOLVED PARCEL (Maricopa only)
