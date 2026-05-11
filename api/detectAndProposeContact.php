@@ -31,9 +31,6 @@ if (function_exists('opcache_invalidate')) {
 // Load utilities
 require_once __DIR__ . '/utils/detectAndProposeContact.utils.php';
 
-// Load final response builder
-require_once __DIR__ . '/detectAndProposeContact.response.php';
-
 // =====================================================
 // OPTIONAL FORCED TEST — Enable only when debugging
 // =====================================================
@@ -884,7 +881,9 @@ error_log("pcmStatus = " . ($pcm['status'] ?? 'NOT SET'));
 error_log("parsed keys = " . implode(', ', array_keys($parsed ?? [])));
 error_log("rawInputOriginal = " . ($rawInputOriginal ?? 'NULL'));
 
-// Defensive safety net
+// ==================== FINAL OUTPUT (SECTION 10) ====================
+
+// Safety net
 $pcm = $pcm ?? ['status' => 'incomplete', 'action' => null, 'readyForCommit' => false, 'blocksCommit' => true];
 
 require_once __DIR__ . '/detectAndProposeContact.response.php';
