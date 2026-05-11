@@ -976,27 +976,17 @@ $data['contact'] = [
     'isActive'                     => 1
 ];
 
-// META — Fixed USPS enrichment hydration
+// META — Authoritative + Correct Order
 $meta['inferences'] = [
     'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
     'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
     'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false
 ];
 
-// Dynamic enrichments — now correctly includes smarty_usps
-$hasSmarty = ($meta['flags']['uspsValidated'] ?? false) || 
-             !empty($parsed['location']['locationDpvCode']) || 
-             !empty($parsed['location']['smartyDpvCode']);
-
-$meta['enrichments'] = array_values(array_filter([
-    'google_geocode',
-    !empty($parsed['location']['county']) ? 'census_county' : null,
-    'maricopa_parcel',
-    $hasSmarty ? 'smarty_usps' : null
-]));
-
+// Calculate DPV first (authoritative)
 $dpvCode = strtoupper(trim($parsed['location']['locationDpvCode'] ?? $parsed['location']['smartyDpvCode'] ?? 'Y'));
 
+// FLAGS first
 $meta['flags'] = [
     'isMaricopa'           => $locationValidation['isMaricopa'] ?? false,
     'locationValid'        => $locationValidation['status'] ?? 'invalid',
@@ -1006,6 +996,14 @@ $meta['flags'] = [
     'uspsValidated'        => $dpvCode === 'Y',
     'dpvCode'              => $dpvCode
 ];
+
+// THEN enrichments (now uses authoritative flag)
+$meta['enrichments'] = array_values(array_filter([
+    'google_geocode',
+    !empty($parsed['location']['county']) ? 'census_county' : null,
+    'maricopa_parcel',
+    ($meta['flags']['uspsValidated'] ?? false) ? 'smarty_usps' : null
+]));
 
 // -------------------------------------------------
 // RESOLUTION OBJECT
