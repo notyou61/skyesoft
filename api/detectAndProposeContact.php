@@ -31,16 +31,23 @@ if (function_exists('opcache_invalidate')) {
 // Load utilities
 require_once __DIR__ . '/utils/detectAndProposeContact.utils.php';
 
+// Load final response builder
+require_once __DIR__ . '/detectAndProposeContact.response.php';
+
 // =====================================================
-// FORCED TEST — PROVE LOOKUP WORKS
+// OPTIONAL FORCED TEST — Enable only when debugging
 // =====================================================
-error_log("=== FORCED MARICOPA LOOKUP TEST (bypassing all conditions) ===");
-$forcedAddress = "3145 N 33rd Ave Phoenix AZ 85017";
-$forcedParcelDetails = lookupMaricopaParcel($forcedAddress);
-error_log("[FORCED-TEST] lookupMaricopaParcel returned " . count($forcedParcelDetails) . " candidates");
-if (count($forcedParcelDetails) > 0) {
-    error_log("[FORCED-TEST] First APN: " . ($forcedParcelDetails[0]['apnRaw'] ?? 'none'));
-    error_log("[FORCED-TEST] Jurisdiction: " . ($forcedParcelDetails[0]['jurisdiction'] ?? 'none'));
+$runForcedTest = false;   // ← Change to true only when needed
+
+if ($runForcedTest) {
+    error_log("=== FORCED MARICOPA LOOKUP TEST (bypassing all conditions) ===");
+    $forcedAddress = "3145 N 33rd Ave Phoenix AZ 85017";
+    $forcedParcelDetails = lookupMaricopaParcel($forcedAddress);
+    error_log("[FORCED-TEST] lookupMaricopaParcel returned " . count($forcedParcelDetails) . " candidates");
+    if (count($forcedParcelDetails) > 0) {
+        error_log("[FORCED-TEST] First APN: " . ($forcedParcelDetails[0]['apnRaw'] ?? 'none'));
+        error_log("[FORCED-TEST] Jurisdiction: " . ($forcedParcelDetails[0]['jurisdiction'] ?? 'none'));
+    }
 }
 
 #endregion
