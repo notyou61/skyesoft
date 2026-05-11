@@ -29,7 +29,7 @@ if (function_exists('opcache_invalidate')) {
 }
 
 // Load utilities
-require_once __DIR__ . '/detectAndProposeContact.utils.php';
+require_once __DIR__ . '/utils/detectAndProposeContact.utils.php';
 
 // =====================================================
 // FORCED TEST — PROVE LOOKUP WORKS
