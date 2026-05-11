@@ -832,7 +832,6 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
 
 } elseif (empty($parsed['location']['locationPlaceId'] ?? '')) {
-    // Google validation failed → location authority missing
     $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
 
 } elseif (($duplicate['status'] ?? '') === 'exact') {
@@ -884,7 +883,7 @@ $data['entity'] = [
     'entityName' => $parsed['entity']['name'] ?? ''
 ];
 
-// Find selected parcel if any
+// Find selected parcel
 $selectedParcel = null;
 if (!empty($parsed['location']['parcelDetails'])) {
     foreach ($parsed['location']['parcelDetails'] as $p) {
@@ -895,6 +894,15 @@ if (!empty($parsed['location']['parcelDetails'])) {
     }
     if (!$selectedParcel && count($parsed['location']['parcelDetails']) === 1) {
         $selectedParcel = $parsed['location']['parcelDetails'][0];
+    }
+}
+
+// Jurisdiction consensus for multiple parcels
+$jurisdiction = $selectedParcel['jurisdiction'] ?? '';
+if (empty($jurisdiction) && !empty($parsed['location']['parcelDetails'])) {
+    $jurisdictions = array_unique(array_filter(array_column($parsed['location']['parcelDetails'], 'jurisdiction')));
+    if (count($jurisdictions) === 1) {
+        $jurisdiction = reset($jurisdictions);
     }
 }
 
@@ -913,7 +921,7 @@ $data['location'] = [
     'locationCountyFips'      => $parsed['location']['countyFips'] ?? '',
     'locationJurisdiction'    => $parsed['location']['locationJurisdiction']
                                 ?? $parsed['location']['jurisdiction']
-                                ?? ($selectedParcel['jurisdiction'] ?? ''),
+                                ?? $jurisdiction,
 
     'parcelDetails'           => $parsed['location']['parcelDetails'] ?? [],
     'parcelResolution' => [
@@ -921,7 +929,7 @@ $data['location'] = [
         'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
         'selectedApn'           => $selectedParcel['apnRaw'] ?? null,
         'candidateCount'        => count($parsed['location']['parcelDetails'] ?? []),
-        'resolutionMethod'      => $selectedParcel ? $selectedParcel['resolutionSource'] : 'automatic',
+        'resolutionMethod'      => $selectedParcel ? ($selectedParcel['resolutionSource'] ?? 'automatic') : 'automatic',
         'bestMatchConfidence'   => $selectedParcel['confidence'] ?? null
     ],
 
@@ -951,20 +959,23 @@ $data['contact'] = [
     'isActive'                     => 1
 ];
 
-// META
+// META — Fixed USPS + dynamic enrichments
 $meta['inferences'] = [
     'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
     'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
     'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false
 ];
 
-// Dynamic enrichments (only successful ones)
+$hasSmarty = !empty($parsed['location']['locationDpvCode']) || !empty($parsed['location']['smartyDpvCode']);
+
 $meta['enrichments'] = array_values(array_filter([
     'google_geocode',
     !empty($parsed['location']['county']) ? 'census_county' : null,
     'maricopa_parcel',
-    !empty($parsed['location']['locationDpvCode']) ? 'smarty_usps' : null
+    $hasSmarty ? 'smarty_usps' : null
 ]));
+
+$dpvCode = strtoupper(trim($parsed['location']['locationDpvCode'] ?? $parsed['location']['smartyDpvCode'] ?? 'Y'));
 
 $meta['flags'] = [
     'isMaricopa'           => $locationValidation['isMaricopa'] ?? false,
@@ -972,8 +983,8 @@ $meta['flags'] = [
     'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',
     'apnResolved'          => $locationValidation['apnResolved'] ?? false,
     'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false,
-    'uspsValidated'        => strtoupper(trim($parsed['location']['locationDpvCode'] ?? $meta['flags']['dpvCode'] ?? '')) === 'Y',
-    'dpvCode'              => $parsed['location']['locationDpvCode'] ?? 'Y'
+    'uspsValidated'        => $dpvCode === 'Y',
+    'dpvCode'              => $dpvCode
 ];
 
 // -------------------------------------------------
@@ -1007,17 +1018,36 @@ if ($pcm['status'] === 'existing_location') {
     $resolution['issues']['blocking'][] = 'existing_location';
 } elseif ($pcm['status'] === 'multiple_parcels') {
     $resolution['issues']['review'][] = 'multiple_parcels';
-} elseif (in_array($pcm['status'], ['unresolved_parcel', 'incomplete_address'])) {
+} elseif (in_array($pcm['status'], ['unresolved_parcel', 'incomplete_address', 'invalid_location'])) {
     $resolution['issues']['review'][] = $pcm['status'];
 }
 
 // -------------------------------------------------
-// AI Narrative + Fallback (your existing logic preserved)
+// AI Narrative Context + Generation
 // -------------------------------------------------
-$resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
+$aiNarrativeContext = [
+    'pcm'                => $pcm,
+    'duplicate'          => $duplicate,
+    'locationDuplicate'  => $locationDuplicate,
+    'locationValidation' => $locationValidation,
+    'meta'               => $meta,
+    'data'               => $data,
+    'operationalContext' => [
+        'parcelCandidateCount' => count($parsed['location']['parcelDetails'] ?? []),
+        'parcelOwners'         => array_values(array_unique(array_filter(array_map(fn($p) => trim($p['owner'] ?? ''), $parsed['location']['parcelDetails'] ?? [])))),
+        'jurisdictions'        => array_values(array_unique(array_filter(array_map(fn($p) => trim($p['jurisdiction'] ?? ''), $parsed['location']['parcelDetails'] ?? [])))),
+        'validationSummary'    => [
+            'googleValidated' => !empty($parsed['location']['locationPlaceId']),
+            'uspsValidated'   => $meta['flags']['uspsValidated'],
+            'parcelResolved'  => $meta['flags']['apnResolved'],
+        ]
+    ]
+];
+
+$resolvedNarrative = buildOperationalNarratives($aiNarrativeContext);
 
 if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'])) {
-    error_log('[operational-narrative] Falling back to static PCM narrative');
+    error_log('[operational-narrative] Falling back to static PCM narrative for ' . $pcm['status']);
     $resolvedNarrative = $pcmNarratives[$pcm['status']] ?? $pcmNarratives['new_elc'] ?? [];
 }
 
