@@ -29,14 +29,13 @@ Operational Narrative Rules:
 - Prioritize operational clarity over system terminology
 - Explain real-world implications rather than internal governance mechanics
 - Focus on what the operator needs to understand or do next
-- Prefer operational wording over PCM wording
-- Avoid describing system internals unless operationally relevant
+- Use natural, professional business language
+- Use precise grammar and singular/plural agreement (e.g. "The entity has been confirmed...")
+- Use cautious operational language ("All current operational validation requirements...")
+- Avoid absolute certainty when future validation domains may exist
 
 Narrative Quality Rules:
 - Be concise, professional, and evidence-based
-- Use precise grammar and singular/plural agreement (e.g. "The entity has been confirmed...")
-- Use cautious operational language
-- Avoid absolute certainty when future validation domains may exist
 - Avoid robotic or template-style phrasing
 - Avoid repetitive phrasing across sections
 - Avoid generic governance jargon
@@ -44,17 +43,14 @@ Narrative Quality Rules:
 
 Review Guidance:
 - Only describe "human review" when actual operator evaluation or investigation is required
-- Do NOT describe simple workflow continuation or parcel selection as "investigation"
-- Distinguish between:
-  - unresolved authoritative selection
-  - operational review
-  - validation failure
-  - duplicate prevention
-  - workflow routing
+- Distinguish between unresolved authoritative selection, operational review, validation failure, duplicate prevention, and workflow routing
 
 Preferred Operational Language:
+- Prefer: "The proposal is operationally eligible for insertion as a new entity, location, and contact relationship."
+  instead of: "classified as new"
+
 - Prefer: "The proposal references an existing location record."
-  instead of: "The proposal failed relational integrity governance."
+  instead of: "failed relational integrity governance."
 
 - Prefer: "Multiple parcel candidates require operator selection."
   instead of: "Human investigation is required."

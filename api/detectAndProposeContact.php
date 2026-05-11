@@ -1023,7 +1023,7 @@ if ($pcm['status'] === 'existing_location') {
 }
 
 // -------------------------------------------------
-// AI Narrative Context + Generation
+// AI Narrative + Fallback
 // -------------------------------------------------
 $aiNarrativeContext = [
     'pcm'                => $pcm,
@@ -1034,8 +1034,6 @@ $aiNarrativeContext = [
     'data'               => $data,
     'operationalContext' => [
         'parcelCandidateCount' => count($parsed['location']['parcelDetails'] ?? []),
-        'parcelOwners'         => array_values(array_unique(array_filter(array_map(fn($p) => trim($p['owner'] ?? ''), $parsed['location']['parcelDetails'] ?? [])))),
-        'jurisdictions'        => array_values(array_unique(array_filter(array_map(fn($p) => trim($p['jurisdiction'] ?? ''), $parsed['location']['parcelDetails'] ?? [])))),
         'validationSummary'    => [
             'googleValidated' => !empty($parsed['location']['locationPlaceId']),
             'uspsValidated'   => $meta['flags']['uspsValidated'],
