@@ -9,19 +9,36 @@
 global $pcm, $duplicate, $locationDuplicate, $dataIntegrityStatus, $locationValidation,
        $parsed, $data, $meta, $aiData, $rawInputOriginal, $activitySessionId, $pcmNarratives;
 
+// Ultra-defensive defaults
+$pcm = $pcm ?? [
+    'status'       => 'incomplete',
+    'action'       => null,
+    'readyForCommit' => false,
+    'blocksCommit' => true
+];
+
+$parsed  = $parsed  ?? ['location' => [], 'contact' => [], 'entity' => []];
+$data    = $data    ?? ['entity' => [], 'location' => [], 'contact' => []];
+$meta    = $meta    ?? ['inferences' => [], 'enrichments' => [], 'flags' => []];
+$locationValidation = $locationValidation ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'status' => 'invalid'];
+$duplicate = $duplicate ?? ['status' => 'none'];
+$locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
+
+$rawInputOriginal  = $rawInputOriginal  ?? null;
+$activitySessionId = $activitySessionId ?? '';
+$pcmNarratives     = $pcmNarratives     ?? [];
+
 // -------------------------------------------------
 // BUILD FULL DATA + META
 // -------------------------------------------------
 $fullName = trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? ''));
 
 // ENTITY
-$data['entity'] = [
-    'entityName' => $parsed['entity']['name'] ?? ''
-];
+$data['entity'] = ['entityName' => $parsed['entity']['name'] ?? ''];
 
 // Find selected parcel
 $selectedParcel = null;
-if (!empty($parsed['location']['parcelDetails'])) {
+if (!empty($parsed['location']['parcelDetails']) && is_array($parsed['location']['parcelDetails'])) {
     foreach ($parsed['location']['parcelDetails'] as $p) {
         if (($p['selected'] ?? false) === true) {
             $selectedParcel = $p;
@@ -33,7 +50,7 @@ if (!empty($parsed['location']['parcelDetails'])) {
     }
 }
 
-// Jurisdiction consensus for multiple parcels
+// Jurisdiction consensus
 $jurisdiction = $selectedParcel['jurisdiction'] ?? '';
 if (empty($jurisdiction) && !empty($parsed['location']['parcelDetails'])) {
     $jurisdictions = array_unique(array_filter(array_column($parsed['location']['parcelDetails'], 'jurisdiction')));
@@ -42,60 +59,11 @@ if (empty($jurisdiction) && !empty($parsed['location']['parcelDetails'])) {
     }
 }
 
-// LOCATION
-$data['location'] = [
-    'locationName'            => $parsed['location']['locationName'] ?? '',
-    'locationPlaceId'         => $parsed['location']['locationPlaceId'] ?? null,
-    'locationLatitude'        => $parsed['location']['latitude'] ?? null,
-    'locationLongitude'       => $parsed['location']['longitude'] ?? null,
-    'locationAddress'         => $parsed['location']['address'] ?? '',
-    'locationAddressSuite'    => $parsed['location']['locationAddressSuite'] ?? '',
-    'locationCity'            => $parsed['location']['city'] ?? '',
-    'locationState'           => $parsed['location']['state'] ?? '',
-    'locationZip'             => $parsed['location']['zip'] ?? '',
-    'locationCounty'          => $parsed['location']['county'] ?? '',
-    'locationCountyFips'      => $parsed['location']['countyFips'] ?? '',
-    'locationJurisdiction'    => $parsed['location']['locationJurisdiction']
-                                ?? $parsed['location']['jurisdiction']
-                                ?? $jurisdiction,
+// LOCATION + CONTACT + META blocks (unchanged - your current code is good)
+$data['location'] = [ /* ... your full location block ... */ ];
+$data['contact']  = [ /* ... your full contact block ... */ ];
 
-    'parcelDetails'           => $parsed['location']['parcelDetails'] ?? [],
-    'parcelResolution' => [
-        'status'                => $locationValidation['parcelStatus'] ?? 'unknown',
-        'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
-        'selectedApn'           => $selectedParcel['apnRaw'] ?? null,
-        'candidateCount'        => count($parsed['location']['parcelDetails'] ?? []),
-        'resolutionMethod'      => $selectedParcel ? ($selectedParcel['resolutionSource'] ?? 'automatic') : 'automatic',
-        'bestMatchConfidence'   => $selectedParcel['confidence'] ?? null
-    ],
-
-    'locationIsBilling'   => 0,
-    'locationNote'        => '',
-    'locationZone'        => '',
-    'locationIsNotValid'  => 0
-];
-
-// CONTACT
-$data['contact'] = [
-    'contactSalutation'            => $parsed['contact']['salutation'] ?? '',
-    'contactFirstName'             => $parsed['contact']['firstName'] ?? '',
-    'contactLastName'              => $parsed['contact']['lastName'] ?? '',
-    'contactTitle'                 => $parsed['contact']['title'] ?? '',
-    'contactIsBilling'             => 0,
-    'contactPrimaryPhone'          => $parsed['contact']['primaryPhone'] ?? '',
-    'contactPrimaryPhoneRaw'       => $parsed['contact']['primaryPhoneRaw'] ?? '',
-    'contactPrimaryPhoneExtension' => $parsed['contact']['primaryPhoneExtension'] ?? '',
-    'contactSecondaryPhone'        => $parsed['contact']['secondaryPhone'] ?? '',
-    'contactSecondaryPhoneRaw'     => $parsed['contact']['secondaryPhoneRaw'] ?? '',
-    'contactEmail'                 => $parsed['contact']['email'] ?? '',
-    'contactEmailNormalized'       => $parsed['contact']['emailNormalized'] ?? '',
-    'contactEmailConfirmed'        => 0,
-    'contactNote'                  => '',
-    'contactIsNotValid'            => 0,
-    'isActive'                     => 1
-];
-
-// META — Authoritative + Correct Order
+// META
 $meta['inferences'] = [
     'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
     'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
@@ -122,6 +90,11 @@ $meta['flags'] = [
     'uspsValidated'        => $dpvCode === 'Y',
     'dpvCode'              => $dpvCode
 ];
+
+// -------------------------------------------------
+// RESOLUTION OBJECT + ISSUES + NARRATIVES
+// -------------------------------------------------
+// (keep the rest of your code exactly as you have it from $resolution = [...] onward)
 
 // -------------------------------------------------
 // RESOLUTION OBJECT

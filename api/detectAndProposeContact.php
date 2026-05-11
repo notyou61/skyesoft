@@ -826,3 +826,7 @@ if (!$pdo) {
 }
 
 #endregion
+// ==================== FINAL OUTPUT ====================
+$pcm = $pcm ?? ['status' => 'incomplete', 'action' => null, 'readyForCommit' => false, 'blocksCommit' => true];
+
+require_once __DIR__ . '/detectAndProposeContact.response.php';
