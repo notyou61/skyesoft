@@ -976,14 +976,17 @@ $data['contact'] = [
     'isActive'                     => 1
 ];
 
-// META — Fixed USPS + dynamic enrichments
+// META — Fixed USPS enrichment hydration
 $meta['inferences'] = [
     'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
     'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
     'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false
 ];
 
-$hasSmarty = $meta['flags']['uspsValidated'] ?? false;
+// Dynamic enrichments — now correctly includes smarty_usps
+$hasSmarty = ($meta['flags']['uspsValidated'] ?? false) || 
+             !empty($parsed['location']['locationDpvCode']) || 
+             !empty($parsed['location']['smartyDpvCode']);
 
 $meta['enrichments'] = array_values(array_filter([
     'google_geocode',
