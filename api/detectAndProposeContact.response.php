@@ -5,7 +5,12 @@
  * Version: 1.5.7
  */
 
-// Global declarations for IDE
+// =====================================================
+// GLOBAL DECLARATIONS + DEFENSIVE DEFAULTS
+// =====================================================
+
+#region GLOBAL SCOPE & DEFAULTS
+
 global $pcm, $duplicate, $locationDuplicate, $dataIntegrityStatus, $locationValidation,
        $parsed, $data, $meta, $aiData, $rawInputOriginal, $activitySessionId, $pcmNarratives;
 
@@ -22,9 +27,14 @@ $rawInputOriginal = $rawInputOriginal ?? null;
 $activitySessionId = $activitySessionId ?? '';
 $pcmNarratives = $pcmNarratives ?? [];
 
-// -------------------------------------------------
-// BUILD DATA + META
-// -------------------------------------------------
+#endregion
+
+// =====================================================
+// BUILD CORE DATA OBJECTS
+// =====================================================
+
+#region BUILD ENTITY + CONTACT
+
 $data['entity'] = ['entityName' => $parsed['entity']['name'] ?? ''];
 
 $data['contact'] = [
@@ -45,6 +55,10 @@ $data['contact'] = [
     'contactIsNotValid'            => 0,
     'isActive'                     => 1
 ];
+
+#endregion
+
+#region BUILD LOCATION + PARCEL RESOLUTION
 
 // Selected parcel logic
 $selectedParcel = null;
@@ -92,7 +106,10 @@ $data['location'] = [
     'locationIsNotValid' => 0
 ];
 
-// META
+#endregion
+
+#region BUILD META + ENRICHMENTS
+
 $meta['inferences'] = [
     'salutationInferred'   => $parsed['contact']['salutationInferred'] ?? false,
     'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
@@ -118,9 +135,10 @@ $meta['enrichments'] = array_values(array_filter([
     ($meta['flags']['uspsValidated'] ?? false) ? 'smarty_usps' : null
 ]));
 
-// -------------------------------------------------
-// RESOLUTION OBJECT + NARRATIVES + FINAL OUTPUT
-// -------------------------------------------------
+#endregion
+
+#region RESOLUTION OBJECT + NARRATIVES
+
 $resolution = [
     'pcmStatus'     => $pcm['status'],
     'classification' => [
@@ -153,9 +171,7 @@ if ($pcm['status'] === 'existing_location') {
     $resolution['issues']['review'][] = $pcm['status'];
 }
 
-// -------------------------------------------------
 // AI Narrative + Fallback
-// -------------------------------------------------
 $aiNarrativeContext = [
     'pcm'                => $pcm,
     'duplicate'          => $duplicate,
@@ -187,9 +203,10 @@ $resolution['narratives'] = array_merge([
     'informational' => []
 ], $resolvedNarrative);
 
-// -------------------------------------------------
-// FINAL OUTPUT
-// -------------------------------------------------
+#endregion
+
+#region FINAL OUTPUT
+
 echo json_encode([
     'status'        => 'proposed',
     'confidence'    => $aiData['confidence'] ?? 85,
@@ -204,3 +221,5 @@ echo json_encode([
     'meta'          => $meta,
     'activitySessionId' => $activitySessionId
 ], JSON_UNESCAPED_SLASHES);
+
+#endregion

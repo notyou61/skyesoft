@@ -831,9 +831,8 @@ if (!$pdo) {
 
 #endregion
 
-// -------------------------------------------------
-// AUTHORITATIVE PCM DECISION — Official Matrix
-// -------------------------------------------------
+#region PCM DECISION — Governance Matrix
+
 if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
 
@@ -875,7 +874,9 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'new_elc', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'insert_new'];
 }
 
-// ==================== FINAL OUTPUT (SECTION 10) ====================
+#endregion
+
+#region FINAL OUTPUT — Response Builder
 
 // === DEBUG BEFORE RESPONSE ===
 error_log("=== [FINAL] Before response.php ===");
@@ -887,3 +888,5 @@ error_log("rawInputOriginal = " . ($rawInputOriginal ?? 'NULL'));
 $pcm = $pcm ?? ['status' => 'incomplete', 'action' => null, 'readyForCommit' => false, 'blocksCommit' => true];
 
 require_once __DIR__ . '/detectAndProposeContact.response.php';
+
+#endregion
