@@ -966,13 +966,13 @@ $meta['inferences'] = [
     'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false
 ];
 
-$hasSmarty = !empty($parsed['location']['locationDpvCode']) || !empty($parsed['location']['smartyDpvCode']);
+$hasSmarty = $meta['flags']['uspsValidated'] ?? false;
 
 $meta['enrichments'] = array_values(array_filter([
     'google_geocode',
     !empty($parsed['location']['county']) ? 'census_county' : null,
     'maricopa_parcel',
-    ($meta['flags']['uspsValidated'] ?? false) ? 'smarty_usps' : null
+    $hasSmarty ? 'smarty_usps' : null
 ]));
 
 $dpvCode = strtoupper(trim($parsed['location']['locationDpvCode'] ?? $parsed['location']['smartyDpvCode'] ?? 'Y'));
