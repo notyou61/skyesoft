@@ -826,10 +826,14 @@ error_log("🔍 [SECTION 10] parcelStatus = " . ($locationValidation['parcelStat
 error_log("🔍 [SECTION 10] isMaricopa = " . ($locationValidation['isMaricopa'] ? 'true' : 'false'));
 
 // -------------------------------------------------
-// AUTHORITATIVE PCM DECISION — Aligned to ELC Standards
+// AUTHORITATIVE PCM DECISION — Official Matrix Aligned
 // -------------------------------------------------
 if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
+
+} elseif (empty($parsed['location']['locationPlaceId'] ?? '')) {
+    // Google validation failed → location authority missing
+    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
 
 } elseif (($duplicate['status'] ?? '') === 'exact') {
     $pcm = ['status' => 'duplicate_contact', 'readyForCommit' => false, 'requiresReview' => false, 'blocksCommit' => true, 'action' => 'reject_duplicate'];
