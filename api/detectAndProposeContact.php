@@ -958,13 +958,13 @@ $meta['inferences'] = [
     'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false
 ];
 
-// Dynamic enrichments
-$meta['enrichments'] = array_filter([
+// Dynamic enrichments (only successful ones)
+$meta['enrichments'] = array_values(array_filter([
     'google_geocode',
     !empty($parsed['location']['county']) ? 'census_county' : null,
     'maricopa_parcel',
-    'smarty_usps'
-]);
+    !empty($parsed['location']['locationDpvCode']) ? 'smarty_usps' : null
+]));
 
 $meta['flags'] = [
     'isMaricopa'           => $locationValidation['isMaricopa'] ?? false,
@@ -972,7 +972,7 @@ $meta['flags'] = [
     'parcelStatus'         => $locationValidation['parcelStatus'] ?? 'unknown',
     'apnResolved'          => $locationValidation['apnResolved'] ?? false,
     'jurisdictionResolved' => $locationValidation['jurisdictionResolved'] ?? false,
-    'uspsValidated'        => !empty($parsed['location']['locationDpvCode']),
+    'uspsValidated'        => strtoupper(trim($parsed['location']['locationDpvCode'] ?? $meta['flags']['dpvCode'] ?? '')) === 'Y',
     'dpvCode'              => $parsed['location']['locationDpvCode'] ?? 'Y'
 ];
 
@@ -1027,6 +1027,8 @@ $resolution['narratives'] = array_merge([
     'review'        => [],
     'informational' => []
 ], $resolvedNarrative);
+
+error_log("[FINAL NARRATIVE] pcmStatus=" . $pcm['status'] . " | decision count=" . count($resolution['narratives']['decision'] ?? []));
 
 // -------------------------------------------------
 // FINAL OUTPUT
@@ -1835,6 +1837,10 @@ function extractPhoneExtension(string $input): ?string {
 }
 // 🧠 buildOperationalNarratives — generate narratives based on context
 function buildOperationalNarratives(array $context): array {
+
+    // Temporary debug — remove after stable
+    error_log("[NARRATIVE DEBUG] Raw AI response: " . substr($response ?? '', 0, 800));
+    error_log("[NARRATIVE DEBUG] Extracted JSON: " . json_encode($parsed ?? 'NO PARSE'));
 
     $fallback = [
         'decision'      => ['This proposal requires operational review.'],
