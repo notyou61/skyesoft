@@ -17,35 +17,42 @@ declare(strict_types=1);
 // Last Updated: 2026-05-11
 // =====================================================
 
-#region SECTION 00 — ⚙️ Force Fresh Code + Debugging (Maricopa Fix)
+#region SECTION 00 — ⚙️ Bootstrap + Fresh Load
 
-error_log("=== DETECTANDPROPOSECONTACT.PHP V1.5.7 UTILS SPLIT === " . date('Y-m-d H:i:s'));
+error_log("=== DETECTANDPROPOSECONTACT.PHP V1.5.7 — STARTING ===" . date(' Y-m-d H:i:s'));
 
+// Force fresh code in production
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
-    error_log("[OPCACHE] ✅ File cache invalidated (production)");
+    error_log("[OPCACHE] ✅ File cache invalidated");
 } else {
-    error_log("[OPCACHE] opcache_invalidate not available (local dev — OK)");
+    error_log("[OPCACHE] opcache_invalidate not available (local dev OK)");
 }
 
-// Load utilities
+// -------------------------------------------------
+// Load Core Dependencies
+// -------------------------------------------------
 require_once __DIR__ . '/utils/detectAndProposeContact.utils.php';
+require_once __DIR__ . '/detectAndProposeContact.response.php';
 
-// =====================================================
-// OPTIONAL FORCED TEST — Enable only when debugging
-// =====================================================
-$runForcedTest = false;   // ← Change to true only when needed
+// -------------------------------------------------
+// OPTIONAL: Forced Maricopa Test (Debug Only)
+// -------------------------------------------------
+$runForcedTest = false;   // ← Set to `true` only when debugging parcel lookup
 
 if ($runForcedTest) {
-    error_log("=== FORCED MARICOPA LOOKUP TEST (bypassing all conditions) ===");
+    error_log("=== FORCED MARICOPA LOOKUP TEST ===");
     $forcedAddress = "3145 N 33rd Ave Phoenix AZ 85017";
     $forcedParcelDetails = lookupMaricopaParcel($forcedAddress);
-    error_log("[FORCED-TEST] lookupMaricopaParcel returned " . count($forcedParcelDetails) . " candidates");
-    if (count($forcedParcelDetails) > 0) {
+    
+    error_log("[FORCED-TEST] Returned " . count($forcedParcelDetails) . " candidates");
+    if (!empty($forcedParcelDetails)) {
         error_log("[FORCED-TEST] First APN: " . ($forcedParcelDetails[0]['apnRaw'] ?? 'none'));
         error_log("[FORCED-TEST] Jurisdiction: " . ($forcedParcelDetails[0]['jurisdiction'] ?? 'none'));
     }
 }
+
+error_log("=== BOOTSTRAP COMPLETE ===");
 
 #endregion
 
