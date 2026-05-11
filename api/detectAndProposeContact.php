@@ -824,6 +824,50 @@ if (!$pdo) {
 
 #endregion
 
+// -------------------------------------------------
+// AUTHORITATIVE PCM DECISION — Official Matrix
+// -------------------------------------------------
+if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
+    $pcm = ['status' => 'incomplete', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_missing_fields'];
+
+} elseif (empty($parsed['location']['locationPlaceId'] ?? '')) {
+    $pcm = ['status' => 'invalid_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_location'];
+
+} elseif (($duplicate['status'] ?? '') === 'exact') {
+    $pcm = ['status' => 'duplicate_contact', 'readyForCommit' => false, 'requiresReview' => false, 'blocksCommit' => true, 'action' => 'reject_duplicate'];
+
+} elseif (($duplicate['status'] ?? '') === 'possible') {
+    $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
+
+} elseif (($locationDuplicate['status'] ?? '') === 'exact') {
+    $pcm = ['status' => 'existing_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'link_existing_location'];
+
+} elseif (($locationDuplicate['status'] ?? '') === 'possible') {
+    $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
+
+} elseif (
+    ($locationValidation['isMaricopa'] ?? false) === true &&
+    ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches'
+) {
+    $pcm = ['status' => 'multiple_parcels', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_parcel'];
+
+} elseif (
+    ($locationValidation['isMaricopa'] ?? false) === true &&
+    ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
+) {
+    $pcm = ['status' => 'unresolved_parcel', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_parcel'];
+
+} elseif (
+    empty(trim($parsed['location']['address'] ?? '')) || 
+    trim($parsed['location']['address']) === 'Phoenix' || 
+    strlen(trim($parsed['location']['address'] ?? '')) < 8
+) {
+    $pcm = ['status' => 'incomplete_address', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'resolve_address'];
+
+} else {
+    $pcm = ['status' => 'new_elc', 'readyForCommit' => true, 'requiresReview' => false, 'blocksCommit' => false, 'action' => 'insert_new'];
+}
+
 // ==================== FINAL OUTPUT (SECTION 10) ====================
 
 // === DEBUG BEFORE RESPONSE ===
