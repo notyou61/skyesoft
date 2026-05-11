@@ -31,9 +31,6 @@ if (function_exists('opcache_invalidate')) {
 // Load utilities
 require_once __DIR__ . '/utils/detectAndProposeContact.utils.php';
 
-// Load response builder (SECTION 10)
-require_once __DIR__ . '/detectAndProposeContact.response.php';
-
 // =====================================================
 // FORCED TEST — PROVE LOOKUP WORKS
 // =====================================================
@@ -826,7 +823,16 @@ if (!$pdo) {
 }
 
 #endregion
-// ==================== FINAL OUTPUT ====================
+
+// ==================== FINAL OUTPUT (SECTION 10) ====================
+
+// === DEBUG BEFORE RESPONSE ===
+error_log("=== [FINAL] Before response.php ===");
+error_log("pcmStatus = " . ($pcm['status'] ?? 'NOT SET'));
+error_log("parsed keys = " . implode(', ', array_keys($parsed ?? [])));
+error_log("rawInputOriginal = " . ($rawInputOriginal ?? 'NULL'));
+
+// Defensive safety net
 $pcm = $pcm ?? ['status' => 'incomplete', 'action' => null, 'readyForCommit' => false, 'blocksCommit' => true];
 
 require_once __DIR__ . '/detectAndProposeContact.response.php';

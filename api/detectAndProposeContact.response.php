@@ -5,38 +5,48 @@
  * Version: 1.5.7
  */
 
-// Declare variables from main file scope (for IDE)
+// Global declarations for IDE
 global $pcm, $duplicate, $locationDuplicate, $dataIntegrityStatus, $locationValidation,
        $parsed, $data, $meta, $aiData, $rawInputOriginal, $activitySessionId, $pcmNarratives;
 
-// Ultra-defensive defaults
-$pcm = $pcm ?? [
-    'status'       => 'incomplete',
-    'action'       => null,
-    'readyForCommit' => false,
-    'blocksCommit' => true
-];
-
-$parsed  = $parsed  ?? ['location' => [], 'contact' => [], 'entity' => []];
-$data    = $data    ?? ['entity' => [], 'location' => [], 'contact' => []];
-$meta    = $meta    ?? ['inferences' => [], 'enrichments' => [], 'flags' => []];
-$locationValidation = $locationValidation ?? ['parcelStatus' => 'unknown', 'isMaricopa' => false, 'status' => 'invalid'];
+// === ULTRA-DEFENSIVE DEFAULTS ===
+$pcm = $pcm ?? ['status' => 'incomplete', 'action' => null, 'readyForCommit' => false, 'blocksCommit' => true];
+$parsed = $parsed ?? ['entity' => [], 'contact' => [], 'location' => []];
+$data = $data ?? ['entity' => [], 'location' => [], 'contact' => []];
+$meta = $meta ?? ['inferences' => [], 'enrichments' => [], 'flags' => []];
+$locationValidation = $locationValidation ?? ['status' => 'invalid', 'parcelStatus' => 'unknown', 'isMaricopa' => false];
 $duplicate = $duplicate ?? ['status' => 'none'];
 $locationDuplicate = $locationDuplicate ?? ['status' => 'none'];
 
-$rawInputOriginal  = $rawInputOriginal  ?? null;
+$rawInputOriginal = $rawInputOriginal ?? null;
 $activitySessionId = $activitySessionId ?? '';
-$pcmNarratives     = $pcmNarratives     ?? [];
+$pcmNarratives = $pcmNarratives ?? [];
 
 // -------------------------------------------------
-// BUILD FULL DATA + META
+// BUILD DATA + META
 // -------------------------------------------------
-$fullName = trim(($parsed['contact']['firstName'] ?? '') . ' ' . ($parsed['contact']['lastName'] ?? ''));
-
-// ENTITY
 $data['entity'] = ['entityName' => $parsed['entity']['name'] ?? ''];
 
-// Find selected parcel
+$data['contact'] = [
+    'contactSalutation'            => $parsed['contact']['salutation'] ?? '',
+    'contactFirstName'             => $parsed['contact']['firstName'] ?? '',
+    'contactLastName'              => $parsed['contact']['lastName'] ?? '',
+    'contactTitle'                 => $parsed['contact']['title'] ?? '',
+    'contactIsBilling'             => 0,
+    'contactPrimaryPhone'          => $parsed['contact']['primaryPhone'] ?? '',
+    'contactPrimaryPhoneRaw'       => $parsed['contact']['primaryPhoneRaw'] ?? '',
+    'contactPrimaryPhoneExtension' => $parsed['contact']['primaryPhoneExtension'] ?? '',
+    'contactSecondaryPhone'        => $parsed['contact']['secondaryPhone'] ?? '',
+    'contactSecondaryPhoneRaw'     => $parsed['contact']['secondaryPhoneRaw'] ?? '',
+    'contactEmail'                 => $parsed['contact']['email'] ?? '',
+    'contactEmailNormalized'       => $parsed['contact']['emailNormalized'] ?? '',
+    'contactEmailConfirmed'        => 0,
+    'contactNote'                  => '',
+    'contactIsNotValid'            => 0,
+    'isActive'                     => 1
+];
+
+// Selected parcel logic
 $selectedParcel = null;
 if (!empty($parsed['location']['parcelDetails']) && is_array($parsed['location']['parcelDetails'])) {
     foreach ($parsed['location']['parcelDetails'] as $p) {
@@ -50,18 +60,37 @@ if (!empty($parsed['location']['parcelDetails']) && is_array($parsed['location']
     }
 }
 
-// Jurisdiction consensus
-$jurisdiction = $selectedParcel['jurisdiction'] ?? '';
-if (empty($jurisdiction) && !empty($parsed['location']['parcelDetails'])) {
-    $jurisdictions = array_unique(array_filter(array_column($parsed['location']['parcelDetails'], 'jurisdiction')));
-    if (count($jurisdictions) === 1) {
-        $jurisdiction = reset($jurisdictions);
-    }
-}
+$data['location'] = [
+    'locationName'         => $parsed['location']['locationName'] ?? '',
+    'locationPlaceId'      => $parsed['location']['locationPlaceId'] ?? null,
+    'locationLatitude'     => $parsed['location']['latitude'] ?? null,
+    'locationLongitude'    => $parsed['location']['longitude'] ?? null,
+    'locationAddress'      => $parsed['location']['address'] ?? '',
+    'locationAddressSuite' => $parsed['location']['locationAddressSuite'] ?? '',
+    'locationCity'         => $parsed['location']['city'] ?? '',
+    'locationState'        => $parsed['location']['state'] ?? '',
+    'locationZip'          => $parsed['location']['zip'] ?? '',
+    'locationCounty'       => $parsed['location']['county'] ?? '',
+    'locationCountyFips'   => $parsed['location']['countyFips'] ?? '',
+    'locationJurisdiction' => $parsed['location']['locationJurisdiction'] 
+                           ?? $parsed['location']['jurisdiction'] 
+                           ?? ($selectedParcel['jurisdiction'] ?? ''),
 
-// LOCATION + CONTACT + META blocks (unchanged - your current code is good)
-$data['location'] = [ /* ... your full location block ... */ ];
-$data['contact']  = [ /* ... your full contact block ... */ ];
+    'parcelDetails' => $parsed['location']['parcelDetails'] ?? [],
+    'parcelResolution' => [
+        'status'                => $locationValidation['parcelStatus'] ?? 'unknown',
+        'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
+        'selectedApn'           => $selectedParcel['apnRaw'] ?? null,
+        'candidateCount'        => count($parsed['location']['parcelDetails'] ?? []),
+        'resolutionMethod'      => $selectedParcel ? ($selectedParcel['resolutionSource'] ?? 'automatic') : 'automatic',
+        'bestMatchConfidence'   => $selectedParcel['confidence'] ?? null
+    ],
+
+    'locationIsBilling'  => 0,
+    'locationNote'       => '',
+    'locationZone'       => '',
+    'locationIsNotValid' => 0
+];
 
 // META
 $meta['inferences'] = [
@@ -69,15 +98,6 @@ $meta['inferences'] = [
     'locationNameInferred' => $parsed['location']['locationNameInferred'] ?? false,
     'entityNameInferred'   => $parsed['entity']['nameInferred'] ?? false
 ];
-
-$hasSmarty = $meta['flags']['uspsValidated'] ?? false;
-
-$meta['enrichments'] = array_values(array_filter([
-    'google_geocode',
-    !empty($parsed['location']['county']) ? 'census_county' : null,
-    'maricopa_parcel',
-    $hasSmarty ? 'smarty_usps' : null
-]));
 
 $dpvCode = strtoupper(trim($parsed['location']['locationDpvCode'] ?? $parsed['location']['smartyDpvCode'] ?? 'Y'));
 
@@ -91,13 +111,15 @@ $meta['flags'] = [
     'dpvCode'              => $dpvCode
 ];
 
-// -------------------------------------------------
-// RESOLUTION OBJECT + ISSUES + NARRATIVES
-// -------------------------------------------------
-// (keep the rest of your code exactly as you have it from $resolution = [...] onward)
+$meta['enrichments'] = array_values(array_filter([
+    'google_geocode',
+    !empty($parsed['location']['county']) ? 'census_county' : null,
+    'maricopa_parcel',
+    ($meta['flags']['uspsValidated'] ?? false) ? 'smarty_usps' : null
+]));
 
 // -------------------------------------------------
-// RESOLUTION OBJECT
+// RESOLUTION OBJECT + NARRATIVES + FINAL OUTPUT
 // -------------------------------------------------
 $resolution = [
     'pcmStatus'     => $pcm['status'],
