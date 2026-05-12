@@ -193,7 +193,7 @@ if (in_array($pcmStatus, ['duplicate_contact'])) {
 }
 
 // =====================================================
-// STRONG PCM-DRIVEN HUMAN NARRATIVES
+// STRONG PCM-DRIVEN HUMAN NARRATIVES (FINAL)
 // =====================================================
 $resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
 
@@ -204,7 +204,7 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
         case 'duplicate_contact':
             $resolvedNarrative = [
                 'decision' => ['This proposed contact is a duplicate and cannot be accepted.'],
-                'blocking' => ['A contact with matching name, phone, and/or email already exists in the system.'],
+                'blocking' => ['A contact with matching name, phone, and/or email already exists.'],
                 'review'   => ['Review the existing contact record before proceeding.']
             ];
             break;
