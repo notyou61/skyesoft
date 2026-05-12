@@ -161,7 +161,8 @@ $resolution = [
         }
     ],
     'decision' => [
-        'actionTypeId'   => ($pcm['readyForCommit'] ?? false) ? 9 : (($pcm['blocksCommit'] ?? false) ? 10 : 8),
+        'actionTypeId'   => ($pcm['readyForCommit'] ?? false) ? 9 : 
+                           (($pcm['blocksCommit'] ?? false) ? 10 : 8),
         'actionName'     => $pcm['action'] ?? null,
         'readyForCommit' => $pcm['readyForCommit'] ?? false
     ],
@@ -204,7 +205,7 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
 
         case 'existing_location':
             $resolvedNarrative = [
-                'decision' => ['This proposal references an existing location record.'],
+                'decision' => ['This proposal references an existing entity and location record.'],
                 'review'   => ['A new contact will be linked to the existing location.'],
                 'informational' => ['No new entity or location record will be created.']
             ];
@@ -273,24 +274,13 @@ $resolution['narratives'] = array_merge([
 // PERSISTENCE ORCHESTRATION
 // =====================================================
 $persistence = [
-    'entity' => [
-        'action'   => 'none',
-        'entityId' => null
-    ],
-    'location' => [
-        'action'     => 'none',
-        'locationId' => null
-    ],
-    'contact' => [
-        'action'    => 'none',
-        'contactId' => null
-    ],
+    'entity' => ['action' => 'none', 'entityId' => null],
+    'location' => ['action' => 'none', 'locationId' => null],
+    'contact' => ['action' => 'none', 'contactId' => null],
     'commitAllowed' => $resolution['decision']['readyForCommit'] ?? false
 ];
 
-// PCM-AWARE PERSISTENCE PLAN
 switch ($pcmStatus) {
-
     case 'new_elc':
         $persistence['entity']['action']   = 'create';
         $persistence['location']['action'] = 'create';
@@ -300,10 +290,8 @@ switch ($pcmStatus) {
     case 'existing_location':
         $persistence['entity']['action']   = 'reuse';
         $persistence['entity']['entityId'] = $locationDuplicate['entityId'] ?? null;
-
         $persistence['location']['action']     = 'reuse';
         $persistence['location']['locationId'] = $locationDuplicate['locationId'] ?? null;
-
         $persistence['contact']['action'] = 'create';
         break;
 
