@@ -137,7 +137,7 @@ $meta['enrichments'] = array_values(array_filter([
 
 #endregion
 
-#region RESOLUTION OBJECT + PCM-DRIVEN NARRATIVES
+#region RESOLUTION OBJECT + STRONG PCM-DRIVEN NARRATIVES
 
 $pcmStatus = $pcm['status'] ?? 'incomplete';
 
@@ -178,92 +178,54 @@ if (in_array($pcmStatus, ['duplicate_contact', 'existing_location'])) {
 }
 
 // =====================================================
-// HUMAN-FOCUSED PCM-DRIVEN NARRATIVES
+// FORCE PCM AUTHORITY OVER NARRATIVES (No More Drift)
 // =====================================================
-$resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
+$aiNarrativeContext = [
+    'pcm'                => $pcm,
+    'duplicate'          => $duplicate,
+    'locationDuplicate'  => $locationDuplicate,
+    'locationValidation' => $locationValidation,
+    'meta'               => $meta,
+    'data'               => $data,
+    'operationalContext' => [
+        'parcelCandidateCount' => count($parsed['location']['parcelDetails'] ?? []),
+        'validationSummary'    => [
+            'googleValidated' => !empty($parsed['location']['locationPlaceId']),
+            'uspsValidated'   => $meta['flags']['uspsValidated'] ?? false,
+            'parcelResolved'  => $meta['flags']['apnResolved'] ?? false,
+        ]
+    ]
+];
 
-if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])) {
-    error_log("[narrative] Static fallback for pcmStatus: {$pcmStatus}");
+$aiResolved = buildOperationalNarratives($aiNarrativeContext);
 
-    switch ($pcmStatus) {
-        case 'duplicate_contact':
-            $resolvedNarrative = [
-                'decision' => ['This proposed contact is a duplicate and cannot be accepted.'],
-                'blocking' => ['A contact with matching name, phone, and/or email already exists in the system.'],
-                'review'   => ['Review the existing contact record before proceeding.']
-            ];
-            break;
-
-        case 'existing_location':
-            $resolvedNarrative = [
-                'decision' => ['This proposal references an existing location record.'],
-                'blocking' => ['A new location should not be created.'],
-                'review'   => ['Link this contact to the existing location record.']
-            ];
-            break;
-
-        case 'possible_duplicate_contact':
-            $resolvedNarrative = [
-                'decision' => ['This contact may already exist in the system.'],
-                'review'   => ['Review the possible duplicate before continuing.']
-            ];
-            break;
-
-        case 'possible_location_duplicate':
-            $resolvedNarrative = [
-                'decision' => ['This proposal may match an existing location record.'],
-                'review'   => ['Review the possible location match before continuing.']
-            ];
-            break;
-
-        case 'multiple_parcels':
-            $resolvedNarrative = [
-                'decision' => ['Multiple parcel records were identified for this address.'],
-                'review'   => ['Select the correct parcel before continuing.']
-            ];
-            break;
-
-        case 'unresolved_parcel':
-            $resolvedNarrative = [
-                'decision' => ['This proposal has a valid address but could not resolve an authoritative parcel record.'],
-                'blocking' => ['Authoritative parcel resolution is required before this proposal can proceed.'],
-                'review'   => ['Operator review is required to verify or manually resolve the parcel.']
-            ];
-            break;
-
-        case 'invalid_location':
-            $resolvedNarrative = [
-                'decision' => ['The proposed address could not be validated.'],
-                'blocking' => ['The proposal cannot proceed until the location is corrected.']
-            ];
-            break;
-
-        case 'incomplete_address':
-            $resolvedNarrative = [
-                'decision' => ['The proposal contains an incomplete or overly vague address.'],
-                'blocking' => ['A complete street address is required.'],
-                'review'   => ['Provide a full street address for this location.']
-            ];
-            break;
-
-        case 'new_elc':
-        default:
-            $resolvedNarrative = $pcmNarratives['new_elc'] ?? [
-                'decision' => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
-                'informational' => [
-                    'The address was successfully validated and linked to a Maricopa County parcel.',
-                    'Parcel resolution completed automatically.'
-                ]
-            ];
-            break;
+// ALWAYS prefer strong PCM-driven narrative for blocking states
+if (in_array($pcmStatus, ['duplicate_contact', 'existing_location'])) {
+    error_log("[narrative] Forcing PCM override for blocking status: {$pcmStatus}");
+    
+    if ($pcmStatus === 'duplicate_contact') {
+        $resolvedNarrative = [
+            'decision' => ['This proposed contact is a duplicate and cannot be accepted.'],
+            'blocking' => ['A contact with matching name, phone, and/or email already exists in the system.'],
+            'review'   => ['Review the existing contact record before proceeding.']
+        ];
+    } else {
+        $resolvedNarrative = [
+            'decision' => ['This proposal references an existing location record.'],
+            'blocking' => ['A new location should not be created.'],
+            'review'   => ['Link this contact to the existing location record.']
+        ];
+    }
+} else {
+    // Normal path for non-blocking states
+    $resolvedNarrative = $aiResolved;
+    if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])) {
+        $resolvedNarrative = $pcmNarratives[$pcmStatus] ?? $pcmNarratives['new_elc'] ?? [];
     }
 }
 
 $resolution['narratives'] = array_merge([
-    'decision' => [], 
-    'blocking' => [], 
-    'review'   => [], 
-    'informational' => []
+    'decision' => [], 'blocking' => [], 'review' => [], 'informational' => []
 ], $resolvedNarrative);
 
 #endregion
