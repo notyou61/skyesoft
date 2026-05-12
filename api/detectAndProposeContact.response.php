@@ -187,12 +187,12 @@ if (in_array($pcmStatus, ['duplicate_contact', 'existing_location'])) {
 }
 
 // =====================================================
-// STRONG PCM-DRIVEN HUMAN NARRATIVES (CENTRALIZED)
+// FORCE PCM-AUTHORITATIVE NARRATIVES (No More Drift)
 // =====================================================
-$resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
 
-if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])) {
-    error_log("[narrative] PCM-driven static fallback for: {$pcmStatus}");
+// Always override for blocking/incomplete states
+if (in_array($pcmStatus, ['duplicate_contact', 'existing_location', 'incomplete', 'invalid_location', 'incomplete_address', 'unresolved_parcel'])) {
+    error_log("[narrative] Forcing PCM override for status: {$pcmStatus}");
 
     switch ($pcmStatus) {
         case 'duplicate_contact':
@@ -235,13 +235,6 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
             ];
             break;
 
-        case 'multiple_parcels':
-            $resolvedNarrative = [
-                'decision' => ['Multiple parcel records were identified for this address.'],
-                'review'   => ['Select the correct parcel before continuing.']
-            ];
-            break;
-
         case 'unresolved_parcel':
             $resolvedNarrative = [
                 'decision' => ['This proposal has a valid address but could not resolve an authoritative parcel record.'],
@@ -250,16 +243,14 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
             ];
             break;
 
-        case 'new_elc':
         default:
-            $resolvedNarrative = [
-                'decision' => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
-                'informational' => [
-                    'The address was successfully validated and linked to a Maricopa County parcel.',
-                    'Parcel resolution completed automatically.'
-                ]
-            ];
-            break;
+            $resolvedNarrative = $pcmNarratives[$pcmStatus] ?? [];
+    }
+} else {
+    // For non-blocking states, allow AI + static fallback
+    $resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
+    if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])) {
+        $resolvedNarrative = $pcmNarratives[$pcmStatus] ?? $pcmNarratives['new_elc'] ?? [];
     }
 }
 
