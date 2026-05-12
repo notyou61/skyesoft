@@ -178,7 +178,7 @@ if (in_array($pcmStatus, ['duplicate_contact', 'existing_location'])) {
 }
 
 // =====================================================
-// STRONG PCM-DRIVEN NARRATIVES (Scalable)
+// HUMAN-FOCUSED PCM-DRIVEN NARRATIVES
 // =====================================================
 $resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
 
@@ -188,8 +188,8 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
     switch ($pcmStatus) {
         case 'duplicate_contact':
             $resolvedNarrative = [
-                'decision' => ['An existing contact was identified. Proposal blocked by duplicate governance.'],
-                'blocking' => ['A matching contact already exists in the system.'],
+                'decision' => ['This proposed contact is a duplicate and cannot be accepted.'],
+                'blocking' => ['A contact with matching name, phone, and/or email already exists in the system.'],
                 'review'   => ['Review the existing contact record before proceeding.']
             ];
             break;
@@ -197,8 +197,8 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
         case 'existing_location':
             $resolvedNarrative = [
                 'decision' => ['This proposal references an existing location record.'],
-                'blocking' => ['A new location record should not be created.'],
-                'review'   => ['Link the contact to the existing location or confirm intent.']
+                'blocking' => ['A new location should not be created.'],
+                'review'   => ['Link this contact to the existing location record.']
             ];
             break;
 
@@ -226,7 +226,7 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
         case 'unresolved_parcel':
             $resolvedNarrative = [
                 'decision' => ['This proposal has a valid address but could not resolve an authoritative parcel record.'],
-                'blocking' => ['Authoritative parcel resolution is required before this proposal can proceed.'],
+                'blocking' => ['Authoritative parcel resolution is required.'],
                 'review'   => ['Operator review is required to verify or manually resolve the parcel.']
             ];
             break;
@@ -234,33 +234,25 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
         case 'invalid_location':
             $resolvedNarrative = [
                 'decision' => ['The proposed address could not be validated.'],
-                'blocking' => ['The proposal cannot proceed until the location is corrected or manually resolved.']
+                'blocking' => ['The proposal cannot proceed until the location is corrected.']
             ];
             break;
 
         case 'incomplete_address':
             $resolvedNarrative = [
                 'decision' => ['The proposal contains an incomplete or overly vague address.'],
-                'blocking' => ['A specific street address is required before this proposal can proceed.'],
-                'review'   => ['The operator should provide a complete street address for the location.']
-            ];
-            break;
-
-        case 'incomplete':
-            $resolvedNarrative = [
-                'decision' => ['This proposal is missing required information.'],
-                'blocking' => ['Complete the missing fields before continuing.']
+                'blocking' => ['A complete street address is required.'],
+                'review'   => ['Provide a full street address for this location.']
             ];
             break;
 
         case 'new_elc':
         default:
             $resolvedNarrative = $pcmNarratives['new_elc'] ?? [
-                'decision' => ['The proposal is operationally eligible for insertion as a new entity, location, and contact relationship.'],
+                'decision' => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
                 'informational' => [
-                    'The submitted address was successfully geocoded and associated with a resolved Maricopa County parcel.',
-                    'A single parcel candidate was identified and automatically selected.',
-                    'All current operational validation requirements were satisfied.'
+                    'The address was successfully validated and linked to a Maricopa County parcel.',
+                    'Parcel resolution completed automatically.'
                 ]
             ];
             break;
