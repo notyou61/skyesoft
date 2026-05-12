@@ -226,7 +226,7 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
         case 'unresolved_parcel':
             $resolvedNarrative = [
                 'decision' => ['This proposal has a valid address but could not resolve an authoritative parcel record.'],
-                'blocking' => ['Authoritative parcel resolution is required.'],
+                'blocking' => ['Authoritative parcel resolution is required before this proposal can proceed.'],
                 'review'   => ['Operator review is required to verify or manually resolve the parcel.']
             ];
             break;
@@ -260,7 +260,10 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
 }
 
 $resolution['narratives'] = array_merge([
-    'decision' => [], 'blocking' => [], 'review' => [], 'informational' => []
+    'decision' => [], 
+    'blocking' => [], 
+    'review'   => [], 
+    'informational' => []
 ], $resolvedNarrative);
 
 #endregion
