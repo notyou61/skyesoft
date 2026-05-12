@@ -74,6 +74,15 @@ if (!empty($parsed['location']['parcelDetails']) && is_array($parsed['location']
     }
 }
 
+// Determine authoritative resolution method
+$parcelStatus = $locationValidation['parcelStatus'] ?? 'unknown';
+$resolutionMethod = match ($parcelStatus) {
+    'resolved'          => 'automatic',
+    'multiple_matches'  => 'user_selection_required',
+    'not_found'         => 'not_resolved',
+    default             => 'unresolved'
+};
+
 $data['location'] = [
     'locationName'         => $parsed['location']['locationName'] ?? '',
     'locationPlaceId'      => $parsed['location']['locationPlaceId'] ?? null,
@@ -92,11 +101,11 @@ $data['location'] = [
 
     'parcelDetails' => $parsed['location']['parcelDetails'] ?? [],
     'parcelResolution' => [
-        'status'                => $locationValidation['parcelStatus'] ?? 'unknown',
-        'requiresUserSelection' => ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches',
+        'status'                => $parcelStatus,
+        'requiresUserSelection' => $parcelStatus === 'multiple_matches',
         'selectedApn'           => $selectedParcel['apnRaw'] ?? null,
         'candidateCount'        => count($parsed['location']['parcelDetails'] ?? []),
-        'resolutionMethod'      => $selectedParcel ? ($selectedParcel['resolutionSource'] ?? 'automatic') : 'automatic',
+        'resolutionMethod'      => $resolutionMethod,
         'bestMatchConfidence'   => $selectedParcel['confidence'] ?? null
     ],
 
@@ -180,24 +189,7 @@ if (in_array($pcmStatus, ['duplicate_contact', 'existing_location'])) {
 // =====================================================
 // STRONG PCM-DRIVEN HUMAN NARRATIVES (CENTRALIZED)
 // =====================================================
-$aiNarrativeContext = [
-    'pcm'                => $pcm,
-    'duplicate'          => $duplicate,
-    'locationDuplicate'  => $locationDuplicate,
-    'locationValidation' => $locationValidation,
-    'meta'               => $meta,
-    'data'               => $data,
-    'operationalContext' => [
-        'parcelCandidateCount' => count($parsed['location']['parcelDetails'] ?? []),
-        'validationSummary'    => [
-            'googleValidated' => !empty($parsed['location']['locationPlaceId']),
-            'uspsValidated'   => $meta['flags']['uspsValidated'] ?? false,
-            'parcelResolved'  => $meta['flags']['apnResolved'] ?? false,
-        ]
-    ]
-];
-
-$resolvedNarrative = buildOperationalNarratives($aiNarrativeContext);
+$resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
 
 if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])) {
     error_log("[narrative] PCM-driven static fallback for: {$pcmStatus}");
@@ -222,7 +214,7 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
         case 'incomplete':
             $resolvedNarrative = [
                 'decision' => ['This proposal is missing required information and cannot be inserted.'],
-                'blocking' => ['Required fields such as company name, full contact identity, or valid address were not provided.'],
+                'blocking' => ['Required fields such as company name, full contact identity, phone, or email were not provided.'],
                 'review'   => ['Complete the missing fields before continuing.']
             ];
             break;
@@ -260,7 +252,7 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
 
         case 'new_elc':
         default:
-            $resolvedNarrative = $pcmNarratives['new_elc'] ?? [
+            $resolvedNarrative = [
                 'decision' => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
                 'informational' => [
                     'The address was successfully validated and linked to a Maricopa County parcel.',
