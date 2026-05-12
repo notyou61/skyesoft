@@ -139,20 +139,28 @@ $meta['enrichments'] = array_values(array_filter([
 
 #region RESOLUTION OBJECT + NARRATIVES
 
+$pcmStatus = $pcm['status'] ?? 'incomplete';
+
 $resolution = [
-    'pcmStatus'     => $pcm['status'],
+    'pcmStatus' => $pcmStatus,
     'classification' => [
-        'status' => ($pcm['blocksCommit'] ?? false) ? 'unacceptable' : (($pcm['readyForCommit'] ?? false) ? 'accepted' : 'review')
+        'status' => ($pcm['blocksCommit'] ?? false) 
+            ? 'unacceptable' 
+            : (($pcm['readyForCommit'] ?? false) ? 'accepted' : 'review')
     ],
     'decision' => [
-        'actionTypeId'   => $pcm['action'] === 'insert_new' ? 9 : ($pcm['action'] === 'reject_duplicate' ? 10 : 8),
-        'actionName'     => $pcm['action'],
+        'actionTypeId'   => match($pcm['action'] ?? '') {
+            'insert_new'       => 9,
+            'reject_duplicate' => 10,
+            default            => 8
+        },
+        'actionName'     => $pcm['action'] ?? null,
         'readyForCommit' => $pcm['readyForCommit'] ?? false
     ],
     'issues' => [
-        'blocking'     => [],
-        'review'       => [],
-        'informational' => $meta['enrichments']
+        'blocking'      => [],
+        'review'        => [],
+        'informational' => $meta['enrichments'] ?? []
     ],
     'narratives' => [
         'decision'      => [],
@@ -162,16 +170,18 @@ $resolution = [
     ]
 ];
 
-// Populate issues
-if ($pcm['status'] === 'existing_location') {
+// Populate issues based on PCM
+if ($pcmStatus === 'existing_location') {
     $resolution['issues']['blocking'][] = 'existing_location';
-} elseif ($pcm['status'] === 'multiple_parcels') {
+} elseif ($pcmStatus === 'multiple_parcels') {
     $resolution['issues']['review'][] = 'multiple_parcels';
-} elseif (in_array($pcm['status'], ['unresolved_parcel', 'incomplete_address', 'invalid_location'])) {
-    $resolution['issues']['review'][] = $pcm['status'];
+} elseif (in_array($pcmStatus, ['unresolved_parcel', 'incomplete_address', 'invalid_location', 'duplicate_contact'])) {
+    $resolution['issues']['review'][] = $pcmStatus;   // or 'blocking' for hard rejects
 }
 
-// AI Narrative + Fallback
+// -------------------------------------------------
+// AI Narrative + Strong PCM-Aware Fallback
+// -------------------------------------------------
 $aiNarrativeContext = [
     'pcm'                => $pcm,
     'duplicate'          => $duplicate,
@@ -183,17 +193,30 @@ $aiNarrativeContext = [
         'parcelCandidateCount' => count($parsed['location']['parcelDetails'] ?? []),
         'validationSummary'    => [
             'googleValidated' => !empty($parsed['location']['locationPlaceId']),
-            'uspsValidated'   => $meta['flags']['uspsValidated'],
-            'parcelResolved'  => $meta['flags']['apnResolved'],
+            'uspsValidated'   => $meta['flags']['uspsValidated'] ?? false,
+            'parcelResolved'  => $meta['flags']['apnResolved'] ?? false,
         ]
     ]
 ];
 
 $resolvedNarrative = buildOperationalNarratives($aiNarrativeContext);
 
-if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'])) {
-    error_log('[operational-narrative] Falling back to static PCM narrative for ' . $pcm['status']);
-    $resolvedNarrative = $pcmNarratives[$pcm['status']] ?? $pcmNarratives['new_elc'] ?? [];
+if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])) {
+    error_log("[operational-narrative] Falling back to static for pcmStatus: {$pcmStatus}");
+    
+    // Strong PCM-driven static fallbacks
+    $staticNarrative = $pcmNarratives[$pcmStatus] ?? $pcmNarratives['new_elc'] ?? [];
+    
+    // Override for duplicate cases to prevent optimistic language
+    if (in_array($pcmStatus, ['duplicate_contact', 'existing_location'])) {
+        $staticNarrative = [
+            'decision' => ["A duplicate contact was detected. Proposal rejected by governance rules."],
+            'blocking' => ["An existing matching contact already exists in the system."],
+            'review'   => ["Review the existing contact record before proceeding."]
+        ];
+    }
+    
+    $resolvedNarrative = $staticNarrative;
 }
 
 $resolution['narratives'] = array_merge([
