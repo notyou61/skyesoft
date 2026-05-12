@@ -211,8 +211,9 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
 
         case 'existing_location':
             $resolvedNarrative = [
-                'decision' => ['This proposal references an existing location record.'],
-                'review'   => ['This new contact will be linked to the existing location.']
+                'decision' => ['This proposal references an existing entity and location record.'],
+                'review'   => ['A new contact will be linked to the existing location.'],
+                'informational' => ['No new entity or location record will be created.']
             ];
             break;
 
