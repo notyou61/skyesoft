@@ -153,12 +153,11 @@ $pcmStatus = $pcm['status'] ?? 'incomplete';
 $resolution = [
     'pcmStatus' => $pcmStatus,
     'classification' => [
-        'status' => match($pcmStatus) {
-            'existing_location' => 'accepted',
-            default => ($pcm['blocksCommit'] ?? false) 
-                ? 'unacceptable' 
-                : (($pcm['readyForCommit'] ?? false) ? 'accepted' : 'review')
-        }
+        'status' => ($pcm['blocksCommit'] ?? false)
+            ? 'unacceptable'
+            : (($pcm['readyForCommit'] ?? false)
+                ? 'accepted'
+                : 'review')
     ],
     'decision' => [
         'actionTypeId'   => match($pcm['action'] ?? '') {
@@ -167,10 +166,7 @@ $resolution = [
             default            => 8
         },
         'actionName'     => $pcm['action'] ?? null,
-        'readyForCommit' => match($pcmStatus) {
-            'existing_location' => true,
-            default             => $pcm['readyForCommit'] ?? false
-        }
+        'readyForCommit' => $pcm['readyForCommit'] ?? false
     ],
     'issues' => [
         'blocking'      => [],
@@ -272,6 +268,84 @@ $resolution['narratives'] = array_merge([
     'review'   => [], 
     'informational' => []
 ], $resolvedNarrative);
+
+#region PERSISTENCE ORCHESTRATION
+
+$persistence = [
+    'entity' => [
+        'action'   => 'none',
+        'entityId' => null
+    ],
+    'location' => [
+        'action'     => 'none',
+        'locationId' => null
+    ],
+    'contact' => [
+        'action'    => 'none',
+        'contactId' => null
+    ],
+    'commitAllowed' => $resolution['decision']['readyForCommit'] ?? false
+];
+
+// =====================================================
+// PCM-AWARE PERSISTENCE PLAN
+// =====================================================
+
+switch ($pcmStatus) {
+
+    case 'new_elc':
+
+        $persistence['entity']['action']   = 'create';
+        $persistence['location']['action'] = 'create';
+        $persistence['contact']['action']  = 'create';
+
+        break;
+
+    case 'existing_location':
+
+        $persistence['entity']['action']   = 'reuse';
+        $persistence['entity']['entityId'] = $locationDuplicate['entityId'] ?? null;
+
+        $persistence['location']['action']     = 'reuse';
+        $persistence['location']['locationId'] = $locationDuplicate['locationId'] ?? null;
+
+        $persistence['contact']['action'] = 'create';
+
+        break;
+
+    case 'duplicate_contact':
+
+        $persistence['entity']['action']   = 'reuse';
+        $persistence['location']['action'] = 'reuse';
+        $persistence['contact']['action']  = 'reject';
+
+        $persistence['commitAllowed'] = false;
+
+        break;
+
+    case 'multiple_parcels':
+
+        $persistence['entity']['action']   = 'hold';
+        $persistence['location']['action'] = 'hold';
+        $persistence['contact']['action']  = 'hold';
+
+        $persistence['commitAllowed'] = false;
+
+        break;
+
+    case 'incomplete':
+    case 'invalid_location':
+    case 'unresolved_parcel':
+    case 'incomplete_address':
+
+        $persistence['entity']['action']   = 'reject';
+        $persistence['location']['action'] = 'reject';
+        $persistence['contact']['action']  = 'reject';
+
+        $persistence['commitAllowed'] = false;
+
+        break;
+}
 
 #endregion
 

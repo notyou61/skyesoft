@@ -844,7 +844,13 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm = ['status' => 'possible_duplicate_contact', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_duplicate'];
 
 } elseif (($locationDuplicate['status'] ?? '') === 'exact') {
-    $pcm = ['status' => 'existing_location', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => true, 'action' => 'link_existing_location'];
+    $pcm = [
+        'status' => 'existing_location',
+        'readyForCommit' => true,
+        'requiresReview' => true,
+        'blocksCommit' => false,
+        'action' => 'link_existing_location'
+    ];
 
 } elseif (($locationDuplicate['status'] ?? '') === 'possible') {
     $pcm = ['status' => 'possible_location_duplicate', 'readyForCommit' => false, 'requiresReview' => true, 'blocksCommit' => false, 'action' => 'confirm_location'];
