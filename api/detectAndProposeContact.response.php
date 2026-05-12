@@ -361,6 +361,7 @@ echo json_encode([
         'source'   => 'skyebot_prompt'
     ],
     'resolution'    => $resolution,
+    'persistence'   => $persistence,
     'data'          => $data,
     'meta'          => $meta,
     'activitySessionId' => $activitySessionId
