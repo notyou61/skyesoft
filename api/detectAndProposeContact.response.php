@@ -170,7 +170,7 @@ $resolution = [
     ]
 ];
 
-// Populate issues based on PCM authority
+// Populate issues
 if (in_array($pcmStatus, ['duplicate_contact', 'existing_location'])) {
     $resolution['issues']['blocking'][] = $pcmStatus;
 } elseif (in_array($pcmStatus, ['multiple_parcels', 'unresolved_parcel', 'incomplete_address', 'invalid_location', 'possible_duplicate_contact', 'possible_location_duplicate', 'incomplete'])) {
@@ -178,7 +178,7 @@ if (in_array($pcmStatus, ['duplicate_contact', 'existing_location'])) {
 }
 
 // =====================================================
-// HUMAN-FOCUSED, PCM-AUTHORITATIVE NARRATIVES
+// STRONG PCM-DRIVEN HUMAN NARRATIVES (CENTRALIZED)
 // =====================================================
 $aiNarrativeContext = [
     'pcm'                => $pcm,
@@ -221,8 +221,8 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
 
         case 'incomplete':
             $resolvedNarrative = [
-                'decision' => ['This proposal is missing required information and cannot be processed.'],
-                'blocking' => ['Required fields such as company name, full contact identity, or valid address are missing.'],
+                'decision' => ['This proposal is missing required information and cannot be inserted.'],
+                'blocking' => ['Required fields such as company name, full contact identity, or valid address were not provided.'],
                 'review'   => ['Complete the missing fields before continuing.']
             ];
             break;
