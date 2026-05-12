@@ -154,7 +154,7 @@ $resolution = [
     'pcmStatus' => $pcmStatus,
     'classification' => [
         'status' => match($pcmStatus) {
-            'existing_location' => 'accepted',           // Relational success - allow linking
+            'existing_location' => 'accepted',
             default => ($pcm['blocksCommit'] ?? false) 
                 ? 'unacceptable' 
                 : (($pcm['readyForCommit'] ?? false) ? 'accepted' : 'review')
@@ -168,7 +168,7 @@ $resolution = [
         },
         'actionName'     => $pcm['action'] ?? null,
         'readyForCommit' => match($pcmStatus) {
-            'existing_location' => true,                 // Allow commit for linking
+            'existing_location' => true,
             default             => $pcm['readyForCommit'] ?? false
         }
     ],
@@ -211,7 +211,7 @@ if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])
 
         case 'existing_location':
             $resolvedNarrative = [
-                'decision' => ['This proposal references an existing entity and location record.'],
+                'decision' => ['This proposal references an existing location record.'],
                 'review'   => ['A new contact will be linked to the existing location.'],
                 'informational' => ['No new entity or location record will be created.']
             ];
