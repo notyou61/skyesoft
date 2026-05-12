@@ -146,25 +146,22 @@ $meta['enrichments'] = array_values(array_filter([
 
 #endregion
 
-#region RESOLUTION OBJECT + STRONG PCM-DRIVEN NARRATIVES
+#region RESOLUTION OBJECT + STRONG PCM-DRIVEN NARRATIVES + PERSISTENCE
 
 $pcmStatus = $pcm['status'] ?? 'incomplete';
 
 $resolution = [
     'pcmStatus' => $pcmStatus,
     'classification' => [
-        'status' => ($pcm['blocksCommit'] ?? false)
-            ? 'unacceptable'
-            : (($pcm['readyForCommit'] ?? false)
-                ? 'accepted'
-                : 'review')
+        'status' => match($pcmStatus) {
+            'existing_location' => 'accepted',
+            default => ($pcm['blocksCommit'] ?? false) 
+                ? 'unacceptable' 
+                : (($pcm['readyForCommit'] ?? false) ? 'accepted' : 'review')
+        }
     ],
     'decision' => [
-        'actionTypeId'   => match($pcm['action'] ?? '') {
-            'insert_new'       => 9,
-            'reject_duplicate' => 10,
-            default            => 8
-        },
+        'actionTypeId'   => ($pcm['readyForCommit'] ?? false) ? 9 : (($pcm['blocksCommit'] ?? false) ? 10 : 8),
         'actionName'     => $pcm['action'] ?? null,
         'readyForCommit' => $pcm['readyForCommit'] ?? false
     ],
@@ -189,77 +186,80 @@ if (in_array($pcmStatus, ['duplicate_contact'])) {
 }
 
 // =====================================================
-// FORCE PCM-AUTHORITATIVE NARRATIVES (HARD OVERRIDE)
+// STRONG PCM-DRIVEN HUMAN NARRATIVES
 // =====================================================
+$resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
 
-$resolvedNarrative = [];
+if (!is_array($resolvedNarrative) || empty($resolvedNarrative['decision'] ?? [])) {
+    error_log("[narrative] PCM-driven static fallback for: {$pcmStatus}");
 
-switch ($pcmStatus) {
-    case 'duplicate_contact':
-        $resolvedNarrative = [
-            'decision' => ['This proposed contact is a duplicate and cannot be accepted.'],
-            'blocking' => ['A contact with matching name, phone, and/or email already exists in the system.'],
-            'review'   => ['Review the existing contact record before proceeding.']
-        ];
-        break;
+    switch ($pcmStatus) {
+        case 'duplicate_contact':
+            $resolvedNarrative = [
+                'decision' => ['This proposed contact is a duplicate and cannot be accepted.'],
+                'blocking' => ['A contact with matching name, phone, and/or email already exists in the system.'],
+                'review'   => ['Review the existing contact record before proceeding.']
+            ];
+            break;
 
-    case 'existing_location':
-        $resolvedNarrative = [
-            'decision' => ['This proposal references an existing location record.'],
-            'review'   => ['A new contact will be linked to the existing location.'],
-            'informational' => ['No new entity or location record will be created.']
-        ];
-        break;
+        case 'existing_location':
+            $resolvedNarrative = [
+                'decision' => ['This proposal references an existing location record.'],
+                'review'   => ['A new contact will be linked to the existing location.'],
+                'informational' => ['No new entity or location record will be created.']
+            ];
+            break;
 
-    case 'incomplete':
-        $resolvedNarrative = [
-            'decision' => ['This proposal is missing required information and cannot be inserted.'],
-            'blocking' => ['Required fields such as company name, full contact identity, phone, or email were not provided.'],
-            'review'   => ['Complete the missing fields before continuing.']
-        ];
-        break;
+        case 'incomplete':
+            $resolvedNarrative = [
+                'decision' => ['This proposal is missing required information and cannot be inserted.'],
+                'blocking' => ['Required fields such as company name, full contact identity, phone, or email were not provided.'],
+                'review'   => ['Complete the missing fields before continuing.']
+            ];
+            break;
 
-    case 'invalid_location':
-        $resolvedNarrative = [
-            'decision' => ['The proposed address could not be validated.'],
-            'blocking' => ['The proposal cannot proceed until the location is corrected.'],
-            'review'   => ['Provide a valid street address.']
-        ];
-        break;
+        case 'invalid_location':
+            $resolvedNarrative = [
+                'decision' => ['The proposed address could not be validated.'],
+                'blocking' => ['The proposal cannot proceed until the location is corrected.'],
+                'review'   => ['Provide a valid street address.']
+            ];
+            break;
 
-    case 'incomplete_address':
-        $resolvedNarrative = [
-            'decision' => ['The proposal contains an incomplete or overly vague address.'],
-            'blocking' => ['A complete street address is required.'],
-            'review'   => ['Provide a full street address for this location.']
-        ];
-        break;
+        case 'incomplete_address':
+            $resolvedNarrative = [
+                'decision' => ['The proposal contains an incomplete or overly vague address.'],
+                'blocking' => ['A complete street address is required.'],
+                'review'   => ['Provide a full street address for this location.']
+            ];
+            break;
 
-    case 'multiple_parcels':
-        $resolvedNarrative = [
-            'decision' => ['Multiple parcel records were identified for this address.'],
-            'review'   => ['Select the correct parcel before continuing.']
-        ];
-        break;
+        case 'multiple_parcels':
+            $resolvedNarrative = [
+                'decision' => ['Multiple parcel records were identified for this address.'],
+                'review'   => ['Select the correct parcel before continuing.']
+            ];
+            break;
 
-    case 'unresolved_parcel':
-        $resolvedNarrative = [
-            'decision' => ['This proposal has a valid address but could not resolve an authoritative parcel record.'],
-            'blocking' => ['Authoritative parcel resolution is required before this proposal can proceed.'],
-            'review'   => ['Operator review is required to verify or manually resolve the parcel.']
-        ];
-        break;
+        case 'unresolved_parcel':
+            $resolvedNarrative = [
+                'decision' => ['This proposal has a valid address but could not resolve an authoritative parcel record.'],
+                'blocking' => ['Authoritative parcel resolution is required before this proposal can proceed.'],
+                'review'   => ['Operator review is required to verify or manually resolve the parcel.']
+            ];
+            break;
 
-    case 'new_elc':
-    default:
-        $resolvedNarrative = [
-            'decision' => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
-            'informational' => [
-                'The address was successfully validated and linked to a Maricopa County parcel.',
-                'Parcel resolution completed automatically.'
-            ]
-        ];
-        break;
+        case 'new_elc':
+        default:
+            $resolvedNarrative = [
+                'decision' => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
+                'informational' => [
+                    'The address was successfully validated and linked to a Maricopa County parcel.',
+                    'Parcel resolution completed automatically.'
+                ]
+            ];
+            break;
+    }
 }
 
 $resolution['narratives'] = array_merge([
@@ -269,8 +269,9 @@ $resolution['narratives'] = array_merge([
     'informational' => []
 ], $resolvedNarrative);
 
-#region PERSISTENCE ORCHESTRATION
-
+// =====================================================
+// PERSISTENCE ORCHESTRATION
+// =====================================================
 $persistence = [
     'entity' => [
         'action'   => 'none',
@@ -287,22 +288,16 @@ $persistence = [
     'commitAllowed' => $resolution['decision']['readyForCommit'] ?? false
 ];
 
-// =====================================================
 // PCM-AWARE PERSISTENCE PLAN
-// =====================================================
-
 switch ($pcmStatus) {
 
     case 'new_elc':
-
         $persistence['entity']['action']   = 'create';
         $persistence['location']['action'] = 'create';
         $persistence['contact']['action']  = 'create';
-
         break;
 
     case 'existing_location':
-
         $persistence['entity']['action']   = 'reuse';
         $persistence['entity']['entityId'] = $locationDuplicate['entityId'] ?? null;
 
@@ -310,42 +305,28 @@ switch ($pcmStatus) {
         $persistence['location']['locationId'] = $locationDuplicate['locationId'] ?? null;
 
         $persistence['contact']['action'] = 'create';
-
         break;
 
     case 'duplicate_contact':
-
         $persistence['entity']['action']   = 'reuse';
         $persistence['location']['action'] = 'reuse';
         $persistence['contact']['action']  = 'reject';
-
         $persistence['commitAllowed'] = false;
-
         break;
 
     case 'multiple_parcels':
-
-        $persistence['entity']['action']   = 'hold';
-        $persistence['location']['action'] = 'hold';
-        $persistence['contact']['action']  = 'hold';
-
-        $persistence['commitAllowed'] = false;
-
-        break;
-
     case 'incomplete':
     case 'invalid_location':
     case 'unresolved_parcel':
     case 'incomplete_address':
-
-        $persistence['entity']['action']   = 'reject';
-        $persistence['location']['action'] = 'reject';
-        $persistence['contact']['action']  = 'reject';
-
+        $persistence['entity']['action']   = 'hold';
+        $persistence['location']['action'] = 'hold';
+        $persistence['contact']['action']  = 'hold';
         $persistence['commitAllowed'] = false;
-
         break;
 }
+
+$resolution['persistence'] = $persistence;
 
 #endregion
 

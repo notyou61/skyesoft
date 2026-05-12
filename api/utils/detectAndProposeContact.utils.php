@@ -629,60 +629,44 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
 
     // -------------------------------------------------
     // 1. GLOBAL PlaceId Match — authoritative identity
-    // DOES NOT depend on entity resolution
     // -------------------------------------------------
     if (!empty($placeId)) {
 
-        $stmt = $pdo->query("
-            SELECT
-                locationId,
-                locationName,
-                locationPlaceId,
-                locationEntityId
-            FROM tblLocations
-            WHERE locationPlaceId IS NOT NULL
+        $stmt = $pdo->prepare("
+            SELECT 
+                l.locationId,
+                l.locationEntityId AS entityId,
+                l.locationName,
+                l.locationPlaceId
+            FROM tblLocations l
+            WHERE l.locationPlaceId = :placeId
+            LIMIT 1
         ");
 
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $stmt->execute(['placeId' => $placeId]);
 
-            $dbPlaceId = trim($row['locationPlaceId'] ?? '');
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            error_log('✅ GLOBAL EXISTING LOCATION MATCH (PlaceId)');
 
-            error_log('[DB PLACEID] = ' . $dbPlaceId);
-
-            if (
-                !empty($dbPlaceId) &&
-                strcasecmp($dbPlaceId, $placeId) === 0
-            ) {
-
-                error_log('✅ GLOBAL EXISTING LOCATION MATCH');
-
-                return [
-                    'status'           => 'exact',
-                    'locationId'       => (int)$row['locationId'],
-                    'existingEntityId' => (int)$row['locationEntityId'],
-                    'matchType'        => 'placeId_global'
-                ];
-            }
+            return [
+                'status'           => 'exact',
+                'entityId'         => (int)$row['entityId'],
+                'locationId'       => (int)$row['locationId'],
+                'matchType'        => 'placeId_global'
+            ];
         }
-
-        error_log('❌ NO GLOBAL PLACEID MATCH FOUND');
     }
 
     // -------------------------------------------------
-    // Entity resolution begins AFTER authoritative
-    // location identity evaluation
+    // Entity resolution begins AFTER authoritative location check
     // -------------------------------------------------
     if (empty($entityName)) {
-
-        return [
-            'status' => 'none'
-        ];
+        return ['status' => 'none'];
     }
 
     $entityId = resolveEntityIdByName($entityName, $pdo);
 
     if (!$entityId) {
-
         return [
             'status'   => 'new_entity',
             'entityId' => null
@@ -690,12 +674,12 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
     }
 
     // -------------------------------------------------
-    // 2. Entity-scoped address fallback
+    // 2. Entity-scoped address match
     // -------------------------------------------------
     if (!empty($address) && !empty($city)) {
 
         $stmt = $pdo->prepare("
-            SELECT
+            SELECT 
                 locationId,
                 locationName
             FROM tblLocations
@@ -712,11 +696,11 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
         ]);
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-
             error_log('✅ ENTITY ADDRESS MATCH');
 
             return [
                 'status'     => 'exact',
+                'entityId'   => $entityId,
                 'locationId' => (int)$row['locationId'],
                 'matchType'  => 'address'
             ];
@@ -731,34 +715,25 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
         $normalizedInput = normalizeLocationName($locationName);
 
         $stmt = $pdo->prepare("
-            SELECT
-                locationId,
-                locationName,
-                locationCity
+            SELECT locationId, locationName
             FROM tblLocations
             WHERE locationEntityId = :entityId
         ");
 
-        $stmt->execute([
-            'entityId' => $entityId
-        ]);
+        $stmt->execute(['entityId' => $entityId]);
 
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
             $dbName = normalizeLocationName($row['locationName'] ?? '');
-            $dbCity = strtolower(trim($row['locationCity'] ?? ''));
 
-            if (
-                $dbName === $normalizedInput &&
-                strtolower($city) === $dbCity
-            ) {
-
-                error_log('✅ NORMALIZED NAME/CITY MATCH');
+            if ($dbName === $normalizedInput) {
+                error_log('✅ NORMALIZED NAME MATCH');
 
                 return [
                     'status'     => 'possible',
+                    'entityId'   => $entityId,
                     'locationId' => (int)$row['locationId'],
-                    'matchType'  => 'name_city'
+                    'matchType'  => 'name'
                 ];
             }
         }
