@@ -812,18 +812,26 @@ $parsed['location']['locationRequiresSuite'] = ($dpv === 'D');
 $parsed = inferLocationName($parsed);
 
 // =====================================================
-// Location-Only Proposal Detection
+// Proposal Type Detection — Proposed Location (PL)
 // =====================================================
 
+// Detect strong operational contact signals.
+// This prevents AI hallucinations where a company/location name 
+// (e.g. "Christy Signs") is incorrectly parsed as a person's name.
+$hasStrongContactIndicators =
+    !empty(trim($parsed['contact']['email'] ?? '')) ||
+    !empty(trim($parsed['contact']['primaryPhoneRaw'] ?? '')) ||
+    !empty(trim($parsed['contact']['title'] ?? '')) ||
+    !empty(trim($parsed['contact']['contactSalutation'] ?? '')) ||
+    !empty(trim($parsed['contact']['secondaryPhoneRaw'] ?? ''));
+
 $isLocationOnlyProposal =
+    !empty(trim($parsed['entity']['name'] ?? '')) &&
+    !empty(trim($parsed['location']['address'] ?? '')) &&
+    $hasStrongContactIndicators === false;
 
-    !empty(trim($parsed['entity']['name'] ?? ''))
-    && !empty(trim($parsed['location']['address'] ?? ''))
-
-    && empty(trim($parsed['contact']['firstName'] ?? ''))
-    && empty(trim($parsed['contact']['lastName'] ?? ''))
-    && empty(trim($parsed['contact']['email'] ?? ''))
-    && empty(trim($parsed['contact']['primaryPhoneRaw'] ?? ''));
+error_log('[PL DETECTION] hasStrongContactIndicators = ' . var_export($hasStrongContactIndicators, true));
+error_log('[PL DETECTION] isLocationOnlyProposal = ' . var_export($isLocationOnlyProposal, true));
 
 // =====================================================
 // Data Integrity + Validation
@@ -894,19 +902,6 @@ if (!$pdo) {
 #endregion
 
 #region PCM DECISION — Governance Matrix
-
-// =====================================================
-// EOP — Proposal Type Detection (PL = Proposed Location)
-// =====================================================
-$isLocationOnlyProposal =
-    !empty(trim($parsed['entity']['name'] ?? '')) &&
-    !empty(trim($parsed['location']['address'] ?? '')) &&
-    empty(trim($parsed['contact']['firstName'] ?? '')) &&
-    empty(trim($parsed['contact']['lastName'] ?? '')) &&
-    empty(trim($parsed['contact']['email'] ?? '')) &&
-    empty(trim($parsed['contact']['primaryPhoneRaw'] ?? ''));
-
-error_log('[PL DETECTION] isLocationOnlyProposal=' . var_export($isLocationOnlyProposal, true));
 
 // =====================================================
 // Incomplete Proposal
