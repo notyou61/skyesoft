@@ -215,6 +215,20 @@ switch ($pcmStatus) {
         ];
         break;
 
+    case 'existing_entity_new_location':
+        $resolvedNarrative = [
+            'decision' => [
+                'This proposal references an existing entity and a new operational location.'
+            ],
+            'review' => [
+                'A new location and contact will be linked to the existing entity.'
+            ],
+            'informational' => [
+                'No new entity record will be created.'
+            ]
+        ];
+        break;
+
     case 'incomplete':
         $resolvedNarrative = [
             'decision'  => ['This proposal is missing required information and cannot be inserted.'],
@@ -306,7 +320,7 @@ switch ($pcmStatus) {
         $persistence['contact']['action'] = 'create';
         break;
 
-case 'duplicate_contact':
+    case 'duplicate_contact':
     $persistence['entity']['action'] = 'reuse';
     $persistence['entity']['entityId'] = isset($duplicate['entityId'])
         ? (int)$duplicate['entityId']
