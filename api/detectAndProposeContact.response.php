@@ -306,15 +306,21 @@ switch ($pcmStatus) {
         $persistence['contact']['action'] = 'create';
         break;
 
-    case 'duplicate_contact':
-        $persistence['entity']['action']   = 'reuse';
-        $persistence['entity']['entityId'] = $duplicate['entityId'] ?? null;
-        $persistence['location']['action']     = 'reuse';
-        $persistence['location']['locationId'] = $duplicate['locationId'] ?? null;
-        $persistence['contact']['action']    = 'reject';
-        $persistence['contact']['contactId'] = $duplicate['contactId'] ?? null;
-        $persistence['commitAllowed'] = false;
-        break;
+case 'duplicate_contact':
+    $persistence['entity']['action'] = 'reuse';
+    $persistence['entity']['entityId'] = isset($duplicate['entityId'])
+        ? (int)$duplicate['entityId']
+        : null;
+    $persistence['location']['action'] = 'reuse';
+    $persistence['location']['locationId'] = isset($duplicate['locationId'])
+        ? (int)$duplicate['locationId']
+        : null;
+    $persistence['contact']['action'] = 'reject';
+    $persistence['contact']['contactId'] = isset($duplicate['contactId'])
+        ? (int)$duplicate['contactId']
+        : null;
+    $persistence['commitAllowed'] = false;
+    break;
 
     case 'multiple_parcels':
     case 'incomplete':
