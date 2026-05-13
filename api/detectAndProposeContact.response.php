@@ -325,8 +325,6 @@ switch ($pcmStatus) {
         break;
 }
 
-//$resolution['persistence'] = $persistence;
-
 #endregion
 
 #region FINAL OUTPUT
