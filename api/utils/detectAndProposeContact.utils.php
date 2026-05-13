@@ -1020,11 +1020,11 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
     // LOAD EXISTING ENTITIES
     // -------------------------------------------------
     $stmt = $pdo->prepare("
-        SELECT 
+        SELECT
             entityId,
             entityName
         FROM tblEntities
-        WHERE isActive = 1
+        WHERE entityIsNotValid = 0
     ");
 
     $stmt->execute();
