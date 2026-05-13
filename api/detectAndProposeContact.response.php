@@ -318,9 +318,9 @@ switch ($pcmStatus) {
     case 'invalid_location':
     case 'unresolved_parcel':
     case 'incomplete_address':
-        $persistence['entity']['action']   = 'hold';
-        $persistence['location']['action'] = 'hold';
-        $persistence['contact']['action']  = 'hold';
+        $persistence['entity']['action']   = 'reject';
+        $persistence['location']['action'] = 'reject';
+        $persistence['contact']['action']  = 'reject';
         $persistence['commitAllowed'] = false;
         break;
 }

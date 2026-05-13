@@ -547,36 +547,121 @@ function fallbackExtractName(array $parsed, string $rawInput): array {
 // 🔍 evaluateDuplicate — DB-backed contact duplicate detection
 function evaluateDuplicate(array $parsed, PDO $pdo): array
 {
+    // Normalize candidate values
     $email = strtolower(trim($parsed['contact']['email'] ?? ''));
     $phone = preg_replace('/\D/', '', $parsed['contact']['primaryPhoneRaw'] ?? '');
     $first = strtolower(trim($parsed['contact']['firstName'] ?? ''));
     $last  = strtolower(trim($parsed['contact']['lastName'] ?? ''));
 
+    // =====================================================
+    // Exact Match — Email
+    // =====================================================
+
     if (!empty($email)) {
-        $stmt = $pdo->prepare("SELECT contactId, contactEntityId FROM tblContacts WHERE LOWER(contactEmail) = :email LIMIT 1");
-        $stmt->execute(['email' => $email]);
+
+        $stmt = $pdo->prepare("
+            SELECT
+                contactId,
+                contactEntityId,
+                contactLocationId
+            FROM tblContacts
+            WHERE LOWER(contactEmail) = :email
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'email' => $email
+        ]);
+
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            return ['status' => 'exact', 'contactId' => $row['contactId'], 'entityId' => $row['contactEntityId'], 'matchType' => 'email'];
+
+            return [
+                'status'     => 'exact',
+                'contactId'  => $row['contactId'],
+                'entityId'   => $row['contactEntityId'],
+                'locationId' => $row['contactLocationId'],
+                'matchType'  => 'email'
+            ];
         }
     }
+
+    // =====================================================
+    // Possible Match — Phone
+    // =====================================================
 
     if (!empty($phone)) {
-        $stmt = $pdo->prepare("SELECT contactId, contactEntityId FROM tblContacts WHERE contactPrimaryPhoneRaw = :phone LIMIT 1");
-        $stmt->execute(['phone' => $phone]);
+
+        $stmt = $pdo->prepare("
+            SELECT
+                contactId,
+                contactEntityId,
+                contactLocationId
+            FROM tblContacts
+            WHERE contactPrimaryPhoneRaw = :phone
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'phone' => $phone
+        ]);
+
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            return ['status' => 'possible', 'contactId' => $row['contactId'], 'entityId' => $row['contactEntityId'], 'matchType' => 'phone'];
+
+            return [
+                'status'     => 'possible',
+                'contactId'  => $row['contactId'],
+                'entityId'   => $row['contactEntityId'],
+                'locationId' => $row['contactLocationId'],
+                'matchType'  => 'phone'
+            ];
         }
     }
+
+    // =====================================================
+    // Possible Match — Name
+    // =====================================================
 
     if (!empty($first) && !empty($last)) {
-        $stmt = $pdo->prepare("SELECT contactId, contactEntityId FROM tblContacts WHERE LOWER(contactFirstName) = :first AND LOWER(contactLastName) = :last LIMIT 1");
-        $stmt->execute(['first' => $first, 'last' => $last]);
+
+        $stmt = $pdo->prepare("
+            SELECT
+                contactId,
+                contactEntityId,
+                contactLocationId
+            FROM tblContacts
+            WHERE LOWER(contactFirstName) = :first
+              AND LOWER(contactLastName) = :last
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'first' => $first,
+            'last'  => $last
+        ]);
+
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            return ['status' => 'possible', 'contactId' => $row['contactId'], 'entityId' => $row['contactEntityId'], 'matchType' => 'name'];
+
+            return [
+                'status'     => 'possible',
+                'contactId'  => $row['contactId'],
+                'entityId'   => $row['contactEntityId'],
+                'locationId' => $row['contactLocationId'],
+                'matchType'  => 'name'
+            ];
         }
     }
 
-    return ['status' => 'none', 'contactId' => null, 'entityId' => null, 'matchType' => null];
+    // =====================================================
+    // No Duplicate Found
+    // =====================================================
+
+    return [
+        'status'     => 'none',
+        'contactId'  => null,
+        'entityId'   => null,
+        'locationId' => null,
+        'matchType'  => null
+    ];
 }
 
 // 🧼 normalizeLocationName — standardize for comparison
