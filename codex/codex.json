@@ -5128,6 +5128,146 @@
                         "manage conflict resolution and review flags"
                     ]
                 },
+                "locationOnlyOperationalModel": {
+                    "title": {
+                        "icon": 15,
+                        "text": "Location-Only Operational Intake Model"
+                    },
+                    "tier": 2,
+                    "type": "Operational Relationship Governance Standard",
+                    "hierarchyOrder": 6,
+                    "preamble": {
+                        "text": "Defines the governance rules for operational locations that intentionally exist without associated contact records. This model supports future developments, undeveloped parcels, shell buildings, permit-only workflows, surveys, and pre-construction operational intake."
+                    },
+                    "purpose": {
+                        "icon": 6,
+                        "text": "Allow valid operational locations to exist independently of contacts while preserving relational integrity, validation requirements, and operational workflow consistency."
+                    },
+                    "definition": {
+                        "description": "A Location-Only record represents a validated operational site that intentionally does not yet contain an associated contact relationship.",
+                        "rules": [
+                            "Location-Only is an intentional operational state and not an incomplete data condition.",
+                            "Location-Only records must still satisfy location validation requirements.",
+                            "Location-Only records must remain associated with a valid entity.",
+                            "Location-Only records must set locationIsLocationOnly = 1.",
+                            "Location-Only records may later transition into full ELC records when contacts are added."
+                        ]
+                    },
+                    "requiredFields": {
+                        "required": [
+                            "entityName",
+                            "locationAddress",
+                            "locationCity",
+                            "locationState",
+                            "locationPlaceId"
+                        ],
+                        "optional": [
+                            "contactFirstName",
+                            "contactLastName",
+                            "contactEmail",
+                            "contactPrimaryPhone",
+                            "locationParcelNumber",
+                            "locationJurisdiction"
+                        ]
+                    },
+                    "validationRules": {
+                        "rules": [
+                            "Google Places validation is still required.",
+                            "locationPlaceId remains mandatory.",
+                            "Census geography resolution must still execute.",
+                            "Parcel resolution is conditional and may be unavailable for undeveloped sites.",
+                            "Missing parcel data must not automatically block commit for Location-Only records.",
+                            "Location validation failures remain blocking.",
+                            "Missing contacts are permitted only when the proposal is explicitly classified as Location-Only."
+                        ]
+                    },
+                    "pcmClassification": {
+                        "pcmStatus": "location_only",
+                        "rules": [
+                            "location_only represents a valid operational workflow state.",
+                            "location_only is not considered partial or reject.",
+                            "location_only proposals may proceed to commit when validation requirements are satisfied.",
+                            "location_only proposals must not create contact records."
+                        ]
+                    },
+                    "persistenceModel": {
+                        "entity": {
+                            "actions": [
+                                "reuse",
+                                "create"
+                            ]
+                        },
+                        "location": {
+                            "actions": [
+                                "create"
+                            ],
+                            "requiredFlags": [
+                                "locationIsLocationOnly = 1"
+                            ]
+                        },
+                        "contact": {
+                            "actions": [
+                                "skip"
+                            ]
+                        },
+                        "rules": [
+                            "Entity must resolve before location persistence.",
+                            "Location must persist even when no contact exists.",
+                            "No contact insertion may occur during Location-Only persistence.",
+                            "Location-Only records must remain eligible for future ELC expansion."
+                        ]
+                    },
+                    "commitEligibility": {
+                        "rules": [
+                            "Commit is allowed when location validation succeeds.",
+                            "Commit is allowed without contact data.",
+                            "Commit is blocked when locationPlaceId cannot be resolved.",
+                            "Commit is blocked for invalid or ambiguous locations.",
+                            "Location-Only records must always maintain valid entity association."
+                        ]
+                    },
+                    "operationalUseCases": {
+                        "examples": [
+                            "Undeveloped commercial parcel",
+                            "Future retail pad",
+                            "Shell tenant space",
+                            "Pre-construction sign permit",
+                            "Site survey request",
+                            "Future fuel station",
+                            "Permit-only project intake"
+                        ]
+                    },
+                    "lifecycleRules": {
+                        "rules": [
+                            "Location-Only records may later transition into standard ELC records.",
+                            "Adding a valid contact relationship may set locationIsLocationOnly = 0.",
+                            "Historical audit tracking must preserve the original Location-Only intake state.",
+                            "Location identity remains authoritative through locationPlaceId."
+                        ]
+                    },
+                    "edgeCases": {
+                        "missingParcel": {
+                            "rule": "allow_commit",
+                            "reason": "Future developments may not yet contain authoritative parcel assignments."
+                        },
+
+                        "missingContact": {
+                            "rule": "allow_commit_if_location_only",
+                            "reason": "Location-Only records intentionally permit operational intake without contacts."
+                        },
+
+                        "invalidLocation": {
+                            "rule": "reject",
+                            "reason": "Location identity cannot exist without successful validation."
+                        }
+                    },
+                    "notes": [
+                        "Location-Only records represent operationally legitimate sites.",
+                        "Location-Only is not equivalent to incomplete data.",
+                        "This model extends the ELC architecture into operational site lifecycle management.",
+                        "Location-Only records preserve operational continuity prior to full CRM onboarding."
+                    ]
+                },
                 "edgeCases": {
                     "sameNameDifferentEntity": {
                         "rule": "createNewContact",

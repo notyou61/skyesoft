@@ -811,11 +811,63 @@ $parsed['location']['locationRequiresSuite'] = ($dpv === 'D');
 // Final inference
 $parsed = inferLocationName($parsed);
 
-// Data Integrity + Duplicates
-$dataIntegrityStatus = ['status' => 'complete', 'missing' => []];
+// =====================================================
+// Location-Only Proposal Detection
+// =====================================================
+
+$isLocationOnlyProposal =
+
+    !empty(trim($parsed['entity']['name'] ?? ''))
+    && !empty(trim($parsed['location']['address'] ?? ''))
+
+    && empty(trim($parsed['contact']['firstName'] ?? ''))
+    && empty(trim($parsed['contact']['lastName'] ?? ''))
+    && empty(trim($parsed['contact']['email'] ?? ''))
+    && empty(trim($parsed['contact']['primaryPhoneRaw'] ?? ''));
+
+// =====================================================
+// Data Integrity + Validation
+// =====================================================
+
+$dataIntegrityStatus = [
+    'status' => 'complete',
+    'missing' => []
+];
+
 $missing = validateParsed($parsed);
+
+// =====================================================
+// Relax Contact Requirements For Location-Only
+// =====================================================
+
+if ($isLocationOnlyProposal === true) {
+
+    $missing = array_values(array_filter(
+
+        $missing,
+
+        function ($field) {
+
+            return !in_array($field, [
+
+                'contactFirstName',
+                'contactLastName',
+                'contactEmail',
+                'contactPrimaryPhone'
+
+            ], true);
+        }
+    ));
+}
+
+// =====================================================
+// Final Integrity Decision
+// =====================================================
+
 if (!empty($missing)) {
+
     $dataIntegrityStatus['status'] = 'incomplete';
+
     $dataIntegrityStatus['missing'] = $missing;
 }
 
@@ -842,6 +894,19 @@ if (!$pdo) {
 #endregion
 
 #region PCM DECISION — Governance Matrix
+
+// =====================================================
+// EOP — Proposal Type Detection (PL = Proposed Location)
+// =====================================================
+$isLocationOnlyProposal =
+    !empty(trim($parsed['entity']['name'] ?? '')) &&
+    !empty(trim($parsed['location']['address'] ?? '')) &&
+    empty(trim($parsed['contact']['firstName'] ?? '')) &&
+    empty(trim($parsed['contact']['lastName'] ?? '')) &&
+    empty(trim($parsed['contact']['email'] ?? '')) &&
+    empty(trim($parsed['contact']['primaryPhoneRaw'] ?? ''));
+
+error_log('[PL DETECTION] isLocationOnlyProposal=' . var_export($isLocationOnlyProposal, true));
 
 // =====================================================
 // Incomplete Proposal
@@ -900,7 +965,7 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     ];
 
 // =====================================================
-// Existing Operational Location
+// Existing Operational Location (PCM-05)
 // =====================================================
 
 } elseif (($locationDuplicate['status'] ?? '') === 'exact') {
@@ -914,14 +979,13 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     ];
 
 // =====================================================
-// Existing Entity + New Location (PCM-06)
+// Existing Entity + New Location + Contact (PCM-06)
 // =====================================================
 
 } elseif (
-
     ($entityDuplicate['status'] ?? '') === 'exact'
     && ($locationDuplicate['status'] ?? '') !== 'exact'
-
+    && !$isLocationOnlyProposal
 ) {
 
     $pcm = [
@@ -930,6 +994,24 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
         'requiresReview' => false,
         'blocksCommit' => false,
         'action' => 'link_existing_entity'
+    ];
+
+// =====================================================
+// NEW: Proposed Location (PL) — Existing Entity + New Location + NO Contact
+// =====================================================
+
+} elseif (
+    $isLocationOnlyProposal
+    && ($entityDuplicate['status'] ?? '') === 'exact'
+    && ($locationDuplicate['status'] ?? '') !== 'exact'
+) {
+
+    $pcm = [
+        'status' => 'proposed_location',           // PL status
+        'readyForCommit' => true,
+        'requiresReview' => false,
+        'blocksCommit' => false,
+        'action' => 'create_location_only'
     ];
 
 // =====================================================
@@ -951,10 +1033,8 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 // =====================================================
 
 } elseif (
-
     ($locationValidation['isMaricopa'] ?? false) === true
     && ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches'
-
 ) {
 
     $pcm = [
@@ -970,10 +1050,8 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 // =====================================================
 
 } elseif (
-
     ($locationValidation['isMaricopa'] ?? false) === true
     && ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
-
 ) {
 
     $pcm = [
@@ -989,11 +1067,9 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 // =====================================================
 
 } elseif (
-
     empty(trim($parsed['location']['address'] ?? ''))
     || trim($parsed['location']['address']) === 'Phoenix'
     || strlen(trim($parsed['location']['address'] ?? '')) < 8
-
 ) {
 
     $pcm = [
@@ -1005,7 +1081,7 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     ];
 
 // =====================================================
-// New Entity + Location + Contact
+// Default: New Entity + Location + Contact
 // =====================================================
 
 } else {
