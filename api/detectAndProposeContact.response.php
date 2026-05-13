@@ -150,6 +150,10 @@ $meta['enrichments'] = array_values(array_filter([
 
 $pcmStatus = $pcm['status'] ?? 'incomplete';
 
+error_log('[DECISION DEBUG] pcmStatus=' . ($pcm['status'] ?? 'NULL'));
+error_log('[DECISION DEBUG] readyForCommit=' . var_export($pcm['readyForCommit'] ?? null, true));
+error_log('[DECISION DEBUG] blocksCommit=' . var_export($pcm['blocksCommit'] ?? null, true));
+
 $resolution = [
     'pcmStatus' => $pcmStatus,
     'classification' => [
@@ -197,36 +201,73 @@ error_log("[narrative] Forcing PCM-driven narrative for: " . $pcmStatus);
 switch ($pcmStatus) {
     case 'duplicate_contact':
         $resolvedNarrative = [
-            'decision' => ['This proposed contact is a duplicate and cannot be accepted.'],
-            'blocking' => ['A contact with matching name, phone, and/or email already exists in the system.'],
-            'review'   => ['Review the existing contact record before proceeding.']
+            'decision'  => ['This proposed contact is a duplicate and cannot be accepted.'],
+            'blocking'  => ['A contact with matching name, phone, and/or email already exists in the system.'],
+            'review'    => ['Review the existing contact record before proceeding.']
         ];
         break;
 
     case 'existing_location':
         $resolvedNarrative = [
-            'decision' => ['This proposal references an existing entity and location record.'],
-            'review'   => ['A new contact will be linked to the existing location.'],
+            'decision'      => ['This proposal references an existing entity and location record.'],
+            'review'        => ['A new contact will be linked to the existing location.'],
             'informational' => ['No new entity or location record will be created.']
         ];
         break;
 
     case 'incomplete':
         $resolvedNarrative = [
-            'decision' => ['This proposal is missing required information and cannot be inserted.'],
-            'blocking' => ['Required fields such as company name, full contact identity, phone, or email were not provided.'],
-            'review'   => ['Complete the missing fields before continuing.']
+            'decision'  => ['This proposal is missing required information and cannot be inserted.'],
+            'blocking'  => ['Required fields such as company name, full contact identity, phone, or email were not provided.'],
+            'review'    => ['Complete the missing fields before continuing.']
         ];
         break;
 
-    // ... (keep your other cases: invalid_location, incomplete_address, etc.)
+    case 'invalid_location':
+    case 'incomplete_address':
+        $resolvedNarrative = [
+            'decision'      => ['The address could not be properly validated.'],
+            'review'        => ['Please review and correct the address details.'],
+            'informational' => ['Google/USPS validation returned errors or ambiguous results.']
+        ];
+        break;
 
+    case 'unresolved_parcel':
+        $resolvedNarrative = [
+            'decision'      => ['We could not resolve this address to a Maricopa County parcel.'],
+            'review'        => ['Please verify the address or provide additional location details.'],
+            'informational' => ['Parcel lookup returned no matches.']
+        ];
+        break;
+
+    case 'multiple_parcels':
+        $resolvedNarrative = [
+            'decision'      => ['Multiple parcels match this address.'],
+            'review'        => ['Please select the correct parcel from the candidates shown.'],
+            'informational' => ['User selection is required before proceeding.']
+        ];
+        break;
+
+    case 'possible_duplicate_contact':
+    case 'possible_location_duplicate':
+        $resolvedNarrative = [
+            'decision'  => ['Possible duplicate detected.'],
+            'review'    => ['Please review potential matching records before continuing.'],
+            'informational' => ['System found similar existing records.']
+        ];
+        break;
+
+    // ==================== NEW / SUCCESS CASE ====================
     case 'new_elc':
     default:
+        // Let AI generate rich operational narrative first
         $resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
+
+        // Static fallback only if AI returned nothing useful
         if (empty($resolvedNarrative['decision'] ?? [])) {
+            error_log("[narrative] AI narrative empty → using static fallback for {$pcmStatus}");
             $resolvedNarrative = $pcmNarratives['new_elc'] ?? [
-                'decision' => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
+                'decision'      => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
                 'informational' => ['The address was successfully validated and linked to a Maricopa County parcel.']
             ];
         }
