@@ -299,9 +299,9 @@ $resolution['narratives'] = array_merge([
 // PERSISTENCE ORCHESTRATION
 // =====================================================
 $persistence = [
-    'entity' => ['action' => 'none', 'entityId' => null],
-    'location' => ['action' => 'none', 'locationId' => null],
-    'contact' => ['action' => 'none', 'contactId' => null],
+    'entity'        => ['action' => 'none', 'entityId' => null],
+    'location'      => ['action' => 'none', 'locationId' => null],
+    'contact'       => ['action' => 'none', 'contactId' => null],
     'commitAllowed' => $resolution['decision']['readyForCommit'] ?? false
 ];
 
@@ -310,112 +310,114 @@ switch ($pcmStatus) {
     // =====================================================
     // PCM-01 — New Entity + New Location + New Contact
     // =====================================================
-
     case 'new_elc':
-
-        $persistence['entity']['action'] = 'create';
-
+        $persistence['entity']['action']   = 'create';
         $persistence['location']['action'] = 'create';
-
-        $persistence['contact']['action'] = 'create';
-
+        $persistence['contact']['action']  = 'create';
         break;
 
     // =====================================================
     // PCM-05 — Existing Location + New Contact
     // =====================================================
-
     case 'existing_location':
-
-        $persistence['entity']['action'] = 'reuse';
-
+        $persistence['entity']['action']   = 'reuse';
         $persistence['entity']['entityId'] = isset($locationDuplicate['entityId'])
             ? (int)$locationDuplicate['entityId']
             : null;
 
         $persistence['location']['action'] = 'reuse';
-
         $persistence['location']['locationId'] = isset($locationDuplicate['locationId'])
             ? (int)$locationDuplicate['locationId']
             : null;
 
         $persistence['contact']['action'] = 'create';
-
         break;
 
     // =====================================================
     // PCM-06 — Existing Entity + New Location + New Contact
     // =====================================================
-
     case 'existing_entity_new_location':
+        $persistence['entity']['action']   = 'reuse';
+        $persistence['entity']['entityId'] = isset($entityDuplicate['entityId'])
+            ? (int)$entityDuplicate['entityId']
+            : null;
 
+        $persistence['location']['action'] = 'create';
+        $persistence['location']['locationId'] = null;
+
+        $persistence['contact']['action'] = 'create';
+        $persistence['contact']['contactId'] = null;
+
+        $persistence['commitAllowed'] = true;
+        break;
+
+    // =====================================================
+    // PCM-07 — Proposed Location (Location-Only)
+    // =====================================================
+    case 'location_only':
+    case 'proposed_location':           // support both names during transition
         // Reuse Existing Entity
-        $persistence['entity']['action'] = 'reuse';
-
+        $persistence['entity']['action']   = 'reuse';
         $persistence['entity']['entityId'] = isset($entityDuplicate['entityId'])
             ? (int)$entityDuplicate['entityId']
             : null;
 
         // Create New Location
         $persistence['location']['action'] = 'create';
-
         $persistence['location']['locationId'] = null;
 
-        // Create New Contact
-        $persistence['contact']['action'] = 'create';
+        // Mark as Location-Only (important for downstream logic)
+        $data['location']['locationIsLocationOnly'] = 1;
 
+        // No Contact Creation
+        $persistence['contact']['action']  = 'skip';
         $persistence['contact']['contactId'] = null;
 
-        $persistence['commitAllowed'] = true;
+        // Semantically clean output for frontend
+        $data['contact'] = null;
 
+        $persistence['commitAllowed'] = true;
         break;
 
     // =====================================================
     // PCM-02 — Duplicate Contact
     // =====================================================
-
     case 'duplicate_contact':
-
-        $persistence['entity']['action'] = 'reuse';
-
+        $persistence['entity']['action']   = 'reuse';
         $persistence['entity']['entityId'] = isset($duplicate['entityId'])
             ? (int)$duplicate['entityId']
             : null;
 
         $persistence['location']['action'] = 'reuse';
-
         $persistence['location']['locationId'] = isset($duplicate['locationId'])
             ? (int)$duplicate['locationId']
             : null;
 
-        $persistence['contact']['action'] = 'reject';
-
+        $persistence['contact']['action']  = 'reject';
         $persistence['contact']['contactId'] = isset($duplicate['contactId'])
             ? (int)$duplicate['contactId']
             : null;
 
         $persistence['commitAllowed'] = false;
-
         break;
 
     // =====================================================
     // Rejected / Invalid Governance States
     // =====================================================
-
     case 'multiple_parcels':
     case 'incomplete':
     case 'invalid_location':
     case 'unresolved_parcel':
     case 'incomplete_address':
-
-        $persistence['entity']['action'] = 'reject';
-
+        $persistence['entity']['action']   = 'reject';
         $persistence['location']['action'] = 'reject';
+        $persistence['contact']['action']  = 'reject';
+        $persistence['commitAllowed']      = false;
+        break;
 
-        $persistence['contact']['action'] = 'reject';
-
+    // Default safety net
+    default:
         $persistence['commitAllowed'] = false;
-
         break;
 }
 
