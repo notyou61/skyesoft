@@ -824,6 +824,7 @@ if (!$pdo) {
     $locationDuplicate = ['status' => 'none'];
 } else {
     $duplicate = evaluateDuplicate($parsed, $pdo);
+    error_log('[DUPLICATE DEBUG] ' . json_encode($duplicate));
     $locationDuplicate = evaluateLocationDuplicate($parsed, $pdo);
 }
 
