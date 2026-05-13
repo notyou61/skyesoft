@@ -962,3 +962,155 @@ function buildOperationalNarratives(array $context): array {
         return $fallback;
     }
 }
+// 🔍 evaluateEntityDuplicate — DB-backed entity normalization + matching
+function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
+{
+    // -------------------------------------------------
+    // RAW VALUES
+    // -------------------------------------------------
+    $entityName = trim($parsed['entity']['name'] ?? '');
+    $email      = strtolower(trim($parsed['contact']['email'] ?? ''));
+
+    if (empty($entityName)) {
+        return [
+            'status'    => 'none',
+            'entityId'  => null,
+            'matchType' => null,
+            'confidence'=> 0
+        ];
+    }
+
+    // -------------------------------------------------
+    // NORMALIZATION
+    // -------------------------------------------------
+    $normalized = strtolower($entityName);
+
+    // Remove punctuation
+    $normalized = preg_replace('/[^a-z0-9\s]/', '', $normalized);
+
+    // Remove common branch/location suffixes
+    $normalized = preg_replace(
+        '/\b(east|west|north|south|phoenix|mesa|tempe|scottsdale|glendale|branch|campus|office)\b/i',
+        '',
+        $normalized
+    );
+
+    // Collapse spaces
+    $normalized = preg_replace('/\s+/', '', $normalized);
+
+    // -------------------------------------------------
+    // EMAIL DOMAIN EXTRACTION
+    // -------------------------------------------------
+    $emailDomain = '';
+
+    if (!empty($email) && strpos($email, '@') !== false) {
+
+        $parts = explode('@', $email);
+
+        $emailDomain = strtolower(trim($parts[1] ?? ''));
+
+        // Remove TLD
+        $emailDomain = preg_replace('/\.(com|net|org|biz|co|us)$/i', '', $emailDomain);
+
+        // Remove punctuation/spaces
+        $emailDomain = preg_replace('/[^a-z0-9]/', '', $emailDomain);
+    }
+
+    // -------------------------------------------------
+    // LOAD EXISTING ENTITIES
+    // -------------------------------------------------
+    $stmt = $pdo->prepare("
+        SELECT 
+            entityId,
+            entityName
+        FROM tblEntities
+        WHERE isActive = 1
+    ");
+
+    $stmt->execute();
+
+    $entities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // -------------------------------------------------
+    // ENTITY COMPARISON LOOP
+    // -------------------------------------------------
+    foreach ($entities as $row) {
+
+        $existingId   = (int)($row['entityId'] ?? 0);
+        $existingName = trim($row['entityName'] ?? '');
+
+        if (empty($existingName)) {
+            continue;
+        }
+
+        // Normalize DB entity
+        $existingNormalized = strtolower($existingName);
+
+        $existingNormalized = preg_replace('/[^a-z0-9\s]/', '', $existingNormalized);
+
+        $existingNormalized = preg_replace(
+            '/\b(east|west|north|south|phoenix|mesa|tempe|scottsdale|glendale|branch|campus|office)\b/i',
+            '',
+            $existingNormalized
+        );
+
+        $existingNormalized = preg_replace('/\s+/', '', $existingNormalized);
+
+        // -------------------------------------------------
+        // EXACT NORMALIZED MATCH
+        // -------------------------------------------------
+        if (
+            !empty($normalized)
+            && $normalized === $existingNormalized
+        ) {
+
+            return [
+                'status'     => 'exact',
+                'entityId'   => $existingId,
+                'matchType'  => 'normalized_name',
+                'confidence' => 95
+            ];
+        }
+
+        // -------------------------------------------------
+        // DOMAIN + SEMANTIC MATCH
+        // -------------------------------------------------
+        if (
+            !empty($emailDomain)
+            && strpos($emailDomain, $existingNormalized) !== false
+        ) {
+
+            return [
+                'status'     => 'exact',
+                'entityId'   => $existingId,
+                'matchType'  => 'domain_semantic',
+                'confidence' => 98
+            ];
+        }
+
+        // -------------------------------------------------
+        // POSSIBLE PARTIAL MATCH
+        // -------------------------------------------------
+        similar_text($normalized, $existingNormalized, $percent);
+
+        if ($percent >= 82) {
+
+            return [
+                'status'     => 'possible',
+                'entityId'   => $existingId,
+                'matchType'  => 'semantic_partial',
+                'confidence' => round($percent)
+            ];
+        }
+    }
+
+    // -------------------------------------------------
+    // NO MATCH
+    // -------------------------------------------------
+    return [
+        'status'     => 'none',
+        'entityId'   => null,
+        'matchType'  => null,
+        'confidence' => 0
+    ];
+}
