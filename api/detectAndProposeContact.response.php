@@ -308,8 +308,11 @@ switch ($pcmStatus) {
 
     case 'duplicate_contact':
         $persistence['entity']['action']   = 'reuse';
-        $persistence['location']['action'] = 'reuse';
-        $persistence['contact']['action']  = 'reject';
+        $persistence['entity']['entityId'] = $duplicate['entityId'] ?? null;
+        $persistence['location']['action']     = 'reuse';
+        $persistence['location']['locationId'] = $duplicate['locationId'] ?? null;
+        $persistence['contact']['action']    = 'reject';
+        $persistence['contact']['contactId'] = $duplicate['contactId'] ?? null;
         $persistence['commitAllowed'] = false;
         break;
 
