@@ -17,7 +17,7 @@ declare(strict_types=1);
 // Last Updated: 2026-05-11
 // =====================================================
 
-#region SECTION 00 — ⚙️ Force Fresh Code + Debugging (Maricopa Fix)
+#region SECTION 00 — ⚙️ Force Fresh Code + Debugging (Maricopa Fix + PCM-07)
 
 error_log("=== DETECTANDPROPOSECONTACT.PHP V1.5.7 UTILS SPLIT === " . date('Y-m-d H:i:s'));
 
@@ -28,9 +28,16 @@ if (function_exists('opcache_invalidate')) {
     error_log("[OPCACHE] opcache_invalidate not available (local dev — OK)");
 }
 
+// =====================================================
+// PCM-07 DEPLOYMENT CONFIRMATION (Critical)
+// =====================================================
+error_log('[PCM-07 DEPLOYMENT CHECK] ✅ File loaded: ' . __FILE__);
+error_log('[PCM-07 DEPLOYMENT CHECK] Last modified: ' . date('Y-m-d H:i:s', filemtime(__FILE__)));
+error_log('[PCM-07 DEPLOYMENT CHECK] PHP Version: ' . PHP_VERSION);
+error_log('[PCM-07 DEPLOYMENT CHECK] Utils file included: ' . (__DIR__ . '/utils/detectAndProposeContact.utils.php'));
+
 // Load utilities
 require_once __DIR__ . '/utils/detectAndProposeContact.utils.php';
-
 
 // =====================================================
 // OPTIONAL FORCED TEST — Enable only when debugging
