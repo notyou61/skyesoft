@@ -844,6 +844,8 @@ $dataIntegrityStatus = [
 
 $missing = validateParsed($parsed);
 
+error_log('[MISSING BEFORE FILTER] ' . json_encode($missing));
+
 // =====================================================
 // Relax Contact Requirements For Location-Only
 // =====================================================
