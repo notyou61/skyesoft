@@ -487,6 +487,26 @@ $parsed = fallbackExtractName($parsed, $rawInput);
 $parsed = preserveExplicitEntityName($parsed, $rawInput);
 
 // -------------------------------------------------
+// PCM-07 — Deterministic Entity Override
+// Explicit directives override AI interpretation
+// -------------------------------------------------
+
+if (
+
+    $isExplicitLocationOnlyIntent === true
+    && !empty($declaredEntityName)
+
+) {
+
+    $parsed['entity']['name'] = $declaredEntityName;
+
+    error_log(
+        '[PCM-07] Entity overridden from directive: '
+        . $declaredEntityName
+    );
+}
+
+// -------------------------------------------------
 // 🧠 Email fallback (recommended)
 // -------------------------------------------------
 if (empty($parsed['contact']['email'])) {
