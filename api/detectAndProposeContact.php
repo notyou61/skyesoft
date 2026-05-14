@@ -940,7 +940,7 @@ error_log('[PL DETECTION] hasStrongContactIndicators = ' . var_export($hasStrong
 error_log('[PL DETECTION] isLocationOnlyProposal = ' . var_export($isLocationOnlyProposal, true));
 
 // =====================================================
-// Data Integrity + Validation
+// Data Integrity + Duplicates
 // =====================================================
 
 $dataIntegrityStatus = [
@@ -950,7 +950,45 @@ $dataIntegrityStatus = [
 
 $missing = validateParsed($parsed);
 
-error_log('[MISSING BEFORE FILTER] ' . json_encode($missing));
+// =====================================================
+// PCM-07 — Relax Contact Requirements
+// Explicit Location-Only Directive
+// =====================================================
+
+if ($isExplicitLocationOnlyIntent === true) {
+
+    $relaxFields = [
+
+        'contactFirstName',
+        'contactLastName',
+        'contactEmail',
+        'contactEmailNormalized',
+        'contactPrimaryPhone',
+        'contactPrimaryPhoneRaw',
+        'contactTitle',
+        'contactSalutation'
+
+    ];
+
+    $missing = array_values(array_filter(
+
+        $missing,
+
+        fn($field) => !in_array($field, $relaxFields, true)
+
+    ));
+
+    error_log(
+        '[PCM-07] Contact validation relaxed for explicit location-only proposal'
+    );
+}
+
+if (!empty($missing)) {
+
+    $dataIntegrityStatus['status'] = 'incomplete';
+
+    $dataIntegrityStatus['missing'] = $missing;
+}
 
 // =====================================================
 // Relax Contact Requirements For Location-Only
