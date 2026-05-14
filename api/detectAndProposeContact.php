@@ -17,43 +17,30 @@ declare(strict_types=1);
 // Last Updated: 2026-05-11
 // =====================================================
 
-#region SECTION 00 — ⚙️ Force Fresh Code + Debugging (Maricopa Fix + PCM-07)
+#region SECTION 00 — ⚙️ Force Fresh Code + PCM-07 Aggressive Debugging
 
 error_log("=== DETECTANDPROPOSECONTACT.PHP V1.5.7 UTILS SPLIT === " . date('Y-m-d H:i:s'));
 
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
-    error_log("[OPCACHE] ✅ File cache invalidated (production)");
+    error_log("[OPCACHE] ✅ File cache invalidated");
 } else {
-    error_log("[OPCACHE] opcache_invalidate not available (local dev — OK)");
+    error_log("[OPCACHE] opcache_invalidate not available");
 }
 
 // =====================================================
-// PCM-07 DEPLOYMENT CONFIRMATION (Critical)
+// PCM-07 AGGRESSIVE CHECKPOINTS
 // =====================================================
-error_log('[PCM-07 DEPLOYMENT CHECK] ✅ File loaded: ' . __FILE__);
-error_log('[PCM-07 DEPLOYMENT CHECK] Last modified: ' . date('Y-m-d H:i:s', filemtime(__FILE__)));
-error_log('[PCM-07 DEPLOYMENT CHECK] PHP Version: ' . PHP_VERSION);
-error_log('[PCM-07 DEPLOYMENT CHECK] Utils file included: ' . (__DIR__ . '/utils/detectAndProposeContact.utils.php'));
+error_log('[PCM-07 CHECKPOINT 00] File loaded successfully');
+error_log('[PCM-07 CHECKPOINT 00] Last modified: ' . date('Y-m-d H:i:s', filemtime(__FILE__)));
 
 // Load utilities
 require_once __DIR__ . '/utils/detectAndProposeContact.utils.php';
+error_log('[PCM-07 CHECKPOINT 01] Utils file loaded successfully');
 
-// =====================================================
-// OPTIONAL FORCED TEST — Enable only when debugging
-// =====================================================
-$runForcedTest = false;   // ← Change to true only when needed
+$runForcedTest = false;
 
-if ($runForcedTest) {
-    error_log("=== FORCED MARICOPA LOOKUP TEST (bypassing all conditions) ===");
-    $forcedAddress = "3145 N 33rd Ave Phoenix AZ 85017";
-    $forcedParcelDetails = lookupMaricopaParcel($forcedAddress);
-    error_log("[FORCED-TEST] lookupMaricopaParcel returned " . count($forcedParcelDetails) . " candidates");
-    if (count($forcedParcelDetails) > 0) {
-        error_log("[FORCED-TEST] First APN: " . ($forcedParcelDetails[0]['apnRaw'] ?? 'none'));
-        error_log("[FORCED-TEST] Jurisdiction: " . ($forcedParcelDetails[0]['jurisdiction'] ?? 'none'));
-    }
-}
+if ($runForcedTest) { /* ... existing forced test ... */ }
 
 #endregion
 
@@ -280,6 +267,19 @@ if (
     error_log('[PCM-07] Directive stripped before AI parse');
 }
 
+// -------------------------------------------------
+// FINAL VALIDATION
+// -------------------------------------------------
+if ($rawInput === '') {
+    error_log('[detectAndProposeContact] ❌ No input provided in either mode');
+    jsonError('No input provided');
+}
+
+error_log('[PCM-07 CHECKPOINT 03] Input resolved successfully');
+error_log('[PCM-07 CHECKPOINT 03] Mode: ' . $executionMode);
+error_log('[PCM-07 CHECKPOINT 03] Explicit Location Only: ' . var_export($isExplicitLocationOnlyIntent ?? false, true));
+error_log('[PCM-07 CHECKPOINT 03] Declared Entity: ' . ($declaredEntityName ?? 'NULL'));
+
 #endregion
 
 #region SECTION 04 — 🧠 AI Prompt Construction
@@ -448,6 +448,8 @@ if (empty($matches[0])) jsonError('Invalid AI response format');
 $aiData = json_decode($matches[0], true);
 
 if (!$aiData || !isset($aiData['parsed'])) jsonError('Invalid AI response format');
+
+error_log('[PCM-07 CHECKPOINT 05] AI parsing completed | Entity: "' . ($aiData['parsed']['entity']['name'] ?? '') . '"');
 
 #endregion
 
@@ -663,6 +665,13 @@ if (!isset($parsed['contact']['primaryPhoneExtension'])) {
 #endregion
 
 #region SECTION 09 — 🧩 Data Processing & Enrichment (Deterministic — Consolidated & Corrected)
+
+// -------------------------------------------------
+// PCM-07 CHECKPOINT BEFORE VALIDATION
+// -------------------------------------------------
+error_log('[PCM-07 CHECKPOINT 08] Entering data processing & validation section');
+error_log('[PCM-07 CHECKPOINT 08] Parsed entity: "' . ($parsed['entity']['name'] ?? '') . '"');
+error_log('[PCM-07 CHECKPOINT 08] Parsed address: "' . ($parsed['location']['address'] ?? '') . '"');
 
 // -------------------------------------------------
 // 🧩 CORE NORMALIZATION PIPELINE
