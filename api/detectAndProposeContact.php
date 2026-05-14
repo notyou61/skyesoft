@@ -237,7 +237,7 @@ error_log(sprintf(
 if (
 
     preg_match(
-        '/add\s+location\s+only\s+for\s+(.+)/i',
+        '/add\s+location\s+only\s+for\s+([^\n\r]+)/i',
         $rawInput,
         $matches
     )
@@ -259,7 +259,7 @@ if (
 
     $rawInput = preg_replace(
 
-        '/add\s+location\s+only\s+for\s+(.+)/i',
+        '/add\s+location\s+only\s+for\s+[^\n\r]+/i',
 
         '',
 
