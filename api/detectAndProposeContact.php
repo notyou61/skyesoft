@@ -870,6 +870,8 @@ if ($isLocationOnlyProposal === true) {
     ));
 }
 
+error_log('[MISSING AFTER FILTER] ' . json_encode($missing));
+
 // =====================================================
 // Final Integrity Decision
 // =====================================================
