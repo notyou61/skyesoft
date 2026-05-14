@@ -940,6 +940,15 @@ error_log('[PL DETECTION] hasStrongContactIndicators = ' . var_export($hasStrong
 error_log('[PL DETECTION] isLocationOnlyProposal = ' . var_export($isLocationOnlyProposal, true));
 
 // =====================================================
+// PCM-07 DIAGNOSTICS (Critical for debugging)
+// =====================================================
+error_log('[PCM-07 DEBUG] ENTERING VALIDATION SECTION');
+error_log('[PCM-07 DEBUG] isExplicitLocationOnlyIntent = ' . var_export($isExplicitLocationOnlyIntent, true));
+error_log('[PCM-07 DEBUG] declaredEntityName = ' . ($declaredEntityName ?? 'NULL'));
+error_log('[PCM-07 DEBUG] entity.name = "' . ($parsed['entity']['name'] ?? '') . '"');
+error_log('[PCM-07 DEBUG] location.address = "' . ($parsed['location']['address'] ?? '') . '"');
+
+// =====================================================
 // Data Integrity + Duplicates
 // =====================================================
 
@@ -956,66 +965,54 @@ error_log(
 );
 
 // =====================================================
-// PCM-07 — Relax Contact Requirements
-// Explicit Location-Only Directive
+// PCM-07 — Relax Contact Requirements (EXPLICIT DIRECTIVE — Strongest)
 // =====================================================
-
 if ($isExplicitLocationOnlyIntent === true) {
 
+    error_log('[PCM-07] 🔥 EXPLICIT LOCATION-ONLY DIRECTIVE ACTIVE — relaxing ALL contact fields');
+
     $relaxFields = [
-
-        'contactFirstName',
-        'contactLastName',
-        'contactEmail',
-        'contactEmailNormalized',
-        'contactPrimaryPhone',
-        'contactPrimaryPhoneRaw',
-        'contactTitle',
-        'contactSalutation'
-
+        'contactFirstName', 'firstName',
+        'contactLastName',  'lastName',
+        'contactEmail',     'email', 'contactEmailNormalized',
+        'contactPrimaryPhone', 'primaryPhone', 
+        'contactPrimaryPhoneRaw', 'primaryPhoneRaw',
+        'contactTitle',     'title',
+        'contactSalutation','salutation', 
+        'contactSalutationInferred'
     ];
 
     $missing = array_values(array_filter(
-
         $missing,
-
         fn($field) => !in_array($field, $relaxFields, true)
-
     ));
 
-    error_log(
-        '[PCM-07] Contact validation relaxed for explicit location-only proposal'
-    );
+    error_log('[PCM-07 DEBUG] Missing AFTER explicit relaxation: ' . json_encode($missing));
 }
 
 // =====================================================
-// Relax Contact Requirements For Location-Only
+// Relax Contact Requirements For General Location-Only
 // =====================================================
+if ($isLocationOnlyProposal === true && !$isExplicitLocationOnlyIntent) {
 
-if ($isLocationOnlyProposal === true) {
+    error_log('[PCM-07] General Location-Only relaxation applied');
 
     $missing = array_values(array_filter(
-
         $missing,
-
         function ($field) {
-
             return !in_array($field, [
-
-                'contactFirstName',
-                'contactLastName',
-                'contactEmail',
-                'contactPrimaryPhone'
-
+                'contactFirstName', 'firstName',
+                'contactLastName',  'lastName',
+                'contactEmail',     'email',
+                'contactPrimaryPhone', 'primaryPhone'
             ], true);
         }
     ));
 }
 
 error_log('[MISSING AFTER FILTER] ' . json_encode($missing));
-
 error_log(
-    '[PCM-07 DEBUG] Missing AFTER relaxation: '
+    '[PCM-07 DEBUG] Missing AFTER ALL relaxation: '
     . json_encode($missing)
 );
 
@@ -1026,28 +1023,34 @@ error_log(
 if (!empty($missing)) {
 
     $dataIntegrityStatus['status'] = 'incomplete';
-
     $dataIntegrityStatus['missing'] = $missing;
+    error_log('[PCM-07] ⚠️ Validation still incomplete after relaxation: ' . json_encode($missing));
+
+} else {
+
+    $dataIntegrityStatus['status'] = 'complete';
+    error_log('[PCM-07] ✅ Validation PASSED after relaxation — ready for PCM decision');
 }
+
+// =====================================================
+// Duplicate Checks
+// =====================================================
 
 if (!$pdo) {
 
     $duplicate = ['status' => 'none'];
-
     $locationDuplicate = ['status' => 'none'];
-
     $entityDuplicate = ['status' => 'none'];
 
 } else {
 
     $duplicate = evaluateDuplicate($parsed, $pdo);
-
     $locationDuplicate = evaluateLocationDuplicate($parsed, $pdo);
-
     $entityDuplicate = evaluateEntityDuplicate($parsed, $pdo);
 
     // Debug (temporary)
     error_log('[ENTITY DUPLICATE] ' . json_encode($entityDuplicate));
+    error_log('[LOCATION DUPLICATE] ' . json_encode($locationDuplicate));
 }
 
 #endregion
