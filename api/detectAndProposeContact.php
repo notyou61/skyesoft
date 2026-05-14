@@ -129,63 +129,149 @@ $rawInput         = '';
 $rawInputOriginal = '';
 $executionMode    = 'unknown';
 
+// =====================================================
+// PCM-07 — Explicit Location-Only Directive State
+// =====================================================
+
+$isExplicitLocationOnlyIntent = false;
+
+$declaredEntityName = null;
+
 // -------------------------------------------------
 // Preserve inherited $activitySessionId from askOpenAI.php FIRST
 // -------------------------------------------------
+
 $activitySessionId = $activitySessionId 
     ?? ($_POST['activitySessionId'] ?? $_SESSION['activitySessionId'] ?? session_id());
 
 // -------------------------------------------------
 // PRIORITY 1: Internal execution from askOpenAI.php
 // -------------------------------------------------
+
 if (isset($query) && is_string($query) && trim($query) !== '') {
 
     $rawInputOriginal = $query;
-    $rawInput         = trim($rawInputOriginal);
+
+    $rawInput = trim($rawInputOriginal);
 
     $executionMode = 'INTERNAL';
-    error_log('[detectAndProposeContact] INTERNAL EXECUTION — using $query from askOpenAI.php | Session: ' . $activitySessionId);
+
+    error_log(
+        '[detectAndProposeContact] INTERNAL EXECUTION — using $query from askOpenAI.php | Session: '
+        . $activitySessionId
+    );
 }
 
 // -------------------------------------------------
 // PRIORITY 2: Legacy direct HTTP POST (php://input)
 // -------------------------------------------------
+
 else {
 
     $rawJson = file_get_contents('php://input');
 
     if ($rawJson !== false && $rawJson !== '') {
+
         $input = json_decode($rawJson, true) ?? [];
+
     } else {
+
         $input = [];
     }
 
     $rawInputOriginal = $input['input'] ?? '';
-    $rawInput         = trim($rawInputOriginal);
+
+    $rawInput = trim($rawInputOriginal);
 
     // Allow override from direct HTTP payload
+
     if (!empty($input['activitySessionId'])) {
+
         $activitySessionId = $input['activitySessionId'];
     }
 
     $executionMode = 'DIRECT';
-    error_log('[detectAndProposeContact] DIRECT HTTP CALL — using php://input | Session: ' . $activitySessionId);
+
+    error_log(
+        '[detectAndProposeContact] DIRECT HTTP CALL — using php://input | Session: '
+        . $activitySessionId
+    );
 }
 
 // -------------------------------------------------
 // FINAL VALIDATION
 // -------------------------------------------------
+
 if ($rawInput === '') {
+
     error_log('[detectAndProposeContact] ❌ No input provided in either mode');
+
     jsonError('No input provided');
 }
 
 error_log(sprintf(
+
     '[detectAndProposeContact] ✅ Input resolved | Mode: %s | Length: %d | Session: %s',
+
     $executionMode,
+
     strlen($rawInput),
+
     $activitySessionId
 ));
+
+// =====================================================
+// PCM-07 — Explicit Location-Only Directive Detection
+// =====================================================
+//
+// Example:
+//
+// Add Location Only for Christy Signs
+//
+// Christy Signs Future Yard
+// 7420 W Buckeye Rd
+// Phoenix, AZ 85043
+//
+// =====================================================
+
+if (
+
+    preg_match(
+        '/add\s+location\s+only\s+for\s+(.+)/i',
+        $rawInput,
+        $matches
+    )
+
+) {
+
+    $isExplicitLocationOnlyIntent = true;
+
+    $declaredEntityName = trim($matches[1]);
+
+    error_log('[PCM-07] Explicit Location-Only Directive Detected');
+
+    error_log('[PCM-07] Declared Entity: ' . $declaredEntityName);
+
+    // -------------------------------------------------
+    // Remove directive before AI parsing
+    // Prevents parser contamination
+    // -------------------------------------------------
+
+    $rawInput = preg_replace(
+
+        '/add\s+location\s+only\s+for\s+(.+)/i',
+
+        '',
+
+        $rawInput,
+
+        1
+    );
+
+    $rawInput = trim($rawInput);
+
+    error_log('[PCM-07] Directive stripped before AI parse');
+}
 
 #endregion
 
