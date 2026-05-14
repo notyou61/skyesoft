@@ -950,6 +950,11 @@ $dataIntegrityStatus = [
 
 $missing = validateParsed($parsed);
 
+error_log(
+    '[PCM-07 DEBUG] Missing BEFORE relaxation: '
+    . json_encode($missing)
+);
+
 // =====================================================
 // PCM-07 — Relax Contact Requirements
 // Explicit Location-Only Directive
@@ -983,13 +988,6 @@ if ($isExplicitLocationOnlyIntent === true) {
     );
 }
 
-if (!empty($missing)) {
-
-    $dataIntegrityStatus['status'] = 'incomplete';
-
-    $dataIntegrityStatus['missing'] = $missing;
-}
-
 // =====================================================
 // Relax Contact Requirements For Location-Only
 // =====================================================
@@ -1015,6 +1013,11 @@ if ($isLocationOnlyProposal === true) {
 }
 
 error_log('[MISSING AFTER FILTER] ' . json_encode($missing));
+
+error_log(
+    '[PCM-07 DEBUG] Missing AFTER relaxation: '
+    . json_encode($missing)
+);
 
 // =====================================================
 // Final Integrity Decision
