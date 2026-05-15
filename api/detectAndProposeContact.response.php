@@ -197,8 +197,8 @@ $resolvedNarrative = [];
 
 error_log("[narrative] Forcing PCM-driven narrative for: " . $pcmStatus);
 
-// Always use PCM-first for known blocking / relational states
 switch ($pcmStatus) {
+
     case 'duplicate_contact':
         $resolvedNarrative = [
             'decision'  => ['This proposed contact is a duplicate and cannot be accepted.'],
@@ -217,14 +217,26 @@ switch ($pcmStatus) {
 
     case 'existing_entity_new_location':
         $resolvedNarrative = [
+            'decision' => ['This proposal references an existing entity and a new operational location.'],
+            'review'   => ['A new location and contact will be linked to the existing entity.'],
+            'informational' => ['No new entity record will be created.']
+        ];
+        break;
+
+    // =====================================================
+    // PCM-07 — Proposed Location (Location Only)
+    // =====================================================
+    case 'proposed_location':
+    case 'location_only':
+        $resolvedNarrative = [
             'decision' => [
-                'This proposal references an existing entity and a new operational location.'
-            ],
-            'review' => [
-                'A new location and contact will be linked to the existing entity.'
+                'The proposal is operationally eligible for insertion as a new location associated with an existing entity.'
             ],
             'informational' => [
-                'No new entity record will be created.'
+                'The submitted address was successfully geocoded and associated with a resolved Maricopa County parcel.',
+                'A single parcel candidate was identified and automatically selected.',
+                'All current operational validation requirements were satisfied.',
+                'No contact relationship will be created for this proposal.'
             ]
         ];
         break;
@@ -271,16 +283,11 @@ switch ($pcmStatus) {
         ];
         break;
 
-    // ==================== NEW / SUCCESS CASE ====================
-    case 'new_elc':
+    // Default / new_elc fallback
     default:
-        // Let AI generate rich operational narrative first
         $resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
-
-        // Static fallback only if AI returned nothing useful
         if (empty($resolvedNarrative['decision'] ?? [])) {
-            error_log("[narrative] AI narrative empty → using static fallback for {$pcmStatus}");
-            $resolvedNarrative = $pcmNarratives['new_elc'] ?? [
+            $resolvedNarrative = [
                 'decision'      => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
                 'informational' => ['The address was successfully validated and linked to a Maricopa County parcel.']
             ];
