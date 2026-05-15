@@ -29,10 +29,12 @@ if (function_exists('opcache_invalidate')) {
 }
 
 // =====================================================
-// PCM-07 AGGRESSIVE CHECKPOINTS
+// PCM-07 AGGRESSIVE CHECKPOINTS — MAX VISIBILITY
 // =====================================================
+error_log('🚨 [PCM-07] === FILE EXECUTION STARTED SUCCESSFULLY ===');
 error_log('[PCM-07 CHECKPOINT 00] File loaded successfully');
-error_log('[PCM-07 CHECKPOINT 00] Last modified: ' . date('Y-m-d H:i:s', filemtime(__FILE__)));
+error_log('[PCM-07 CHECKPOINT 00] Last modified on server: ' . date('Y-m-d H:i:s', filemtime(__FILE__)));
+error_log('[PCM-07 CHECKPOINT 00] Current server time: ' . date('Y-m-d H:i:s'));
 
 // Load utilities
 require_once __DIR__ . '/utils/detectAndProposeContact.utils.php';
