@@ -937,9 +937,6 @@ $parsed = inferLocationName($parsed);
 // Proposal Type Detection — Proposed Location (PL)
 // =====================================================
 
-// Detect strong operational contact signals.
-// This prevents AI hallucinations where a company/location name 
-// (e.g. "Christy Signs") is incorrectly parsed as a person's name.
 $hasStrongContactIndicators =
     !empty(trim($parsed['contact']['email'] ?? '')) ||
     !empty(trim($parsed['contact']['primaryPhoneRaw'] ?? '')) ||
@@ -956,10 +953,10 @@ error_log('[PL DETECTION] hasStrongContactIndicators = ' . var_export($hasStrong
 error_log('[PL DETECTION] isLocationOnlyProposal = ' . var_export($isLocationOnlyProposal, true));
 
 // =====================================================
-// PCM-07 DIAGNOSTICS (Critical for debugging)
+// PCM-07 DIAGNOSTICS — STEP 1 & 2 (Critical)
 // =====================================================
-error_log('[PCM-07 DEBUG] ENTERING VALIDATION SECTION');
-error_log('[PCM-07 DEBUG] isExplicitLocationOnlyIntent = ' . var_export($isExplicitLocationOnlyIntent, true));
+error_log('[PCM-07 DEBUG] ENTERING VALIDATION SECTION — STEP 1 COMPLETE');
+error_log('[PCM-07 DEBUG] isExplicitLocationOnlyIntent = ' . var_export($isExplicitLocationOnlyIntent ?? false, true));
 error_log('[PCM-07 DEBUG] declaredEntityName = ' . ($declaredEntityName ?? 'NULL'));
 error_log('[PCM-07 DEBUG] entity.name = "' . ($parsed['entity']['name'] ?? '') . '"');
 error_log('[PCM-07 DEBUG] location.address = "' . ($parsed['location']['address'] ?? '') . '"');
@@ -973,15 +970,12 @@ $dataIntegrityStatus = [
     'missing' => []
 ];
 
-$missing = validateParsed($parsed);
+$missing = validateParsed($parsed) ?? [];
 
-error_log(
-    '[PCM-07 DEBUG] Missing BEFORE relaxation: '
-    . json_encode($missing)
-);
+error_log('[PCM-07 DEBUG] Missing BEFORE relaxation: ' . json_encode($missing));
 
 // =====================================================
-// PCM-07 — Relax Contact Requirements (EXPLICIT DIRECTIVE — Strongest)
+// PCM-07 — Relax Contact Requirements (EXPLICIT DIRECTIVE)
 // =====================================================
 if ($isExplicitLocationOnlyIntent === true) {
 
@@ -998,10 +992,13 @@ if ($isExplicitLocationOnlyIntent === true) {
         'contactSalutationInferred'
     ];
 
-    $missing = array_values(array_filter(
-        $missing,
-        fn($field) => !in_array($field, $relaxFields, true)
-    ));
+    $filtered = [];
+    foreach ($missing as $field) {
+        if (!in_array($field, $relaxFields, true)) {
+            $filtered[] = $field;
+        }
+    }
+    $missing = $filtered;
 
     error_log('[PCM-07 DEBUG] Missing AFTER explicit relaxation: ' . json_encode($missing));
 }
@@ -1013,37 +1010,34 @@ if ($isLocationOnlyProposal === true && !$isExplicitLocationOnlyIntent) {
 
     error_log('[PCM-07] General Location-Only relaxation applied');
 
-    $missing = array_values(array_filter(
-        $missing,
-        function ($field) {
-            return !in_array($field, [
-                'contactFirstName', 'firstName',
-                'contactLastName',  'lastName',
-                'contactEmail',     'email',
-                'contactPrimaryPhone', 'primaryPhone'
-            ], true);
+    $relaxFieldsGeneral = [
+        'contactFirstName', 'firstName',
+        'contactLastName',  'lastName',
+        'contactEmail',     'email',
+        'contactPrimaryPhone', 'primaryPhone'
+    ];
+
+    $filtered = [];
+    foreach ($missing as $field) {
+        if (!in_array($field, $relaxFieldsGeneral, true)) {
+            $filtered[] = $field;
         }
-    ));
+    }
+    $missing = $filtered;
 }
 
 error_log('[MISSING AFTER FILTER] ' . json_encode($missing));
-error_log(
-    '[PCM-07 DEBUG] Missing AFTER ALL relaxation: '
-    . json_encode($missing)
-);
+error_log('[PCM-07 DEBUG] Missing AFTER ALL relaxation: ' . json_encode($missing));
 
 // =====================================================
 // Final Integrity Decision
 // =====================================================
 
 if (!empty($missing)) {
-
     $dataIntegrityStatus['status'] = 'incomplete';
     $dataIntegrityStatus['missing'] = $missing;
     error_log('[PCM-07] ⚠️ Validation still incomplete after relaxation: ' . json_encode($missing));
-
 } else {
-
     $dataIntegrityStatus['status'] = 'complete';
     error_log('[PCM-07] ✅ Validation PASSED after relaxation — ready for PCM decision');
 }
@@ -1053,18 +1047,13 @@ if (!empty($missing)) {
 // =====================================================
 
 if (!$pdo) {
-
     $duplicate = ['status' => 'none'];
     $locationDuplicate = ['status' => 'none'];
     $entityDuplicate = ['status' => 'none'];
-
 } else {
-
     $duplicate = evaluateDuplicate($parsed, $pdo);
     $locationDuplicate = evaluateLocationDuplicate($parsed, $pdo);
     $entityDuplicate = evaluateEntityDuplicate($parsed, $pdo);
-
-    // Debug (temporary)
     error_log('[ENTITY DUPLICATE] ' . json_encode($entityDuplicate));
     error_log('[LOCATION DUPLICATE] ' . json_encode($locationDuplicate));
 }
