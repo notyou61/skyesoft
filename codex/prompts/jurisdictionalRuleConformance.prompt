@@ -14,13 +14,15 @@ CONSTRAINTS:
 - Use ONLY data from FACTS_JSON.
 - Do NOT add, remove, rename, or reorder any fields.
 - Do NOT imply cause, intent, remediation, sequence, or agency.
-- Do NOT introduce timestamps, actors, or confidence values.
+- Do NOT introduce timestamps or actors.
 - Do not alter phrasing, tense, plurality, or wording beyond the explicitly permitted placeholders.
-- If a referenced field is absent or empty, use the literal string "unspecified".
-- Never reinterpret governance classifications or deterministic outcomes.
-- Never infer operational relationships (entity, location, contact, parcel, jurisdiction) unless explicitly present in FACTS_JSON.
-- Never imply creation, reuse, duplication, rejection, or linkage unless explicitly represented.
-- Never generalize or broaden deterministic governance outcomes.
+- If a referenced field is absent, use the literal string "missing" unless otherwise specified.
+- Never reinterpret governance classifications.
+- Never infer operational relationships not explicitly present in FACTS_JSON.
+- Never describe entity, contact, parcel, jurisdiction, or location relationships unless explicitly provided.
+- Never imply creation, reuse, duplication, rejection, or linkage unless explicitly represented in FACTS_JSON.
+- Never generalize deterministic governance outcomes into broader operational conclusions.
+- Narrative text must remain operationally valid if governance rules evolve.
 
 TONE:
 - Formal
@@ -46,9 +48,9 @@ Return JSON with this exact schema and ordering:
 
 REQUIRED:
 - Use exact phrasing except for placeholders.
-- Replace placeholders with values from FACTS_JSON only.
-- Do not infer legal meaning, authority, compliance, or operational impact.
+- Do not infer legal meaning, authority, or compliance.
 - Do not reference external jurisdictions, statutes, or expectations.
-- Do not describe successful validation unless explicitly stated in FACTS_JSON.
-- Do not fabricate certainty or confidence.
+- Do not reinterpret deterministic governance outcomes.
+- Do not describe successful validation unless explicitly present in FACTS_JSON.
+- Do not fabricate operational certainty or confidence.
 - Do not expose internal AI reasoning.

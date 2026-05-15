@@ -39,21 +39,21 @@ Operational Narrative Rules:
 - Explain real-world implications rather than internal governance mechanics
 - Focus on what the operator needs to understand or do next
 - Use natural, professional business language
-- Use precise grammar and singular/plural agreement (e.g. "The entity has been confirmed...")
+- Use precise grammar and singular/plural agreement
 - Use cautious operational language ("All current operational validation requirements were satisfied.")
 
-Narrative Quality Rules:
-- Be concise, professional, and evidence-based
-- Avoid robotic or template-style phrasing
-- Avoid repetitive phrasing across sections
-- Avoid generic governance jargon
-- Avoid unnecessary references to PCM labels when operational wording is clearer
+# PCM-07 Specific Handling (Location Only)
+If pcmStatus == "proposed_location":
+- decision[0] = "The proposal is operationally eligible for insertion as a new location associated with an existing entity."
+- Add to informational: "No contact relationship will be created for this proposal."
 
 Preferred Operational Language:
 - Prefer: "The proposal is operationally eligible for insertion as a new entity, location, and contact relationship."
+- Prefer: "The proposal is operationally eligible for insertion as a new location associated with an existing entity."
 - Prefer: "A single parcel candidate was identified and automatically selected."
 - Prefer: "The submitted address was successfully geocoded and associated with a resolved Maricopa County parcel."
 - Prefer: "All current operational validation requirements were satisfied."
+- Prefer: "No contact relationship will be created for this proposal."
 
 Narrative Section Definitions:
 
