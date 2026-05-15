@@ -424,40 +424,43 @@ $parsed = array_replace_recursive([
 $parsed = fallbackExtractName($parsed, $rawInput);
 
 // -------------------------------------------------
-// 🛡️ NEW: EXPLICIT ENTITY PRESERVATION LAYER
-//    Prevents AI drift (e.g. "West Valley Commerce Center" → "Wvcc")
+// 🛡️ EXPLICIT ENTITY PRESERVATION LAYER
 // -------------------------------------------------
 $parsed = preserveExplicitEntityName($parsed, $rawInput);
 
 // -------------------------------------------------
-// PCM-07 — Deterministic Entity Override
-// Explicit directives override AI interpretation
+// PCM-07 — Deterministic Entity Override (Highest Priority)
 // -------------------------------------------------
-
-if (
-
-    $isExplicitLocationOnlyIntent === true
-    && !empty($declaredEntityName)
-
-) {
-
+if ($isExplicitLocationOnlyIntent === true && !empty($declaredEntityName)) {
     $parsed['entity']['name'] = $declaredEntityName;
+    error_log('[PCM-07] Entity overridden from directive: ' . $declaredEntityName);
+}
 
-    error_log(
-        '[PCM-07] Entity overridden from directive: '
-        . $declaredEntityName
-    );
+// -------------------------------------------------
+// 🧠 Positive Deterministic Entity Inference from Email Domain
+//    (Safe, narrow, positive correction — no deletion heuristics)
+// -------------------------------------------------
+$contactEmail = strtolower(trim($parsed['contact']['email'] ?? ''));
+if (!empty($contactEmail)) {
+    $domain = substr(strrchr($contactEmail, "@"), 1);
+
+    $knownDomains = [
+        'christysigns.com' => 'Christy Signs',
+        // Add more known domains here as needed
+    ];
+
+    if (isset($knownDomains[$domain])) {
+        $parsed['entity']['name'] = $knownDomains[$domain];
+        error_log('[ENTITY-SAFEGUARD] Email domain positively mapped entity: ' . $knownDomains[$domain]);
+    }
 }
 
 // -------------------------------------------------
 // 🧠 Email fallback (recommended)
 // -------------------------------------------------
 if (empty($parsed['contact']['email'])) {
-
     if (preg_match('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', $rawInput, $m)) {
-
         $email = strtolower(trim($m[0]));
-
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $parsed['contact']['email'] = $email;
             $parsed['contact']['emailNormalized'] = $email;
@@ -468,28 +471,15 @@ if (empty($parsed['contact']['email'])) {
 // -------------------------------------------------
 // 🧠 Location Fallback (recover city/state/zip)
 // -------------------------------------------------
-if (
-    empty($parsed['location']['city']) ||
-    empty($parsed['location']['state'])
-) {
-
+if (empty($parsed['location']['city']) || empty($parsed['location']['state'])) {
     if (preg_match('/([A-Za-z\s]+),\s*([A-Z]{2})\s*(\d{5})?/', $rawInput, $m)) {
-
         $city  = ucwords(strtolower(trim($m[1])));
         $state = strtoupper(trim($m[2]));
         $zip   = isset($m[3]) ? substr($m[3], 0, 5) : '';
 
-        if (empty($parsed['location']['city'])) {
-            $parsed['location']['city'] = $city;
-        }
-
-        if (empty($parsed['location']['state'])) {
-            $parsed['location']['state'] = $state;
-        }
-
-        if (empty($parsed['location']['zip']) && !empty($zip)) {
-            $parsed['location']['zip'] = $zip;
-        }
+        if (empty($parsed['location']['city'])) $parsed['location']['city'] = $city;
+        if (empty($parsed['location']['state'])) $parsed['location']['state'] = $state;
+        if (empty($parsed['location']['zip']) && !empty($zip)) $parsed['location']['zip'] = $zip;
     }
 }
 
@@ -497,9 +487,7 @@ if (
 // 🧠 Street Address Fallback
 // -------------------------------------------------
 if (empty($parsed['location']['address'])) {
-
     if (preg_match('/^\s*(\d{1,6}\s+[A-Za-z0-9\s\.\-]+(?:Ave|Avenue|Rd|Road|St|Street|Blvd|Lane|Ln|Dr|Drive|Way))/mi', $rawInput, $m)) {
-
         $address = trim(preg_replace('/\s+/', ' ', $m[1]));
         $parsed['location']['address'] = $address;
     }
