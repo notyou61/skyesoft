@@ -1127,7 +1127,7 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     ];
 
 // =====================================================
-// Unresolved Parcel — STRICT Enforcement (including PCM-06)
+// Unresolved Parcel — STRICT Enforcement (including PCM-05/PCM-06)
 // =====================================================
 
 } elseif (
@@ -1135,7 +1135,6 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     && ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
 ) {
 
-    // Block ALL cases that are not pure Location-Only (PCM-07)
     $pcm = [
         'status' => 'unresolved_parcel',
         'readyForCommit' => false,
