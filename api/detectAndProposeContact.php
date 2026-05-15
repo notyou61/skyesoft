@@ -51,38 +51,39 @@ if ($runForcedTest) { /* ... existing forced test ... */ }
 error_log('[pipeline-entry] detectAndProposeContact START ' . microtime(true));
 
 // =====================================================
-// PCM-07 — MAX VISIBILITY IN SECTION 01
+// PCM-07 — GRANULAR SECTION 01 DEBUG
 // =====================================================
 error_log('🚨 [PCM-07] ENTERING SECTION 01 — Runtime Configuration');
 
 if (!headers_sent()) {
     header('Content-Type: application/json');
 }
+error_log('🚨 [PCM-07] Headers set');
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
-
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/debug.log');
+error_log('🚨 [PCM-07] Error settings applied');
 
 error_log('=== DEBUG START detectAndProposeContact v1.5.7 ===');
 
 error_log('🚨 [PCM-07] About to require dbConnect.php');
 require_once __DIR__ . '/dbConnect.php';
-error_log('🚨 [PCM-07] dbConnect.php loaded successfully');
+error_log('🚨 [PCM-07] ✅ dbConnect.php loaded');
 
 error_log('🚨 [PCM-07] About to require envLoader.php');
 require_once __DIR__ . '/utils/envLoader.php';
-error_log('🚨 [PCM-07] envLoader.php loaded successfully');
+error_log('🚨 [PCM-07] ✅ envLoader.php loaded');
 
 error_log('🚨 [PCM-07] About to call skyesoftLoadEnv()');
 skyesoftLoadEnv();
-error_log('🚨 [PCM-07] skyesoftLoadEnv() completed');
+error_log('🚨 [PCM-07] ✅ skyesoftLoadEnv() completed');
 
 error_log('🚨 [PCM-07] About to call getPDO()');
 $pdo = getPDO();
-error_log('🚨 [PCM-07] getPDO() completed | PDO: ' . ($pdo ? 'CONNECTED' : 'NULL'));
+error_log('🚨 [PCM-07] ✅ getPDO() completed | PDO: ' . ($pdo ? 'CONNECTED' : 'NULL'));
 
 error_log('🚨 [PCM-07] SECTION 01 COMPLETED SUCCESSFULLY');
 
