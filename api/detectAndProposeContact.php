@@ -1006,13 +1006,17 @@ if ($isExplicitLocationOnlyIntent === true) {
         'contactPrimaryPhoneRaw', 'primaryPhoneRaw',
         'contactTitle',     'title',
         'contactSalutation','salutation', 
-        'contactSalutationInferred'
+        'contactSalutationInferred',
+        'contact.contactMethod',   // ← Critical field from validateParsed()
+        'contactMethod'
     ];
 
     $filtered = [];
-    foreach ($missing as $field) {
-        if (!in_array($field, $relaxFields, true)) {
-            $filtered[] = $field;
+    if (is_array($missing)) {
+        foreach ($missing as $field) {
+            if (!in_array($field, $relaxFields, true)) {
+                $filtered[] = $field;
+            }
         }
     }
     $missing = $filtered;
@@ -1031,13 +1035,17 @@ if ($isLocationOnlyProposal === true && !$isExplicitLocationOnlyIntent) {
         'contactFirstName', 'firstName',
         'contactLastName',  'lastName',
         'contactEmail',     'email',
-        'contactPrimaryPhone', 'primaryPhone'
+        'contactPrimaryPhone', 'primaryPhone',
+        'contact.contactMethod',
+        'contactMethod'
     ];
 
     $filtered = [];
-    foreach ($missing as $field) {
-        if (!in_array($field, $relaxFieldsGeneral, true)) {
-            $filtered[] = $field;
+    if (is_array($missing)) {
+        foreach ($missing as $field) {
+            if (!in_array($field, $relaxFieldsGeneral, true)) {
+                $filtered[] = $field;
+            }
         }
     }
     $missing = $filtered;
