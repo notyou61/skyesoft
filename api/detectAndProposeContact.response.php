@@ -280,14 +280,14 @@ switch ($pcmStatus) {
     case 'unresolved_parcel':
         $resolvedNarrative = [
             'decision' => [
-                'We could not resolve this address to a Maricopa County parcel.'
+                'We could not resolve this address to a single Maricopa County parcel.'
             ],
             'review' => [
-                'Please verify the address or provide additional details such as an APN, lot number, or cross street.'
+                'Please select the correct parcel or provide additional details (APN, lot number, or cross street).'
             ],
             'informational' => [
                 'Google and USPS validation succeeded.',
-                'Parcel lookup returned no matches — this may be a new development or future yard.'
+                'Multiple parcels match this address — manual selection required.'
             ]
         ];
         break;
