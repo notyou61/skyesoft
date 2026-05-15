@@ -17,7 +17,7 @@ declare(strict_types=1);
 // Last Updated: 2026-05-11
 // =====================================================
 
-#region SECTION 00 — ⚙️ Force Fresh Code + PCM-07 Aggressive Debugging
+#region SECTION 00 — ⚙️ Force Fresh Code
 
 error_log("=== DETECTANDPROPOSECONTACT.PHP V1.5.7 UTILS SPLIT === " . date('Y-m-d H:i:s'));
 
@@ -28,21 +28,17 @@ if (function_exists('opcache_invalidate')) {
     error_log("[OPCACHE] opcache_invalidate not available");
 }
 
-// =====================================================
-// PCM-07 AGGRESSIVE CHECKPOINTS — MAX VISIBILITY
-// =====================================================
-error_log('🚨 [PCM-07] === FILE EXECUTION STARTED SUCCESSFULLY ===');
-error_log('[PCM-07 CHECKPOINT 00] File loaded successfully');
-error_log('[PCM-07 CHECKPOINT 00] Last modified on server: ' . date('Y-m-d H:i:s', filemtime(__FILE__)));
-error_log('[PCM-07 CHECKPOINT 00] Current server time: ' . date('Y-m-d H:i:s'));
-
 // Load utilities
 require_once __DIR__ . '/utils/detectAndProposeContact.utils.php';
-error_log('[PCM-07 CHECKPOINT 01] Utils file loaded successfully');
 
-$runForcedTest = false;
+$runForcedTest = false;   // ← Change to true only when debugging
 
-if ($runForcedTest) { /* ... existing forced test ... */ }
+if ($runForcedTest) {
+    error_log("=== FORCED MARICOPA LOOKUP TEST ===");
+    $forcedAddress = "3145 N 33rd Ave Phoenix AZ 85017";
+    $forcedParcelDetails = lookupMaricopaParcel($forcedAddress);
+    error_log("[FORCED-TEST] lookupMaricopaParcel returned " . count($forcedParcelDetails) . " candidates");
+}
 
 #endregion
 
@@ -50,39 +46,23 @@ if ($runForcedTest) { /* ... existing forced test ... */ }
 
 error_log('[pipeline-entry] detectAndProposeContact START ' . microtime(true));
 
-error_log('🚨 [PCM-07] ENTERING SECTION 01 — Runtime Configuration');
-
 if (!headers_sent()) {
     header('Content-Type: application/json');
 }
-error_log('🚨 [PCM-07] Headers set');
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', 0);           // ← Production: off
+ini_set('display_startup_errors', 0);
 ini_set('log_errors', 1);
-// Temporarily skip custom error_log path (this was the blocker)
-error_log('🚨 [PCM-07] Error settings applied (custom error_log skipped)');
+ini_set('error_log', __DIR__ . '/debug.log');
 
 error_log('=== DEBUG START detectAndProposeContact v1.5.7 ===');
 
-error_log('🚨 [PCM-07] About to require dbConnect.php');
 require_once __DIR__ . '/dbConnect.php';
-error_log('🚨 [PCM-07] ✅ dbConnect.php loaded');
-
-error_log('🚨 [PCM-07] About to require envLoader.php');
 require_once __DIR__ . '/utils/envLoader.php';
-error_log('🚨 [PCM-07] ✅ envLoader.php loaded');
 
-error_log('🚨 [PCM-07] About to call skyesoftLoadEnv()');
 skyesoftLoadEnv();
-error_log('🚨 [PCM-07] ✅ skyesoftLoadEnv() completed');
-
-error_log('🚨 [PCM-07] About to call getPDO()');
 $pdo = getPDO();
-error_log('🚨 [PCM-07] ✅ getPDO() completed | PDO: ' . ($pdo ? 'CONNECTED' : 'NULL'));
-
-error_log('🚨 [PCM-07] SECTION 01 COMPLETED SUCCESSFULLY');
 
 #endregion
 
@@ -145,7 +125,6 @@ $executionMode    = 'unknown';
 // =====================================================
 
 $isExplicitLocationOnlyIntent = false;
-
 $declaredEntityName = null;
 
 // -------------------------------------------------
@@ -162,15 +141,10 @@ $activitySessionId = $activitySessionId
 if (isset($query) && is_string($query) && trim($query) !== '') {
 
     $rawInputOriginal = $query;
-
     $rawInput = trim($rawInputOriginal);
-
     $executionMode = 'INTERNAL';
 
-    error_log(
-        '[detectAndProposeContact] INTERNAL EXECUTION — using $query from askOpenAI.php | Session: '
-        . $activitySessionId
-    );
+    error_log('[detectAndProposeContact] INTERNAL EXECUTION — using $query from askOpenAI.php | Session: ' . $activitySessionId);
 }
 
 // -------------------------------------------------
@@ -182,31 +156,21 @@ else {
     $rawJson = file_get_contents('php://input');
 
     if ($rawJson !== false && $rawJson !== '') {
-
         $input = json_decode($rawJson, true) ?? [];
-
     } else {
-
         $input = [];
     }
 
     $rawInputOriginal = $input['input'] ?? '';
-
     $rawInput = trim($rawInputOriginal);
 
-    // Allow override from direct HTTP payload
-
     if (!empty($input['activitySessionId'])) {
-
         $activitySessionId = $input['activitySessionId'];
     }
 
     $executionMode = 'DIRECT';
 
-    error_log(
-        '[detectAndProposeContact] DIRECT HTTP CALL — using php://input | Session: '
-        . $activitySessionId
-    );
+    error_log('[detectAndProposeContact] DIRECT HTTP CALL — using php://input | Session: ' . $activitySessionId);
 }
 
 // -------------------------------------------------
@@ -214,88 +178,43 @@ else {
 // -------------------------------------------------
 
 if ($rawInput === '') {
-
     error_log('[detectAndProposeContact] ❌ No input provided in either mode');
-
     jsonError('No input provided');
 }
 
 error_log(sprintf(
-
     '[detectAndProposeContact] ✅ Input resolved | Mode: %s | Length: %d | Session: %s',
-
     $executionMode,
-
     strlen($rawInput),
-
     $activitySessionId
 ));
 
 // =====================================================
 // PCM-07 — Explicit Location-Only Directive Detection
 // =====================================================
-//
-// Example:
-//
-// Add Location Only for Christy Signs
-//
-// Christy Signs Future Yard
-// 7420 W Buckeye Rd
-// Phoenix, AZ 85043
-//
-// =====================================================
 
-if (
-
-    preg_match(
-        '/add\s+location\s+only\s+for\s+([^\n\r]+)/i',
-        $rawInput,
-        $matches
-    )
-
-) {
+if (preg_match('/add\s+location\s+only\s+for\s+([^\n\r]+)/i', $rawInput, $matches)) {
 
     $isExplicitLocationOnlyIntent = true;
-
     $declaredEntityName = trim($matches[1]);
 
     error_log('[PCM-07] Explicit Location-Only Directive Detected');
-
     error_log('[PCM-07] Declared Entity: ' . $declaredEntityName);
 
-    // -------------------------------------------------
-    // Remove directive before AI parsing
-    // Prevents parser contamination
-    // -------------------------------------------------
-
-    $rawInput = preg_replace(
-
-        '/add\s+location\s+only\s+for\s+[^\n\r]+/i',
-
-        '',
-
-        $rawInput,
-
-        1
-    );
-
+    // Remove directive before AI parsing to prevent contamination
+    $rawInput = preg_replace('/add\s+location\s+only\s+for\s+[^\n\r]+/i', '', $rawInput, 1);
     $rawInput = trim($rawInput);
 
     error_log('[PCM-07] Directive stripped before AI parse');
 }
 
 // -------------------------------------------------
-// FINAL VALIDATION
+// FINAL VALIDATION (after directive stripping)
 // -------------------------------------------------
 if ($rawInput === '') {
-    error_log('[detectAndProposeContact] ❌ No input provided in either mode');
+    error_log('[detectAndProposeContact] ❌ No input provided after directive processing');
     jsonError('No input provided');
 }
-
-error_log('[PCM-07 CHECKPOINT 03] Input resolved successfully');
-error_log('[PCM-07 CHECKPOINT 03] Mode: ' . $executionMode);
-error_log('[PCM-07 CHECKPOINT 03] Explicit Location Only: ' . var_export($isExplicitLocationOnlyIntent ?? false, true));
-error_log('[PCM-07 CHECKPOINT 03] Declared Entity: ' . ($declaredEntityName ?? 'NULL'));
 
 #endregion
 
