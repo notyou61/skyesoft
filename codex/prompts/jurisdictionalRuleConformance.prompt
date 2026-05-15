@@ -3,9 +3,10 @@
 # Rule: jurisdictionalRuleConformance
 # Authority: Audit Governance Standard (AGS v2)
 # Classification: Non-authoritative commentary
-# AI Role: Explanatory only — never influences detection, identity, or resolution
+# AI Role: Explanatory only — never influences detection, identity, resolution, or governance classification
 
 You are generating non-authoritative violationNotes for Skyesoft Auditor (AGS v2).
+
 RULE: jurisdictionalRuleConformance
 
 CONSTRAINTS:
@@ -16,11 +17,18 @@ CONSTRAINTS:
 - Do NOT introduce timestamps or actors.
 - Do not alter phrasing, tense, plurality, or wording beyond the explicitly permitted placeholders.
 - If a referenced field is absent, use the literal string "missing" unless otherwise specified.
+- Never reinterpret governance classifications.
+- Never infer operational relationships not explicitly present in FACTS_JSON.
+- Never describe entity, contact, parcel, jurisdiction, or location relationships unless explicitly provided.
+- Never imply creation, reuse, duplication, rejection, or linkage unless explicitly represented in FACTS_JSON.
+- Never generalize deterministic governance outcomes into broader operational conclusions.
+- Narrative text must remain operationally valid if governance rules evolve.
 
 TONE:
 - Formal
 - Factual
 - Neutral
+- Operationally restrained
 
 INPUT FACTS (JSON):
 {{FACTS_JSON}}
@@ -42,4 +50,7 @@ REQUIRED:
 - Use exact phrasing except for placeholders.
 - Do not infer legal meaning, authority, or compliance.
 - Do not reference external jurisdictions, statutes, or expectations.
-- Narrative must remain valid if governance rules evolve.
+- Do not reinterpret deterministic governance outcomes.
+- Do not describe successful validation unless explicitly present in FACTS_JSON.
+- Do not fabricate operational certainty or confidence.
+- Do not expose internal AI reasoning.

@@ -992,11 +992,9 @@ $missing = validateParsed($parsed) ?? [];
 error_log('[PCM-07 DEBUG] Missing BEFORE relaxation: ' . json_encode($missing));
 
 // =====================================================
-// PCM-07 — Relax Contact Requirements (EXPLICIT DIRECTIVE)
+// PCM-07 — Relax Contact Requirements
 // =====================================================
 if ($isExplicitLocationOnlyIntent === true) {
-
-    error_log('[PCM-07] 🔥 EXPLICIT LOCATION-ONLY DIRECTIVE ACTIVE — relaxing ALL contact fields');
 
     $relaxFields = [
         'contactFirstName', 'firstName',
@@ -1007,7 +1005,7 @@ if ($isExplicitLocationOnlyIntent === true) {
         'contactTitle',     'title',
         'contactSalutation','salutation', 
         'contactSalutationInferred',
-        'contact.contactMethod',   // ← Critical field from validateParsed()
+        'contact.contactMethod',
         'contactMethod'
     ];
 
@@ -1021,7 +1019,27 @@ if ($isExplicitLocationOnlyIntent === true) {
     }
     $missing = $filtered;
 
-    error_log('[PCM-07 DEBUG] Missing AFTER explicit relaxation: ' . json_encode($missing));
+} elseif ($isLocationOnlyProposal === true) {
+
+    // General location-only fallback
+    $relaxFieldsGeneral = [
+        'contactFirstName', 'firstName',
+        'contactLastName',  'lastName',
+        'contactEmail',     'email',
+        'contactPrimaryPhone', 'primaryPhone',
+        'contact.contactMethod',
+        'contactMethod'
+    ];
+
+    $filtered = [];
+    if (is_array($missing)) {
+        foreach ($missing as $field) {
+            if (!in_array($field, $relaxFieldsGeneral, true)) {
+                $filtered[] = $field;
+            }
+        }
+    }
+    $missing = $filtered;
 }
 
 // =====================================================
