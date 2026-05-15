@@ -547,113 +547,86 @@ function fallbackExtractName(array $parsed, string $rawInput): array {
 // 🔍 evaluateDuplicate — DB-backed contact duplicate detection
 function evaluateDuplicate(array $parsed, PDO $pdo): array
 {
-    // Normalize candidate values
-    $email = strtolower(trim($parsed['contact']['email'] ?? ''));
-    $phone = preg_replace('/\D/', '', $parsed['contact']['primaryPhoneRaw'] ?? '');
-    $first = strtolower(trim($parsed['contact']['firstName'] ?? ''));
-    $last  = strtolower(trim($parsed['contact']['lastName'] ?? ''));
+    $emailNormalized = strtolower(trim($parsed['contact']['emailNormalized'] ?? $parsed['contact']['email'] ?? ''));
+    $phoneRaw        = preg_replace('/\D/', '', $parsed['contact']['primaryPhoneRaw'] ?? '');
+    $first           = strtolower(trim($parsed['contact']['firstName'] ?? ''));
+    $last            = strtolower(trim($parsed['contact']['lastName'] ?? ''));
 
     // =====================================================
-    // Exact Match — Email
+    // 1. STRONGEST MATCH — Email (Primary Signal)
     // =====================================================
-
-    if (!empty($email)) {
+    if (!empty($emailNormalized)) {
 
         $stmt = $pdo->prepare("
-            SELECT
-                contactId,
-                contactEntityId,
-                contactLocationId
-            FROM tblContacts
-            WHERE LOWER(contactEmail) = :email
+            SELECT contactId, contactEntityId, contactLocationId
+            FROM tblContacts 
+            WHERE LOWER(COALESCE(contactEmailNormalized, contactEmail)) = :email
             LIMIT 1
         ");
 
-        $stmt->execute([
-            'email' => $email
-        ]);
+        $stmt->execute(['email' => $emailNormalized]);
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-
             return [
                 'status'     => 'exact',
-                'contactId'  => $row['contactId'],
-                'entityId'   => $row['contactEntityId'],
-                'locationId' => $row['contactLocationId'],
+                'contactId'  => (int)$row['contactId'],
+                'entityId'   => (int)$row['contactEntityId'],
+                'locationId' => $row['contactLocationId'] ? (int)$row['contactLocationId'] : null,
                 'matchType'  => 'email'
             ];
         }
     }
 
     // =====================================================
-    // Possible Match — Phone
+    // 2. Phone Match (Secondary)
     // =====================================================
-
-    if (!empty($phone)) {
+    if (!empty($phoneRaw) && strlen($phoneRaw) >= 10) {
 
         $stmt = $pdo->prepare("
-            SELECT
-                contactId,
-                contactEntityId,
-                contactLocationId
-            FROM tblContacts
+            SELECT contactId, contactEntityId, contactLocationId
+            FROM tblContacts 
             WHERE contactPrimaryPhoneRaw = :phone
             LIMIT 1
         ");
 
-        $stmt->execute([
-            'phone' => $phone
-        ]);
+        $stmt->execute(['phone' => $phoneRaw]);
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-
             return [
                 'status'     => 'possible',
-                'contactId'  => $row['contactId'],
-                'entityId'   => $row['contactEntityId'],
-                'locationId' => $row['contactLocationId'],
+                'contactId'  => (int)$row['contactId'],
+                'entityId'   => (int)$row['contactEntityId'],
+                'locationId' => $row['contactLocationId'] ? (int)$row['contactLocationId'] : null,
                 'matchType'  => 'phone'
             ];
         }
     }
 
     // =====================================================
-    // Possible Match — Name
+    // 3. Name Match (Tertiary — Weakest)
     // =====================================================
-
     if (!empty($first) && !empty($last)) {
 
         $stmt = $pdo->prepare("
-            SELECT
-                contactId,
-                contactEntityId,
-                contactLocationId
-            FROM tblContacts
-            WHERE LOWER(contactFirstName) = :first
-              AND LOWER(contactLastName) = :last
+            SELECT contactId, contactEntityId, contactLocationId
+            FROM tblContacts 
+            WHERE LOWER(contactFirstName) = :first 
+              AND LOWER(contactLastName)  = :last
             LIMIT 1
         ");
 
-        $stmt->execute([
-            'first' => $first,
-            'last'  => $last
-        ]);
+        $stmt->execute(['first' => $first, 'last' => $last]);
 
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-
             return [
                 'status'     => 'possible',
-                'contactId'  => $row['contactId'],
-                'entityId'   => $row['contactEntityId'],
-                'locationId' => $row['contactLocationId'],
+                'contactId'  => (int)$row['contactId'],
+                'entityId'   => (int)$row['contactEntityId'],
+                'locationId' => $row['contactLocationId'] ? (int)$row['contactLocationId'] : null,
                 'matchType'  => 'name'
             ];
         }
     }
-
-    // =====================================================
-    // No Duplicate Found
-    // =====================================================
 
     return [
         'status'     => 'none',
