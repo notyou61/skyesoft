@@ -314,117 +314,118 @@ $persistence = [
 
 switch ($pcmStatus) {
 
-    // =====================================================
-    // PCM-01 — New Entity + New Location + New Contact
-    // =====================================================
-    case 'new_elc':
-        $persistence['entity']['action']   = 'create';
-        $persistence['location']['action'] = 'create';
-        $persistence['contact']['action']  = 'create';
-        break;
-
-    // =====================================================
-    // PCM-05 — Existing Location + New Contact
-    // =====================================================
-    case 'existing_location':
-        $persistence['entity']['action']   = 'reuse';
-        $persistence['entity']['entityId'] = isset($locationDuplicate['entityId'])
-            ? (int)$locationDuplicate['entityId']
-            : null;
-
-        $persistence['location']['action'] = 'reuse';
-        $persistence['location']['locationId'] = isset($locationDuplicate['locationId'])
-            ? (int)$locationDuplicate['locationId']
-            : null;
-
-        $persistence['contact']['action'] = 'create';
-        break;
-
-    // =====================================================
-    // PCM-06 — Existing Entity + New Location + New Contact
-    // =====================================================
-    case 'existing_entity_new_location':
-        $persistence['entity']['action']   = 'reuse';
-        $persistence['entity']['entityId'] = isset($entityDuplicate['entityId'])
-            ? (int)$entityDuplicate['entityId']
-            : null;
-
-        $persistence['location']['action'] = 'create';
-        $persistence['location']['locationId'] = null;
-
-        $persistence['contact']['action'] = 'create';
-        $persistence['contact']['contactId'] = null;
-
-        $persistence['commitAllowed'] = true;
-        break;
-
-    // =====================================================
-    // PCM-07 — Proposed Location (Location-Only)
-    // =====================================================
-    case 'location_only':
-    case 'proposed_location':           // support both names during transition
-        // Reuse Existing Entity
-        $persistence['entity']['action']   = 'reuse';
-        $persistence['entity']['entityId'] = isset($entityDuplicate['entityId'])
-            ? (int)$entityDuplicate['entityId']
-            : null;
-
-        // Create New Location
-        $persistence['location']['action'] = 'create';
-        $persistence['location']['locationId'] = null;
-
-        // Mark as Location-Only (important for downstream logic)
-        $data['location']['locationIsLocationOnly'] = 1;
-
-        // No Contact Creation
-        $persistence['contact']['action']  = 'skip';
-        $persistence['contact']['contactId'] = null;
-
-        // Semantically clean output for frontend
-        $data['contact'] = null;
-
-        $persistence['commitAllowed'] = true;
-        break;
-
-    // =====================================================
-    // PCM-02 — Duplicate Contact
-    // =====================================================
     case 'duplicate_contact':
-        $persistence['entity']['action']   = 'reuse';
-        $persistence['entity']['entityId'] = isset($duplicate['entityId'])
-            ? (int)$duplicate['entityId']
-            : null;
+        $resolvedNarrative = [
+            'decision'  => ['This proposed contact is a duplicate and cannot be accepted.'],
+            'blocking'  => ['A contact with matching name, phone, and/or email already exists in the system.'],
+            'review'    => ['Review the existing contact record before proceeding.']
+        ];
+        break;
 
-        $persistence['location']['action'] = 'reuse';
-        $persistence['location']['locationId'] = isset($duplicate['locationId'])
-            ? (int)$duplicate['locationId']
-            : null;
+    case 'existing_location':
+        $resolvedNarrative = [
+            'decision'      => ['This proposal references an existing entity and location record.'],
+            'review'        => ['A new contact will be linked to the existing location.'],
+            'informational' => ['No new entity or location record will be created.']
+        ];
+        break;
 
-        $persistence['contact']['action']  = 'reject';
-        $persistence['contact']['contactId'] = isset($duplicate['contactId'])
-            ? (int)$duplicate['contactId']
-            : null;
-
-        $persistence['commitAllowed'] = false;
+    case 'existing_entity_new_location':
+        $resolvedNarrative = [
+            'decision' => ['This proposal references an existing entity and a new operational location.'],
+            'review'   => ['A new location and contact will be linked to the existing entity.'],
+            'informational' => ['No new entity record will be created.']
+        ];
         break;
 
     // =====================================================
-    // Rejected / Invalid Governance States
+    // PCM-07 — Proposed Location (Location Only)
     // =====================================================
-    case 'multiple_parcels':
+    case 'proposed_location':
+    case 'location_only':
+        $resolvedNarrative = [
+            'decision' => [
+                'The proposal is operationally eligible for insertion as a new location associated with an existing entity.'
+            ],
+            'informational' => [
+                'The submitted address was successfully geocoded and associated with a resolved Maricopa County parcel.',
+                'A single parcel candidate was identified and automatically selected.',
+                'All current operational validation requirements were satisfied.',
+                'No contact relationship will be created for this proposal.'
+            ]
+        ];
+        break;
+
+    // =====================================================
+    // NEW: No Parcel Found (New Development / Future Yard)
+    // =====================================================
+    case 'new_location_no_parcel':
+        $resolvedNarrative = [
+            'decision' => [
+                'The proposal is eligible for insertion as a new entity, location, and contact.'
+            ],
+            'review' => [
+                'This address does not yet have an assigned Maricopa County parcel (common for new developments or future sites).'
+            ],
+            'informational' => [
+                'Google and USPS validation succeeded.',
+                'Parcel lookup returned no matches — this may be a future or undeveloped site.',
+                'All other operational validation requirements were satisfied.'
+            ]
+        ];
+        break;
+
     case 'incomplete':
-    case 'invalid_location':
-    case 'unresolved_parcel':
-    case 'incomplete_address':
-        $persistence['entity']['action']   = 'reject';
-        $persistence['location']['action'] = 'reject';
-        $persistence['contact']['action']  = 'reject';
-        $persistence['commitAllowed']      = false;
+        $resolvedNarrative = [
+            'decision'  => ['This proposal is missing required information and cannot be inserted.'],
+            'blocking'  => ['Required fields such as company name, full contact identity, phone, or email were not provided.'],
+            'review'    => ['Complete the missing fields before continuing.']
+        ];
         break;
 
-    // Default safety net
+    case 'invalid_location':
+    case 'incomplete_address':
+        $resolvedNarrative = [
+            'decision'      => ['The address could not be properly validated.'],
+            'review'        => ['Please review and correct the address details.'],
+            'informational' => ['Google/USPS validation returned errors or ambiguous results.']
+        ];
+        break;
+
+    case 'unresolved_parcel':
+        $resolvedNarrative = [
+            'decision'      => ['We could not resolve this address to a Maricopa County parcel.'],
+            'review'        => ['Please verify the address or provide additional location details.'],
+            'informational' => ['Parcel lookup returned no matches.']
+        ];
+        break;
+
+    case 'multiple_parcels':
+        $resolvedNarrative = [
+            'decision'      => ['Multiple parcels match this address.'],
+            'review'        => ['Please select the correct parcel from the candidates shown.'],
+            'informational' => ['User selection is required before proceeding.']
+        ];
+        break;
+
+    case 'possible_duplicate_contact':
+    case 'possible_location_duplicate':
+        $resolvedNarrative = [
+            'decision'  => ['Possible duplicate detected.'],
+            'review'    => ['Please review potential matching records before continuing.'],
+            'informational' => ['System found similar existing records.']
+        ];
+        break;
+
+    // Default / new_elc fallback
     default:
-        $persistence['commitAllowed'] = false;
+        $resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
+        if (empty($resolvedNarrative['decision'] ?? [])) {
+            $resolvedNarrative = [
+                'decision'      => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
+                'informational' => ['The address was successfully validated and linked to a Maricopa County parcel.']
+            ];
+        }
         break;
 }
 

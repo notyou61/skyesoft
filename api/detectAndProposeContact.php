@@ -1088,7 +1088,7 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 ) {
 
     $pcm = [
-        'status' => 'proposed_location',           // PL status
+        'status' => 'proposed_location',
         'readyForCommit' => true,
         'requiresReview' => false,
         'blocksCommit' => false,
@@ -1127,21 +1127,33 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     ];
 
 // =====================================================
-// Unresolved Parcel
+// Unresolved Parcel (not_found) — Special handling for NEW entities
 // =====================================================
 
 } elseif (
     ($locationValidation['isMaricopa'] ?? false) === true
-    && ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
+    && ($locationValidation['parcelStatus'] ?? 'unknown') === 'not_found'
 ) {
 
-    $pcm = [
-        'status' => 'unresolved_parcel',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => true,
-        'action' => 'resolve_parcel'
-    ];
+    if ($isLocationOnlyProposal || ($pcm['status'] ?? '') === 'new_elc') {
+        // Allow new entities/locations even without parcel (future yards, new developments)
+        $pcm = [
+            'status' => 'new_location_no_parcel',
+            'readyForCommit' => true,
+            'requiresReview' => true,      // Still flag for review
+            'blocksCommit' => false,
+            'action' => 'insert_new_no_parcel'
+        ];
+    } else {
+        // Block other cases (safer)
+        $pcm = [
+            'status' => 'unresolved_parcel',
+            'readyForCommit' => false,
+            'requiresReview' => true,
+            'blocksCommit' => true,
+            'action' => 'resolve_parcel'
+        ];
+    }
 
 // =====================================================
 // Incomplete Address
