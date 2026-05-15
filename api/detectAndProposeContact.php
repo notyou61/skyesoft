@@ -1110,7 +1110,7 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     ];
 
 // =====================================================
-// Multiple Parcel Candidates — Force Review
+// Multiple Parcel Candidates — Force Review (Even for Existing Locations)
 // =====================================================
 
 } elseif (
@@ -1122,7 +1122,7 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
         'status' => 'multiple_parcels',
         'readyForCommit' => false,
         'requiresReview' => true,
-        'blocksCommit' => true,          // ← Enforced
+        'blocksCommit' => true,           // ← Critical change
         'action' => 'confirm_parcel'
     ];
 
