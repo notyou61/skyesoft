@@ -47,6 +47,7 @@ Preferred Operational Language:
 - "A single parcel candidate was identified and automatically selected."
 - "All current operational validation requirements were satisfied."
 - "No contact relationship will be created for this proposal."
+- "We could not resolve this address to a Maricopa County parcel."
 
 Narrative Section Definitions:
 
