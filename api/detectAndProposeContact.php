@@ -57,22 +57,12 @@ if (!headers_sent()) {
 }
 error_log('🚨 [PCM-07] Headers set');
 
-error_log('🚨 [PCM-07] About to set error_reporting');
 error_reporting(E_ALL);
-error_log('🚨 [PCM-07] error_reporting done');
-
-error_log('🚨 [PCM-07] About to set ini_display_errors');
 ini_set('display_errors', 1);
-error_log('🚨 [PCM-07] display_errors set');
-
 ini_set('display_startup_errors', 1);
-error_log('🚨 [PCM-07] display_startup_errors set');
-
 ini_set('log_errors', 1);
-error_log('🚨 [PCM-07] log_errors set');
-
-ini_set('error_log', __DIR__ . '/debug.log');
-error_log('🚨 [PCM-07] error_log path set');
+// Temporarily skip custom error_log path (this was the blocker)
+error_log('🚨 [PCM-07] Error settings applied (custom error_log skipped)');
 
 error_log('=== DEBUG START detectAndProposeContact v1.5.7 ===');
 
