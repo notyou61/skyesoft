@@ -241,6 +241,25 @@ switch ($pcmStatus) {
         ];
         break;
 
+    // =====================================================
+    // New Location with No Parcel (Future / Undeveloped Site)
+    // =====================================================
+    case 'new_location_no_parcel':
+        $resolvedNarrative = [
+            'decision' => [
+                'The proposal is eligible for insertion as a new entity, location, and contact.'
+            ],
+            'review' => [
+                'This address does not yet have an assigned Maricopa County parcel (common for new developments or future sites).'
+            ],
+            'informational' => [
+                'Google and USPS validation succeeded.',
+                'Parcel lookup returned no matches — this may be a future or undeveloped site.',
+                'All other operational validation requirements were satisfied.'
+            ]
+        ];
+        break;
+
     case 'incomplete':
         $resolvedNarrative = [
             'decision'  => ['This proposal is missing required information and cannot be inserted.'],
@@ -260,9 +279,16 @@ switch ($pcmStatus) {
 
     case 'unresolved_parcel':
         $resolvedNarrative = [
-            'decision'      => ['We could not resolve this address to a Maricopa County parcel.'],
-            'review'        => ['Please verify the address or provide additional location details.'],
-            'informational' => ['Parcel lookup returned no matches.']
+            'decision' => [
+                'We could not resolve this address to a Maricopa County parcel.'
+            ],
+            'review' => [
+                'Please verify the address or provide additional details such as an APN, lot number, or cross street.'
+            ],
+            'informational' => [
+                'Google and USPS validation succeeded.',
+                'Parcel lookup returned no matches — this may be a new development or future yard.'
+            ]
         ];
         break;
 
