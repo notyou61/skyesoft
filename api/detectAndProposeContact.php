@@ -1127,33 +1127,22 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     ];
 
 // =====================================================
-// Unresolved Parcel (not_found) — Special handling for NEW entities
+// Unresolved Parcel — STRICT for Maricopa County
+// Non-parceled addresses are NOT acceptable in Maricopa
 // =====================================================
 
 } elseif (
     ($locationValidation['isMaricopa'] ?? false) === true
-    && ($locationValidation['parcelStatus'] ?? 'unknown') === 'not_found'
+    && ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
 ) {
 
-    if ($isLocationOnlyProposal || ($pcm['status'] ?? '') === 'new_elc') {
-        // Allow new entities/locations even without parcel (future yards, new developments)
-        $pcm = [
-            'status' => 'new_location_no_parcel',
-            'readyForCommit' => true,
-            'requiresReview' => true,      // Still flag for review
-            'blocksCommit' => false,
-            'action' => 'insert_new_no_parcel'
-        ];
-    } else {
-        // Block other cases (safer)
-        $pcm = [
-            'status' => 'unresolved_parcel',
-            'readyForCommit' => false,
-            'requiresReview' => true,
-            'blocksCommit' => true,
-            'action' => 'resolve_parcel'
-        ];
-    }
+    $pcm = [
+        'status' => 'unresolved_parcel',
+        'readyForCommit' => false,
+        'requiresReview' => true,
+        'blocksCommit' => true,
+        'action' => 'resolve_parcel'
+    ];
 
 // =====================================================
 // Incomplete Address
