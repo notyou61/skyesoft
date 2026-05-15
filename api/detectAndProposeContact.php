@@ -1110,7 +1110,7 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     ];
 
 // =====================================================
-// Multiple Parcel Candidates
+// Multiple Parcel Candidates — Force Review
 // =====================================================
 
 } elseif (
@@ -1122,18 +1122,17 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
         'status' => 'multiple_parcels',
         'readyForCommit' => false,
         'requiresReview' => true,
-        'blocksCommit' => true,           // Changed to true for safety
+        'blocksCommit' => true,          // ← Enforced
         'action' => 'confirm_parcel'
     ];
 
 // =====================================================
-// Unresolved Parcel — STRICT for ALL Maricopa Cases
-// (including PCM-05 and PCM-06)
+// Unresolved Parcel — STRICT for Maricopa (including PCM-05/PCM-06)
 // =====================================================
 
 } elseif (
     ($locationValidation['isMaricopa'] ?? false) === true
-    && in_array(($locationValidation['parcelStatus'] ?? 'unknown'), ['not_found', 'unknown'], true)
+    && ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
 ) {
 
     $pcm = [
