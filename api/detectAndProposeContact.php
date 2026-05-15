@@ -50,9 +50,6 @@ if ($runForcedTest) { /* ... existing forced test ... */ }
 
 error_log('[pipeline-entry] detectAndProposeContact START ' . microtime(true));
 
-// =====================================================
-// PCM-07 — GRANULAR SECTION 01 DEBUG
-// =====================================================
 error_log('🚨 [PCM-07] ENTERING SECTION 01 — Runtime Configuration');
 
 if (!headers_sent()) {
@@ -60,12 +57,22 @@ if (!headers_sent()) {
 }
 error_log('🚨 [PCM-07] Headers set');
 
+error_log('🚨 [PCM-07] About to set error_reporting');
 error_reporting(E_ALL);
+error_log('🚨 [PCM-07] error_reporting done');
+
+error_log('🚨 [PCM-07] About to set ini_display_errors');
 ini_set('display_errors', 1);
+error_log('🚨 [PCM-07] display_errors set');
+
 ini_set('display_startup_errors', 1);
+error_log('🚨 [PCM-07] display_startup_errors set');
+
 ini_set('log_errors', 1);
+error_log('🚨 [PCM-07] log_errors set');
+
 ini_set('error_log', __DIR__ . '/debug.log');
-error_log('🚨 [PCM-07] Error settings applied');
+error_log('🚨 [PCM-07] error_log path set');
 
 error_log('=== DEBUG START detectAndProposeContact v1.5.7 ===');
 
