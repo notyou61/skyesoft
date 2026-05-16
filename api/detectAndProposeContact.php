@@ -1044,20 +1044,22 @@ $pcm = [
 ];
 
 // =====================================================
-// PASS 0 — Minimum Integrity Gate (MUST be first)
+// PASS 0 — Minimum Integrity Gate (Critical)
 // =====================================================
 
-$hasMinimumProposalIntegrity = 
-    !empty(trim($parsed['entity']['name'] ?? '')) &&
-    !empty(trim($parsed['location']['address'] ?? ''));
+$hasMinimumProposalIntegrity =
+    !empty(trim($parsed['entity']['entityName'] ?? '')) &&
+    !empty(trim($parsed['location']['locationAddress'] ?? ''));
 
 if (!$hasMinimumProposalIntegrity) {
+
     $pcm['pc']        = null;
     $pcm['pcStatus']  = null;
     $pcm['rs']        = ['RS-1'];
     $pcm['rsStatuses'] = ['incomplete'];
     $pcm['action']    = 'resolve_missing_fields';
     $pcm['blocksCommit'] = true;
+
 } 
 else {
     // =====================================================
@@ -1065,12 +1067,14 @@ else {
     // =====================================================
 
     if ($isExplicitLocationOnlyIntent === true) {
+
         $pcm['pc']       = 'PC-4';
         $pcm['pcStatus'] = 'proposed_location';
         $pcm['action']   = 'create_location_only';
         $pcm['blocksCommit'] = false;
 
     } elseif (($duplicate['status'] ?? '') === 'exact') {
+
         $pcm['pc']       = null;
         $pcm['pcStatus'] = 'duplicate_contact';
         $pcm['action']   = 'reject_duplicate';
@@ -1079,6 +1083,7 @@ else {
         $pcm['blocksCommit'] = true;
 
     } elseif (($locationDuplicate['status'] ?? '') === 'exact') {
+
         $pcm['pc']       = 'PC-3';
         $pcm['pcStatus'] = 'existing_location';
         $pcm['action']   = 'link_existing_location';
@@ -1089,12 +1094,14 @@ else {
         ($locationDuplicate['status'] ?? '') !== 'exact' &&
         !$isExplicitLocationOnlyIntent
     ) {
+
         $pcm['pc']       = 'PC-2';
         $pcm['pcStatus'] = 'existing_entity_new_location';
         $pcm['action']   = 'link_existing_entity';
         $pcm['blocksCommit'] = false;
 
     } else {
+
         $pcm['pc']       = 'PC-1';
         $pcm['pcStatus'] = 'new_elc';
         $pcm['action']   = 'insert_new';
@@ -1106,45 +1113,50 @@ else {
 // PASS 2 — Governance / Review States (RS) Overlays
 // =====================================================
 
-if (empty($pcm['rs'])) {
-    $pcm['rs'][] = 'RS-0';
-    $pcm['rsStatuses'][] = 'acceptable';
-}
-
 // RS-8 — Invalid Location
 if (empty($parsed['location']['locationPlaceId'] ?? '')) {
-    $pcm['rs'][] = 'RS-8';
+    $pcm['rs'][]         = 'RS-8';
     $pcm['rsStatuses'][] = 'invalid_location';
     $pcm['blocksCommit'] = true;
 }
 
-// RS-6 — Multiple Parcels (with PC-3 / PC-4 exemption)
+// RS-6 — Multiple Parcels (exempt PC-3 and PC-4)
 if (
     ($locationValidation['isMaricopa'] ?? false) === true &&
     ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches' &&
     !in_array($pcm['pc'], ['PC-3', 'PC-4'], true)
 ) {
-    $pcm['rs'][] = 'RS-6';
+    $pcm['rs'][]         = 'RS-6';
     $pcm['rsStatuses'][] = 'multiple_parcels';
     $pcm['requiresReview'] = true;
     $pcm['blocksCommit'] = true;
 }
 
-// RS-7 — Unresolved Parcel (with PC-3 / PC-4 exemption)
+// RS-7 — Unresolved Parcel (exempt PC-3 and PC-4)
 if (
     ($locationValidation['isMaricopa'] ?? false) === true &&
     ($locationValidation['parcelStatus'] ?? '') !== 'resolved' &&
     ($locationValidation['parcelStatus'] ?? '') !== 'multiple_matches' &&
     !in_array($pcm['pc'], ['PC-3', 'PC-4'], true)
 ) {
-    $pcm['rs'][] = 'RS-7';
+    $pcm['rs'][]         = 'RS-7';
     $pcm['rsStatuses'][] = 'unresolved_parcel';
     $pcm['blocksCommit'] = true;
 }
 
 // =====================================================
-// Final Resolution
+// Final RS Resolution — RS-0 only if truly clean
 // =====================================================
+
+if (empty($pcm['rs'])) {
+    $pcm['rs'][]         = 'RS-0';
+    $pcm['rsStatuses'][] = 'acceptable';
+}
+
+// =====================================================
+// Final Governance Resolution
+// =====================================================
+
 $pcm['readyForCommit'] = !$pcm['blocksCommit'];
 
 #endregion
