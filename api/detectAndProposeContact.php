@@ -1104,6 +1104,7 @@ if (empty($parsed['location']['locationPlaceId'] ?? null)) {
 if (
     ($locationValidation['isMaricopa'] ?? false) === true
     && ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches'
+    && !in_array(($pcm['pc'] ?? null), ['PC-3'], true)
 ) {
 
     $pcm['rs'][]         = 'RS-6';
