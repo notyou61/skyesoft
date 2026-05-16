@@ -1047,15 +1047,18 @@ $pcm = [
 // PASS 0 — Minimum Integrity Gate
 // =====================================================
 
-$hasMinimumProposalIntegrity =
-    !empty(trim($parsed['entity']['entityName'] ?? '')) &&
+$entityName   = trim($parsed['entity']['entityName'] ?? $parsed['entity']['name'] ?? '');
+$locationAddr = trim($parsed['location']['locationAddress'] ?? $parsed['location']['address'] ?? '');
+
+$hasMinimumProposalIntegrity = 
+    !empty($entityName) &&
     (
-        !empty(trim($parsed['location']['locationAddress'] ?? '')) ||
+        !empty($locationAddr) || 
         $isExplicitLocationOnlyIntent === true
     );
 
 if (!$hasMinimumProposalIntegrity) {
-    // Malformed or incomplete proposal
+    // Truly malformed / incomplete proposal
     $pcm['pc']        = null;
     $pcm['pcStatus']  = null;
     $pcm['rs']        = ['RS-1'];
@@ -1121,7 +1124,7 @@ if (empty($parsed['location']['locationPlaceId'] ?? '')) {
 if (
     ($locationValidation['isMaricopa'] ?? false) === true &&
     ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches' &&
-    !in_array($pcm['pc'], ['PC-3', 'PC-4'], true)
+    !in_array(($pcm['pc'] ?? null), ['PC-3', 'PC-4'], true)
 ) {
     $pcm['rs'][]         = 'RS-6';
     $pcm['rsStatuses'][] = 'multiple_parcels';
@@ -1134,7 +1137,7 @@ if (
     ($locationValidation['isMaricopa'] ?? false) === true &&
     ($locationValidation['parcelStatus'] ?? '') !== 'resolved' &&
     ($locationValidation['parcelStatus'] ?? '') !== 'multiple_matches' &&
-    !in_array($pcm['pc'], ['PC-3', 'PC-4'], true)
+    !in_array(($pcm['pc'] ?? null), ['PC-3', 'PC-4'], true)
 ) {
     $pcm['rs'][]         = 'RS-7';
     $pcm['rsStatuses'][] = 'unresolved_parcel';
