@@ -1032,123 +1032,170 @@ if (!$pdo) {
 // =====================================================
 // Initialize PCM Object
 // =====================================================
+
 $pcm = [
-    'pc'              => null,
-    'pcStatus'        => null,
-    'rs'              => [],
-    'rsStatuses'      => [],
-    'readyForCommit'  => false,
-    'requiresReview'  => false,
-    'blocksCommit'    => true,
-    'action'          => null
+    'pc'               => null,   // PC-1, PC-2, PC-3, PC-4
+    'pcStatus'         => null,
+
+    'rs'               => [],     // Additive governance overlays
+    'rsStatuses'       => [],
+
+    'readyForCommit'   => false,
+    'requiresReview'   => false,
+    'blocksCommit'     => true,
+
+    'action'           => null
 ];
 
 // =====================================================
-// PASS 0 — Minimum Integrity Gate
+// PASS 1 — Proposed Contact (PC) Classification
 // =====================================================
 
-$entityName   = trim($parsed['entity']['entityName'] ?? $parsed['entity']['name'] ?? '');
-$locationAddr = trim($parsed['location']['locationAddress'] ?? $parsed['location']['address'] ?? '');
+// Explicit Location-Only Proposal
+if ($isExplicitLocationOnlyIntent === true) {
 
-$hasMinimumProposalIntegrity = 
-    !empty($entityName) &&
-    (
-        !empty($locationAddr) || 
-        $isExplicitLocationOnlyIntent === true
-    );
+    $pcm['pc']       = 'PC-4';
+    $pcm['pcStatus'] = 'proposed_location';
 
-if (!$hasMinimumProposalIntegrity) {
-    // Truly malformed / incomplete proposal
-    $pcm['pc']        = null;
-    $pcm['pcStatus']  = null;
-    $pcm['rs']        = ['RS-1'];
-    $pcm['rsStatuses'] = ['incomplete'];
-    $pcm['action']    = 'resolve_missing_fields';
+    $pcm['action']   = 'create_location_only';
+
+    $pcm['blocksCommit'] = false;
+
+// Exact Duplicate Contact
+} elseif (($duplicate['status'] ?? '') === 'exact') {
+
+    $pcm['pc']       = null;
+    $pcm['pcStatus'] = 'duplicate_contact';
+
+    $pcm['action']   = 'reject_duplicate';
+
+    $pcm['rs'][]         = 'RS-5';
+    $pcm['rsStatuses'][] = 'duplicate_contact';
+
     $pcm['blocksCommit'] = true;
-} 
-else {
-    // =====================================================
-    // PASS 1 — Proposed Contact (PC) Classification
-    // =====================================================
 
-    if ($isExplicitLocationOnlyIntent === true) {
-        $pcm['pc']       = 'PC-4';
-        $pcm['pcStatus'] = 'proposed_location';
-        $pcm['action']   = 'create_location_only';
-        $pcm['blocksCommit'] = false;
+// Existing Location + New Contact
+} elseif (($locationDuplicate['status'] ?? '') === 'exact') {
 
-    } elseif (($duplicate['status'] ?? '') === 'exact') {
-        $pcm['pc']       = null;
-        $pcm['pcStatus'] = 'duplicate_contact';
-        $pcm['action']   = 'reject_duplicate';
-        $pcm['rs'][]     = 'RS-5';
-        $pcm['rsStatuses'][] = 'duplicate_contact';
-        $pcm['blocksCommit'] = true;
+    $pcm['pc']       = 'PC-3';
+    $pcm['pcStatus'] = 'existing_location';
 
-    } elseif (($locationDuplicate['status'] ?? '') === 'exact') {
-        $pcm['pc']       = 'PC-3';
-        $pcm['pcStatus'] = 'existing_location';
-        $pcm['action']   = 'link_existing_location';
-        $pcm['blocksCommit'] = false;
+    $pcm['action']   = 'link_existing_location';
 
-    } elseif (
-        ($entityDuplicate['status'] ?? '') === 'exact' &&
-        ($locationDuplicate['status'] ?? '') !== 'exact' &&
-        !$isExplicitLocationOnlyIntent
-    ) {
-        $pcm['pc']       = 'PC-2';
-        $pcm['pcStatus'] = 'existing_entity_new_location';
-        $pcm['action']   = 'link_existing_entity';
-        $pcm['blocksCommit'] = false;
+    $pcm['blocksCommit'] = false;
 
-    } else {
-        $pcm['pc']       = 'PC-1';
-        $pcm['pcStatus'] = 'new_elc';
-        $pcm['action']   = 'insert_new';
-        $pcm['blocksCommit'] = false;
-    }
+// Existing Entity + New Location + New Contact
+} elseif (
+    ($entityDuplicate['status'] ?? '') === 'exact'
+    && ($locationDuplicate['status'] ?? '') !== 'exact'
+    && !$isExplicitLocationOnlyIntent
+) {
+
+    $pcm['pc']       = 'PC-2';
+    $pcm['pcStatus'] = 'existing_entity_new_location';
+
+    $pcm['action']   = 'link_existing_entity';
+
+    $pcm['blocksCommit'] = false;
+
+// New Entity + New Location + New Contact
+} else {
+
+    $pcm['pc']       = 'PC-1';
+    $pcm['pcStatus'] = 'new_elc';
+
+    $pcm['action']   = 'insert_new';
+
+    $pcm['blocksCommit'] = false;
 }
 
 // =====================================================
-// PASS 2 — Governance / Review States (RS) Overlays
+// PASS 2 — Governance / Review States (RS)
 // =====================================================
 
+// -----------------------------------------------------
+// RS-1 — Incomplete Proposal
+// -----------------------------------------------------
+
+if (
+    ($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete'
+    && ($pcm['pc'] ?? null) !== 'PC-4'
+)
+
+// -----------------------------------------------------
 // RS-8 — Invalid Location
-if (empty($parsed['location']['locationPlaceId'] ?? '')) {
+// -----------------------------------------------------
+
+if (empty($parsed['location']['locationPlaceId'] ?? null)) {
+
     $pcm['rs'][]         = 'RS-8';
     $pcm['rsStatuses'][] = 'invalid_location';
+
     $pcm['blocksCommit'] = true;
 }
 
-// RS-6 — Multiple Parcels (exempt PC-3 and PC-4)
+// -----------------------------------------------------
+// RS-6 — Multiple Parcels
+// -----------------------------------------------------
+//
+// Governance Principle:
+//
+// PC-2:
+//     Existing Entity + New Location
+//     → Requires parcel confirmation
+//
+// PC-3:
+//     Existing Trusted Location
+//     → Parcel ambiguity does NOT block continuity
+//
+// PC-4:
+//     Location-Only Intake
+//     → Parcel ambiguity does NOT block intake
+//
+// -----------------------------------------------------
+
 if (
-    ($locationValidation['isMaricopa'] ?? false) === true &&
-    ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches' &&
-    !in_array(($pcm['pc'] ?? null), ['PC-3', 'PC-4'], true)
+    ($locationValidation['isMaricopa'] ?? false) === true
+    && ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches'
+    && !in_array(
+        ($pcm['pc'] ?? null),
+        ['PC-3', 'PC-4'],
+        true
+    )
 ) {
+
     $pcm['rs'][]         = 'RS-6';
     $pcm['rsStatuses'][] = 'multiple_parcels';
+
     $pcm['requiresReview'] = true;
+
+    // Interactive governance pause
     $pcm['blocksCommit'] = true;
 }
 
-// RS-7 — Unresolved Parcel (exempt PC-3 and PC-4)
+// -----------------------------------------------------
+// RS-7 — Unresolved Parcel
+// -----------------------------------------------------
+
 if (
-    ($locationValidation['isMaricopa'] ?? false) === true &&
-    ($locationValidation['parcelStatus'] ?? '') !== 'resolved' &&
-    ($locationValidation['parcelStatus'] ?? '') !== 'multiple_matches' &&
-    !in_array(($pcm['pc'] ?? null), ['PC-3', 'PC-4'], true)
+    ($locationValidation['isMaricopa'] ?? false) === true
+    && ($locationValidation['parcelStatus'] ?? '') !== 'resolved'
+    && ($locationValidation['parcelStatus'] ?? '') !== 'multiple_matches'
+    && !in_array($pcm['pc'], ['PC-3', 'PC-4'], true)
 ) {
+
     $pcm['rs'][]         = 'RS-7';
     $pcm['rsStatuses'][] = 'unresolved_parcel';
+
     $pcm['blocksCommit'] = true;
 }
 
 // =====================================================
-// Final RS Resolution — RS-0 only if truly clean
+// RS-0 — Acceptable Governance State
 // =====================================================
 
 if (empty($pcm['rs'])) {
+
     $pcm['rs'][]         = 'RS-0';
     $pcm['rsStatuses'][] = 'acceptable';
 }
