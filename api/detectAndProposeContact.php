@@ -190,22 +190,62 @@ error_log(sprintf(
 ));
 
 // =====================================================
-// PCM-07 — Explicit Location-Only Directive Detection
+// PC-4 — Explicit Location-Only Directive Detection
 // =====================================================
 
-if (preg_match('/add\s+location\s+only\s+for\s+([^\n\r]+)/i', $rawInput, $matches)) {
+// Examples Supported:
+//
+// Add location only for Christy Signs
+// Add this as a new location only for Christy Signs:
+// New location only for Christy Signs
+// Add a location for Christy Signs
+//
+
+if (
+    preg_match(
+        '/(?:add\s+)?(?:this\s+as\s+)?(?:a\s+new\s+)?location\s+only\s+for\s+([^\n\r:]+)/i',
+        $rawInput,
+        $matches
+    )
+) {
+
+    // -------------------------------------------------
+    // Explicit Location-Only Intent
+    // -------------------------------------------------
 
     $isExplicitLocationOnlyIntent = true;
-    $declaredEntityName = trim($matches[1]);
 
-    error_log('[PCM-07] Explicit Location-Only Directive Detected');
-    error_log('[PCM-07] Declared Entity: ' . $declaredEntityName);
+    $declaredEntityName =
+        trim($matches[1]);
 
-    // Remove directive before AI parsing to prevent contamination
-    $rawInput = preg_replace('/add\s+location\s+only\s+for\s+[^\n\r]+/i', '', $rawInput, 1);
+    error_log('[PC-4] Explicit Location-Only Directive Detected');
+
+    error_log(
+        '[PC-4] Declared Entity: '
+        . $declaredEntityName
+    );
+
+    // -------------------------------------------------
+    // Remove Directive Before AI Parsing
+    // Prevents contamination of:
+    //
+    // - entity extraction
+    // - contact extraction
+    // - AI intent parsing
+    // -------------------------------------------------
+
+    $rawInput = preg_replace(
+        '/(?:add\s+)?(?:this\s+as\s+)?(?:a\s+new\s+)?location\s+only\s+for\s+[^\n\r:]+:?/i',
+        '',
+        $rawInput,
+        1
+    );
+
     $rawInput = trim($rawInput);
 
-    error_log('[PCM-07] Directive stripped before AI parse');
+    error_log(
+        '[PC-4] Directive stripped before AI parse'
+    );
 }
 
 // -------------------------------------------------
