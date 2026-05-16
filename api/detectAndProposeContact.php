@@ -1117,13 +1117,10 @@ if ($isExplicitLocationOnlyIntent === true) {
 // RS-1 — Incomplete Proposal
 // -----------------------------------------------------
 
-if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
-
-    $pcm['rs'][]         = 'RS-1';
-    $pcm['rsStatuses'][] = 'incomplete';
-
-    $pcm['blocksCommit'] = true;
-}
+if (
+    ($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete'
+    && ($pcm['pc'] ?? null) !== 'PC-4'
+)
 
 // -----------------------------------------------------
 // RS-8 — Invalid Location
@@ -1140,11 +1137,31 @@ if (empty($parsed['location']['locationPlaceId'] ?? null)) {
 // -----------------------------------------------------
 // RS-6 — Multiple Parcels
 // -----------------------------------------------------
+//
+// Governance Principle:
+//
+// PC-2:
+//     Existing Entity + New Location
+//     → Requires parcel confirmation
+//
+// PC-3:
+//     Existing Trusted Location
+//     → Parcel ambiguity does NOT block continuity
+//
+// PC-4:
+//     Location-Only Intake
+//     → Parcel ambiguity does NOT block intake
+//
+// -----------------------------------------------------
 
 if (
     ($locationValidation['isMaricopa'] ?? false) === true
     && ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches'
-    && !in_array(($pcm['pc'] ?? null), ['PC-3'], true)
+    && !in_array(
+        ($pcm['pc'] ?? null),
+        ['PC-3', 'PC-4'],
+        true
+    )
 ) {
 
     $pcm['rs'][]         = 'RS-6';
