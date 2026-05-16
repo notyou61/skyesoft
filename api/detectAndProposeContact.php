@@ -987,81 +987,44 @@ if (!$pdo) {
 
 #endregion
 
-#region PCM DECISION — Governance Matrix
+#region PCM DECISION — Governance Matrix (Classification + Enforcement)
+
+$pcm = [
+    'status'          => 'unknown',
+    'readyForCommit'  => false,
+    'requiresReview'  => false,
+    'blocksCommit'    => true,        // Default = blocked (safe)
+    'action'          => null
+];
 
 // =====================================================
-// Incomplete Proposal
+// PASS 1: Classification — What type of proposal is this?
 // =====================================================
 
 if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
 
-    $pcm = [
-        'status' => 'incomplete',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => true,
-        'action' => 'resolve_missing_fields'
-    ];
-
-// =====================================================
-// Invalid / Unresolved Location
-// =====================================================
+    $pcm['status'] = 'incomplete';
+    $pcm['action'] = 'resolve_missing_fields';
 
 } elseif (empty($parsed['location']['locationPlaceId'] ?? '')) {
 
-    $pcm = [
-        'status' => 'invalid_location',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => true,
-        'action' => 'resolve_location'
-    ];
-
-// =====================================================
-// Exact Duplicate Contact
-// =====================================================
+    $pcm['status'] = 'invalid_location';
+    $pcm['action'] = 'resolve_location';
 
 } elseif (($duplicate['status'] ?? '') === 'exact') {
 
-    $pcm = [
-        'status' => 'duplicate_contact',
-        'readyForCommit' => false,
-        'requiresReview' => false,
-        'blocksCommit' => true,
-        'action' => 'reject_duplicate'
-    ];
-
-// =====================================================
-// Possible Duplicate Contact
-// =====================================================
+    $pcm['status'] = 'duplicate_contact';
+    $pcm['action'] = 'reject_duplicate';
 
 } elseif (($duplicate['status'] ?? '') === 'possible') {
 
-    $pcm = [
-        'status' => 'possible_duplicate_contact',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => false,
-        'action' => 'confirm_duplicate'
-    ];
-
-// =====================================================
-// Existing Operational Location (PCM-05)
-// =====================================================
+    $pcm['status'] = 'possible_duplicate_contact';
+    $pcm['action'] = 'confirm_duplicate';
 
 } elseif (($locationDuplicate['status'] ?? '') === 'exact') {
 
-    $pcm = [
-        'status' => 'existing_location',
-        'readyForCommit' => true,
-        'requiresReview' => true,
-        'blocksCommit' => false,
-        'action' => 'link_existing_location'
-    ];
-
-// =====================================================
-// Existing Entity + New Location + Contact (PCM-06)
-// =====================================================
+    $pcm['status'] = 'existing_location';
+    $pcm['action'] = 'link_existing_location';
 
 } elseif (
     ($entityDuplicate['status'] ?? '') === 'exact'
@@ -1069,17 +1032,8 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     && !$isLocationOnlyProposal
 ) {
 
-    $pcm = [
-        'status' => 'existing_entity_new_location',
-        'readyForCommit' => true,
-        'requiresReview' => false,
-        'blocksCommit' => false,
-        'action' => 'link_existing_entity'
-    ];
-
-// =====================================================
-// NEW: Proposed Location (PL) — Existing Entity + New Location + NO Contact
-// =====================================================
+    $pcm['status'] = 'existing_entity_new_location';
+    $pcm['action'] = 'link_existing_entity';
 
 } elseif (
     $isLocationOnlyProposal
@@ -1087,93 +1041,64 @@ if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     && ($locationDuplicate['status'] ?? '') !== 'exact'
 ) {
 
-    $pcm = [
-        'status' => 'proposed_location',
-        'readyForCommit' => true,
-        'requiresReview' => false,
-        'blocksCommit' => false,
-        'action' => 'create_location_only'
-    ];
-
-// =====================================================
-// Possible Location Duplicate
-// =====================================================
+    $pcm['status'] = 'proposed_location';
+    $pcm['action'] = 'create_location_only';
 
 } elseif (($locationDuplicate['status'] ?? '') === 'possible') {
 
-    $pcm = [
-        'status' => 'possible_location_duplicate',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => false,
-        'action' => 'confirm_location'
-    ];
-
-// =====================================================
-// Multiple Parcel Candidates — Force Review (Even for Existing Locations)
-// =====================================================
-
-} elseif (
-    ($locationValidation['isMaricopa'] ?? false) === true
-    && ($locationValidation['parcelStatus'] ?? '') === 'multiple_matches'
-) {
-
-    $pcm = [
-        'status' => 'multiple_parcels',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => true,           // ← Critical change
-        'action' => 'confirm_parcel'
-    ];
-
-// =====================================================
-// Unresolved Parcel — STRICT for Maricopa (including PCM-05/PCM-06)
-// =====================================================
-
-} elseif (
-    ($locationValidation['isMaricopa'] ?? false) === true
-    && ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
-) {
-
-    $pcm = [
-        'status' => 'unresolved_parcel',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => true,
-        'action' => 'resolve_parcel'
-    ];
-
-// =====================================================
-// Incomplete Address
-// =====================================================
-
-} elseif (
-    empty(trim($parsed['location']['address'] ?? ''))
-    || trim($parsed['location']['address']) === 'Phoenix'
-    || strlen(trim($parsed['location']['address'] ?? '')) < 8
-) {
-
-    $pcm = [
-        'status' => 'incomplete_address',
-        'readyForCommit' => false,
-        'requiresReview' => true,
-        'blocksCommit' => true,
-        'action' => 'resolve_address'
-    ];
-
-// =====================================================
-// Default: New Entity + Location + Contact
-// =====================================================
+    $pcm['status'] = 'possible_location_duplicate';
+    $pcm['action'] = 'confirm_location';
 
 } else {
 
-    $pcm = [
-        'status' => 'new_elc',
-        'readyForCommit' => true,
-        'requiresReview' => false,
-        'blocksCommit' => false,
-        'action' => 'insert_new'
-    ];
+    $pcm['status'] = 'new_elc';
+    $pcm['action'] = 'insert_new';
+}
+
+// =====================================================
+// PASS 1b: Set Operational Intent (Grant Eligibility)
+// =====================================================
+
+if (in_array($pcm['status'], [
+    'new_elc',
+    'existing_entity_new_location',
+    'existing_location',
+    'proposed_location'
+], true)) {
+    $pcm['blocksCommit']   = false;
+    $pcm['readyForCommit'] = true;
+}
+
+// Explicit review states
+if (in_array($pcm['status'], [
+    'possible_duplicate_contact',
+    'possible_location_duplicate',
+    'existing_location'
+], true)) {
+    $pcm['requiresReview'] = true;
+}
+
+// =====================================================
+// PASS 2: Governance Enforcement — Apply Restrictions
+// =====================================================
+
+if (
+    ($locationValidation['isMaricopa'] ?? false) === true
+    && ($locationValidation['parcelStatus'] ?? 'unknown') !== 'resolved'
+    && !in_array($pcm['status'], ['existing_location', 'duplicate_contact', 'proposed_location'], true)
+) {
+
+    if (($locationValidation['parcelStatus'] ?? '') === 'multiple_matches') {
+        $pcm['status'] = 'multiple_parcels';
+        $pcm['action'] = 'confirm_parcel';
+    } else {
+        $pcm['status'] = 'unresolved_parcel';
+        $pcm['action'] = 'resolve_parcel';
+    }
+
+    $pcm['readyForCommit'] = false;
+    $pcm['requiresReview'] = true;
+    $pcm['blocksCommit']   = true;
 }
 
 #endregion
