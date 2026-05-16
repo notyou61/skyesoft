@@ -146,87 +146,251 @@ $meta['enrichments'] = array_values(array_filter([
 
 #endregion
 
-#region RESOLUTION OBJECT + STRONG PCM-DRIVEN NARRATIVES + PERSISTENCE SYNCHRONIZATION
+#region RESOLUTION OBJECT + PC/RS GOVERNANCE + PERSISTENCE
 
-$pcmStatus = $pcm['status'] ?? 'incomplete';
+// =====================================================
+// Extract PC / RS Governance State
+// =====================================================
 
-error_log('[DECISION DEBUG] pcmStatus=' . $pcmStatus);
+$pc         = $pcm['pc'] ?? null;
+$pcStatus   = $pcm['pcStatus'] ?? 'unknown';
+
+$rs         = $pcm['rs'] ?? [];
+$rsStatuses = $pcm['rsStatuses'] ?? [];
+
+$hasRs = function ($code) use ($rs) {
+    return in_array($code, $rs, true);
+};
+
+// =====================================================
+// Legacy Compatibility (Temporary)
+// =====================================================
+
+$pcmStatus = $pcStatus;
+
+if ($hasRs('RS-1')) {
+    $pcmStatus = 'incomplete';
+}
+
+if ($hasRs('RS-5')) {
+    $pcmStatus = 'duplicate_contact';
+}
+
+if ($hasRs('RS-6')) {
+    $pcmStatus = 'multiple_parcels';
+}
+
+if ($hasRs('RS-7')) {
+    $pcmStatus = 'unresolved_parcel';
+}
+
+if ($hasRs('RS-8')) {
+    $pcmStatus = 'invalid_location';
+}
+
+error_log('[DECISION DEBUG] pc=' . ($pc ?? 'null'));
+error_log('[DECISION DEBUG] pcStatus=' . $pcStatus);
+error_log('[DECISION DEBUG] rs=' . json_encode($rs));
 error_log('[DECISION DEBUG] readyForCommit=' . var_export($pcm['readyForCommit'] ?? null, true));
 
 // =====================================================
-// 1. PERSISTENCE — Authoritative from PCM Status
+// 1. PERSISTENCE — PC Driven
 // =====================================================
+
 $persistence = [
-    'entity'        => ['action' => 'none', 'entityId' => null],
-    'location'      => ['action' => 'none', 'locationId' => null],
-    'contact'       => ['action' => 'none', 'contactId' => null],
-    'commitAllowed' => $pcm['readyForCommit'] ?? false
+    'entity' => [
+        'action'   => 'none',
+        'entityId' => null
+    ],
+
+    'location' => [
+        'action'     => 'none',
+        'locationId' => null
+    ],
+
+    'contact' => [
+        'action'    => 'none',
+        'contactId' => null
+    ],
+
+    'commitAllowed' => false
 ];
 
-switch ($pcmStatus) {
-    case 'new_elc':
-        $persistence['entity']['action']   = 'create';
-        $persistence['location']['action'] = 'create';
-        $persistence['contact']['action']  = 'create';
-        break;
+// -----------------------------------------------------
+// PC-1 — New ELC
+// -----------------------------------------------------
 
-    case 'existing_entity_new_location':
-        $persistence['entity']['action']   = 'reuse';
-        $persistence['location']['action'] = 'create';
-        $persistence['contact']['action']  = 'create';
-        break;
+if ($pc === 'PC-1') {
 
-    case 'existing_location':
-        $persistence['entity']['action']   = 'reuse';
-        $persistence['location']['action'] = 'reuse';
-        $persistence['contact']['action']  = 'create';
-        break;
+    $persistence['entity']['action']   = 'create';
+    $persistence['location']['action'] = 'create';
+    $persistence['contact']['action']  = 'create';
+}
 
-    case 'proposed_location':
-    case 'location_only':
-        $persistence['entity']['action']   = 'reuse';
-        $persistence['location']['action'] = 'create';
-        $persistence['contact']['action']  = 'skip';
-        break;
+// -----------------------------------------------------
+// PC-2 — Existing Entity + New Location
+// -----------------------------------------------------
 
-    case 'duplicate_contact':
-    case 'incomplete':
-    case 'invalid_location':
-    case 'incomplete_address':
-    case 'unresolved_parcel':
-    case 'multiple_parcels':
-        $persistence['entity']['action']   = 'reject';
-        $persistence['location']['action'] = 'reject';
-        $persistence['contact']['action']  = 'reject';
-        $persistence['commitAllowed']      = false;
-        break;
+elseif ($pc === 'PC-2') {
 
-    default:
-        // Fallback for possible duplicates etc.
-        $persistence['commitAllowed'] = $pcm['readyForCommit'] ?? false;
-        break;
+    $persistence['entity']['action']   = 'reuse';
+    $persistence['location']['action'] = 'create';
+    $persistence['contact']['action']  = 'create';
+}
+
+// -----------------------------------------------------
+// PC-3 — Existing Location
+// -----------------------------------------------------
+
+elseif ($pc === 'PC-3') {
+
+    $persistence['entity']['action']   = 'reuse';
+    $persistence['location']['action'] = 'reuse';
+    $persistence['contact']['action']  = 'create';
+}
+
+// -----------------------------------------------------
+// PC-4 — Proposed Location
+// -----------------------------------------------------
+
+elseif ($pc === 'PC-4') {
+
+    $persistence['entity']['action']   = 'reuse';
+    $persistence['location']['action'] = 'create';
+    $persistence['contact']['action']  = 'skip';
 }
 
 // =====================================================
-// 2. RESOLUTION OBJECT
+// 2. RS Governance Overlays
 // =====================================================
+
+// -----------------------------------------------------
+// RS-1 — Incomplete
+// -----------------------------------------------------
+
+if ($hasRs('RS-1')) {
+
+    $persistence['entity']['action']   = 'reject';
+    $persistence['location']['action'] = 'reject';
+    $persistence['contact']['action']  = 'reject';
+}
+
+// -----------------------------------------------------
+// RS-5 — Duplicate Contact
+// -----------------------------------------------------
+
+if ($hasRs('RS-5')) {
+
+    $persistence['entity']['action']   = 'reject';
+    $persistence['location']['action'] = 'reject';
+    $persistence['contact']['action']  = 'reject';
+}
+
+// -----------------------------------------------------
+// RS-6 — Multiple Parcels
+// -----------------------------------------------------
+
+if ($hasRs('RS-6')) {
+
+    $persistence['entity']['action']   = 'hold';
+    $persistence['location']['action'] = 'hold';
+    $persistence['contact']['action']  = 'hold';
+}
+
+// -----------------------------------------------------
+// RS-7 — Unresolved Parcel
+// -----------------------------------------------------
+
+if ($hasRs('RS-7')) {
+
+    $persistence['entity']['action']   = 'reject';
+    $persistence['location']['action'] = 'reject';
+    $persistence['contact']['action']  = 'reject';
+}
+
+// -----------------------------------------------------
+// RS-8 — Invalid Location
+// -----------------------------------------------------
+
+if ($hasRs('RS-8')) {
+
+    $persistence['entity']['action']   = 'reject';
+    $persistence['location']['action'] = 'reject';
+    $persistence['contact']['action']  = 'reject';
+}
+
+// =====================================================
+// Final Governance State
+// =====================================================
+
+$persistence['commitAllowed'] =
+    $pcm['readyForCommit'] ?? false;
+
+// =====================================================
+// 3. RESOLUTION OBJECT
+// =====================================================
+
 $resolution = [
+
+    // -------------------------------------------------
+    // New PC / RS Governance Model
+    // -------------------------------------------------
+
+    'pc' => [
+        'code'   => $pc,
+        'status' => $pcStatus
+    ],
+
+    'rs' => [
+        'codes'    => $rs,
+        'statuses' => $rsStatuses
+    ],
+
+    // -------------------------------------------------
+    // Legacy Compatibility (Temporary)
+    // -------------------------------------------------
+
     'pcmStatus' => $pcmStatus,
+
+    // -------------------------------------------------
+    // Classification
+    // -------------------------------------------------
+
     'classification' => [
-        'status' => in_array($pcmStatus, ['existing_location', 'existing_entity_new_location', 'proposed_location', 'new_elc'], true) 
-            ? 'accepted' 
-            : ($persistence['commitAllowed'] ? 'accepted' : 'unacceptable')
+        'status' => ($pcm['readyForCommit'] ?? false)
+            ? 'accepted'
+            : 'unacceptable'
     ],
+
+    // -------------------------------------------------
+    // Decision
+    // -------------------------------------------------
+
     'decision' => [
-        'actionTypeId'   => $persistence['commitAllowed'] ? 9 : 10,
-        'actionName'     => $pcm['action'] ?? 'resolve',
-        'readyForCommit' => $persistence['commitAllowed']
+        'actionTypeId' => $persistence['commitAllowed']
+            ? 9
+            : 10,
+
+        'actionName' => $pcm['action'] ?? 'resolve',
+
+        'readyForCommit' =>
+            $persistence['commitAllowed']
     ],
+
+    // -------------------------------------------------
+    // Issues
+    // -------------------------------------------------
+
     'issues' => [
         'blocking'      => [],
         'review'        => [],
         'informational' => $meta['enrichments'] ?? []
     ],
+
+    // -------------------------------------------------
+    // Narratives
+    // -------------------------------------------------
+
     'narratives' => [
         'decision'      => [],
         'blocking'      => [],
@@ -235,101 +399,96 @@ $resolution = [
     ]
 ];
 
-// Populate issues
-if ($pcmStatus === 'duplicate_contact') {
-    $resolution['issues']['blocking'][] = $pcmStatus;
-} elseif (in_array($pcmStatus, ['incomplete', 'invalid_location', 'incomplete_address', 'unresolved_parcel', 'multiple_parcels'])) {
-    $resolution['issues']['review'][] = $pcmStatus;
+// =====================================================
+// 4. PC Narratives
+// =====================================================
+
+switch ($pc) {
+
+    case 'PC-1':
+
+        $resolution['narratives']['decision'][] =
+            'This proposal represents a new entity, location, and contact.';
+        break;
+
+    case 'PC-2':
+
+        $resolution['narratives']['decision'][] =
+            'This proposal references an existing entity and a new operational location.';
+        break;
+
+    case 'PC-3':
+
+        $resolution['narratives']['decision'][] =
+            'This proposal references an existing operational location.';
+        break;
+
+    case 'PC-4':
+
+        $resolution['narratives']['decision'][] =
+            'This proposal represents a location-only operational intake.';
+        break;
 }
 
 // =====================================================
-// 3. STRONG PCM-DRIVEN NARRATIVES
+// 5. RS Narratives
 // =====================================================
-$resolvedNarrative = [];
 
-switch ($pcmStatus) {
+// RS-0 — Acceptable
+if ($hasRs('RS-0')) {
 
-    case 'duplicate_contact':
-        $resolvedNarrative = [
-            'decision'  => ['This proposed contact is a duplicate and cannot be accepted.'],
-            'blocking'  => ['A contact with matching name, phone, and/or email already exists in the system.'],
-            'review'    => ['Review the existing contact record before proceeding.']
-        ];
-        break;
-
-    case 'existing_location':
-        $resolvedNarrative = [
-            'decision'      => ['This proposal references an existing entity and location record.'],
-            'review'        => ['A new contact will be linked to the existing location.'],
-            'informational' => ['No new entity or location record will be created.']
-        ];
-        break;
-
-    case 'existing_entity_new_location':
-        $resolvedNarrative = [
-            'decision' => ['This proposal references an existing entity and a new operational location.'],
-            'review'   => ['A new location and contact will be linked to the existing entity.'],
-            'informational' => ['No new entity record will be created.']
-        ];
-        break;
-
-    case 'proposed_location':
-    case 'location_only':
-        $resolvedNarrative = [
-            'decision' => [
-                'The proposal is operationally eligible for insertion as a new location associated with an existing entity.'
-            ],
-            'informational' => [
-                'The submitted address was successfully geocoded and associated with a resolved Maricopa County parcel.',
-                'A single parcel candidate was identified and automatically selected.',
-                'All current operational validation requirements were satisfied.',
-                'No contact relationship will be created for this proposal.'
-            ]
-        ];
-        break;
-
-    case 'unresolved_parcel':
-        $resolvedNarrative = [
-            'decision' => ['We could not resolve this address to a Maricopa County parcel.'],
-            'review'   => ['Please verify the address or provide additional details such as an APN, lot number, or cross street.'],
-            'informational' => ['Google and USPS validation succeeded.', 'Parcel lookup returned no matches.']
-        ];
-        break;
-
-    case 'multiple_parcels':
-        $resolvedNarrative = [
-            'decision'      => ['Multiple parcels match this address.'],
-            'review'        => ['Please select the correct parcel from the candidates shown.'],
-            'informational' => ['User selection is required before proceeding.']
-        ];
-        break;
-
-    case 'incomplete':
-        $resolvedNarrative = [
-            'decision'  => ['This proposal is missing required information and cannot be inserted.'],
-            'blocking'  => ['Required fields such as company name, full contact identity, phone, or email were not provided.'],
-            'review'    => ['Complete the missing fields before continuing.']
-        ];
-        break;
-
-    // Default / new_elc
-    default:
-        $resolvedNarrative = buildOperationalNarratives($aiNarrativeContext ?? []);
-        if (empty($resolvedNarrative['decision'] ?? [])) {
-            $resolvedNarrative = [
-                'decision'      => ['The proposal is eligible for insertion as a new entity, location, and contact.'],
-                'informational' => ['The address was successfully validated and linked to a Maricopa County parcel.']
-            ];
-        }
-        break;
+    $resolution['narratives']['informational'][] =
+        'No governance issues were detected.';
 }
 
-$resolution['narratives'] = array_merge([
-    'decision'      => [],
-    'blocking'      => [],
-    'review'        => [],
-    'informational' => []
-], $resolvedNarrative);
+// RS-1 — Incomplete
+if ($hasRs('RS-1')) {
+
+    $resolution['issues']['review'][] = 'incomplete';
+
+    $resolution['narratives']['blocking'][] =
+        'Required information is incomplete or missing.';
+}
+
+// RS-5 — Duplicate
+if ($hasRs('RS-5')) {
+
+    $resolution['issues']['blocking'][] =
+        'duplicate_contact';
+
+    $resolution['narratives']['blocking'][] =
+        'An exact duplicate contact already exists.';
+}
+
+// RS-6 — Multiple Parcels
+if ($hasRs('RS-6')) {
+
+    $resolution['issues']['review'][] =
+        'multiple_parcels';
+
+    $resolution['narratives']['review'][] =
+        'Multiple parcel candidates were found and user selection is required.';
+}
+
+// RS-7 — Unresolved Parcel
+if ($hasRs('RS-7')) {
+
+    $resolution['issues']['blocking'][] =
+        'unresolved_parcel';
+
+    $resolution['narratives']['blocking'][] =
+        'Parcel resolution failed and commit is blocked.';
+}
+
+// RS-8 — Invalid Location
+if ($hasRs('RS-8')) {
+
+    $resolution['issues']['blocking'][] =
+        'invalid_location';
+
+    $resolution['narratives']['blocking'][] =
+        'The proposed location could not be validated.';
+}
 
 #endregion
 
