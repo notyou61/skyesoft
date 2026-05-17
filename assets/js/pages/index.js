@@ -1097,13 +1097,13 @@ window.SkyIndex = {
         if (await this.isContactCreationIntent(text, normalized)) {
             console.log('📇 Contact Intent Detected → Clean Workflow');
 
-            // 🔥 Suppress raw paste echo
+            // Suppress BEFORE any further rendering
             this.suppressRawContactEcho();
 
-            // Show clean processing state
+            // Show processing state
             this.renderContactProcessingState();
 
-            // Run the AI pipeline
+            // Run AI pipeline
             await this.executeAICommand(text, activitySessionId);
             return;
         }
@@ -1389,38 +1389,36 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Contact Intake UX — Clean Workflow States
-    /**
-     * Suppress raw pasted signature from appearing as a .commandLine.user
-     */
+    // #region 📇 Contact Intake UX — Clean Workflow States (Improved)
+
     suppressRawContactEcho() {
         const output = this.getOutputHost();
         if (!output) return;
 
         const userLines = Array.from(output.querySelectorAll('.commandLine.user'));
-        const lastUserLine = userLines[userLines.length - 1];
+        
+        for (let i = userLines.length - 1; i >= 0; i--) {
+            const line = userLines[i];
+            const content = (line.textContent || '').trim();
 
-        if (!lastUserLine) return;
-
-        const content = (lastUserLine.textContent || '').trim();
-
-        // Heuristic: looks like a signature block (phone/email/address)
-        if (
-            content.length > 60 &&
-            (
-                /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(content) ||
-                /@\S+\.\S+/.test(content) ||
-                /\b(AZ|TX|CA|FL|NY)\b.*\d{5}/.test(content)
-            )
-        ) {
-            lastUserLine.style.display = 'none';
-            console.log('[UX] Suppressed raw contact paste echo');
+            if (
+                content.length > 50 &&
+                (
+                    /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(content) ||
+                    /@\S+\.\S+/.test(content) ||
+                    /\b(AZ|TX|CA|FL|NY)\b.*\d{5}/.test(content) ||
+                    content.includes('NOTICE:') ||
+                    content.includes('Sent from my iPhone')
+                )
+            ) {
+                line.style.display = 'none';
+                line.dataset.suppressed = 'true';
+                console.log('[UX] Suppressed raw contact paste');
+                return; // only suppress the most recent one
+            }
         }
     },
 
-    /**
-     * Show clean processing state instead of raw input
-     */
     renderContactProcessingState() {
         const output = this.getOutputHost();
         if (!output) return;
@@ -1428,11 +1426,11 @@ window.SkyIndex = {
         const processing = document.createElement('div');
         processing.className = 'commandLine system processing';
         processing.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0;">
-                <span style="font-size: 1.3em; animation: spin 1.5s linear infinite;">⏳</span>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
+                <span style="font-size: 1.4em; animation: spin 1.4s linear infinite;">⏳</span>
                 <div>
-                    <strong>📇 Preparing proposed contact...</strong><br>
-                    <span style="font-size: 0.9em; color: #888;">AI normalization • Geocoding • Parcel • Governance</span>
+                    <strong>📇 Processing contact signature...</strong><br>
+                    <span style="font-size: 0.9em; color: #888;">AI extraction • Address validation • Parcel lookup • PCM review</span>
                 </div>
             </div>
         `;
@@ -1440,13 +1438,10 @@ window.SkyIndex = {
         output.appendChild(processing);
         this.scrollOutputToBottom(output);
 
-        this._currentContactProcessingEl = processing;   // store for later replacement
+        this._currentContactProcessingEl = processing;
         return processing;
     },
 
-    /**
-     * Remove processing indicator once proposal is ready
-     */
     replaceProcessingWithProposal() {
         if (this._currentContactProcessingEl) {
             this._currentContactProcessingEl.remove();
@@ -1683,7 +1678,12 @@ window.SkyIndex = {
 
         this.replaceProcessingWithProposal();   // ← ADD THIS LINE
 
-        this.clearOutput();
+        // Optional: Only remove suppressed raw signature lines
+        const output = this.getOutputHost();
+        if (output) {
+            const suppressedLines = output.querySelectorAll('.commandLine.user[data-suppressed="true"]');
+            suppressedLines.forEach(el => el.remove());
+        }
 
         this.currentProposal = data;
 
