@@ -1346,50 +1346,51 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — 2-Column Body Only
+    // #region 📇 Proposed Contact Renderer — Correctly Populated
     renderProposedContact(data) {
-        
-        console.log("🔍 FULL PROPOSAL DATA:", data);           // ← Add this
-        console.log("🔍 Parsed data:", data?.data || data?.parsed);
+        const proposalData = data?.data || {};
+        const entity = proposalData.entity || {};
+        const contact = proposalData.contact || {};
+        const location = proposalData.location || {};
 
-        const parsed = data?.data || data?.parsed || {};
-        const c = parsed.contact || {};
-        const e = parsed.entity || {};
-        const l = parsed.location || {};
+        // Build Contact Identity
+        const fullName = [
+            contact.contactSalutation,
+            contact.contactFirstName,
+            contact.contactLastName
+        ].filter(Boolean).join(' ');
 
-        const contactIdentity = [
-            [c.salutation, c.firstName, c.lastName].filter(Boolean).join(' '),
-            c.title || ''
-        ].filter(Boolean).join(' — ');
+        const contactIdentity = [fullName, contact.contactTitle]
+            .filter(Boolean).join(' — ');
 
+        // Build Full Address
         const fullAddress = [
-            l.address || '',
-            l.suite ? `Suite ${l.suite}` : '',
-            [l.city, l.state, l.zip].filter(Boolean).join(', ')
+            location.locationAddress || '',
+            location.locationAddressSuite ? `Suite ${location.locationAddressSuite}` : '',
+            [location.locationCity, location.locationState, location.locationZip]
+                .filter(Boolean).join(', ')
         ].filter(Boolean).join('\n');
 
         const html = `
             <div class="contact-card proposed compact">
 
-                <!-- HEADER -->
                 <div class="card-header bg-light py-2 px-3 border-bottom">
                     <strong>📇 Proposed Contact</strong>
                     <small class="text-muted ms-2">Review & confirm before saving</small>
                 </div>
 
-                <!-- BODY - 2 COLUMN -->
                 <div class="card-body p-3">
                     <form id="proposalForm">
 
                         <div class="form-row mb-2">
                             <label class="col-form-label">Company / Entity</label>
                             <div class="form-field">
-                                <input type="text" class="form-control form-control-sm" id="entityName" value="${e.name || ''}">
+                                <input type="text" class="form-control form-control-sm" id="entityName" value="${entity.entityName || ''}">
                             </div>
                         </div>
 
                         <div class="form-row mb-2">
-                            <label class="col-form-label">Contact</label>
+                            <label class="col-form-label">Contact Identity</label>
                             <div class="form-field">
                                 <input type="text" class="form-control form-control-sm" id="contactIdentity" value="${contactIdentity}">
                             </div>
@@ -1398,14 +1399,14 @@ window.SkyIndex = {
                         <div class="form-row mb-2">
                             <label class="col-form-label">Phone</label>
                             <div class="form-field">
-                                <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${c.primaryPhone || ''}">
+                                <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${contact.contactPrimaryPhone || ''}">
                             </div>
                         </div>
 
                         <div class="form-row mb-2">
                             <label class="col-form-label">Email</label>
                             <div class="form-field">
-                                <input type="email" class="form-control form-control-sm" id="email" value="${c.email || ''}">
+                                <input type="email" class="form-control form-control-sm" id="email" value="${contact.contactEmail || ''}">
                             </div>
                         </div>
 
@@ -1424,7 +1425,6 @@ window.SkyIndex = {
                     </form>
                 </div>
 
-                <!-- FOOTER -->
                 <hr class="my-0">
                 <div class="card-footer bg-light py-2 px-3 d-flex gap-2">
                     <button onclick="SkyIndex.acceptEditedProposal()" class="btn btn-success btn-sm flex-fill">
