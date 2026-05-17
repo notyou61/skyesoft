@@ -754,4 +754,13 @@ body[data-page="index"] .authText {
     text-decoration: underline !important;
 }
 
+.contact-card.proposed {
+    max-width: 620px !important;
+    margin: 12px 0 24px 32px !important;
+}
+
+.card-header, .card-footer {
+    background: #f8f9fa !important;
+}
+
 /* #endregion */

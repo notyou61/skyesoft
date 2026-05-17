@@ -1346,7 +1346,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer (Improved)
+    // #region 📇 Proposed Contact Renderer — Bootstrap Editable Form
     renderProposedContact(data) {
         const parsed = data?.data || data?.parsed || {};
         const c = parsed.contact || {};
@@ -1355,59 +1355,118 @@ window.SkyIndex = {
 
         const fullName = [
             c.salutation,
-            c.firstName,
-            c.lastName
-        ].filter(Boolean).join(' ').trim() || 'Unnamed Contact';
-
-        const title    = c.title ? `<div style="color:#666;">${c.title}</div>` : '';
-        const company  = e.name ? `<div style="margin:6px 0 4px; font-weight:600;">🏢 ${e.name}</div>` : '';
-
-        const addressParts = [
-            l.address,
-            l.suite ? `#${l.suite}` : '',
-            l.city,
-            l.state ? l.state.toUpperCase() : '',
-            l.zip
-        ].filter(Boolean);
-
-        const address = addressParts.length ? addressParts.join(', ') : '';
-
-        const phone = c.primaryPhone || '(no phone)';
-        const email = c.email || '(no email)';
+            c.firstName || '',
+            c.lastName || ''
+        ].filter(Boolean).join(' ').trim();
 
         const html = `
             <div class="contact-card proposed">
-                <div style="font-size:1.1em; font-weight:700;">${fullName}</div>
-                ${title}
-                ${company}
-
-                <div style="margin-top:8px;">
-                    📞 <strong>${phone}</strong>
-                </div>
-                <div>
-                    ✉️ <strong>${email}</strong>
+                <div class="card-header bg-light border-bottom pb-3">
+                    <h5 class="mb-1">📇 Proposed Contact</h5>
+                    <small class="text-muted">Review and edit before saving</small>
                 </div>
 
-                ${address ? `
-                <div style="margin-top:8px; line-height:1.4;">
-                    📍 ${address}
-                </div>` : ''}
+                <div class="card-body">
 
-                <div style="margin-top:16px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn-accept" style="padding:8px 16px;">
-                        ✔ Accept & Save
+                    <!-- Entity -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Company / Entity</label>
+                        <input type="text" class="form-control" id="entityName" value="${e.name || ''}">
+                    </div>
+
+                    <!-- Contact Name -->
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Salutation</label>
+                            <input type="text" class="form-control" id="salutation" value="${c.salutation || ''}" placeholder="Mr., Ms., Dr.">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="firstName" value="${c.firstName || ''}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="lastName" value="${c.lastName || ''}">
+                        </div>
+                    </div>
+
+                    <!-- Title -->
+                    <div class="mb-3">
+                        <label class="form-label">Title / Position</label>
+                        <input type="text" class="form-control" id="title" value="${c.title || ''}">
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Primary Phone</label>
+                            <input type="tel" class="form-control" id="primaryPhone" value="${c.primaryPhone || ''}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" value="${c.email || ''}">
+                        </div>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="mb-3">
+                        <label class="form-label">Address</label>
+                        <input type="text" class="form-control" id="address" value="${l.address || ''}">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Suite / Unit</label>
+                            <input type="text" class="form-control" id="suite" value="${l.suite || ''}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">City</label>
+                            <input type="text" class="form-control" id="city" value="${l.city || ''}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">State</label>
+                            <input type="text" class="form-control" id="state" value="${l.state || ''}" maxlength="2">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">ZIP</label>
+                            <input type="text" class="form-control" id="zip" value="${l.zip || ''}">
+                        </div>
+                    </div>
+
+                    <!-- Report Link -->
+                    <div class="mb-4">
+                        <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
+                           class="text-primary text-decoration-underline">
+                            📄 View Full Report (opens in new tab)
+                        </a>
+                    </div>
+
+                </div>
+
+                <div class="card-footer bg-light d-flex gap-2">
+                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn btn-success flex-fill">
+                        <i class="bi bi-check-lg"></i> Accept & Save
                     </button>
-                    <button onclick="SkyIndex.handleProposalAction('edit')" class="btn-edit" style="padding:8px 16px;">
-                        ✏ Edit
-                    </button>
-                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn-decline" style="padding:8px 16px;">
-                        ❌ Decline
+                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-secondary flex-fill">
+                        <i class="bi bi-x-lg"></i> Decline
                     </button>
                 </div>
             </div>
         `;
 
         this.appendSystemHtml(html);
+    },
+    // #endregion
+
+    // #region 📇 View Contact Report — Placeholder Currently 
+    viewContactReport() {
+        const prop = this.currentProposal;
+        if (!prop) {
+            alert("No active proposal to view report.");
+            return;
+        }
+        // TODO: Replace with real report URL when ready
+        window.open('/skyesoft/reports/contact-proposal.php?id=preview', '_blank');
     },
     // #endregion
 
