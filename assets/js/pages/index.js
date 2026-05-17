@@ -1405,7 +1405,7 @@ window.SkyIndex = {
                             </div>
                         </div>
 
-                        <div class="form-row address-row align-items-start">   <!-- Added address-row -->
+                        <div class="form-row address-row align-items-start">
                             <label class="col-form-label">Address</label>
                             <div class="form-field">
                                 <textarea class="form-control form-control-sm" id="fullAddress" rows="3" style="resize: vertical;">${fullAddress}</textarea>

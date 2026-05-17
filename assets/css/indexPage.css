@@ -666,11 +666,11 @@ body[data-page="index"] .authText {
 }
 /* #endregion */
 
-/* #region 📇 Contact Card — 2-Column Horizontal (Final) */
+/* #region 📇 Contact Card — Tight 2-Column Horizontal */
 
 .contact-card.proposed {
     width: 100% !important;
-    max-width: 560px !important;
+    max-width: 540px !important;
     margin: 8px 0 20px 20px !important;
     background: #ffffff !important;
     border: 1px solid #ddd !important;
@@ -691,17 +691,17 @@ body[data-page="index"] .authText {
     padding: 16px !important;
 }
 
-/* 2-Column Form */
+/* Tight 2-Column Layout */
 .contact-card.proposed .form-row {
     display: flex;
     align-items: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.7rem;
 }
 
 .contact-card.proposed .col-form-label {
-    width: 38%;
-    text-align: right !important;           /* Strong right alignment */
-    padding-right: 14px;
+    width: 32%;                    /* Tighter label column */
+    text-align: right !important;
+    padding-right: 10px;
     font-weight: 600;
     color: #444;
     font-size: 0.83rem;
@@ -729,7 +729,6 @@ body[data-page="index"] .authText {
 .contact-card.proposed textarea {
     min-height: 74px;
     resize: vertical;
-    line-height: 1.45;
 }
 
 /* FOOTER */
@@ -746,12 +745,6 @@ body[data-page="index"] .authText {
 /* Hover */
 .contact-card.proposed:hover {
     box-shadow: 0 6px 18px rgba(0,0,0,0.1) !important;
-}
-
-/* Scrollable command area */
-.commandOutput {
-    max-height: calc(100vh - 260px) !important;
-    overflow-y: auto;
 }
 
 /* #endregion */
