@@ -1346,109 +1346,103 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Bootstrap Editable Form
+    // #region 📇 Proposed Contact Renderer — Compact Bootstrap Form
     renderProposedContact(data) {
         const parsed = data?.data || data?.parsed || {};
         const c = parsed.contact || {};
         const e = parsed.entity || {};
         const l = parsed.location || {};
 
-        const fullName = [
-            c.salutation,
-            c.firstName || '',
-            c.lastName || ''
-        ].filter(Boolean).join(' ').trim();
-
         const html = `
-            <div class="contact-card proposed">
-                <div class="card-header bg-light border-bottom pb-3">
-                    <h5 class="mb-1">📇 Proposed Contact</h5>
-                    <small class="text-muted">Review and edit before saving</small>
+            <div class="contact-card proposed compact">
+                <div class="card-header bg-light py-2">
+                    <strong>📇 Proposed Contact</strong>
+                    <small class="text-muted ms-2">Review & edit before saving</small>
                 </div>
 
-                <div class="card-body">
+                <div class="card-body pt-3 pb-2">
 
-                    <!-- Entity -->
+                    <!-- Company -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Company / Entity</label>
-                        <input type="text" class="form-control" id="entityName" value="${e.name || ''}">
+                        <label class="form-label fw-semibold small">Company / Entity</label>
+                        <input type="text" class="form-control form-control-sm" id="entityName" value="${e.name || ''}">
                     </div>
 
-                    <!-- Contact Name -->
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Salutation</label>
-                            <input type="text" class="form-control" id="salutation" value="${c.salutation || ''}" placeholder="Mr., Ms., Dr.">
+                    <!-- Name Row -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-3">
+                            <label class="form-label small">Salutation</label>
+                            <input type="text" class="form-control form-control-sm" id="salutation" value="${c.salutation || ''}" placeholder="Mr.">
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="firstName" value="${c.firstName || ''}">
+                        <div class="col-4">
+                            <label class="form-label small">First Name</label>
+                            <input type="text" class="form-control form-control-sm" id="firstName" value="${c.firstName || ''}">
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="lastName" value="${c.lastName || ''}">
+                        <div class="col-5">
+                            <label class="form-label small">Last Name</label>
+                            <input type="text" class="form-control form-control-sm" id="lastName" value="${c.lastName || ''}">
                         </div>
                     </div>
 
                     <!-- Title -->
                     <div class="mb-3">
-                        <label class="form-label">Title / Position</label>
-                        <input type="text" class="form-control" id="title" value="${c.title || ''}">
+                        <label class="form-label small">Title / Position</label>
+                        <input type="text" class="form-control form-control-sm" id="title" value="${c.title || ''}">
                     </div>
 
                     <!-- Contact Info -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Primary Phone</label>
-                            <input type="tel" class="form-control" id="primaryPhone" value="${c.primaryPhone || ''}">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small">Primary Phone</label>
+                            <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${c.primaryPhone || ''}">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" value="${c.email || ''}">
-                        </div>
-                    </div>
-
-                    <!-- Location -->
-                    <div class="mb-3">
-                        <label class="form-label">Address</label>
-                        <input type="text" class="form-control" id="address" value="${l.address || ''}">
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">Suite / Unit</label>
-                            <input type="text" class="form-control" id="suite" value="${l.suite || ''}">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">City</label>
-                            <input type="text" class="form-control" id="city" value="${l.city || ''}">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">State</label>
-                            <input type="text" class="form-control" id="state" value="${l.state || ''}" maxlength="2">
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <label class="form-label">ZIP</label>
-                            <input type="text" class="form-control" id="zip" value="${l.zip || ''}">
+                        <div class="col-md-6">
+                            <label class="form-label small">Email Address</label>
+                            <input type="email" class="form-control form-control-sm" id="email" value="${c.email || ''}">
                         </div>
                     </div>
 
-                    <!-- Report Link -->
-                    <div class="mb-4">
-                        <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
-                           class="text-primary text-decoration-underline">
-                            📄 View Full Report (opens in new tab)
-                        </a>
+                    <!-- Address -->
+                    <div class="mb-2">
+                        <label class="form-label small">Street Address</label>
+                        <input type="text" class="form-control form-control-sm" id="address" value="${l.address || ''}">
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-5">
+                            <label class="form-label small">Suite / Unit</label>
+                            <input type="text" class="form-control form-control-sm" id="suite" value="${l.suite || ''}">
+                        </div>
+                        <div class="col-7">
+                            <label class="form-label small">City</label>
+                            <input type="text" class="form-control form-control-sm" id="city" value="${l.city || ''}">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mt-2">
+                        <div class="col-3">
+                            <label class="form-label small">State</label>
+                            <input type="text" class="form-control form-control-sm text-uppercase" id="state" value="${l.state || ''}" maxlength="2">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small">ZIP Code</label>
+                            <input type="text" class="form-control form-control-sm" id="zip" value="${l.zip || ''}">
+                        </div>
+                        <div class="col-5 pt-4">
+                            <a href="#" onclick="SkyIndex.viewContactReport(); return false;" class="small text-primary">
+                                📄 View Full Report
+                            </a>
+                        </div>
                     </div>
 
                 </div>
 
-                <div class="card-footer bg-light d-flex gap-2">
-                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn btn-success flex-fill">
-                        <i class="bi bi-check-lg"></i> Accept & Save
+                <div class="card-footer bg-light py-2 d-flex gap-2">
+                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn btn-success btn-sm flex-fill">
+                        ✔ Accept & Save
                     </button>
-                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-secondary flex-fill">
-                        <i class="bi bi-x-lg"></i> Decline
+                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-secondary btn-sm flex-fill">
+                        ✕ Decline
                     </button>
                 </div>
             </div>
