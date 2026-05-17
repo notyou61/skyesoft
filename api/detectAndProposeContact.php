@@ -284,7 +284,8 @@ CRITICAL RULES:
 - Suite field must contain only actual suite/unit info (e.g. "#120", "Ste 208", "Unit B"). Never place street suffixes (Ave, St, Rd, Dr, Blvd, etc.) into the suite field.
 - Phone numbers: preserve raw version exactly as shown.
 - Entity name: use the company/organization name when present.
-- Do not treat organizational divisions, departments, slogans, or descriptors as physical location names unless clearly identified as a site or branch location.
+- Do NOT use departments, divisions, slogans, marketing text, or organizational descriptors as locationName values.
+- Only populate locationName when a true physical branch/site/location name is explicitly present.
 - Be conservative with inference — better to use "" than guess.
 
 Return EXACTLY this structure:
