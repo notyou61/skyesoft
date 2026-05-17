@@ -754,13 +754,21 @@ body[data-page="index"] .authText {
     text-decoration: underline !important;
 }
 
-.contact-card.proposed {
-    max-width: 620px !important;
-    margin: 12px 0 24px 32px !important;
+.contact-card.proposed.compact {
+    max-width: 560px !important;
+    margin: 12px 0 20px 32px !important;
 }
 
-.card-header, .card-footer {
-    background: #f8f9fa !important;
+.contact-card.proposed.compact .form-label {
+    margin-bottom: 4px;
+}
+
+.contact-card.proposed.compact .card-body {
+    padding-bottom: 8px !important;
+}
+
+.card-footer {
+    border-top: 1px solid #dee2e6;
 }
 
 /* #endregion */
