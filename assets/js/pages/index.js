@@ -1385,7 +1385,7 @@ window.SkyIndex = {
                         </div>
 
                         <div class="form-row mb-2">
-                            <label class="col-form-label">Contact Identity</label>
+                            <label class="col-form-label">Contact</label>
                             <div class="form-field">
                                 <input type="text" class="form-control form-control-sm" id="contactIdentity" value="${contactIdentity}">
                             </div>
@@ -1405,8 +1405,8 @@ window.SkyIndex = {
                             </div>
                         </div>
 
-                        <div class="form-row mb-3 align-items-start">
-                            <label class="col-form-label pt-2">Address</label>
+                        <div class="form-row address-row align-items-start">   <!-- Added address-row -->
+                            <label class="col-form-label">Address</label>
                             <div class="form-field">
                                 <textarea class="form-control form-control-sm" id="fullAddress" rows="3" style="resize: vertical;">${fullAddress}</textarea>
                             </div>
