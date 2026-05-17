@@ -1092,10 +1092,18 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📇 Contact Creation (EOP + add)
+        // 📇 Contact Creation (EOP + add) — Clean UX
         // --------------------------------------------------
         if (await this.isContactCreationIntent(text, normalized)) {
-            console.log('📇 Contact Intent → AI Intake Flow');
+            console.log('📇 Contact Intent Detected → Clean Workflow');
+
+            // 🔥 Suppress raw paste echo
+            this.suppressRawContactEcho();
+
+            // Show clean processing state
+            this.renderContactProcessingState();
+
+            // Run the AI pipeline
             await this.executeAICommand(text, activitySessionId);
             return;
         }
@@ -1381,6 +1389,72 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 📇 Contact Intake UX — Clean Workflow States
+    /**
+     * Suppress raw pasted signature from appearing as a .commandLine.user
+     */
+    suppressRawContactEcho() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const userLines = Array.from(output.querySelectorAll('.commandLine.user'));
+        const lastUserLine = userLines[userLines.length - 1];
+
+        if (!lastUserLine) return;
+
+        const content = (lastUserLine.textContent || '').trim();
+
+        // Heuristic: looks like a signature block (phone/email/address)
+        if (
+            content.length > 60 &&
+            (
+                /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(content) ||
+                /@\S+\.\S+/.test(content) ||
+                /\b(AZ|TX|CA|FL|NY)\b.*\d{5}/.test(content)
+            )
+        ) {
+            lastUserLine.style.display = 'none';
+            console.log('[UX] Suppressed raw contact paste echo');
+        }
+    },
+
+    /**
+     * Show clean processing state instead of raw input
+     */
+    renderContactProcessingState() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const processing = document.createElement('div');
+        processing.className = 'commandLine system processing';
+        processing.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0;">
+                <span style="font-size: 1.3em; animation: spin 1.5s linear infinite;">⏳</span>
+                <div>
+                    <strong>📇 Preparing proposed contact...</strong><br>
+                    <span style="font-size: 0.9em; color: #888;">AI normalization • Geocoding • Parcel • Governance</span>
+                </div>
+            </div>
+        `;
+
+        output.appendChild(processing);
+        this.scrollOutputToBottom(output);
+
+        this._currentContactProcessingEl = processing;   // store for later replacement
+        return processing;
+    },
+
+    /**
+     * Remove processing indicator once proposal is ready
+     */
+    replaceProcessingWithProposal() {
+        if (this._currentContactProcessingEl) {
+            this._currentContactProcessingEl.remove();
+            this._currentContactProcessingEl = null;
+        }
+    },
+    // #endregion
+
     // #region 📇 Proposal Action Handler + Accept Flow
     handleProposalAction(action) {
         if (!this.currentProposal) {
@@ -1607,6 +1681,8 @@ window.SkyIndex = {
     // ───────────────────────────────────────────────
     handleContactProposal(data) {
 
+        this.replaceProcessingWithProposal();   // ← ADD THIS LINE
+
         this.clearOutput();
 
         this.currentProposal = data;
@@ -1650,6 +1726,7 @@ window.SkyIndex = {
             'warning'
         );
     },
+
     // #endregion 📇 Contact Proposal Pipeline (Client)
 
     // #region 📇 Contact Result Renderer

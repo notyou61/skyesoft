@@ -637,6 +637,16 @@ body[data-page="index"] .authText {
     white-space: pre;
     margin: 6px 0;
 }
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.commandLine.processing {
+    background: rgba(30, 30, 40, 0.6);
+    border-left: 3px solid #00ccff;
+}
 /* #endregion */
 
 /* #region 📇 Contact Card — NUCLEAR OVERRIDE (This will work) */
