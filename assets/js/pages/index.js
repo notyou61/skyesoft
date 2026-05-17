@@ -1439,11 +1439,11 @@ window.SkyIndex = {
         const processing = document.createElement('div');
         processing.className = 'commandLine system processing';
         processing.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
-                <span style="font-size: 1.4em; animation: spin 1.4s linear infinite;">⏳</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">⏳</span>
                 <div>
                     <strong>📇 Processing contact signature...</strong><br>
-                    <span style="font-size: 0.9em; color: #888;">AI extraction • Validation • Parcel • Governance</span>
+                    <span style="font-size: 0.92em;">AI extraction • Address validation • Parcel lookup • PCM review</span>
                 </div>
             </div>
         `;
