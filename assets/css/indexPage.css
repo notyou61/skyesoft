@@ -666,53 +666,54 @@ body[data-page="index"] .authText {
 }
 /* #endregion */
 
-/* #region 📇 Contact Card — Tight 2-Column Horizontal */
+/* #region 📇 Contact Card — Ultra Compact 2-Column */
 
 .contact-card.proposed {
     width: 100% !important;
-    max-width: 540px !important;
-    margin: 8px 0 20px 20px !important;
+    max-width: 550px !important;
+    margin: 8px 0 18px 20px !important;
     background: #ffffff !important;
     border: 1px solid #ddd !important;
     border-radius: 10px !important;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.07) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.07) !important;
     overflow: hidden;
 }
 
 /* HEADER */
 .contact-card.proposed .card-header {
     background: #f8f9fa !important;
-    padding: 11px 16px !important;
+    padding: 9px 16px !important;
     border-bottom: 1px solid #eee !important;
+    font-size: 1rem;
 }
 
 /* BODY */
 .contact-card.proposed .card-body {
-    padding: 16px !important;
+    padding: 13px !important;
 }
 
 /* Tight 2-Column Layout */
 .contact-card.proposed .form-row {
     display: flex;
     align-items: center;
-    margin-bottom: 0.7rem;
+    margin-bottom: 0.5rem;           /* Reduced spacing */
 }
 
 .contact-card.proposed .col-form-label {
-    width: 32%;                    /* Tighter label column */
+    width: 34%;
     text-align: right !important;
     padding-right: 10px;
     font-weight: 600;
     color: #444;
-    font-size: 0.83rem;
+    font-size: 0.82rem;
     margin-bottom: 0;
     flex-shrink: 0;
 }
 
-/* Address label aligns to top */
+/* Address label top-aligned */
 .contact-card.proposed .form-row.address-row .col-form-label {
     align-self: start;
-    padding-top: 8px;
+    padding-top: 7px;
 }
 
 .contact-card.proposed .form-field {
@@ -722,37 +723,40 @@ body[data-page="index"] .authText {
 .contact-card.proposed .form-control,
 .contact-card.proposed textarea {
     font-size: 0.9rem !important;
-    padding: 7px 10px !important;
+    padding: 6px 9px !important;
     border-radius: 6px !important;
 }
 
+/* Address - 2 rows */
 .contact-card.proposed textarea {
-    min-height: 58px;   /* 2 rows */
+    min-height: 56px;      /* Tight 2-row height */
     resize: vertical;
+}
+
+/* GOVERNANCE NOTES */
+.governance-notes {
+    background: #f8f9fa;
+    padding: 9px 12px;
+    border-radius: 6px;
+    margin-top: 10px;
+    font-size: 0.84rem;
+    line-height: 1.35;
 }
 
 /* FOOTER */
 .contact-card.proposed hr {
-    margin: 0 !important;
+    margin: 2px 0 !important;
     border-color: #eee;
 }
 
 .contact-card.proposed .card-footer {
     background: #f8f9fa !important;
-    padding: 12px 16px !important;
+    padding: 10px 16px !important;
 }
 
 /* Hover */
 .contact-card.proposed:hover {
-    box-shadow: 0 6px 18px rgba(0,0,0,0.1) !important;
-}
-
-.governance-notes {
-    background: #f8f9fa;
-    padding: 10px 12px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    line-height: 1.4;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.1) !important;
 }
 
 /* #endregion */
