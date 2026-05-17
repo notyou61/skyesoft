@@ -1346,7 +1346,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Final Layout
+    // #region 📇 Proposed Contact Renderer — Right-Aligned Labels + Form Collection
     renderProposedContact(data) {
         const parsed = data?.data || data?.parsed || {};
         const c = parsed.contact || {};
@@ -1367,52 +1367,62 @@ window.SkyIndex = {
         const html = `
             <div class="contact-card proposed compact">
 
-                <!-- HEADER -->
                 <div class="card-header bg-light py-2 px-3 border-bottom">
                     <strong>📇 Proposed Contact</strong>
                     <small class="text-muted ms-2">Review & confirm before saving</small>
                 </div>
 
-                <!-- BODY -->
                 <div class="card-body p-3">
 
-                    <div class="mb-3">
-                        <label class="form-label small">Company / Entity</label>
-                        <input type="text" class="form-control form-control-sm" id="entityName" value="${e.name || ''}">
-                    </div>
+                    <form id="proposalForm" class="horizontal-form">
 
-                    <div class="mb-3">
-                        <label class="form-label small">Contact Identity</label>
-                        <input type="text" class="form-control form-control-sm" id="contactIdentity" value="${contactIdentity}">
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <label class="form-label small">Phone</label>
-                            <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${c.primaryPhone || ''}">
+                        <div class="row mb-2 align-items-center">
+                            <label class="col-4 col-form-label text-end fw-semibold small">Company / Entity</label>
+                            <div class="col-8">
+                                <input type="text" class="form-control form-control-sm" id="entityName" value="${e.name || ''}">
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small">Email</label>
-                            <input type="email" class="form-control form-control-sm" id="email" value="${c.email || ''}">
+
+                        <div class="row mb-2 align-items-center">
+                            <label class="col-4 col-form-label text-end fw-semibold small">Contact Identity</label>
+                            <div class="col-8">
+                                <input type="text" class="form-control form-control-sm" id="contactIdentity" value="${contactIdentity}">
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="mb-3 mt-3">
-                        <label class="form-label small">Address</label>
-                        <textarea class="form-control form-control-sm" id="fullAddress" rows="3" style="resize: vertical;">${fullAddress}</textarea>
-                    </div>
+                        <div class="row mb-2 align-items-center">
+                            <label class="col-4 col-form-label text-end fw-semibold small">Phone</label>
+                            <div class="col-8">
+                                <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${c.primaryPhone || ''}">
+                            </div>
+                        </div>
 
-                    <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
-                       class="small text-primary d-block">
-                        📄 View Full Report (opens in new tab)
-                    </a>
+                        <div class="row mb-2 align-items-center">
+                            <label class="col-4 col-form-label text-end fw-semibold small">Email</label>
+                            <div class="col-8">
+                                <input type="email" class="form-control form-control-sm" id="email" value="${c.email || ''}">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3 align-items-start">
+                            <label class="col-4 col-form-label text-end fw-semibold small pt-2">Address</label>
+                            <div class="col-8">
+                                <textarea class="form-control form-control-sm" id="fullAddress" rows="3" style="resize: vertical;">${fullAddress}</textarea>
+                            </div>
+                        </div>
+
+                        <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
+                           class="small text-primary d-block text-end">
+                            📄 View Full Report (opens in new tab)
+                        </a>
+
+                    </form>
 
                 </div>
 
-                <!-- FOOTER with single line -->
                 <hr class="my-0">
                 <div class="card-footer bg-light py-2 px-3 d-flex gap-2">
-                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn btn-success btn-sm flex-fill">
+                    <button onclick="SkyIndex.acceptEditedProposal()" class="btn btn-success btn-sm flex-fill">
                         ✔ Accept & Save
                     </button>
                     <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-secondary btn-sm flex-fill">
