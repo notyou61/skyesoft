@@ -1346,41 +1346,63 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer
+    // #region 📇 Proposed Contact Renderer (Improved)
     renderProposedContact(data) {
-        const parsed = data?.data || {};
+        const parsed = data?.data || data?.parsed || {};
         const c = parsed.contact || {};
         const e = parsed.entity || {};
         const l = parsed.location || {};
 
-        const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unnamed Contact';
-        const title    = c.title ? `<div>${c.title}</div>` : '';
-        const company  = e.name ? `<div style="margin-top:6px;">🏢 ${e.name}</div>` : '';
-        
+        const fullName = [
+            c.salutation,
+            c.firstName,
+            c.lastName
+        ].filter(Boolean).join(' ').trim() || 'Unnamed Contact';
+
+        const title    = c.title ? `<div style="color:#666;">${c.title}</div>` : '';
+        const company  = e.name ? `<div style="margin:6px 0 4px; font-weight:600;">🏢 ${e.name}</div>` : '';
+
         const addressParts = [
             l.address,
+            l.suite ? `#${l.suite}` : '',
             l.city,
             l.state ? l.state.toUpperCase() : '',
             l.zip
         ].filter(Boolean);
 
-        const address = addressParts.length ? addressParts.join(' ') : '';
+        const address = addressParts.length ? addressParts.join(', ') : '';
+
+        const phone = c.primaryPhone || '(no phone)';
+        const email = c.email || '(no email)';
 
         const html = `
             <div class="contact-card proposed">
-                <div><strong>${fullName}</strong></div>
+                <div style="font-size:1.1em; font-weight:700;">${fullName}</div>
                 ${title}
                 ${company}
 
-                <div>📞 ${c.primaryPhone || '(no phone)'}</div>
-                <div>✉ ${c.email || '(no email)'}</div>
+                <div style="margin-top:8px;">
+                    📞 <strong>${phone}</strong>
+                </div>
+                <div>
+                    ✉️ <strong>${email}</strong>
+                </div>
 
-                ${address ? `<div style="margin-top:6px;">📍 ${address}</div>` : ''}
+                ${address ? `
+                <div style="margin-top:8px; line-height:1.4;">
+                    📍 ${address}
+                </div>` : ''}
 
-                <div style="margin-top:12px; display: flex; gap: 8px;">
-                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn-accept">✔ Accept</button>
-                    <button onclick="SkyIndex.handleProposalAction('edit')" class="btn-edit">✏ Edit</button>
-                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn-decline">❌ Decline</button>
+                <div style="margin-top:16px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn-accept" style="padding:8px 16px;">
+                        ✔ Accept & Save
+                    </button>
+                    <button onclick="SkyIndex.handleProposalAction('edit')" class="btn-edit" style="padding:8px 16px;">
+                        ✏ Edit
+                    </button>
+                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn-decline" style="padding:8px 16px;">
+                        ❌ Decline
+                    </button>
                 </div>
             </div>
         `;
@@ -1389,8 +1411,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Contact Intake UX — Clean Workflow States (Improved)
-
+    // #region 📇 Contact Intake UX — Clean Workflow States
     suppressRawContactEcho() {
         const output = this.getOutputHost();
         if (!output) return;
@@ -1410,7 +1431,35 @@ window.SkyIndex = {
             console.log('[UX] Suppressed raw signature');
         }
     },
-    
+
+    renderContactProcessingState() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const processing = document.createElement('div');
+        processing.className = 'commandLine system processing';
+        processing.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
+                <span style="font-size: 1.4em; animation: spin 1.4s linear infinite;">⏳</span>
+                <div>
+                    <strong>📇 Processing contact signature...</strong><br>
+                    <span style="font-size: 0.9em; color: #888;">AI extraction • Validation • Parcel • Governance</span>
+                </div>
+            </div>
+        `;
+
+        output.appendChild(processing);
+        this.scrollOutputToBottom(output);
+
+        this._currentContactProcessingEl = processing;
+    },
+
+    replaceProcessingWithProposal() {
+        if (this._currentContactProcessingEl) {
+            this._currentContactProcessingEl.remove();
+            this._currentContactProcessingEl = null;
+        }
+    },
     // #endregion
 
     // #region 📇 Proposal Action Handler + Accept Flow
