@@ -1346,7 +1346,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Clean Header/Body/Footer
+    // #region 📇 Proposed Contact Renderer — Final Layout
     renderProposedContact(data) {
         const parsed = data?.data || data?.parsed || {};
         const c = parsed.contact || {};
@@ -1367,11 +1367,13 @@ window.SkyIndex = {
         const html = `
             <div class="contact-card proposed compact">
 
-                <div class="card-header bg-light py-2 px-3">
+                <!-- HEADER -->
+                <div class="card-header bg-light py-2 px-3 border-bottom">
                     <strong>📇 Proposed Contact</strong>
                     <small class="text-muted ms-2">Review & confirm before saving</small>
                 </div>
 
+                <!-- BODY -->
                 <div class="card-body p-3">
 
                     <div class="mb-3">
@@ -1384,7 +1386,7 @@ window.SkyIndex = {
                         <input type="text" class="form-control form-control-sm" id="contactIdentity" value="${contactIdentity}">
                     </div>
 
-                    <div class="row g-2 mb-3">
+                    <div class="row g-3">
                         <div class="col-6">
                             <label class="form-label small">Phone</label>
                             <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${c.primaryPhone || ''}">
@@ -1395,17 +1397,19 @@ window.SkyIndex = {
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label small">Full Mailing Address</label>
-                        <textarea class="form-control form-control-sm" id="fullAddress" rows="2" style="resize: vertical;">${fullAddress}</textarea>
+                    <div class="mb-3 mt-3">
+                        <label class="form-label small">Address</label>
+                        <textarea class="form-control form-control-sm" id="fullAddress" rows="3" style="resize: vertical;">${fullAddress}</textarea>
                     </div>
 
-                    <a href="#" onclick="SkyIndex.viewContactReport(); return false;" class="small text-primary d-block mb-2">
+                    <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
+                       class="small text-primary d-block">
                         📄 View Full Report (opens in new tab)
                     </a>
 
                 </div>
 
+                <!-- FOOTER with single line -->
                 <hr class="my-0">
                 <div class="card-footer bg-light py-2 px-3 d-flex gap-2">
                     <button onclick="SkyIndex.handleProposalAction('accept')" class="btn btn-success btn-sm flex-fill">
