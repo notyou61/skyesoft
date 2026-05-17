@@ -763,6 +763,19 @@ body[data-page="index"] .authText {
     margin-bottom: 4px;
 }
 
+.contact-card.proposed.compact .form-control {
+    margin-bottom: 0 !important;
+}
+
+.contact-card.proposed.compact .mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+.contact-card.proposed.compact textarea {
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
 .contact-card.proposed.compact .card-body {
     padding-bottom: 8px !important;
 }

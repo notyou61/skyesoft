@@ -1346,105 +1346,181 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Compact Bootstrap Form
+    // #region 📇 Proposed Contact Renderer — Streamlined Semantic Review
     renderProposedContact(data) {
+
         const parsed = data?.data || data?.parsed || {};
+
         const c = parsed.contact || {};
         const e = parsed.entity || {};
         const l = parsed.location || {};
 
+        // --------------------------------------------------
+        // Semantic Display Values
+        // --------------------------------------------------
+
+        const contactIdentity = [
+            [c.salutation, c.firstName, c.lastName]
+                .filter(Boolean)
+                .join(' '),
+
+            c.title || ''
+        ]
+        .filter(Boolean)
+        .join(' — ');
+
+        const fullAddress = [
+            l.address || '',
+            l.suite ? `Suite ${l.suite}` : '',
+            [l.city, l.state, l.zip]
+                .filter(Boolean)
+                .join(', ')
+        ]
+        .filter(Boolean)
+        .join('\n');
+
+        // --------------------------------------------------
+        // Compact Semantic Review UI
+        // --------------------------------------------------
+
         const html = `
-            <div class="contact-card proposed compact">
-                <div class="card-header bg-light py-2">
-                    <strong>📇 Proposed Contact</strong>
-                    <small class="text-muted ms-2">Review & edit before saving</small>
+            <div class="contact-card proposed compact semantic-review">
+
+                <!-- Header -->
+                <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <strong>📇 Proposed Contact</strong>
+                        <small class="text-muted ms-2">
+                            Review & confirm before saving
+                        </small>
+                    </div>
+
+                    <div class="small text-muted">
+                        AI Normalized
+                    </div>
                 </div>
 
-                <div class="card-body pt-3 pb-2">
+                <!-- Body -->
+                <div class="card-body p-3">
 
                     <!-- Company -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Company / Entity</label>
-                        <input type="text" class="form-control form-control-sm" id="entityName" value="${e.name || ''}">
+                        <label class="form-label fw-semibold small mb-1">
+                            Company / Entity
+                        </label>
+
+                        <input
+                            type="text"
+                            class="form-control form-control-sm"
+                            id="entityName"
+                            value="${e.name || ''}"
+                            placeholder="Company Name"
+                        >
                     </div>
 
-                    <!-- Name Row -->
-                    <div class="row g-2 mb-3">
-                        <div class="col-3">
-                            <label class="form-label small">Salutation</label>
-                            <input type="text" class="form-control form-control-sm" id="salutation" value="${c.salutation || ''}" placeholder="Mr.">
-                        </div>
-                        <div class="col-4">
-                            <label class="form-label small">First Name</label>
-                            <input type="text" class="form-control form-control-sm" id="firstName" value="${c.firstName || ''}">
-                        </div>
-                        <div class="col-5">
-                            <label class="form-label small">Last Name</label>
-                            <input type="text" class="form-control form-control-sm" id="lastName" value="${c.lastName || ''}">
-                        </div>
-                    </div>
-
-                    <!-- Title -->
+                    <!-- Contact Identity -->
                     <div class="mb-3">
-                        <label class="form-label small">Title / Position</label>
-                        <input type="text" class="form-control form-control-sm" id="title" value="${c.title || ''}">
+                        <label class="form-label fw-semibold small mb-1">
+                            Contact Identity
+                        </label>
+
+                        <input
+                            type="text"
+                            class="form-control form-control-sm"
+                            id="contactIdentity"
+                            value="${contactIdentity}"
+                            placeholder="Jennifer Carlisle — Operations Director"
+                        >
                     </div>
 
                     <!-- Contact Info -->
                     <div class="row g-2 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small">Primary Phone</label>
-                            <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${c.primaryPhone || ''}">
+
+                        <div class="col-md-5">
+                            <label class="form-label small mb-1">
+                                Phone
+                            </label>
+
+                            <input
+                                type="tel"
+                                class="form-control form-control-sm"
+                                id="primaryPhone"
+                                value="${c.primaryPhone || ''}"
+                                placeholder="(602) 555-1234"
+                            >
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small">Email Address</label>
-                            <input type="email" class="form-control form-control-sm" id="email" value="${c.email || ''}">
+
+                        <div class="col-md-7">
+                            <label class="form-label small mb-1">
+                                Email
+                            </label>
+
+                            <input
+                                type="email"
+                                class="form-control form-control-sm"
+                                id="email"
+                                value="${c.email || ''}"
+                                placeholder="name@company.com"
+                            >
                         </div>
+
                     </div>
 
-                    <!-- Address -->
-                    <div class="mb-2">
-                        <label class="form-label small">Street Address</label>
-                        <input type="text" class="form-control form-control-sm" id="address" value="${l.address || ''}">
+                    <!-- Full Address -->
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold small mb-1">
+                            Address
+                        </label>
+
+                        <textarea
+                            class="form-control form-control-sm"
+                            id="fullAddress"
+                            rows="3"
+                            style="resize: vertical;"
+                            placeholder="Full mailing address"
+                        >${fullAddress}</textarea>
+
                     </div>
 
-                    <div class="row g-2">
-                        <div class="col-5">
-                            <label class="form-label small">Suite / Unit</label>
-                            <input type="text" class="form-control form-control-sm" id="suite" value="${l.suite || ''}">
-                        </div>
-                        <div class="col-7">
-                            <label class="form-label small">City</label>
-                            <input type="text" class="form-control form-control-sm" id="city" value="${l.city || ''}">
-                        </div>
-                    </div>
+                    <!-- Utilities -->
+                    <div class="d-flex justify-content-between align-items-center">
 
-                    <div class="row g-2 mt-2">
-                        <div class="col-3">
-                            <label class="form-label small">State</label>
-                            <input type="text" class="form-control form-control-sm text-uppercase" id="state" value="${l.state || ''}" maxlength="2">
+                        <a
+                            href="#"
+                            onclick="SkyIndex.viewContactReport(); return false;"
+                            class="small text-primary text-decoration-none"
+                        >
+                            📄 View Full Report
+                        </a>
+
+                        <div class="small text-muted">
+                            AI-assisted semantic editing enabled
                         </div>
-                        <div class="col-4">
-                            <label class="form-label small">ZIP Code</label>
-                            <input type="text" class="form-control form-control-sm" id="zip" value="${l.zip || ''}">
-                        </div>
-                        <div class="col-5 pt-4">
-                            <a href="#" onclick="SkyIndex.viewContactReport(); return false;" class="small text-primary">
-                                📄 View Full Report
-                            </a>
-                        </div>
+
                     </div>
 
                 </div>
 
-                <div class="card-footer bg-light py-2 d-flex gap-2">
-                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn btn-success btn-sm flex-fill">
+                <!-- Footer -->
+                <div class="card-footer bg-light py-2 px-3 d-flex gap-2">
+
+                    <button
+                        onclick="SkyIndex.handleProposalAction('accept')"
+                        class="btn btn-success btn-sm flex-fill"
+                    >
                         ✔ Accept & Save
                     </button>
-                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-secondary btn-sm flex-fill">
+
+                    <button
+                        onclick="SkyIndex.handleProposalAction('decline')"
+                        class="btn btn-outline-secondary btn-sm flex-fill"
+                    >
                         ✕ Decline
                     </button>
+
                 </div>
+
             </div>
         `;
 
