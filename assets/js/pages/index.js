@@ -1346,7 +1346,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Compact Address
+    // #region 📇 Proposed Contact Renderer — Final Compact
     renderProposedContact(data) {
         const proposal = data?.data || data?.parsed || {};
         const entity = proposal.entity || {};
@@ -1414,7 +1414,7 @@ window.SkyIndex = {
                             </div>
                         </div>
 
-                        <!-- Address - Reduced to 2 rows by default -->
+                        <!-- Address - 2 rows by default -->
                         <div class="form-row address-row align-items-start mb-3">
                             <label class="col-form-label">Address</label>
                             <div class="form-field">
@@ -1422,8 +1422,19 @@ window.SkyIndex = {
                             </div>
                         </div>
 
+                        <!-- GOVERNANCE NOTES -->
+                        <div class="governance-notes mt-3 pt-3 border-top">
+                            <div class="small fw-semibold text-muted mb-1">📋 Proposed Contact Notes</div>
+                            <div class="small">${decisionNote}</div>
+                            <div class="small text-muted mt-1">${governanceNote}</div>
+                            ${commitReady ? 
+                                `<div class="small text-success mt-2">✔ Ready for Commit — All records can be created.</div>` : 
+                                `<div class="small text-warning mt-2">⚠ Review recommended before committing.</div>`
+                            }
+                        </div>
+
                         <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
-                           class="small text-primary d-block text-end">
+                           class="small text-primary d-block text-end mt-3">
                             📄 View Full Report (opens in new tab)
                         </a>
 

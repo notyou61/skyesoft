@@ -727,7 +727,7 @@ body[data-page="index"] .authText {
 }
 
 .contact-card.proposed textarea {
-    min-height: 74px;
+    min-height: 58px;   /* 2 rows */
     resize: vertical;
 }
 
