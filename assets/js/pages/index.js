@@ -1349,8 +1349,8 @@ window.SkyIndex = {
     // #region 📇 Proposed Contact Renderer — 2-Column Body Only
     renderProposedContact(data) {
         
-        console.log("🔍 FULL PROPOSAL DATA:", data);           // ← Add this
-        console.log("🔍 Parsed data:", data?.data || data?.parsed);
+        //console.log("🔍 FULL PROPOSAL DATA:", data);           // ← Add this
+        //console.log("🔍 Parsed data:", data?.data || data?.parsed);
 
         const parsed = data?.data || data?.parsed || {};
         // ... rest of your function
