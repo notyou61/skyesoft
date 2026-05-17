@@ -258,33 +258,39 @@ if ($rawInput === '') {
 
 #endregion
 
-#region SECTION 04 — 🧠 AI Prompt Construction
+#region SECTION 04 — 🧠 Unified AI Prompt Construction & Execution
 
+// =====================================================
+// Unified Strong Extraction Prompt
+// =====================================================
 $systemPrompt = <<<EOT
-You are a strict structured data extraction engine.
+You are an extremely precise structured data extraction engine specialized in cleaning and normalizing messy business contact signatures, website blocks, Outlook signatures, and pasted content.
+
+PERFORM THESE STEPS IN ORDER:
+
+1. CLEAN & NORMALIZE FIRST
+   - Restore logical line breaks and structure from collapsed, HTML-contaminated, or poorly formatted input.
+   - Remove noise: icons, emojis, HTML tags, disclaimers ("Sent from my iPhone", confidentiality notices), repeated separators, social media links, decorative text.
+   - Fix common formatting issues: extra spaces, broken lines, inline artifacts.
+   - Do NOT invent or hallucinate information.
+
+2. THEN EXTRACT CLEAN DATA
+   - Extract Entity, Location, and Contact fields from the cleaned text.
+
+Return ONLY valid JSON. No explanations, no markdown, no extra text.
 
 CRITICAL RULES:
-- Respond ONLY with valid JSON
-- Do NOT include explanations, markdown, or comments
-- Output MUST begin with { and end with }
-- You MUST return ALL fields in the schema
-- NEVER omit keys
-- If a value is unknown, return "" (empty string)
-- NEVER return partial objects
-
-EXTRACTION RULES:
-- Extract the FIRST valid full name as firstName and lastName
-- Extract email if present
-- Extract phone numbers exactly as shown
-- Extract company/entity name if present
-- Extract address, city, state, zip if present
-- If unsure, leave value as ""
+- Use empty string "" for any missing value. Never omit fields.
+- Suite field must contain only actual suite/unit info (e.g. "#120", "Ste 208", "Unit B"). Never place street suffixes (Ave, St, Rd, Dr, Blvd, etc.) into the suite field.
+- Phone numbers: preserve raw version exactly as shown.
+- Entity name: use the company/organization name when present.
+- Be conservative with inference — better to use "" than guess.
 
 Return EXACTLY this structure:
 
 {
   "intent": "contact_proposal",
-  "confidence": 90,
+  "confidence": 85,
   "parsed": {
     "entity": {
       "name": ""
@@ -295,6 +301,7 @@ Return EXACTLY this structure:
       "salutation": "",
       "title": "",
       "primaryPhone": "",
+      "primaryPhoneRaw": "",
       "email": ""
     },
     "location": {
@@ -302,6 +309,7 @@ Return EXACTLY this structure:
       "city": "",
       "state": "",
       "zip": "",
+      "suite": "",
       "locationName": ""
     }
   }
@@ -309,20 +317,15 @@ Return EXACTLY this structure:
 EOT;
 
 $extractionPrompt = <<<EOT
-Extract structured contact data from the following text.
+Clean and normalize the following pasted contact information, then extract structured data.
 
-IMPORTANT:
-- Always return ALL fields
-- Never omit fields
-- Use empty string "" if unknown
-
-INPUT:
+INPUT (may be messy or poorly formatted):
 {$rawInput}
 EOT;
 
-#endregion
-
-#region SECTION 05 — 🤖 AI Request Execution (Enhanced)
+// =====================================================
+// AI Request Execution
+// =====================================================
 
 if (!function_exists('skyesoftLoadEnv')) {
     require_once __DIR__ . '/utils/envLoader.php';
@@ -333,54 +336,6 @@ $apiKey = getenv("OPENAI_API_KEY");
 $googleApiKey = skyesoftGetEnv("GOOGLE_MAPS_BACKEND_API_KEY") ?? getenv("GOOGLE_MAPS_BACKEND_API_KEY");
 
 if (!$apiKey) jsonError('OPENAI_API_KEY not found');
-
-$systemPrompt = <<<EOT
-You are an extremely precise structured data extraction engine for business contact signatures.
-
-CRITICAL RULES:
-- Respond ONLY with valid JSON. No explanations, no markdown.
-- Output MUST begin with { and end with }
-- Never omit any field. Use "" for unknown values.
-- Be very careful with addresses — street suffixes like Ave, St, Rd, Dr, Blvd are NOT suites.
-
-Return EXACTLY this structure:
-
-{
-  "intent": "contact_proposal",
-  "confidence": 85,
-  "parsed": {
-    "entity": { "name": "" },
-    "contact": {
-      "firstName": "",
-      "lastName": "",
-      "salutation": "",
-      "title": "",
-      "primaryPhone": "",
-      "email": ""
-    },
-    "location": {
-      "address": "",
-      "city": "",
-      "state": "",
-      "zip": "",
-      "suite": "",           // Only real suites: #120, Ste 208, Unit B, etc.
-      "locationName": ""
-    }
-  }
-}
-EOT;
-
-$extractionPrompt = <<<EOT
-Extract structured contact data from the following signature text.
-
-IMPORTANT:
-- If a suite/unit is present, put ONLY the suite in the "suite" field.
-- Do NOT put street suffixes (Ave, St, Rd, Dr, etc.) into the suite field.
-- Extract the clean street address without the suite.
-
-TEXT:
-{$rawInput}
-EOT;
 
 $payload = [
     "model"       => "gpt-4o-mini",
@@ -407,8 +362,6 @@ curl_setopt_array($ch, [
 ]);
 
 $response = curl_exec($ch);
-
-// Use safe close to fix PHP 8.5 deprecation
 safeCurlClose($ch);
 
 if ($response === false) jsonError('AI request failed');

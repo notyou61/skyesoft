@@ -4540,11 +4540,9 @@
                 "tier": 2,
                 "type": "Relational Integrity Standard",
                 "hierarchyOrder": 3,
-
                 "preamble": {
                     "text": "All contacts must exist within a fully qualified Entity–Location–Contact (ELC) relationship. This standard defines the Proposed Contact Matrix (PCM), governance states, validation rules, and creation workflow."
                 },
-
                 "proposedContactMatrix": {
                     "description": "Core Proposed Contact (PC) Types",
                     "types": [
@@ -4554,7 +4552,6 @@
                         { "pcCode": "PC-4", "status": "proposed_location",                "description": "Existing Entity + New Location Only (No Contact)" }
                     ]
                 },
-
                 "governanceStates": {
                     "description": "Review / Governance States (RS) — overlay any PC type",
                     "states": [
@@ -4569,7 +4566,74 @@
                         { "rsCode": "RS-8", "status": "invalid_location",   "category": "Block",  "description": "No valid geocode or Place ID" }
                     ]
                 },
-
+                "clientProposalPipeline": {
+                    "description": "Client-side Contact Proposal Intake and Qualification Pipeline",
+                    "purpose": "Handles user paste normalization, proposal qualification, and UX guidance before server-side governance.",
+                    "principles": [
+                        "Client-side logic improves UX but is never authoritative.",
+                        "Server-side PCM governance remains the final enforcement layer.",
+                        "Proposal qualification is separate from governance enforcement.",
+                        "Input normalization is separate from AI extraction."
+                    ],
+                    "pipelineStages": [
+                        {
+                        "stage": 1,
+                        "name": "raw_input_capture",
+                        "description": "Preserve the original pasted content exactly as received from the user."
+                        },
+                        {
+                        "stage": 2,
+                        "name": "input_normalization",
+                        "description": "Clean and normalize pasted formatting artifacts including whitespace, icons, HTML remnants, and inconsistent line formatting."
+                        },
+                        {
+                        "stage": 3,
+                        "name": "proposal_preview",
+                        "description": "Render normalized content back to the user for visual confirmation before submission."
+                        },
+                        {
+                        "stage": 4,
+                        "name": "proposal_qualification",
+                        "description": "Perform lightweight heuristic validation to detect obviously malformed or incomplete submissions before AI extraction."
+                        },
+                        {
+                        "stage": 5,
+                        "name": "intent_detection",
+                        "description": "Determine whether the normalized content represents a contact/location proposal."
+                        },
+                        {
+                        "stage": 6,
+                        "name": "server_submission",
+                        "description": "Submit qualified proposal content to the server-side AI extraction and PCM governance pipeline."
+                        }
+                    ],
+                    "qualificationRules": [
+                        "Malformed or extremely short submissions may be rejected client-side before AI processing.",
+                        "Client-side qualification may predict incomplete proposal conditions but may not authoritatively assign governance states.",
+                        "Duplicate resolution, parcel validation, geocoding, and persistence authority remain server-side responsibilities."
+                    ],
+                    "clientResponsibilities": [
+                        "Input normalization",
+                        "Proposal preview rendering",
+                        "Proposal qualification",
+                        "UX guidance and warnings",
+                        "Intent routing"
+                    ],
+                    "serverResponsibilities": [
+                        "AI extraction",
+                        "Normalization enforcement",
+                        "PCM classification",
+                        "RS governance overlays",
+                        "Duplicate detection",
+                        "Parcel resolution",
+                        "Persistence authority"
+                    ],
+                    "notes": [
+                        "The client pipeline exists to improve UX and reduce malformed submissions.",
+                        "The server remains the single source of truth for all governance and persistence decisions.",
+                        "Client-side qualification must never replace PCM governance."
+                    ]
+                },
                 "locationOnlyModel": {
                     "description": "Special rules for PC-4 (proposed_location)",
                     "rules": [
@@ -4580,7 +4644,6 @@
                         "Eligible for future upgrade to full ELC when a contact is added"
                     ]
                 },
-
                 "keyRules": [
                     "locationPlaceId (Google) is mandatory for all persisted locations",
                     "Parcel lookup required only for Maricopa County",
@@ -4589,7 +4652,6 @@
                     "Commit allowed only with RS-0 and no blocking RS states",
                     "Database constraints are the final enforcement layer"
                 ],
-
                 "commitEligibility": {
                     "rules": [
                         "Commit allowed only when RS-0 is active and no blocking RS states exist",
@@ -4598,7 +4660,6 @@
                         "Review states (RS-1–RS-4, RS-6) require user action"
                     ]
                 },
-
                 "notes": [
                     "This is the single source of truth for ELC creation.",
                     "PC defines proposal intent. RS defines operational status.",

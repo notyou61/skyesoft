@@ -937,7 +937,7 @@ function buildAuditFacts(array $report): array {
 }
 #endregion
 
-#region SECTION 4.5 — Execution Guard (Auto)
+#region SECTION 5 — Execution Guard (Auto)
 
 if (realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME'])) {
     return; // File is being included → STOP execution
@@ -945,7 +945,7 @@ if (realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME'])) {
 
 #endregion
 
-#region SECTION 5 — Input Resolution
+#region SECTION 6 — Input Resolution
 
 // Init
 $intent     = null;
@@ -1002,7 +1002,7 @@ error_log("[askOpenAI] Query length: " . strlen($query));
 
 #endregion
 
-#region SECTION 5.5 — Structured Mode (EOP / Machine-Readable JSON)
+#region SECTION 7 — Structured Mode (EOP / Machine-Readable JSON)
 
 if ($isStructured) {
 
@@ -1025,7 +1025,7 @@ if ($isStructured) {
 
 #endregion
 
-#region SECTION 6 — Narrative Generation
+#region SECTION 8 — Narrative Generation
 
 $response           = null;
 $narrativeGenerated = false;
@@ -1115,7 +1115,7 @@ PROMPT;
 
 #endregion
 
-#region SECTION 7 — Skyebot (Authority-Aware, Deterministic)
+#region SECTION 9 — Skyebot (Authority-Aware, Deterministic)
 
 if ($type === "skyebot") {
 
@@ -1265,7 +1265,7 @@ PROMPT;
 }
 #endregion
 
-#region SECTION 8 — Output (EOP)
+#region SECTION 10 — Output (EOP)
 
 if (!isset($response) || trim((string)$response) === '') {
     error_log('[askOpenAI] EMPTY AI RESPONSE — forcing fallback');

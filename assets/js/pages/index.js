@@ -1542,7 +1542,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 EOP - Ease of Paste (Contact Intent + Proposal)
+    // #region 📇 Contact Proposal Pipeline (Client)
 
     // ───────────────────────────────────────────────
     // Hybrid Intent Detection — EOP Primary (Stable)
@@ -1650,7 +1650,7 @@ window.SkyIndex = {
             'warning'
         );
     },
-    // #endregion
+    // #endregion 📇 Contact Proposal Pipeline (Client)
 
     // #region 📇 Contact Result Renderer
     renderContactResult(data) {
