@@ -1346,7 +1346,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — With Governance Notes
+    // #region 📇 Proposed Contact Renderer — Compact Address
     renderProposedContact(data) {
         const proposal = data?.data || data?.parsed || {};
         const entity = proposal.entity || {};
@@ -1355,7 +1355,6 @@ window.SkyIndex = {
         const resolution = data?.resolution || {};
         const narratives = resolution.narratives || {};
 
-        // Build display values
         const fullName = [
             contact.contactSalutation,
             contact.contactFirstName,
@@ -1372,7 +1371,6 @@ window.SkyIndex = {
                 .filter(Boolean).join(', ')
         ].filter(Boolean).join('\n');
 
-        // Governance Notes
         const decisionNote = narratives.decision?.[0] || "This proposal represents a new entity, location, and contact.";
         const governanceNote = narratives.informational?.[0] || "No governance issues were detected.";
         const commitReady = resolution.decision?.readyForCommit === true;
@@ -1380,13 +1378,11 @@ window.SkyIndex = {
         const html = `
             <div class="contact-card proposed compact">
 
-                <!-- HEADER -->
                 <div class="card-header bg-light py-2 px-3 border-bottom">
                     <strong>📇 Proposed Contact</strong>
                     <small class="text-muted ms-2">Review & confirm before saving</small>
                 </div>
 
-                <!-- BODY -->
                 <div class="card-body p-3">
                     <form id="proposalForm">
 
@@ -1418,33 +1414,22 @@ window.SkyIndex = {
                             </div>
                         </div>
 
+                        <!-- Address - Reduced to 2 rows by default -->
                         <div class="form-row address-row align-items-start mb-3">
                             <label class="col-form-label">Address</label>
                             <div class="form-field">
-                                <textarea class="form-control form-control-sm" id="fullAddress" rows="3" style="resize: vertical;">${fullAddress}</textarea>
+                                <textarea class="form-control form-control-sm" id="fullAddress" rows="2" style="resize: vertical;">${fullAddress}</textarea>
                             </div>
                         </div>
 
-                        <!-- GOVERNANCE NOTES -->
-                        <div class="governance-notes mt-3 pt-3 border-top">
-                            <div class="small fw-semibold text-muted mb-1">📋 Proposed Contact Notes</div>
-                            <div class="small text-dark">${decisionNote}</div>
-                            <div class="small text-muted mt-1">${governanceNote}</div>
-                            ${commitReady ? 
-                                `<div class="small text-success mt-2">✔ Ready for Commit — All records can be created.</div>` : 
-                                `<div class="small text-warning mt-2">⚠ Review recommended before committing.</div>`
-                            }
-                        </div>
-
                         <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
-                           class="small text-primary d-block text-end mt-3">
+                           class="small text-primary d-block text-end">
                             📄 View Full Report (opens in new tab)
                         </a>
 
                     </form>
                 </div>
 
-                <!-- FOOTER -->
                 <hr class="my-0">
                 <div class="card-footer bg-light py-2 px-3 d-flex gap-2">
                     <button onclick="SkyIndex.acceptEditedProposal()" class="btn btn-success btn-sm flex-fill">
