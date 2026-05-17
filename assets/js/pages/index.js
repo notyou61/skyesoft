@@ -1396,58 +1396,21 @@ window.SkyIndex = {
         if (!output) return;
 
         const userLines = Array.from(output.querySelectorAll('.commandLine.user'));
-        
-        for (let i = userLines.length - 1; i >= 0; i--) {
-            const line = userLines[i];
-            const content = (line.textContent || '').trim();
+        const lastUser = userLines[userLines.length - 1];
 
-            if (
-                content.length > 50 &&
-                (
-                    /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(content) ||
-                    /@\S+\.\S+/.test(content) ||
-                    /\b(AZ|TX|CA|FL|NY)\b.*\d{5}/.test(content) ||
-                    content.includes('NOTICE:') ||
-                    content.includes('Sent from my iPhone')
-                )
-            ) {
-                line.style.display = 'none';
-                line.dataset.suppressed = 'true';
-                console.log('[UX] Suppressed raw contact paste');
-                return; // only suppress the most recent one
-            }
+        if (!lastUser) return;
+
+        const content = (lastUser.textContent || '').trim();
+
+        if (content.length > 60 && 
+            (/\d{3}[-.\s]?\d{3}/.test(content) || /@\S+\.\S+/.test(content))) {
+            
+            lastUser.style.display = 'none';
+            lastUser.dataset.suppressed = 'true';
+            console.log('[UX] Suppressed raw signature');
         }
     },
-
-    renderContactProcessingState() {
-        const output = this.getOutputHost();
-        if (!output) return;
-
-        const processing = document.createElement('div');
-        processing.className = 'commandLine system processing';
-        processing.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
-                <span style="font-size: 1.4em; animation: spin 1.4s linear infinite;">⏳</span>
-                <div>
-                    <strong>📇 Processing contact signature...</strong><br>
-                    <span style="font-size: 0.9em; color: #888;">AI extraction • Address validation • Parcel lookup • PCM review</span>
-                </div>
-            </div>
-        `;
-
-        output.appendChild(processing);
-        this.scrollOutputToBottom(output);
-
-        this._currentContactProcessingEl = processing;
-        return processing;
-    },
-
-    replaceProcessingWithProposal() {
-        if (this._currentContactProcessingEl) {
-            this._currentContactProcessingEl.remove();
-            this._currentContactProcessingEl = null;
-        }
-    },
+    
     // #endregion
 
     // #region 📇 Proposal Action Handler + Accept Flow
@@ -1614,61 +1577,56 @@ window.SkyIndex = {
     // #region 📇 Contact Proposal Pipeline (Client)
 
     // ───────────────────────────────────────────────
-    // Hybrid Intent Detection — EOP Primary (Stable)
+    // Hybrid Intent Detection — EOP Primary (Robust)
     // ───────────────────────────────────────────────
     async isContactCreationIntent(text, normalized) {
-        if (!text) return false;
+        if (!text || typeof text !== 'string') return false;
 
-        // --------------------------------------------------
+        const lower = text.toLowerCase().trim();
+
         // 1. Explicit command triggers (highest confidence)
-        // --------------------------------------------------
         if (
-            normalized.startsWith('add ') ||
-            normalized.startsWith('create ') ||
-            normalized.includes('new contact') ||
-            normalized.includes('add contact') ||
-            normalized.includes('here is a contact')
+            lower.startsWith('add ') ||
+            lower.startsWith('create ') ||
+            lower.includes('new contact') ||
+            lower.includes('add contact') ||
+            lower.includes('here is a contact') ||
+            lower.includes('location only for')
         ) {
             return true;
         }
 
-        // --------------------------------------------------
-        // 2. PRIMARY: Signature / paste detection (EOP)
-        // --------------------------------------------------
+        // 2. Signature / paste detection (now works on single-line pastes too)
         if (this.isQuickSignatureHint(text)) {
             return true;
         }
-
-        // --------------------------------------------------
-        // 3. OPTIONAL: AI fallback (disabled for now)
-        // --------------------------------------------------
-        // if (this.detectIntentAI) {
-        //     try {
-        //         return await this.detectIntentAI(text);
-        //     } catch (err) {
-        //         console.warn('[Intent AI fallback failed]', err);
-        //     }
-        // }
 
         return false;
     },
 
     // --------------------------------------------------
-    // Signature Detection (EOP Heuristic)
+    // Improved Signature Detection (Single-line + Multi-line)
     // --------------------------------------------------
     isQuickSignatureHint(text) {
-        if (!text || typeof text !== 'string') return false;
-
-        const lines = text.split('\n').filter(l => l.trim().length > 2);
-
-        // Must look like a pasted block
-        if (lines.length < 2) return false;
+        if (!text || typeof text !== 'string' || text.length < 40) return false;
 
         const hasPhone   = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
-        const hasEmail   = /\S+@\S+\.\S+/.test(text);
-        const hasAddress = /\d{2,}.*\b(AZ|TX|CA|FL|NY)\b.*\d{5}/i.test(text);
+        const hasEmail   = /\S+@\S+\.\S{2,}/.test(text);
+        const hasAddress = /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central)\b.*?(AZ|TX|CA|FL|NY|AZ)\b.*?\d{5}/.test(text);
+        const hasCompany = /\b(LLC|Inc|Corp|Group|Division|Corporation)\b/i.test(text);
+        const hasTitle   = /\b(Director|Manager|President|CEO|Operations|Owner|VP)\b/i.test(text);
+        const hasiPhone  = /Sent from my iPhone/i.test(text);
 
-        return hasPhone || hasEmail || hasAddress;
+        // Score-based detection (more forgiving)
+        let score = 0;
+        if (hasPhone) score += 2;
+        if (hasEmail) score += 2;
+        if (hasAddress) score += 2;
+        if (hasCompany) score++;
+        if (hasTitle) score++;
+        if (hasiPhone) score++;
+
+        return score >= 2;   // At least 2 strong signals = treat as contact
     },
 
     // ───────────────────────────────────────────────
