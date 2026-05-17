@@ -1346,14 +1346,16 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Correctly Populated
+    // #region 📇 Proposed Contact Renderer — With Governance Notes
     renderProposedContact(data) {
-        const proposalData = data?.data || {};
-        const entity = proposalData.entity || {};
-        const contact = proposalData.contact || {};
-        const location = proposalData.location || {};
+        const proposal = data?.data || data?.parsed || {};
+        const entity = proposal.entity || {};
+        const contact = proposal.contact || {};
+        const location = proposal.location || {};
+        const resolution = data?.resolution || {};
+        const narratives = resolution.narratives || {};
 
-        // Build Contact Identity
+        // Build display values
         const fullName = [
             contact.contactSalutation,
             contact.contactFirstName,
@@ -1363,29 +1365,35 @@ window.SkyIndex = {
         const contactIdentity = [fullName, contact.contactTitle]
             .filter(Boolean).join(' — ');
 
-        // Build Full Address
         const fullAddress = [
-            location.locationAddress || '',
-            location.locationAddressSuite ? `Suite ${location.locationAddressSuite}` : '',
-            [location.locationCity, location.locationState, location.locationZip]
+            location.locationAddress || location.address || '',
+            location.locationAddressSuite || location.suite ? `Suite ${location.locationAddressSuite || location.suite}` : '',
+            [location.locationCity || location.city, location.locationState || location.state, location.locationZip || location.zip]
                 .filter(Boolean).join(', ')
         ].filter(Boolean).join('\n');
+
+        // Governance Notes
+        const decisionNote = narratives.decision?.[0] || "This proposal represents a new entity, location, and contact.";
+        const governanceNote = narratives.informational?.[0] || "No governance issues were detected.";
+        const commitReady = resolution.decision?.readyForCommit === true;
 
         const html = `
             <div class="contact-card proposed compact">
 
+                <!-- HEADER -->
                 <div class="card-header bg-light py-2 px-3 border-bottom">
                     <strong>📇 Proposed Contact</strong>
                     <small class="text-muted ms-2">Review & confirm before saving</small>
                 </div>
 
+                <!-- BODY -->
                 <div class="card-body p-3">
                     <form id="proposalForm">
 
                         <div class="form-row mb-2">
                             <label class="col-form-label">Company / Entity</label>
                             <div class="form-field">
-                                <input type="text" class="form-control form-control-sm" id="entityName" value="${entity.entityName || ''}">
+                                <input type="text" class="form-control form-control-sm" id="entityName" value="${entity.entityName || entity.name || ''}">
                             </div>
                         </div>
 
@@ -1410,21 +1418,33 @@ window.SkyIndex = {
                             </div>
                         </div>
 
-                        <div class="form-row address-row align-items-start">
+                        <div class="form-row address-row align-items-start mb-3">
                             <label class="col-form-label">Address</label>
                             <div class="form-field">
                                 <textarea class="form-control form-control-sm" id="fullAddress" rows="3" style="resize: vertical;">${fullAddress}</textarea>
                             </div>
                         </div>
 
+                        <!-- GOVERNANCE NOTES -->
+                        <div class="governance-notes mt-3 pt-3 border-top">
+                            <div class="small fw-semibold text-muted mb-1">📋 Proposed Contact Notes</div>
+                            <div class="small text-dark">${decisionNote}</div>
+                            <div class="small text-muted mt-1">${governanceNote}</div>
+                            ${commitReady ? 
+                                `<div class="small text-success mt-2">✔ Ready for Commit — All records can be created.</div>` : 
+                                `<div class="small text-warning mt-2">⚠ Review recommended before committing.</div>`
+                            }
+                        </div>
+
                         <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
-                           class="small text-primary d-block text-end">
+                           class="small text-primary d-block text-end mt-3">
                             📄 View Full Report (opens in new tab)
                         </a>
 
                     </form>
                 </div>
 
+                <!-- FOOTER -->
                 <hr class="my-0">
                 <div class="card-footer bg-light py-2 px-3 d-flex gap-2">
                     <button onclick="SkyIndex.acceptEditedProposal()" class="btn btn-success btn-sm flex-fill">

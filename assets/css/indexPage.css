@@ -747,4 +747,12 @@ body[data-page="index"] .authText {
     box-shadow: 0 6px 18px rgba(0,0,0,0.1) !important;
 }
 
+.governance-notes {
+    background: #f8f9fa;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
 /* #endregion */
