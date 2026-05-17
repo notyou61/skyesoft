@@ -1346,7 +1346,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Right-Aligned Labels + Form Collection
+    // #region 📇 Proposed Contact Renderer — 2-Column Body Only
     renderProposedContact(data) {
         const parsed = data?.data || data?.parsed || {};
         const c = parsed.contact || {};
@@ -1367,46 +1367,47 @@ window.SkyIndex = {
         const html = `
             <div class="contact-card proposed compact">
 
+                <!-- HEADER -->
                 <div class="card-header bg-light py-2 px-3 border-bottom">
                     <strong>📇 Proposed Contact</strong>
                     <small class="text-muted ms-2">Review & confirm before saving</small>
                 </div>
 
+                <!-- BODY - 2 COLUMN -->
                 <div class="card-body p-3">
+                    <form id="proposalForm">
 
-                    <form id="proposalForm" class="horizontal-form">
-
-                        <div class="row mb-2 align-items-center">
-                            <label class="col-4 col-form-label text-end fw-semibold small">Company / Entity</label>
-                            <div class="col-8">
+                        <div class="form-row mb-2">
+                            <label class="col-form-label">Company / Entity</label>
+                            <div class="form-field">
                                 <input type="text" class="form-control form-control-sm" id="entityName" value="${e.name || ''}">
                             </div>
                         </div>
 
-                        <div class="row mb-2 align-items-center">
-                            <label class="col-4 col-form-label text-end fw-semibold small">Contact Identity</label>
-                            <div class="col-8">
+                        <div class="form-row mb-2">
+                            <label class="col-form-label">Contact Identity</label>
+                            <div class="form-field">
                                 <input type="text" class="form-control form-control-sm" id="contactIdentity" value="${contactIdentity}">
                             </div>
                         </div>
 
-                        <div class="row mb-2 align-items-center">
-                            <label class="col-4 col-form-label text-end fw-semibold small">Phone</label>
-                            <div class="col-8">
+                        <div class="form-row mb-2">
+                            <label class="col-form-label">Phone</label>
+                            <div class="form-field">
                                 <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${c.primaryPhone || ''}">
                             </div>
                         </div>
 
-                        <div class="row mb-2 align-items-center">
-                            <label class="col-4 col-form-label text-end fw-semibold small">Email</label>
-                            <div class="col-8">
+                        <div class="form-row mb-2">
+                            <label class="col-form-label">Email</label>
+                            <div class="form-field">
                                 <input type="email" class="form-control form-control-sm" id="email" value="${c.email || ''}">
                             </div>
                         </div>
 
-                        <div class="row mb-3 align-items-start">
-                            <label class="col-4 col-form-label text-end fw-semibold small pt-2">Address</label>
-                            <div class="col-8">
+                        <div class="form-row mb-3 align-items-start">
+                            <label class="col-form-label pt-2">Address</label>
+                            <div class="form-field">
                                 <textarea class="form-control form-control-sm" id="fullAddress" rows="3" style="resize: vertical;">${fullAddress}</textarea>
                             </div>
                         </div>
@@ -1417,9 +1418,9 @@ window.SkyIndex = {
                         </a>
 
                     </form>
-
                 </div>
 
+                <!-- FOOTER -->
                 <hr class="my-0">
                 <div class="card-footer bg-light py-2 px-3 d-flex gap-2">
                     <button onclick="SkyIndex.acceptEditedProposal()" class="btn btn-success btn-sm flex-fill">

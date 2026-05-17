@@ -666,11 +666,11 @@ body[data-page="index"] .authText {
 }
 /* #endregion */
 
-/* #region 📇 Contact Card — Horizontal Labels (Final) */
+/* #region 📇 Contact Card — 2-Column Horizontal (Final) */
 
 .contact-card.proposed {
     width: 100% !important;
-    max-width: 540px !important;
+    max-width: 560px !important;
     margin: 8px 0 20px 20px !important;
     background: #ffffff !important;
     border: 1px solid #ddd !important;
@@ -692,19 +692,26 @@ body[data-page="index"] .authText {
     padding: 16px !important;
 }
 
-/* Horizontal Form Styling */
-.contact-card.proposed .horizontal-form .row {
-    margin-bottom: 0.65rem;
+/* 2-Column Form Layout */
+.contact-card.proposed .form-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
 }
 
 .contact-card.proposed .col-form-label {
-    text-align: right !important;
-    padding-top: 7px !important;
-    padding-right: 12px !important;
-    font-size: 0.82rem !important;
-    font-weight: 600 !important;
-    color: #444 !important;
+    width: 38%;
+    text-align: right;
+    padding-right: 12px;
+    font-weight: 600;
+    color: #444;
+    font-size: 0.83rem;
     margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.contact-card.proposed .form-field {
+    flex: 1;
 }
 
 .contact-card.proposed .form-control,
@@ -716,7 +723,7 @@ body[data-page="index"] .authText {
 
 /* Textarea */
 .contact-card.proposed textarea {
-    min-height: 72px;
+    min-height: 74px;
     resize: vertical;
     line-height: 1.45;
 }
@@ -732,12 +739,12 @@ body[data-page="index"] .authText {
     padding: 12px 16px !important;
 }
 
-/* Hover */
+/* Hover Effect */
 .contact-card.proposed:hover {
     box-shadow: 0 6px 18px rgba(0,0,0,0.1) !important;
 }
 
-/* Command output scroll */
+/* Command Output Scrolling */
 .commandOutput {
     max-height: calc(100vh - 260px) !important;
     overflow-y: auto;
