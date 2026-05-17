@@ -1346,179 +1346,82 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Streamlined Semantic Review
+    // #region 📇 Proposed Contact Renderer — Clean Header/Body/Footer
     renderProposedContact(data) {
-
         const parsed = data?.data || data?.parsed || {};
-
         const c = parsed.contact || {};
         const e = parsed.entity || {};
         const l = parsed.location || {};
 
-        // --------------------------------------------------
-        // Semantic Display Values
-        // --------------------------------------------------
-
         const contactIdentity = [
-            [c.salutation, c.firstName, c.lastName]
-                .filter(Boolean)
-                .join(' '),
-
+            [c.salutation, c.firstName, c.lastName].filter(Boolean).join(' '),
             c.title || ''
-        ]
-        .filter(Boolean)
-        .join(' — ');
+        ].filter(Boolean).join(' — ');
 
         const fullAddress = [
             l.address || '',
             l.suite ? `Suite ${l.suite}` : '',
-            [l.city, l.state, l.zip]
-                .filter(Boolean)
-                .join(', ')
-        ]
-        .filter(Boolean)
-        .join('\n');
-
-        // --------------------------------------------------
-        // Compact Semantic Review UI
-        // --------------------------------------------------
+            [l.city, l.state, l.zip].filter(Boolean).join(', ')
+        ].filter(Boolean).join('\n');
 
         const html = `
-            <div class="contact-card proposed compact semantic-review">
+            <div class="contact-card proposed compact">
 
-                <!-- Header -->
-                <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <strong>📇 Proposed Contact</strong>
-                        <small class="text-muted ms-2">
-                            Review & confirm before saving
-                        </small>
-                    </div>
-
-                    <div class="small text-muted">
-                        AI Normalized
-                    </div>
+                <!-- HEADER -->
+                <div class="card-header bg-light py-2 px-3 border-bottom">
+                    <strong>📇 Proposed Contact</strong>
+                    <small class="text-muted ms-2">Review & confirm before saving</small>
                 </div>
 
-                <!-- Body -->
+                <!-- BODY -->
                 <div class="card-body p-3">
 
                     <!-- Company -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small mb-1">
-                            Company / Entity
-                        </label>
-
-                        <input
-                            type="text"
-                            class="form-control form-control-sm"
-                            id="entityName"
-                            value="${e.name || ''}"
-                            placeholder="Company Name"
-                        >
+                        <label class="form-label fw-semibold small">Company / Entity</label>
+                        <input type="text" class="form-control form-control-sm" id="entityName" value="${e.name || ''}">
                     </div>
 
                     <!-- Contact Identity -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small mb-1">
-                            Contact Identity
-                        </label>
-
-                        <input
-                            type="text"
-                            class="form-control form-control-sm"
-                            id="contactIdentity"
-                            value="${contactIdentity}"
-                            placeholder="Jennifer Carlisle — Operations Director"
-                        >
+                        <label class="form-label fw-semibold small">Contact Identity</label>
+                        <input type="text" class="form-control form-control-sm" id="contactIdentity" value="${contactIdentity}">
                     </div>
 
-                    <!-- Contact Info -->
+                    <!-- Phone + Email -->
                     <div class="row g-2 mb-3">
-
-                        <div class="col-md-5">
-                            <label class="form-label small mb-1">
-                                Phone
-                            </label>
-
-                            <input
-                                type="tel"
-                                class="form-control form-control-sm"
-                                id="primaryPhone"
-                                value="${c.primaryPhone || ''}"
-                                placeholder="(602) 555-1234"
-                            >
+                        <div class="col-6">
+                            <label class="form-label small">Phone</label>
+                            <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${c.primaryPhone || ''}">
                         </div>
-
-                        <div class="col-md-7">
-                            <label class="form-label small mb-1">
-                                Email
-                            </label>
-
-                            <input
-                                type="email"
-                                class="form-control form-control-sm"
-                                id="email"
-                                value="${c.email || ''}"
-                                placeholder="name@company.com"
-                            >
+                        <div class="col-6">
+                            <label class="form-label small">Email</label>
+                            <input type="email" class="form-control form-control-sm" id="email" value="${c.email || ''}">
                         </div>
-
                     </div>
 
                     <!-- Full Address -->
                     <div class="mb-3">
-
-                        <label class="form-label fw-semibold small mb-1">
-                            Address
-                        </label>
-
-                        <textarea
-                            class="form-control form-control-sm"
-                            id="fullAddress"
-                            rows="3"
-                            style="resize: vertical;"
-                            placeholder="Full mailing address"
-                        >${fullAddress}</textarea>
-
+                        <label class="form-label small">Full Mailing Address</label>
+                        <textarea class="form-control form-control-sm" id="fullAddress" rows="3" style="resize: vertical;">${fullAddress}</textarea>
                     </div>
 
-                    <!-- Utilities -->
-                    <div class="d-flex justify-content-between align-items-center">
-
-                        <a
-                            href="#"
-                            onclick="SkyIndex.viewContactReport(); return false;"
-                            class="small text-primary text-decoration-none"
-                        >
-                            📄 View Full Report
-                        </a>
-
-                        <div class="small text-muted">
-                            AI-assisted semantic editing enabled
-                        </div>
-
-                    </div>
+                    <!-- Report -->
+                    <a href="#" onclick="SkyIndex.viewContactReport(); return false;" class="small text-primary">
+                        📄 View Full Report (opens in new tab)
+                    </a>
 
                 </div>
 
-                <!-- Footer -->
+                <!-- FOOTER with horizontal separator -->
+                <hr class="my-0">
                 <div class="card-footer bg-light py-2 px-3 d-flex gap-2">
-
-                    <button
-                        onclick="SkyIndex.handleProposalAction('accept')"
-                        class="btn btn-success btn-sm flex-fill"
-                    >
+                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn btn-success btn-sm flex-fill">
                         ✔ Accept & Save
                     </button>
-
-                    <button
-                        onclick="SkyIndex.handleProposalAction('decline')"
-                        class="btn btn-outline-secondary btn-sm flex-fill"
-                    >
+                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-secondary btn-sm flex-fill">
                         ✕ Decline
                     </button>
-
                 </div>
 
             </div>
