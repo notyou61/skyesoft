@@ -2,42 +2,174 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>{{documentTitle}}</title>
-  <style>
-    @page { margin: 0.75in 0.5in 0.75in 0.5in; }
-    body { font-family: Arial, sans-serif; font-size: 11pt; color: #333; margin:0; padding:0; }
-    
-    header { position: fixed; top:0; left:0; right:0; height:0.9in; background:#0a2540; color:white; padding:0 0.5in; display:flex; align-items:center; }
-    header img { height:65px; margin-right:15px; }
-    header .title { font-size:16pt; font-weight:bold; }
-    header .subtitle { font-size:11pt; opacity:0.95; }
-    
-    footer { position:fixed; bottom:0; left:0; right:0; height:0.6in; font-size:9pt; color:#555; padding:0 0.5in; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #ccc; }
-    
-    main { margin-top:1.1in; margin-bottom:0.8in; }
-    .section { margin-bottom:22px; page-break-inside:avoid; }
-    table { width:100%; border-collapse:collapse; margin:10px 0; }
-    th, td { border:1px solid #ccc; padding:8px; vertical-align:top; }
-    th { background:#f5f5f5; width:32%; }
-    .map-container { text-align:center; margin:15px 0; padding:10px; border:1px solid #ddd; }
-  </style>
+  <title>{{reportTitle}}</title>
+<style>
+  @page {
+    size: letter portrait;
+    margin: 0.75in 0.5in 0.75in 0.5in;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    line-height: 1.45;
+  }
+
+  /* ========== UNIVERSAL HEADER ========== */
+  header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1.0in;
+    background: #0a2540;
+    color: white;
+    padding: 0 0.5in;
+    display: flex;
+    align-items: center;
+    z-index: 1000;
+    border-bottom: 3px solid #ffffff;
+  }
+
+  header .logo {
+    height: 70px;
+    margin-right: 18px;
+    flex-shrink: 0;
+  }
+
+  header .text {
+    line-height: 1.2;
+  }
+
+  header .title {
+    font-size: 17pt;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+
+  header .subtitle {
+    font-size: 11.5pt;
+    opacity: 0.92;
+    margin-top: 2px;
+  }
+
+  /* ========== FOOTER ========== */
+  footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 0.58in;
+    font-size: 9pt;
+    color: #555;
+    padding: 0 0.5in;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #ccc;
+    z-index: 1000;
+  }
+
+  /* ========== BODY ========== */
+  main {
+    margin-top: 1.18in;   /* Adjusted for 1.0in header + breathing room */
+    margin-bottom: 0.75in;
+  }
+
+  .section {
+    margin-bottom: 22px;
+    page-break-inside: avoid;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    background: #f5f5f5;
+    width: 32%;
+    font-weight: 600;
+  }
+
+  .highlight {
+    background: #f0f7ff;
+    padding: 13px 16px;
+    border-left: 5px solid #0a2540;
+    margin: 12px 0;
+  }
+
+  .map-container {
+    text-align: center;
+    margin: 15px 0;
+    padding: 12px;
+    border: 1px solid #ddd;
+    background: #fafafa;
+  }
+
+  /* ========== Report-specific additions (for contactProposal.html) ========== */
+  .report-header {
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #0a2540;
+  }
+
+  .report-header h1 {
+    margin: 0 0 8px 0;
+    font-size: 17pt;
+    color: #0a2540;
+  }
+
+  .report-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 9px;
+    font-size: 9pt;
+    border-radius: 4px;
+    background: #e9ecef;
+    color: #495057;
+    font-weight: 600;
+  }
+</style>
 </head>
 <body>
+
+  <!-- UNIVERSAL OPERATIONAL HEADER -->
   <header>
-    <img src="https://skyelighting.com/assets/images/christyLogo.jpg" alt="Christy Signs">
-    <div>
+    <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png" 
+         class="logo" alt="Christy Signs">
+    <div class="text">
       <div class="title">Skyesoft Operational Intelligence</div>
-      <div class="subtitle">{{documentTitle}}</div>
+      <div class="subtitle">{{reportTitle}}</div>
     </div>
   </header>
 
+  <!-- FOOTER -->
   <footer>
-    <div>{{entityName}} • Confidential</div>
-    <div>Generated: {{generatedDate}} • Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>
+    <div>{{entityName}} • Confidential • Operational Document</div>
+    <div>Generated: {{generatedDate}} &nbsp; • &nbsp; Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>
   </footer>
 
+  <!-- REPORT-SPECIFIC CONTENT -->
   <main>
     {{documentBody}}
   </main>
+
 </body>
 </html>
