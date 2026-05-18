@@ -1,285 +1,353 @@
+<!--
+  🧠 Skyesoft — base.html
+  📄 Universal Operational PDF Constitution
+  🧩 Reusable Report Shell (Header → Body → Footer)
+  📍 Christy Signs | Phoenix, Arizona
+-->
+
+<!-- #region 🏷️ HTML TAG -->
 <!DOCTYPE html>
 <html lang="en">
+<!-- #endregion -->
 
+<!-- #region 🧠 HEAD -->
 <head>
-  <meta charset="UTF-8">
 
-  <title>{{reportTitle}}</title>
+    <!-- #region 🧾 META & TITLE -->
+    <meta charset="UTF-8">
+    <title>{{reportTitle}}</title>
+    <!-- #endregion -->
 
-  <style>
+    <!-- #region 🎨 UNIVERSAL PDF STYLES -->
+    <style>
 
-    /* =====================================================
-       PAGE CONSTITUTION
-    ===================================================== */
+        /* #region 📄 PAGE CONSTITUTION */
 
-    @page {
-      size: letter portrait;
-      margin: 0.6in 0.5in 0.6in 0.5in;
-    }
+        @page {
+            size: letter portrait;
+            margin: 0.6in 0.5in 0.6in 0.5in;
+        }
 
-    body {
-      font-family: Arial, sans-serif;
-      font-size: 11pt;
-      color: #222;
-      margin: 0;
-      padding: 0;
-      line-height: 1.4;
-    }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            color: #222;
 
-    /* =====================================================
-       UNIVERSAL OPERATIONAL HEADER
-    ===================================================== */
+            margin: 0;
+            padding: 0;
 
-    header {
-      position: fixed;
+            line-height: 1.4;
+        }
 
-      top: 0;
-      left: 0;
-      right: 0;
+        /* #endregion */
 
-      height: 0.95in;
+        /* #region 🏢 UNIVERSAL OPERATIONAL HEADER */
 
-      display: flex;
-      align-items: center;
-      gap: 16px;
+        header {
+            position: fixed;
 
-      border-bottom: 2.5px solid #14377C;
+            top: 0;
+            left: 0;
+            right: 0;
 
-      padding: 0 0.5in 8px 0.5in;
+            height: 0.95in;
 
-      background: #ffffff;
+            border-bottom: 2.5px solid #14377C;
 
-      z-index: 1000;
-    }
+            padding: 0 0.5in 8px 0.5in;
 
-    .header-left {
-      flex-shrink: 0;
-    }
+            background: #ffffff;
 
-    .header-left .logo {
-      height: 58px;
-    }
+            z-index: 1000;
+        }
 
-    .header-right {
-      text-align: left;
-    }
+        .headerTable {
+            width: 100%;
 
-    .header-right h1 {
-      font-size: 15pt;
-      color: #14377C;
+            border-collapse: collapse;
+            border: none;
+        }
 
-      margin: 0 0 2px 0;
+        .headerTable td {
+            border: none;
 
-      font-weight: 700;
+            vertical-align: middle;
 
-      line-height: 1.1;
-    }
+            padding: 0;
+        }
 
-    .header-right .subtitle {
-      font-size: 10.5pt;
-      color: #555;
+        .headerLogoCell {
+            width: 180px;
+        }
 
-      margin-top: 1px;
-    }
+        .headerLogo {
+            height: 58px;
+        }
 
-    /* =====================================================
-       UNIVERSAL OPERATIONAL FOOTER
-    ===================================================== */
+        .headerTitle {
+            font-size: 15pt;
+            font-weight: 700;
+            color: #14377C;
 
-    footer {
-      position: fixed;
+            line-height: 1.1;
 
-      bottom: 0;
-      left: 0;
-      right: 0;
+            margin-bottom: 2px;
+        }
 
-      height: 0.45in;
+        .headerSubtitle {
+            font-size: 10.5pt;
+            color: #555;
+        }
 
-      border-top: 1px solid #ccc;
+        /* #endregion */
 
-      font-size: 8.5pt;
-      color: #666;
+        /* #region 🧾 UNIVERSAL OPERATIONAL FOOTER */
 
-      padding: 6px 0.5in 0 0.5in;
+        footer {
+            position: fixed;
 
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+            bottom: 0;
+            left: 0;
+            right: 0;
 
-      background: #ffffff;
-    }
+            height: 0.45in;
 
-    /* =====================================================
-       BODY CONTENT AREA
-    ===================================================== */
+            border-top: 1px solid #ccc;
 
-    main {
-      margin-top: 1.15in;
-      margin-bottom: 0.65in;
-    }
+            font-size: 8.5pt;
+            color: #666;
 
-    .section {
-      margin-bottom: 18px;
+            padding: 6px 0.5in 0 0.5in;
 
-      page-break-inside: avoid;
-    }
+            background: #ffffff;
+        }
 
-    p {
-      margin: 6px 0;
-    }
+        .footerTable {
+            width: 100%;
 
-    /* =====================================================
-       SECTION HEADERS
-    ===================================================== */
+            border-collapse: collapse;
+            border: none;
+        }
 
-    h2 {
-      font-size: 12pt;
-      color: #14377C;
+        .footerTable td {
+            border: none;
 
-      border-bottom: 1px solid #ccc;
+            padding: 0;
 
-      margin: 0 0 8px 0;
-      padding-bottom: 3px;
-    }
+            vertical-align: middle;
+        }
 
-    /* =====================================================
-       TABLES
-    ===================================================== */
+        .footerLeft {
+            text-align: left;
+        }
 
-    table {
-      width: 100%;
+        .footerRight {
+            text-align: right;
+        }
 
-      border-collapse: collapse;
+        /* #endregion */
 
-      margin: 8px 0;
-    }
+        /* #region 🧱 BODY CONTENT AREA */
 
-    th,
-    td {
-      border: 1px solid #ccc;
+        main {
+            margin-top: 1.15in;
+            margin-bottom: 0.65in;
+        }
 
-      padding: 6px 8px;
+        .section {
+            margin-bottom: 18px;
 
-      text-align: left;
-      vertical-align: top;
-    }
+            page-break-inside: avoid;
+        }
 
-    th {
-      background: #f5f5f5;
+        p {
+            margin: 6px 0;
+        }
 
-      width: 32%;
+        /* #endregion */
 
-      font-weight: 600;
-    }
+        /* #region 🏷️ SECTION HEADERS */
 
-    /* =====================================================
-       UNIVERSAL OPERATIONAL PANELS
-    ===================================================== */
+        h2 {
+            font-size: 12pt;
+            color: #14377C;
 
-    .highlight {
-      background: #f0f7ff;
+            border-bottom: 1px solid #ccc;
 
-      padding: 12px 14px;
+            margin: 0 0 8px 0;
+            padding-bottom: 3px;
+        }
 
-      border-left: 4px solid #14377C;
+        /* #endregion */
 
-      margin: 12px 0;
-    }
+        /* #region 📊 TABLES */
 
-    .warning {
-      background: #fff8e6;
+        table {
+            width: 100%;
 
-      padding: 12px 14px;
+            border-collapse: collapse;
 
-      border-left: 4px solid #d48a00;
+            margin: 8px 0;
+        }
 
-      margin: 12px 0;
-    }
+        th,
+        td {
+            border: 1px solid #ccc;
 
-    .critical {
-      background: #fff0f0;
+            padding: 6px 8px;
 
-      padding: 12px 14px;
+            text-align: left;
+            vertical-align: top;
+        }
 
-      border-left: 4px solid #b00020;
+        th {
+            width: 32%;
 
-      margin: 12px 0;
-    }
+            background: #f5f5f5;
 
-    /* =====================================================
-       MAP CONTAINER
-    ===================================================== */
+            font-weight: 600;
+        }
 
-    .map-container {
-      text-align: center;
+        /* #endregion */
 
-      margin: 15px 0;
+        /* #region 🚨 UNIVERSAL OPERATIONAL PANELS */
 
-      padding: 10px;
+        .highlight {
+            background: #f0f7ff;
 
-      border: 1px solid #ddd;
+            border-left: 4px solid #14377C;
 
-      background: #fafafa;
-    }
+            padding: 12px 14px;
 
-  </style>
+            margin: 12px 0;
+        }
+
+        .warning {
+            background: #fff8e6;
+
+            border-left: 4px solid #d48a00;
+
+            padding: 12px 14px;
+
+            margin: 12px 0;
+        }
+
+        .critical {
+            background: #fff0f0;
+
+            border-left: 4px solid #b00020;
+
+            padding: 12px 14px;
+
+            margin: 12px 0;
+        }
+
+        /* #endregion */
+
+        /* #region 🗺️ MAP CONTAINER */
+
+        .map-container {
+            text-align: center;
+
+            margin: 15px 0;
+
+            padding: 10px;
+
+            border: 1px solid #ddd;
+
+            background: #fafafa;
+        }
+
+        /* #endregion */
+
+    </style>
+    <!-- #endregion -->
+
 </head>
+<!-- #endregion -->
 
+<!-- #region 🧍 BODY TAG -->
 <body>
+<!-- #endregion -->
 
-  <!-- =====================================================
-       UNIVERSAL OPERATIONAL HEADER
-  ====================================================== -->
+<!-- #region 🏢 UNIVERSAL OPERATIONAL HEADER -->
+<header>
 
-  <header>
+    <!-- #region 🏷️ HEADER TABLE -->
+    <table class="headerTable">
 
-    <div class="header-left">
+        <tr>
 
-      <img
-        src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
-        class="logo"
-        alt="Christy Signs">
+            <!-- #region 🖼️ HEADER LOGO -->
+            <td class="headerLogoCell">
 
-    </div>
+                <img
+                    src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
+                    class="headerLogo"
+                    alt="Christy Signs">
 
-    <div class="header-right">
+            </td>
+            <!-- #endregion -->
 
-      <h1>{{reportTitle}}</h1>
+            <!-- #region 🧾 HEADER TITLE BLOCK -->
+            <td>
 
-      <div class="subtitle">
-        Skyesoft Operational Intelligence
-      </div>
+                <div class="headerTitle">
+                    {{reportTitle}}
+                </div>
 
-    </div>
+                <div class="headerSubtitle">
+                    Skyesoft Operational Intelligence
+                </div>
 
-  </header>
+            </td>
+            <!-- #endregion -->
 
-  <!-- =====================================================
-       UNIVERSAL OPERATIONAL FOOTER
-  ====================================================== -->
+        </tr>
 
-  <footer>
+    </table>
+    <!-- #endregion -->
 
-    <div>
-      Christy Signs • 3145 N 33rd Ave, Phoenix, AZ 85017
-    </div>
+</header>
+<!-- #endregion -->
 
-    <div>
-      Generated {{generatedDate}}
-    </div>
+<!-- #region 🧾 UNIVERSAL OPERATIONAL FOOTER -->
+<footer>
 
-  </footer>
+    <!-- #region 📊 FOOTER TABLE -->
+    <table class="footerTable">
 
-  <!-- =====================================================
-       REPORT CONTENT
-  ====================================================== -->
+        <tr>
 
-  <main>
+            <!-- #region 📍 FOOTER LEFT -->
+            <td class="footerLeft">
+                Christy Signs • 3145 N 33rd Ave, Phoenix, AZ 85017
+            </td>
+            <!-- #endregion -->
+
+            <!-- #region ⏰ FOOTER RIGHT -->
+            <td class="footerRight">
+                Generated {{generatedDate}}
+            </td>
+            <!-- #endregion -->
+
+        </tr>
+
+    </table>
+    <!-- #endregion -->
+
+</footer>
+<!-- #endregion -->
+
+<!-- #region 🧱 REPORT CONTENT -->
+<main>
 
     {{documentBody}}
 
-  </main>
+</main>
+<!-- #endregion -->
 
+<!-- #region 🛑 ENDING BODY HTML TAG -->
 </body>
-
 </html>
+<!-- #endregion -->
