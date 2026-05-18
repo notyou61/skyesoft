@@ -1460,43 +1460,69 @@ window.SkyIndex = {
 
     // #region 📇 View Contact Report — PDF Generation
     viewContactReport() {
-        const prop = this.currentProposal;
-        if (!prop) {
+        const prop = this.currentProposal || this.lastProposal || {};
+        if (!prop?.data) {
             alert("No active proposal to view report.");
             return;
         }
 
-        // Optional: Show loading state on the link
+        const d = prop.data || {};
+        const loc = d.location || {};
+        const cont = d.contact || {};
+        const ent = d.entity || {};
+        const res = prop.resolution || {};
+        const pers = prop.persistence || {};
+
+        // Optional loading feedback
         const link = document.querySelector('a[onclick*="viewContactReport"]');
         const originalText = link ? link.textContent : 'View Full Report (PDF)';
         if (link) link.textContent = 'Generating PDF...';
 
-        fetch('/api/generate-contact-pdf', {
+        fetch('/api/generate-report.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                placeId: prop.placeId || prop.googlePlaceId || prop.location?.googlePlaceId || '',
-                
-                entityName: prop.entity?.entityName || prop.entity?.name || prop.company || "Metro Monument Group",
-                
+                // === Required for dynamic routing ===
+                reportType: "contactProposal",
+
+                // Report metadata
+                reportTitle: "Proposed Contact Report (PC-1)",
+                confidence: prop.confidence || 85,
+                filename: "Proposed_Contact_Report",
+
+                // Entity
+                entityName: ent.entityName || ent.name || "Unknown Entity",
+
+                // Contact
                 contactName: [
-                    prop.contact?.contactSalutation,
-                    prop.contact?.contactFirstName,
-                    prop.contact?.contactLastName,
-                    prop.contact?.contactTitle
-                ].filter(Boolean).join(' ').trim() || "Contact",
+                    cont.contactSalutation,
+                    cont.contactFirstName,
+                    cont.contactLastName
+                ].filter(Boolean).join(' ').trim(),
+                contactTitle: cont.contactTitle || "",
+                contactPhone: cont.contactPrimaryPhone || "",
+                contactEmail: cont.contactEmail || "",
 
-                address: [
-                    prop.location?.locationAddress || prop.location?.address,
-                    prop.location?.locationAddressSuite || prop.location?.suite ? `Suite ${prop.location?.locationAddressSuite || prop.location?.suite}` : '',
-                    [prop.location?.locationCity || prop.location?.city, 
-                     prop.location?.locationState || prop.location?.state, 
-                     prop.location?.locationZip || prop.location?.zip]
-                        .filter(Boolean).join(', ')
-                ].filter(Boolean).join('\n'),
+                // Location
+                locationAddress: loc.locationAddress || "",
+                locationCityStateZip: `${loc.locationCity || ''}, ${loc.locationState || ''} ${loc.locationZip || ''}`,
+                locationPlaceId: loc.locationPlaceId || "",
+                locationLatitude: loc.locationLatitude || "",
+                locationLongitude: loc.locationLongitude || "",
 
-                phone: prop.contact?.contactPrimaryPhone || prop.phone || "",
-                email: prop.contact?.contactEmail || prop.email || ""
+                // Governance & Resolution
+                governanceNarrative: (res.narratives?.decision?.[0] || "") + 
+                                   (res.narratives?.review?.[0] ? "\n\nReview: " + res.narratives.review[0] : ""),
+
+                // Persistence
+                commitAllowed: pers.commitAllowed ? "YES" : "NO",
+                entityAction: pers.entity?.action || "hold",
+                locationAction: pers.location?.action || "hold",
+                contactAction: pers.contact?.action || "hold",
+
+                // Resolution fields
+                pc_code: res.pc?.code || "",
+                resolutionStatus: res.pcmStatus || res.classification?.status || "",
             })
         })
         .then(response => {

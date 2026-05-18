@@ -1,315 +1,157 @@
 <?php
+declare(strict_types=1);
 
-// =====================================================
-// Skyesoft™ Report Generator
-// Core Rendering Engine
-// =====================================================
+// ======================================================================
+//  Skyesoft — reportGenerator.php
+//  Version: 2.1.1 — Fixed & Prototype Ready
+//  Canonical Document Rendering Engine
+// ======================================================================
+
+#region SECTION 0 — Dependencies + imports
+
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
+#endregion
+
+#region SECTION 1 — Report Generator Class
 
 class ReportGenerator
 {
-
     // =====================================================
     // Properties
     // =====================================================
 
-    private $templatePath;
-    private $baseTemplatePath;
+    private ?string $baseTemplatePath = null;
+    private ?string $templatePath = null;
+    private array $payload = [];
 
-    private $templateHtml;
-    private $baseHtml;
-
-    private $payload = [];
-
-    private $renderedHtml;
+    private ?string $baseHtml = null;
+    private ?string $templateHtml = null;
+    private ?string $renderedHtml = null;
 
     // =====================================================
     // Constructor
     // =====================================================
 
-    public function __construct($config = [])
+    public function __construct(array $config = [])
     {
-
-        // Base template path
-        $this->baseTemplatePath =
-            $config['baseTemplatePath']
+        $this->baseTemplatePath = $config['baseTemplatePath']
             ?? __DIR__ . '/../../reports/templates/base.html';
-
     }
 
     // =====================================================
     // Set Template
     // =====================================================
 
-    public function setTemplate($templateName)
+    public function setTemplate(string $templateName): bool
     {
+        $this->templatePath = __DIR__ . '/../../reports/templates/' . $templateName . '.html';
 
-        // Build template path
-        $this->templatePath =
-            __DIR__
-            . '/../../reports/templates/'
-            . $templateName;
-
-        // Validate existence
         if (!file_exists($this->templatePath)) {
-
-            throw new Exception(
-                'Template not found: ' . $this->templatePath
-            );
-
+            throw new Exception('Template not found: ' . $this->templatePath);
         }
 
         return true;
-
     }
 
     // =====================================================
     // Set Payload
     // =====================================================
 
-    public function setPayload($payload = [])
+    public function setPayload(array $payload = []): bool
     {
-
-        // Store payload
         $this->payload = $payload;
-
         return true;
-
     }
 
     // =====================================================
     // Load Templates
     // =====================================================
 
-    private function loadTemplates()
+    private function loadTemplates(): void
     {
-
-        // Validate base template
         if (!file_exists($this->baseTemplatePath)) {
-
-            throw new Exception(
-                'Base template missing.'
-            );
-
+            throw new Exception('Base template missing: ' . $this->baseTemplatePath);
         }
 
-        // Load base HTML
-        $this->baseHtml =
-            file_get_contents($this->baseTemplatePath);
-
-        // Load content template
-        $this->templateHtml =
-            file_get_contents($this->templatePath);
-
+        $this->baseHtml = file_get_contents($this->baseTemplatePath);
+        $this->templateHtml = file_get_contents($this->templatePath);
     }
 
     // =====================================================
-    // Replace Tokens
+    // Replace Tokens + Map Generation
     // =====================================================
 
-    private function replaceTokens($html)
+    private function replaceTokens(string $html): string
     {
-
-        // Loop payload
         foreach ($this->payload as $key => $value) {
-
-            // Convert arrays to JSON
             if (is_array($value)) {
-
-                $value =
-                    json_encode(
-                        $value,
-                        JSON_PRETTY_PRINT
-                    );
-
+                $value = json_encode($value, JSON_PRETTY_PRINT);
             }
+            $html = str_replace('{{' . $key . '}}', (string)$value, $html);
+        }
 
-            // Replace token
-            $html =
-                str_replace(
-                    '{{' . $key . '}}',
-                    $value,
-                    $html
-                );
-
+        // Auto-generate Google Static Map
+        if (!empty($this->payload['locationLatitude']) && !empty($this->payload['locationLongitude'])) {
+            $lat = $this->payload['locationLatitude'];
+            $lng = $this->payload['locationLongitude'];
+            $mapUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=18&size=650x320&maptype=roadmap&markers=color:red%7C{$lat},{$lng}";
+            $mapHtml = '<img src="' . $mapUrl . '" style="max-width:100%; height:auto; border:1px solid #ccc;" alt="AI-Verified Location">';
+            $html = str_replace('{{mapImage}}', $mapHtml, $html);
         }
 
         return $html;
-
     }
 
     // =====================================================
     // Render HTML
     // =====================================================
 
-    public function renderHtml()
+    public function renderHtml(): string
     {
-
-        // Load templates
         $this->loadTemplates();
 
-        // Inject content template
-        $this->baseHtml =
-            str_replace(
-                '{{reportContent}}',
-                $this->templateHtml,
-                $this->baseHtml
-            );
-
-        // Replace tokens
-        $this->renderedHtml =
-            $this->replaceTokens(
-                $this->baseHtml
-            );
+        $html = str_replace('{{documentBody}}', $this->templateHtml, $this->baseHtml);
+        $this->renderedHtml = $this->replaceTokens($html);
 
         return $this->renderedHtml;
-
     }
 
     // =====================================================
-    // Get HTML
+    // Stream PDF to Browser
     // =====================================================
 
-    public function getHtml()
+    public function streamPdf(string $filename = 'Proposed_Contact_Report.pdf'): void
     {
+        $html = $this->renderHtml();
 
-        // Render if needed
-        if (!$this->renderedHtml) {
+        $options = new Options();
+        $options->setIsRemoteEnabled(true);
+        $options->setChroot(__DIR__ . '/../../');
 
-            $this->renderHtml();
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('letter', 'portrait');
+        $dompdf->render();
 
-        }
-
-        return $this->renderedHtml;
-
-    }
-
-    // =====================================================
-    // Save HTML Debug Copy
-    // =====================================================
-
-    public function saveHtml($path)
-    {
-
-        // Ensure rendered
-        $html =
-            $this->getHtml();
-
-        // Save file
-        file_put_contents(
-            $path,
-            $html
-        );
-
-        return true;
-
-    }
-
-    // =====================================================
-    // Generate PDF
-    // =====================================================
-
-    public function generatePdf($outputPath = null)
-    {
-
-        // Ensure rendered
-        $html =
-            $this->getHtml();
-
-        // Temp HTML
-        $tempHtml =
-            tempnam(
-                sys_get_temp_dir(),
-                'skyereport_'
-            ) . '.html';
-
-        // Save temp HTML
-        file_put_contents(
-            $tempHtml,
-            $html
-        );
-
-        // Default output path
-        if (!$outputPath) {
-
-            $outputPath =
-                tempnam(
-                    sys_get_temp_dir(),
-                    'skyepdf_'
-                ) . '.pdf';
-
-        }
-
-        // =====================================================
-        // wkhtmltopdf Command
-        // =====================================================
-
-        $command =
-            'wkhtmltopdf '
-            . '--enable-local-file-access '
-            . '--margin-top 12mm '
-            . '--margin-bottom 14mm '
-            . '--margin-left 10mm '
-            . '--margin-right 10mm '
-            . escapeshellarg($tempHtml)
-            . ' '
-            . escapeshellarg($outputPath);
-
-        // Execute command
-        exec(
-            $command,
-            $output,
-            $resultCode
-        );
-
-        // Cleanup temp file
-        unlink($tempHtml);
-
-        // Validate PDF generation
-        if ($resultCode !== 0) {
-
-            throw new Exception(
-                'PDF generation failed.'
-            );
-
-        }
-
-        return $outputPath;
-
-    }
-
-    // =====================================================
-    // Stream PDF
-    // =====================================================
-
-    public function streamPdf($filename = 'report.pdf')
-    {
-
-        // Generate PDF
-        $pdfPath =
-            $this->generatePdf();
-
-        // Output headers
         header('Content-Type: application/pdf');
-
-        header(
-            'Content-Disposition: inline; filename="'
-            . $filename
-            . '"'
-        );
-
-        header(
-            'Content-Length: '
-            . filesize($pdfPath)
-        );
-
-        // Stream PDF
-        readfile($pdfPath);
-
-        // Cleanup
-        unlink($pdfPath);
-
+        header('Content-Disposition: inline; filename="' . $filename . '"');
+        echo $dompdf->output();
         exit;
-
     }
 
+    // =====================================================
+    // Save HTML for debugging
+    // =====================================================
+
+    public function saveHtml(string $path): bool
+    {
+        file_put_contents($path, $this->renderHtml());
+        return true;
+    }
 }
+
+#endregion

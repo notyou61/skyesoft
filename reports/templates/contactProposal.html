@@ -1,0 +1,58 @@
+<div class="section">
+  <h2>🔍 Resolution Summary (PC-1)</h2>
+  <table>
+    <tr><th>Report Title</th><td>{{reportTitle}}</td></tr>
+    <tr><th>Confidence</th><td>{{confidence}}%</td></tr>
+    <tr><th>PC Code</th><td>{{pc_code}}</td></tr>
+    <tr><th>Status</th><td>{{resolutionStatus}}</td></tr>
+    <tr><th>Commit Ready</th><td><strong>{{commitAllowed}}</strong></td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>🏢 Entity Information</h2>
+  <table>
+    <tr><th>Entity Name</th><td>{{entityName}}</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>👤 Contact Information</h2>
+  <table>
+    <tr><th>Contact Name</th><td>{{contactName}}</td></tr>
+    <tr><th>Title</th><td>{{contactTitle}}</td></tr>
+    <tr><th>Phone</th><td>{{contactPhone}}</td></tr>
+    <tr><th>Email</th><td>{{contactEmail}}</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>📍 Location Information</h2>
+  <table>
+    <tr><th>Full Address</th><td>{{locationAddress}}</td></tr>
+    <tr><th>City, State ZIP</th><td>{{locationCityStateZip}}</td></tr>
+    <tr><th>Place ID</th><td>{{locationPlaceId}}</td></tr>
+  </table>
+
+  <div class="map-container">
+    <strong>AI-Verified Location Map</strong><br><br>
+    {{mapImage}}
+  </div>
+</div>
+
+<div class="section">
+  <h2>🧠 Governance & Operational Narrative</h2>
+  <div class="highlight">
+    {{governanceNarrative}}
+  </div>
+</div>
+
+<div class="section">
+  <h2>🔄 Persistence / Staging State</h2>
+  <table>
+    <tr><th>Entity Action</th><td>{{entityAction}}</td></tr>
+    <tr><th>Location Action</th><td>{{locationAction}}</td></tr>
+    <tr><th>Contact Action</th><td>{{contactAction}}</td></tr>
+    <tr><th>Commit Allowed</th><td><strong>{{commitAllowed}}</strong></td></tr>
+  </table>
+</div>
