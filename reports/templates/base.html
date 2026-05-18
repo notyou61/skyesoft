@@ -21,8 +21,9 @@
     /* ========== CLEAN 2-COLUMN HEADER ========== */
     header {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      align-items: flex-start;           /* Changed from center for better alignment */
+      justify-content: flex-start;       /* Changed from space-between */
+      gap: 20px;                         /* Adds nice space between logo and title */
       border-bottom: 2.5px solid #14377C;
       padding-bottom: 10px;
       margin-bottom: 14px;
@@ -37,13 +38,14 @@
     }
 
     .header-right {
-      text-align: right;
+      text-align: left;                  /* ← This is the key change */
+      padding-top: 4px;
     }
 
     .header-right h1 {
       font-size: 15pt;
       color: #14377C;
-      margin: 0 0 3px 0;
+      margin: 0 0 2px 0;
       font-weight: 700;
     }
 
@@ -104,7 +106,7 @@
   <header>
     <div class="header-left">
       <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png" 
-           class="logo" alt="Christy Signs">
+          class="logo" alt="Christy Signs">
     </div>
     
     <div class="header-right">
