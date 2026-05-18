@@ -1907,7 +1907,7 @@
                     "framework": {
                     "engine": "ReportGenerator.php",
                     "baseTemplate": "/reports/templates/base.html",
-                    "endpoint": "/api/generate-report.php",
+                    "endpoint": "/api/generateReport.php",
                     "outputFormats": [
                         "pdf",
                         "html"

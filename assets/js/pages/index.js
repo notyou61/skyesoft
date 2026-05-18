@@ -1478,7 +1478,7 @@ window.SkyIndex = {
         const originalText = link ? link.textContent : 'View Full Report (PDF)';
         if (link) link.textContent = 'Generating PDF...';
 
-        fetch('/api/generate-report.php', {
+        fetch('/api/generateReport.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1866,7 +1866,7 @@ window.SkyIndex = {
         );
     },
 
-    // #endregion 📇 Contact Proposal Pipeline (Client)
+    // #endregion
 
     // #region 📇 Contact Result Renderer
     renderContactResult(data) {
