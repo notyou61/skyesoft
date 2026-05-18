@@ -18,15 +18,14 @@
       line-height: 1.35;
     }
 
-    /* ========== CLEAN 2-COLUMN HEADER ========== */
+    /* ========== CLEAN HEADER (Logo + Title side by side) ========== */
     header {
       display: flex;
-      align-items: flex-start;           /* Changed from center for better alignment */
-      justify-content: flex-start;       /* Changed from space-between */
-      gap: 20px;                         /* Adds nice space between logo and title */
+      align-items: flex-start;
+      gap: 16px;                           /* Controls space between logo and title */
       border-bottom: 2.5px solid #14377C;
-      padding-bottom: 10px;
-      margin-bottom: 14px;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
     }
 
     .header-left {
@@ -34,24 +33,25 @@
     }
 
     .header-left .logo {
-      height: 52px;
+      height: 50px;
     }
 
     .header-right {
-      text-align: left;                  /* ← This is the key change */
-      padding-top: 4px;
+      text-align: left;
     }
 
     .header-right h1 {
       font-size: 15pt;
       color: #14377C;
-      margin: 0 0 2px 0;
+      margin: 0 0 1px 0;
       font-weight: 700;
+      line-height: 1.1;
     }
 
     .header-right .subtitle {
       font-size: 10.5pt;
       color: #555;
+      margin-top: 1px;
     }
 
     /* ========== FOOTER ========== */
