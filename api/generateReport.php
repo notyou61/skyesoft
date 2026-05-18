@@ -2,13 +2,14 @@
 // api/generateReport.php
 // Dynamic Report Endpoint
 
-require_once __DIR__ . '/../utils/reportGenerator.php';
+// Correct path from api/ folder to api/utils/
+require_once __DIR__ . '/utils/reportGenerator.php';
 
 try {
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
     if (empty($input)) {
-        throw new Exception("No data received");
+        throw new Exception("No input data received");
     }
 
     $generator = new ReportGenerator();
