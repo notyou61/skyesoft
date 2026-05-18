@@ -30,6 +30,16 @@ reports/**/*.json
 documents/*.pdf
 documents/*.html
 
+# Temporary rendered report artifacts
+reports/generated/
+reports/temp/
+
+# Composer dependencies (rebuildable)
+vendor/
+
+# Optional Composer cache artifacts
+composer.phar
+
 # Environment and configuration
 .env
 .env.local
