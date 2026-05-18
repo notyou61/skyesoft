@@ -6,144 +6,81 @@
 <style>
   @page {
     size: letter portrait;
-    margin: 0.75in 0.5in 0.75in 0.5in;
+    margin: 0.6in 0.5in 0.6in 0.5in;
   }
 
   body {
     font-family: Arial, sans-serif;
     font-size: 11pt;
-    color: #333;
+    color: #222;
     margin: 0;
     padding: 0;
-    line-height: 1.45;
+    line-height: 1.35;
   }
 
-  /* ========== UNIVERSAL HEADER ========== */
+  /* ========== CLEAN HEADER (like your example) ========== */
   header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1.0in;
-    background: #0a2540;
-    color: white;
-    padding: 0 0.5in;
+    border-bottom: 2.5px solid #14377C;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
-    z-index: 1000;
-    border-bottom: 3px solid #ffffff;
   }
 
-  header .logo {
-    height: 70px;
-    margin-right: 18px;
-    flex-shrink: 0;
+  header img {
+    height: 48px;
+    margin-right: 12px;
   }
 
-  header .text {
-    line-height: 1.2;
-  }
-
-  header .title {
-    font-size: 17pt;
+  header h1 {
+    font-size: 15pt;
+    color: #14377C;
+    margin: 0;
     font-weight: 700;
-    letter-spacing: 0.3px;
-  }
-
-  header .subtitle {
-    font-size: 11.5pt;
-    opacity: 0.92;
-    margin-top: 2px;
   }
 
   /* ========== FOOTER ========== */
   footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 0.58in;
+    border-top: 2px solid #333;
     font-size: 9pt;
+    text-align: center;
+    padding-top: 6px;
+    margin-top: 20px;
     color: #555;
-    padding: 0 0.5in;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-top: 1px solid #ccc;
-    z-index: 1000;
   }
 
   /* ========== BODY ========== */
   main {
-    margin-top: 1.18in;   /* Adjusted for 1.0in header + breathing room */
-    margin-bottom: 0.75in;
+    margin-top: 10px;
   }
 
   .section {
-    margin-bottom: 22px;
-    page-break-inside: avoid;
+    margin-bottom: 14px;
+  }
+
+  h2 {
+    font-size: 12pt;
+    color: #14377C;
+    border-bottom: 1px solid #ccc;
+    margin: 0 0 6px 0;
+    padding-bottom: 3px;
   }
 
   table {
     width: 100%;
     border-collapse: collapse;
-    margin: 10px 0;
+    margin: 6px 0;
   }
 
   th, td {
     border: 1px solid #ccc;
-    padding: 8px 10px;
+    padding: 6px 8px;
     text-align: left;
-    vertical-align: top;
   }
 
   th {
     background: #f5f5f5;
     width: 32%;
-    font-weight: 600;
-  }
-
-  .highlight {
-    background: #f0f7ff;
-    padding: 13px 16px;
-    border-left: 5px solid #0a2540;
-    margin: 12px 0;
-  }
-
-  .map-container {
-    text-align: center;
-    margin: 15px 0;
-    padding: 12px;
-    border: 1px solid #ddd;
-    background: #fafafa;
-  }
-
-  /* ========== Report-specific additions (for contactProposal.html) ========== */
-  .report-header {
-    margin-bottom: 18px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #0a2540;
-  }
-
-  .report-header h1 {
-    margin: 0 0 8px 0;
-    font-size: 17pt;
-    color: #0a2540;
-  }
-
-  .report-meta {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .badge {
-    display: inline-block;
-    padding: 4px 9px;
-    font-size: 9pt;
-    border-radius: 4px;
-    background: #e9ecef;
-    color: #495057;
     font-weight: 600;
   }
 </style>
