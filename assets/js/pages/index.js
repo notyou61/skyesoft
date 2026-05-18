@@ -1478,7 +1478,7 @@ window.SkyIndex = {
         const originalText = link ? link.textContent : 'View Full Report (PDF)';
         if (link) link.textContent = 'Generating PDF...';
 
-        fetch('/api/generateReport.php', {
+        fetch('/skyesoft/api/generateReport.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
