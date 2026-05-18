@@ -1414,7 +1414,7 @@ window.SkyIndex = {
                             </div>
                         </div>
 
-                        <!-- Address - 2 rows by default -->
+                        <!-- Address -->
                         <div class="form-row address-row align-items-start mb-3">
                             <label class="col-form-label">Address</label>
                             <div class="form-field">
@@ -1435,7 +1435,7 @@ window.SkyIndex = {
 
                         <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
                            class="small text-primary d-block text-end mt-3">
-                            📄 View Full Report (opens in new tab)
+                            📄 View Full Report (PDF)
                         </a>
 
                     </form>
@@ -1458,15 +1458,62 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 View Contact Report — Placeholder Currently 
+    // #region 📇 View Contact Report — PDF Generation
     viewContactReport() {
         const prop = this.currentProposal;
         if (!prop) {
             alert("No active proposal to view report.");
             return;
         }
-        // TODO: Replace with real report URL when ready
-        window.open('/skyesoft/reports/contact-proposal.php?id=preview', '_blank');
+
+        // Optional: Show loading state on the link
+        const link = document.querySelector('a[onclick*="viewContactReport"]');
+        const originalText = link ? link.textContent : 'View Full Report (PDF)';
+        if (link) link.textContent = 'Generating PDF...';
+
+        fetch('/api/generate-contact-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                placeId: prop.placeId || prop.googlePlaceId || prop.location?.googlePlaceId || '',
+                
+                entityName: prop.entity?.entityName || prop.entity?.name || prop.company || "Metro Monument Group",
+                
+                contactName: [
+                    prop.contact?.contactSalutation,
+                    prop.contact?.contactFirstName,
+                    prop.contact?.contactLastName,
+                    prop.contact?.contactTitle
+                ].filter(Boolean).join(' ').trim() || "Contact",
+
+                address: [
+                    prop.location?.locationAddress || prop.location?.address,
+                    prop.location?.locationAddressSuite || prop.location?.suite ? `Suite ${prop.location?.locationAddressSuite || prop.location?.suite}` : '',
+                    [prop.location?.locationCity || prop.location?.city, 
+                     prop.location?.locationState || prop.location?.state, 
+                     prop.location?.locationZip || prop.location?.zip]
+                        .filter(Boolean).join(', ')
+                ].filter(Boolean).join('\n'),
+
+                phone: prop.contact?.contactPrimaryPhone || prop.phone || "",
+                email: prop.contact?.contactEmail || prop.email || ""
+            })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            return response.blob();
+        })
+        .then(blob => {
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        })
+        .catch(error => {
+            console.error("PDF Generation Error:", error);
+            alert("Could not generate the report. Please try again.");
+        })
+        .finally(() => {
+            if (link) link.textContent = originalText;
+        });
     },
     // #endregion
 
