@@ -41,7 +41,7 @@ $html = '
 
             color: #222;
 
-            line-height: 1.45;
+            line-height: 1.22;
 
             margin: 0;
 
@@ -56,9 +56,9 @@ $html = '
 
             border-bottom: 2.5px solid #14377C;
 
-            padding-bottom: 6px;
+            padding-bottom: 4px;
 
-            margin-bottom: 14px;
+            margin-bottom: 8px;
         }
 
         .headerTable {
@@ -81,7 +81,7 @@ $html = '
 
         .headerLogoCell {
 
-            width: 74px;
+            width: 62px;
 
             white-space: nowrap;
 
@@ -90,7 +90,7 @@ $html = '
 
         .logo {
 
-            width: 66px;
+            width: 58px;
 
             height: auto;
 
@@ -104,7 +104,7 @@ $html = '
 
         .headerTitle {
 
-            font-size: 16pt;
+            font-size: 14pt;
 
             font-weight: 700;
 
@@ -117,7 +117,7 @@ $html = '
 
         .headerSubtitle {
 
-            font-size: 9.5pt;
+            font-size: 8.5pt;
 
             color: #444;
 
@@ -139,17 +139,18 @@ $html = '
         }
 
         h2 {
-            font-size: 13pt;
+
+            font-size: 11.5pt;
 
             color: #14377C;
 
             border-bottom: 1px solid #ccc;
 
-            padding-bottom: 4px;
+            padding-bottom: 2px;
 
-            margin-top: 20px;
+            margin-top: 12px;
 
-            margin-bottom: 8px;
+            margin-bottom: 4px;
 
             font-weight: 700;
         }
@@ -164,7 +165,7 @@ $html = '
 
             border-collapse: collapse;
 
-            margin: 10px 0 14px 0;
+            margin: 4px 0 8px 0;
         }
 
         th,
@@ -172,7 +173,7 @@ $html = '
 
             border: 1px solid #ccc;
 
-            padding: 7px 9px;
+            padding: 4px 6px;
 
             text-align: left;
 
@@ -200,9 +201,9 @@ $html = '
 
             border-left: 4px solid #14377C;
 
-            padding: 12px 14px;
+            padding: 7px 9px;
 
-            margin: 14px 0;
+            margin: 6px 0;
         }
 
         .warning {
