@@ -48,17 +48,26 @@ $html = '
 
     <!-- HEADER -->
     <div class="header">
-        <table style="width:100%; border:none;">
-            <tr>
-                <td style="width:1%; white-space:nowrap; padding-right:12px; vertical-align:middle;">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png" class="logo" alt="Christy Signs">
-                </td>
-                <td>
-                    <div style="font-size:15pt; font-weight:700; color:#14377C;">' . $reportTitle . '</div>
-                    <div style="font-size:10.5pt; color:#555;">Skyesoft Operational Intelligence</div>
-                </td>
-            </tr>
-        </table>
+
+        <div class="headerLogoBlock">
+            <img
+                src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
+                class="logo"
+                alt="Christy Signs">
+        </div>
+
+        <div class="headerTextBlock">
+
+            <div class="headerTitle">
+                ' . $reportTitle . '
+            </div>
+
+            <div class="headerSubtitle">
+                Skyesoft Operational Intelligence
+            </div>
+
+        </div>
+
     </div>
 
     <!-- RESOLUTION SUMMARY -->
