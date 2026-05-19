@@ -33,15 +33,184 @@ $html = '
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.5; }
-        h1 { font-size: 16pt; color: #14377C; margin: 0 0 4px 0; }
-        h2 { font-size: 13pt; color: #14377C; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 18px; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-        th, td { border: 1px solid #ccc; padding: 7px 9px; text-align: left; }
-        th { background: #f5f5f5; width: 32%; font-weight: 600; }
-        .highlight { background: #f0f7ff; border-left: 4px solid #14377C; padding: 12px 14px; margin: 12px 0; }
-        .header { border-bottom: 2.5px solid #14377C; padding-bottom: 10px; margin-bottom: 16px; }
-        .logo { height: 46px; margin-right: 12px; }
+
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+
+            font-size: 11pt;
+
+            color: #222;
+
+            line-height: 1.45;
+
+            margin: 0;
+
+            padding: 0;
+        }
+
+        /* =====================================================
+        🏢 EXECUTIVE OPERATIONAL HEADER
+        ===================================================== */
+
+        .header {
+
+            border-bottom: 2px solid #14377C;
+
+            padding-bottom: 10px;
+
+            margin-bottom: 18px;
+        }
+
+        .headerLogoBlock {
+
+            display: inline-block;
+
+            vertical-align: middle;
+
+            width: 95px;
+        }
+
+        .logo {
+
+            width: 88px;
+
+            height: auto;
+        }
+
+        .headerTextBlock {
+
+            display: inline-block;
+
+            vertical-align: middle;
+
+            margin-left: 6px;
+        }
+
+        .headerTitle {
+
+            font-size: 18pt;
+
+            font-weight: 700;
+
+            color: #14377C;
+
+            line-height: 1.05;
+
+            margin-bottom: 3px;
+        }
+
+        .headerSubtitle {
+
+            font-size: 10.5pt;
+
+            color: #666;
+
+            line-height: 1.2;
+        }
+
+        /* =====================================================
+        🏷️ SECTION HEADERS
+        ===================================================== */
+
+        h1 {
+            font-size: 16pt;
+
+            color: #14377C;
+
+            margin: 0 0 4px 0;
+
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 13pt;
+
+            color: #14377C;
+
+            border-bottom: 1px solid #ccc;
+
+            padding-bottom: 4px;
+
+            margin-top: 20px;
+
+            margin-bottom: 8px;
+
+            font-weight: 700;
+        }
+
+        /* =====================================================
+        📊 OPERATIONAL TABLES
+        ===================================================== */
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            margin: 10px 0 14px 0;
+        }
+
+        th,
+        td {
+
+            border: 1px solid #ccc;
+
+            padding: 7px 9px;
+
+            text-align: left;
+
+            vertical-align: top;
+        }
+
+        th {
+
+            background: #f5f5f5;
+
+            width: 32%;
+
+            font-weight: 700;
+
+            color: #333;
+        }
+
+        /* =====================================================
+        🚨 OPERATIONAL PANELS
+        ===================================================== */
+
+        .highlight {
+
+            background: #f0f7ff;
+
+            border-left: 4px solid #14377C;
+
+            padding: 12px 14px;
+
+            margin: 14px 0;
+        }
+
+        .warning {
+
+            background: #fff8e6;
+
+            border-left: 4px solid #d48a00;
+
+            padding: 12px 14px;
+
+            margin: 14px 0;
+        }
+
+        .critical {
+
+            background: #fff0f0;
+
+            border-left: 4px solid #b00020;
+
+            padding: 12px 14px;
+
+            margin: 14px 0;
+        }
+
     </style>
 </head>
 <body>
