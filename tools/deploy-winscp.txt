@@ -3,23 +3,43 @@ option confirm off
 
 open sftp://notyou64:Steven1!@68.178.221.71:22 -hostkey="ssh-ed25519 255 9NktM0x2LybydB83Ie/azLpT7VpKQIpMfjfouXmVZWY"
 
-# Change to the repo root (passed as %1% from PowerShell)
+# =========================================================
+# 📁 LOCAL REPO ROOT
+# =========================================================
+# Passed from PowerShell:
+# deploy.cmd "C:\Users\Steve\Documents\skyesoft"
+# =========================================================
 lcd "%1%"
 
-# Move to the parent folder on remote where skyesoft should live
+# =========================================================
+# 🌐 REMOTE ROOT
+# =========================================================
 cd /home/notyou64/public_html
 
 # =========================================================
 # 🚀 SKYESOFT DEPLOYMENT
 # =========================================================
-# Mirror local → remote + delete extras on remote
-# Exclusions prevent traversal of large/static dirs
+# Mirror local → remote
+# Delete remote files no longer existing locally
+#
+# EXCLUDED:
+#   .git
+#   node_modules
+#   secure
+#   .env files
+#   runtime logs/caches
+#
+# INCLUDED:
+#   vendor/       ← REQUIRED for Composer (mPDF)
+#   tmp/          ← REQUIRED for mPDF tempDir
 # =========================================================
-synchronize remote -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/vendor/;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
+synchronize remote -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
 
 # =========================================================
-# 🧪 PREVIEW MODE (uncomment for dry-run)
+# 🧪 PREVIEW MODE (DRY RUN)
 # =========================================================
-# synchronize remote -preview -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/vendor/;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
+# Uncomment to preview changes without uploading
+# =========================================================
+# synchronize remote -preview -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
 
 exit
