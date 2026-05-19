@@ -1,9 +1,6 @@
 <?php
 declare(strict_types=1);
 
-echo "=== USING mPDF VERSION 3.0.0 ===";   // ← TEMPORARY DEBUG LINE
-exit;                                       // ← TEMPORARY
-
 // ======================================================================
 //  Skyesoft — reportGenerator.php
 //  Version: 3.0.0 — mPDF Edition
