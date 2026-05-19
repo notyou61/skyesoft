@@ -3,13 +3,125 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Mpdf\Mpdf;
 
+// =====================================================
+// SAMPLE DATA (from previous payload - Fireshield example)
+// =====================================================
+$reportTitle     = "Proposed Contact Report (PC-1)";
+$entityName      = "Fireshield Services LLC";
+$contactName     = "Ms Kira Festa";
+$contactTitle    = "Inside Account Manager";
+$contactPhone    = "888-540-7632 Ext 704";
+$contactEmail    = "kira@fireshieldcorp.com";
+$locationAddress = "3654 N Power Rd";
+$locationCityStateZip = "Mesa, AZ 85215";
+$locationPlaceId = "ChIJZa4P6dykk4cRHuAQvn1sWw4";
+$confidence      = 85;
+$pcCode          = "PC-1";
+$resolutionStatus = "multiple_parcels";
+$commitAllowed   = "NO";
+$governanceNarrative = "This proposal represents a new entity, location, and contact. Review: Multiple parcel candidates were found and user selection is required.";
+$entityAction    = "hold";
+$locationAction  = "hold";
+$contactAction   = "hold";
+
+// =====================================================
+// Build HTML Content
+// =====================================================
+$html = '
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.5; }
+        h1 { font-size: 16pt; color: #14377C; margin: 0 0 4px 0; }
+        h2 { font-size: 13pt; color: #14377C; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 18px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ccc; padding: 7px 9px; text-align: left; }
+        th { background: #f5f5f5; width: 32%; font-weight: 600; }
+        .highlight { background: #f0f7ff; border-left: 4px solid #14377C; padding: 12px 14px; margin: 12px 0; }
+        .header { border-bottom: 2.5px solid #14377C; padding-bottom: 10px; margin-bottom: 16px; }
+        .logo { height: 46px; margin-right: 12px; }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <table style="width:100%; border:none;">
+            <tr>
+                <td style="width:1%; white-space:nowrap; padding-right:12px; vertical-align:middle;">
+                    <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png" class="logo" alt="Christy Signs">
+                </td>
+                <td>
+                    <div style="font-size:15pt; font-weight:700; color:#14377C;">' . $reportTitle . '</div>
+                    <div style="font-size:10.5pt; color:#555;">Skyesoft Operational Intelligence</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- RESOLUTION SUMMARY -->
+    <h2>Resolution Summary</h2>
+    <table>
+        <tr><th>Report Title</th><td>' . $reportTitle . '</td></tr>
+        <tr><th>Confidence</th><td>' . $confidence . '%</td></tr>
+        <tr><th>PC Code</th><td>' . $pcCode . '</td></tr>
+        <tr><th>Status</th><td>' . $resolutionStatus . '</td></tr>
+        <tr><th>Commit Ready</th><td><strong>' . $commitAllowed . '</strong></td></tr>
+    </table>
+
+    <!-- ENTITY -->
+    <h2>Entity Information</h2>
+    <table>
+        <tr><th>Entity Name</th><td>' . $entityName . '</td></tr>
+    </table>
+
+    <!-- CONTACT -->
+    <h2>Contact Information</h2>
+    <table>
+        <tr><th>Contact Name</th><td>' . $contactName . '</td></tr>
+        <tr><th>Title</th><td>' . $contactTitle . '</td></tr>
+        <tr><th>Phone</th><td>' . $contactPhone . '</td></tr>
+        <tr><th>Email</th><td>' . $contactEmail . '</td></tr>
+    </table>
+
+    <!-- LOCATION -->
+    <h2>Location Information</h2>
+    <table>
+        <tr><th>Full Address</th><td>' . $locationAddress . '</td></tr>
+        <tr><th>City, State ZIP</th><td>' . $locationCityStateZip . '</td></tr>
+        <tr><th>Place ID</th><td>' . $locationPlaceId . '</td></tr>
+    </table>
+
+    <!-- GOVERNANCE NARRATIVE -->
+    <h2>Governance & Operational Narrative</h2>
+    <div class="highlight">
+        ' . $governanceNarrative . '
+    </div>
+
+    <!-- PERSISTENCE / STAGING -->
+    <h2>Persistence / Staging State</h2>
+    <table>
+        <tr><th>Entity Action</th><td>' . $entityAction . '</td></tr>
+        <tr><th>Location Action</th><td>' . $locationAction . '</td></tr>
+        <tr><th>Contact Action</th><td>' . $contactAction . '</td></tr>
+        <tr><th>Commit Allowed</th><td><strong>' . $commitAllowed . '</strong></td></tr>
+    </table>
+
+</body>
+</html>
+';
+
+// =====================================================
+// Generate PDF
+// =====================================================
 $mpdf = new Mpdf([
-    'margin_left'   => 15,
-    'margin_right'  => 15,
+    'margin_left'   => 18,
+    'margin_right'  => 18,
     'margin_top'    => 20,
     'margin_bottom' => 20,
 ]);
 
-$mpdf->WriteHTML('<h1>Hello from mPDF</h1><p>This is a test.</p>');
-
-$mpdf->Output('test_mpdf.pdf', 'I'); // 'I' = inline (opens in browser)
+$mpdf->WriteHTML($html);
+$mpdf->Output('Proposed_Contact_Report_PC1.pdf', 'I');

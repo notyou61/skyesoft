@@ -1,32 +1,59 @@
-<!--
-  🧠 Skyesoft — base.html
-  📄 Universal Operational PDF Constitution (mPDF Edition)
-  🧩 Reusable Report Shell (Header → Body → Footer)
-  📍 Christy Signs | Phoenix, Arizona
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>{{reportTitle}}</title>
     <style>
-        @page {
-            size: letter portrait;
-            margin: 0.5in;
-        }
-
         body {
             font-family: Arial, sans-serif;
             font-size: 11pt;
             color: #222;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
+        /* Header */
+        header {
+            border-bottom: 2.5px solid #14377C;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+
+        .headerTable {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .headerLogoCell {
+            width: 1%;
+            white-space: nowrap;
+            padding-right: 12px;
+            vertical-align: middle;
+        }
+
+        .headerLogo {
+            height: 46px;
+        }
+
+        .headerTitle {
+            font-size: 15pt;
+            font-weight: 700;
+            color: #14377C;
+            margin: 0 0 2px 0;
+        }
+
+        .headerSubtitle {
+            font-size: 10.5pt;
+            color: #555;
+            margin: 0;
+        }
+
+        /* Body */
         h2 {
             font-size: 13pt;
             color: #14377C;
-            margin-top: 20px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 4px;
+            margin-top: 18px;
         }
 
         table {
@@ -37,22 +64,69 @@
 
         th, td {
             border: 1px solid #ccc;
-            padding: 6px 8px;
+            padding: 7px 9px;
             text-align: left;
         }
 
         th {
             background: #f5f5f5;
+            width: 32%;
+            font-weight: 600;
+        }
+
+        .highlight {
+            background: #f0f7ff;
+            border-left: 4px solid #14377C;
+            padding: 12px 14px;
+            margin: 12px 0;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid #ccc;
+            margin-top: 25px;
+            padding-top: 8px;
+            font-size: 9pt;
+            color: #666;
         }
     </style>
 </head>
 <body>
 
-    <h1>{{reportTitle}}</h1>
+    <!-- HEADER -->
+    <header>
+        <table class="headerTable">
+            <tr>
+                <td class="headerLogoCell">
+                    <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
+                         class="headerLogo" alt="Christy Signs">
+                </td>
+                <td>
+                    <div class="headerTitle">{{reportTitle}}</div>
+                    <div class="headerSubtitle">Skyesoft Operational Intelligence</div>
+                </td>
+            </tr>
+        </table>
+    </header>
 
+    <!-- BODY CONTENT -->
     <main>
         {{documentBody}}
     </main>
+
+    <!-- FOOTER -->
+    <footer>
+        <table style="width:100%; border:none;">
+            <tr>
+                <td style="text-align:left; border:none;">
+                    Christy Signs • 3145 N 33rd Ave, Phoenix, AZ 85017
+                </td>
+                <td style="text-align:right; border:none;">
+                    Generated {{generatedDate}}
+                </td>
+            </tr>
+        </table>
+    </footer>
 
 </body>
 </html>
