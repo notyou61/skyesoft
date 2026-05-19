@@ -85,18 +85,19 @@
         }
 
         .headerLogoCell {
-            width: 46px;                    /* Very tight — just wide enough for logo */
+            width: auto !important;           /* Let it size to the logo only */
+            white-space: nowrap;
             text-align: left;
             vertical-align: middle;
-            padding-right: 2px;             /* Almost no gap */
-            padding-left: 0;
+            padding-right: 2px !important;    /* Very tight gap */
+            padding-left: 0 !important;
         }
 
         .headerTitleCell {
-            width: auto;                    /* Explicitly takes remaining space */
+            width: auto;
             text-align: left;
             vertical-align: middle;
-            padding-left: 0;
+            padding-left: 0 !important;
         }
 
         .headerLogo {
