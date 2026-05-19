@@ -61,7 +61,7 @@ cd /home/notyou64/public_html
 #
 # =========================================================
 
-synchronize remote -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;data/authoritative/jurisdictions/*;vendor/*;api/logs/*;data/runtimeEphemeral/*;scripts/error_log" . skyesoft
+synchronize remote -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/vendor/*;*/data/authoritative/jurisdictions/*;*/api/logs/*;*/data/runtimeEphemeral/*;*/scripts/error_log" . skyesoft
 
 # =========================================================
 # 🧪 PREVIEW MODE (SAFE TESTING)
