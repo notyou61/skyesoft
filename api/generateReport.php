@@ -9,7 +9,7 @@
 // 📦 LOAD REPORT ENGINE
 // =====================================================
 
-require_once __DIR__ . '/utils/reportGeneratorMPDF.php';
+require_once __DIR__ . '/utils/reportGenerator.php';
 
 // =====================================================
 // 🚀 REPORT EXECUTION
@@ -40,7 +40,7 @@ try {
     // Create report engine
     // -------------------------------------------------
 
-    $generator = new ReportGeneratorMPDF();
+    $generator = new ReportGenerator();
 
     // -------------------------------------------------
     // Set template
