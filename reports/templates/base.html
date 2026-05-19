@@ -13,74 +13,26 @@
     <style>
         @page {
             size: letter portrait;
-            margin: 0.4in 0.4in 0.5in 0.4in;
+            margin: 0.5in;
         }
 
         body {
-            font-family: Helvetica, Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: 11pt;
             color: #222;
             line-height: 1.4;
         }
 
-        body, table, th, td, div, span, p, h1, h2, h3 {
-            font-family: Helvetica, Arial, sans-serif;
-        }
-
-        header {
-            border-bottom: 2.5px solid #14377C;
-            padding-bottom: 8px;
-            margin-bottom: 14px;
-        }
-
-        .headerTable {
-            width: 100%;
-            border-collapse: collapse;
-            border: none;
-        }
-
-        .headerTable td {
-            border: none;
-            vertical-align: middle;
-            padding: 0;
-        }
-
-        .headerLogoCell {
-            width: auto;
-            white-space: nowrap;
-            padding-right: 8px;
-        }
-
-        .headerLogo {
-            height: 46px;
-            display: block;
-        }
-
-        .headerTitle {
-            font-size: 15pt;
-            font-weight: 700;
-            color: #14377C;
-            margin: 0 0 2px 0;
-        }
-
-        .headerSubtitle {
-            font-size: 10.5pt;
-            color: #555;
-            margin: 0;
-        }
-
         h2 {
-            font-size: 12pt;
+            font-size: 13pt;
             color: #14377C;
-            border-bottom: 1px solid #ccc;
-            margin: 0 0 6px 0;
-            padding-bottom: 4px;
+            margin-top: 20px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 8px 0;
+            margin: 10px 0;
         }
 
         th, td {
@@ -91,42 +43,16 @@
 
         th {
             background: #f5f5f5;
-            width: 32%;
-            font-weight: 600;
-        }
-
-        .highlight {
-            background: #f0f7ff;
-            border-left: 4px solid #14377C;
-            padding: 12px 14px;
-            margin: 10px 0;
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <table class="headerTable">
-            <tr>
-                <td class="headerLogoCell">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
-                         class="headerLogo" alt="Christy Signs">
-                </td>
-                <td>
-                    <div class="headerTitle">{{reportTitle}}</div>
-                    <div class="headerSubtitle">Skyesoft Operational Intelligence</div>
-                </td>
-            </tr>
-        </table>
-    </header>
+    <h1>{{reportTitle}}</h1>
 
     <main>
         {{documentBody}}
     </main>
-
-    <footer>
-        Christy Signs • 3145 N 33rd Ave, Phoenix, AZ 85017
-    </footer>
 
 </body>
 </html>
