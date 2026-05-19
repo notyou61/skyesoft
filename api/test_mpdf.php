@@ -61,33 +61,45 @@ $html = '
             margin-bottom: 14px;
         }
 
-        .headerLogoBlock {
+        .headerTable {
 
-            display: inline-block;
+            width: 100%;
+
+            border-collapse: collapse;
+
+            border: none;
+        }
+
+        .headerTable td {
+
+            border: none;
+
+            padding: 0;
 
             vertical-align: top;
+        }
 
-            width: 78px;
+        .headerLogoCell {
+
+            width: 74px;
+
+            white-space: nowrap;
+
+            padding-right: 6px;
         }
 
         .logo {
 
-            width: 68px;
+            width: 66px;
 
             height: auto;
 
             margin-top: 2px;
         }
 
-        .headerTextBlock {
+        .headerTitleCell {
 
-            display: inline-block;
-
-            vertical-align: top;
-
-            margin-left: 2px;
-
-            padding-top: 0;
+            text-align: left;
         }
 
         .headerTitle {
@@ -222,24 +234,42 @@ $html = '
     <!-- HEADER -->
     <div class="header">
 
-        <div class="headerLogoBlock">
-            <img
-                src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
-                class="logo"
-                alt="Christy Signs">
-        </div>
+        <table class="headerTable">
 
-        <div class="headerTextBlock">
+            <tr>
 
-            <div class="headerTitle">
-                ' . $reportTitle . '
-            </div>
+                <!-- =================================================
+                    🏢 LOGO COLUMN
+                ================================================== -->
 
-            <div class="headerSubtitle">
-                Skyesoft Operational Intelligence
-            </div>
+                <td class="headerLogoCell">
 
-        </div>
+                    <img
+                        src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
+                        class="logo"
+                        alt="Christy Signs">
+
+                </td>
+
+                <!-- =================================================
+                    🧾 TITLE COLUMN
+                ================================================== -->
+
+                <td class="headerTitleCell">
+
+                    <div class="headerTitle">
+                        ' . $reportTitle . '
+                    </div>
+
+                    <div class="headerSubtitle">
+                        Skyesoft Operational Intelligence
+                    </div>
+
+                </td>
+
+            </tr>
+
+        </table>
 
     </div>
 
