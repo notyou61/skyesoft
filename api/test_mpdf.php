@@ -54,58 +54,62 @@ $html = '
 
         .header {
 
-            border-bottom: 2px solid #14377C;
+            border-bottom: 2.5px solid #14377C;
 
-            padding-bottom: 10px;
+            padding-bottom: 6px;
 
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
         .headerLogoBlock {
 
             display: inline-block;
 
-            vertical-align: middle;
+            vertical-align: top;
 
-            width: 95px;
+            width: 78px;
         }
 
         .logo {
 
-            width: 88px;
+            width: 68px;
 
             height: auto;
+
+            margin-top: 2px;
         }
 
         .headerTextBlock {
 
             display: inline-block;
 
-            vertical-align: middle;
+            vertical-align: top;
 
-            margin-left: 6px;
+            margin-left: 2px;
+
+            padding-top: 0;
         }
 
         .headerTitle {
 
-            font-size: 18pt;
+            font-size: 16pt;
 
             font-weight: 700;
 
             color: #14377C;
 
-            line-height: 1.05;
+            line-height: 1.0;
 
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .headerSubtitle {
 
-            font-size: 10.5pt;
+            font-size: 9.5pt;
 
-            color: #666;
+            color: #444;
 
-            line-height: 1.2;
+            line-height: 1.1;
         }
 
         /* =====================================================
