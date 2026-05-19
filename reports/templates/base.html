@@ -60,11 +60,11 @@
         header {
             position: fixed;
             top: 0.22in;
-            left: 0.22in;           /* ← Use explicit left instead of 0 + padding */
-            right: 0.22in;
+            left: 0;
+            right: 0;
             height: 0.50in;
             border-bottom: 2.5px solid #14377C;
-            padding: 0;
+            padding: 0;                    /* Remove horizontal padding from header */
             background: #ffffff;
             z-index: 1000;
         }
@@ -85,15 +85,17 @@
         }
 
         .headerLogoCell {
-            width: 58px;                    /* Give logo cell a fixed small width */
+            width: 58px;                   /* Fixed small width for logo column */
             text-align: left;
             vertical-align: middle;
             padding-right: 10px;
+            padding-left: 0;               /* Flush left */
         }
 
         .headerTitleCell {
             text-align: left;
             vertical-align: middle;
+            padding-left: 0;               /* Flush left */
         }
 
         .headerLogo {
