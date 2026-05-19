@@ -28,12 +28,29 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
+            font-family: Helvetica, Arial, sans-serif;
             font-size: 11pt;
             color: #222;
             margin: 0;
             padding: 0;
             line-height: 1.4;
+        }
+
+        /* Force consistent font across all elements */
+        body,
+        table,
+        th,
+        td,
+        div,
+        span,
+        p,
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-family: Helvetica, Arial, sans-serif;
         }
 
         /* #endregion */
@@ -45,24 +62,20 @@
             top: 0.22in;
             left: 0;
             right: 0;
-            height: 0.54in;
+            height: 0.50in;
             border-bottom: 2.5px solid #14377C;
-            padding: 0;
+            padding: 0 0.22in 0 0.22in;
             background: #ffffff;
             z-index: 1000;
-            padding: 0 0.22in 0 0.22in;
         }
 
         .headerTable {
-            width: auto;
-
+            width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             border: none;
-
             margin: 0;
             padding: 0;
-
-            table-layout: auto;
         }
 
         .headerTable td {
@@ -76,20 +89,20 @@
             white-space: nowrap;
             text-align: left;
             vertical-align: middle;
-            padding-right: 12px;            /* Fine-tuned */
-            padding-left: 0;                /* ← Ensure no extra left padding */
+            padding-right: 8px;
+            padding-left: 0;
         }
 
         .headerTitleCell {
             width: auto;
             text-align: left;
             vertical-align: middle;
-            padding-left: 0;                /* ← Ensure clean left edge */
+            padding-left: 0;
         }
 
         .headerLogo {
             height: 46px;
-            display: block;                 /* Helps with alignment */
+            display: block;
         }
 
         .headerTitle {
@@ -150,7 +163,7 @@
         /* #region 🧱 BODY CONTENT AREA */
 
         main {
-            margin-top: 0.78in;
+            margin-top: 0.72in;
             margin-bottom: 0.55in;
         }
 
@@ -239,6 +252,7 @@
         /* #endregion */
     </style>
     <!-- #endregion -->
+    
 </head>
 <!-- #endregion -->
 
