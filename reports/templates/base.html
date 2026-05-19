@@ -1,81 +1,49 @@
 <!--
   🧠 Skyesoft — base.html
-  📄 Universal Operational PDF Constitution
+  📄 Universal Operational PDF Constitution (mPDF Edition)
   🧩 Reusable Report Shell (Header → Body → Footer)
   📍 Christy Signs | Phoenix, Arizona
 -->
 
-<!-- #region 🏷️ HTML TAG -->
 <!DOCTYPE html>
 <html lang="en">
-<!-- #endregion -->
-
-<!-- #region 🧠 HEAD -->
 <head>
-
-    <!-- #region 🧾 META & TITLE -->
     <meta charset="UTF-8">
     <title>{{reportTitle}}</title>
-    <!-- #endregion -->
 
-    <!-- #region 🧾 STYLING -->
     <style>
         /* #region 📄 PAGE CONSTITUTION */
 
         @page {
             size: letter portrait;
-            margin: 0.22in 0.22in 0.22in 0.22in;
+            margin: 0.4in 0.4in 0.5in 0.4in;
         }
 
         body {
             font-family: Helvetica, Arial, sans-serif;
             font-size: 11pt;
             color: #222;
-            margin: 0;
-            padding: 0;
             line-height: 1.4;
         }
 
-        /* Force consistent font across all elements */
-        body,
-        table,
-        th,
-        td,
-        div,
-        span,
-        p,
-        h1,
-        h2,
-        h3,
-        h4,
-        h5,
-        h6 {
+        body, table, th, td, div, span, p, h1, h2, h3, h4, h5, h6 {
             font-family: Helvetica, Arial, sans-serif;
         }
 
         /* #endregion */
 
-        /* #region 🏢 UNIVERSAL OPERATIONAL HEADER */
+        /* #region 🏢 HEADER */
 
         header {
-            position: fixed;
-            top: 0.22in;
-            left: 0;
-            right: 0;
-            height: 0.50in;
             border-bottom: 2.5px solid #14377C;
-            padding: 0;
-            background: #ffffff;
-            z-index: 1000;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
         }
 
         .headerTable {
             width: 100%;
-            table-layout: fixed;
             border-collapse: collapse;
             border: none;
-            margin: 0;
-            padding: 0;
         }
 
         .headerTable td {
@@ -89,9 +57,9 @@
             white-space: nowrap;
             text-align: left;
             vertical-align: middle;
-            padding-right: 2px !important;     /* Tight gap */
+            padding-right: 2px !important;
             padding-left: 0 !important;
-            max-width: 44px;                    /* Keep logo column narrow */
+            max-width: 44px;
         }
 
         .headerTitleCell {
@@ -122,86 +90,28 @@
 
         /* #endregion */
 
-        /* #region 🧾 UNIVERSAL OPERATIONAL FOOTER */
-
-        footer {
-            position: fixed;
-            bottom: 0.22in;
-            left: 0;
-            right: 0;
-            height: 0.30in;
-            border-top: 1px solid #ccc;
-            font-size: 8.5pt;
-            color: #666;
-            padding: 6px 0 0 0;
-            background: #ffffff;
-            padding-left: 0.22in;
-            padding-right: 0.22in;
-        }
-
-        .footerTable {
-            width: 100%;
-            border-collapse: collapse;
-            border: none;
-        }
-
-        .footerTable td {
-            border: none;
-            padding: 0;
-            vertical-align: middle;
-        }
-
-        .footerLeft {
-            text-align: left;
-        }
-
-        .footerRight {
-            text-align: right;
-        }
-
-        /* #endregion */
-
-        /* #region 🧱 BODY CONTENT AREA */
-
-        main {
-            margin-top: 0.72in;
-            margin-bottom: 0.55in;
-        }
+        /* #region 🧱 BODY */
 
         .section {
-            margin-bottom: 18px;
+            margin-bottom: 16px;
             page-break-inside: avoid;
         }
-
-        p {
-            margin: 6px 0;
-        }
-
-        /* #endregion */
-
-        /* #region 🏷️ SECTION HEADERS */
 
         h2 {
             font-size: 12pt;
             color: #14377C;
             border-bottom: 1px solid #ccc;
-            margin: 0 0 8px 0;
-            padding-bottom: 3px;
+            margin: 0 0 6px 0;
+            padding-bottom: 4px;
         }
-
-        /* #endregion */
-
-        /* #region 📊 TABLES */
 
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 8px 0;
-            font-family: Helvetica, Arial, sans-serif;
         }
 
-        th,
-        td {
+        th, td {
             border: 1px solid #ccc;
             padding: 6px 8px;
             text-align: left;
@@ -209,119 +119,77 @@
         }
 
         th {
-            width: 32%;
             background: #f5f5f5;
+            width: 32%;
             font-weight: 600;
         }
-
-        /* #endregion */
-
-        /* #region 🚨 UNIVERSAL OPERATIONAL PANELS */
 
         .highlight {
             background: #f0f7ff;
             border-left: 4px solid #14377C;
             padding: 12px 14px;
-            margin: 12px 0;
+            margin: 10px 0;
         }
-
-        .warning {
-            background: #fff8e6;
-            border-left: 4px solid #d48a00;
-            padding: 12px 14px;
-            margin: 12px 0;
-        }
-
-        .critical {
-            background: #fff0f0;
-            border-left: 4px solid #b00020;
-            padding: 12px 14px;
-            margin: 12px 0;
-        }
-
-        /* #endregion */
-
-        /* #region 🗺️ MAP CONTAINER */
 
         .map-container {
             text-align: center;
-            margin: 15px 0;
+            margin: 12px 0;
             padding: 10px;
             border: 1px solid #ddd;
             background: #fafafa;
         }
 
         /* #endregion */
+
+        /* #region 🧾 FOOTER */
+
+        footer {
+            border-top: 1px solid #ccc;
+            margin-top: 20px;
+            padding-top: 8px;
+            font-size: 9pt;
+            color: #666;
+        }
+
+        /* #endregion */
     </style>
-    <!-- #endregion -->
-
 </head>
-<!-- #endregion -->
-
-<!-- #region 🧍 BODY TAG -->
 <body>
-<!-- #endregion -->
 
-<!-- #region 🏢 UNIVERSAL OPERATIONAL HEADER -->
-<header>
+    <!-- HEADER -->
+    <header>
+        <table class="headerTable">
+            <tr>
+                <td class="headerLogoCell">
+                    <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
+                         class="headerLogo" alt="Christy Signs">
+                </td>
+                <td class="headerTitleCell">
+                    <div class="headerTitle">{{reportTitle}}</div>
+                    <div class="headerSubtitle">Skyesoft Operational Intelligence</div>
+                </td>
+            </tr>
+        </table>
+    </header>
 
-    <table class="headerTable">
-        <tr>
-            <!-- Logo Column -->
-            <td class="headerLogoCell">
-                <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
-                     class="headerLogo"
-                     alt="Christy Signs">
-            </td>
+    <!-- BODY -->
+    <main>
+        {{documentBody}}
+    </main>
 
-            <!-- Title Column -->
-            <td class="headerTitleCell">
-                <div class="headerTitle">{{reportTitle}}</div>
-                <div class="headerSubtitle">Skyesoft Operational Intelligence</div>
-            </td>
-        </tr>
-    </table>
+    <!-- FOOTER -->
+    <footer>
+        <table style="width:100%; border:none;">
+            <tr>
+                <td style="text-align:left; border:none;">
+                    Christy Signs • 3145 N 33rd Ave, Phoenix, AZ 85017
+                </td>
+                <td style="text-align:right; border:none;">
+                    Generated {{generatedDate}}
+                </td>
+            </tr>
+        </table>
+    </footer>
 
-</header>
-<!-- #endregion -->
-
-<!-- #region 🧾 UNIVERSAL OPERATIONAL FOOTER -->
-<footer>
-
-    <!-- #region 📊 FOOTER TABLE -->
-    <table class="footerTable">
-
-        <tr>
-
-            <!-- #region 📍 FOOTER LEFT -->
-            <td class="footerLeft">
-                Christy Signs • 3145 N 33rd Ave, Phoenix, AZ 85017
-            </td>
-            <!-- #endregion -->
-
-            <!-- #region ⏰ FOOTER RIGHT -->
-            <td class="footerRight">
-                Generated {{generatedDate}}
-            </td>
-            <!-- #endregion -->
-
-        </tr>
-
-    </table>
-    <!-- #endregion -->
-
-</footer>
-<!-- #endregion -->
-
-<!-- #region 🧱 REPORT CONTENT -->
-<main>
-
-    {{documentBody}}
-
-</main>
-<!-- #endregion -->
-
-<!-- #region 🛑 ENDING BODY HTML TAG -->
 </body>
 </html>
-<!-- #endregion -->
