@@ -9,30 +9,67 @@ lcd "%1%"
 # Move to the parent folder on remote where skyesoft should live
 cd /home/notyou64/public_html
 
-# === DEPLOYMENT ===
-# Push contents of current local dir (.) → remote subfolder 'skyesoft'
+# =========================================================
+# 🚀 SKYESOFT DEPLOYMENT
+# =========================================================
+#
+# Push contents of current local dir (.) → remote folder
+# 'skyesoft'
+#
+# synchronize remote
+#     Mirror local → remote
 #
 # -delete
-#     Remove remote files no longer present locally (true mirror)
+#     Remove remote files no longer present locally
 #
 # -filemask
 #     Exclude folders/files from deployment
 #
-# Excluded:
-#     .git
-#     node_modules
-#     secure
-#     .env
-#     repoTree.txt
-#     tree.txt
-#     authoritative jurisdiction datasets
-#     vendor libraries (static Composer packages)
+# =========================================================
+# 📦 EXCLUDED CONTENT
+# =========================================================
+#
+# .git
+#     Git metadata
+#
+# node_modules
+#     Frontend dependency cache
+#
+# secure
+#     Local-only secure assets
+#
+# .env
+#     Environment configuration
+#
+# repoTree.txt / tree.txt
+#     Local diagnostics
+#
+# data/authoritative/jurisdictions/*
+#     Large static jurisdiction datasets
+#
+# vendor/*
+#     Static Composer dependencies
+#
+# api/logs/*
+#     Runtime logs preserved on production
+#
+# data/runtimeEphemeral/*
+#     Runtime cache/state preserved on production
+#
+# scripts/error_log
+#     Persistent server-side error logging
+#
+# =========================================================
 
-synchronize remote -delete -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt;data/authoritative/jurisdictions/;vendor/" . skyesoft
+synchronize remote -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;data/authoritative/jurisdictions/*;vendor/*;api/logs/*;data/runtimeEphemeral/*;scripts/error_log" . skyesoft
 
-# === PREVIEW MODE (SAFE TESTING) ===
-# Uncomment below and comment out live deploy above for dry-run preview
-
-# synchronize remote -preview -delete -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt;data/authoritative/jurisdictions/;vendor/" . skyesoft
+# =========================================================
+# 🧪 PREVIEW MODE (SAFE TESTING)
+# =========================================================
+#
+# Uncomment below and comment out the live deploy above
+# for dry-run preview mode
+#
+# synchronize remote -preview -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;data/authoritative/jurisdictions/*;vendor/*;api/logs/*;data/runtimeEphemeral/*;scripts/error_log" . skyesoft
 
 exit
