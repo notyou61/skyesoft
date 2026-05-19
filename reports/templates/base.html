@@ -60,19 +60,18 @@
         header {
             position: fixed;
             top: 0.22in;
-            left: 0;
-            right: 0;
+            left: 0.22in;           /* ← Use explicit left instead of 0 + padding */
+            right: 0.22in;
             height: 0.50in;
             border-bottom: 2.5px solid #14377C;
-            padding: 0 0.22in;           /* Cleaned up (removed duplicate) */
+            padding: 0;
             background: #ffffff;
             z-index: 1000;
         }
 
         .headerTable {
-            width: 100%;                    /* ← Change from 'auto' to '100%' */
-            table-layout: fixed;            /* ← Add this line */
-
+            width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             border: none;
             margin: 0;
@@ -86,19 +85,15 @@
         }
 
         .headerLogoCell {
-            width: 1%;
-            white-space: nowrap;
+            width: 58px;                    /* Give logo cell a fixed small width */
             text-align: left;
             vertical-align: middle;
-            padding-right: 8px;
-            padding-left: 0;
+            padding-right: 10px;
         }
 
         .headerTitleCell {
-            width: auto;
             text-align: left;
             vertical-align: middle;
-            padding-left: 0;
         }
 
         .headerLogo {
