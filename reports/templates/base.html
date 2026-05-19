@@ -64,14 +64,15 @@
             right: 0;
             height: 0.50in;
             border-bottom: 2.5px solid #14377C;
-            padding: 0 0.22in 0 0.22in;
+            padding: 0 0.22in;           /* Cleaned up (removed duplicate) */
             background: #ffffff;
             z-index: 1000;
         }
 
         .headerTable {
-            width: 100%;
-            table-layout: fixed;
+            width: 100%;                    /* ← Change from 'auto' to '100%' */
+            table-layout: fixed;            /* ← Add this line */
+
             border-collapse: collapse;
             border: none;
             margin: 0;
@@ -252,7 +253,7 @@
         /* #endregion */
     </style>
     <!-- #endregion -->
-    
+
 </head>
 <!-- #endregion -->
 
