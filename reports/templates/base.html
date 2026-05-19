@@ -69,41 +69,25 @@
             z-index: 1000;
         }
 
-        .headerTable {
-            width: 100%;
-            table-layout: fixed;
-            border-collapse: collapse;
-            border: none;
-            margin: 0;
-            padding: 0;
+        .header-content {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            padding: 0 0.22in;
         }
 
-        .headerTable td {
-            border: none;
-            vertical-align: middle;
-            padding: 0;
-        }
-
-        .headerLogoCell {
-            width: auto !important;
-            white-space: nowrap;
-            text-align: left;
-            vertical-align: middle;
-            padding-right: 2px !important;     /* Very tight gap */
-            padding-left: 0 !important;
-            max-width: 46px;                    /* Force narrow column */
-        }
-
-        .headerTitleCell {
-            width: auto;
-            text-align: left;
-            vertical-align: middle;
-            padding-left: 0 !important;
+        .header-logo {
+            flex-shrink: 0;
+            margin-right: 6px;           /* ← Main gap control */
         }
 
         .headerLogo {
             height: 46px;
             display: block;
+        }
+
+        .header-text {
+            flex: 1;
         }
 
         .headerTitle {
@@ -264,24 +248,20 @@
 
 <!-- #region 🏢 UNIVERSAL OPERATIONAL HEADER -->
 <header>
+    <div class="header-content">
+        <!-- Logo -->
+        <div class="header-logo">
+            <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
+                 class="headerLogo"
+                 alt="Christy Signs">
+        </div>
 
-    <table class="headerTable">
-        <tr>
-            <!-- Logo Column -->
-            <td class="headerLogoCell">
-                <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
-                     class="headerLogo"
-                     alt="Christy Signs">
-            </td>
-
-            <!-- Title Column -->
-            <td class="headerTitleCell">
-                <div class="headerTitle">{{reportTitle}}</div>
-                <div class="headerSubtitle">Skyesoft Operational Intelligence</div>
-            </td>
-        </tr>
-    </table>
-
+        <!-- Title + Subtitle -->
+        <div class="header-text">
+            <div class="headerTitle">{{reportTitle}}</div>
+            <div class="headerSubtitle">Skyesoft Operational Intelligence</div>
+        </div>
+    </div>
 </header>
 <!-- #endregion -->
 
