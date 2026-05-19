@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — reportGenerator.php
-//  Version: 2.2.0 — Fixed & Prototype Ready
+//  Version: 3.0.0 — mPDF Edition
 //  Canonical Document Rendering Engine
 // ======================================================================
 
@@ -11,8 +11,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use Mpdf\Mpdf;
+use Mpdf\Config\ConfigVariables;
+use Mpdf\Config\FontVariables;
 
 #endregion
 
@@ -20,17 +21,13 @@ use Dompdf\Options;
 
 class ReportGenerator
 {
-
     // =====================================================
     // Properties
     // =====================================================
 
     private ?string $baseTemplatePath = null;
-
     private ?string $templatePath = null;
-
     private array $payload = [];
-
     private ?string $renderedHtml = null;
 
     // =====================================================
@@ -39,11 +36,9 @@ class ReportGenerator
 
     public function __construct(array $config = [])
     {
-
         $this->baseTemplatePath =
             $config['baseTemplatePath']
             ?? __DIR__ . '/../../reports/templates/base.html';
-
     }
 
     // =====================================================
@@ -52,24 +47,14 @@ class ReportGenerator
 
     public function setTemplate(string $templateName): bool
     {
-
         $this->templatePath =
-            __DIR__
-            . '/../../reports/templates/'
-            . $templateName
-            . '.html';
+            __DIR__ . '/../../reports/templates/' . $templateName . '.html';
 
         if (!file_exists($this->templatePath)) {
-
-            throw new Exception(
-                'Template not found: '
-                . $this->templatePath
-            );
-
+            throw new Exception('Template not found: ' . $this->templatePath);
         }
 
         return true;
-
     }
 
     // =====================================================
@@ -78,11 +63,8 @@ class ReportGenerator
 
     public function setPayload(array $payload = []): bool
     {
-
         $this->payload = $payload;
-
         return true;
-
     }
 
     // =====================================================
@@ -91,20 +73,7 @@ class ReportGenerator
 
     public function getPayload(): array
     {
-
         return $this->payload;
-
-    }
-
-    // =====================================================
-    // Get Template Path
-    // =====================================================
-
-    public function getTemplatePath(): ?string
-    {
-
-        return $this->templatePath;
-
     }
 
 #endregion
@@ -117,37 +86,18 @@ class ReportGenerator
 
     private function loadTemplates(): array
     {
-
         if (!file_exists($this->baseTemplatePath)) {
-
-            throw new Exception(
-                'Base template missing: '
-                . $this->baseTemplatePath
-            );
-
+            throw new Exception('Base template missing: ' . $this->baseTemplatePath);
         }
 
         if (!file_exists($this->templatePath)) {
-
-            throw new Exception(
-                'Report template missing: '
-                . $this->templatePath
-            );
-
+            throw new Exception('Report template missing: ' . $this->templatePath);
         }
 
-        $base =
-            file_get_contents(
-                $this->baseTemplatePath
-            );
-
-        $body =
-            file_get_contents(
-                $this->templatePath
-            );
+        $base = file_get_contents($this->baseTemplatePath);
+        $body = file_get_contents($this->templatePath);
 
         return [$base, $body];
-
     }
 
     // =====================================================
@@ -156,78 +106,34 @@ class ReportGenerator
 
     private function replaceTokens(string $html): string
     {
-
         foreach ($this->payload as $key => $value) {
-
             if (is_array($value)) {
-
-                $value =
-                    json_encode(
-                        $value,
-                        JSON_PRETTY_PRINT
-                    );
-
+                $value = json_encode($value, JSON_PRETTY_PRINT);
             }
 
-            $html =
-                str_replace(
-                    '{{' . $key . '}}',
-                    (string)$value,
-                    $html
-                );
-
+            $html = str_replace('{{' . $key . '}}', (string)$value, $html);
         }
 
-        // ─────────────────────────────
         // Auto Map Injection
-        // ─────────────────────────────
-
         if (
-            !empty($this->payload['locationLatitude'])
-            && !empty($this->payload['locationLongitude'])
+            !empty($this->payload['locationLatitude']) &&
+            !empty($this->payload['locationLongitude'])
         ) {
+            $lat = $this->payload['locationLatitude'];
+            $lng = $this->payload['locationLongitude'];
 
-            $lat =
-                $this->payload['locationLatitude'];
+            $mapUrl = "https://maps.googleapis.com/maps/api/staticmap"
+                . "?center={$lat},{$lng}&zoom=18&size=650x320"
+                . "&maptype=roadmap&markers=color:red%7C{$lat},{$lng}";
 
-            $lng =
-                $this->payload['locationLongitude'];
-
-            $mapUrl =
-                "https://maps.googleapis.com/maps/api/staticmap"
-                . "?center={$lat},{$lng}"
-                . "&zoom=18"
-                . "&size=650x320"
-                . "&maptype=roadmap"
-                . "&markers=color:red%7C{$lat},{$lng}";
-
-            $mapHtml =
-                '<img src="'
-                . $mapUrl
-                . '" style="max-width:100%; height:auto; border:1px solid #ccc;" alt="Map">';
-
-            $html =
-                str_replace(
-                    '{{mapImage}}',
-                    $mapHtml,
-                    $html
-                );
-
+            $mapHtml = '<img src="' . $mapUrl . '" style="max-width:100%; height:auto; border:1px solid #ccc;" alt="Map">';
+            $html = str_replace('{{mapImage}}', $mapHtml, $html);
         }
 
-        // ─────────────────────────────
-        // Remove Unresolved Tokens
-        // ─────────────────────────────
-
-        $html =
-            preg_replace(
-                '/{{.*?}}/',
-                '',
-                $html
-            );
+        // Remove unresolved tokens
+        $html = preg_replace('/{{.*?}}/', '', $html);
 
         return $html;
-
     }
 
     // =====================================================
@@ -236,41 +142,19 @@ class ReportGenerator
 
     public function renderHtml(): string
     {
+        [$base, $body] = $this->loadTemplates();
 
-        [$base, $body] =
-            $this->loadTemplates();
+        $html = str_replace('{{documentBody}}', $body, $base);
+        $html = $this->replaceTokens($html);
 
-        $html =
-            str_replace(
-                '{{documentBody}}',
-                $body,
-                $base
-            );
-
-        $html =
-            $this->replaceTokens($html);
-
-        $this->renderedHtml =
-            $html;
+        $this->renderedHtml = $html;
 
         return $html;
-
-    }
-
-    // =====================================================
-    // Get Rendered HTML
-    // =====================================================
-
-    public function getRenderedHtml(): ?string
-    {
-
-        return $this->renderedHtml;
-
     }
 
 #endregion
 
-#region SECTION 3 — PDF Generation
+#region SECTION 3 — PDF Generation (mPDF)
 
     // =====================================================
     // Generate PDF Binary
@@ -278,101 +162,64 @@ class ReportGenerator
 
     public function generatePdfBinary(): string
     {
+        $html = $this->renderHtml();
 
-        $html =
-            $this->renderHtml();
+        // mPDF Configuration
+        $defaultConfig = (new ConfigVariables())->getDefaults();
+        $fontDirs = $defaultConfig['fontDir'];
 
-        // ─────────────────────────────
-        // Dompdf Options
-        // ─────────────────────────────
+        $defaultFontConfig = (new FontVariables())->getDefaults();
+        $fontData = $defaultFontConfig['fontdata'];
 
-        $options =
-            new Options();
+        $mpdf = new Mpdf([
+            'fontDir' => array_merge($fontDirs, [__DIR__ . '/../../fonts']),
+            'fontdata' => $fontData + [
+                'arial' => [
+                    'R' => 'arial.ttf',
+                ]
+            ],
+            'default_font' => 'arial',
+            'margin_left'   => 15,
+            'margin_right'  => 15,
+            'margin_top'    => 18,
+            'margin_bottom' => 18,
+        ]);
 
-        $options->setIsRemoteEnabled(true);
+        $mpdf->WriteHTML($html);
 
-        $options->setChroot(
-            __DIR__ . '/../../'
-        );
-
-        $options->setDefaultFont('Arial');
-
-        // ─────────────────────────────
-        // Initialize Dompdf
-        // ─────────────────────────────
-
-        $dompdf =
-            new Dompdf($options);
-
-        $dompdf->loadHtml($html);
-
-        $dompdf->setPaper(
-            'letter',
-            'portrait'
-        );
-
-        $dompdf->render();
-
-        return $dompdf->output();
-
+        return $mpdf->Output('', 'S'); // Return PDF as string
     }
 
     // =====================================================
     // Save PDF
     // =====================================================
 
-    public function savePdf(
-        string $outputPath
-    ): bool
+    public function savePdf(string $outputPath): bool
     {
-
-        $pdfBinary =
-            $this->generatePdfBinary();
-
-        file_put_contents(
-            $outputPath,
-            $pdfBinary
-        );
+        $pdfBinary = $this->generatePdfBinary();
+        file_put_contents($outputPath, $pdfBinary);
 
         return true;
-
     }
 
     // =====================================================
     // Stream PDF
     // =====================================================
 
-    public function streamPdf(
-        string $filename = 'report.pdf'
-    ): void
+    public function streamPdf(string $filename = 'report.pdf'): void
     {
+        $pdfBinary = $this->generatePdfBinary();
 
-        $pdfBinary =
-            $this->generatePdfBinary();
-
-        header(
-            'Content-Type: application/pdf'
-        );
-
-        header(
-            'Content-Disposition: inline; filename="'
-            . $filename
-            . '"'
-        );
-
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $filename . '"');
         echo $pdfBinary;
 
         exit;
-
     }
 
 #endregion
 
 #region SECTION 4 — Future Utility Expansion
-
-    // =====================================================
-    // Reserved Utility Region
-    // =====================================================
 
     /*
         Future Expansion Candidates:
