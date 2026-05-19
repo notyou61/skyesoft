@@ -45,21 +45,24 @@
             top: 0.22in;
             left: 0;
             right: 0;
-            height: 0.58in;
+            height: 0.54in;
             border-bottom: 2.5px solid #14377C;
             padding: 0;
             background: #ffffff;
             z-index: 1000;
-            padding-left: 0.22in;
-            padding-right: 0.22in;
+            padding: 0 0.22in 0 0.22in;
         }
 
         .headerTable {
-            width: 100%;                    /* Back to 100% but controlled */
+            width: auto;
+
             border-collapse: collapse;
             border: none;
-            margin: 0;                      /* Important */
+
+            margin: 0;
             padding: 0;
+
+            table-layout: auto;
         }
 
         .headerTable td {
@@ -85,7 +88,7 @@
         }
 
         .headerLogo {
-            height: 50px;
+            height: 46px;
             display: block;                 /* Helps with alignment */
         }
 
