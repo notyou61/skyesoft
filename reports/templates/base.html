@@ -18,24 +18,21 @@
     <title>{{reportTitle}}</title>
     <!-- #endregion -->
 
-    <!-- #region 🎨 UNIVERSAL PDF STYLES -->
+    <!-- #region 🧾 STYLING -->
     <style>
-
         /* #region 📄 PAGE CONSTITUTION */
 
         @page {
             size: letter portrait;
-            margin: 0.22in 0.22in 0.22in 0.22in
+            margin: 0.22in 0.22in 0.22in 0.22in;
         }
 
         body {
             font-family: Arial, sans-serif;
             font-size: 11pt;
             color: #222;
-
             margin: 0;
             padding: 0;
-
             line-height: 1.4;
         }
 
@@ -45,68 +42,51 @@
 
         header {
             position: fixed;
-
             top: 0.22in;
             left: 0.22in;
             right: 0.22in;
-
-            height: 0.72in;
-
+            height: 0.62in;                    /* Tightened */
             border-bottom: 2.5px solid #14377C;
-
-            padding: 0 0 6px 0;
-
+            padding: 0;                        /* Removed bottom padding */
             background: #ffffff;
-
             z-index: 1000;
         }
 
         .headerTable {
-            width: 100%;
-
+            width: auto;                       /* ← BIG FIX for logo alignment */
             border-collapse: collapse;
             border: none;
         }
 
         .headerTable td {
             border: none;
-
             vertical-align: middle;
-
             padding: 0;
         }
 
         .headerLogoCell {
             width: 1%;
-
             white-space: nowrap;
-
             text-align: left;
-
             vertical-align: middle;
-
-            padding-right: 14px;
+            padding-right: 10px;               /* Tightened from 14px */
         }
-        
+
         .headerTitleCell {
             width: auto;
-
             text-align: left;
-
             vertical-align: middle;
         }
 
         .headerLogo {
-            height: 58px;
+            height: 50px;                      /* Reduced from 58px */
         }
 
         .headerTitle {
             font-size: 15pt;
             font-weight: 700;
             color: #14377C;
-
             line-height: 1.1;
-
             margin-bottom: 2px;
         }
 
@@ -121,35 +101,26 @@
 
         footer {
             position: fixed;
-
             bottom: 0.22in;
             left: 0.22in;
             right: 0.22in;
-
             height: 0.30in;
-
             border-top: 1px solid #ccc;
-
             font-size: 8.5pt;
             color: #666;
-
             padding: 6px 0 0 0;
-
             background: #ffffff;
         }
 
         .footerTable {
             width: 100%;
-
             border-collapse: collapse;
             border: none;
         }
 
         .footerTable td {
             border: none;
-
             padding: 0;
-
             vertical-align: middle;
         }
 
@@ -172,7 +143,6 @@
 
         .section {
             margin-bottom: 18px;
-
             page-break-inside: avoid;
         }
 
@@ -187,9 +157,7 @@
         h2 {
             font-size: 12pt;
             color: #14377C;
-
             border-bottom: 1px solid #ccc;
-
             margin: 0 0 8px 0;
             padding-bottom: 3px;
         }
@@ -200,27 +168,21 @@
 
         table {
             width: 100%;
-
             border-collapse: collapse;
-
             margin: 8px 0;
         }
 
         th,
         td {
             border: 1px solid #ccc;
-
             padding: 6px 8px;
-
             text-align: left;
             vertical-align: top;
         }
 
         th {
             width: 32%;
-
             background: #f5f5f5;
-
             font-weight: 600;
         }
 
@@ -230,31 +192,22 @@
 
         .highlight {
             background: #f0f7ff;
-
             border-left: 4px solid #14377C;
-
             padding: 12px 14px;
-
             margin: 12px 0;
         }
 
         .warning {
             background: #fff8e6;
-
             border-left: 4px solid #d48a00;
-
             padding: 12px 14px;
-
             margin: 12px 0;
         }
 
         .critical {
             background: #fff0f0;
-
             border-left: 4px solid #b00020;
-
             padding: 12px 14px;
-
             margin: 12px 0;
         }
 
@@ -264,21 +217,15 @@
 
         .map-container {
             text-align: center;
-
             margin: 15px 0;
-
             padding: 10px;
-
             border: 1px solid #ddd;
-
             background: #fafafa;
         }
 
         /* #endregion */
-
     </style>
     <!-- #endregion -->
-
 </head>
 <!-- #endregion -->
 
