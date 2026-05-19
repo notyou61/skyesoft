@@ -163,6 +163,8 @@ $html = '
 
             width: 100%;
 
+            table-layout: fixed;
+
             border-collapse: collapse;
 
             margin: 4px 0 8px 0;
@@ -184,7 +186,7 @@ $html = '
 
             background: #f5f5f5;
 
-            width: 32%;
+            width: 28%;
 
             font-weight: 700;
 
@@ -329,11 +331,17 @@ $html = '
 // =====================================================
 // Generate PDF
 // =====================================================
-$mpdf = new Mpdf([
-    'margin_left'   => 18,
-    'margin_right'  => 18,
-    'margin_top'    => 20,
-    'margin_bottom' => 20,
+$mpdf = new \Mpdf\Mpdf([
+
+    'format' => 'Letter',
+
+    'margin_left'   => 8,
+
+    'margin_right'  => 8,
+
+    'margin_top'    => 8,
+
+    'margin_bottom' => 8,
 ]);
 
 $mpdf->WriteHTML($html);
