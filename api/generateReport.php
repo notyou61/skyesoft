@@ -1,27 +1,92 @@
 <?php
-// api/generateReport.php
-// Dynamic Report Endpoint
+// ======================================================================
+//  🧠 Skyesoft — generateReport.php
+//  📄 Dynamic Operational Report Endpoint
+//  🧩 Universal PDF Report Dispatcher
+// ======================================================================
 
-// Correct path from api/ folder to api/utils/
-require_once __DIR__ . '/utils/reportGenerator.php';
+// =====================================================
+// 📦 LOAD REPORT ENGINE
+// =====================================================
+
+require_once __DIR__ . '/utils/reportGeneratorMPDF.php';
+
+// =====================================================
+// 🚀 REPORT EXECUTION
+// =====================================================
 
 try {
-    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+
+    // -------------------------------------------------
+    // Read JSON payload
+    // -------------------------------------------------
+
+    $input = json_decode(
+        file_get_contents('php://input'),
+        true
+    ) ?? [];
+
+    // -------------------------------------------------
+    // Validate input
+    // -------------------------------------------------
 
     if (empty($input)) {
-        throw new Exception("No input data received");
+        throw new Exception(
+            'No input data received'
+        );
     }
 
-    $generator = new ReportGenerator();
-    $generator->setTemplate('contactProposal');
-    $generator->setPayload($input);
+    // -------------------------------------------------
+    // Create report engine
+    // -------------------------------------------------
 
-    $filename = 'Proposed_Contact_Report_' . date('Y-m-d_His') . '.pdf';
+    $generator = new ReportGeneratorMPDF();
 
-    $generator->streamPdf($filename);
+    // -------------------------------------------------
+    // Set template
+    // -------------------------------------------------
+
+    $generator->setTemplate(
+        'contactProposal'
+    );
+
+    // -------------------------------------------------
+    // Set payload
+    // -------------------------------------------------
+
+    $generator->setPayload(
+        $input
+    );
+
+    // -------------------------------------------------
+    // Filename
+    // -------------------------------------------------
+
+    $filename =
+        'Proposed_Contact_Report_'
+        . date('Y-m-d_His')
+        . '.pdf';
+
+    // -------------------------------------------------
+    // Stream PDF
+    // -------------------------------------------------
+
+    $generator->streamPdf(
+        $filename
+    );
 
 } catch (Exception $e) {
+
     http_response_code(500);
-    echo "Report generation failed: " . htmlspecialchars($e->getMessage());
-    error_log("[Report Error] " . $e->getMessage());
+
+    echo
+        'Report generation failed: '
+        . htmlspecialchars(
+            $e->getMessage()
+        );
+
+    error_log(
+        '[Report Error] '
+        . $e->getMessage()
+    );
 }
