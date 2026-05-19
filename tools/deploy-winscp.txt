@@ -9,13 +9,30 @@ lcd "%1%"
 # Move to the parent folder on remote where skyesoft should live
 cd /home/notyou64/public_html
 
-# === The key line ===
+# === DEPLOYMENT ===
 # Push contents of current local dir (.) → remote subfolder 'skyesoft'
-# -delete    → remove remote files no longer present locally (true mirror)
-# -filemask= → exclude patterns (note the | prefix for exclusions)
--filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt;data/authoritative/jurisdictions/;vendor/"
+#
+# -delete
+#     Remove remote files no longer present locally (true mirror)
+#
+# -filemask
+#     Exclude folders/files from deployment
+#
+# Excluded:
+#     .git
+#     node_modules
+#     secure
+#     .env
+#     repoTree.txt
+#     tree.txt
+#     authoritative jurisdiction datasets
+#     vendor libraries (static Composer packages)
 
-# For testing/safety first, comment the line above and uncomment this preview version:
-# synchronize remote . skyesoft -preview -delete -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt"
+synchronize remote -delete -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt;data/authoritative/jurisdictions/;vendor/" . skyesoft
+
+# === PREVIEW MODE (SAFE TESTING) ===
+# Uncomment below and comment out live deploy above for dry-run preview
+
+# synchronize remote -preview -delete -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt;data/authoritative/jurisdictions/;vendor/" . skyesoft
 
 exit
