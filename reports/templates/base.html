@@ -45,17 +45,19 @@
             top: 0.22in;
             left: 0.22in;
             right: 0.22in;
-            height: 0.58in;                    /* Tightened */
+            height: 0.58in;
             border-bottom: 2.5px solid #14377C;
-            padding: 0;                        /* Removed bottom padding */
+            padding: 0;
             background: #ffffff;
             z-index: 1000;
         }
 
         .headerTable {
-            width: auto;                       /* ← BIG FIX for logo alignment */
+            width: 100%;                    /* Back to 100% but controlled */
             border-collapse: collapse;
             border: none;
+            margin: 0;                      /* Important */
+            padding: 0;
         }
 
         .headerTable td {
@@ -69,17 +71,20 @@
             white-space: nowrap;
             text-align: left;
             vertical-align: middle;
-            padding-right: 10px;               /* Tightened from 14px */
+            padding-right: 12px;            /* Fine-tuned */
+            padding-left: 0;                /* ← Ensure no extra left padding */
         }
 
         .headerTitleCell {
             width: auto;
             text-align: left;
             vertical-align: middle;
+            padding-left: 0;                /* ← Ensure clean left edge */
         }
 
         .headerLogo {
-            height: 50px;                      /* Reduced from 58px */
+            height: 50px;
+            display: block;                 /* Helps with alignment */
         }
 
         .headerTitle {
@@ -87,12 +92,13 @@
             font-weight: 700;
             color: #14377C;
             line-height: 1.1;
-            margin-bottom: 2px;
+            margin: 0 0 2px 0;
         }
 
         .headerSubtitle {
             font-size: 10.5pt;
             color: #555;
+            margin: 0;
         }
 
         /* #endregion */
