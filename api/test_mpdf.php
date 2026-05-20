@@ -2,29 +2,27 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Mpdf\Mpdf;
-use Mpdf\Config\ConfigVariables;
-use Mpdf\Config\FontVariables;
 
 // =====================================================
-// SAMPLE DATA (from previous payload - Fireshield example)
+// SAMPLE DATA
 // =====================================================
-$reportTitle     = "Proposed Contact Report (PC-1)";
-$entityName      = "Fireshield Services LLC";
-$contactName     = "Ms Kira Festa";
-$contactTitle    = "Inside Account Manager";
-$contactPhone    = "888-540-7632 Ext 704";
-$contactEmail    = "kira@fireshieldcorp.com";
-$locationAddress = "3654 N Power Rd";
+$reportTitle          = "Proposed Contact Report (PC-1)";
+$entityName           = "Fireshield Services LLC";
+$contactName          = "Ms Kira Festa";
+$contactTitle         = "Inside Account Manager";
+$contactPhone         = "888-540-7632 Ext 704";
+$contactEmail         = "kira@fireshieldcorp.com";
+$locationAddress      = "3654 N Power Rd";
 $locationCityStateZip = "Mesa, AZ 85215";
-$locationPlaceId = "ChIJZa4P6dykk4cRHuAQvn1sWw4";
-$confidence      = 85;
-$pcCode          = "PC-1";
-$resolutionStatus = "multiple_parcels";
-$commitAllowed   = "NO";
-$governanceNarrative = "This proposal represents a new entity, location, and contact. Review: Multiple parcel candidates were found and user selection is required.";
-$entityAction    = "hold";
-$locationAction  = "hold";
-$contactAction   = "hold";
+$locationPlaceId      = "ChIJZa4P6dykk4cRHuAQvn1sWw4";
+$confidence           = 85;
+$pcCode               = "PC-1";
+$resolutionStatus     = "multiple_parcels";
+$commitAllowed        = "NO";
+$governanceNarrative  = "This proposal represents a new entity, location, and contact. Review: Multiple parcel candidates were found and user selection is required.";
+$entityAction         = "hold";
+$locationAction       = "hold";
+$contactAction        = "hold";
 
 // =====================================================
 // Build HTML Content
@@ -35,23 +33,20 @@ $html = '
 <head>
     <meta charset="UTF-8">
     <style>
-
         body {
             font-family: Helvetica, Arial, sans-serif;
             font-size: 11pt;
             color: #222;
-            line-height: 1.22;
+            line-height: 1.25;
             margin: 0;
             padding: 0;
         }
 
-        /* =====================================================
-           🏢 EXECUTIVE OPERATIONAL HEADER
-        ===================================================== */
+        /* HEADER */
         .header {
             border-bottom: 2.5px solid #14377C;
-            padding-bottom: 4px;
-            margin-bottom: 8px;
+            padding-bottom: 6px;
+            margin-bottom: 10px;
         }
 
         .headerTable {
@@ -60,65 +55,54 @@ $html = '
             border: none;
         }
 
-        .headerTable td {
-            border: none;
-            padding: 0;
-            vertical-align: top;
-        }
-
         .headerLogoCell {
             width: 62px;
             white-space: nowrap;
-            padding-right: 6px;
+            padding-right: 8px;
+            vertical-align: middle;
         }
 
         .logo {
             width: 58px;
             height: auto;
-            margin-top: 2px;
         }
 
         .headerTitle {
             font-size: 14pt;
             font-weight: 700;
             color: #14377C;
-            line-height: 1.0;
-            margin-bottom: 2px;
+            line-height: 1.1;
+            margin-bottom: 1px;
         }
 
         .headerSubtitle {
-            font-size: 8.5pt;
-            color: #444;
-            line-height: 1.1;
+            font-size: 9pt;
+            color: #555;
         }
 
-        /* =====================================================
-           🏷️ SECTION HEADERS
-        ===================================================== */
+        /* SECTION HEADERS */
         h2 {
             font-size: 11.5pt;
             color: #14377C;
             border-bottom: 1px solid #ccc;
-            padding-bottom: 2px;
-            margin-top: 12px;
-            margin-bottom: 4px;
+            padding-bottom: 3px;
+            margin-top: 14px;
+            margin-bottom: 6px;
             font-weight: 700;
         }
 
-        /* =====================================================
-           📊 DATA TABLES (Content Only)
-        ===================================================== */
+        /* DATA TABLES */
         .dataTable {
             width: 100%;
             table-layout: fixed;
             border-collapse: collapse;
-            margin: 4px 0 8px 0;
+            margin: 4px 0 10px 0;
         }
 
         .dataTable th,
         .dataTable td {
             border: 1px solid #ccc;
-            padding: 4px 6px;
+            padding: 5px 7px;
             text-align: left;
             vertical-align: top;
         }
@@ -130,84 +114,48 @@ $html = '
             color: #333;
         }
 
-        /* =====================================================
-           🚨 OPERATIONAL PANELS
-        ===================================================== */
         .highlight {
             background: #f0f7ff;
             border-left: 4px solid #14377C;
-            padding: 7px 9px;
-            margin: 6px 0;
+            padding: 8px 10px;
+            margin: 8px 0;
         }
 
         /* =====================================================
-        🧾 EXECUTIVE OPERATIONAL FOOTER
+           FOOTER — Page Boundary Style
         ===================================================== */
-
         .footer {
-
             position: fixed;
-
             left: 0;
-
             right: 0;
-
             bottom: 4mm;
-
             background: #fff;
-
-            color: #555;
-
             text-align: center;
+            font-size: 7.5pt;
+            color: #555;
         }
-
-        /* =====================================================
-        🔵 FOOTER DIVIDER
-        ===================================================== */
 
         .footerDivider {
-
             border-top: 2.5px solid #14377C;
-
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
 
-        /* =====================================================
-        🏢 FOOTER LINE 1
-        ===================================================== */
+        .footerLine1,
+        .footerLine2 {
+            width: 100%;
+            text-align: center;
+            line-height: 1.3;
+        }
 
         .footerLine1 {
-
-            width: 100%;
-
-            text-align: center;
-
-            font-size: 7.5pt;
-
             font-weight: 600;
-
-            line-height: 1.2;
-
             margin-bottom: 2px;
         }
 
-        /* =====================================================
-        📄 FOOTER LINE 2
-        ===================================================== */
-
         .footerLine2 {
-
-            width: 100%;
-
-            text-align: center;
-
             font-size: 7pt;
-
             color: #666;
-
-            line-height: 1.2;
         }
-
     </style>
 </head>
 <body>
@@ -278,23 +226,12 @@ $html = '
 
     <!-- FOOTER -->
     <div class="footer">
-        <!-- 🔵 FOOTER DIVIDER -->
         <div class="footerDivider"></div>
-        <!-- 🏢 FOOTER LINE 1 -->
         <div class="footerLine1">
-
-            Christy Signs |
-            3145 N 33rd Ave, Phoenix, AZ 85017 |
-            (602) 242-4488
-
+            Christy Signs &nbsp;|&nbsp; 3145 N 33rd Ave, Phoenix, AZ 85017 &nbsp;|&nbsp; (602) 242-4488
         </div>
-        <!-- 📄 FOOTER LINE 2 -->
         <div class="footerLine2">
-
-            © 2026 Christy Signs —
-            Confidential Internal Document
-            Page {PAGENO} of {nbpg}
-
+            © 2026 Christy Signs — Confidential Internal Operational Document &nbsp;&nbsp;•&nbsp;&nbsp; Page {PAGENO} of {nbpg}
         </div>
     </div>
 
@@ -305,17 +242,12 @@ $html = '
 // =====================================================
 // Generate PDF
 // =====================================================
-$mpdf = new \Mpdf\Mpdf([
-
-    'format' => 'Letter',
-
-    'margin_left'   => 8,
-
-    'margin_right'  => 8,
-
-    'margin_top'    => 8,
-
-    'margin_bottom' => 8,
+$mpdf = new Mpdf([
+    'format'        => 'Letter',
+    'margin_left'   => 10,
+    'margin_right'  => 10,
+    'margin_top'    => 10,
+    'margin_bottom' => 18,           // Leave room for fixed footer
 ]);
 
 $mpdf->WriteHTML($html);
