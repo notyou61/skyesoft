@@ -67,151 +67,544 @@ $html = '
 <head>
     <meta charset="UTF-8">
     <style>
+
         body {
+
             font-family: Helvetica, Arial, sans-serif;
+
             font-size: 11pt;
+
             color: #222;
+
             line-height: 1.25;
+
+            margin: 0;
+
+            padding: 0;
         }
 
-        /* Section Header with Icon */
-        .section-header {
-            display: flex;
-            align-items: center;
-            margin-top: 16px;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #ccc;
+        /* =====================================================
+        🏢 EXECUTIVE OPERATIONAL HEADER
+        ===================================================== */
+
+        .header {
+
+            border-bottom: 2.5px solid #14377C;
+
             padding-bottom: 4px;
+
+            margin-bottom: 10px;
         }
 
-        .section-header img {
-            width: 18px;
-            height: 18px;
-            margin-right: 8px;
+        .headerTable {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            border: none;
+        }
+
+        .headerTable td {
+
+            border: none;
+
+            padding: 0;
+
+            vertical-align: top;
+        }
+
+        .headerLogoCell {
+
+            width: 62px;
+
+            white-space: nowrap;
+
+            padding-right: 6px;
+        }
+
+        .logo {
+
+            width: 58px;
+
+            height: auto;
+
+            margin-top: 2px;
+        }
+
+        .headerTitleCell {
+
+            text-align: left;
+        }
+
+        .headerTitle {
+
+            font-size: 14pt;
+
+            font-weight: 700;
+
+            color: #14377C;
+
+            line-height: 1.0;
+
+            margin-bottom: 2px;
+        }
+
+        .headerSubtitle {
+
+            font-size: 8.5pt;
+
+            color: #444;
+
+            line-height: 1.1;
+        }
+
+        /* =====================================================
+        🏷️ OPERATIONAL SECTION HEADERS
+        ===================================================== */
+
+        .sectionHeader {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 6px;
+
+            margin-top: 14px;
+
+            margin-bottom: 4px;
+
+            border-bottom: 1px solid #ccc;
+
+            padding-bottom: 3px;
+        }
+
+        /* =====================================================
+        🖼️ SECTION ICON
+        ===================================================== */
+
+        .sectionIcon {
+
+            width: 14px;
+
+            height: 14px;
+
+            object-fit: contain;
+
             flex-shrink: 0;
         }
 
-        .section-header h2 {
+        /* =====================================================
+        🏷️ SECTION TITLE
+        ===================================================== */
+
+        .sectionTitle {
+
             font-size: 11.5pt;
-            color: #14377C;
+
             font-weight: 700;
+
+            color: #14377C;
+
+            line-height: 1.0;
+
             margin: 0;
         }
 
+        /* =====================================================
+        📊 OPERATIONAL DATA TABLES
+        ===================================================== */
+
         .dataTable {
+
             width: 100%;
+
             table-layout: fixed;
+
             border-collapse: collapse;
-            margin: 4px 0 10px 0;
+
+            margin: 4px 0 8px 0;
         }
 
         .dataTable th,
         .dataTable td {
+
             border: 1px solid #ccc;
+
             padding: 5px 7px;
+
             text-align: left;
+
             vertical-align: top;
         }
 
         .dataTable th {
+
             background: #f5f5f5;
+
             width: 28%;
+
             font-weight: 700;
+
             color: #333;
         }
 
+        /* =====================================================
+        🚨 OPERATIONAL PANELS
+        ===================================================== */
+
         .highlight {
+
             background: #f0f7ff;
+
             border-left: 4px solid #14377C;
+
             padding: 8px 10px;
-            margin: 8px 0;
+
+            margin: 6px 0;
         }
 
-        /* Section Integrity */
-        .section {
-            page-break-inside: avoid;
-            margin-bottom: 14px;
+        .warning {
+
+            background: #fff8e6;
+
+            border-left: 4px solid #d48a00;
+
+            padding: 8px 10px;
+
+            margin: 6px 0;
         }
+
+        .critical {
+
+            background: #fff0f0;
+
+            border-left: 4px solid #b00020;
+
+            padding: 8px 10px;
+
+            margin: 6px 0;
+        }
+
+        /* =====================================================
+        🧩 SECTION INTEGRITY GOVERNANCE
+        ===================================================== */
+
+        .section {
+
+            page-break-inside: avoid;
+
+            margin-bottom: 12px;
+        }
+
+        /* =====================================================
+        🧾 EXECUTIVE OPERATIONAL FOOTER
+        ===================================================== */
+
+        .footer {
+
+            position: fixed;
+
+            left: 0;
+
+            right: 0;
+
+            bottom: 4mm;
+
+            background: #fff;
+
+            color: #555;
+
+            text-align: center;
+        }
+
+        /* =====================================================
+        🔵 FOOTER DIVIDER
+        ===================================================== */
+
+        .footerDivider {
+
+            border-top: 2.5px solid #14377C;
+
+            margin-bottom: 4px;
+        }
+
+        /* =====================================================
+        🏢 FOOTER LINE 1
+        ===================================================== */
+
+        .footerLine1 {
+
+            width: 100%;
+
+            text-align: center;
+
+            font-size: 7.5pt;
+
+            font-weight: 600;
+
+            line-height: 1.2;
+
+            margin-bottom: 2px;
+        }
+
+        /* =====================================================
+        📄 FOOTER LINE 2
+        ===================================================== */
+
+        .footerLine2 {
+
+            width: 100%;
+
+            text-align: center;
+
+            font-size: 7pt;
+
+            color: #666;
+
+            line-height: 1.2;
+        }
+
     </style>
 </head>
 <body>
 
-    <!-- RESOLUTION SUMMARY -->
+    <!-- =====================================================
+         📋 RESOLUTION SUMMARY
+    ====================================================== -->
+
     <div class="section">
-        <div class="section-header">
-            <img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" alt="Resolution">
-            <h2>Resolution Summary</h2>
+
+        <div class="sectionHeader">
+
+            <img
+                src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png"
+                class="sectionIcon"
+                alt="Resolution Summary">
+
+            <div class="sectionTitle">
+                Resolution Summary
+            </div>
+
         </div>
+
         <table class="dataTable">
-            <tr><th>Report Title</th><td>' . $reportTitle . '</td></tr>
-            <tr><th>Confidence</th><td>' . $confidence . '%</td></tr>
-            <tr><th>PC Code</th><td>' . $pcCode . '</td></tr>
-            <tr><th>Status</th><td>' . $resolutionStatus . '</td></tr>
-            <tr><th>Commit Ready</th><td><strong>' . $commitAllowed . '</strong></td></tr>
+
+            <tr>
+                <th>Report Title</th>
+                <td>' . $reportTitle . '</td>
+            </tr>
+
+            <tr>
+                <th>Confidence</th>
+                <td>' . $confidence . '%</td>
+            </tr>
+
+            <tr>
+                <th>PC Code</th>
+                <td>' . $pcCode . '</td>
+            </tr>
+
+            <tr>
+                <th>Status</th>
+                <td>' . $resolutionStatus . '</td>
+            </tr>
+
+            <tr>
+                <th>Commit Ready</th>
+                <td><strong>' . $commitAllowed . '</strong></td>
+            </tr>
+
         </table>
+
     </div>
 
-    <!-- ENTITY -->
+    <!-- =====================================================
+         🏢 ENTITY INFORMATION
+    ====================================================== -->
+
     <div class="section">
-        <div class="section-header">
-            <img src="https://skyelighting.com/skyesoft/assets/images/icons/property.png" alt="Entity">
-            <h2>Entity Information</h2>
+
+        <div class="sectionHeader">
+
+            <img
+                src="https://skyelighting.com/skyesoft/assets/images/icons/property.png"
+                class="sectionIcon"
+                alt="Entity Information">
+
+            <div class="sectionTitle">
+                Entity Information
+            </div>
+
         </div>
+
         <table class="dataTable">
-            <tr><th>Entity Name</th><td>' . $entityName . '</td></tr>
+
+            <tr>
+                <th>Entity Name</th>
+                <td>' . $entityName . '</td>
+            </tr>
+
         </table>
+
     </div>
 
-    <!-- CONTACT -->
+    <!-- =====================================================
+         📇 CONTACT INFORMATION
+    ====================================================== -->
+
     <div class="section">
-        <div class="section-header">
-            <img src="https://skyelighting.com/skyesoft/assets/images/icons/users.png" alt="Contact">
-            <h2>Contact Information</h2>
+
+        <div class="sectionHeader">
+
+            <img
+                src="https://skyelighting.com/skyesoft/assets/images/icons/users.png"
+                class="sectionIcon"
+                alt="Contact Information">
+
+            <div class="sectionTitle">
+                Contact Information
+            </div>
+
         </div>
+
         <table class="dataTable">
-            <tr><th>Contact Name</th><td>' . $contactName . '</td></tr>
-            <tr><th>Title</th><td>' . $contactTitle . '</td></tr>
-            <tr><th>Phone</th><td>' . $contactPhone . '</td></tr>
-            <tr><th>Email</th><td>' . $contactEmail . '</td></tr>
+
+            <tr>
+                <th>Contact Name</th>
+                <td>' . $contactName . '</td>
+            </tr>
+
+            <tr>
+                <th>Title</th>
+                <td>' . $contactTitle . '</td>
+            </tr>
+
+            <tr>
+                <th>Phone</th>
+                <td>' . $contactPhone . '</td>
+            </tr>
+
+            <tr>
+                <th>Email</th>
+                <td>' . $contactEmail . '</td>
+            </tr>
+
         </table>
+
     </div>
 
-    <!-- LOCATION -->
+    <!-- =====================================================
+         📍 LOCATION INFORMATION
+    ====================================================== -->
+
     <div class="section">
-        <div class="section-header">
-            <img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" alt="Location">
-            <h2>Location Information</h2>
+
+        <div class="sectionHeader">
+
+            <img
+                src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png"
+                class="sectionIcon"
+                alt="Location Information">
+
+            <div class="sectionTitle">
+                Location Information
+            </div>
+
         </div>
+
         <table class="dataTable">
-            <tr><th>Full Address</th><td>' . $locationAddress . '</td></tr>
-            <tr><th>City, State ZIP</th><td>' . $locationCityStateZip . '</td></tr>
-            <tr><th>Place ID</th><td>' . $locationPlaceId . '</td></tr>
+
+            <tr>
+                <th>Full Address</th>
+                <td>' . $locationAddress . '</td>
+            </tr>
+
+            <tr>
+                <th>City, State ZIP</th>
+                <td>' . $locationCityStateZip . '</td>
+            </tr>
+
+            <tr>
+                <th>Place ID</th>
+                <td>' . $locationPlaceId . '</td>
+            </tr>
+
         </table>
+
     </div>
 
-    <!-- GOVERNANCE NARRATIVE -->
+    <!-- =====================================================
+         ⚖️ GOVERNANCE NARRATIVE
+    ====================================================== -->
+
     <div class="section">
-        <div class="section-header">
-            <img src="https://skyelighting.com/skyesoft/assets/images/icons/scales.png" alt="Governance">
-            <h2>Governance &amp; Operational Narrative</h2>
+
+        <div class="sectionHeader">
+
+            <img
+                src="https://skyelighting.com/skyesoft/assets/images/icons/scales.png"
+                class="sectionIcon"
+                alt="Governance Narrative">
+
+            <div class="sectionTitle">
+                Governance &amp; Operational Narrative
+            </div>
+
         </div>
+
         <div class="highlight">
+
             ' . $governanceNarrative . '
+
         </div>
+
     </div>
 
-    <!-- PERSISTENCE / STAGING -->
+    <!-- =====================================================
+         🧩 PERSISTENCE / STAGING
+    ====================================================== -->
+
     <div class="section">
-        <div class="section-header">
-            <img src="https://skyelighting.com/skyesoft/assets/images/icons/puzzle.png" alt="Persistence">
-            <h2>Persistence / Staging State</h2>
+
+        <div class="sectionHeader">
+
+            <img
+                src="https://skyelighting.com/skyesoft/assets/images/icons/puzzle.png"
+                class="sectionIcon"
+                alt="Persistence / Staging">
+
+            <div class="sectionTitle">
+                Persistence / Staging State
+            </div>
+
         </div>
+
         <table class="dataTable">
-            <tr><th>Entity Action</th><td>' . $entityAction . '</td></tr>
-            <tr><th>Location Action</th><td>' . $locationAction . '</td></tr>
-            <tr><th>Contact Action</th><td>' . $contactAction . '</td></tr>
-            <tr><th>Commit Allowed</th><td><strong>' . $commitAllowed . '</strong></td></tr>
+
+            <tr>
+                <th>Entity Action</th>
+                <td>' . $entityAction . '</td>
+            </tr>
+
+            <tr>
+                <th>Location Action</th>
+                <td>' . $locationAction . '</td>
+            </tr>
+
+            <tr>
+                <th>Contact Action</th>
+                <td>' . $contactAction . '</td>
+            </tr>
+
+            <tr>
+                <th>Commit Allowed</th>
+                <td><strong>' . $commitAllowed . '</strong></td>
+            </tr>
+
         </table>
+
     </div>
 
 </body>
