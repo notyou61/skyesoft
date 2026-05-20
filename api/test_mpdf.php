@@ -25,10 +25,10 @@ $locationAction       = "hold";
 $contactAction        = "hold";
 
 // =====================================================
-// HEADER (Always at the same position from top)
+// HEADER (Fixed position from top)
 // =====================================================
 $headerHtml = '
-<div style="border-bottom: 2.5px solid #14377C; padding-bottom: 6px; margin-bottom: 8px;">
+<div style="border-bottom: 2.5px solid #14377C; padding-bottom: 6px;">
     <table style="width:100%; border:none;">
         <tr>
             <td style="width:62px; padding-right:8px; vertical-align:middle;">
@@ -45,7 +45,7 @@ $headerHtml = '
 ';
 
 // =====================================================
-// FOOTER (Always at the same position from bottom)
+// FOOTER (Fixed position from bottom)
 // =====================================================
 $footerHtml = '
 <div style="border-top: 2.5px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
@@ -163,14 +163,14 @@ $html = '
 ';
 
 // =====================================================
-// Generate PDF with Fixed Header + Footer
+// Generate PDF with Consistent Header + Footer + Body Start
 // =====================================================
 $mpdf = new Mpdf([
     'format'        => 'Letter',
     'margin_left'   => 10,
     'margin_right'  => 10,
-    'margin_top'    => 22,        // Space for header
-    'margin_bottom' => 22,        // Space for footer
+    'margin_top'    => 26,        // ← Increased: Creates consistent space below header
+    'margin_bottom' => 22,
 ]);
 
 // Set fixed header and footer
