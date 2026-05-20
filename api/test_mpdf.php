@@ -152,11 +152,9 @@ $html = '
 
             right: 0;
 
-            bottom: 8mm;
+            bottom: 4mm;
 
             background: #fff;
-
-            font-size: 7.5pt;
 
             color: #555;
 
@@ -180,6 +178,12 @@ $html = '
 
         .footerLine1 {
 
+            width: 100%;
+
+            text-align: center;
+
+            font-size: 7.5pt;
+
             font-weight: 600;
 
             line-height: 1.2;
@@ -192,6 +196,10 @@ $html = '
         ===================================================== */
 
         .footerLine2 {
+
+            width: 100%;
+
+            text-align: center;
 
             font-size: 7pt;
 
