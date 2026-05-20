@@ -1,9 +1,4 @@
 <?php
-
-if (function_exists('opcache_reset')) {
-    opcache_reset();
-}
-
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Mpdf\Mpdf;
@@ -79,14 +74,28 @@ $html = '
             line-height: 1.25;
         }
 
-        h2 {
+        /* Section Header with Icon */
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-top: 16px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 4px;
+        }
+
+        .section-header img {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .section-header h2 {
             font-size: 11.5pt;
             color: #14377C;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 3px;
-            margin-top: 14px;
-            margin-bottom: 6px;
             font-weight: 700;
+            margin: 0;
         }
 
         .dataTable {
@@ -118,9 +127,7 @@ $html = '
             margin: 8px 0;
         }
 
-        /* =====================================================
-           SECTION INTEGRITY — Prevents sections from splitting
-        ===================================================== */
+        /* Section Integrity */
         .section {
             page-break-inside: avoid;
             margin-bottom: 14px;
@@ -131,7 +138,10 @@ $html = '
 
     <!-- RESOLUTION SUMMARY -->
     <div class="section">
-        <h2>Resolution Summary</h2>
+        <div class="section-header">
+            <img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" alt="Resolution">
+            <h2>Resolution Summary</h2>
+        </div>
         <table class="dataTable">
             <tr><th>Report Title</th><td>' . $reportTitle . '</td></tr>
             <tr><th>Confidence</th><td>' . $confidence . '%</td></tr>
@@ -143,7 +153,10 @@ $html = '
 
     <!-- ENTITY -->
     <div class="section">
-        <h2>Entity Information</h2>
+        <div class="section-header">
+            <img src="https://skyelighting.com/skyesoft/assets/images/icons/property.png" alt="Entity">
+            <h2>Entity Information</h2>
+        </div>
         <table class="dataTable">
             <tr><th>Entity Name</th><td>' . $entityName . '</td></tr>
         </table>
@@ -151,7 +164,10 @@ $html = '
 
     <!-- CONTACT -->
     <div class="section">
-        <h2>Contact Information</h2>
+        <div class="section-header">
+            <img src="https://skyelighting.com/skyesoft/assets/images/icons/users.png" alt="Contact">
+            <h2>Contact Information</h2>
+        </div>
         <table class="dataTable">
             <tr><th>Contact Name</th><td>' . $contactName . '</td></tr>
             <tr><th>Title</th><td>' . $contactTitle . '</td></tr>
@@ -162,7 +178,10 @@ $html = '
 
     <!-- LOCATION -->
     <div class="section">
-        <h2>Location Information</h2>
+        <div class="section-header">
+            <img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" alt="Location">
+            <h2>Location Information</h2>
+        </div>
         <table class="dataTable">
             <tr><th>Full Address</th><td>' . $locationAddress . '</td></tr>
             <tr><th>City, State ZIP</th><td>' . $locationCityStateZip . '</td></tr>
@@ -172,7 +191,10 @@ $html = '
 
     <!-- GOVERNANCE NARRATIVE -->
     <div class="section">
-        <h2>Governance &amp; Operational Narrative</h2>
+        <div class="section-header">
+            <img src="https://skyelighting.com/skyesoft/assets/images/icons/scales.png" alt="Governance">
+            <h2>Governance &amp; Operational Narrative</h2>
+        </div>
         <div class="highlight">
             ' . $governanceNarrative . '
         </div>
@@ -180,7 +202,10 @@ $html = '
 
     <!-- PERSISTENCE / STAGING -->
     <div class="section">
-        <h2>Persistence / Staging State</h2>
+        <div class="section-header">
+            <img src="https://skyelighting.com/skyesoft/assets/images/icons/puzzle.png" alt="Persistence">
+            <h2>Persistence / Staging State</h2>
+        </div>
         <table class="dataTable">
             <tr><th>Entity Action</th><td>' . $entityAction . '</td></tr>
             <tr><th>Location Action</th><td>' . $locationAction . '</td></tr>
