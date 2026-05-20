@@ -25,21 +25,41 @@ $locationAction       = "hold";
 $contactAction        = "hold";
 
 // =====================================================
-// FOOTER HTML (This will be locked at the bottom)
+// HEADER (Always at the same position from top)
+// =====================================================
+$headerHtml = '
+<div style="border-bottom: 2.5px solid #14377C; padding-bottom: 6px; margin-bottom: 8px;">
+    <table style="width:100%; border:none;">
+        <tr>
+            <td style="width:62px; padding-right:8px; vertical-align:middle;">
+                <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png" 
+                     style="width:58px; height:auto;" alt="Christy Signs">
+            </td>
+            <td>
+                <div style="font-size:14pt; font-weight:700; color:#14377C; line-height:1.1;">' . $reportTitle . '</div>
+                <div style="font-size:9pt; color:#555;">Skyesoft Operational Intelligence</div>
+            </td>
+        </tr>
+    </table>
+</div>
+';
+
+// =====================================================
+// FOOTER (Always at the same position from bottom)
 // =====================================================
 $footerHtml = '
-<div style="border-top: 2.5px solid #14377C; padding-top: 5px; font-size: 7.5pt; color: #555; text-align: center; width: 100%;">
-    <div style="font-weight: 600; margin-bottom: 2px;">
+<div style="border-top: 2.5px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
+    <div style="font-weight:600; margin-bottom:2px;">
         Christy Signs &nbsp;|&nbsp; 3145 N 33rd Ave, Phoenix, AZ 85017 &nbsp;|&nbsp; (602) 242-4488
     </div>
-    <div style="font-size: 7pt; color: #666;">
+    <div style="font-size:7pt; color:#666;">
         © 2026 Christy Signs — Confidential Internal Operational Document &nbsp;&nbsp;•&nbsp;&nbsp; Page {PAGENO} of {nbpg}
     </div>
 </div>
 ';
 
 // =====================================================
-// Build HTML Content
+// BODY CONTENT
 // =====================================================
 $html = '
 <!DOCTYPE html>
@@ -52,45 +72,6 @@ $html = '
             font-size: 11pt;
             color: #222;
             line-height: 1.25;
-            margin: 0;
-            padding: 0;
-        }
-
-        .header {
-            border-bottom: 2.5px solid #14377C;
-            padding-bottom: 6px;
-            margin-bottom: 10px;
-        }
-
-        .headerTable {
-            width: 100%;
-            border-collapse: collapse;
-            border: none;
-        }
-
-        .headerLogoCell {
-            width: 62px;
-            white-space: nowrap;
-            padding-right: 8px;
-            vertical-align: middle;
-        }
-
-        .logo {
-            width: 58px;
-            height: auto;
-        }
-
-        .headerTitle {
-            font-size: 14pt;
-            font-weight: 700;
-            color: #14377C;
-            line-height: 1.1;
-            margin-bottom: 1px;
-        }
-
-        .headerSubtitle {
-            font-size: 9pt;
-            color: #555;
         }
 
         h2 {
@@ -135,23 +116,6 @@ $html = '
 </head>
 <body>
 
-    <!-- HEADER -->
-    <div class="header">
-        <table class="headerTable">
-            <tr>
-                <td class="headerLogoCell">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
-                         class="logo" alt="Christy Signs">
-                </td>
-                <td>
-                    <div class="headerTitle">' . $reportTitle . '</div>
-                    <div class="headerSubtitle">Skyesoft Operational Intelligence</div>
-                </td>
-            </tr>
-        </table>
-    </div>
-
-    <!-- RESOLUTION SUMMARY -->
     <h2>Resolution Summary</h2>
     <table class="dataTable">
         <tr><th>Report Title</th><td>' . $reportTitle . '</td></tr>
@@ -161,13 +125,11 @@ $html = '
         <tr><th>Commit Ready</th><td><strong>' . $commitAllowed . '</strong></td></tr>
     </table>
 
-    <!-- ENTITY -->
     <h2>Entity Information</h2>
     <table class="dataTable">
         <tr><th>Entity Name</th><td>' . $entityName . '</td></tr>
     </table>
 
-    <!-- CONTACT -->
     <h2>Contact Information</h2>
     <table class="dataTable">
         <tr><th>Contact Name</th><td>' . $contactName . '</td></tr>
@@ -176,7 +138,6 @@ $html = '
         <tr><th>Email</th><td>' . $contactEmail . '</td></tr>
     </table>
 
-    <!-- LOCATION -->
     <h2>Location Information</h2>
     <table class="dataTable">
         <tr><th>Full Address</th><td>' . $locationAddress . '</td></tr>
@@ -184,13 +145,11 @@ $html = '
         <tr><th>Place ID</th><td>' . $locationPlaceId . '</td></tr>
     </table>
 
-    <!-- GOVERNANCE NARRATIVE -->
     <h2>Governance &amp; Operational Narrative</h2>
     <div class="highlight">
         ' . $governanceNarrative . '
     </div>
 
-    <!-- PERSISTENCE / STAGING -->
     <h2>Persistence / Staging State</h2>
     <table class="dataTable">
         <tr><th>Entity Action</th><td>' . $entityAction . '</td></tr>
@@ -204,17 +163,18 @@ $html = '
 ';
 
 // =====================================================
-// Generate PDF with Native Footer
+// Generate PDF with Fixed Header + Footer
 // =====================================================
 $mpdf = new Mpdf([
     'format'        => 'Letter',
     'margin_left'   => 10,
     'margin_right'  => 10,
-    'margin_top'    => 10,
-    'margin_bottom' => 25,           // Reserve space for footer
+    'margin_top'    => 22,        // Space for header
+    'margin_bottom' => 22,        // Space for footer
 ]);
 
-// Set the footer (this locks it to the bottom)
+// Set fixed header and footer
+$mpdf->SetHTMLHeader($headerHtml);
 $mpdf->SetHTMLFooter($footerHtml);
 
 $mpdf->WriteHTML($html);
