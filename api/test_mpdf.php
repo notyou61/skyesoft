@@ -25,7 +25,7 @@ $locationAction       = "hold";
 $contactAction        = "hold";
 
 // =====================================================
-// HEADER (Fixed position from top)
+// HEADER
 // =====================================================
 $headerHtml = '
 <div style="border-bottom: 2.5px solid #14377C; padding-bottom: 6px;">
@@ -45,7 +45,7 @@ $headerHtml = '
 ';
 
 // =====================================================
-// FOOTER (Fixed position from bottom)
+// FOOTER
 // =====================================================
 $footerHtml = '
 <div style="border-top: 2.5px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
@@ -112,68 +112,93 @@ $html = '
             padding: 8px 10px;
             margin: 8px 0;
         }
+
+        /* =====================================================
+           SECTION INTEGRITY — Prevents sections from splitting
+        ===================================================== */
+        .section {
+            page-break-inside: avoid;
+            margin-bottom: 14px;
+        }
     </style>
 </head>
 <body>
 
-    <h2>Resolution Summary</h2>
-    <table class="dataTable">
-        <tr><th>Report Title</th><td>' . $reportTitle . '</td></tr>
-        <tr><th>Confidence</th><td>' . $confidence . '%</td></tr>
-        <tr><th>PC Code</th><td>' . $pcCode . '</td></tr>
-        <tr><th>Status</th><td>' . $resolutionStatus . '</td></tr>
-        <tr><th>Commit Ready</th><td><strong>' . $commitAllowed . '</strong></td></tr>
-    </table>
-
-    <h2>Entity Information</h2>
-    <table class="dataTable">
-        <tr><th>Entity Name</th><td>' . $entityName . '</td></tr>
-    </table>
-
-    <h2>Contact Information</h2>
-    <table class="dataTable">
-        <tr><th>Contact Name</th><td>' . $contactName . '</td></tr>
-        <tr><th>Title</th><td>' . $contactTitle . '</td></tr>
-        <tr><th>Phone</th><td>' . $contactPhone . '</td></tr>
-        <tr><th>Email</th><td>' . $contactEmail . '</td></tr>
-    </table>
-
-    <h2>Location Information</h2>
-    <table class="dataTable">
-        <tr><th>Full Address</th><td>' . $locationAddress . '</td></tr>
-        <tr><th>City, State ZIP</th><td>' . $locationCityStateZip . '</td></tr>
-        <tr><th>Place ID</th><td>' . $locationPlaceId . '</td></tr>
-    </table>
-
-    <h2>Governance &amp; Operational Narrative</h2>
-    <div class="highlight">
-        ' . $governanceNarrative . '
+    <!-- RESOLUTION SUMMARY -->
+    <div class="section">
+        <h2>Resolution Summary</h2>
+        <table class="dataTable">
+            <tr><th>Report Title</th><td>' . $reportTitle . '</td></tr>
+            <tr><th>Confidence</th><td>' . $confidence . '%</td></tr>
+            <tr><th>PC Code</th><td>' . $pcCode . '</td></tr>
+            <tr><th>Status</th><td>' . $resolutionStatus . '</td></tr>
+            <tr><th>Commit Ready</th><td><strong>' . $commitAllowed . '</strong></td></tr>
+        </table>
     </div>
 
-    <h2>Persistence / Staging State</h2>
-    <table class="dataTable">
-        <tr><th>Entity Action</th><td>' . $entityAction . '</td></tr>
-        <tr><th>Location Action</th><td>' . $locationAction . '</td></tr>
-        <tr><th>Contact Action</th><td>' . $contactAction . '</td></tr>
-        <tr><th>Commit Allowed</th><td><strong>' . $commitAllowed . '</strong></td></tr>
-    </table>
+    <!-- ENTITY -->
+    <div class="section">
+        <h2>Entity Information</h2>
+        <table class="dataTable">
+            <tr><th>Entity Name</th><td>' . $entityName . '</td></tr>
+        </table>
+    </div>
+
+    <!-- CONTACT -->
+    <div class="section">
+        <h2>Contact Information</h2>
+        <table class="dataTable">
+            <tr><th>Contact Name</th><td>' . $contactName . '</td></tr>
+            <tr><th>Title</th><td>' . $contactTitle . '</td></tr>
+            <tr><th>Phone</th><td>' . $contactPhone . '</td></tr>
+            <tr><th>Email</th><td>' . $contactEmail . '</td></tr>
+        </table>
+    </div>
+
+    <!-- LOCATION -->
+    <div class="section">
+        <h2>Location Information</h2>
+        <table class="dataTable">
+            <tr><th>Full Address</th><td>' . $locationAddress . '</td></tr>
+            <tr><th>City, State ZIP</th><td>' . $locationCityStateZip . '</td></tr>
+            <tr><th>Place ID</th><td>' . $locationPlaceId . '</td></tr>
+        </table>
+    </div>
+
+    <!-- GOVERNANCE NARRATIVE -->
+    <div class="section">
+        <h2>Governance &amp; Operational Narrative</h2>
+        <div class="highlight">
+            ' . $governanceNarrative . '
+        </div>
+    </div>
+
+    <!-- PERSISTENCE / STAGING -->
+    <div class="section">
+        <h2>Persistence / Staging State</h2>
+        <table class="dataTable">
+            <tr><th>Entity Action</th><td>' . $entityAction . '</td></tr>
+            <tr><th>Location Action</th><td>' . $locationAction . '</td></tr>
+            <tr><th>Contact Action</th><td>' . $contactAction . '</td></tr>
+            <tr><th>Commit Allowed</th><td><strong>' . $commitAllowed . '</strong></td></tr>
+        </table>
+    </div>
 
 </body>
 </html>
 ';
 
 // =====================================================
-// Generate PDF with Consistent Header + Footer + Body Start
+// Generate PDF
 // =====================================================
 $mpdf = new Mpdf([
     'format'        => 'Letter',
     'margin_left'   => 10,
     'margin_right'  => 10,
-    'margin_top'    => 26,        // ← Increased: Creates consistent space below header
+    'margin_top'    => 26,
     'margin_bottom' => 22,
 ]);
 
-// Set fixed header and footer
 $mpdf->SetHTMLHeader($headerHtml);
 $mpdf->SetHTMLFooter($footerHtml);
 
