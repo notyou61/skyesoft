@@ -27,7 +27,7 @@ $locationAction  = "hold";
 $contactAction   = "hold";
 
 // =====================================================
-// Build HTML Content - HTML
+// Build HTML Content
 // =====================================================
 $html = '
 <!DOCTYPE html>
@@ -38,198 +38,153 @@ $html = '
 
         body {
             font-family: Helvetica, Arial, sans-serif;
-
             font-size: 11pt;
-
             color: #222;
-
             line-height: 1.22;
-
             margin: 0;
-
             padding: 0;
         }
 
         /* =====================================================
-        🏢 EXECUTIVE OPERATIONAL HEADER
+           🏢 EXECUTIVE OPERATIONAL HEADER
         ===================================================== */
-
         .header {
-
             border-bottom: 2.5px solid #14377C;
-
             padding-bottom: 4px;
-
             margin-bottom: 8px;
         }
 
         .headerTable {
-
             width: 100%;
-
             border-collapse: collapse;
-
             border: none;
         }
 
         .headerTable td {
-
             border: none;
-
             padding: 0;
-
             vertical-align: top;
         }
 
         .headerLogoCell {
-
             width: 62px;
-
             white-space: nowrap;
-
             padding-right: 6px;
         }
 
         .logo {
-
             width: 58px;
-
             height: auto;
-
             margin-top: 2px;
         }
 
-        .headerTitleCell {
-
-            text-align: left;
-        }
-
         .headerTitle {
-
             font-size: 14pt;
-
             font-weight: 700;
-
             color: #14377C;
-
             line-height: 1.0;
-
             margin-bottom: 2px;
         }
 
         .headerSubtitle {
-
             font-size: 8.5pt;
-
             color: #444;
-
             line-height: 1.1;
         }
 
         /* =====================================================
-        🏷️ SECTION HEADERS
+           🏷️ SECTION HEADERS
         ===================================================== */
-
-        h1 {
-            font-size: 16pt;
-
-            color: #14377C;
-
-            margin: 0 0 4px 0;
-
-            font-weight: 700;
-        }
-
         h2 {
-
             font-size: 11.5pt;
-
             color: #14377C;
-
             border-bottom: 1px solid #ccc;
-
             padding-bottom: 2px;
-
             margin-top: 12px;
-
             margin-bottom: 4px;
-
             font-weight: 700;
         }
 
         /* =====================================================
-        📊 OPERATIONAL TABLES
+           📊 DATA TABLES (Content Only)
         ===================================================== */
-
-        table {
-
+        .dataTable {
             width: 100%;
-
             table-layout: fixed;
-
             border-collapse: collapse;
-
             margin: 4px 0 8px 0;
         }
 
-        th,
-        td {
-
+        .dataTable th,
+        .dataTable td {
             border: 1px solid #ccc;
-
             padding: 4px 6px;
-
             text-align: left;
-
             vertical-align: top;
         }
 
-        th {
-
+        .dataTable th {
             background: #f5f5f5;
-
             width: 28%;
-
             font-weight: 700;
-
             color: #333;
         }
 
         /* =====================================================
-        🚨 OPERATIONAL PANELS
+           🚨 OPERATIONAL PANELS
         ===================================================== */
-
         .highlight {
-
             background: #f0f7ff;
-
             border-left: 4px solid #14377C;
-
             padding: 7px 9px;
-
             margin: 6px 0;
         }
 
-        .warning {
-
-            background: #fff8e6;
-
-            border-left: 4px solid #d48a00;
-
-            padding: 12px 14px;
-
-            margin: 14px 0;
+        /* =====================================================
+           🧾 EXECUTIVE OPERATIONAL FOOTER
+        ===================================================== */
+        .footer {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 8mm;
+            font-size: 7.5pt;
+            color: #555;
+            background: #fff;           /* Prevents transparency issues */
         }
 
-        .critical {
+        .footerDivider {
+            border-top: 2.5px solid #14377C;
+            margin-bottom: 4px;
+        }
 
-            background: #fff0f0;
+        .footerTable {
+            width: 100%;
+            border-collapse: collapse;
+            border: none;
+            margin: 0;
+            table-layout: auto;         /* Footer should not use fixed layout */
+        }
 
-            border-left: 4px solid #b00020;
+        .footerTable td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
 
-            padding: 12px 14px;
+        .footerLeft,
+        .footerRight {
+            padding-top: 2px;           /* Breathing room under divider */
+        }
 
-            margin: 14px 0;
+        .footerLeft {
+            text-align: left;
+            width: 50%;
+        }
+
+        .footerRight {
+            text-align: right;
+            width: 50%;
         }
 
     </style>
@@ -238,49 +193,23 @@ $html = '
 
     <!-- HEADER -->
     <div class="header">
-
         <table class="headerTable">
-
             <tr>
-
-                <!-- =================================================
-                    🏢 LOGO COLUMN
-                ================================================== -->
-
                 <td class="headerLogoCell">
-
-                    <img
-                        src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
-                        class="logo"
-                        alt="Christy Signs">
-
+                    <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png"
+                         class="logo" alt="Christy Signs">
                 </td>
-
-                <!-- =================================================
-                    🧾 TITLE COLUMN
-                ================================================== -->
-
-                <td class="headerTitleCell">
-
-                    <div class="headerTitle">
-                        ' . $reportTitle . '
-                    </div>
-
-                    <div class="headerSubtitle">
-                        Skyesoft Operational Intelligence
-                    </div>
-
+                <td>
+                    <div class="headerTitle">' . $reportTitle . '</div>
+                    <div class="headerSubtitle">Skyesoft Operational Intelligence</div>
                 </td>
-
             </tr>
-
         </table>
-
     </div>
 
     <!-- RESOLUTION SUMMARY -->
     <h2>Resolution Summary</h2>
-    <table>
+    <table class="dataTable">
         <tr><th>Report Title</th><td>' . $reportTitle . '</td></tr>
         <tr><th>Confidence</th><td>' . $confidence . '%</td></tr>
         <tr><th>PC Code</th><td>' . $pcCode . '</td></tr>
@@ -290,13 +219,13 @@ $html = '
 
     <!-- ENTITY -->
     <h2>Entity Information</h2>
-    <table>
+    <table class="dataTable">
         <tr><th>Entity Name</th><td>' . $entityName . '</td></tr>
     </table>
 
     <!-- CONTACT -->
     <h2>Contact Information</h2>
-    <table>
+    <table class="dataTable">
         <tr><th>Contact Name</th><td>' . $contactName . '</td></tr>
         <tr><th>Title</th><td>' . $contactTitle . '</td></tr>
         <tr><th>Phone</th><td>' . $contactPhone . '</td></tr>
@@ -305,57 +234,40 @@ $html = '
 
     <!-- LOCATION -->
     <h2>Location Information</h2>
-    <table>
+    <table class="dataTable">
         <tr><th>Full Address</th><td>' . $locationAddress . '</td></tr>
         <tr><th>City, State ZIP</th><td>' . $locationCityStateZip . '</td></tr>
         <tr><th>Place ID</th><td>' . $locationPlaceId . '</td></tr>
     </table>
 
     <!-- GOVERNANCE NARRATIVE -->
-    <h2>Governance & Operational Narrative</h2>
+    <h2>Governance &amp; Operational Narrative</h2>
     <div class="highlight">
         ' . $governanceNarrative . '
     </div>
 
     <!-- PERSISTENCE / STAGING -->
     <h2>Persistence / Staging State</h2>
-    <table>
+    <table class="dataTable">
         <tr><th>Entity Action</th><td>' . $entityAction . '</td></tr>
         <tr><th>Location Action</th><td>' . $locationAction . '</td></tr>
         <tr><th>Contact Action</th><td>' . $contactAction . '</td></tr>
         <tr><th>Commit Allowed</th><td><strong>' . $commitAllowed . '</strong></td></tr>
     </table>
 
-    <!-- =====================================================
-     🧾 OPERATIONAL FOOTER
-    ====================================================== -->
-
+    <!-- FOOTER -->
     <div class="footer">
-
-        <!-- =============================================
-            🏢 COMPANY LINE
-        ============================================== -->
-
-        <div class="footerCompany">
-
-            Christy Signs |
-            3145 N 33rd Ave, Phoenix AZ 85017 |
-            (602) 242-4488 |
-            christysigns.com
-
-        </div>
-
-        <!-- =============================================
-            © COPYRIGHT / DOCUMENT CLASSIFICATION
-        ============================================== -->
-
-        <div class="footerMeta">
-
-            © 2026 Christy Signs —
-            Confidential Internal Operational Document
-
-        </div>
-
+        <div class="footerDivider"></div>
+        <table class="footerTable">
+            <tr>
+                <td class="footerLeft">
+                    Christy Signs | 3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488
+                </td>
+                <td class="footerRight">
+                    © 2026 Christy Signs — Confidential Internal Operational Document
+                </td>
+            </tr>
+        </table>
     </div>
 
 </body>
