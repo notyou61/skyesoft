@@ -122,17 +122,15 @@ $html = '
         }
 
         /* =====================================================
-           FOOTER — Page Boundary Style
+           FOOTER — Fixed Page Boundary (Locked Position)
         ===================================================== */
         .footer {
             position: fixed;
             left: 0;
             right: 0;
-            bottom: 4mm;
+            bottom: 4mm;                    /* Anchored 4mm from bottom edge */
             background: #fff;
             text-align: center;
-            font-size: 7.5pt;
-            color: #555;
         }
 
         .footerDivider {
@@ -140,21 +138,22 @@ $html = '
             margin-bottom: 5px;
         }
 
-        .footerLine1,
-        .footerLine2 {
+        .footerLine1 {
             width: 100%;
             text-align: center;
-            line-height: 1.3;
-        }
-
-        .footerLine1 {
+            font-size: 7.8pt;
             font-weight: 600;
+            color: #444;
+            line-height: 1.3;
             margin-bottom: 2px;
         }
 
         .footerLine2 {
-            font-size: 7pt;
+            width: 100%;
+            text-align: center;
+            font-size: 7.2pt;
             color: #666;
+            line-height: 1.3;
         }
     </style>
 </head>
@@ -224,7 +223,7 @@ $html = '
         <tr><th>Commit Allowed</th><td><strong>' . $commitAllowed . '</strong></td></tr>
     </table>
 
-    <!-- FOOTER -->
+    <!-- FOOTER (Fixed Page Boundary) -->
     <div class="footer">
         <div class="footerDivider"></div>
         <div class="footerLine1">
@@ -247,7 +246,7 @@ $mpdf = new Mpdf([
     'margin_left'   => 10,
     'margin_right'  => 10,
     'margin_top'    => 10,
-    'margin_bottom' => 18,           // Leave room for fixed footer
+    'margin_bottom' => 22,           // ← Increased to protect fixed footer
 ]);
 
 $mpdf->WriteHTML($html);
