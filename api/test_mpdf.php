@@ -27,7 +27,7 @@ $locationAction  = "hold";
 $contactAction   = "hold";
 
 // =====================================================
-// Build HTML Content
+// Build HTML Content - HTML
 // =====================================================
 $html = '
 <!DOCTYPE html>
