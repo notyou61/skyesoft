@@ -141,50 +141,63 @@ $html = '
         }
 
         /* =====================================================
-           🧾 EXECUTIVE OPERATIONAL FOOTER
+        🧾 EXECUTIVE OPERATIONAL FOOTER
         ===================================================== */
+
         .footer {
+
             position: fixed;
+
             left: 0;
+
             right: 0;
+
             bottom: 8mm;
+
+            background: #fff;
+
             font-size: 7.5pt;
+
             color: #555;
-            background: #fff;           /* Prevents transparency issues */
+
+            text-align: center;
         }
 
+        /* =====================================================
+        🔵 FOOTER DIVIDER
+        ===================================================== */
+
         .footerDivider {
+
             border-top: 2.5px solid #14377C;
+
             margin-bottom: 4px;
         }
 
-        .footerTable {
-            width: 100%;
-            border-collapse: collapse;
-            border: none;
-            margin: 0;
-            table-layout: auto;         /* Footer should not use fixed layout */
+        /* =====================================================
+        🏢 FOOTER LINE 1
+        ===================================================== */
+
+        .footerLine1 {
+
+            font-weight: 600;
+
+            line-height: 1.2;
+
+            margin-bottom: 2px;
         }
 
-        .footerTable td {
-            border: none;
-            padding: 0;
-            vertical-align: top;
-        }
+        /* =====================================================
+        📄 FOOTER LINE 2
+        ===================================================== */
 
-        .footerLeft,
-        .footerRight {
-            padding-top: 2px;           /* Breathing room under divider */
-        }
+        .footerLine2 {
 
-        .footerLeft {
-            text-align: left;
-            width: 50%;
-        }
+            font-size: 7pt;
 
-        .footerRight {
-            text-align: right;
-            width: 50%;
+            color: #666;
+
+            line-height: 1.2;
         }
 
     </style>
@@ -257,17 +270,24 @@ $html = '
 
     <!-- FOOTER -->
     <div class="footer">
+        <!-- 🔵 FOOTER DIVIDER -->
         <div class="footerDivider"></div>
-        <table class="footerTable">
-            <tr>
-                <td class="footerLeft">
-                    Christy Signs | 3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488
-                </td>
-                <td class="footerRight">
-                    © 2026 Christy Signs — Confidential Internal Operational Document
-                </td>
-            </tr>
-        </table>
+        <!-- 🏢 FOOTER LINE 1 -->
+        <div class="footerLine1">
+
+            Christy Signs |
+            3145 N 33rd Ave, Phoenix, AZ 85017 |
+            (602) 242-4488
+
+        </div>
+        <!-- 📄 FOOTER LINE 2 -->
+        <div class="footerLine2">
+
+            © 2026 Christy Signs —
+            Confidential Internal Document
+            Page {PAGENO} of {nbpg}
+
+        </div>
     </div>
 
 </body>
