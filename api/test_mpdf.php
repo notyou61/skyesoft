@@ -25,6 +25,20 @@ $locationAction       = "hold";
 $contactAction        = "hold";
 
 // =====================================================
+// FOOTER HTML (This will be locked at the bottom)
+// =====================================================
+$footerHtml = '
+<div style="border-top: 2.5px solid #14377C; padding-top: 5px; font-size: 7.5pt; color: #555; text-align: center; width: 100%;">
+    <div style="font-weight: 600; margin-bottom: 2px;">
+        Christy Signs &nbsp;|&nbsp; 3145 N 33rd Ave, Phoenix, AZ 85017 &nbsp;|&nbsp; (602) 242-4488
+    </div>
+    <div style="font-size: 7pt; color: #666;">
+        © 2026 Christy Signs — Confidential Internal Operational Document &nbsp;&nbsp;•&nbsp;&nbsp; Page {PAGENO} of {nbpg}
+    </div>
+</div>
+';
+
+// =====================================================
 // Build HTML Content
 // =====================================================
 $html = '
@@ -42,7 +56,6 @@ $html = '
             padding: 0;
         }
 
-        /* HEADER */
         .header {
             border-bottom: 2.5px solid #14377C;
             padding-bottom: 6px;
@@ -80,7 +93,6 @@ $html = '
             color: #555;
         }
 
-        /* SECTION HEADERS */
         h2 {
             font-size: 11.5pt;
             color: #14377C;
@@ -91,7 +103,6 @@ $html = '
             font-weight: 700;
         }
 
-        /* DATA TABLES */
         .dataTable {
             width: 100%;
             table-layout: fixed;
@@ -119,41 +130,6 @@ $html = '
             border-left: 4px solid #14377C;
             padding: 8px 10px;
             margin: 8px 0;
-        }
-
-        /* =====================================================
-           FOOTER — Fixed Page Boundary (Locked Position)
-        ===================================================== */
-        .footer {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 4mm;                    /* Anchored 4mm from bottom edge */
-            background: #fff;
-            text-align: center;
-        }
-
-        .footerDivider {
-            border-top: 2.5px solid #14377C;
-            margin-bottom: 5px;
-        }
-
-        .footerLine1 {
-            width: 100%;
-            text-align: center;
-            font-size: 7.8pt;
-            font-weight: 600;
-            color: #444;
-            line-height: 1.3;
-            margin-bottom: 2px;
-        }
-
-        .footerLine2 {
-            width: 100%;
-            text-align: center;
-            font-size: 7.2pt;
-            color: #666;
-            line-height: 1.3;
         }
     </style>
 </head>
@@ -223,31 +199,23 @@ $html = '
         <tr><th>Commit Allowed</th><td><strong>' . $commitAllowed . '</strong></td></tr>
     </table>
 
-    <!-- FOOTER (Fixed Page Boundary) -->
-    <div class="footer">
-        <div class="footerDivider"></div>
-        <div class="footerLine1">
-            Christy Signs &nbsp;|&nbsp; 3145 N 33rd Ave, Phoenix, AZ 85017 &nbsp;|&nbsp; (602) 242-4488
-        </div>
-        <div class="footerLine2">
-            © 2026 Christy Signs — Confidential Internal Operational Document &nbsp;&nbsp;•&nbsp;&nbsp; Page {PAGENO} of {nbpg}
-        </div>
-    </div>
-
 </body>
 </html>
 ';
 
 // =====================================================
-// Generate PDF
+// Generate PDF with Native Footer
 // =====================================================
 $mpdf = new Mpdf([
     'format'        => 'Letter',
     'margin_left'   => 10,
     'margin_right'  => 10,
     'margin_top'    => 10,
-    'margin_bottom' => 22,           // ← Increased to protect fixed footer
+    'margin_bottom' => 25,           // Reserve space for footer
 ]);
+
+// Set the footer (this locks it to the bottom)
+$mpdf->SetHTMLFooter($footerHtml);
 
 $mpdf->WriteHTML($html);
 $mpdf->Output('Proposed_Contact_Report_PC1.pdf', 'I');
