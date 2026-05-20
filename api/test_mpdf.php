@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Mpdf\Mpdf;
+use Mpdf\Config\ConfigVariables;
+use Mpdf\Config\FontVariables;
 
 // =====================================================
 // SAMPLE DATA (from previous payload - Fireshield example)
@@ -323,6 +325,38 @@ $html = '
         <tr><th>Contact Action</th><td>' . $contactAction . '</td></tr>
         <tr><th>Commit Allowed</th><td><strong>' . $commitAllowed . '</strong></td></tr>
     </table>
+
+    <!-- =====================================================
+     🧾 OPERATIONAL FOOTER
+    ====================================================== -->
+
+    <div class="footer">
+
+        <!-- =============================================
+            🏢 COMPANY LINE
+        ============================================== -->
+
+        <div class="footerCompany">
+
+            Christy Signs |
+            3145 N 33rd Ave, Phoenix AZ 85017 |
+            (602) 242-4488 |
+            christysigns.com
+
+        </div>
+
+        <!-- =============================================
+            © COPYRIGHT / DOCUMENT CLASSIFICATION
+        ============================================== -->
+
+        <div class="footerMeta">
+
+            © 2026 Christy Signs —
+            Confidential Internal Operational Document
+
+        </div>
+
+    </div>
 
 </body>
 </html>
