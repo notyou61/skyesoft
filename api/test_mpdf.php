@@ -25,7 +25,7 @@ $locationAction       = "hold";
 $contactAction        = "hold";
 
 // =====================================================
-// HEADER (Updated - Bigger Logo)
+// HEADER (Updated with Date)
 // =====================================================
 $headerHtml = '
 <div style="border-bottom: 2.5px solid #14377C; padding-bottom: 6px;">
@@ -38,7 +38,7 @@ $headerHtml = '
             </td>
             <td>
                 <div style="font-size:14pt; font-weight:700; color:#14377C; line-height:1.1;">' . $reportTitle . '</div>
-                <div style="font-size:9pt; color:#555;">Skyesoft Operational Intelligence</div>
+                <div style="font-size:9pt; color:#555;">Skyesoft Operational Intelligence | Report Date: 05/21/26</div>
             </td>
         </tr>
     </table>
@@ -93,7 +93,7 @@ $html = '
             width: 100%;
             border-collapse: collapse;
             border: none;
-            margin-top: 16px;
+            margin-top: 0;           /* ← Controlled by .section now */
             margin-bottom: 5px;
             border-bottom: 1px solid #ccc;
         }
@@ -164,11 +164,12 @@ $html = '
         }
 
         /* =====================================================
-           🧩 SECTION INTEGRITY (Balanced)
+           🧩 SECTION INTEGRITY (Consistent Spacing)
         ===================================================== */
         .section {
             page-break-inside: avoid;
             page-break-before: auto;
+            margin-top: 14px;        /* ← Consistent top spacing for ALL sections */
             margin-bottom: 14px;
         }
     </style>
