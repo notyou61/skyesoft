@@ -93,8 +93,8 @@ $html = '
             width: 100%;
             border-collapse: collapse;
             border: none;
-            margin-top: 0;           /* ← Controlled by .section now */
-            margin-bottom: 5px;
+            margin-top: 0;
+            margin-bottom: 3px;           /* ← Slightly reduced */
             border-bottom: 1px solid #ccc;
         }
 
@@ -133,14 +133,14 @@ $html = '
             width: 100%;
             table-layout: fixed;
             border-collapse: collapse;
-            margin: 4px 0 10px 0;
+            margin: 2px 0 8px 0;          /* ← Slightly reduced top margin */
             page-break-inside: avoid;
         }
 
         .dataTable th,
         .dataTable td {
             border: 1px solid #ccc;
-            padding: 5px 7px;
+            padding: 4px 6px;             /* ← Tighter cell padding */
             text-align: left;
             vertical-align: top;
         }
@@ -159,18 +159,18 @@ $html = '
             background: #f0f7ff;
             border-left: 4px solid #14377C;
             padding: 8px 10px;
-            margin: 8px 0;
+            margin: 6px 0;
             page-break-inside: avoid;
         }
 
         /* =====================================================
-           🧩 SECTION INTEGRITY (Consistent Spacing)
+           🧩 SECTION INTEGRITY (Tighter but consistent)
         ===================================================== */
         .section {
             page-break-inside: avoid;
             page-break-before: auto;
-            margin-top: 14px;        /* ← Consistent top spacing for ALL sections */
-            margin-bottom: 14px;
+            margin-top: 10px;             /* ← Reduced from 14px */
+            margin-bottom: 10px;
         }
     </style>
 </head>
