@@ -25,15 +25,16 @@ $locationAction       = "hold";
 $contactAction        = "hold";
 
 // =====================================================
-// HEADER
+// HEADER (Updated - Bigger Logo)
 // =====================================================
 $headerHtml = '
 <div style="border-bottom: 2.5px solid #14377C; padding-bottom: 6px;">
     <table style="width:100%; border:none;">
         <tr>
-            <td style="width:62px; padding-right:8px; vertical-align:middle;">
+            <td style="width:78px; padding-right:10px; vertical-align:middle;">
                 <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png" 
-                     style="width:58px; height:auto;" alt="Christy Signs">
+                     style="width:72px; height:auto; vertical-align:middle;" 
+                     alt="Christy Signs">
             </td>
             <td>
                 <div style="font-size:14pt; font-weight:700; color:#14377C; line-height:1.1;">' . $reportTitle . '</div>
