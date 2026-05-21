@@ -25,10 +25,10 @@ $locationAction       = "hold";
 $contactAction        = "hold";
 
 // =====================================================
-// HEADER (Bolder blue bar)
+// HEADER
 // =====================================================
 $headerHtml = '
-<div style="border-bottom: 4px solid #14377C; padding-bottom: 6px;">
+<div style="border-bottom: 3px solid #14377C; padding-bottom: 6px;">
     <table style="width:100%; border:none;">
         <tr>
             <td style="width:78px; padding-right:10px; vertical-align:middle;">
@@ -46,10 +46,10 @@ $headerHtml = '
 ';
 
 // =====================================================
-// FOOTER (Bolder blue bar)
+// FOOTER
 // =====================================================
 $footerHtml = '
-<div style="border-top: 4px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
+<div style="border-top: 3px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
     <div style="font-weight:600; margin-bottom:2px;">
         Christy Signs &nbsp;|&nbsp; 3145 N 33rd Ave, Phoenix, AZ 85017 &nbsp;|&nbsp; (602) 242-4488
     </div>
@@ -83,7 +83,7 @@ $html = '
             border: none;
             margin-top: 0;
             margin-bottom: 3px;
-            border-bottom: 1px solid #ccc;
+            border-bottom: 1.5px solid #888;   /* ← Stronger section divider line */
         }
 
         .sectionIconCell {
@@ -131,7 +131,7 @@ $html = '
         }
 
         .dataTable th {
-            background: #e8e8e8;     /* ← Stronger light grey */
+            background: #e8e8e8;
             width: 28%;
             font-weight: 700;
             color: #333;
