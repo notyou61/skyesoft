@@ -25,10 +25,10 @@ $locationAction       = "hold";
 $contactAction        = "hold";
 
 // =====================================================
-// HEADER
+// HEADER (Bolder blue bar)
 // =====================================================
 $headerHtml = '
-<div style="border-bottom: 3.5px solid #14377C; padding-bottom: 6px;">
+<div style="border-bottom: 4px solid #14377C; padding-bottom: 6px;">
     <table style="width:100%; border:none;">
         <tr>
             <td style="width:78px; padding-right:10px; vertical-align:middle;">
@@ -46,10 +46,10 @@ $headerHtml = '
 ';
 
 // =====================================================
-// FOOTER
+// FOOTER (Bolder blue bar)
 // =====================================================
 $footerHtml = '
-<div style="border-top: 3.5px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
+<div style="border-top: 4px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
     <div style="font-weight:600; margin-bottom:2px;">
         Christy Signs &nbsp;|&nbsp; 3145 N 33rd Ave, Phoenix, AZ 85017 &nbsp;|&nbsp; (602) 242-4488
     </div>
@@ -77,9 +77,6 @@ $html = '
             padding: 0;
         }
 
-        /* =====================================================
-           🏷️ SECTION HEADER TABLE (mPDF-safe alignment)
-        ===================================================== */
         .sectionHeaderTable {
             width: 100%;
             border-collapse: collapse;
@@ -117,9 +114,6 @@ $html = '
             margin: 0;
         }
 
-        /* =====================================================
-           📊 OPERATIONAL DATA TABLES
-        ===================================================== */
         .dataTable {
             width: 100%;
             table-layout: fixed;
@@ -137,15 +131,12 @@ $html = '
         }
 
         .dataTable th {
-            background: #f5f5f5;           /* ← Light grey restored */
+            background: #e8e8e8;     /* ← Stronger light grey */
             width: 28%;
             font-weight: 700;
             color: #333;
         }
 
-        /* =====================================================
-           🚨 OPERATIONAL PANELS
-        ===================================================== */
         .highlight {
             background: #f0f7ff;
             border-left: 4px solid #14377C;
@@ -154,9 +145,6 @@ $html = '
             page-break-inside: avoid;
         }
 
-        /* =====================================================
-           🧩 SECTION INTEGRITY
-        ===================================================== */
         .section {
             page-break-inside: avoid;
             page-break-before: auto;
