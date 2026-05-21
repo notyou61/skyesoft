@@ -133,7 +133,7 @@ $html = '
             table-layout: fixed;
             border-collapse: collapse;
             margin: 4px 0 10px 0;
-            page-break-inside: avoid;   /* ← Surgical protection for tables */
+            page-break-inside: avoid;
         }
 
         .dataTable th,
@@ -159,13 +159,15 @@ $html = '
             border-left: 4px solid #14377C;
             padding: 8px 10px;
             margin: 8px 0;
-            page-break-inside: avoid;   /* ← Surgical protection for narrative */
+            page-break-inside: avoid;
         }
 
         /* =====================================================
-           🧩 SECTION CONTAINER (No page-break rule here)
+           🧩 SECTION INTEGRITY (Balanced)
         ===================================================== */
         .section {
+            page-break-inside: avoid;
+            page-break-before: auto;
             margin-bottom: 14px;
         }
     </style>
