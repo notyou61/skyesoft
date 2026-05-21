@@ -25,10 +25,10 @@ $locationAction       = "hold";
 $contactAction        = "hold";
 
 // =====================================================
-// HEADER (Updated with Date)
+// HEADER
 // =====================================================
 $headerHtml = '
-<div style="border-bottom: 2.5px solid #14377C; padding-bottom: 6px;">
+<div style="border-bottom: 3.5px solid #14377C; padding-bottom: 6px;">
     <table style="width:100%; border:none;">
         <tr>
             <td style="width:78px; padding-right:10px; vertical-align:middle;">
@@ -49,7 +49,7 @@ $headerHtml = '
 // FOOTER
 // =====================================================
 $footerHtml = '
-<div style="border-top: 2.5px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
+<div style="border-top: 3.5px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
     <div style="font-weight:600; margin-bottom:2px;">
         Christy Signs &nbsp;|&nbsp; 3145 N 33rd Ave, Phoenix, AZ 85017 &nbsp;|&nbsp; (602) 242-4488
     </div>
@@ -78,15 +78,6 @@ $html = '
         }
 
         /* =====================================================
-           🏢 EXECUTIVE OPERATIONAL HEADER
-        ===================================================== */
-        .header {
-            border-bottom: 2.5px solid #14377C;
-            padding-bottom: 4px;
-            margin-bottom: 10px;
-        }
-
-        /* =====================================================
            🏷️ SECTION HEADER TABLE (mPDF-safe alignment)
         ===================================================== */
         .sectionHeaderTable {
@@ -94,7 +85,7 @@ $html = '
             border-collapse: collapse;
             border: none;
             margin-top: 0;
-            margin-bottom: 3px;           /* ← Slightly reduced */
+            margin-bottom: 3px;
             border-bottom: 1px solid #ccc;
         }
 
@@ -133,20 +124,20 @@ $html = '
             width: 100%;
             table-layout: fixed;
             border-collapse: collapse;
-            margin: 2px 0 8px 0;          /* ← Slightly reduced top margin */
+            margin: 2px 0 8px 0;
             page-break-inside: avoid;
         }
 
         .dataTable th,
         .dataTable td {
             border: 1px solid #ccc;
-            padding: 4px 6px;             /* ← Tighter cell padding */
+            padding: 4px 6px;
             text-align: left;
             vertical-align: top;
         }
 
         .dataTable th {
-            background: #f5f5f5;
+            background: #f5f5f5;           /* ← Light grey restored */
             width: 28%;
             font-weight: 700;
             color: #333;
@@ -164,12 +155,12 @@ $html = '
         }
 
         /* =====================================================
-           🧩 SECTION INTEGRITY (Tighter but consistent)
+           🧩 SECTION INTEGRITY
         ===================================================== */
         .section {
             page-break-inside: avoid;
             page-break-before: auto;
-            margin-top: 10px;             /* ← Reduced from 14px */
+            margin-top: 10px;
             margin-bottom: 10px;
         }
     </style>
