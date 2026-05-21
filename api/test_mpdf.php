@@ -1,5 +1,5 @@
 <?php
-// test_mpdf.php
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Mpdf\Mpdf;

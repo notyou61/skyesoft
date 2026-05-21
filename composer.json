@@ -1,6 +1,5 @@
 {
     "require": {
-        "dompdf/dompdf": "^3.1",
         "mpdf/mpdf": "^8.3"
     }
 }
