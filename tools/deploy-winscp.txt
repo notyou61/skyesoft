@@ -33,7 +33,7 @@ cd /home/notyou64/public_html
 #   vendor/       ← REQUIRED for Composer (mPDF)
 #   tmp/          ← REQUIRED for mPDF tempDir
 # =========================================================
-synchronize remote -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log;*/vendor/*/tests/;*/vendor/*/test/;*/vendor/*/docs/;*/vendor/*/.github/;*/vendor/*/benchmark/;*/vendor/*/fixtures/;*/vendor/*/.phive/;*/vendor/*/.devcontainer/" . skyesoft
+synchronize remote -delete -filemask="|*/vendor/;*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
 
 # =========================================================
 # 🧪 PREVIEW MODE (DRY RUN)
