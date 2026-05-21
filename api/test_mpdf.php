@@ -83,7 +83,7 @@ $html = '
             border: none;
             margin-top: 0;
             margin-bottom: 3px;
-            border-bottom: 1.5px solid #888;   /* ← Stronger section divider line */
+            border-bottom: 1.5px solid #888;
         }
 
         .sectionIconCell {
@@ -135,6 +135,17 @@ $html = '
             width: 28%;
             font-weight: 700;
             color: #333;
+        }
+
+        /* =====================================================
+           📑 ALTERNATING ROW SHADING
+        ===================================================== */
+        .dataTable tr:nth-child(even) td {
+            background: #f8f8f8;
+        }
+
+        .dataTable tr:nth-child(odd) td {
+            background: #ffffff;
         }
 
         .highlight {
