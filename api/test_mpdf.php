@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Mpdf\Mpdf;
@@ -134,6 +133,7 @@ $html = '
             table-layout: fixed;
             border-collapse: collapse;
             margin: 4px 0 10px 0;
+            page-break-inside: avoid;   /* ← Surgical protection for tables */
         }
 
         .dataTable th,
@@ -159,14 +159,14 @@ $html = '
             border-left: 4px solid #14377C;
             padding: 8px 10px;
             margin: 8px 0;
+            page-break-inside: avoid;   /* ← Surgical protection for narrative */
         }
 
         /* =====================================================
-           🧩 SECTION INTEGRITY GOVERNANCE
+           🧩 SECTION CONTAINER (No page-break rule here)
         ===================================================== */
         .section {
-            page-break-inside: avoid;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
         }
     </style>
 </head>
