@@ -1,7 +1,11 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
-
 use Mpdf\Mpdf;
+
+// =====================================================
+// CONFIG
+// =====================================================
+define('SCREENSHOTONE_ACCESS_KEY', '1wKb3PuLgAJB_Q');
 
 // =====================================================
 // SAMPLE DATA
@@ -20,12 +24,14 @@ $pcCode               = "PC-3";
 $resolutionStatus     = "multiple_parcels";
 $commitAllowed        = "NO";
 $governanceNarrative  = "This proposal references an existing operational location. Review: Multiple parcel candidates were found at this address and user selection is required before commit.";
+
+// Persistence values (were missing)
 $entityAction         = "reuse";
 $locationAction       = "reuse";
 $contactAction        = "create";
 
 // =====================================================
-// PARCEL DATA (from JSON)
+// PARCEL DATA
 // =====================================================
 $parcelDetails = [
     [
@@ -80,6 +86,48 @@ $footerHtml = '
 ';
 
 // =====================================================
+// HELPER: Get or Fetch Map Image via ScreenshotOne
+// =====================================================
+/**
+ * Fetches or returns cached aerial map image for a parcel.
+ *
+ * @param string $apn
+ * @param string $viewerUrl
+ * @return string|null
+ */
+function getParcelMapImage(string $apn, string $viewerUrl): ?string
+{
+    $imagePath = __DIR__ . "/parcel_{$apn}.png";
+
+    if (file_exists($imagePath)) {
+        return $imagePath;
+    }
+
+    $params = [
+        'access_key'           => SCREENSHOTONE_ACCESS_KEY,
+        'url'                  => $viewerUrl,
+        'format'               => 'png',
+        'block_ads'            => 'true',
+        'block_cookie_banners' => 'true',
+        'block_trackers'       => 'true',
+        'delay'                => '2500',
+        'viewport_width'       => '1280',
+        'viewport_height'      => '900',
+        'full_page'            => 'false',
+    ];
+
+    $apiUrl = 'https://api.screenshotone.com/take?' . http_build_query($params);
+    $imageData = @file_get_contents($apiUrl);
+
+    if ($imageData === false) {
+        return null;
+    }
+
+    file_put_contents($imagePath, $imageData);
+    return $imagePath;
+}
+
+// =====================================================
 // PARCEL VISUAL REVIEW SECTION
 // =====================================================
 $parcelCount = count($parcelDetails);
@@ -89,8 +137,7 @@ $parcelSectionHtml = '
     <table class="sectionHeaderTable">
         <tr>
             <td class="sectionIconCell">
-                <img src="https://skyelighting.com/skyesoft/assets/images/icons/compass.png" 
-                     class="sectionIcon" alt="Parcel Review">
+                <img src="https://skyelighting.com/skyesoft/assets/images/icons/compass.png" class="sectionIcon">
             </td>
             <td class="sectionTitleCell">
                 <div class="sectionTitle">Parcel Candidates – Visual Review</div>
@@ -99,63 +146,51 @@ $parcelSectionHtml = '
     </table>
 
     <p style="font-size:10pt; color:#555; margin-bottom:12px;">
-        <strong>' . $parcelCount . ' parcel(s)</strong> found for this address. 
-        Review the details and aerial imagery below.
+        <strong>' . $parcelCount . ' parcel(s)</strong> found for this address.
     </p>
 ';
 
 foreach ($parcelDetails as $index => $parcel) {
     $parcelNum = $index + 1;
-    $imageFile = __DIR__ . "/parcel_{$parcel['apnRaw']}.png";
+    $mapImage = getParcelMapImage($parcel['apnRaw'], $parcel['viewerUrl']);
 
     $parcelSectionHtml .= '
-    <div style="border: 2px solid #14377C; border-radius: 8px; padding: 14px; margin-bottom: 16px; 
-                page-break-inside: avoid; background: #fafafa;">
+    <div style="border: 2px solid #14377C; border-radius: 8px; padding: 14px; margin-bottom: 16px; page-break-inside: avoid;">
         
-        <!-- Header -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <div>
                 <span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>
                 <span style="font-size:12pt; font-weight:600; margin-left:10px;">APN: ' . $parcel['apnDisplay'] . '</span>
             </div>
-            <div style="background:#e6f0ff; color:#14377C; padding:3px 10px; border-radius:4px; font-size:9pt; font-weight:600;">
+            <div style="background:#e6f0ff; color:#14377C; padding:3px 10px; border-radius:4px; font-size:9pt;">
                 Confidence: ' . $parcel['confidence'] . '%
             </div>
         </div>
 
-        <!-- Details -->
-        <table class="dataTable" style="margin-bottom:12px;">
+        <table class="dataTable" style="margin-bottom:10px;">
             <tr><th style="width:22%;">Owner</th><td>' . $parcel['owner'] . '</td></tr>
             <tr><th>Address</th><td>' . $parcel['address'] . ', ' . $parcel['city'] . '</td></tr>
-        </table>
+        </table>';
 
-        <!-- Map Image -->
-        <div style="margin: 10px 0 6px 0; text-align:center;">';
-
-    if (file_exists($imageFile)) {
+    if ($mapImage) {
         $parcelSectionHtml .= '
+        <div style="text-align:center; margin:10px 0;">
             <img src="parcel_' . $parcel['apnRaw'] . '.png" 
                  style="max-width:92%; height:auto; border:1px solid #ccc; border-radius:6px; background:#f8f8f8;">
-            <div style="font-size:8.5pt; color:#666; margin-top:4px;">
-                Maricopa County Aerial Reference
-            </div>';
+            <div style="font-size:8.5pt; color:#666; margin-top:4px;">Maricopa County Aerial Reference</div>
+        </div>';
     } else {
         $parcelSectionHtml .= '
-            <div style="padding:18px; background:#f5f5f5; border:1px dashed #aaa; border-radius:6px; font-size:9.5pt; color:#555;">
-                Aerial map image not yet generated.<br>
-                <small>Run generateParcelMaps.js to create thumbnail</small>
-            </div>';
+        <div style="padding:16px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; text-align:center; margin:10px 0;">
+            <small>Could not generate aerial map image.</small>
+        </div>';
     }
 
     $parcelSectionHtml .= '
-        </div>
-
-        <!-- Link -->
         <div style="text-align:center; margin-top:8px;">
             <a href="' . $parcel['viewerUrl'] . '" target="_blank" 
-               style="display:inline-block; background:#14377C; color:white; padding:9px 20px; 
-                      border-radius:6px; text-decoration:none; font-size:10.5pt;">
-                🗺️ View Aerial Map &amp; Details
+               style="background:#14377C; color:white; padding:9px 18px; border-radius:6px; text-decoration:none; font-size:10.5pt;">
+                🗺️ View Full Interactive Map
             </a>
         </div>
     </div>';
@@ -193,7 +228,7 @@ $html = '
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" class="sectionIcon" alt="Resolution"></td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" class="sectionIcon"></td>
                 <td class="sectionTitleCell"><div class="sectionTitle">Resolution Summary</div></td>
             </tr>
         </table>
@@ -210,7 +245,7 @@ $html = '
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/property.png" class="sectionIcon" alt="Entity"></td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/property.png" class="sectionIcon"></td>
                 <td class="sectionTitleCell"><div class="sectionTitle">Entity Information</div></td>
             </tr>
         </table>
@@ -221,7 +256,7 @@ $html = '
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/users.png" class="sectionIcon" alt="Contact"></td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/users.png" class="sectionIcon"></td>
                 <td class="sectionTitleCell"><div class="sectionTitle">Contact Information</div></td>
             </tr>
         </table>
@@ -237,7 +272,7 @@ $html = '
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" class="sectionIcon" alt="Location"></td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" class="sectionIcon"></td>
                 <td class="sectionTitleCell"><div class="sectionTitle">Location Information</div></td>
             </tr>
         </table>
@@ -255,7 +290,7 @@ $html = '
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/scales.png" class="sectionIcon" alt="Governance"></td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/scales.png" class="sectionIcon"></td>
                 <td class="sectionTitleCell"><div class="sectionTitle">Governance &amp; Operational Narrative</div></td>
             </tr>
         </table>
@@ -266,7 +301,7 @@ $html = '
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/puzzle.png" class="sectionIcon" alt="Persistence"></td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/puzzle.png" class="sectionIcon"></td>
                 <td class="sectionTitleCell"><div class="sectionTitle">Persistence / Staging State</div></td>
             </tr>
         </table>
