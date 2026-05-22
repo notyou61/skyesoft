@@ -3,25 +3,44 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 define('SCREENSHOTONE_ACCESS_KEY', '1wKb3PuLgAJB_Q');
 
-// Test parcels
+// =====================================================
+// Test Parcels
+// =====================================================
 $testParcels = [
     [
-        'apn' => '10803009E',
+        'apn'       => '10803009E',
         'viewerUrl' => 'https://maps.mcassessor.maricopa.gov/?esearch=10803009E&slayer=0&exprnum=0'
     ],
     [
-        'apn' => '10803051',
+        'apn'       => '10803051',
         'viewerUrl' => 'https://maps.mcassessor.maricopa.gov/?esearch=10803051&slayer=0&exprnum=0'
     ]
 ];
 
-function fetchMapImage($apn, $viewerUrl) {
+// =====================================================
+// Function to fetch or return cached map image
+// =====================================================
+/**
+ * Attempts to generate or retrieve a cached aerial map image using ScreenshotOne.
+ *
+ * @param string $apn
+ * @param string $viewerUrl
+ * @return array
+ */
+function fetchMapImage(string $apn, string $viewerUrl): array
+{
     $imagePath = __DIR__ . "/parcel_{$apn}.png";
 
+    // Return cached image if available
     if (file_exists($imagePath)) {
-        return ['status' => 'cached', 'path' => $imagePath];
+        return [
+            'status' => 'cached',
+            'path'   => $imagePath,
+            'apn'    => $apn
+        ];
     }
 
+    // Build ScreenshotOne request
     $params = [
         'access_key'           => SCREENSHOTONE_ACCESS_KEY,
         'url'                  => $viewerUrl,
@@ -29,76 +48,86 @@ function fetchMapImage($apn, $viewerUrl) {
         'block_ads'            => 'true',
         'block_cookie_banners' => 'true',
         'block_trackers'       => 'true',
-        'delay'                => '3000',           // Increased delay for modal
+        'delay'                => '3000',           // Give time for modal + map load
         'viewport_width'       => '1280',
         'viewport_height'      => '900',
         'full_page'            => 'false',
     ];
 
     $apiUrl = 'https://api.screenshotone.com/take?' . http_build_query($params);
-    
+
     $context = stream_context_create([
         'http' => ['timeout' => 60]
     ]);
 
     $imageData = @file_get_contents($apiUrl, false, $context);
 
-    if ($imageData === false) {
-        return ['status' => 'failed', 'error' => 'Failed to fetch from ScreenshotOne'];
+    if ($imageData === false || strlen($imageData) < 2000) {
+        return [
+            'status' => 'failed',
+            'error'  => 'Failed to retrieve image from ScreenshotOne (possible modal or timeout)',
+            'apn'    => $apn
+        ];
     }
 
-    // Basic check if we got an actual image
-    if (strlen($imageData) < 1000) {
-        return ['status' => 'failed', 'error' => 'Response too small (likely error page)'];
-    }
-
+    // Save the image
     file_put_contents($imagePath, $imageData);
-    return ['status' => 'generated', 'path' => $imagePath];
+
+    return [
+        'status' => 'generated',
+        'path'   => $imagePath,
+        'apn'    => $apn
+    ];
 }
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test Parcel Map Images</title>
+    <title>Test: Parcel Map Image Generation</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .card { border: 2px solid #14377C; border-radius: 8px; padding: 15px; margin-bottom: 20px; max-width: 700px; }
-        .success { background: #d4edda; padding: 10px; border-radius: 5px; }
-        .error { background: #f8d7da; padding: 10px; border-radius: 5px; }
-        img { max-width: 100%; border: 1px solid #ccc; margin-top: 10px; }
+        body { font-family: Arial, sans-serif; padding: 30px; background: #f8f9fa; }
+        .card {
+            border: 2px solid #14377C;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            max-width: 750px;
+            background: white;
+        }
+        .success { background: #d4edda; padding: 12px; border-radius: 6px; }
+        .error { background: #f8d7da; padding: 12px; border-radius: 6px; }
+        img { max-width: 100%; border: 1px solid #ccc; border-radius: 6px; margin-top: 10px; }
+        h1 { color: #14377C; }
     </style>
 </head>
 <body>
 
-<h1>Test: Generate Parcel Map Images</h1>
+<h1>Test Page: Generate Parcel Map Images</h1>
 <p>This page tests dynamic generation of aerial maps using ScreenshotOne.</p>
 
 <?php foreach ($testParcels as $parcel): ?>
-    <div class="card">
-        <h3>Parcel: <?= $parcel['apn'] ?></h3>
-        <p><strong>URL:</strong> <?= htmlspecialchars($parcel['viewerUrl']) ?></p>
+    <?php $result = fetchMapImage($parcel['apn'], $parcel['viewerUrl']); ?>
 
-        <?php
-        $result = fetchMapImage($parcel['apn'], $parcel['viewerUrl']);
-        ?>
+    <div class="card">
+        <h3>Parcel: <?= htmlspecialchars($parcel['apn']) ?></h3>
 
         <?php if ($result['status'] === 'cached'): ?>
             <div class="success">
-                <strong>Using cached image</strong><br>
-                <img src="parcel_<?= $parcel['apn'] ?>.png" alt="Map for <?= $parcel['apn'] ?>">
+                <strong>✅ Using cached image</strong>
             </div>
+            <img src="parcel_<?= $parcel['apn'] ?>.png" alt="Map for <?= $parcel['apn'] ?>">
 
         <?php elseif ($result['status'] === 'generated'): ?>
             <div class="success">
-                <strong>New image generated successfully!</strong><br>
-                <img src="parcel_<?= $parcel['apn'] ?>.png" alt="Map for <?= $parcel['apn'] ?>">
+                <strong>✅ New image successfully generated!</strong>
             </div>
+            <img src="parcel_<?= $parcel['apn'] ?>.png" alt="Map for <?= $parcel['apn'] ?>">
 
         <?php else: ?>
             <div class="error">
-                <strong>Failed to generate image</strong><br>
-                <?= htmlspecialchars($result['error'] ?? 'Unknown error') ?>
+                <strong>❌ Failed to generate image</strong><br>
+                <?= htmlspecialchars($result['error']) ?>
             </div>
         <?php endif; ?>
     </div>
