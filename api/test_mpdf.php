@@ -25,10 +25,9 @@ $resolutionStatus     = "multiple_parcels";
 $commitAllowed        = "NO";
 $governanceNarrative  = "This proposal references an existing operational location. Review: Multiple parcel candidates were found at this address and user selection is required before commit.";
 
-// Persistence values (were missing)
-$entityAction         = "reuse";
-$locationAction       = "reuse";
-$contactAction        = "create";
+$entityAction   = "reuse";
+$locationAction = "reuse";
+$contactAction  = "create";
 
 // =====================================================
 // PARCEL DATA
@@ -89,11 +88,8 @@ $footerHtml = '
 // HELPER: Get or Fetch Map Image via ScreenshotOne
 // =====================================================
 /**
- * Fetches or returns cached aerial map image for a parcel.
- *
- * @param string $apn
- * @param string $viewerUrl
- * @return string|null
+ * Automatically fetches aerial map image using ScreenshotOne.
+ * Caches the image locally after first generation.
  */
 function getParcelMapImage(string $apn, string $viewerUrl): ?string
 {

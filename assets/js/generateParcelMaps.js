@@ -1,10 +1,6 @@
 const { chromium } = require('playwright');
-const fs = require('fs');
 
 async function generateParcelImages() {
-    // =====================================================
-    // Hardcoded parcel data (from your prototype JSON)
-    // =====================================================
     const parcelDetails = [
         {
             apnRaw: "10803009E",
@@ -19,35 +15,38 @@ async function generateParcelImages() {
     ];
 
     const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({
-        viewport: { width: 1280, height: 900 }
-    });
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 
     for (const parcel of parcelDetails) {
         const page = await context.newPage();
+        console.log(`→ Processing: ${parcel.apnDisplay}`);
 
-        console.log(`→ Generating map for APN: ${parcel.apnDisplay}`);
+        await page.goto(parcel.viewerUrl, { waitUntil: 'domcontentloaded' });
 
-        await page.goto(parcel.viewerUrl, { waitUntil: 'networkidle' });
+        // Handle acknowledgment modal
+        try {
+            await page.waitForSelector('text=Welcome to the Maricopa County', { timeout: 7000 });
 
-        // Wait for map to fully render
+            // Click checkbox
+            await page.check('input[type="checkbox"]').catch(() => {});
+            await page.waitForTimeout(300);
+
+            // Click OK button
+            await page.click('button:has-text("OK")').catch(() => {});
+            console.log('   ✓ Acknowledgment modal dismissed');
+
+            await page.waitForTimeout(2500); // Wait for map to load
+        } catch {
+            console.log('   ℹ No modal or already accepted');
+        }
+
+        // Final wait for map rendering
         await page.waitForTimeout(3000);
 
-        // Optional: Try to close any welcome/popover modals
-        try {
-            await page.click('button[aria-label="Close"]', { timeout: 1500 });
-        } catch (e) {}
-
-        // Take screenshot focused on the map area
         const filename = `parcel_${parcel.apnRaw}.png`;
         await page.screenshot({
             path: filename,
-            clip: {
-                x: 280,
-                y: 70,
-                width: 950,
-                height: 780
-            }
+            clip: { x: 280, y: 70, width: 950, height: 780 }
         });
 
         console.log(`   ✓ Saved: ${filename}`);
@@ -55,7 +54,7 @@ async function generateParcelImages() {
     }
 
     await browser.close();
-    console.log("\n✅ All parcel map images generated successfully!");
+    console.log("\n✅ All parcel maps generated successfully!");
 }
 
 generateParcelImages();
