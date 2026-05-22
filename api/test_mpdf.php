@@ -4,25 +4,49 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Mpdf\Mpdf;
 
 // =====================================================
-// SAMPLE DATA
+// SAMPLE DATA - Christy Signs Example (Prototype)
 // =====================================================
-$reportTitle          = "Proposed Contact Report (PC-1)";
-$entityName           = "Fireshield Services LLC";
-$contactName          = "Ms Kira Festa";
-$contactTitle         = "Inside Account Manager";
-$contactPhone         = "888-540-7632 Ext 704";
-$contactEmail         = "kira@fireshieldcorp.com";
-$locationAddress      = "3654 N Power Rd";
-$locationCityStateZip = "Mesa, AZ 85215";
-$locationPlaceId      = "ChIJZa4P6dykk4cRHuAQvn1sWw4";
+$reportTitle          = "Proposed Contact Report (PC-3)";
+$entityName           = "Christy Signs";
+$contactName          = "Ms Susan Alderson";
+$contactTitle         = "Accounting";
+$contactPhone         = "(602) 242-4488";
+$contactEmail         = "susan@christysigns.com";
+$locationAddress      = "3145 N 33rd Ave";
+$locationCityStateZip = "Phoenix, AZ 85017";
+$locationPlaceId      = "ChIJeTvhT3ATK4cRpfapSIlCjFw";
 $confidence           = 85;
-$pcCode               = "PC-1";
+$pcCode               = "PC-3";
 $resolutionStatus     = "multiple_parcels";
 $commitAllowed        = "NO";
-$governanceNarrative  = "This proposal represents a new entity, location, and contact. Review: Multiple parcel candidates were found and user selection is required.";
-$entityAction         = "hold";
-$locationAction       = "hold";
-$contactAction        = "hold";
+$governanceNarrative  = "This proposal references an existing operational location. Review: Multiple parcel candidates were found at this address and user selection is required before commit.";
+$entityAction         = "reuse";
+$locationAction       = "reuse";
+$contactAction        = "create";
+
+// =====================================================
+// PARCEL DATA (from JSON - Scalable for 1 or many parcels)
+// =====================================================
+$parcelDetails = [
+    [
+        "apnRaw"     => "10803009E",
+        "apnDisplay" => "108-03-009E",
+        "address"    => "3145 N 33RD AVE",
+        "city"       => "PHOENIX",
+        "owner"      => "RONALD L REYNOLDS AND JACQUELINE S REYNOLDS FAMILY TRUST",
+        "confidence" => 98,
+        "viewerUrl"  => "https://maps.mcassessor.maricopa.gov/?esearch=10803009E&slayer=0&exprnum=0"
+    ],
+    [
+        "apnRaw"     => "10803051",
+        "apnDisplay" => "108-03-051",
+        "address"    => "3145 N 33RD AVE",
+        "city"       => "PHOENIX",
+        "owner"      => "J2 FLOWER LLC",
+        "confidence" => 98,
+        "viewerUrl"  => "https://maps.mcassessor.maricopa.gov/?esearch=10803051&slayer=0&exprnum=0"
+    ]
+];
 
 // =====================================================
 // HEADER
@@ -38,7 +62,7 @@ $headerHtml = '
             </td>
             <td>
                 <div style="font-size:14pt; font-weight:700; color:#14377C; line-height:1.1;">' . $reportTitle . '</div>
-                <div style="font-size:9pt; color:#555;">Skyesoft Operational Intelligence | Report Date: 05/21/26</div>
+                <div style="font-size:9pt; color:#555;">Skyesoft Operational Intelligence | Report Date: 05/22/26</div>
             </td>
         </tr>
     </table>
@@ -60,6 +84,63 @@ $footerHtml = '
 ';
 
 // =====================================================
+// PARCEL VISUAL REVIEW SECTION (Simplified & Reliable)
+// =====================================================
+$parcelCount = count($parcelDetails);
+
+$parcelSectionHtml = '
+<div class="section">
+    <table class="sectionHeaderTable">
+        <tr>
+            <td class="sectionIconCell">
+                <img src="https://skyelighting.com/skyesoft/assets/images/icons/map.png" 
+                     class="sectionIcon" alt="Parcels">
+            </td>
+            <td class="sectionTitleCell">
+                <div class="sectionTitle">Parcel Candidates – Visual Review</div>
+            </td>
+        </tr>
+    </table>
+
+    <p style="font-size:10pt; color:#555; margin-bottom:12px;">
+        <strong>' . $parcelCount . ' parcel(s)</strong> found for this address. 
+        Click below to view aerial imagery and parcel details.
+    </p>
+';
+
+foreach ($parcelDetails as $index => $parcel) {
+    $parcelNum = $index + 1;
+
+    $parcelSectionHtml .= '
+    <div style="border: 2px solid #14377C; border-radius: 8px; padding: 14px; margin-bottom: 14px; page-break-inside: avoid; background: #fafafa;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div>
+                <span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>
+                <span style="font-size:12pt; font-weight:600; margin-left:10px;">APN: ' . $parcel['apnDisplay'] . '</span>
+            </div>
+            <div style="background:#e6f0ff; color:#14377C; padding:3px 10px; border-radius:4px; font-size:9pt; font-weight:600;">
+                Confidence: ' . $parcel['confidence'] . '%
+            </div>
+        </div>
+
+        <table class="dataTable" style="margin-bottom:10px;">
+            <tr><th style="width:22%;">Owner</th><td>' . $parcel['owner'] . '</td></tr>
+            <tr><th>Address</th><td>' . $parcel['address'] . ', ' . $parcel['city'] . '</td></tr>
+        </table>
+
+        <div style="text-align:center; margin-top:8px;">
+            <a href="' . $parcel['viewerUrl'] . '" target="_blank" 
+               style="display:inline-block; background:#14377C; color:white; padding:10px 22px; border-radius:6px; text-decoration:none; font-size:11pt;">
+                🗺️ View Aerial Map &amp; Details
+            </a>
+        </div>
+    </div>';
+}
+
+$parcelSectionHtml .= '</div>';
+
+// =====================================================
 // BODY CONTENT
 // =====================================================
 $html = '
@@ -76,7 +157,6 @@ $html = '
             margin: 0;
             padding: 0;
         }
-
         .sectionHeaderTable {
             width: 100%;
             border-collapse: collapse;
@@ -85,27 +165,23 @@ $html = '
             margin-bottom: 3px;
             border-bottom: 1.5px solid #888;
         }
-
         .sectionIconCell {
             width: 20px;
             border: none;
             padding: 0 8px 4px 0;
             vertical-align: middle;
         }
-
         .sectionTitleCell {
             border: none;
             padding: 0 0 4px 0;
             vertical-align: middle;
         }
-
         .sectionIcon {
             width: 16px;
             height: 16px;
             object-fit: contain;
             display: block;
         }
-
         .sectionTitle {
             font-size: 11.5pt;
             font-weight: 700;
@@ -113,7 +189,6 @@ $html = '
             line-height: 1.0;
             margin: 0;
         }
-
         .dataTable {
             width: 100%;
             table-layout: fixed;
@@ -121,33 +196,20 @@ $html = '
             margin: 2px 0 8px 0;
             page-break-inside: avoid;
         }
-
-        .dataTable th,
-        .dataTable td {
+        .dataTable th, .dataTable td {
             border: 1px solid #ccc;
             padding: 4px 6px;
             text-align: left;
             vertical-align: top;
         }
-
         .dataTable th {
             background: #e8e8e8;
             width: 28%;
             font-weight: 700;
             color: #333;
         }
-
-        /* =====================================================
-           📑 ALTERNATING ROW SHADING
-        ===================================================== */
-        .dataTable tr:nth-child(even) td {
-            background: #f8f8f8;
-        }
-
-        .dataTable tr:nth-child(odd) td {
-            background: #ffffff;
-        }
-
+        .dataTable tr:nth-child(even) td { background: #f8f8f8; }
+        .dataTable tr:nth-child(odd) td { background: #ffffff; }
         .highlight {
             background: #f0f7ff;
             border-left: 4px solid #14377C;
@@ -155,7 +217,6 @@ $html = '
             margin: 6px 0;
             page-break-inside: avoid;
         }
-
         .section {
             page-break-inside: avoid;
             page-break-before: auto;
@@ -170,13 +231,8 @@ $html = '
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" 
-                         class="sectionIcon" alt="Resolution">
-                </td>
-                <td class="sectionTitleCell">
-                    <div class="sectionTitle">Resolution Summary</div>
-                </td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" class="sectionIcon" alt="Resolution"></td>
+                <td class="sectionTitleCell"><div class="sectionTitle">Resolution Summary</div></td>
             </tr>
         </table>
         <table class="dataTable">
@@ -192,31 +248,19 @@ $html = '
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/icons/property.png" 
-                         class="sectionIcon" alt="Entity">
-                </td>
-                <td class="sectionTitleCell">
-                    <div class="sectionTitle">Entity Information</div>
-                </td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/property.png" class="sectionIcon" alt="Entity"></td>
+                <td class="sectionTitleCell"><div class="sectionTitle">Entity Information</div></td>
             </tr>
         </table>
-        <table class="dataTable">
-            <tr><th>Entity Name</th><td>' . $entityName . '</td></tr>
-        </table>
+        <table class="dataTable"><tr><th>Entity Name</th><td>' . $entityName . '</td></tr></table>
     </div>
 
     <!-- CONTACT -->
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/icons/users.png" 
-                         class="sectionIcon" alt="Contact">
-                </td>
-                <td class="sectionTitleCell">
-                    <div class="sectionTitle">Contact Information</div>
-                </td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/users.png" class="sectionIcon" alt="Contact"></td>
+                <td class="sectionTitleCell"><div class="sectionTitle">Contact Information</div></td>
             </tr>
         </table>
         <table class="dataTable">
@@ -231,13 +275,8 @@ $html = '
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" 
-                         class="sectionIcon" alt="Location">
-                </td>
-                <td class="sectionTitleCell">
-                    <div class="sectionTitle">Location Information</div>
-                </td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" class="sectionIcon" alt="Location"></td>
+                <td class="sectionTitleCell"><div class="sectionTitle">Location Information</div></td>
             </tr>
         </table>
         <table class="dataTable">
@@ -247,35 +286,26 @@ $html = '
         </table>
     </div>
 
+    <!-- PARCEL VISUAL REVIEW -->
+    ' . $parcelSectionHtml . '
+
     <!-- GOVERNANCE NARRATIVE -->
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/icons/scales.png" 
-                         class="sectionIcon" alt="Governance">
-                </td>
-                <td class="sectionTitleCell">
-                    <div class="sectionTitle">Governance &amp; Operational Narrative</div>
-                </td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/scales.png" class="sectionIcon" alt="Governance"></td>
+                <td class="sectionTitleCell"><div class="sectionTitle">Governance &amp; Operational Narrative</div></td>
             </tr>
         </table>
-        <div class="highlight">
-            ' . $governanceNarrative . '
-        </div>
+        <div class="highlight">' . $governanceNarrative . '</div>
     </div>
 
-    <!-- PERSISTENCE / STAGING -->
+    <!-- PERSISTENCE / STAGING STATE -->
     <div class="section">
         <table class="sectionHeaderTable">
             <tr>
-                <td class="sectionIconCell">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/icons/puzzle.png" 
-                         class="sectionIcon" alt="Persistence">
-                </td>
-                <td class="sectionTitleCell">
-                    <div class="sectionTitle">Persistence / Staging State</div>
-                </td>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/puzzle.png" class="sectionIcon" alt="Persistence"></td>
+                <td class="sectionTitleCell"><div class="sectionTitle">Persistence / Staging State</div></td>
             </tr>
         </table>
         <table class="dataTable">
@@ -305,4 +335,4 @@ $mpdf->SetHTMLHeader($headerHtml);
 $mpdf->SetHTMLFooter($footerHtml);
 
 $mpdf->WriteHTML($html);
-$mpdf->Output('Proposed_Contact_Report_PC1.pdf', 'I');
+$mpdf->Output('Proposed_Contact_Report_PC3_ChristySigns.pdf', 'I');
