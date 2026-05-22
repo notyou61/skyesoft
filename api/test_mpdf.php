@@ -4,7 +4,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Mpdf\Mpdf;
 
 // =====================================================
-// SAMPLE DATA - Christy Signs Example (Prototype)
+// SAMPLE DATA
 // =====================================================
 $reportTitle          = "Proposed Contact Report (PC-3)";
 $entityName           = "Christy Signs";
@@ -25,7 +25,7 @@ $locationAction       = "reuse";
 $contactAction        = "create";
 
 // =====================================================
-// PARCEL DATA (from JSON - Scalable for 1 or many parcels)
+// PARCEL DATA (from JSON)
 // =====================================================
 $parcelDetails = [
     [
@@ -48,9 +48,7 @@ $parcelDetails = [
     ]
 ];
 
-// =====================================================
-// HEADER
-// =====================================================
+// Header
 $headerHtml = '
 <div style="border-bottom: 3px solid #14377C; padding-bottom: 6px;">
     <table style="width:100%; border:none;">
@@ -69,9 +67,7 @@ $headerHtml = '
 </div>
 ';
 
-// =====================================================
-// FOOTER
-// =====================================================
+// Footer
 $footerHtml = '
 <div style="border-top: 3px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
     <div style="font-weight:600; margin-bottom:2px;">
@@ -84,7 +80,7 @@ $footerHtml = '
 ';
 
 // =====================================================
-// PARCEL VISUAL REVIEW SECTION (Simplified & Reliable)
+// PARCEL VISUAL REVIEW SECTION
 // =====================================================
 $parcelCount = count($parcelDetails);
 
@@ -93,8 +89,8 @@ $parcelSectionHtml = '
     <table class="sectionHeaderTable">
         <tr>
             <td class="sectionIconCell">
-                <img src="https://skyelighting.com/skyesoft/assets/images/icons/map.png" 
-                     class="sectionIcon" alt="Parcels">
+                <img src="https://skyelighting.com/skyesoft/assets/images/icons/compass.png" 
+                     class="sectionIcon" alt="Parcel Review">
             </td>
             <td class="sectionTitleCell">
                 <div class="sectionTitle">Parcel Candidates – Visual Review</div>
@@ -104,16 +100,19 @@ $parcelSectionHtml = '
 
     <p style="font-size:10pt; color:#555; margin-bottom:12px;">
         <strong>' . $parcelCount . ' parcel(s)</strong> found for this address. 
-        Click below to view aerial imagery and parcel details.
+        Review the details and aerial imagery below.
     </p>
 ';
 
 foreach ($parcelDetails as $index => $parcel) {
     $parcelNum = $index + 1;
+    $imageFile = __DIR__ . "/parcel_{$parcel['apnRaw']}.png";
 
     $parcelSectionHtml .= '
-    <div style="border: 2px solid #14377C; border-radius: 8px; padding: 14px; margin-bottom: 14px; page-break-inside: avoid; background: #fafafa;">
+    <div style="border: 2px solid #14377C; border-radius: 8px; padding: 14px; margin-bottom: 16px; 
+                page-break-inside: avoid; background: #fafafa;">
         
+        <!-- Header -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <div>
                 <span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>
@@ -124,14 +123,38 @@ foreach ($parcelDetails as $index => $parcel) {
             </div>
         </div>
 
-        <table class="dataTable" style="margin-bottom:10px;">
+        <!-- Details -->
+        <table class="dataTable" style="margin-bottom:12px;">
             <tr><th style="width:22%;">Owner</th><td>' . $parcel['owner'] . '</td></tr>
             <tr><th>Address</th><td>' . $parcel['address'] . ', ' . $parcel['city'] . '</td></tr>
         </table>
 
+        <!-- Map Image -->
+        <div style="margin: 10px 0 6px 0; text-align:center;">';
+
+    if (file_exists($imageFile)) {
+        $parcelSectionHtml .= '
+            <img src="parcel_' . $parcel['apnRaw'] . '.png" 
+                 style="max-width:92%; height:auto; border:1px solid #ccc; border-radius:6px; background:#f8f8f8;">
+            <div style="font-size:8.5pt; color:#666; margin-top:4px;">
+                Maricopa County Aerial Reference
+            </div>';
+    } else {
+        $parcelSectionHtml .= '
+            <div style="padding:18px; background:#f5f5f5; border:1px dashed #aaa; border-radius:6px; font-size:9.5pt; color:#555;">
+                Aerial map image not yet generated.<br>
+                <small>Run generateParcelMaps.js to create thumbnail</small>
+            </div>';
+    }
+
+    $parcelSectionHtml .= '
+        </div>
+
+        <!-- Link -->
         <div style="text-align:center; margin-top:8px;">
             <a href="' . $parcel['viewerUrl'] . '" target="_blank" 
-               style="display:inline-block; background:#14377C; color:white; padding:10px 22px; border-radius:6px; text-decoration:none; font-size:11pt;">
+               style="display:inline-block; background:#14377C; color:white; padding:9px 20px; 
+                      border-radius:6px; text-decoration:none; font-size:10.5pt;">
                 🗺️ View Aerial Map &amp; Details
             </a>
         </div>
@@ -141,7 +164,7 @@ foreach ($parcelDetails as $index => $parcel) {
 $parcelSectionHtml .= '</div>';
 
 // =====================================================
-// BODY CONTENT
+// FULL HTML BODY
 // =====================================================
 $html = '
 <!DOCTYPE html>
@@ -149,80 +172,19 @@ $html = '
 <head>
     <meta charset="UTF-8">
     <style>
-        body {
-            font-family: Helvetica, Arial, sans-serif;
-            font-size: 11pt;
-            color: #222;
-            line-height: 1.25;
-            margin: 0;
-            padding: 0;
-        }
-        .sectionHeaderTable {
-            width: 100%;
-            border-collapse: collapse;
-            border: none;
-            margin-top: 0;
-            margin-bottom: 3px;
-            border-bottom: 1.5px solid #888;
-        }
-        .sectionIconCell {
-            width: 20px;
-            border: none;
-            padding: 0 8px 4px 0;
-            vertical-align: middle;
-        }
-        .sectionTitleCell {
-            border: none;
-            padding: 0 0 4px 0;
-            vertical-align: middle;
-        }
-        .sectionIcon {
-            width: 16px;
-            height: 16px;
-            object-fit: contain;
-            display: block;
-        }
-        .sectionTitle {
-            font-size: 11.5pt;
-            font-weight: 700;
-            color: #14377C;
-            line-height: 1.0;
-            margin: 0;
-        }
-        .dataTable {
-            width: 100%;
-            table-layout: fixed;
-            border-collapse: collapse;
-            margin: 2px 0 8px 0;
-            page-break-inside: avoid;
-        }
-        .dataTable th, .dataTable td {
-            border: 1px solid #ccc;
-            padding: 4px 6px;
-            text-align: left;
-            vertical-align: top;
-        }
-        .dataTable th {
-            background: #e8e8e8;
-            width: 28%;
-            font-weight: 700;
-            color: #333;
-        }
-        .dataTable tr:nth-child(even) td { background: #f8f8f8; }
-        .dataTable tr:nth-child(odd) td { background: #ffffff; }
-        .highlight {
-            background: #f0f7ff;
-            border-left: 4px solid #14377C;
-            padding: 8px 10px;
-            margin: 6px 0;
-            page-break-inside: avoid;
-        }
-        .section {
-            page-break-inside: avoid;
-            page-break-before: auto;
-            margin-top: 10px;
-            margin-bottom: 10px;
-        }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.25; margin:0; padding:0; }
+        .sectionHeaderTable { width:100%; border-collapse:collapse; border:none; margin-top:0; margin-bottom:3px; border-bottom:1.5px solid #888; }
+        .sectionIconCell { width:20px; border:none; padding:0 8px 4px 0; vertical-align:middle; }
+        .sectionTitleCell { border:none; padding:0 0 4px 0; vertical-align:middle; }
+        .sectionIcon { width:16px; height:16px; object-fit:contain; display:block; }
+        .sectionTitle { font-size:11.5pt; font-weight:700; color:#14377C; line-height:1.0; margin:0; }
+        .dataTable { width:100%; table-layout:fixed; border-collapse:collapse; margin:2px 0 8px 0; page-break-inside:avoid; }
+        .dataTable th, .dataTable td { border:1px solid #ccc; padding:4px 6px; text-align:left; vertical-align:top; }
+        .dataTable th { background:#e8e8e8; width:28%; font-weight:700; color:#333; }
+        .dataTable tr:nth-child(even) td { background:#f8f8f8; }
+        .dataTable tr:nth-child(odd) td { background:#ffffff; }
+        .highlight { background:#f0f7ff; border-left:4px solid #14377C; padding:8px 10px; margin:6px 0; page-break-inside:avoid; }
+        .section { page-break-inside:avoid; page-break-before:auto; margin-top:10px; margin-bottom:10px; }
     </style>
 </head>
 <body>
