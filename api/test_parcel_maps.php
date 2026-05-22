@@ -1,136 +1,125 @@
 <?php
-// =====================================================
-// Test Page: Generate & Manage Parcel Map Images
-// =====================================================
+require_once __DIR__ . '/../vendor/autoload.php';
 
-$parcels = [
+define('SCREENSHOTONE_ACCESS_KEY', '1wKb3PuLgAJB_Q');
+
+// =====================================================
+// Test Parcels
+// =====================================================
+$testParcels = [
     [
-        'apn'        => '10803009E',
-        'apnDisplay' => '108-03-009E',
-        'viewerUrl'  => 'https://maps.mcassessor.maricopa.gov/?esearch=10803009E&slayer=0&exprnum=0'
+        'apn'       => '10803009E',
+        'viewerUrl' => 'https://maps.mcassessor.maricopa.gov/?esearch=10803009E&slayer=0&exprnum=0'
     ],
     [
-        'apn'        => '10803051',
-        'apnDisplay' => '108-03-051',
-        'viewerUrl'  => 'https://maps.mcassessor.maricopa.gov/?esearch=10803051&slayer=0&exprnum=0'
+        'apn'       => '10803051',
+        'viewerUrl' => 'https://maps.mcassessor.maricopa.gov/?esearch=10803051&slayer=0&exprnum=0'
     ]
 ];
 
-function imageExists($apn) {
-    return file_exists(__DIR__ . "/parcel_{$apn}.png");
+// =====================================================
+// Function with proper type hints
+// =====================================================
+/**
+ * Fetch or return cached map image using ScreenshotOne.
+ */
+function fetchMapImage(string $apn, string $viewerUrl): array
+{
+    $imagePath = __DIR__ . "/parcel_{$apn}.png";
+
+    if (file_exists($imagePath)) {
+        return [
+            'status' => 'cached',
+            'path'   => $imagePath,
+            'apn'    => $apn
+        ];
+    }
+
+    $params = [
+        'access_key'           => SCREENSHOTONE_ACCESS_KEY,
+        'url'                  => $viewerUrl,
+        'format'               => 'png',
+        'block_ads'            => 'true',
+        'block_cookie_banners' => 'true',
+        'block_trackers'       => 'true',
+        'delay'                => '3000',
+        'viewport_width'       => '1280',
+        'viewport_height'      => '900',
+        'full_page'            => 'false',
+    ];
+
+    $apiUrl = 'https://api.screenshotone.com/take?' . http_build_query($params);
+
+    $context = stream_context_create([
+        'http' => ['timeout' => 60]
+    ]);
+
+    $imageData = @file_get_contents($apiUrl, false, $context);
+
+    if ($imageData === false || strlen($imageData) < 2000) {
+        return [
+            'status' => 'failed',
+            'error'  => 'Failed to retrieve image (possible modal or timeout)',
+            'apn'    => $apn
+        ];
+    }
+
+    file_put_contents($imagePath, $imageData);
+
+    return [
+        'status' => 'generated',
+        'path'   => $imagePath,
+        'apn'    => $apn
+    ];
 }
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test: Generate Parcel Map Images</title>
+    <title>Test: Parcel Map Images</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 30px; background: #f4f6f8; }
-        h1 { color: #14377C; }
+        body { font-family: Arial, sans-serif; padding: 30px; background: #f8f9fa; }
         .card {
-            background: white;
             border: 2px solid #14377C;
             border-radius: 10px;
             padding: 20px;
-            margin-bottom: 20px;
-            max-width: 800px;
+            margin-bottom: 25px;
+            max-width: 750px;
+            background: white;
         }
-        .status-ok { background: #d4edda; padding: 10px; border-radius: 6px; }
-        .status-missing { background: #fff3cd; padding: 10px; border-radius: 6px; }
-        .btn {
-            display: inline-block;
-            background: #14377C;
-            color: white;
-            padding: 10px 18px;
-            border-radius: 6px;
-            text-decoration: none;
-            margin-top: 10px;
-        }
-        pre {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            overflow-x: auto;
-        }
+        .success { background: #d4edda; padding: 12px; border-radius: 6px; }
+        .error { background: #f8d7da; padding: 12px; border-radius: 6px; }
         img { max-width: 100%; border: 1px solid #ccc; border-radius: 6px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<h1>Test: Generate Parcel Map Images</h1>
-<p>This page helps you generate and verify aerial map images for parcels.</p>
+<h1>Test: Parcel Map Images</h1>
+<p>This page tests dynamic generation of aerial maps using ScreenshotOne.</p>
 
-<?php foreach ($parcels as $parcel): ?>
+<?php foreach ($testParcels as $parcel): ?>
+    <?php $result = fetchMapImage($parcel['apn'], $parcel['viewerUrl']); ?>
+
     <div class="card">
-        <h3>Parcel <?= $parcel['apnDisplay'] ?> (APN: <?= $parcel['apn'] ?>)</h3>
+        <h3>Parcel: <?= htmlspecialchars($parcel['apn']) ?></h3>
 
-        <?php if (imageExists($parcel['apn'])): ?>
-            <div class="status-ok">
-                <strong>✅ Image exists</strong>
-            </div>
-            <img src="parcel_<?= $parcel['apn'] ?>.png" alt="Map for <?= $parcel['apn'] ?>">
+        <?php if ($result['status'] === 'cached'): ?>
+            <div class="success"><strong>✅ Using cached image</strong></div>
+            <img src="parcel_<?= $parcel['apn'] ?>.png" alt="Map">
+
+        <?php elseif ($result['status'] === 'generated'): ?>
+            <div class="success"><strong>✅ New image generated!</strong></div>
+            <img src="parcel_<?= $parcel['apn'] ?>.png" alt="Map">
+
         <?php else: ?>
-            <div class="status-missing">
-                <strong>⚠️ Image not found</strong><br>
-                Run the Playwright script below to generate it.
+            <div class="error">
+                <strong>❌ Failed</strong><br>
+                <?= htmlspecialchars($result['error']) ?>
             </div>
         <?php endif; ?>
-
-        <p><strong>Viewer URL:</strong><br>
-            <a href="<?= $parcel['viewerUrl'] ?>" target="_blank"><?= $parcel['viewerUrl'] ?></a>
-        </p>
     </div>
 <?php endforeach; ?>
-
-<!-- Instructions -->
-<div class="card">
-    <h3>How to Generate Images</h3>
-    <p>Since ScreenshotOne cannot bypass the acknowledgment modal, use the Playwright script below:</p>
-
-    <h4>1. Create <code>generateParcelMaps.js</code></h4>
-    <pre><code>const { chromium } = require('playwright');
-
-async function generateParcelImages() {
-    const parcels = [
-        { apn: "10803009E", url: "https://maps.mcassessor.maricopa.gov/?esearch=10803009E&slayer=0&exprnum=0" },
-        { apn: "10803051",  url: "https://maps.mcassessor.maricopa.gov/?esearch=10803051&slayer=0&exprnum=0" }
-    ];
-
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-
-    for (const p of parcels) {
-        const page = await context.newPage();
-        await page.goto(p.url, { waitUntil: 'domcontentloaded' });
-
-        try {
-            await page.waitForSelector('text=Welcome to the Maricopa County', { timeout: 7000 });
-            await page.check('input[type="checkbox"]');
-            await page.click('button:has-text("OK")');
-            await page.waitForTimeout(3000);
-        } catch (e) {}
-
-        await page.waitForTimeout(3500);
-        await page.screenshot({
-            path: `parcel_${p.apn}.png`,
-            clip: { x: 280, y: 70, width: 950, height: 780 }
-        });
-        await page.close();
-    }
-    await browser.close();
-    console.log("Done!");
-}
-generateParcelImages();</code></pre>
-
-    <h4>2. Run it</h4>
-    <pre>node generateParcelMaps.js</pre>
-
-    <h4>3. Upload the generated PNG files</h4>
-    <p>Upload <code>parcel_10803009E.png</code> and <code>parcel_10803051.png</code> to this folder.</p>
-
-    <p><strong>Then refresh this page</strong> to see the images.</p>
-</div>
 
 </body>
 </html>
