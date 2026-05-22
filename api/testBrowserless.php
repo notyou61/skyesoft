@@ -15,19 +15,16 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// =====================================================
-// 🔐 LOAD .ENV
-// =====================================================
+// ─────────────────────────────────────────
+// 🌍 Load environment
+// ─────────────────────────────────────────
 
-$envPath =
-    realpath(__DIR__ . '/../secure/.env');
+if (!function_exists('skyesoftLoadEnv')) {
 
-if (!$envPath || !file_exists($envPath)) {
-
-    die(
-        '❌ .env file not found'
-    );
+    require_once __DIR__ . '/utils/envLoader.php';
 }
+
+skyesoftLoadEnv();
 
 // -----------------------------------------------------
 // Parse .env manually (GoDaddy-safe)
