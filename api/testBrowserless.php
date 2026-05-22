@@ -10,14 +10,14 @@
 // ======================================================================
 
 // =====================================================
-// 📦 LOAD ENVIRONMENT
+// 📦 LOAD DEPENDENCIES
 // =====================================================
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// ─────────────────────────────────────────
-// 🌍 Load environment
-// ─────────────────────────────────────────
+// =====================================================
+// 🌍 LOAD ENVIRONMENT
+// =====================================================
 
 if (!function_exists('skyesoftLoadEnv')) {
 
@@ -25,28 +25,6 @@ if (!function_exists('skyesoftLoadEnv')) {
 }
 
 skyesoftLoadEnv();
-
-// -----------------------------------------------------
-// Parse .env manually (GoDaddy-safe)
-// -----------------------------------------------------
-
-$envLines =
-    file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
-foreach ($envLines as $line) {
-
-    if (
-        strpos(trim($line), '#') === 0 ||
-        strpos($line, '=') === false
-    ) {
-        continue;
-    }
-
-    list($key, $value) =
-        explode('=', $line, 2);
-
-    putenv(trim($key) . '=' . trim($value));
-}
 
 // =====================================================
 // 🔑 GET API KEY
@@ -80,8 +58,11 @@ $ch = curl_init();
 curl_setopt_array($ch, [
 
     CURLOPT_URL            => $endpoint,
+
     CURLOPT_RETURNTRANSFER => true,
+
     CURLOPT_POST           => true,
+
     CURLOPT_HTTPHEADER     => [
         'Content-Type: application/json'
     ],
@@ -120,7 +101,7 @@ echo "=====================================\n";
 echo "🧠 Skyesoft Browserless Test\n";
 echo "=====================================\n\n";
 
-echo "✅ .env Loaded\n";
+echo "✅ Environment Loaded\n";
 echo "✅ API Key Retrieved\n\n";
 
 echo "🌐 Endpoint:\n";
@@ -140,6 +121,7 @@ if ($httpCode >= 200 && $httpCode < 300) {
 } else {
 
     echo "⚠ Browserless Response:\n\n";
+
     echo $response . "\n\n";
 }
 
@@ -150,6 +132,7 @@ if ($httpCode >= 200 && $httpCode < 300) {
 if ($error) {
 
     echo "❌ cURL Error:\n";
+
     echo $error . "\n";
 }
 
