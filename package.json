@@ -22,7 +22,9 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "node-fetch": "^3.3.2",
-    "puppeteer": "^25.0.3"
+    "puppeteer": "^25.0.3",
+    "puppeteer-core": "^25.0.4"
   }
 }
