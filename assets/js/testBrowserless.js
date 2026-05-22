@@ -1,7 +1,7 @@
 const path = require('path');
 
 require('dotenv').config({
-    path: path.resolve(__dirname, '../../secure/.env')
+    path: path.resolve(__dirname, '../../secure/env.local')
 });
 
 const puppeteer = require('puppeteer-core');
