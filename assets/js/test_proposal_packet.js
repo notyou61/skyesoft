@@ -261,6 +261,9 @@ async function generateGoogleMapArtifact() {
 // =====================================================
 // MAIN
 // =====================================================
+// =====================================================
+// MAIN
+// =====================================================
 async function runProposalPacketFlow() {
     console.log(`🚀 Starting Proposal Packet Flow → ${proposalPacket.proposal.proposalCode}\n`);
 
@@ -268,8 +271,9 @@ async function runProposalPacketFlow() {
     await generateStreetViewArtifact();
     await generateGoogleMapArtifact();
 
+    // Save the complete proposal JSON inside the artifacts folder
     const snapshotPath = path.join(
-        RUNTIME_ROOT,
+        ARTIFACTS_DIR,
         `${proposalPacket.proposal.proposalCode}.json`
     );
 
