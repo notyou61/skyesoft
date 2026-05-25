@@ -3,9 +3,9 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Mpdf\Mpdf;
 
 // =====================================================
-// CONFIG
+// CONFIG - GoDaddy Server Path
 // =====================================================
-define('ARTIFACTS_DIR', __DIR__ . '/proposalArtifacts');   // Where JS saves images + JSON
+define('ARTIFACTS_DIR', __DIR__ . '/../data/runtimeEphemeral/proposalArtifacts');
 
 // =====================================================
 // LOAD PROPOSAL SNAPSHOT (Single Source of Truth)
@@ -15,9 +15,9 @@ $jsonPath = ARTIFACTS_DIR . '/PRP-0042.json';
 
 if (file_exists($jsonPath)) {
     $proposal = json_decode(file_get_contents($jsonPath), true);
-    echo "✅ Loaded proposal from: proposalArtifacts/PRP-0042.json\n";
+    echo "✅ Loaded proposal from: data/runtimeEphemeral/proposalArtifacts/PRP-0042.json\n";
 } else {
-    echo "⚠️ PRP-0042.json not found in proposalArtifacts — using fallback data\n";
+    echo "⚠️ PRP-0042.json not found — using fallback data\n";
 }
 
 // =====================================================
