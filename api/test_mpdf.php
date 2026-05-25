@@ -1,4 +1,7 @@
 <?php
+// Suppress mPDF internal warnings (harmless but noisy)
+error_reporting(E_ERROR | E_PARSE);
+
 require_once __DIR__ . '/../vendor/autoload.php';
 use Mpdf\Mpdf;
 
@@ -114,7 +117,7 @@ $footerHtml = '
 ';
 
 // =====================================================
-// PARCEL VISUAL REVIEW SECTION (Scalable)
+// PARCEL VISUAL REVIEW SECTION
 // =====================================================
 $parcelCount = count($parcelDetails);
 $parcelSectionHtml = '
@@ -245,7 +248,7 @@ $html = '
         .highlight { background:#f0f7ff; border-left:5px solid #14377C; padding:10px 12px; margin:6px 0; page-break-inside:avoid; font-size:10.5pt; }
         .section { page-break-inside:avoid; margin-top:8px; margin-bottom:12px; }
 
-        /* Scalable Parcel Block Styling */
+        /* Parcel Block - Page break handling */
         .parcel-block {
             border: 2px solid #14377C;
             border-radius: 8px;
@@ -253,7 +256,6 @@ $html = '
             margin-bottom: 18px;
             background: #fafafa;
             page-break-inside: avoid;
-            page-break-before: auto;
             break-inside: avoid;
         }
     </style>
