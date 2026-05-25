@@ -191,16 +191,19 @@ async function generateGoogleMapArtifact() {
 
     console.log('🌐 Generating Google Map Artifact...');
 
-    if (!GOOGLE_MAPS_API_KEY) {
-        console.log('   ⚠️ No GOOGLE_MAPS_API_KEY — skipping Google Map');
+    if (!GOOGLE_MAPS_API_KEY || !BROWSERLESS_TOKEN) {
+        console.log('   ⚠️ Missing GOOGLE_MAPS_API_KEY or BROWSERLESS_TOKEN — skipping Google Map image');
         addArtifact('IMG-PRP0042-GMAP-01', 'image', 'google_map', filename);
         return;
     }
 
+    let lat = proposalPacket.data.locationLatitude;
+    let lng = proposalPacket.data.locationLongitude;
+    let source = 'fallback (stored coordinates)';
+
     try {
         const placeId = proposalPacket.data.locationPlaceId;
 
-        // Step 1: Get accurate lat/lng from Place Details API
         const placeDetailsUrl =
             `https://maps.googleapis.com/maps/api/place/details/json` +
             `?place_id=${placeId}` +
@@ -212,16 +215,19 @@ async function generateGoogleMapArtifact() {
         const response = await fetch(placeDetailsUrl);
         const placeData = await response.json();
 
-        if (placeData.status !== 'OK' || !placeData.result?.geometry?.location) {
-            throw new Error(`Place Details failed: ${placeData.status}`);
+        if (placeData.status === 'OK' && placeData.result?.geometry?.location) {
+            lat = placeData.result.geometry.location.lat;
+            lng = placeData.result.geometry.location.lng;
+            source = 'Place Details API';
+        } else {
+            console.log(`   ⚠️ Place Details returned ${placeData.status} — using fallback coordinates`);
         }
+    } catch (err) {
+        console.log(`   ⚠️ Place Details error — using fallback coordinates`);
+    }
 
-        const lat = placeData.result.geometry.location.lat;
-        const lng = placeData.result.geometry.location.lng;
-
-        console.log(`   📍 Resolved coordinates: ${lat}, ${lng}`);
-
-        // Step 2: Build Static Map URL using coordinates
+    // Generate the map using either resolved or fallback coordinates
+    try {
         const mapUrl =
             `https://maps.googleapis.com/maps/api/staticmap` +
             `?center=${lat},${lng}` +
@@ -236,28 +242,19 @@ async function generateGoogleMapArtifact() {
             `wss://production-sfo.browserless.io/chromium?token=${BROWSERLESS_TOKEN}`
         );
 
-        const context = await browser.newContext({
-            viewport: { width: 1200, height: 700 }
-        });
-
+        const context = await browser.newContext({ viewport: { width: 1200, height: 700 } });
         const page = await context.newPage();
 
-        await page.goto(mapUrl, {
-            waitUntil: 'networkidle',
-            timeout: 45000
-        });
-
+        await page.goto(mapUrl, { waitUntil: 'networkidle', timeout: 45000 });
         await page.screenshot({ path: fullPath });
 
-        console.log(`   ✅ Google Map saved: ${filename}`);
-
+        console.log(`   ✅ Google Map saved: ${filename} (${source})`);
         await browser.close();
 
     } catch (error) {
-        console.error('   ❌ Google Map generation failed:', error.message);
+        console.error('   ❌ Google Map screenshot failed:', error.message);
     }
 
-    // Register artifact
     addArtifact('IMG-PRP0042-GMAP-01', 'image', 'google_map', filename);
 }
 

@@ -48,7 +48,7 @@
     "proposalCode": "PRP-0042",
     "proposalType": "contact",
     "proposalStatus": "pending",
-    "proposalCreatedOn": 1779729470,
+    "proposalCreatedOn": 1779736817,
     "proposalReason": "multiple_parcels",
     "artifactRegistry": {
       "artifactRuntimeRoot": "/data/runtimeEphemeral/proposalArtifacts/",
@@ -59,7 +59,7 @@
           "artifactType": "parcel_candidate",
           "artifactFilename": "IMG-PRP0042-PARCEL-01.png",
           "artifactStatus": "runtime",
-          "generatedOn": 1779729489
+          "generatedOn": 1779736845
         },
         {
           "artifactCode": "IMG-PRP0042-PARCEL-02",
@@ -67,7 +67,7 @@
           "artifactType": "parcel_candidate",
           "artifactFilename": "IMG-PRP0042-PARCEL-02.png",
           "artifactStatus": "runtime",
-          "generatedOn": 1779729509
+          "generatedOn": 1779736870
         },
         {
           "artifactCode": "IMG-PRP0042-STREET-01",
@@ -75,7 +75,7 @@
           "artifactType": "street_view",
           "artifactFilename": "IMG-PRP0042-STREET-01.jpg",
           "artifactStatus": "runtime",
-          "generatedOn": 1779729522
+          "generatedOn": 1779736884
         },
         {
           "artifactCode": "IMG-PRP0042-GMAP-01",
@@ -83,7 +83,7 @@
           "artifactType": "google_map",
           "artifactFilename": "IMG-PRP0042-GMAP-01.png",
           "artifactStatus": "runtime",
-          "generatedOn": 1779729540
+          "generatedOn": 1779736884
         }
       ]
     }
