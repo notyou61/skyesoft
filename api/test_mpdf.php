@@ -114,7 +114,7 @@ $footerHtml = '
 ';
 
 // =====================================================
-// PARCEL VISUAL REVIEW SECTION (Using pre-generated artifacts)
+// PARCEL VISUAL REVIEW SECTION (Scalable + Page Break Safe)
 // =====================================================
 $parcelCount = count($parcelDetails);
 $parcelSectionHtml = '
@@ -135,9 +135,20 @@ foreach ($parcelDetails as $index => $parcel) {
     $parcelImageFile = 'IMG-PRP0042-PARCEL-' . str_pad($parcelNum, 2, '0', STR_PAD_LEFT) . '.png';
     $parcelImagePath = getArtifactImage($parcelImageFile);
 
+    // Scalable container with strong page-break rules
     $parcelSectionHtml .= '
-    <div style="border: 2px solid #14377C; border-radius: 8px; padding: 14px; margin-bottom: 18px; page-break-inside: avoid; background:#fafafa;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <div style="
+        border: 2px solid #14377C; 
+        border-radius: 8px; 
+        padding: 12px; 
+        margin-bottom: 18px; 
+        page-break-inside: avoid; 
+        page-break-before: auto;
+        background:#fafafa;
+    ">';
+
+    $parcelSectionHtml .= '
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
             <div>
                 <span style="font-size:14pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>
                 <span style="font-size:12.5pt; font-weight:600; margin-left:12px;">APN: ' . htmlspecialchars($parcel['apnDisplay'] ?? $parcel['apnRaw']) . '</span>
@@ -147,16 +158,19 @@ foreach ($parcelDetails as $index => $parcel) {
             </div>
         </div>
 
-        <table class="dataTable" style="margin-bottom:12px;">
+        <table class="dataTable" style="margin-bottom:10px;">
             <tr><th style="width:20%;">Owner</th><td>' . htmlspecialchars($parcel['owner'] ?? '—') . '</td></tr>
             <tr><th>Address</th><td>' . htmlspecialchars($parcel['address'] ?? '') . ', ' . htmlspecialchars($parcel['city'] ?? '') . '</td></tr>
         </table>';
 
     if ($parcelImagePath) {
         $parcelSectionHtml .= '
-        <div style="text-align:center; margin:10px 0;">
-            <img src="' . $parcelImagePath . '" style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
-            <div style="font-size:9pt; color:#555; margin-top:6px; font-weight:500;">Maricopa County Aerial Imagery • Highlighted Building Footprint</div>
+        <div style="text-align:center; margin:8px 0 4px 0;">
+            <img src="' . $parcelImagePath . '" 
+                 style="max-width:100%; max-height:360px; height:auto; border:1px solid #bbb; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+            <div style="font-size:9pt; color:#555; margin-top:5px; font-weight:500;">
+                Maricopa County Aerial Imagery • Highlighted Building Footprint
+            </div>
         </div>';
     } else {
         $parcelSectionHtml .= '
