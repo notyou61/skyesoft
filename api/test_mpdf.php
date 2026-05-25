@@ -114,7 +114,7 @@ $footerHtml = '
 ';
 
 // =====================================================
-// PARCEL VISUAL REVIEW SECTION (Scalable + Page Break Safe)
+// PARCEL VISUAL REVIEW SECTION (Scalable)
 // =====================================================
 $parcelCount = count($parcelDetails);
 $parcelSectionHtml = '
@@ -135,19 +135,8 @@ foreach ($parcelDetails as $index => $parcel) {
     $parcelImageFile = 'IMG-PRP0042-PARCEL-' . str_pad($parcelNum, 2, '0', STR_PAD_LEFT) . '.png';
     $parcelImagePath = getArtifactImage($parcelImageFile);
 
-    // Scalable container with strong page-break rules
     $parcelSectionHtml .= '
-    <div style="
-        border: 2px solid #14377C; 
-        border-radius: 8px; 
-        padding: 12px; 
-        margin-bottom: 18px; 
-        page-break-inside: avoid; 
-        page-break-before: auto;
-        background:#fafafa;
-    ">';
-
-    $parcelSectionHtml .= '
+    <div class="parcel-block">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
             <div>
                 <span style="font-size:14pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>
@@ -184,7 +173,7 @@ foreach ($parcelDetails as $index => $parcel) {
 $parcelSectionHtml .= '</div>';
 
 // =====================================================
-// GOOGLE SATELLITE OVERVIEW (New Section)
+// GOOGLE SATELLITE OVERVIEW
 // =====================================================
 $googleMapSection = '';
 $googleMapPath = getArtifactImage('IMG-PRP0042-GMAP-01.png');
@@ -209,7 +198,7 @@ if ($googleMapPath) {
 }
 
 // =====================================================
-// STREET VIEW VERIFICATION (New Section)
+// STREET VIEW VERIFICATION
 // =====================================================
 $streetViewSection = '';
 $streetViewPath = getArtifactImage('IMG-PRP0042-STREET-01.jpg');
@@ -255,6 +244,18 @@ $html = '
         .dataTable tr:nth-child(odd) td { background:#ffffff; }
         .highlight { background:#f0f7ff; border-left:5px solid #14377C; padding:10px 12px; margin:6px 0; page-break-inside:avoid; font-size:10.5pt; }
         .section { page-break-inside:avoid; margin-top:8px; margin-bottom:12px; }
+
+        /* Scalable Parcel Block Styling */
+        .parcel-block {
+            border: 2px solid #14377C;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 18px;
+            background: #fafafa;
+            page-break-inside: avoid;
+            page-break-before: auto;
+            break-inside: avoid;
+        }
     </style>
 </head>
 <body>
