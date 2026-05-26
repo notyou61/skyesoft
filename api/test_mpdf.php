@@ -78,16 +78,15 @@ if ($proposal) {
 }
 
 // =====================================================
-// AI REPORT SUMMARY NARRATIVE - Fixed Payload
+// AI REPORT SUMMARY NARRATIVE - Enhanced Debugging
 // =====================================================
 $reportSummaryNarrative = 'Narrative generation in progress...';
 
 try {
     $payload = [
-        'type'        => 'proposalNarrative',
-        'promptFile'  => 'proposedContactReportSummary.prompt',
-        'proposalData'=> $proposal,
-        'userQuery'   => 'Generate Proposed Contact Report Summary'   // ← REQUIRED to pass early validation
+        'type'       => 'proposalNarrative',
+        'promptFile' => 'proposedContactReportSummary.prompt',
+        'proposalData' => $proposal
     ];
 
     $context = stream_context_create([
@@ -106,26 +105,29 @@ try {
     );
 
     if ($rawResponse === false) {
-        throw new Exception('Connection failed');
+        throw new Exception('Connection failed to askOpenAI.php');
     }
 
     $responseData = json_decode($rawResponse, true);
 
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('JSON Decode Error: ' . json_last_error_msg());
+        throw new Exception('JSON Decode Error: ' . json_last_error_msg() . ' | Raw: ' . substr($rawResponse, 0, 500));
     }
 
-    if (isset($responseData['summaryNarrative']) && !empty($responseData['summaryNarrative'])) {
+    if (isset($responseData['summaryNarrative']) && trim($responseData['summaryNarrative']) !== '') {
         $reportSummaryNarrative = trim($responseData['summaryNarrative']);
     } else {
-        throw new Exception('No summaryNarrative returned. Raw: ' . substr($rawResponse, 0, 300));
+        throw new Exception('No summaryNarrative in response');
     }
 
 } catch (Exception $e) {
+    error_log("[PDF] Narrative Error: " . $e->getMessage());
+
     $reportSummaryNarrative = 
         "🔴 AI NARRATIVE ERROR\n\n" .
-        "Message: " . htmlspecialchars($e->getMessage()) . "\n\n" .
-        "Raw Response:\n" . htmlspecialchars(substr($rawResponse ?? '[NO RESPONSE]', 0, 1000));
+        "Error: " . htmlspecialchars($e->getMessage()) . "\n\n" .
+        "Raw Response Preview:\n" . htmlspecialchars(substr($rawResponse ?? '[NO RESPONSE]', 0, 800)) . "\n\n" .
+        "Check php-error.log in skyesoft/api/logs/ for full details.";
 }
 
 // =====================================================
@@ -314,42 +316,23 @@ $html = '
         .summaryNarrative {
             border: 1px solid #d8d8d8;
             background: #f8f8f8;
-            padding: 16px;
-            font-size: 10.2pt;
-            line-height: 1.58;
-            margin-bottom: 14px;
+            padding: 14px;
+            font-size: 10pt;
+            line-height: 1.55;
+            margin-bottom: 12px;
             border-radius: 6px;
         }
-
-        .summaryNarrative ul {
-            padding-left: 22px;
-            margin: 10px 0 12px 0;
-        }
-
-        .summaryNarrative li {
-            margin-bottom: 7px;
-            padding-left: 4px;
-        }
-
-        /* Optional: Make bullets more prominent */
-        .summaryNarrative ul {
-            list-style-type: disc;
-        }
-
-        /* Meta Table */
         .summaryMetaTable {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
-
         .summaryMetaTable td {
-            padding: 7px 10px;
+            padding: 6px 10px;
             border: 1px solid #ddd;
             background: #f0f0f0;
             font-size: 10pt;
             text-align: center;
-            font-weight: 500;
         }
     </style>
 </head>
@@ -363,17 +346,15 @@ $html = '
                 <td class="sectionTitleCell"><div class="sectionTitle">Report Summary</div></td>
             </tr>
         </table>
-        
         <div class="summaryNarrative">
-            <?= nl2br(htmlspecialchars($reportSummaryNarrative)) ?>
+            ' . nl2br(htmlspecialchars($reportSummaryNarrative)) . '
         </div>
-        
         <table class="summaryMetaTable">
             <tr>
-                <td><strong>Proposal Code:</strong> <?= htmlspecialchars($pcCode) ?></td>
-                <td><strong>Confidence:</strong> <?= $confidence ?>%</td>
-                <td><strong>Status:</strong> <?= htmlspecialchars($resolutionStatus) ?></td>
-                <td><strong>Commit Ready:</strong> <span style="color:#c00;"><?= htmlspecialchars($commitAllowed) ?></span></td>
+                <td><strong>Proposal Code:</strong> ' . htmlspecialchars($pcCode) . '</td>
+                <td><strong>Confidence:</strong> ' . $confidence . '%</td>
+                <td><strong>Status:</strong> ' . htmlspecialchars($resolutionStatus) . '</td>
+                <td><strong>Commit Ready:</strong> <span style="color:#c00;">' . htmlspecialchars($commitAllowed) . '</span></td>
             </tr>
         </table>
     </div>
