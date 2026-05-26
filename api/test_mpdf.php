@@ -314,23 +314,42 @@ $html = '
         .summaryNarrative {
             border: 1px solid #d8d8d8;
             background: #f8f8f8;
-            padding: 14px;
-            font-size: 10pt;
-            line-height: 1.55;
-            margin-bottom: 12px;
+            padding: 16px;
+            font-size: 10.2pt;
+            line-height: 1.58;
+            margin-bottom: 14px;
             border-radius: 6px;
         }
+
+        .summaryNarrative ul {
+            padding-left: 22px;
+            margin: 10px 0 12px 0;
+        }
+
+        .summaryNarrative li {
+            margin-bottom: 7px;
+            padding-left: 4px;
+        }
+
+        /* Optional: Make bullets more prominent */
+        .summaryNarrative ul {
+            list-style-type: disc;
+        }
+
+        /* Meta Table */
         .summaryMetaTable {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
+
         .summaryMetaTable td {
-            padding: 6px 10px;
+            padding: 7px 10px;
             border: 1px solid #ddd;
             background: #f0f0f0;
             font-size: 10pt;
             text-align: center;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -344,15 +363,17 @@ $html = '
                 <td class="sectionTitleCell"><div class="sectionTitle">Report Summary</div></td>
             </tr>
         </table>
+        
         <div class="summaryNarrative">
-            ' . nl2br(htmlspecialchars($reportSummaryNarrative)) . '
+            <?= nl2br(htmlspecialchars($reportSummaryNarrative)) ?>
         </div>
+        
         <table class="summaryMetaTable">
             <tr>
-                <td><strong>Proposal Code:</strong> ' . htmlspecialchars($pcCode) . '</td>
-                <td><strong>Confidence:</strong> ' . $confidence . '%</td>
-                <td><strong>Status:</strong> ' . htmlspecialchars($resolutionStatus) . '</td>
-                <td><strong>Commit Ready:</strong> <span style="color:#c00;">' . htmlspecialchars($commitAllowed) . '</span></td>
+                <td><strong>Proposal Code:</strong> <?= htmlspecialchars($pcCode) ?></td>
+                <td><strong>Confidence:</strong> <?= $confidence ?>%</td>
+                <td><strong>Status:</strong> <?= htmlspecialchars($resolutionStatus) ?></td>
+                <td><strong>Commit Ready:</strong> <span style="color:#c00;"><?= htmlspecialchars($commitAllowed) ?></span></td>
             </tr>
         </table>
     </div>

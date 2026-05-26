@@ -3,7 +3,6 @@ You are generating a Report Summary for a Skyesoft Proposed Contact Report.
 The proposal JSON object represents a staged operational proposal that has not yet been committed into the system.
 
 Your responsibility is to analyze:
-
 • proposal confidence
 • parcel ambiguity
 • entity reuse/create state
@@ -28,7 +27,6 @@ The summary should include:
    A short statement explaining whether the proposal appears ready for commit or requires additional review before acceptance.
 
 Guidelines:
-
 • Use clear operational language
 • Keep the tone professional but readable
 • Explain why review may be required
@@ -39,16 +37,9 @@ Guidelines:
 • Avoid mentioning AI generation
 • Avoid excessive formality or legal-style language
 
-Tone:
-
-• operational
-• concise
-• analytical
-• readable
-• practical
+Tone: operational, concise, analytical, readable, practical
 
 Length:
-
 • Operational Overview: 1 short paragraph
 • Proposed Contact Findings: 3–6 bullet points
 • Commit Status: 1 short statement
