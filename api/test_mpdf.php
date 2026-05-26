@@ -78,7 +78,7 @@ if ($proposal) {
 }
 
 // =====================================================
-// AI REPORT SUMMARY NARRATIVE - Live Integration
+// AI REPORT SUMMARY NARRATIVE - Enhanced Debugging
 // =====================================================
 $reportSummaryNarrative = 'Narrative generation in progress...';
 
@@ -89,43 +89,45 @@ try {
         'proposalData' => $proposal
     ];
 
-    error_log("[PDF] Sending proposalNarrative request for " . ($proposal['proposal']['proposalCode'] ?? 'PRP-0042'));
-
     $context = stream_context_create([
         'http' => [
             'method'  => 'POST',
             'header'  => "Content-Type: application/json\r\n",
             'content' => json_encode($payload),
-            'timeout' => 45
+            'timeout' => 60
         ]
     ]);
 
-    $response = file_get_contents(
+    $rawResponse = file_get_contents(
         'https://skyelighting.com/skyesoft/api/askOpenAI.php',
         false,
         $context
     );
 
-    if ($response === false) {
-        throw new Exception('Failed to connect to askOpenAI.php');
+    if ($rawResponse === false) {
+        throw new Exception('Connection failed to askOpenAI.php');
     }
 
-    $responseData = json_decode($response, true);
-    
+    $responseData = json_decode($rawResponse, true);
+
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('Invalid JSON response from AI service');
+        throw new Exception('JSON Decode Error: ' . json_last_error_msg() . ' | Raw: ' . substr($rawResponse, 0, 500));
     }
 
-    if (isset($responseData['summaryNarrative']) && !empty($responseData['summaryNarrative'])) {
+    if (isset($responseData['summaryNarrative']) && trim($responseData['summaryNarrative']) !== '') {
         $reportSummaryNarrative = trim($responseData['summaryNarrative']);
-        error_log("[PDF] Narrative received - Length: " . strlen($reportSummaryNarrative));
     } else {
-        throw new Exception('Narrative not returned from AI service');
+        throw new Exception('No summaryNarrative in response');
     }
 
 } catch (Exception $e) {
     error_log("[PDF] Narrative Error: " . $e->getMessage());
-    $reportSummaryNarrative = 'The operational narrative for this proposal is currently unavailable. Please review the metadata, parcel candidates, spatial artifacts, and governance section for adjudication purposes.';
+
+    $reportSummaryNarrative = 
+        "🔴 AI NARRATIVE ERROR\n\n" .
+        "Error: " . htmlspecialchars($e->getMessage()) . "\n\n" .
+        "Raw Response Preview:\n" . htmlspecialchars(substr($rawResponse ?? '[NO RESPONSE]', 0, 800)) . "\n\n" .
+        "Check php-error.log in skyesoft/api/logs/ for full details.";
 }
 
 // =====================================================
