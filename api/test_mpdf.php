@@ -84,9 +84,10 @@ $reportSummaryNarrative = 'Narrative generation in progress...';
 
 try {
     $payload = [
-        'type'       => 'proposalNarrative',
-        'promptFile' => 'proposedContactReportSummary.prompt',
-        'proposalData' => $proposal
+        'type'         => 'proposalNarrative',
+        'promptFile'   => 'proposedContactReportSummary.prompt',
+        'proposalData' => $proposal,
+        'userQuery'    => 'Generate Proposed Contact Report Summary'   // ← This is required
     ];
 
     $context = stream_context_create([
@@ -127,7 +128,7 @@ try {
         "🔴 AI NARRATIVE ERROR\n\n" .
         "Error: " . htmlspecialchars($e->getMessage()) . "\n\n" .
         "Raw Response Preview:\n" . htmlspecialchars(substr($rawResponse ?? '[NO RESPONSE]', 0, 800)) . "\n\n" .
-        "Check the php-error.log file in skyesoft/api/logs/ for more details.";
+        "Check php-error.log for details.";
 }
 
 // =====================================================
