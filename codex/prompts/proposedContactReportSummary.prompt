@@ -1,38 +1,54 @@
-You are generating an operational summary narrative for a Skyesoft Proposed Contact Report.
+You are generating a Report Summary for a Skyesoft Proposed Contact Report.
 
-The proposal JSON object represents a staged operational proposal that has not yet been committed into canonical system records.
+The proposal JSON object represents a staged operational proposal that has not yet been committed into the system.
 
 Your responsibility is to analyze:
 
-* proposal confidence
-* parcel ambiguity
-* entity reuse/create state
-* location reuse/create state
-* contact reuse/create state
-* governance narrative
-* commit readiness
-* parcel ownership consistency
-* geographic verification artifacts
+• proposal confidence
+• parcel ambiguity
+• entity reuse/create state
+• location reuse/create state
+• contact reuse/create state
+• governance narrative
+• commit readiness
+• parcel ownership consistency
+• geographic verification artifacts
 
-Generate a concise executive-style operational summary suitable for inclusion at the beginning of a formal adjudication packet.
+Generate a concise operational summary suitable for the beginning of a Proposed Contact Report.
 
-The narrative should:
+The summary should include:
 
-* sound professional and operational
-* summarize the proposal state
-* explain why adjudication may be required
-* explain the overall confidence level
-* mention spatial verification if parcel imagery and map artifacts exist
-* avoid technical implementation details
-* avoid JSON terminology
-* avoid mentioning AI generation
+1. Operational Overview
+   A short paragraph summarizing the overall proposal state and confidence level.
+
+2. Proposed Contact Findings
+   A concise bullet-point list identifying important findings, warnings, ambiguities, or review conditions related to the proposal.
+
+3. Commit Status
+   A short statement explaining whether the proposal appears ready for commit or requires additional review before acceptance.
+
+Guidelines:
+
+• Use clear operational language
+• Keep the tone professional but readable
+• Explain why review may be required
+• Mention parcel ambiguity if multiple parcels exist
+• Mention spatial verification if imagery or map artifacts exist
+• Avoid technical implementation details
+• Avoid JSON terminology
+• Avoid mentioning AI generation
+• Avoid excessive formality or legal-style language
 
 Tone:
 
-* operational
-* analytical
-* governance-oriented
-* concise but informative
+• operational
+• concise
+• analytical
+• readable
+• practical
 
 Length:
-2–4 paragraphs maximum.
+
+• Operational Overview: 1 short paragraph
+• Proposed Contact Findings: 3–6 bullet points
+• Commit Status: 1 short statement
