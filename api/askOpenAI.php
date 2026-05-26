@@ -1113,6 +1113,117 @@ PROMPT;
 
 }
 
+// =====================================================
+// PROPOSED CONTACT REPORT SUMMARY NARRATIVE
+// =====================================================
+
+if ($type === "proposalNarrative") {
+
+    // 📥 Resolve proposal payload
+    $proposalData = $input["proposalData"] ?? null;
+
+    if (!$proposalData || !is_array($proposalData)) {
+
+        aiFail(
+            "proposalData required for proposalNarrative."
+        );
+    }
+
+    // 📥 Resolve prompt file
+    $promptFile =
+        $input["promptFile"]
+        ?? "proposedContactReportSummary.prompt";
+
+    $promptPath =
+        "$root/codex/prompts/{$promptFile}";
+
+    if (!file_exists($promptPath)) {
+
+        aiFail(
+            "Prompt file not found: {$promptPath}"
+        );
+    }
+
+    // 📄 Load prompt template
+    $basePrompt =
+        file_get_contents($promptPath);
+
+    if (!$basePrompt) {
+
+        aiFail(
+            "Failed to load prompt file."
+        );
+    }
+
+    // 📦 Proposal JSON
+    $proposalJson = json_encode(
+
+        $proposalData,
+
+        JSON_PRETTY_PRINT
+        | JSON_UNESCAPED_SLASHES
+
+    );
+
+    // 🧠 Final Prompt Construction
+    $finalPrompt = <<<PROMPT
+{$basePrompt}
+
+=====================================================
+
+Proposal JSON:
+
+{$proposalJson}
+
+=====================================================
+
+Generate ONLY the operational report summary narrative.
+
+Do NOT:
+- explain the JSON
+- mention AI generation
+- produce markdown
+- produce headings
+- produce bullet lists
+- produce recommendations outside governance framing
+
+Professional operational tone only.
+PROMPT;
+
+    // 🪵 Logging
+    error_log(
+        "[proposalNarrative] Generating narrative..."
+    );
+
+    // 🚀 AI Execution
+    $response = callOpenAI(
+
+        injectStandingOrders($finalPrompt),
+
+        $apiKey
+    );
+
+    // ✅ Validate Response
+    if (!$response) {
+
+        aiFail(
+            "AI narrative generation failed."
+        );
+    }
+
+    // 📤 Return JSON
+    echo json_encode([
+
+        "success" => true,
+
+        "summaryNarrative" =>
+            trim($response)
+
+    ]);
+
+    exit;
+}
+
 #endregion
 
 #region SECTION 9 — Skyebot (Authority-Aware, Deterministic)
