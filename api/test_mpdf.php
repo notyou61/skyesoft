@@ -78,61 +78,141 @@ if ($proposal) {
 }
 
 // =====================================================
-// AI REPORT SUMMARY NARRATIVE - Live Integration with askOpenAI.php
+// AI REPORT SUMMARY NARRATIVE
+// Live Integration with askOpenAI.php
 // =====================================================
 $reportSummaryNarrative = '';
 
 try {
+
+    // =====================================================
+    // BUILD PAYLOAD
+    // =====================================================
     $payload = [
-        'mode'       => 'proposalNarrative',
-        'promptFile' => 'proposedContactReportSummary.prompt',
-        'proposalData' => $proposal ?? [
-            'data' => [
-                'reportTitle' => $reportTitle,
-                'confidence' => $confidence,
-                'pcCode' => $pcCode,
-                'resolutionStatus' => $resolutionStatus,
-                'commitAllowed' => $commitAllowed,
-                'governanceNarrative' => $governanceNarrative,
-                'entityAction' => $entityAction,
-                'locationAction' => $locationAction,
-                'contactAction' => $contactAction,
-                'location' => ['parcelDetails' => $parcelDetails]
+
+        'mode' =>
+            'proposalNarrative',
+
+        'promptFile' =>
+            'proposedContactReportSummary.prompt',
+
+        'proposalData' =>
+            $proposal ?? [
+                'data' => [
+
+                    'reportTitle' =>
+                        $reportTitle,
+
+                    'confidence' =>
+                        $confidence,
+
+                    'pcCode' =>
+                        $pcCode,
+
+                    'resolutionStatus' =>
+                        $resolutionStatus,
+
+                    'commitAllowed' =>
+                        $commitAllowed,
+
+                    'governanceNarrative' =>
+                        $governanceNarrative,
+
+                    'entityAction' =>
+                        $entityAction,
+
+                    'locationAction' =>
+                        $locationAction,
+
+                    'contactAction' =>
+                        $contactAction,
+
+                    'location' => [
+                        'parcelDetails' =>
+                            $parcelDetails
+                    ]
+                ]
             ]
-        ]
     ];
 
+    // =====================================================
+    // HTTP CONTEXT
+    // =====================================================
     $context = stream_context_create([
+
         'http' => [
-            'method'  => 'POST',
-            'header'  => "Content-Type: application/json\r\n",
-            'content' => json_encode($payload),
-            'timeout' => 45
+
+            'method' =>
+                'POST',
+
+            'header' =>
+                "Content-Type: application/json\r\n",
+
+            'content' =>
+                json_encode($payload),
+
+            'timeout' =>
+                60
         ]
     ]);
 
-    // Call askOpenAI.php
+    // =====================================================
+    // CALL askOpenAI.php
+    // =====================================================
     $response = file_get_contents(
+
         'https://skyelighting.com/skyesoft/api/askOpenAI.php',
+
         false,
+
         $context
     );
 
+    // =====================================================
+    // CONNECTION FAILURE
+    // =====================================================
     if ($response === false) {
-        throw new Exception('Failed to connect to askOpenAI.php');
+
+        throw new Exception(
+            'askOpenAI.php connection failed'
+        );
     }
 
-    $responseData = json_decode($response, true);
+    // =====================================================
+    // PARSE RESPONSE
+    // =====================================================
+    $responseData =
+        json_decode($response, true);
 
-    if (isset($responseData['summaryNarrative']) && !empty($responseData['summaryNarrative'])) {
-        $reportSummaryNarrative = trim($responseData['summaryNarrative']);
+    // =====================================================
+    // VALIDATE RESPONSE
+    // =====================================================
+    if (
+        isset($responseData['summaryNarrative']) &&
+        trim($responseData['summaryNarrative']) !== ''
+    ) {
+
+        $reportSummaryNarrative =
+            trim(
+                $responseData['summaryNarrative']
+            );
+
     } else {
-        throw new Exception('Narrative not returned from AI service');
+
+        throw new Exception(
+            'summaryNarrative not returned'
+        );
     }
 
 } catch (Exception $e) {
-    // Fallback narrative for graceful degradation
-    $reportSummaryNarrative = 'This Proposed Contact Report (PC-3) requires adjudication prior to commit. Multiple parcel candidates exist at the location with high individual confidence but differing ownership records. Entity and location are being reused while creating a new contact. Spatial verification imagery has been attached. Governance review recommended.';
+
+    // =====================================================
+    // GOVERNANCE-COMPLIANT FAILURE MESSAGE
+    // =====================================================
+    $reportSummaryNarrative =
+        'Report summary narrative unavailable. ' .
+        'The AI narrative generation service did not ' .
+        'return a valid operational summary for this proposal packet.';
 }
 
 // =====================================================
