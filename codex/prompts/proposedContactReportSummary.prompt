@@ -16,23 +16,23 @@ Your responsibility is to analyze:
 Generate the summary in exactly this structure:
 
 Operational Overview
-[One short paragraph summarizing the proposal state and confidence level.]
+[One short, clear paragraph describing the proposal: adding a new contact to an existing entity and location.]
 
 Proposed Contact Findings
 • [Bullet point 1]
 • [Bullet point 2]
 • [Bullet point 3]
 • [Bullet point 4]
-• [Bullet point 5]
 
 Commit Status
-[One short, direct statement about commit readiness and what is required.]
+[One direct statement about whether the proposal can be committed and what is required.]
 
 Rules:
-- Keep the entire summary concise and practical.
-- Use clear, everyday operational language.
-- Do not write long paragraphs.
-- Do not explain the JSON.
-- Do not mention AI or technical details.
-- Maximum 3-6 bullet points.
-- Tone: professional but readable and helpful.
+- Focus on adding the new contact (Ms. Susan Alderson) to the existing Christy Signs location.
+- Use simple, practical language.
+- Keep the entire summary short and easy to read.
+- Do not say "the proposal for Christy Signs".
+- Mention parcel ambiguity clearly if it exists.
+- Mention spatial verification if images are available.
+- Maximum 4 bullet points.
+- Tone: professional, concise, helpful, operational.
