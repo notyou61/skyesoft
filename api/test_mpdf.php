@@ -84,10 +84,12 @@ $reportSummaryNarrative = 'Narrative generation in progress...';
 
 try {
     $payload = [
-        'type'       => 'proposalNarrative',           // ← CHANGED FROM 'mode'
+        'type'       => 'proposalNarrative',
         'promptFile' => 'proposedContactReportSummary.prompt',
         'proposalData' => $proposal
     ];
+
+    error_log("[PDF] Sending proposalNarrative request for " . ($proposal['proposal']['proposalCode'] ?? 'PRP-0042'));
 
     $context = stream_context_create([
         'http' => [
@@ -109,14 +111,20 @@ try {
     }
 
     $responseData = json_decode($response, true);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception('Invalid JSON response from AI service');
+    }
 
     if (isset($responseData['summaryNarrative']) && !empty($responseData['summaryNarrative'])) {
         $reportSummaryNarrative = trim($responseData['summaryNarrative']);
+        error_log("[PDF] Narrative received - Length: " . strlen($reportSummaryNarrative));
     } else {
-        throw new Exception('Narrative not returned');
+        throw new Exception('Narrative not returned from AI service');
     }
 
 } catch (Exception $e) {
+    error_log("[PDF] Narrative Error: " . $e->getMessage());
     $reportSummaryNarrative = 'The operational narrative for this proposal is currently unavailable. Please review the metadata, parcel candidates, spatial artifacts, and governance section for adjudication purposes.';
 }
 

@@ -1119,51 +1119,35 @@ PROMPT;
 
 if ($type === "proposalNarrative") {
 
+    error_log("[proposalNarrative] TYPE DETECTED - Starting processing");
+
     // 📥 Resolve proposal payload
     $proposalData = $input["proposalData"] ?? null;
 
     if (!$proposalData || !is_array($proposalData)) {
-
-        aiFail(
-            "proposalData required for proposalNarrative."
-        );
+        aiFail("proposalData required for proposalNarrative.");
     }
 
     // 📥 Resolve prompt file
-    $promptFile =
-        $input["promptFile"]
-        ?? "proposedContactReportSummary.prompt";
+    $promptFile = $input["promptFile"] ?? "proposedContactReportSummary.prompt";
+    $promptPath = "$root/codex/prompts/{$promptFile}";
 
-    $promptPath =
-        "$root/codex/prompts/{$promptFile}";
+    error_log("[proposalNarrative] Prompt Path: " . $promptPath);
 
     if (!file_exists($promptPath)) {
-
-        aiFail(
-            "Prompt file not found: {$promptPath}"
-        );
+        aiFail("Prompt file not found: {$promptPath}");
     }
 
     // 📄 Load prompt template
-    $basePrompt =
-        file_get_contents($promptPath);
+    $basePrompt = file_get_contents($promptPath);
+    error_log("[proposalNarrative] Prompt Length: " . strlen($basePrompt));
 
     if (!$basePrompt) {
-
-        aiFail(
-            "Failed to load prompt file."
-        );
+        aiFail("Failed to load prompt file.");
     }
 
     // 📦 Proposal JSON
-    $proposalJson = json_encode(
-
-        $proposalData,
-
-        JSON_PRETTY_PRINT
-        | JSON_UNESCAPED_SLASHES
-
-    );
+    $proposalJson = json_encode($proposalData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
     // 🧠 Final Prompt Construction
     $finalPrompt = <<<PROMPT
@@ -1190,36 +1174,30 @@ Do NOT:
 Professional operational tone only.
 PROMPT;
 
-    // 🪵 Logging
-    error_log(
-        "[proposalNarrative] Generating narrative..."
-    );
+    error_log("[proposalNarrative] Generating narrative...");
 
     // 🚀 AI Execution
     $response = callOpenAI(
-
         injectStandingOrders($finalPrompt),
-
         $apiKey
     );
 
-    // ✅ Validate Response
-    if (!$response) {
+    error_log("[proposalNarrative] RAW RESPONSE: " . print_r($response, true));
 
-        aiFail(
-            "AI narrative generation failed."
-        );
+    // ✅ Validate & Normalize Response
+    if (!$response || trim($response) === '') {
+        aiFail("AI narrative generation failed - empty response from OpenAI");
     }
+
+    $cleanNarrative = trim($response);
+
+    error_log("[proposalNarrative] SUCCESS - Narrative length: " . strlen($cleanNarrative));
 
     // 📤 Return JSON
     echo json_encode([
-
         "success" => true,
-
-        "summaryNarrative" =>
-            trim($response)
-
-    ]);
+        "summaryNarrative" => $cleanNarrative
+    ], JSON_UNESCAPED_SLASHES);
 
     exit;
 }
