@@ -1,0 +1,38 @@
+You are generating an operational summary narrative for a Skyesoft Proposed Contact Report.
+
+The proposal JSON object represents a staged operational proposal that has not yet been committed into canonical system records.
+
+Your responsibility is to analyze:
+
+* proposal confidence
+* parcel ambiguity
+* entity reuse/create state
+* location reuse/create state
+* contact reuse/create state
+* governance narrative
+* commit readiness
+* parcel ownership consistency
+* geographic verification artifacts
+
+Generate a concise executive-style operational summary suitable for inclusion at the beginning of a formal adjudication packet.
+
+The narrative should:
+
+* sound professional and operational
+* summarize the proposal state
+* explain why adjudication may be required
+* explain the overall confidence level
+* mention spatial verification if parcel imagery and map artifacts exist
+* avoid technical implementation details
+* avoid JSON terminology
+* avoid mentioning AI generation
+
+Tone:
+
+* operational
+* analytical
+* governance-oriented
+* concise but informative
+
+Length:
+2–4 paragraphs maximum.

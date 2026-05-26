@@ -78,6 +78,64 @@ if ($proposal) {
 }
 
 // =====================================================
+// AI REPORT SUMMARY NARRATIVE - Live Integration with askOpenAI.php
+// =====================================================
+$reportSummaryNarrative = '';
+
+try {
+    $payload = [
+        'mode'       => 'proposalNarrative',
+        'promptFile' => 'proposedContactReportSummary.prompt',
+        'proposalData' => $proposal ?? [
+            'data' => [
+                'reportTitle' => $reportTitle,
+                'confidence' => $confidence,
+                'pcCode' => $pcCode,
+                'resolutionStatus' => $resolutionStatus,
+                'commitAllowed' => $commitAllowed,
+                'governanceNarrative' => $governanceNarrative,
+                'entityAction' => $entityAction,
+                'locationAction' => $locationAction,
+                'contactAction' => $contactAction,
+                'location' => ['parcelDetails' => $parcelDetails]
+            ]
+        ]
+    ];
+
+    $context = stream_context_create([
+        'http' => [
+            'method'  => 'POST',
+            'header'  => "Content-Type: application/json\r\n",
+            'content' => json_encode($payload),
+            'timeout' => 45
+        ]
+    ]);
+
+    // Call askOpenAI.php
+    $response = file_get_contents(
+        'https://skyelighting.com/skyesoft/api/askOpenAI.php',
+        false,
+        $context
+    );
+
+    if ($response === false) {
+        throw new Exception('Failed to connect to askOpenAI.php');
+    }
+
+    $responseData = json_decode($response, true);
+
+    if (isset($responseData['summaryNarrative']) && !empty($responseData['summaryNarrative'])) {
+        $reportSummaryNarrative = trim($responseData['summaryNarrative']);
+    } else {
+        throw new Exception('Narrative not returned from AI service');
+    }
+
+} catch (Exception $e) {
+    // Fallback narrative for graceful degradation
+    $reportSummaryNarrative = 'This Proposed Contact Report (PC-3) requires adjudication prior to commit. Multiple parcel candidates exist at the location with high individual confidence but differing ownership records. Entity and location are being reused while creating a new contact. Spatial verification imagery has been attached. Governance review recommended.';
+}
+
+// =====================================================
 // HELPER: Find artifact image
 // =====================================================
 function getArtifactImage(string $filename): ?string
@@ -258,22 +316,51 @@ $html = '
             page-break-inside: avoid;
             break-inside: avoid;
         }
+
+        /* Report Summary Styles */
+        .summaryNarrative {
+            border: 1px solid #d8d8d8;
+            background: #f8f8f8;
+            padding: 14px;
+            font-size: 10pt;
+            line-height: 1.55;
+            margin-bottom: 12px;
+            border-radius: 6px;
+        }
+        .summaryMetaTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+        }
+        .summaryMetaTable td {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            background: #f0f0f0;
+            font-size: 10pt;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
-    <!-- RESOLUTION SUMMARY -->
+    <!-- REPORT SUMMARY -->
     <div class="section">
         <table class="sectionHeaderTable">
-            <tr><td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" class="sectionIcon"></td>
-                <td class="sectionTitleCell"><div class="sectionTitle">Resolution Summary</div></td></tr>
+            <tr>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" class="sectionIcon"></td>
+                <td class="sectionTitleCell"><div class="sectionTitle">Report Summary</div></td>
+            </tr>
         </table>
-        <table class="dataTable">
-            <tr><th>Report Title</th><td>' . htmlspecialchars($reportTitle) . '</td></tr>
-            <tr><th>Confidence</th><td>' . $confidence . '%</td></tr>
-            <tr><th>PC Code</th><td>' . htmlspecialchars($pcCode) . '</td></tr>
-            <tr><th>Status</th><td>' . htmlspecialchars($resolutionStatus) . '</td></tr>
-            <tr><th>Commit Ready</th><td><strong style="color:#c00;">' . htmlspecialchars($commitAllowed) . '</strong></td></tr>
+        <div class="summaryNarrative">
+            ' . nl2br(htmlspecialchars($reportSummaryNarrative)) . '
+        </div>
+        <table class="summaryMetaTable">
+            <tr>
+                <td><strong>Proposal Code:</strong> ' . htmlspecialchars($pcCode) . '</td>
+                <td><strong>Confidence:</strong> ' . $confidence . '%</td>
+                <td><strong>Status:</strong> ' . htmlspecialchars($resolutionStatus) . '</td>
+                <td><strong>Commit Ready:</strong> <span style="color:#c00;">' . htmlspecialchars($commitAllowed) . '</span></td>
+            </tr>
         </table>
     </div>
 
