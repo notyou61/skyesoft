@@ -78,7 +78,7 @@ if ($proposal) {
 }
 
 // =====================================================
-// AI REPORT SUMMARY NARRATIVE - Enhanced Debugging
+// AI REPORT SUMMARY NARRATIVE
 // =====================================================
 $reportSummaryNarrative = 'Narrative generation in progress...';
 
@@ -105,19 +105,19 @@ try {
     );
 
     if ($rawResponse === false) {
-        throw new Exception('Connection failed to askOpenAI.php');
+        throw new Exception('Failed to connect to askOpenAI.php');
     }
 
     $responseData = json_decode($rawResponse, true);
 
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('JSON Decode Error: ' . json_last_error_msg() . ' | Raw: ' . substr($rawResponse, 0, 500));
+        throw new Exception('Invalid JSON response from AI service: ' . json_last_error_msg());
     }
 
     if (isset($responseData['summaryNarrative']) && trim($responseData['summaryNarrative']) !== '') {
         $reportSummaryNarrative = trim($responseData['summaryNarrative']);
     } else {
-        throw new Exception('No summaryNarrative in response');
+        throw new Exception('No summaryNarrative returned in response');
     }
 
 } catch (Exception $e) {
@@ -127,7 +127,7 @@ try {
         "🔴 AI NARRATIVE ERROR\n\n" .
         "Error: " . htmlspecialchars($e->getMessage()) . "\n\n" .
         "Raw Response Preview:\n" . htmlspecialchars(substr($rawResponse ?? '[NO RESPONSE]', 0, 800)) . "\n\n" .
-        "Check php-error.log in skyesoft/api/logs/ for full details.";
+        "Check the php-error.log file in skyesoft/api/logs/ for more details.";
 }
 
 // =====================================================
