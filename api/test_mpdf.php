@@ -26,56 +26,205 @@ if (file_exists($jsonPath)) {
 // =====================================================
 // POPULATE DATA
 // =====================================================
+
 if ($proposal) {
-    $data = $proposal['data'] ?? [];
-    $meta = $proposal['proposal'] ?? [];
 
-    $reportTitle          = $data['reportTitle']          ?? 'Proposed Contact Report (PC-3)';
-    $entityName           = $data['entityName']           ?? 'Christy Signs';
-    $contactName          = $data['contactName']          ?? 'Ms Susan Alderson';
-    $contactTitle         = $data['contactTitle']         ?? 'Accounting';
-    $contactPhone         = $data['contactPhone']         ?? '(602) 242-4488';
-    $contactEmail         = $data['contactEmail']         ?? 'susan@christysigns.com';
-    $locationAddress      = $data['locationAddress']      ?? '3145 N 33rd Ave';
-    $locationCityStateZip = $data['locationCityStateZip'] ?? 'Phoenix, AZ 85017';
-    $locationPlaceId      = $data['locationPlaceId']      ?? '';
-    $confidence           = $data['confidence']           ?? 85;
-    $pcCode               = $data['pcCode']               ?? 'PC-3';
-    $resolutionStatus     = $data['resolutionStatus']     ?? 'multiple_parcels';
-    $commitAllowed        = $data['commitAllowed']        ?? 'NO';
-    $governanceNarrative  = $data['governanceNarrative']  ?? '';
+    // =====================================================
+    // ROOT OBJECTS
+    // =====================================================
+    $resolution  = $proposal['resolution']  ?? [];
+    $persistence = $proposal['persistence'] ?? [];
+    $data        = $proposal['data']        ?? [];
+    $meta        = $proposal['meta']        ?? [];
 
-    $entityAction   = $data['entityAction']   ?? 'reuse';
-    $locationAction = $data['locationAction'] ?? 'reuse';
-    $contactAction  = $data['contactAction']  ?? 'create';
+    // =====================================================
+    // ENTITY
+    // =====================================================
+    $entity = $data['entity'] ?? [];
 
-    $parcelDetails = $data['location']['parcelDetails'] ?? [];
+    $entityName =
+        $entity['entityName']
+        ?? 'Unknown Entity';
+
+    // =====================================================
+    // LOCATION
+    // =====================================================
+    $location = $data['location'] ?? [];
+
+    $locationName =
+        $location['locationName']
+        ?? '';
+
+    $locationPlaceId =
+        $location['locationPlaceId']
+        ?? '';
+
+    $locationAddress =
+        $location['locationAddress']
+        ?? '';
+
+    $locationCity =
+        $location['locationCity']
+        ?? '';
+
+    $locationState =
+        $location['locationState']
+        ?? '';
+
+    $locationZip =
+        $location['locationZip']
+        ?? '';
+
+    $locationCityStateZip =
+        trim(
+            "{$locationCity}, {$locationState} {$locationZip}"
+        );
+
+    $parcelDetails =
+        $location['parcelDetails']
+        ?? [];
+
+    $parcelResolution =
+        $location['parcelResolution']
+        ?? [];
+
+    // =====================================================
+    // CONTACT
+    // =====================================================
+    $contact = $data['contact'] ?? [];
+
+    $contactName = trim(
+
+        ($contact['contactFirstName'] ?? '') .
+        ' ' .
+        ($contact['contactLastName'] ?? '')
+
+    );
+
+    $contactTitle =
+        $contact['contactTitle']
+        ?? '';
+
+    $contactPhone =
+        $contact['contactPrimaryPhone']
+        ?? '';
+
+    $contactEmail =
+        $contact['contactEmail']
+        ?? '';
+
+    // =====================================================
+    // RESOLUTION
+    // =====================================================
+    $pc =
+        $resolution['pc']
+        ?? [];
+
+    $rs =
+        $resolution['rs']
+        ?? [];
+
+    $decision =
+        $resolution['decision']
+        ?? [];
+
+    $pcCode =
+        $pc['code']
+        ?? 'PC-0';
+
+    // =====================================================
+    // REPORT METADATA
+    // =====================================================
+    $reportTitle = "Proposed Contact Report ({$pcCode})";
+    $reportDate = date('m/d/y');
+
+    $resolutionStatus =
+        $pc['status']
+        ?? 'unknown';
+
+    $rsCodes =
+        $rs['codes']
+        ?? [];
+
+    $rsStatuses =
+        $rs['statuses']
+        ?? [];
+
+    // =====================================================
+    // PERSISTENCE
+    // =====================================================
+    $entityAction =
+        $persistence['entity']['action']
+        ?? 'unknown';
+
+    $locationAction =
+        $persistence['location']['action']
+        ?? 'unknown';
+
+    $contactAction =
+        $persistence['contact']['action']
+        ?? 'unknown';
+
+    $commitAllowed =
+        !empty($persistence['commitAllowed'])
+        ? 'YES'
+        : 'NO';
+
+    // =====================================================
+    // GOVERNANCE / CONFIDENCE
+    // =====================================================
+    $confidence =
+        $proposal['confidence']
+        ?? 0;
+
+    $governanceNarrative =
+        implode(
+            ' ',
+            $resolution['narratives']['decision']
+            ?? []
+        );
+
 } else {
-    // Fallback data
+
+    // =====================================================
+    // FALLBACK MODE
+    // =====================================================
+
     $reportTitle          = "Proposed Contact Report (PC-3)";
     $entityName           = "Christy Signs";
-    $contactName          = "Ms Susan Alderson";
+    $contactName          = "Susan Alderson";
     $contactTitle         = "Accounting";
     $contactPhone         = "(602) 242-4488";
     $contactEmail         = "susan@christysigns.com";
+
     $locationAddress      = "3145 N 33rd Ave";
     $locationCityStateZip = "Phoenix, AZ 85017";
+
     $locationPlaceId      = "ChIJeTvhT3ATK4cRpfapSIlCjFw";
+
     $confidence           = 85;
+
     $pcCode               = "PC-3";
-    $resolutionStatus     = "multiple_parcels";
-    $commitAllowed        = "NO";
-    $governanceNarrative  = "This proposal references an existing operational location. Review: Multiple parcel candidates were found at this address and user selection is required before commit.";
+    $resolutionStatus     = "existing_location";
 
-    $entityAction   = "reuse";
-    $locationAction = "reuse";
-    $contactAction  = "create";
+    $commitAllowed        = "YES";
 
-    $parcelDetails = [
-        ["apnRaw" => "10803009E", "apnDisplay" => "108-03-009E", "address" => "3145 N 33RD AVE", "city" => "PHOENIX", "owner" => "RONALD L REYNOLDS AND JACQUELINE S REYNOLDS FAMILY TRUST", "confidence" => 98],
-        ["apnRaw" => "10803051",  "apnDisplay" => "108-03-051",  "address" => "3145 N 33RD AVE", "city" => "PHOENIX", "owner" => "J2 FLOWER LLC", "confidence" => 98]
-    ];
+    $entityAction         = "reuse";
+    $locationAction       = "reuse";
+    $contactAction        = "create";
+
+    $governanceNarrative  =
+        "This proposal references an existing operational location.";
+
+    $parcelDetails = [];
 }
+
+// =====================================================
+// DEFAULT REPORT METADATA
+// =====================================================
+$pcCode = 'PC-0';
+$reportTitle = 'Proposed Contact Report';
+$reportDate = date('m/d/y');
 
 // =====================================================
 // AI REPORT SUMMARY NARRATIVE
@@ -153,7 +302,7 @@ $headerHtml = '
             </td>
             <td>
                 <div style="font-size:14pt; font-weight:700; color:#14377C;">' . htmlspecialchars($reportTitle) . '</div>
-                <div style="font-size:9pt; color:#555;">Skyesoft Operational Intelligence | Report Date: 05/25/26</div>
+                <div style="font-size:9pt; color:#555;">Skyesoft Operational Intelligence | Report Date: ' . htmlspecialchars($reportDate) . '</div>
             </td>
         </tr>
     </table>
