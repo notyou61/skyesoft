@@ -27,7 +27,8 @@ if (file_exists($jsonPath)) {
 // POPULATE DATA - Clean & Robust Extraction
 // =====================================================
 if ($proposal) {
-    $data = $proposal['data'] ?? [];
+    $data     = $proposal['data'] ?? [];
+    $location = $data['location'] ?? [];
 
     $reportTitle          = $data['reportTitle']          ?? 'Proposed Contact Report (PC-3)';
     $entityName           = $data['entityName']           ?? 'Christy Signs';
@@ -36,9 +37,7 @@ if ($proposal) {
     $contactPhone         = $data['contactPhone']         ?? '(602) 242-4488';
     $contactEmail         = $data['contactEmail']         ?? 'susan@christysigns.com';
 
-    // Location Information - support both flat and nested structures
-    $location             = $data['location'] ?? [];
-
+    // Location fields
     $locationAddress      = $data['locationAddress']      ?? $location['locationAddress']      ?? '';
     $locationCityStateZip = $data['locationCityStateZip'] ?? $location['locationCityStateZip'] ?? '';
     $locationPlaceId      = $data['locationPlaceId']      ?? $location['locationPlaceId']      ?? '';
@@ -59,7 +58,8 @@ if ($proposal) {
     $contactAction  = $data['contactAction']  ?? 'create';
 
     $parcelDetails = $data['location']['parcelDetails'] ?? $location['parcelDetails'] ?? [];
-} else {
+} 
+else {
     // =====================================================
     // FALLBACK DATA (only place where hardcoding is allowed)
     // =====================================================
@@ -73,7 +73,6 @@ if ($proposal) {
     $locationCityStateZip = "Phoenix, AZ 85017";
     $locationPlaceId      = "ChIJeTvhT3ATK4cRpfapSIlCjFw";
 
-    // New fields - fallback
     $locationCounty       = "Maricopa";
     $locationCountyFips   = "04013";
     $locationJurisdiction = "Phoenix";
@@ -464,13 +463,18 @@ $html = '
     <!-- LOCATION -->
     <div class="section">
         <table class="sectionHeaderTable">
-            <tr><td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" class="sectionIcon"></td>
-                <td class="sectionTitleCell"><div class="sectionTitle">Location Information</div></td></tr>
+            <tr>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" class="sectionIcon"></td>
+                <td class="sectionTitleCell"><div class="sectionTitle">Location Information</div></td>
+            </tr>
         </table>
         <table class="dataTable">
-            <tr><th>Full Address</th><td>' . htmlspecialchars($locationAddress) . '</td></tr>
-            <tr><th>City, State ZIP</th><td>' . htmlspecialchars($locationCityStateZip) . '</td></tr>
-            <tr><th>Place ID</th><td>' . htmlspecialchars($locationPlaceId) . '</td></tr>
+            <tr><th>Full Address</th><td><?= htmlspecialchars($locationAddress) ?></td></tr>
+            <tr><th>City, State ZIP</th><td><?= htmlspecialchars($locationCityStateZip) ?></td></tr>
+            <tr><th>County</th><td><?= htmlspecialchars($locationCounty) ?></td></tr>
+            <tr><th>County FIPS</th><td><?= htmlspecialchars($locationCountyFips) ?></td></tr>
+            <tr><th>Jurisdiction</th><td><?= htmlspecialchars($locationJurisdiction ?: '-') ?></td></tr>
+            <tr><th>Place ID</th><td><?= htmlspecialchars($locationPlaceId) ?></td></tr>
         </table>
     </div>
 
