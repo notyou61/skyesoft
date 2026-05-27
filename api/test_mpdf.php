@@ -469,12 +469,12 @@ $html = '
             </tr>
         </table>
         <table class="dataTable">
-            <tr><th>Full Address</th><td><?= htmlspecialchars($locationAddress) ?></td></tr>
-            <tr><th>City, State ZIP</th><td><?= htmlspecialchars($locationCityStateZip) ?></td></tr>
-            <tr><th>County</th><td><?= htmlspecialchars($locationCounty) ?></td></tr>
-            <tr><th>County FIPS</th><td><?= htmlspecialchars($locationCountyFips) ?></td></tr>
-            <tr><th>Jurisdiction</th><td><?= htmlspecialchars($locationJurisdiction ?: '-') ?></td></tr>
-            <tr><th>Place ID</th><td><?= htmlspecialchars($locationPlaceId) ?></td></tr>
+            <tr><th>Full Address</th><td>' . htmlspecialchars($locationAddress) . '</td></tr>
+            <tr><th>City, State ZIP</th><td>' . htmlspecialchars($locationCityStateZip) . '</td></tr>
+            <tr><th>County</th><td>' . htmlspecialchars($locationCounty ?: '-') . '</td></tr>
+            <tr><th>County FIPS</th><td>' . htmlspecialchars($locationCountyFips ?: '-') . '</td></tr>
+            <tr><th>Jurisdiction</th><td>' . htmlspecialchars($locationJurisdiction ?: '-') . '</td></tr>
+            <tr><th>Place ID</th><td>' . htmlspecialchars($locationPlaceId) . '</td></tr>
         </table>
     </div>
 
