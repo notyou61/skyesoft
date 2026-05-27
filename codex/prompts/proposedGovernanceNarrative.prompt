@@ -1,20 +1,20 @@
 You are generating the Governance & Operational Narrative section for a Skyesoft Proposed Contact Report.
 
-This section must combine governance guidance with the current persistence/staging state.
+This section must combine governance guidance with the current persistence/staging state in simple, practical language.
 
-Analyze the proposal data and generate a concise, professional narrative that includes:
-
+Analyze the proposal and create a short, clear narrative that includes:
 - Current governance context and any review requirements (especially parcel ambiguity)
-- The proposed ELC actions: entity, location, and contact (reuse or create)
+- The proposed actions for the entity, location, and contact (reuse or create)
 - Commit readiness status
-- A clear explanation of what will happen once the correct parcel is selected (how the ELC will be inserted into the database)
+- A plain-English explanation of what will happen once the correct parcel is selected
 
-Structure the output as one clean, readable paragraph (or two short paragraphs maximum).
+Structure the output as one clean, readable paragraph (maximum two short paragraphs).
 
 Rules:
-- Use professional but practical operational language.
-- Be concise and clear.
-- Do not use bullet points or tables in this narrative.
+- Use simple, practical, everyday operational language that a reviewer can easily understand.
+- Do NOT use technical jargon such as "ELC", "persistence", "staging state", or similar terms.
+- Be concise and direct.
+- Do not use bullet points or tables.
 - Do not mention AI or JSON.
-- Focus on what the reviewer needs to know about governance and the final commit step.
-- Maximum length: 750 characters.
+- Focus on what the reviewer needs to know about governance and the final next step.
+- Maximum length: 650 characters.
