@@ -306,7 +306,10 @@ if ($googleMapPath) {
                 <img src="' . $googleMapPath . '" style="max-width:100%; height:auto; border:1px solid #ccc; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.12);">
             </div>
             <div style="text-align:center; margin-top:8px; font-size:9.5pt; color:#444;">
-                Google Satellite View • Red marker shows resolved location
+                <?= htmlspecialchars($locationAddress) ?>,
+                <?= htmlspecialchars($locationCityStateZip) ?>
+                • Google Satellite View
+                • Red marker indicates resolved location
             </div>
         </div>
     </div>';
