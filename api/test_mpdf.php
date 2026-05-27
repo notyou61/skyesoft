@@ -149,7 +149,7 @@ $parcelSummaryNarrative = 'Parcel summary generation in progress...';
 try {
     $payload = [
         'type'         => 'proposalNarrative',
-        'promptFile'   => 'proposedParcelSummary.prompt',   // New prompt file
+        'promptFile'   => 'proposedParcelSummary.prompt',
         'proposalData' => $proposal,
         'userQuery'    => 'Generate Parcel Candidates Summary'
     ];
@@ -176,7 +176,7 @@ try {
     $responseData = json_decode($rawResponse, true);
 
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('Invalid JSON response');
+        throw new Exception('Invalid JSON response from AI service');
     }
 
     if (isset($responseData['summaryNarrative']) && trim($responseData['summaryNarrative']) !== '') {
@@ -186,7 +186,14 @@ try {
     }
 
 } catch (Exception $e) {
+    error_log("[PDF] Parcel Summary Error: " . $e->getMessage());
     $parcelSummaryNarrative = 'Multiple parcel candidates were identified at this address. Review and selection is required before proceeding.';
+}
+
+// Safety limit - prevent overly long summaries from breaking layout
+$maxLength = 650;
+if (strlen($parcelSummaryNarrative) > $maxLength) {
+    $parcelSummaryNarrative = substr($parcelSummaryNarrative, 0, $maxLength) . '...';
 }
 
 // =====================================================

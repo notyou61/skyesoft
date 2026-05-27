@@ -1,18 +1,11 @@
-You are generating a Parcel Candidates Summary for a Skyesoft Proposed Contact Report.
+You are generating a short Parcel Candidates Summary for a Skyesoft Proposed Contact Report.
 
-The proposal has identified multiple parcel candidates at the given address. Your responsibility is to create a concise operational summary focused only on the parcel situation.
-
-Analyze:
-• Number of parcel candidates found
-• Parcel ambiguity (multiple parcels at same address)
-• Differences in ownership between parcels
-• Individual parcel confidence levels
-• Availability of spatial verification artifacts (aerial imagery, building footprints, street view)
+The proposal has identified multiple parcel candidates at the given address. Create a very concise operational summary focused only on the parcel situation.
 
 Generate the summary in exactly this structure:
 
 Parcel Summary
-[One short paragraph describing the parcel situation and overall confidence.]
+[One short, clear paragraph (maximum 2 sentences).]
 
 Key Findings
 • [Bullet point 1]
@@ -20,13 +13,13 @@ Key Findings
 • [Bullet point 3]
 
 Required Action
-[One clear, direct statement about what the user must do next regarding parcel selection.]
+[One short, direct statement about what the user must do next.]
 
 Rules:
-- Keep the entire summary short and practical.
-- Focus only on parcels — do not repeat contact or entity information.
-- Use clear, everyday operational language.
-- Mention if spatial verification artifacts (images) are available.
-- Maximum 3–4 bullet points.
+- Keep the entire summary very short and practical.
+- Maximum total length: 650 characters.
+- Use simple, everyday operational language.
+- Focus only on parcel ambiguity, ownership differences, confidence, and spatial artifacts.
+- Do not repeat contact or entity information.
+- Do not write long explanations.
 - Tone: operational, concise, readable, and helpful.
-- Do not mention AI, JSON, or technical implementation details.
