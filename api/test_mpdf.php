@@ -558,7 +558,7 @@ $html = '
             </tr>
         </table>
         <div class="highlight">
-            <?= nl2br(htmlspecialchars($governanceNarrative)) ?>
+            ' . nl2br(htmlspecialchars($governanceNarrative)) . '
         </div>
     </div>
 
