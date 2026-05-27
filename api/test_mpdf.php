@@ -138,7 +138,14 @@ try {
     }
 
 } catch (Exception $e) {
+    error_log("[PDF] Report Summary Error: " . $e->getMessage());
     $reportSummaryNarrative = 'The operational narrative for this proposal is currently unavailable. Please review the metadata, parcel candidates, spatial artifacts, and governance section for adjudication purposes.';
+}
+
+// === SAFETY LIMIT - Prevent long narrative from pushing content off page 1 ===
+$maxReportLength = 1250;   // Adjust if needed
+if (strlen($reportSummaryNarrative) > $maxReportLength) {
+    $reportSummaryNarrative = substr($reportSummaryNarrative, 0, $maxReportLength) . '...';
 }
 
 // =====================================================

@@ -1,38 +1,36 @@
 You are generating a Report Summary for a Skyesoft Proposed Contact Report.
 
-The proposal JSON object represents a staged operational proposal that has not yet been committed into the system.
+The proposal JSON object represents a staged operational proposal that has not yet been committed.
 
 Your responsibility is to analyze:
 • proposal confidence
 • parcel ambiguity
-• entity reuse/create state
-• location reuse/create state
-• contact reuse/create state
+• entity/location/contact reuse/create states
 • governance narrative
 • commit readiness
-• parcel ownership consistency
 • geographic verification artifacts
 
 Generate the summary in exactly this structure:
 
 Operational Overview
-[One short, clear paragraph describing the proposal: adding a new contact to an existing entity and location.]
+[One short, clear paragraph (maximum 2 sentences) describing the proposal: adding a new contact to an existing entity and location.]
 
 Proposed Contact Findings
 • [Bullet point 1]
 • [Bullet point 2]
 • [Bullet point 3]
-• [Bullet point 4]
+• [Bullet point 4 max]
 
 Commit Status
-[One direct statement about whether the proposal can be committed and what is required.]
+[One short, direct statement about commit readiness and what is required.]
 
 Rules:
+- Keep the ENTIRE summary short and compact. Maximum total length: 1150 characters.
 - Focus on adding the new contact (Ms. Susan Alderson) to the existing Christy Signs location.
-- Use simple, practical language.
-- Keep the entire summary short and easy to read.
-- Do not say "the proposal for Christy Signs".
-- Mention parcel ambiguity clearly if it exists.
-- Mention spatial verification if images are available.
+- Use simple, practical, operational language.
+- Do NOT say "the proposal for Christy Signs".
+- Clearly mention parcel ambiguity if it exists.
+- Mention spatial verification artifacts if images are available.
 - Maximum 4 bullet points.
 - Tone: professional, concise, helpful, operational.
+- Do not be verbose. Be direct and to the point.
