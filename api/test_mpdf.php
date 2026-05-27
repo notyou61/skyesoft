@@ -125,6 +125,54 @@ try {
 }
 
 // =====================================================
+// PARCEL CANDIDATES SUMMARY (AI-driven)
+// =====================================================
+$parcelSummaryNarrative = 'Parcel summary generation in progress...';
+
+try {
+    $payload = [
+        'type'         => 'proposalNarrative',
+        'promptFile'   => 'proposedParcelSummary.prompt',   // New prompt file
+        'proposalData' => $proposal,
+        'userQuery'    => 'Generate Parcel Candidates Summary'
+    ];
+
+    $context = stream_context_create([
+        'http' => [
+            'method'  => 'POST',
+            'header'  => "Content-Type: application/json\r\n",
+            'content' => json_encode($payload),
+            'timeout' => 60
+        ]
+    ]);
+
+    $rawResponse = file_get_contents(
+        'https://skyelighting.com/skyesoft/api/askOpenAI.php',
+        false,
+        $context
+    );
+
+    if ($rawResponse === false) {
+        throw new Exception('Failed to connect to askOpenAI.php');
+    }
+
+    $responseData = json_decode($rawResponse, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception('Invalid JSON response');
+    }
+
+    if (isset($responseData['summaryNarrative']) && trim($responseData['summaryNarrative']) !== '') {
+        $parcelSummaryNarrative = trim($responseData['summaryNarrative']);
+    } else {
+        throw new Exception('No summaryNarrative returned');
+    }
+
+} catch (Exception $e) {
+    $parcelSummaryNarrative = 'Multiple parcel candidates were identified at this address. Review and selection is required before proceeding.';
+}
+
+// =====================================================
 // HELPER: Find artifact image
 // =====================================================
 function getArtifactImage(string $filename): ?string
@@ -164,6 +212,7 @@ $footerHtml = '
 // PARCEL VISUAL REVIEW SECTION
 // =====================================================
 $parcelCount = count($parcelDetails);
+
 $parcelSectionHtml = '
 <div class="section">
     <table class="sectionHeaderTable">
@@ -172,6 +221,12 @@ $parcelSectionHtml = '
             <td class="sectionTitleCell"><div class="sectionTitle">Parcel Candidates – Visual Review</div></td>
         </tr>
     </table>
+
+    <!-- New Parcel Summary -->
+    <div class="parcelSummaryBlock">
+        ' . nl2br(htmlspecialchars($parcelSummaryNarrative)) . '
+    </div>
+
     <p style="font-size:10.5pt; color:#333; margin-bottom:12px;">
         <strong>' . $parcelCount . ' parcel(s)</strong> found for this address.
     </p>
@@ -331,6 +386,18 @@ $html = '
             font-size: 10pt;
             text-align: center;
             font-weight: 500;
+        }
+        /* Parcel Summary Block */
+        .parcelSummaryBlock {
+            background: #f8f9fa;
+            border: 1px solid #d0d0d0;
+            border-left: 4px solid #14377C;
+            padding: 12px 14px;
+            margin: 10px 0 14px 0;
+            font-size: 10pt;
+            line-height: 1.5;
+            color: #333;
+            border-radius: 4px;
         }
     </style>
 </head>
