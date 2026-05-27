@@ -24,7 +24,7 @@ if (file_exists($jsonPath)) {
 }
 
 // =====================================================
-// POPULATE DATA - Robust Extraction
+// POPULATE DATA - Clean & Robust Extraction
 // =====================================================
 if ($proposal) {
     $data = $proposal['data'] ?? [];
@@ -36,16 +36,16 @@ if ($proposal) {
     $contactPhone         = $data['contactPhone']         ?? '(602) 242-4488';
     $contactEmail         = $data['contactEmail']         ?? 'susan@christysigns.com';
 
-    // Location Information
-    $location             = $data['location'] ?? $data;   // support both flat and nested structures
+    // Location Information - support both flat and nested structures
+    $location             = $data['location'] ?? [];
 
-    $locationAddress      = $data['locationAddress']      ?? $location['locationAddress']      ?? '3145 N 33rd Ave';
-    $locationCityStateZip = $data['locationCityStateZip'] ?? $location['locationCityStateZip'] ?? 'Phoenix, AZ 85017';
+    $locationAddress      = $data['locationAddress']      ?? $location['locationAddress']      ?? '';
+    $locationCityStateZip = $data['locationCityStateZip'] ?? $location['locationCityStateZip'] ?? '';
     $locationPlaceId      = $data['locationPlaceId']      ?? $location['locationPlaceId']      ?? '';
 
-    // New fields
-    $locationCounty       = $data['locationCounty']       ?? $location['locationCounty']       ?? 'Maricopa';
-    $locationCountyFips   = $data['locationCountyFips']   ?? $location['locationCountyFips']   ?? '04013';
+    // New location fields
+    $locationCounty       = $data['locationCounty']       ?? $location['locationCounty']       ?? '';
+    $locationCountyFips   = $data['locationCountyFips']   ?? $location['locationCountyFips']   ?? '';
     $locationJurisdiction = $data['locationJurisdiction'] ?? $location['locationJurisdiction'] ?? '';
 
     $confidence           = $data['confidence']           ?? 85;
@@ -60,7 +60,9 @@ if ($proposal) {
 
     $parcelDetails = $data['location']['parcelDetails'] ?? $location['parcelDetails'] ?? [];
 } else {
-    // Fallback data (updated with new fields)
+    // =====================================================
+    // FALLBACK DATA (only place where hardcoding is allowed)
+    // =====================================================
     $reportTitle          = "Proposed Contact Report (PC-3)";
     $entityName           = "Christy Signs";
     $contactName          = "Ms Susan Alderson";
@@ -468,9 +470,6 @@ $html = '
         <table class="dataTable">
             <tr><th>Full Address</th><td>' . htmlspecialchars($locationAddress) . '</td></tr>
             <tr><th>City, State ZIP</th><td>' . htmlspecialchars($locationCityStateZip) . '</td></tr>
-            <tr><th>County</th><td>' . htmlspecialchars($locationCounty) . '</td></tr>
-            <tr><th>County FIPS</th><td>' . htmlspecialchars($locationCountyFips) . '</td></tr>
-            <tr><th>Jurisdiction</th><td>' . htmlspecialchars($locationJurisdiction ?: '—') . '</td></tr>
             <tr><th>Place ID</th><td>' . htmlspecialchars($locationPlaceId) . '</td></tr>
         </table>
     </div>
