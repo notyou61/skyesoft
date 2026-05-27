@@ -35,9 +35,19 @@ if ($proposal) {
     $contactTitle         = $data['contactTitle']         ?? 'Accounting';
     $contactPhone         = $data['contactPhone']         ?? '(602) 242-4488';
     $contactEmail         = $data['contactEmail']         ?? 'susan@christysigns.com';
-    $locationAddress      = $data['locationAddress']      ?? '3145 N 33rd Ave';
-    $locationCityStateZip = $data['locationCityStateZip'] ?? 'Phoenix, AZ 85017';
-    $locationPlaceId      = $data['locationPlaceId']      ?? '';
+
+    // Location Information
+    $location             = $data['location'] ?? $data;   // support both flat and nested structures
+
+    $locationAddress      = $data['locationAddress']      ?? $location['locationAddress']      ?? '3145 N 33rd Ave';
+    $locationCityStateZip = $data['locationCityStateZip'] ?? $location['locationCityStateZip'] ?? 'Phoenix, AZ 85017';
+    $locationPlaceId      = $data['locationPlaceId']      ?? $location['locationPlaceId']      ?? '';
+
+    // New fields
+    $locationCounty       = $data['locationCounty']       ?? $location['locationCounty']       ?? 'Maricopa';
+    $locationCountyFips   = $data['locationCountyFips']   ?? $location['locationCountyFips']   ?? '04013';
+    $locationJurisdiction = $data['locationJurisdiction'] ?? $location['locationJurisdiction'] ?? '';
+
     $confidence           = $data['confidence']           ?? 85;
     $pcCode               = $data['pcCode']               ?? 'PC-3';
     $resolutionStatus     = $data['resolutionStatus']     ?? 'multiple_parcels';
@@ -48,9 +58,9 @@ if ($proposal) {
     $locationAction = $data['locationAction'] ?? 'reuse';
     $contactAction  = $data['contactAction']  ?? 'create';
 
-    $parcelDetails = $data['location']['parcelDetails'] ?? [];
+    $parcelDetails = $data['location']['parcelDetails'] ?? $location['parcelDetails'] ?? [];
 } else {
-    // Fallback
+    // Fallback data (updated with new fields)
     $reportTitle          = "Proposed Contact Report (PC-3)";
     $entityName           = "Christy Signs";
     $contactName          = "Ms Susan Alderson";
@@ -60,6 +70,12 @@ if ($proposal) {
     $locationAddress      = "3145 N 33rd Ave";
     $locationCityStateZip = "Phoenix, AZ 85017";
     $locationPlaceId      = "ChIJeTvhT3ATK4cRpfapSIlCjFw";
+
+    // New fields - fallback
+    $locationCounty       = "Maricopa";
+    $locationCountyFips   = "04013";
+    $locationJurisdiction = "Phoenix";
+
     $confidence           = 85;
     $pcCode               = "PC-3";
     $resolutionStatus     = "multiple_parcels";
@@ -452,6 +468,9 @@ $html = '
         <table class="dataTable">
             <tr><th>Full Address</th><td>' . htmlspecialchars($locationAddress) . '</td></tr>
             <tr><th>City, State ZIP</th><td>' . htmlspecialchars($locationCityStateZip) . '</td></tr>
+            <tr><th>County</th><td>' . htmlspecialchars($locationCounty) . '</td></tr>
+            <tr><th>County FIPS</th><td>' . htmlspecialchars($locationCountyFips) . '</td></tr>
+            <tr><th>Jurisdiction</th><td>' . htmlspecialchars($locationJurisdiction ?: '—') . '</td></tr>
             <tr><th>Place ID</th><td>' . htmlspecialchars($locationPlaceId) . '</td></tr>
         </table>
     </div>
