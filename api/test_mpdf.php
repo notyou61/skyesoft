@@ -204,6 +204,55 @@ if (strlen($parcelSummaryNarrative) > $maxLength) {
 }
 
 // =====================================================
+// GOVERNANCE & OPERATIONAL NARRATIVE (NEW AI-DRIVEN)
+// =====================================================
+$governanceNarrative = 'Governance narrative generation in progress...';
+
+try {
+    $payload = [
+        'type'         => 'proposalNarrative',
+        'promptFile'   => 'proposedGovernanceNarrative.prompt',
+        'proposalData' => $proposal,
+        'userQuery'    => 'Generate Governance & Operational Narrative'
+    ];
+
+    $context = stream_context_create([
+        'http' => [
+            'method'  => 'POST',
+            'header'  => "Content-Type: application/json\r\n",
+            'content' => json_encode($payload),
+            'timeout' => 60
+        ]
+    ]);
+
+    $rawResponse = file_get_contents(
+        'https://skyelighting.com/skyesoft/api/askOpenAI.php',
+        false,
+        $context
+    );
+
+    if ($rawResponse === false) {
+        throw new Exception('Failed to connect to askOpenAI.php');
+    }
+
+    $responseData = json_decode($rawResponse, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception('Invalid JSON response from AI service');
+    }
+
+    if (isset($responseData['summaryNarrative']) && trim($responseData['summaryNarrative']) !== '') {
+        $governanceNarrative = trim($responseData['summaryNarrative']);
+    } else {
+        throw new Exception('No summaryNarrative returned');
+    }
+
+} catch (Exception $e) {
+    error_log("[PDF] Governance Narrative Error: " . $e->getMessage());
+    $governanceNarrative = 'This proposal references an existing operational location. Review and selection of the correct parcel is required before the ELC (Entity-Location-Contact) can be committed to the database.';
+}
+
+// =====================================================
 // HELPER: Find artifact image
 // =====================================================
 function getArtifactImage(string $filename): ?string
@@ -500,26 +549,17 @@ $html = '
     ' . $parcelSectionHtml . '
     ' . $streetViewSection . '
 
-    <!-- GOVERNANCE + PERSISTENCE -->
+    <!-- GOVERNANCE & OPERATIONAL NARRATIVE (AI-driven) -->
     <div class="section">
         <table class="sectionHeaderTable">
-            <tr><td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/scales.png" class="sectionIcon"></td>
-                <td class="sectionTitleCell"><div class="sectionTitle">Governance &amp; Operational Narrative</div></td></tr>
+            <tr>
+                <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/scales.png" class="sectionIcon"></td>
+                <td class="sectionTitleCell"><div class="sectionTitle">Governance &amp; Operational Narrative</div></td>
+            </tr>
         </table>
-        <div class="highlight">' . nl2br(htmlspecialchars($governanceNarrative)) . '</div>
-    </div>
-
-    <div class="section">
-        <table class="sectionHeaderTable">
-            <tr><td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/puzzle.png" class="sectionIcon"></td>
-                <td class="sectionTitleCell"><div class="sectionTitle">Persistence / Staging State</div></td></tr>
-        </table>
-        <table class="dataTable">
-            <tr><th>Entity Action</th><td>' . htmlspecialchars($entityAction) . '</td></tr>
-            <tr><th>Location Action</th><td>' . htmlspecialchars($locationAction) . '</td></tr>
-            <tr><th>Contact Action</th><td>' . htmlspecialchars($contactAction) . '</td></tr>
-            <tr><th>Commit Allowed</th><td><strong style="color:#c00;">' . htmlspecialchars($commitAllowed) . '</strong></td></tr>
-        </table>
+        <div class="highlight">
+            <?= nl2br(htmlspecialchars($governanceNarrative)) ?>
+        </div>
     </div>
 
 </body>
