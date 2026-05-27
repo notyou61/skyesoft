@@ -222,14 +222,10 @@ $parcelSectionHtml = '
         </tr>
     </table>
 
-    <!-- New Parcel Summary -->
+    <!-- New AI Parcel Summary -->
     <div class="parcelSummaryBlock">
         ' . nl2br(htmlspecialchars($parcelSummaryNarrative)) . '
     </div>
-
-    <p style="font-size:10.5pt; color:#333; margin-bottom:12px;">
-        <strong>' . $parcelCount . ' parcel(s)</strong> found for this address.
-    </p>
 ';
 
 foreach ($parcelDetails as $index => $parcel) {
