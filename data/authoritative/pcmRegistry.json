@@ -2,7 +2,7 @@
   "registry": "pcmRegistry",
   "version": "1.0.0",
   "authority": "Skyesoft Codex",
-  "description": "Canonical operational semantics registry for Proposal Classification Matrix (PCM) states used by detectAndProposeContact.php and related governance workflows.",
+  "description": "Canonical operational semantics registry for Proposal Classification Matrix (PCM) states used by processProposedContact.php and related governance workflows.",
   "lastUpdated": "2026-05-10",
   "statuses": {
 

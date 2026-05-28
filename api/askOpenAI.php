@@ -1378,7 +1378,7 @@ if (!isset($response) || trim((string)$response) === '') {
 
     // ───────────────────────────────────────────────
     // 📇 CONTACT PROPOSAL ROUTING BRIDGE
-    //    AI-detected contact signature → detectAndProposeContact.php
+    //    AI-detected contact signature → processProposedContact.php
     // ───────────────────────────────────────────────
     $detectedIntent = strtolower(trim($intent ?? ''));
 
@@ -1439,7 +1439,7 @@ if (!isset($response) || trim((string)$response) === '') {
     // 🚀 Execute Proposal Engine Directly
     // --------------------------------------------------
     session_write_close();
-    require __DIR__ . '/detectAndProposeContact.php';
+    require __DIR__ . '/processProposedContact.php';
     exit;
 }
 
