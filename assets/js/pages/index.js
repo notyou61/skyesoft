@@ -2074,7 +2074,7 @@ window.SkyIndex = {
             if (data?.type === 'contact_proposal' && data?.input) {
                 console.log('📇 Bridge detected → calling proposal engine');
 
-                const res2 = await fetch('/skyesoft/api/detectAndProposeContact.php', {
+                const res2 = await fetch('/skyesoft/api/processProposedContact.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -2089,7 +2089,7 @@ window.SkyIndex = {
 
                 this.handleContactProposal(proposal);
                 return;
-}
+            }
 
             // ───────────────────────────────────────────────
             // UI Action (authoritative)

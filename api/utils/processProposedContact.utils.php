@@ -11,10 +11,12 @@ declare(strict_types=1);
 // CORE UTILITIES (Preserved)
 // =====================================================
 
-// Safe curl close for PHP 8.5+ (Final Version)
-function releaseCurlHandle(?CurlHandle &$ch): void {
-
-    $ch = null;
+// Safe curl close for PHP 8.5+
+function safeCurlClose(?CurlHandle &$ch): void {
+    if ($ch !== null) {
+        @curl_close($ch);   // Suppress deprecation
+        $ch = null;
+    }
 }
 
 // normalizeParsed
@@ -1095,6 +1097,48 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
     ];
 }
 
+// Missing helper: inferSalutation
+function inferSalutation(string $firstName, string $lastName): ?string {
+    $first = strtolower(trim($firstName));
+    if (in_array($first, ['mr', 'mrs', 'ms', 'dr', 'miss'])) return null;
+    return 'Mr.'; // Conservative default - can be improved later
+}
+
+// Missing helper: validateAddressSmarty (from original)
+function validateAddressSmarty(string $street, string $city, string $state, string $zip): ?array {
+    $authId    = skyesoftGetEnv('SMARTY_AUTH_ID');
+    $authToken = skyesoftGetEnv('SMARTY_AUTH_TOKEN');
+
+    if (!$authId || !$authToken) {
+        error_log('[smarty] missing credentials');
+        return null;
+    }
+
+    $url = "https://us-street.api.smarty.com/street-address?"
+        . http_build_query([
+            'auth-id'    => $authId,
+            'auth-token' => $authToken,
+            'street'     => $street,
+            'city'       => $city,
+            'state'      => $state,
+            'zipcode'    => $zip
+        ]);
+
+    $opts = ["http" => ["method" => "GET", "timeout" => 10]];
+    $res = @file_get_contents($url, false, stream_context_create($opts));
+
+    if (!$res) return null;
+
+    $json = json_decode($res, true);
+    return $json[0] ?? null;
+}
+
+// jsonError helper
+function jsonError(string $msg): void {
+    echo json_encode(['status' => 'error', 'message' => $msg]);
+    exit;
+}
+
 // =====================================================
 // NEW: PROPOSAL SNAPSHOT + PDF REPORT SYSTEM
 // =====================================================
@@ -1168,31 +1212,31 @@ function createProposalSnapshot(
  */
 function generateProposalReport(string $proposalId, array $proposal): ?string {
     
-    require_once __DIR__ . '/../vendor/autoload.php';
-
-    $data       = $proposal['data'] ?? [];
-    $location   = $data['location'] ?? [];
-    $parsed     = $proposal['parsed'] ?? [];
-    $pcm        = $proposal['pcm'] ?? [];
-
-    $entityName   = $data['entity']['entityName'] ?? $parsed['entity']['name'] ?? 'Unknown Entity';
-    $contactName  = trim(($data['contact']['contactFirstName'] ?? $parsed['contact']['firstName'] ?? '') . ' ' . 
-                         ($data['contact']['contactLastName'] ?? $parsed['contact']['lastName'] ?? ''));
-    $contactTitle = $data['contact']['contactTitle'] ?? $parsed['contact']['title'] ?? '';
-    $contactPhone = $data['contact']['contactPrimaryPhone'] ?? $parsed['contact']['primaryPhone'] ?? '';
-    $contactEmail = $data['contact']['contactEmail'] ?? $parsed['contact']['email'] ?? '';
-
-    $locationAddress      = $location['locationAddress'] ?? $location['address'] ?? '';
-    $locationCityStateZip = trim(($location['locationCity'] ?? $location['city'] ?? '') . ', ' . 
-                                 ($location['locationState'] ?? $location['state'] ?? '') . ' ' . 
-                                 ($location['locationZip'] ?? $location['zip'] ?? ''));
-
-    $pcCode        = $pcm['pc'] ?? 'PC-1';
-    $commitAllowed = ($pcm['readyForCommit'] ?? false) ? 'YES' : 'NO';
-
-    $parcelDetails = $location['parcelDetails'] ?? [];
-
     try {
+        require_once __DIR__ . '/../vendor/autoload.php';
+
+        $data       = $proposal['data'] ?? [];
+        $location   = $data['location'] ?? [];
+        $parsed     = $proposal['parsed'] ?? [];
+        $pcm        = $proposal['pcm'] ?? [];
+
+        $entityName   = $data['entity']['entityName'] ?? $parsed['entity']['name'] ?? 'Unknown Entity';
+        $contactName  = trim(($data['contact']['contactFirstName'] ?? $parsed['contact']['firstName'] ?? '') . ' ' . 
+                             ($data['contact']['contactLastName'] ?? $parsed['contact']['lastName'] ?? ''));
+        $contactTitle = $data['contact']['contactTitle'] ?? $parsed['contact']['title'] ?? '';
+        $contactPhone = $data['contact']['contactPrimaryPhone'] ?? $parsed['contact']['primaryPhone'] ?? '';
+        $contactEmail = $data['contact']['contactEmail'] ?? $parsed['contact']['email'] ?? '';
+
+        $locationAddress      = $location['locationAddress'] ?? $location['address'] ?? '';
+        $locationCityStateZip = trim(($location['locationCity'] ?? $location['city'] ?? '') . ', ' . 
+                                     ($location['locationState'] ?? $location['state'] ?? '') . ' ' . 
+                                     ($location['locationZip'] ?? $location['zip'] ?? ''));
+
+        $pcCode        = $pcm['pc'] ?? 'PC-1';
+        $commitAllowed = ($pcm['readyForCommit'] ?? false) ? 'YES' : 'NO';
+
+        $parcelDetails = $location['parcelDetails'] ?? [];
+
         $mpdf = new \Mpdf\Mpdf([
             'format'        => 'Letter',
             'margin_left'   => 12,
@@ -1201,6 +1245,7 @@ function generateProposalReport(string $proposalId, array $proposal): ?string {
             'margin_bottom' => 24,
         ]);
 
+        // Header
         $headerHtml = '
         <div style="border-bottom: 3px solid #14377C; padding-bottom: 6px;">
             <table style="width:100%;"><tr>
@@ -1212,6 +1257,7 @@ function generateProposalReport(string $proposalId, array $proposal): ?string {
         $mpdf->SetHTMLHeader($headerHtml);
         $mpdf->SetHTMLFooter('<div style="text-align:center; font-size:8pt; color:#666;">Page {PAGENO} of {nbpg} • Confidential</div>');
 
+        // Basic HTML content
         $html = '
         <h2 style="color:#14377C;">Proposal Summary</h2>
         <p><strong>Entity:</strong> ' . htmlspecialchars($entityName) . '</p>
@@ -1250,4 +1296,5 @@ function generateProposalReport(string $proposalId, array $proposal): ?string {
         return null;
     }
 }
+
 ?>
