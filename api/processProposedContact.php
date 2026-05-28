@@ -45,26 +45,33 @@ error_log('[pipeline-entry] processProposedContact START ' . microtime(true));
 
 #endregion
 
-#region SECTION 02 — Input Resolution
+#region SECTION 02 — Input Resolution (Robust)
 
 $rawInputOriginal = '';
 $activitySessionId = session_id() ?? '';
 
 $rawJson = file_get_contents('php://input');
-$inputData = json_decode($rawJson, true) ?? $_POST;
+$inputData = json_decode($rawJson, true) ?? [];
 
-$rawInputOriginal = $inputData['input'] ?? '';
+if (empty($inputData) && !empty($_POST)) {
+    $inputData = $_POST;
+}
+
+$rawInputOriginal = trim($inputData['input'] ?? '');
+
 if (!empty($inputData['activitySessionId'])) {
     $activitySessionId = $inputData['activitySessionId'];
 }
 
 $rawInput = trim($rawInputOriginal);
 
+error_log("[INPUT] Raw length: " . strlen($rawInput) . " | First 100 chars: " . substr($rawInput, 0, 100));
+
 if ($rawInput === '') {
     jsonError('No input provided');
 }
 
-error_log("[INPUT] Received " . strlen($rawInput) . " characters");
+error_log("[INPUT] ✅ Valid input received");
 
 #endregion
 
