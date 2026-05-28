@@ -45,17 +45,13 @@ error_log('[pipeline-entry] processProposedContact START ' . microtime(true));
 
 #endregion
 
-#region SECTION 02 — Input Resolution (Robust)
+#region SECTION 02 — Input Resolution (Robust + Debug)
 
 $rawInputOriginal = '';
 $activitySessionId = session_id() ?? '';
 
 $rawJson = file_get_contents('php://input');
-$inputData = json_decode($rawJson, true) ?? [];
-
-if (empty($inputData) && !empty($_POST)) {
-    $inputData = $_POST;
-}
+$inputData = json_decode($rawJson, true) ?? $_POST ?? [];
 
 $rawInputOriginal = trim($inputData['input'] ?? '');
 
@@ -65,15 +61,22 @@ if (!empty($inputData['activitySessionId'])) {
 
 $rawInput = trim($rawInputOriginal);
 
-error_log("[INPUT] Raw length: " . strlen($rawInput) . " | First 100 chars: " . substr($rawInput, 0, 100));
+error_log("[INPUT] Length: " . strlen($rawInput) . " | Content: " . substr($rawInput, 0, 150));
 
 if ($rawInput === '') {
     jsonError('No input provided');
 }
 
-error_log("[INPUT] ✅ Valid input received");
+error_log("[INPUT] ✅ Valid input accepted");
 
 #endregion
+
+// =====================================================
+// TEMPORARY CRASH CATCHER
+// =====================================================
+try {
+    error_log("[DEBUG] Starting AI extraction...");
+    // ... rest of your code continues ...
 
 #region SECTION 03 — 🧠 Unified AI Prompt Construction & Execution
 
@@ -1029,22 +1032,27 @@ $reportUrl = $reportPath && file_exists($reportPath)
 
 #region SECTION 12 - FINAL OUTPUT — Response Builder
 
-require_once __DIR__ . '/detectAndProposeContact.response.php';
+    require_once __DIR__ . '/detectAndProposeContact.response.php';
 
-global $proposalId, $reportUrl;
+    global $proposalId, $reportUrl;
 
-echo json_encode([
-    'status'        => 'proposed',
-    'confidence'    => $aiData['confidence'] ?? 85,
-    'success'       => true,
-    'proposalId'    => $proposalId ?? null,
-    'proposalReport'=> [
-        'proposalId' => $proposalId ?? null,
-        'reportUrl'  => $reportUrl,
-        'viewUrl'    => $proposalId ? "/skyesoft/reports/proposals/view.php?id={$proposalId}" : null,
-        'status'     => $reportUrl ? 'generated' : 'pending'
-    ]
-    // response.php will append the rest of the structure
-], JSON_UNESCAPED_SLASHES);
+    echo json_encode([
+        'status'        => 'proposed',
+        'confidence'    => $aiData['confidence'] ?? 85,
+        'success'       => true,
+        'proposalId'    => $proposalId ?? null,
+        'proposalReport'=> [
+            'proposalId' => $proposalId ?? null,
+            'reportUrl'  => $reportUrl,
+            'viewUrl'    => $proposalId ? "/skyesoft/reports/proposals/view.php?id={$proposalId}" : null,
+            'status'     => $reportUrl ? 'generated' : 'pending'
+        ]
+        // response.php will append the rest
+    ], JSON_UNESCAPED_SLASHES);
 
 #endregion
+
+} catch (Throwable $e) {
+    error_log("[FATAL ERROR] " . $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine());
+    jsonError("Internal processing error: " . $e->getMessage());
+}
