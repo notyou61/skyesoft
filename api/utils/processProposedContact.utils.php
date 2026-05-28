@@ -1098,10 +1098,51 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
 }
 
 // Missing helper: inferSalutation
-function inferSalutation(string $firstName, string $lastName): ?string {
-    $first = strtolower(trim($firstName));
-    if (in_array($first, ['mr', 'mrs', 'ms', 'dr', 'miss'])) return null;
-    return 'Mr.'; // Conservative default - can be improved later
+// =====================================================
+// INFER SALUTATION
+// Shared Contact Helper
+// =====================================================
+if (!function_exists('inferSalutation')) {
+
+    function inferSalutation(
+        string $firstName = '',
+        string $lastName = ''
+    ): ?string {
+
+        $first =
+            strtolower(
+                trim($firstName)
+            );
+
+        // --------------------------------------------------
+        // Existing salutation already supplied
+        // --------------------------------------------------
+        if (
+            in_array(
+                $first,
+                [
+                    'mr',
+                    'mr.',
+                    'ms',
+                    'ms.'
+                ],
+                true
+            )
+        ) {
+            return null;
+        }
+
+        // --------------------------------------------------
+        // Conservative fallback
+        // --------------------------------------------------
+        // NOTE:
+        // We avoid automatic gender inference.
+        // Defaulting to "Ms." is operationally safer
+        // than incorrectly assigning "Mr."
+        // --------------------------------------------------
+
+        return 'Ms.';
+    }
 }
 
 // Missing helper: validateAddressSmarty (from original)
