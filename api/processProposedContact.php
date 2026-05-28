@@ -403,6 +403,22 @@ if (!isset($parsed['contact']['primaryPhoneExtension'])) {
 
 #region SECTION 07 — 🧩 Data Processing & Enrichment (Deterministic — Consolidated & Corrected)
 
+// =====================================================
+// DEFENSIVE SALUTATION HELPER (Critical Fix)
+// =====================================================
+if (!function_exists('inferSalutation')) {
+    function inferSalutation(string $firstName = '', string $lastName = ''): ?string {
+        $first = strtolower(trim($firstName));
+        
+        if (in_array($first, ['mr', 'mr.', 'ms', 'ms.', 'dr', 'miss', 'mrs', 'mrs.'], true)) {
+            return null;
+        }
+        
+        // Conservative default - safer than guessing gender
+        return 'Ms.';
+    }
+}
+
 // -------------------------------------------------
 // 🧩 CORE NORMALIZATION PIPELINE
 // -------------------------------------------------
@@ -430,6 +446,10 @@ if ($existingSalutation !== '') {
         $parsed['contact']['salutationInferred'] = null;
     }
 }
+
+// ... rest of your SECTION 07 code continues unchanged ...
+
+#endregion
 
 // -------------------------------------------------
 // 📍 ADDRESS PREP + SUITE EXTRACTION
