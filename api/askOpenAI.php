@@ -1382,49 +1382,78 @@ if (!isset($response) || trim((string)$response) === '') {
     // ───────────────────────────────────────────────
     $detectedIntent = strtolower(trim($intent ?? ''));
 
-    if (
-        in_array($detectedIntent, ['contact_proposal', 'contact_propose'], true) &&
-        ($confidence ?? 0) >= 0.70 &&
-        !empty($query)
-    ) {
+if (
+
+    in_array(
+        $detectedIntent,
+        [
+            'contact_proposal',
+            'contact_propose'
+        ],
+        true
+    )
+
+    &&
+
+    ($confidence ?? 0) >= 0.70
+
+    &&
+
+    !empty($query)
+
+) {
 
     // --------------------------------------------------
     // 📇 Internal Contact Proposal Execution
     // --------------------------------------------------
+
     error_log(
         "[askOpenAI] CONTACT_PROPOSAL detected "
-        . "(confidence: {$confidence}) — executing internally"
+        . "(confidence: {$confidence})"
     );
-
-    // Normalize request into proposal pipeline format
-    $_POST['input'] = $query;
-
-    $_POST['activitySessionId'] =
-        $activitySessionId
-        ?? ($_SESSION['activitySessionId'] ?? session_id());
-
-    $_POST['mode'] = 'propose';
 
     // --------------------------------------------------
     // 📌 Audit Logging
     // --------------------------------------------------
-    $sessionContactId = $_SESSION["contactId"] ?? null;
+
+    $sessionContactId =
+        $_SESSION["contactId"] ?? null;
 
     try {
 
         insertActionPrompt([
-            'contactId'         => $sessionContactId,
-            'promptText'        => $query,
-            'responseText'      => 'contact_propose_execute',
-            'intent'            => $intent,
-            'intentConfidence'  => $confidence,
-            'latitude'          => $latitude,
-            'longitude'         => $longitude,
+
+            'contactId' =>
+                $sessionContactId,
+
+            'promptText' =>
+                $query,
+
+            'responseText' =>
+                'contact_propose_execute',
+
+            'intent' =>
+                $intent,
+
+            'intentConfidence' =>
+                $confidence,
+
+            'latitude' =>
+                $latitude,
+
+            'longitude' =>
+                $longitude,
+
             'activitySessionId' =>
                 $activitySessionId
                 ?? ($_SESSION['activitySessionId'] ?? session_id()),
-            'actionTypeId'      => 3,
-            'origin'            => ACTION_ORIGIN_USER
+
+            'actionTypeId' =>
+                3,
+
+            'origin' =>
+                ACTION_ORIGIN_USER
+
         ], $db);
 
     } catch (Throwable $e) {
@@ -1436,10 +1465,115 @@ if (!isset($response) || trim((string)$response) === '') {
     }
 
     // --------------------------------------------------
-    // 🚀 Execute Proposal Engine Directly
+    // 🚀 Execute Proposal Processor
     // --------------------------------------------------
+
     session_write_close();
-    require __DIR__ . '/processProposedContact.php';
+
+    $postData = [
+
+        'input' =>
+            $query,
+
+        'activitySessionId' =>
+            $activitySessionId
+            ?? ($_SESSION['activitySessionId'] ?? session_id()),
+
+        'mode' =>
+            'propose'
+
+    ];
+
+    $processorUrl =
+        'https://skyelighting.com/skyesoft/api/processProposedContact.php';
+
+    $ch =
+        curl_init($processorUrl);
+
+    curl_setopt_array($ch, [
+
+        CURLOPT_POST => true,
+
+        CURLOPT_RETURNTRANSFER => true,
+
+        CURLOPT_TIMEOUT => 45,
+
+        CURLOPT_CONNECTTIMEOUT => 10,
+
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json'
+        ],
+
+        CURLOPT_POSTFIELDS =>
+            json_encode(
+                $postData,
+                JSON_UNESCAPED_SLASHES
+            )
+
+    ]);
+
+    $proposalResponse =
+        curl_exec($ch);
+
+    if ($proposalResponse === false) {
+
+        $curlError =
+            curl_error($ch);
+
+        $ch = null;
+
+        error_log(
+            "[askOpenAI] Proposal processor curl failed: "
+            . $curlError
+        );
+
+        echo json_encode([
+
+            'status' =>
+                'error',
+
+            'message' =>
+                'Failed to execute proposal processor.'
+
+        ]);
+
+        exit;
+    }
+
+    $httpCode =
+        curl_getinfo(
+            $ch,
+            CURLINFO_HTTP_CODE
+        );
+
+    // PHP 8.5+ automatic cleanup
+    $ch = null;
+
+    if ($httpCode !== 200) {
+
+        error_log(
+            "[askOpenAI] Proposal processor returned HTTP {$httpCode}"
+        );
+
+        echo json_encode([
+
+            'status' =>
+                'error',
+
+            'message' =>
+                'Proposal processor returned invalid response.'
+
+        ]);
+
+        exit;
+    }
+
+    // --------------------------------------------------
+    // Return Proposal Response Directly
+    // --------------------------------------------------
+
+    echo $proposalResponse;
+
     exit;
 }
 
