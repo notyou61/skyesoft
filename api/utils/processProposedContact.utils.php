@@ -1098,20 +1098,18 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
 }
 
 // =====================================================
-// SHARED HELPERS (Defensive — prevent redeclaration)
+// DEFENSIVE SHARED HELPERS
 // =====================================================
 
 if (!function_exists('inferSalutation')) {
     function inferSalutation(string $firstName = '', string $lastName = ''): ?string {
         $first = strtolower(trim($firstName));
 
-        // If AI already provided a salutation, don't override
         if (in_array($first, ['mr', 'mr.', 'ms', 'ms.', 'dr', 'miss'], true)) {
-            return null;
+            return null; // AI already provided one
         }
 
-        // Conservative default — "Ms." is safer in professional contexts
-        return 'Ms.';
+        return 'Ms.'; // Safer professional default
     }
 }
 
@@ -1125,23 +1123,19 @@ if (!function_exists('validateAddressSmarty')) {
             return null;
         }
 
-        $url = "https://us-street.api.smarty.com/street-address?"
-            . http_build_query([
-                'auth-id'    => $authId,
-                'auth-token' => $authToken,
-                'street'     => $street,
-                'city'       => $city,
-                'state'      => $state,
-                'zipcode'    => $zip
-            ]);
+        $url = "https://us-street.api.smarty.com/street-address?" . http_build_query([
+            'auth-id'    => $authId,
+            'auth-token' => $authToken,
+            'street'     => $street,
+            'city'       => $city,
+            'state'      => $state,
+            'zipcode'    => $zip
+        ]);
 
         $opts = ["http" => ["method" => "GET", "timeout" => 10]];
         $res = @file_get_contents($url, false, stream_context_create($opts));
 
-        if (!$res) {
-            error_log('[smarty] request failed');
-            return null;
-        }
+        if (!$res) return null;
 
         $json = json_decode($res, true);
         return $json[0] ?? null;

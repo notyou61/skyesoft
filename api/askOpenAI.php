@@ -245,6 +245,7 @@ function loadUnresolvedStructuralViolations(): ?array {
 }
 
 // Infer Salutation (Mr/Ms) based on first and last name using AI — includes robust normalization and error handling to ensure clean output.
+if (!function_exists('inferSalutation')) {
 function inferSalutation(string $firstName, string $lastName): ?string {
 
     // 🔒 Guard — do not call AI with empty names
@@ -293,6 +294,7 @@ PROMPT;
     if ($response === 'ms') return 'Ms';
 
     return null;
+}
 }
 
 // Infer Title
