@@ -1097,89 +1097,64 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
     ];
 }
 
-// Missing helper: inferSalutation
 // =====================================================
-// INFER SALUTATION
-// Shared Contact Helper
+// SHARED HELPERS (Defensive — prevent redeclaration)
 // =====================================================
+
 if (!function_exists('inferSalutation')) {
+    function inferSalutation(string $firstName = '', string $lastName = ''): ?string {
+        $first = strtolower(trim($firstName));
 
-    function inferSalutation(
-        string $firstName = '',
-        string $lastName = ''
-    ): ?string {
-
-        $first =
-            strtolower(
-                trim($firstName)
-            );
-
-        // --------------------------------------------------
-        // Existing salutation already supplied
-        // --------------------------------------------------
-        if (
-            in_array(
-                $first,
-                [
-                    'mr',
-                    'mr.',
-                    'ms',
-                    'ms.'
-                ],
-                true
-            )
-        ) {
+        // If AI already provided a salutation, don't override
+        if (in_array($first, ['mr', 'mr.', 'ms', 'ms.', 'dr', 'miss'], true)) {
             return null;
         }
 
-        // --------------------------------------------------
-        // Conservative fallback
-        // --------------------------------------------------
-        // NOTE:
-        // We avoid automatic gender inference.
-        // Defaulting to "Ms." is operationally safer
-        // than incorrectly assigning "Mr."
-        // --------------------------------------------------
-
+        // Conservative default — "Ms." is safer in professional contexts
         return 'Ms.';
     }
 }
 
-// Missing helper: validateAddressSmarty (from original)
-function validateAddressSmarty(string $street, string $city, string $state, string $zip): ?array {
-    $authId    = skyesoftGetEnv('SMARTY_AUTH_ID');
-    $authToken = skyesoftGetEnv('SMARTY_AUTH_TOKEN');
+if (!function_exists('validateAddressSmarty')) {
+    function validateAddressSmarty(string $street, string $city, string $state, string $zip): ?array {
+        $authId    = skyesoftGetEnv('SMARTY_AUTH_ID');
+        $authToken = skyesoftGetEnv('SMARTY_AUTH_TOKEN');
 
-    if (!$authId || !$authToken) {
-        error_log('[smarty] missing credentials');
-        return null;
+        if (!$authId || !$authToken) {
+            error_log('[smarty] missing credentials');
+            return null;
+        }
+
+        $url = "https://us-street.api.smarty.com/street-address?"
+            . http_build_query([
+                'auth-id'    => $authId,
+                'auth-token' => $authToken,
+                'street'     => $street,
+                'city'       => $city,
+                'state'      => $state,
+                'zipcode'    => $zip
+            ]);
+
+        $opts = ["http" => ["method" => "GET", "timeout" => 10]];
+        $res = @file_get_contents($url, false, stream_context_create($opts));
+
+        if (!$res) {
+            error_log('[smarty] request failed');
+            return null;
+        }
+
+        $json = json_decode($res, true);
+        return $json[0] ?? null;
     }
-
-    $url = "https://us-street.api.smarty.com/street-address?"
-        . http_build_query([
-            'auth-id'    => $authId,
-            'auth-token' => $authToken,
-            'street'     => $street,
-            'city'       => $city,
-            'state'      => $state,
-            'zipcode'    => $zip
-        ]);
-
-    $opts = ["http" => ["method" => "GET", "timeout" => 10]];
-    $res = @file_get_contents($url, false, stream_context_create($opts));
-
-    if (!$res) return null;
-
-    $json = json_decode($res, true);
-    return $json[0] ?? null;
 }
 
-// jsonError helper
-function jsonError(string $msg): void {
-    echo json_encode(['status' => 'error', 'message' => $msg]);
-    exit;
+if (!function_exists('jsonError')) {
+    function jsonError(string $msg): void {
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'error', 'message' => $msg], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
 }
-
 // =====================================================
 // NEW: PROPOSAL SNAPSHOT + PDF REPORT SYSTEM
 // =====================================================
