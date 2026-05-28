@@ -71,13 +71,6 @@ error_log("[INPUT] ✅ Valid input accepted");
 
 #endregion
 
-// =====================================================
-// TEMPORARY CRASH CATCHER
-// =====================================================
-try {
-    error_log("[DEBUG] Starting AI extraction...");
-    // ... rest of your code continues ...
-
 #region SECTION 03 — 🧠 Unified AI Prompt Construction & Execution
 
 // =====================================================
@@ -446,10 +439,6 @@ if ($existingSalutation !== '') {
         $parsed['contact']['salutationInferred'] = null;
     }
 }
-
-// ... rest of your SECTION 07 code continues unchanged ...
-
-#endregion
 
 // -------------------------------------------------
 // 📍 ADDRESS PREP + SUITE EXTRACTION
@@ -1054,25 +1043,7 @@ $reportUrl = $reportPath && file_exists($reportPath)
 
     require_once __DIR__ . '/detectAndProposeContact.response.php';
 
-    global $proposalId, $reportUrl;
-
-    echo json_encode([
-        'status'        => 'proposed',
-        'confidence'    => $aiData['confidence'] ?? 85,
-        'success'       => true,
-        'proposalId'    => $proposalId ?? null,
-        'proposalReport'=> [
-            'proposalId' => $proposalId ?? null,
-            'reportUrl'  => $reportUrl,
-            'viewUrl'    => $proposalId ? "/skyesoft/reports/proposals/view.php?id={$proposalId}" : null,
-            'status'     => $reportUrl ? 'generated' : 'pending'
-        ]
-        // response.php will append the rest
-    ], JSON_UNESCAPED_SLASHES);
+    // Do NOT echo JSON here — let response.php handle the full output
+    global $proposalId, $reportUrl, $parsed, $pcm, $data, $meta, $resolution, $persistence, $aiData, $rawInputOriginal, $activitySessionId;
 
 #endregion
-
-} catch (Throwable $e) {
-    error_log("[FATAL ERROR] " . $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine());
-    jsonError("Internal processing error: " . $e->getMessage());
-}
