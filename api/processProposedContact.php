@@ -1,45 +1,45 @@
 <?php
 declare(strict_types=1);
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 
 /**
  * Skyesoft — processProposedContact.php
  * Main Orchestration + Proposal Report Generation
- * Version: 1.6.0
+ * Version: 1.6.1
  * Last Updated: 2026-05-28
  */
 
 #region SECTION 00 — Force Fresh Code
 
-error_log("=== PROCESSPROPOSEDCONTACT.PHP v1.6.0 ===" . date('Y-m-d H:i:s'));
+error_log("=== PROCESSPROPOSEDCONTACT.PHP v1.6.1 START === " . date('Y-m-d H:i:s'));
 
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
+    error_log("[OPCACHE] Main file invalidated");
 }
 
 require_once __DIR__ . '/utils/processProposedContact.utils.php';
 
+error_log("[PIPELINE] Utils file loaded successfully");
+
 #endregion
 
-#region SECTION 01 — Runtime Configuration
-
+#region SECTION 01 — Runtime Configuration + Input
 
 if (!headers_sent()) {
     header('Content-Type: application/json');
 }
 
-error_reporting(E_ALL);
+// Defensive error settings for production + debugging
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
 ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/debug.log');
+error_reporting(E_ALL);
 
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/envLoader.php';
 
 skyesoftLoadEnv();
-$pdo = getPDO();
+$pdo = getPDO() ?? null;
 
 error_log('[pipeline-entry] processProposedContact START ' . microtime(true));
 
@@ -48,34 +48,23 @@ error_log('[pipeline-entry] processProposedContact START ' . microtime(true));
 #region SECTION 02 — Input Resolution
 
 $rawInputOriginal = '';
-$activitySessionId = $_POST['activitySessionId'] ?? $_SESSION['activitySessionId'] ?? session_id() ?? '';
+$activitySessionId = session_id() ?? '';
 
-if (isset($query) && is_string($query) && trim($query) !== '') {
-    $rawInputOriginal = $query;
-} else {
-    $rawJson = file_get_contents('php://input');
-    $input = json_decode($rawJson, true) ?? [];
-    $rawInputOriginal = $input['input'] ?? '';
-    if (!empty($input['activitySessionId'])) $activitySessionId = $input['activitySessionId'];
+$rawJson = file_get_contents('php://input');
+$inputData = json_decode($rawJson, true) ?? $_POST;
+
+$rawInputOriginal = $inputData['input'] ?? '';
+if (!empty($inputData['activitySessionId'])) {
+    $activitySessionId = $inputData['activitySessionId'];
 }
 
 $rawInput = trim($rawInputOriginal);
+
 if ($rawInput === '') {
     jsonError('No input provided');
 }
 
-// PC-4 Explicit Location-Only
-$isExplicitLocationOnlyIntent = false;
-$declaredEntityName = null;
-
-if (preg_match('/(?:add\s+)?(?:this\s+as\s+)?(?:a\s+new\s+)?location\s+only\s+for\s+([^\n\r:]+)/i', $rawInput, $matches)) {
-    $isExplicitLocationOnlyIntent = true;
-    $declaredEntityName = trim($matches[1]);
-    $rawInput = preg_replace('/(?:add\s+)?(?:this\s+as\s+)?(?:a\s+new\s+)?location\s+only\s+for\s+[^\n\r:]+:?/i', '', $rawInput);
-    $rawInput = trim($rawInput);
-}
-
-if ($rawInput === '') jsonError('No input after directive processing');
+error_log("[INPUT] Received " . strlen($rawInput) . " characters");
 
 #endregion
 
