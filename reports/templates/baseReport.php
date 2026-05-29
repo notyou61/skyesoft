@@ -1,11 +1,8 @@
 <?php
 // =============================================
-// baseReport.php - Universal Report Renderer
+// baseReport.php - Universal Renderer
 // =============================================
 require_once __DIR__ . '/../../vendor/autoload.php';
-
-// IMPORTANT: Include the report-specific functions BEFORE they are called
-require_once __DIR__ . '/../contactProposalReport.php';
 
 function renderReport(array $report): string
 {
@@ -25,14 +22,14 @@ function renderReport(array $report): string
         </div>
     ');
 
-    // Summary - Always first
+    // Page 1: Executive Summary
     $mpdf->WriteHTML('<h1 style="color:#003087;">Executive Summary</h1>');
     $mpdf->WriteHTML($report['reportSummary'] ?? '<p>No summary available.</p>');
 
     $mpdf->AddPage();
 
-    // Report Body (specific to type)
-    renderContactProposalBody($mpdf, $report['reportData'] ?? [], $report['reportArtifacts'] ?? []);
+    // All remaining content (fully generic)
+    $mpdf->WriteHTML($report['reportBodyHtml'] ?? '');
 
     // Universal Footer
     $mpdf->SetHTMLFooter('

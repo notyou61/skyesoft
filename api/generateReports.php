@@ -2,12 +2,12 @@
 declare(strict_types=1);
 // =============================================
 //  Skyesoft — generateReports.php
-//  Version: 1.0.1 - Debug Mode
+//  Version: 1.0.2
 //  Last Updated: 2026-05-29
 // =============================================
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);   // ← Turn on for debugging
+ini_set('display_errors', 1);   // Keep on for now
 
 // =============================================
 // SECTION 02 - Request Intake
@@ -44,12 +44,14 @@ if (!$reportHandler) {
 try {
     require_once $reportHandler['file'];
     
-    $report = generateReport($input);
+    // Use the specific generator function (no more generic generateReport)
+    $report = generateContactProposalReport($input);
     
     if (!$report || !is_array($report)) {
         throw new Exception('Report generation failed - invalid report object');
     }
     
+    // Universal rendering
     require_once __DIR__ . '/../reports/templates/baseReport.php';
     $pdfContent = renderReport($report);
     
