@@ -80,14 +80,13 @@ try {
         throw new Exception('PDF generation returned empty content');
     }
 
-    // === SUCCESS: Deliver PDF ===
+    // === SUCCESS: Deliver PDF for viewing in new tab ===
     header('Content-Type: application/pdf');
-    header('Content-Disposition: attachment; filename="Proposed_Contact_Report_' 
-           . date('Ymd_His') . '.pdf"');   // Changed to attachment for reliability
+    header('Content-Disposition: inline; filename="Proposed_Contact_Report_' 
+           . date('Ymd_His') . '.pdf"');
     header('Content-Length: ' . strlen($pdfContent));
     header('Cache-Control: no-cache, must-revalidate');
     header('Pragma: no-cache');
-    header('Expires: 0');
     
     echo $pdfContent;
     exit;
