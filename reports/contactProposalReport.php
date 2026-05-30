@@ -1,86 +1,381 @@
 <?php
+declare(strict_types=1);
+
 // =============================================
-// contactProposalReport.php
+//  Skyesoft — contactProposalReport.php
+//  Version: 1.4.0
+//  Last Updated: 2026-05-30
 // =============================================
 
+#region SECTION 00 - Main Report Generator
+
+/**
+ * Main entry point for generating a Contact Proposal Report.
+ * Called by generateReports.php via the report registry.
+ */
 function generateContactProposalReport(array $input): array
 {
-    // TODO: Later this will receive live data from processProposedContact.php
-    $proposal = getTestProposalData();
-
+    $proposal = getProposalData($input);
+    
     $bodyHtml = buildContactProposalBody($proposal);
-
+    
     return [
-        'reportType'      => 'contact_proposal',
-        'reportTitle'     => 'Proposed Contact Report - ' . ($proposal['entity_name'] ?? 'Unknown'),
-        'reportSummary'   => generateSummarySection($proposal),
-        'reportBodyHtml'  => $bodyHtml,
-        'reportArtifacts' => collectArtifacts($proposal),
-        'reportMeta'      => [
+        'reportType'     => 'contact_proposal',
+        'reportTitle'    => 'Proposed Contact Report - ' . ($proposal['entityName'] ?? $proposal['entity_name'] ?? 'Unknown'),
+        'reportSummary'  => generateSummarySection($proposal),
+        'reportBodyHtml' => $bodyHtml,
+        'reportArtifacts'=> collectArtifacts($proposal),
+        'reportMeta'     => [
             'generated_at' => date('Y-m-d H:i:s'),
             'proposal_id'  => $input['proposalId'] ?? null
         ]
     ];
 }
 
+#endregion
+
+#region SECTION 01 - HTML Body Builder
+
 /**
- * Build full HTML body (all pages after summary)
+ * Build full HTML body by assembling modular sections.
+ * Structured to mirror the page flow from test_mpdf.php.
  */
 function buildContactProposalBody(array $proposal): string
 {
     $html = '';
 
-    // Entity, Contact, Location
-    $html .= '<h2>Entity Information</h2>';
-    $html .= '<p><strong>Name:</strong> ' . htmlspecialchars($proposal['entity_name'] ?? 'N/A') . '</p>';
+    // Page 2: Core Entity, Contact, Location
+    $html .= buildEntitySection($proposal);
+    $html .= buildContactSection($proposal);
+    $html .= buildLocationSection($proposal);
+    $html .= insertPageBreak();
 
-    $html .= '<h2>Contact Information</h2>';
-    $html .= '<p><strong>Contact:</strong> ' . htmlspecialchars($proposal['contact_name'] ?? 'N/A') . '</p>';
+    // Page 3: Visual Context
+    $html .= buildSatelliteSection($proposal);
+    $html .= buildParcelSummarySection($proposal);
+    $html .= insertPageBreak();
 
-    $html .= '<h2>Location Information</h2>';
-    $html .= '<p><strong>Address:</strong> ' . htmlspecialchars($proposal['address'] ?? 'N/A') . '</p>';
+    // Page 4+: Detailed Parcels
+    $html .= buildParcelDetailSection($proposal);
+    $html .= insertPageBreak();
 
-    $html .= '<hr>';
-
-    // Parcel Candidate Summary
-    $html .= '<h2>Parcel Candidate Summary</h2>';
-    $html .= '<p>Placeholder for parcel analysis, scores, and recommendations.</p>';
-
-    // Parcel Detail Pages (loop ready)
-    $html .= '<h2>Parcel Details</h2>';
-    $html .= '<p>Individual parcel detail blocks will go here.</p>';
-
-    // Street View + Governance
-    $html .= '<h2>Street View &amp; Governance</h2>';
-    $html .= '<p>Street view images and governance narrative will be rendered here.</p>';
+    // Final Page: Street View + Governance
+    $html .= buildStreetViewSection($proposal);
+    $html .= buildGovernanceSection($proposal);
 
     return $html;
 }
 
-function generateSummarySection(array $proposal): string
+#endregion
+
+#region SECTION 01A - Entity Information
+
+function buildEntitySection(array $proposal): string
+{
+    $entityName = $proposal['entityName'] ?? $proposal['entity_name'] ?? 'N/A';
+    $entityAction = $proposal['entityAction'] ?? 'reuse';
+
+    $html = buildSectionHeader('Entity Information', 'property.png');
+    $html .= '<table class="dataTable">';
+    $html .= '<tr><th>Entity Name</th><td>' . htmlspecialchars($entityName) . '</td></tr>';
+    $html .= '<tr><th>Action</th><td>' . htmlspecialchars(ucfirst($entityAction)) . '</td></tr>';
+    $html .= '</table>';
+    return $html;
+}
+
+#endregion
+
+#region SECTION 01B - Contact Information
+
+function buildContactSection(array $proposal): string
+{
+    $html = buildSectionHeader('Contact Information', 'users.png');
+    $html .= '<table class="dataTable">';
+    $html .= '<tr><th>Contact Name</th><td>' . htmlspecialchars($proposal['contactName'] ?? $proposal['contact_name'] ?? 'N/A') . '</td></tr>';
+    $html .= '<tr><th>Title</th><td>' . htmlspecialchars($proposal['contactTitle'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Phone</th><td>' . htmlspecialchars($proposal['contactPhone'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Email</th><td>' . htmlspecialchars($proposal['contactEmail'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Action</th><td>' . htmlspecialchars(ucfirst($proposal['contactAction'] ?? 'create')) . '</td></tr>';
+    $html .= '</table>';
+    return $html;
+}
+
+#endregion
+
+#region SECTION 01C - Location Information
+
+function buildLocationSection(array $proposal): string
+{
+    $html = buildSectionHeader('Location Information', 'pin.png');
+    $html .= '<table class="dataTable">';
+    $html .= '<tr><th>Full Address</th><td>' . htmlspecialchars($proposal['locationAddress'] ?? $proposal['address'] ?? 'N/A') . '</td></tr>';
+    $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>County</th><td>' . htmlspecialchars($proposal['locationCounty'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>County FIPS</th><td>' . htmlspecialchars($proposal['locationCountyFips'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($proposal['locationPlaceId'] ?? '—') . '</td></tr>';
+    $html .= '</table>';
+    return $html;
+}
+
+#endregion
+
+#region SECTION 01D - Satellite Context
+
+function buildSatelliteSection(array $proposal): string
+{
+    $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+    $html .= renderImagePlaceholder('satellite', $proposal);
+    $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
+    $html .= htmlspecialchars($proposal['locationAddress'] ?? $proposal['address'] ?? '') . ', ';
+    $html .= htmlspecialchars($proposal['locationCityStateZip'] ?? '') . ' • Google Satellite View';
+    $html .= '</p>';
+    return $html;
+}
+
+#endregion
+
+#region SECTION 01E - Parcel Candidate Summary
+
+function buildParcelSummarySection(array $proposal): string
+{
+    $parcelSummary = $proposal['parcelSummaryNarrative'] ?? 
+                    'Multiple parcel candidates were identified at this address. Review and selection is required before proceeding.';
+    
+    $html = buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
+    $html .= '<div class="parcelSummaryBlock">';
+    $html .= nl2br(htmlspecialchars($parcelSummary));
+    $html .= '</div>';
+    return $html;
+}
+
+#endregion
+
+#region SECTION 01F - Parcel Detail Pages
+
+function buildParcelDetailSection(array $proposal): string
+{
+    $parcelDetails = $proposal['parcelDetails'] ?? $proposal['location']['parcelDetails'] ?? [];
+    if (empty($parcelDetails)) {
+        return buildSectionHeader('Parcel Details', 'compass.png') . '<p>No parcel details available.</p>';
+    }
+
+    $html = buildSectionHeader('Parcel Candidates – Visual Review', 'compass.png');
+
+    foreach ($parcelDetails as $index => $parcel) {
+        $parcelNum = $index + 1;
+        $html .= '<div class="parcel-block">';
+        
+        $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">';
+        $html .= '<div>';
+        $html .= '<span style="font-size:14pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>';
+        $html .= '<span style="font-size:12.5pt; font-weight:600; margin-left:12px;">APN: ' . htmlspecialchars($parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? '—') . '</span>';
+        $html .= '</div>';
+        $html .= '<div style="background:#e6f0ff; color:#14377C; padding:4px 14px; border-radius:5px; font-size:10pt; font-weight:600;">';
+        $html .= 'Confidence: ' . ($parcel['confidence'] ?? 98) . '%';
+        $html .= '</div>';
+        $html .= '</div>';
+
+        $html .= '<table class="dataTable" style="margin-bottom:10px;">';
+        $html .= '<tr><th style="width:20%;">Owner</th><td>' . htmlspecialchars($parcel['owner'] ?? '—') . '</td></tr>';
+        $html .= '<tr><th>Address</th><td>' . htmlspecialchars($parcel['address'] ?? '') . ', ' . htmlspecialchars($parcel['city'] ?? '') . '</td></tr>';
+        $html .= '</table>';
+
+        $html .= renderImagePlaceholder('parcel', $proposal, $parcelNum);
+
+        $html .= '</div>';
+    }
+
+    return $html;
+}
+
+#endregion
+
+#region SECTION 01G - Street View Verification
+
+function buildStreetViewSection(array $proposal): string
+{
+    $html = buildSectionHeader('Street View Verification', 'property.png');
+    $html .= renderImagePlaceholder('streetview', $proposal);
+    $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
+    $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? $proposal['address'] ?? '');
+    $html .= '</p>';
+    return $html;
+}
+
+#endregion
+
+#region SECTION 01H - Governance Narrative
+
+function buildGovernanceSection(array $proposal): string
+{
+    $narrative = $proposal['governanceNarrative'] ?? 
+                'This proposal references an existing operational location. Review and selection of the correct parcel is required before committing.';
+
+    $html = buildSectionHeader('Governance &amp; Operational Narrative', 'scales.png');
+    $html .= '<div class="highlight">';
+    $html .= nl2br(htmlspecialchars($narrative));
+    $html .= '</div>';
+    return $html;
+}
+
+#endregion
+
+#region SECTION 02 - Section Header Helper
+
+/**
+ * Build consistent section header with icon (matches test_mpdf.php).
+ */
+function buildSectionHeader(string $title, string $icon = 'clipboard.png'): string
 {
     return '
-        <p>' . htmlspecialchars($proposal['ai_narrative'] ?? 'No narrative available.') . '</p>
-        <p><strong>Confidence:</strong> ' . htmlspecialchars($proposal['confidence'] ?? 'N/A') . '</p>
+    <table class="sectionHeaderTable">
+        <tr>
+            <td class="sectionIconCell">
+                <img src="https://skyelighting.com/skyesoft/assets/images/icons/' . htmlspecialchars($icon) . '" 
+                     class="sectionIcon" alt="' . htmlspecialchars($title) . '">
+            </td>
+            <td class="sectionTitleCell">
+                <div class="sectionTitle">' . htmlspecialchars($title) . '</div>
+            </td>
+        </tr>
+    </table>';
+}
+
+#endregion
+
+#region SECTION 03 - Helpers
+
+function insertPageBreak(): string
+{
+    return '<div style="page-break-before: always;"></div>';
+}
+
+/**
+ * Render image placeholders compatible with baseReport.php processor.
+ */
+function renderImagePlaceholder(string $type, array $proposal, int $parcelNum = 0): string
+{
+    $label = strtoupper($type);
+    if ($type === 'parcel') {
+        $label .= ' ' . $parcelNum;
+    }
+    
+    return '
+    <div style="text-align:center; padding:15px; border:2px solid #14377C; border-radius:8px; background:#f8f9fa; margin:12px 0; min-height:260px; display:flex; align-items:center; justify-content:center;">
+        [ ' . $label . ' IMAGE PLACEHOLDER ]
+    </div>';
+}
+
+#endregion
+
+#region SECTION 04 - Summary Section
+
+/**
+ * Generate rich summary section matching test_mpdf.php structure.
+ */
+function generateSummarySection(array $proposal): string
+{
+    $narrative = $proposal['reportSummaryNarrative'] ?? $proposal['ai_narrative'] ?? 'No narrative available.';
+    $confidence = $proposal['confidence'] ?? 85;
+    $pcCode = $proposal['pcCode'] ?? 'PC-3';
+    $resolutionStatus = $proposal['resolutionStatus'] ?? 'multiple_parcels';
+    $commitAllowed = $proposal['commitAllowed'] ?? 'NO';
+
+    return '
+        <div class="summaryNarrative">
+            ' . nl2br(htmlspecialchars($narrative)) . '
+        </div>
+        <table class="summaryMetaTable">
+            <tr>
+                <td><strong>Proposal Code:</strong> ' . htmlspecialchars($pcCode) . '</td>
+                <td><strong>Confidence:</strong> ' . $confidence . '%</td>
+                <td><strong>Status:</strong> ' . htmlspecialchars($resolutionStatus) . '</td>
+                <td><strong>Commit Ready:</strong> <span style="color:#c00;">' . htmlspecialchars($commitAllowed) . '</span></td>
+            </tr>
+        </table>
     ';
 }
 
+#endregion
+
+#region SECTION 05 - Artifacts Collection
+
+/**
+ * Collect report artifacts for the base renderer.
+ */
 function collectArtifacts(array $proposal): array
 {
     return [
-        'satellite'   => $proposal['satellite_image'] ?? null,
-        'streetview'  => $proposal['street_view'] ?? null,
-        'parcel_maps' => $proposal['parcel_maps'] ?? []
+        'satellite'     => $proposal['satelliteImage'] ?? $proposal['satellite_image'] ?? null,
+        'streetview'    => $proposal['streetViewImage'] ?? $proposal['street_view'] ?? null,
+        'parcel_maps'   => $proposal['parcelImages'] ?? $proposal['parcel_maps'] ?? [],
+        'proposal_json' => $proposal['sourceJsonPath'] ?? null
     ];
 }
 
+#endregion
+
+#region SECTION 06 - Proposal Data Source
+
+/**
+ * Returns proposal data for report generation.
+ * Supports both test data and real proposal structure from processProposedContact.php.
+ */
+function getProposalData(array $input): array
+{
+    if (!empty($input['proposal']) && is_array($input['proposal'])) {
+        return $input['proposal'];
+    }
+
+    return getTestProposalData();
+}
+
+/**
+ * Rich mock data matching test_mpdf.php structure.
+ */
 function getTestProposalData(): array
 {
     return [
-        'entity_name'   => 'Test Entity LLC',
-        'contact_name'  => 'John Smith',
-        'address'       => '123 Main Street, Tempe, AZ 85281',
-        'ai_narrative'  => 'Strong candidate for outreach based on zoning and ownership patterns.',
-        'confidence'    => 'High'
+        'entityName'           => 'Christy Signs',
+        'contactName'          => 'Ms Susan Alderson',
+        'contactTitle'         => 'Accounting',
+        'contactPhone'         => '(602) 242-4488',
+        'contactEmail'         => 'susan@christysigns.com',
+        'locationAddress'      => '3145 N 33rd Ave',
+        'locationCityStateZip' => 'Phoenix, AZ 85017',
+        'locationPlaceId'      => 'ChIJeTvhT3ATK4cRpfapSIlCjFw',
+        'locationCounty'       => 'Maricopa',
+        'locationCountyFips'   => '04013',
+        'locationJurisdiction' => 'Phoenix',
+        'confidence'           => 85,
+        'pcCode'               => 'PC-3',
+        'resolutionStatus'     => 'multiple_parcels',
+        'commitAllowed'        => 'NO',
+        'governanceNarrative'  => 'This proposal references an existing operational location. Review: Multiple parcel candidates were found at this address and user selection is required before commit.',
+        'reportSummaryNarrative' => 'Strong candidate for outreach based on zoning and ownership patterns.',
+        'parcelSummaryNarrative' => 'Multiple parcel candidates were identified at this address. Review and selection is required before proceeding.',
+        'entityAction'         => 'reuse',
+        'contactAction'        => 'create',
+        'parcelDetails'        => [
+            [
+                'apnRaw' => '10803009E',
+                'apnDisplay' => '108-03-009E',
+                'address' => '3145 N 33RD AVE',
+                'city' => 'PHOENIX',
+                'owner' => 'RONALD L REYNOLDS AND JACQUELINE S REYNOLDS FAMILY TRUST',
+                'confidence' => 98
+            ],
+            [
+                'apnRaw' => '10803051',
+                'apnDisplay' => '108-03-051',
+                'address' => '3145 N 33RD AVE',
+                'city' => 'PHOENIX',
+                'owner' => 'J2 FLOWER LLC',
+                'confidence' => 98
+            ]
+        ]
     ];
 }
+
+#endregion
