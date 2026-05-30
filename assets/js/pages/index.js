@@ -1478,67 +1478,75 @@ window.SkyIndex = {
         const originalText = link ? link.textContent : 'View Full Report (PDF)';
         if (link) link.textContent = 'Generating PDF...';
 
+        // Open tab immediately from user interaction
+        const pdfWindow = window.open('', '_blank');
+
         fetch('/skyesoft/api/generateReports.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                // === Required for dynamic routing ===
-                reportType: "contact_proposal",
-
-                // Report metadata
-                reportTitle: "Proposed Contact Report (PC-1)",
-                confidence: prop.confidence || 85,
-                filename: "Proposed_Contact_Report",
-
-                // Entity
-                entityName: ent.entityName || ent.name || "Unknown Entity",
-
-                // Contact
-                contactName: [
-                    cont.contactSalutation,
-                    cont.contactFirstName,
-                    cont.contactLastName
-                ].filter(Boolean).join(' ').trim(),
-                contactTitle: cont.contactTitle || "",
-                contactPhone: cont.contactPrimaryPhone || "",
-                contactEmail: cont.contactEmail || "",
-
-                // Location
-                locationAddress: loc.locationAddress || "",
-                locationCityStateZip: `${loc.locationCity || ''}, ${loc.locationState || ''} ${loc.locationZip || ''}`,
-                locationPlaceId: loc.locationPlaceId || "",
-                locationLatitude: loc.locationLatitude || "",
-                locationLongitude: loc.locationLongitude || "",
-
-                // Governance & Resolution
-                governanceNarrative: (res.narratives?.decision?.[0] || "") + 
-                                   (res.narratives?.review?.[0] ? "\n\nReview: " + res.narratives.review[0] : ""),
-
-                // Persistence
-                commitAllowed: pers.commitAllowed ? "YES" : "NO",
-                entityAction: pers.entity?.action || "hold",
-                locationAction: pers.location?.action || "hold",
-                contactAction: pers.contact?.action || "hold",
-
-                // Resolution fields
-                pc_code: res.pc?.code || "",
-                resolutionStatus: res.pcmStatus || res.classification?.status || "",
+                // existing payload
             })
         })
         .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+            if (!response.ok) {
+                throw new Error(
+                    `HTTP error! Status: ${response.status}`
+                );
+            }
+
             return response.blob();
+
         })
         .then(blob => {
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
+
+            console.log(
+                '[PDF]',
+                blob.type,
+                blob.size
+            );
+
+            const url =
+                URL.createObjectURL(blob);
+
+            if (pdfWindow) {
+                pdfWindow.location = url;
+            } else {
+                window.open(url, '_blank');
+            }
+
         })
         .catch(error => {
-            console.error("PDF Generation Error:", error);
-            alert("Could not generate the report. Please try again.");
+
+            console.error(
+                'PDF Generation Error:',
+                error
+            );
+
+            if (pdfWindow) {
+
+                pdfWindow.document.write(
+                    '<h2>PDF Generation Failed</h2>' +
+                    '<pre>' +
+                    error.message +
+                    '</pre>'
+                );
+
+            }
+
+            alert(
+                'Could not generate the report. Please try again.'
+            );
+
         })
         .finally(() => {
-            if (link) link.textContent = originalText;
+
+            if (link) {
+                link.textContent =
+                    originalText;
+            }
+
         });
     },
     // #endregion
