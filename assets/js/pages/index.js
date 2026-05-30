@@ -1478,12 +1478,12 @@ window.SkyIndex = {
         const originalText = link ? link.textContent : 'View Full Report (PDF)';
         if (link) link.textContent = 'Generating PDF...';
 
-        fetch('/skyesoft/api/generateReport.php', {
+        fetch('/skyesoft/api/generateReports.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 // === Required for dynamic routing ===
-                reportType: "contactProposal",
+                reportType: "contact_Proposal",
 
                 // Report metadata
                 reportTitle: "Proposed Contact Report (PC-1)",
