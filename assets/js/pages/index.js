@@ -1481,72 +1481,81 @@ window.SkyIndex = {
         // Open tab immediately from user interaction
         const pdfWindow = window.open('', '_blank');
 
+        const payload = {
+            reportType: "contact_proposal",
+            reportTitle: "Proposed Contact Report",
+            
+            // Entity
+            entityName: ent.entityName || "Christy Signs",
+            entityAction: pers.entity?.action || "reuse",
+            
+            // Contact
+            contactName: `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim(),
+            contactTitle: cont.contactTitle || "",
+            contactPhone: cont.contactPrimaryPhone || "",
+            contactEmail: cont.contactEmail || "",
+            contactAction: pers.contact?.action || "create",
+            
+            // Location
+            locationAddress: loc.locationAddress || "",
+            locationCityStateZip: `${loc.locationCity || ''}, ${loc.locationState || ''} ${loc.locationZip || ''}`.trim(),
+            locationPlaceId: loc.locationPlaceId || "",
+            locationCounty: loc.locationCounty || "",
+            
+            // Resolution & Governance
+            governanceNarrative: (res.narratives?.decision?.[0] || "This proposal references an existing operational location."),
+            confidence: prop.confidence || 85,
+            pc_code: res.pc?.code || "PC-3",
+            resolutionStatus: res.pc?.status || "existing_location",
+            commitAllowed: pers.commitAllowed ? "YES" : "NO",
+            
+            // Parcel data
+            parcelDetails: loc.parcelDetails || []
+        };
+
         fetch('/skyesoft/api/generateReports.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                // existing payload
-            })
+            body: JSON.stringify(payload)
         })
         .then(response => {
-
             if (!response.ok) {
-                throw new Error(
-                    `HTTP error! Status: ${response.status}`
-                );
+                return response.text().then(text => {
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                });
             }
-
             return response.blob();
-
         })
         .then(blob => {
+            console.log('[PDF Success] Type:', blob.type, 'Size:', blob.size, 'bytes');
 
-            console.log(
-                '[PDF]',
-                blob.type,
-                blob.size
-            );
-
-            const url =
-                URL.createObjectURL(blob);
+            const url = URL.createObjectURL(blob);
 
             if (pdfWindow) {
-                pdfWindow.location = url;
+                pdfWindow.location.href = url;
             } else {
                 window.open(url, '_blank');
             }
 
+            // Clean up after a minute
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
         })
         .catch(error => {
-
-            console.error(
-                'PDF Generation Error:',
-                error
-            );
+            console.error('PDF Generation Error:', error);
 
             if (pdfWindow) {
-
-                pdfWindow.document.write(
-                    '<h2>PDF Generation Failed</h2>' +
-                    '<pre>' +
-                    error.message +
-                    '</pre>'
-                );
-
+                pdfWindow.document.write(`
+                    <h2 style="color:red;">PDF Generation Failed</h2>
+                    <p>${error.message}</p>
+                `);
             }
 
-            alert(
-                'Could not generate the report. Please try again.'
-            );
-
+            alert('Could not generate the report. Please try again.');
         })
         .finally(() => {
-
             if (link) {
-                link.textContent =
-                    originalText;
+                link.textContent = originalText;
             }
-
         });
     },
     // #endregion

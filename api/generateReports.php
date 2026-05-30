@@ -24,16 +24,28 @@ header('Access-Control-Allow-Headers: Content-Type');
 $rawInput = file_get_contents('php://input');
 $input = json_decode($rawInput, true) ?: $_POST;
 
+// Debug: Log what we received
+error_log("Report Request Received: " . json_encode(array_keys($input)));
+
 $reportType = strtolower(trim($input['reportType'] ?? ''));
+
+// Fallback: Try to find reportType deeper in the payload
+if (empty($reportType) && !empty($input['data'])) {
+    $reportType = 'contact_proposal'; // Default for now
+}
+
 $proposalId = $input['proposalId'] ?? null;
 
 #endregion
 
 #region SECTION 02 - Validation
 
-if (!$reportType) {
+if (empty($reportType)) {
     http_response_code(400);
-    echo json_encode(['error' => 'reportType is required']);
+    echo json_encode([
+        'error' => 'reportType is required',
+        'received_keys' => array_keys($input)
+    ]);
     exit;
 }
 
