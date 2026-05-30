@@ -1483,7 +1483,7 @@ window.SkyIndex = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 // === Required for dynamic routing ===
-                reportType: "contact_Proposal",
+                reportType: "contact_proposal",
 
                 // Report metadata
                 reportTitle: "Proposed Contact Report (PC-1)",
