@@ -320,62 +320,67 @@ function collectArtifacts(array $proposal): array
 
 /**
  * Returns proposal data for report generation.
- * Supports both test data and real proposal structure from processProposedContact.php.
+ * Handles both test data and real incoming JSON payload.
  */
 function getProposalData(array $input): array
 {
+    // If real proposal data is passed from frontend, use it
     if (!empty($input['proposal']) && is_array($input['proposal'])) {
         return $input['proposal'];
     }
 
+    // Direct JSON payload support (what you're sending now)
+    if (!empty($input['entityName']) || !empty($input['reportType'])) {
+        return normalizeProposalData($input);
+    }
+
+    // Fallback to test data
     return getTestProposalData();
 }
 
 /**
- * Rich mock data matching test_mpdf.php structure.
+ * Normalizes incoming JSON payload to match internal structure.
+ */
+function normalizeProposalData(array $data): array
+{
+    return [
+        'entityName'           => $data['entityName'] ?? 'Unknown Entity',
+        'contactName'          => $data['contactName'] ?? '',
+        'contactTitle'         => $data['contactTitle'] ?? '',
+        'contactPhone'         => $data['contactPhone'] ?? '',
+        'contactEmail'         => $data['contactEmail'] ?? '',
+        'locationAddress'      => $data['locationAddress'] ?? '',
+        'locationCityStateZip' => $data['locationCityStateZip'] ?? '',
+        'locationPlaceId'      => $data['locationPlaceId'] ?? '',
+        'locationCounty'       => $data['locationCounty'] ?? '',
+        'governanceNarrative'  => $data['governanceNarrative'] ?? '',
+        'confidence'           => $data['confidence'] ?? 75,
+        'pcCode'               => $data['pc_code'] ?? $data['pcCode'] ?? 'PC-3',
+        'resolutionStatus'     => $data['resolutionStatus'] ?? 'existing_location',
+        'commitAllowed'        => $data['commitAllowed'] ?? 'NO',
+        'entityAction'         => $data['entityAction'] ?? 'reuse',
+        'contactAction'        => $data['contactAction'] ?? 'create',
+        'reportSummaryNarrative' => $data['reportSummaryNarrative'] ?? 'Proposal ready for review.',
+        'parcelSummaryNarrative' => $data['parcelSummaryNarrative'] ?? 'Parcel information reviewed.',
+        'parcelDetails'        => $data['parcelDetails'] ?? []
+    ];
+}
+
+/**
+ * Rich mock data for testing when no real data is provided.
  */
 function getTestProposalData(): array
 {
-    return [
-        'entityName'           => 'Christy Signs',
-        'contactName'          => 'Ms Susan Alderson',
-        'contactTitle'         => 'Accounting',
-        'contactPhone'         => '(602) 242-4488',
-        'contactEmail'         => 'susan@christysigns.com',
-        'locationAddress'      => '3145 N 33rd Ave',
+    return normalizeProposalData([
+        'entityName' => 'Christy Signs',
+        'contactName' => 'Ms. Susan Alderson',
+        'contactTitle' => 'Accounting Manager',
+        'contactPhone' => '(602) 242-4488',
+        'contactEmail' => 'susan@christysigns.com',
+        'locationAddress' => '3145 N 33rd Ave',
         'locationCityStateZip' => 'Phoenix, AZ 85017',
-        'locationPlaceId'      => 'ChIJeTvhT3ATK4cRpfapSIlCjFw',
-        'locationCounty'       => 'Maricopa',
-        'locationCountyFips'   => '04013',
-        'locationJurisdiction' => 'Phoenix',
-        'confidence'           => 85,
-        'pcCode'               => 'PC-3',
-        'resolutionStatus'     => 'multiple_parcels',
-        'commitAllowed'        => 'NO',
-        'governanceNarrative'  => 'This proposal references an existing operational location. Review: Multiple parcel candidates were found at this address and user selection is required before commit.',
-        'reportSummaryNarrative' => 'Strong candidate for outreach based on zoning and ownership patterns.',
-        'parcelSummaryNarrative' => 'Multiple parcel candidates were identified at this address. Review and selection is required before proceeding.',
-        'entityAction'         => 'reuse',
-        'contactAction'        => 'create',
-        'parcelDetails'        => [
-            [
-                'apnRaw' => '10803009E',
-                'apnDisplay' => '108-03-009E',
-                'address' => '3145 N 33RD AVE',
-                'city' => 'PHOENIX',
-                'owner' => 'RONALD L REYNOLDS AND JACQUELINE S REYNOLDS FAMILY TRUST',
-                'confidence' => 98
-            ],
-            [
-                'apnRaw' => '10803051',
-                'apnDisplay' => '108-03-051',
-                'address' => '3145 N 33RD AVE',
-                'city' => 'PHOENIX',
-                'owner' => 'J2 FLOWER LLC',
-                'confidence' => 98
-            ]
-        ]
-    ];
+        'pc_code' => 'PC-3'
+    ]);
 }
 
 #endregion
