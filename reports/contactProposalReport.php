@@ -320,66 +320,96 @@ function collectArtifacts(array $proposal): array
 
 /**
  * Returns proposal data for report generation.
- * Handles both test data and real incoming JSON payload.
+ * Handles the complex nested payload from the frontend.
  */
 function getProposalData(array $input): array
 {
-    // If real proposal data is passed from frontend, use it
-    if (!empty($input['proposal']) && is_array($input['proposal'])) {
-        return $input['proposal'];
-    }
-
-    // Direct JSON payload support (what you're sending now)
-    if (!empty($input['entityName']) || !empty($input['reportType'])) {
+    // Case 1: Direct flat payload (for testing)
+    if (!empty($input['entityName'])) {
         return normalizeProposalData($input);
     }
 
-    // Fallback to test data
+    // Case 2: Real nested payload from Skysesoft engine
+    if (!empty($input['data'])) {
+        return normalizeComplexPayload($input);
+    }
+
+    // Fallback
     return getTestProposalData();
 }
 
 /**
- * Normalizes incoming JSON payload to match internal structure.
+ * Normalize the complex nested payload.
  */
-function normalizeProposalData(array $data): array
+function normalizeComplexPayload(array $payload): array
 {
+    $data = $payload['data'] ?? [];
+    $entity = $data['entity'] ?? [];
+    $contact = $data['contact'] ?? [];
+    $location = $data['location'] ?? [];
+    $resolution = $payload['resolution'] ?? [];
+    $persistence = $payload['persistence'] ?? [];
+
     return [
-        'entityName'           => $data['entityName'] ?? 'Unknown Entity',
-        'contactName'          => $data['contactName'] ?? '',
-        'contactTitle'         => $data['contactTitle'] ?? '',
-        'contactPhone'         => $data['contactPhone'] ?? '',
-        'contactEmail'         => $data['contactEmail'] ?? '',
-        'locationAddress'      => $data['locationAddress'] ?? '',
-        'locationCityStateZip' => $data['locationCityStateZip'] ?? '',
-        'locationPlaceId'      => $data['locationPlaceId'] ?? '',
-        'locationCounty'       => $data['locationCounty'] ?? '',
-        'governanceNarrative'  => $data['governanceNarrative'] ?? '',
-        'confidence'           => $data['confidence'] ?? 75,
-        'pcCode'               => $data['pc_code'] ?? $data['pcCode'] ?? 'PC-3',
-        'resolutionStatus'     => $data['resolutionStatus'] ?? 'existing_location',
-        'commitAllowed'        => $data['commitAllowed'] ?? 'NO',
-        'entityAction'         => $data['entityAction'] ?? 'reuse',
-        'contactAction'        => $data['contactAction'] ?? 'create',
-        'reportSummaryNarrative' => $data['reportSummaryNarrative'] ?? 'Proposal ready for review.',
-        'parcelSummaryNarrative' => $data['parcelSummaryNarrative'] ?? 'Parcel information reviewed.',
-        'parcelDetails'        => $data['parcelDetails'] ?? []
+        'entityName'           => $entity['entityName'] ?? 'Unknown Entity',
+        'contactName'          => trim(($contact['contactFirstName'] ?? '') . ' ' . ($contact['contactLastName'] ?? '')),
+        'contactTitle'         => $contact['contactTitle'] ?? '',
+        'contactPhone'         => $contact['contactPrimaryPhone'] ?? '',
+        'contactEmail'         => $contact['contactEmail'] ?? '',
+        'locationAddress'      => $location['locationAddress'] ?? '',
+        'locationCityStateZip' => trim(($location['locationCity'] ?? '') . ', ' . ($location['locationState'] ?? '') . ' ' . ($location['locationZip'] ?? '')),
+        'locationPlaceId'      => $location['locationPlaceId'] ?? '',
+        'locationCounty'       => $location['locationCounty'] ?? '',
+        'governanceNarrative'  => $payload['resolution']['narratives']['decision'][0] ?? 'This proposal references an existing operational location.',
+        'confidence'           => $payload['confidence'] ?? 85,
+        'pcCode'               => $resolution['pc']['code'] ?? 'PC-3',
+        'resolutionStatus'     => $resolution['pc']['status'] ?? 'existing_location',
+        'commitAllowed'        => $persistence['commitAllowed'] ? 'YES' : 'NO',
+        'entityAction'         => $persistence['entity']['action'] ?? 'reuse',
+        'contactAction'        => $persistence['contact']['action'] ?? 'create',
+        'reportSummaryNarrative' => $payload['resolution']['narratives']['decision'][0] ?? 'Proposal ready for review.',
+        'parcelSummaryNarrative' => 'Multiple parcel candidates identified. User selection may be required.',
+        'parcelDetails'        => $location['parcelDetails'] ?? []
     ];
 }
 
 /**
- * Rich mock data for testing when no real data is provided.
+ * Simple normalization for flat test payloads.
+ */
+function normalizeProposalData(array $data): array
+{
+    return normalizeComplexPayload(['data' => $data]);
+}
+
+/**
+ * Rich test data fallback.
  */
 function getTestProposalData(): array
 {
-    return normalizeProposalData([
-        'entityName' => 'Christy Signs',
-        'contactName' => 'Ms. Susan Alderson',
-        'contactTitle' => 'Accounting Manager',
-        'contactPhone' => '(602) 242-4488',
-        'contactEmail' => 'susan@christysigns.com',
-        'locationAddress' => '3145 N 33rd Ave',
-        'locationCityStateZip' => 'Phoenix, AZ 85017',
-        'pc_code' => 'PC-3'
+    return normalizeComplexPayload([
+        'data' => [
+            'entity' => ['entityName' => 'Christy Signs'],
+            'contact' => [
+                'contactFirstName' => 'Susan',
+                'contactLastName'  => 'Alderson',
+                'contactTitle'     => 'Accounting Manager',
+                'contactPrimaryPhone' => '(602) 242-4488',
+                'contactEmail'     => 'susan@christysigns.com'
+            ],
+            'location' => [
+                'locationAddress' => '3145 N 33rd Ave',
+                'locationCity' => 'Phoenix',
+                'locationState' => 'AZ',
+                'locationZip' => '85017',
+                'locationPlaceId' => 'ChIJeTvhT3ATK4cRpfapSIlCjFw'
+            ]
+        ],
+        'resolution' => [
+            'pc' => ['code' => 'PC-3', 'status' => 'existing_location'],
+            'narratives' => ['decision' => ['This proposal references an existing operational location.']]
+        ],
+        'persistence' => ['commitAllowed' => true],
+        'confidence' => 85
     ]);
 }
 
