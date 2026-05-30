@@ -76,10 +76,18 @@ try {
     // Generate PDF
     $pdfContent = renderReport($report);
 
+    if (empty($pdfContent)) {
+        throw new Exception('PDF generation returned empty content');
+    }
+
     // === SUCCESS: Deliver PDF ===
     header('Content-Type: application/pdf');
-    header('Content-Disposition: inline; filename="Proposed_Contact_Report_' . date('Ymd_His') . '.pdf"');
+    header('Content-Disposition: attachment; filename="Proposed_Contact_Report_' 
+           . date('Ymd_His') . '.pdf"');   // Changed to attachment for reliability
     header('Content-Length: ' . strlen($pdfContent));
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
     
     echo $pdfContent;
     exit;
@@ -91,7 +99,7 @@ try {
         'error'   => $e->getMessage(),
         'file'    => basename($e->getFile()),
         'line'    => $e->getLine(),
-        'details' => $e->getTraceAsString()
+        'trace'   => $e->getTraceAsString()
     ]);
     exit;
 }
