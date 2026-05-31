@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — baseReport.php
 //  Universal PDF Renderer
-//  Version: 1.4.3
+//  Version: 1.4.4
 //  Last Updated: 2026-05-31
 // =============================================
 
@@ -21,7 +21,7 @@ function renderReport(array $report): string
             'format'        => 'Letter',
             'margin_left'   => 12,
             'margin_right'  => 12,
-            'margin_top'    => 28,      // Tightened to match test_mpdf.php
+            'margin_top'    => 28,
             'margin_bottom' => 25,
             'margin_header' => 8,
             'margin_footer' => 8,
@@ -32,7 +32,7 @@ function renderReport(array $report): string
 
         $mpdf->WriteHTML(buildReportStyles(), \Mpdf\HTMLParserMode::HEADER_CSS);
 
-        generateExecutiveSummary($mpdf, $report);
+        generateExecutiveSummary($mpdf, $report);   // ← Report Summary header
 
         $processedBodyHtml = processReportArtifacts(
             $report['reportBodyHtml'] ?? '', 
@@ -96,7 +96,7 @@ function buildReportStyles(): string
     return '
         body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.4; }
         .section { margin-bottom: 18px; page-break-inside: avoid; }
-        .sectionHeaderTable { width:100%; border-collapse:collapse; margin:8px 0 6px 0; }
+        .sectionHeaderTable { width:100%; border-collapse:collapse; margin:12px 0 8px 0; border-bottom:1px solid #ddd; }
         .sectionIconCell { width:28px; padding-right:10px; vertical-align:middle; }
         .sectionTitleCell { vertical-align:middle; }
         .sectionIcon { width:20px; height:20px; }
@@ -130,20 +130,27 @@ function buildReportStyles(): string
 
 #endregion
 
-#region SECTION 04 - Executive Summary (Fixed)
+#region SECTION 04 - Executive Summary (Fixed & Strengthened)
 
 function generateExecutiveSummary(Mpdf $mpdf, array $report): void
 {
-    $mpdf->WriteHTML('
+    $html = '
         <div class="section">
             <table class="sectionHeaderTable">
                 <tr>
-                    <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" class="sectionIcon"></td>
-                    <td class="sectionTitleCell"><div class="sectionTitle">Report Summary</div></td>
+                    <td class="sectionIconCell">
+                        <img src="https://skyelighting.com/skyesoft/assets/images/icons/clipboard.png" class="sectionIcon">
+                    </td>
+                    <td class="sectionTitleCell">
+                        <div class="sectionTitle">Report Summary</div>
+                    </td>
                 </tr>
             </table>
-    ');
+    ';
 
+    $mpdf->WriteHTML($html);
+
+    // Now write the actual summary content from contactProposalReport.php
     $mpdf->WriteHTML($report['reportSummary'] ?? '<p>Proposal ready for review.</p>');
 
     $mpdf->WriteHTML('</div>');
@@ -151,7 +158,7 @@ function generateExecutiveSummary(Mpdf $mpdf, array $report): void
 
 #endregion
 
-#region SECTION 05 - Main Body & Artifacts (unchanged)
+#region SECTION 05 - Main Body & Artifacts
 
 function generateMainBody(Mpdf $mpdf, string $bodyHtml): void
 {
