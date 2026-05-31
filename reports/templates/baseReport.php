@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — baseReport.php
 //  Universal PDF Renderer
-//  Version: 1.4.4
+//  Version: 1.4.5
 //  Last Updated: 2026-05-31
 // =============================================
 
@@ -32,7 +32,7 @@ function renderReport(array $report): string
 
         $mpdf->WriteHTML(buildReportStyles(), \Mpdf\HTMLParserMode::HEADER_CSS);
 
-        generateExecutiveSummary($mpdf, $report);   // ← Report Summary header
+        generateExecutiveSummary($mpdf, $report);
 
         $processedBodyHtml = processReportArtifacts(
             $report['reportBodyHtml'] ?? '', 
@@ -89,26 +89,56 @@ function buildReportFooter(): string
 
 #endregion
 
-#region SECTION 03 - Stylesheet
+#region SECTION 03 - Stylesheet (Matched to test_mpdf.php)
 
 function buildReportStyles(): string
 {
     return '
         body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.4; }
-        .section { margin-bottom: 18px; page-break-inside: avoid; }
-        .sectionHeaderTable { width:100%; border-collapse:collapse; margin:12px 0 8px 0; border-bottom:1px solid #ddd; }
-        .sectionIconCell { width:28px; padding-right:10px; vertical-align:middle; }
-        .sectionTitleCell { vertical-align:middle; }
-        .sectionIcon { width:20px; height:20px; }
-        .sectionTitle { font-size:13pt; font-weight:700; color:#14377C; }
+        
+        .sectionHeaderTable { 
+            width:100%; 
+            border-collapse:collapse; 
+            border:none; 
+            margin-top:4px; 
+            margin-bottom:6px; 
+            border-bottom:1.5px solid #888; 
+        }
+        .sectionIconCell { 
+            width:22px; 
+            border:none; 
+            padding:0 8px 5px 0; 
+            vertical-align:middle; 
+        }
+        .sectionTitleCell { 
+            border:none; 
+            padding:0 0 5px 0; 
+            vertical-align:middle; 
+        }
+        .sectionIcon { 
+            width:17px; 
+            height:17px; 
+            object-fit:contain; 
+            display:block; 
+        }
+        .sectionTitle { 
+            font-size:12pt; 
+            font-weight:700; 
+            color:#14377C; 
+            line-height:1.1; 
+            margin:0; 
+        }
+        
         .dataTable { width:100%; border-collapse:collapse; margin:8px 0 14px 0; }
         .dataTable th, .dataTable td { border:1px solid #ccc; padding:7px 9px; text-align:left; vertical-align:top; }
         .dataTable th { background:#e8e8e8; width:28%; font-weight:700; color:#333; }
-        .highlight, .summaryNarrative, .parcelSummaryBlock { 
+        
+        .summaryNarrative, .highlight, .parcelSummaryBlock { 
             background:#f8f9fa; 
             border:1px solid #d0d0d0; 
             padding:16px; 
             border-radius:6px; 
+            margin-bottom:14px;
         }
         .parcel-block { 
             border: 2px solid #14377C; 
@@ -130,11 +160,11 @@ function buildReportStyles(): string
 
 #endregion
 
-#region SECTION 04 - Executive Summary (Fixed & Strengthened)
+#region SECTION 04 - Executive Summary (Now matches test_mpdf.php exactly)
 
 function generateExecutiveSummary(Mpdf $mpdf, array $report): void
 {
-    $html = '
+    $summaryHtml = '
         <div class="section">
             <table class="sectionHeaderTable">
                 <tr>
@@ -148,11 +178,8 @@ function generateExecutiveSummary(Mpdf $mpdf, array $report): void
             </table>
     ';
 
-    $mpdf->WriteHTML($html);
-
-    // Now write the actual summary content from contactProposalReport.php
+    $mpdf->WriteHTML($summaryHtml);
     $mpdf->WriteHTML($report['reportSummary'] ?? '<p>Proposal ready for review.</p>');
-
     $mpdf->WriteHTML('</div>');
 }
 
