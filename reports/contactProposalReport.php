@@ -262,31 +262,44 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
-    // Real payload structure: $input may contain 'data' -> 'location'
+    // Try multiple possible structures
     $data     = $input['data']     ?? $input;
     $location = $data['location']  ?? $data;
+    $contact  = $data['contact']   ?? $data;
 
     return [
         'entityName'           => $data['entity']['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
 
-        'contactName'          => $input['contactName'] ?? 'Susan Alderson',
-        'contactTitle'         => $input['contactTitle'] ?? '',
-        'contactPhone'         => $input['contactPhone'] ?? '',
-        'contactEmail'         => $input['contactEmail'] ?? '',
+        'contactName'          => trim(
+                                    ($contact['contactSalutation'] ?? '') . ' ' .
+                                    ($contact['contactFirstName'] ?? '') . ' ' .
+                                    ($contact['contactLastName'] ?? '')
+                                  ) ?: $input['contactName'] ?? 'Susan Alderson',
+
+        'contactTitle'         => $contact['contactTitle'] ?? $input['contactTitle'] ?? '',
+        'contactPhone'         => $contact['contactPrimaryPhone'] ?? $input['contactPhone'] ?? '',
+        'contactEmail'         => $contact['contactEmail'] ?? $input['contactEmail'] ?? '',
 
         'locationAddress'      => $location['locationAddress'] ?? $input['locationAddress'] ?? '',
-        'locationCityStateZip' => $input['locationCityStateZip'] ?? '',
-        'locationPlaceId'      => $location['locationPlaceId'] ?? $input['locationPlaceId'] ?? '',
+        'locationCity'         => $location['locationCity'] ?? '',
+        'locationState'        => $location['locationState'] ?? '',
+        'locationZip'          => $location['locationZip'] ?? '',
+        'locationCityStateZip' => $input['locationCityStateZip'] ?? 
+                                  trim(($location['locationCity'] ?? '') . 
+                                       ($location['locationState'] ? ', ' . $location['locationState'] : '') . 
+                                       ($location['locationZip'] ? ' ' . $location['locationZip'] : '')),
 
         'locationCounty'       => $location['locationCounty'] ?? $input['locationCounty'] ?? '',
         'locationCountyFips'   => $location['locationCountyFips'] ?? $input['locationCountyFips'] ?? '',
         'locationJurisdiction' => $location['locationJurisdiction'] ?? $input['locationJurisdiction'] ?? 'Pending',
+        'locationPlaceId'      => $location['locationPlaceId'] ?? $input['locationPlaceId'] ?? '',
 
-        'governanceNarrative'  => $input['governanceNarrative'] ?? '',
+        'governanceNarrative'  => $input['governanceNarrative'] ?? 
+                                  ($input['resolution']['narratives']['decision'][0] ?? ''),
         'confidence'           => $input['confidence'] ?? 85,
-        'pcCode'               => $input['pc_code'] ?? $input['pcCode'] ?? 'PC-3',
-        'resolutionStatus'     => $input['resolutionStatus'] ?? 'existing_location',
-        'commitAllowed'        => $input['commitAllowed'] ?? 'NO',
+        'pcCode'               => $input['resolution']['pc']['code'] ?? $input['pc_code'] ?? 'PC-3',
+        'resolutionStatus'     => $input['resolution']['pc']['status'] ?? $input['resolutionStatus'] ?? 'existing_location',
+        'commitAllowed'        => ($input['persistence']['commitAllowed'] ?? false) ? 'YES' : 'NO',
 
         'parcelDetails'        => $location['parcelDetails'] ?? $input['parcelDetails'] ?? []
     ];
