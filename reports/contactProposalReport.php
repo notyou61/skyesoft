@@ -262,32 +262,48 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
+    // Support both:
+    // 1. Flat test payload (what you use in test-report.php)
+    // 2. Real nested payload from generateReports.php
+    $data     = $input['data']     ?? $input;
+    $location = $data['location']  ?? $data;
+    $contact  = $data['contact']   ?? $data;
+
     return [
-        'entityName'           => $input['entityName'] ?? 'Unknown Entity',
-        'contactName'          => $input['contactName'] ?? 'Susan Alderson',
-        'contactTitle'         => $input['contactTitle'] ?? '',
-        'contactPhone'         => $input['contactPhone'] ?? '',
-        'contactEmail'         => $input['contactEmail'] ?? '',
-        
-        'locationAddress'      => $input['locationAddress'] ?? '',
-        'locationCityStateZip' => $input['locationCityStateZip'] ?? '',
-        'locationPlaceId'      => $input['locationPlaceId'] ?? '',
-        'locationCounty'       => $input['locationCounty'] ?? '',
-        
-        // Jurisdiction: use live value if available, otherwise "Pending" as requested
-        'locationJurisdiction' => $input['locationJurisdiction'] ?? 'Pending',
-        
-        'locationCountyFips'   => $input['locationCountyFips'] ?? '',
-        
-        'governanceNarrative'  => $input['governanceNarrative'] ?? '',
+        'entityName'           => $data['entity']['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
+
+        'contactName'          => trim(
+                                    ($contact['contactSalutation'] ?? '') . ' ' .
+                                    ($contact['contactFirstName'] ?? '') . ' ' .
+                                    ($contact['contactLastName'] ?? '')
+                                  ) ?: $input['contactName'] ?? 'Susan Alderson',
+
+        'contactTitle'         => $contact['contactTitle'] ?? $input['contactTitle'] ?? '',
+        'contactPhone'         => $contact['contactPrimaryPhone'] ?? $input['contactPhone'] ?? '',
+        'contactEmail'         => $contact['contactEmail'] ?? $input['contactEmail'] ?? '',
+
+        'locationAddress'      => $location['locationAddress'] ?? $input['locationAddress'] ?? '',
+        'locationCity'         => $location['locationCity'] ?? '',
+        'locationState'        => $location['locationState'] ?? '',
+        'locationZip'          => $location['locationZip'] ?? '',
+        'locationCityStateZip' => $input['locationCityStateZip'] ?? 
+                                  trim(($location['locationCity'] ?? '') . 
+                                       ($location['locationState'] ? ', ' . $location['locationState'] : '') . 
+                                       ($location['locationZip'] ? ' ' . $location['locationZip'] : '')),
+
+        'locationCounty'       => $location['locationCounty'] ?? $input['locationCounty'] ?? '',
+        'locationCountyFips'   => $location['locationCountyFips'] ?? $input['locationCountyFips'] ?? '',
+        'locationJurisdiction' => $location['locationJurisdiction'] ?? $input['locationJurisdiction'] ?? 'Pending',
+        'locationPlaceId'      => $location['locationPlaceId'] ?? $input['locationPlaceId'] ?? '',
+
+        'governanceNarrative'  => $input['governanceNarrative'] ?? 
+                                  ($input['resolution']['narratives']['decision'][0] ?? ''),
         'confidence'           => $input['confidence'] ?? 85,
-        'pcCode'               => $input['pc_code'] ?? $input['pcCode'] ?? 'PC-3',
-        'resolutionStatus'     => $input['resolutionStatus'] ?? 'existing_location',
-        'commitAllowed'        => $input['commitAllowed'] ?? 'NO',
-        'entityAction'         => $input['entityAction'] ?? 'reuse',
-        'contactAction'        => $input['contactAction'] ?? 'create',
-        
-        'parcelDetails'        => $input['parcelDetails'] ?? []
+        'pcCode'               => $input['resolution']['pc']['code'] ?? $input['pc_code'] ?? 'PC-3',
+        'resolutionStatus'     => $input['resolution']['pc']['status'] ?? $input['resolutionStatus'] ?? 'existing_location',
+        'commitAllowed'        => ($input['persistence']['commitAllowed'] ?? false) ? 'YES' : 'NO',
+
+        'parcelDetails'        => $location['parcelDetails'] ?? $input['parcelDetails'] ?? []
     ];
 }
 
