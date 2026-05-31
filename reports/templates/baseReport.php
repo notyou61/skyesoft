@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — baseReport.php
 //  Universal PDF Renderer
-//  Version: 1.4.2
+//  Version: 1.4.3
 //  Last Updated: 2026-05-31
 // =============================================
 
@@ -21,7 +21,7 @@ function renderReport(array $report): string
             'format'        => 'Letter',
             'margin_left'   => 12,
             'margin_right'  => 12,
-            'margin_top'    => 32,      // Increased top margin for header
+            'margin_top'    => 28,      // Tightened to match test_mpdf.php
             'margin_bottom' => 25,
             'margin_header' => 8,
             'margin_footer' => 8,
@@ -58,10 +58,10 @@ function buildReportHeader(array $report): string
     $title = $report['reportTitle'] ?? 'Proposed Contact Report (PC-3)';
 
     return '
-    <div style="border-bottom: 3px solid #14377C; padding-bottom: 10px; margin-bottom: 12px;">
+    <div style="border-bottom: 3px solid #14377C; padding-bottom: 6px;">
         <table style="width:100%; border:none;">
             <tr>
-                <td style="width:78px; padding-right:12px; vertical-align:middle;">
+                <td style="width:78px; padding-right:10px; vertical-align:middle;">
                     <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png" 
                          style="width:72px; height:auto;" alt="Christy Signs">
                 </td>
@@ -94,9 +94,9 @@ function buildReportFooter(): string
 function buildReportStyles(): string
 {
     return '
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.4; margin:0; padding:0; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.4; }
         .section { margin-bottom: 18px; page-break-inside: avoid; }
-        .sectionHeaderTable { width:100%; border-collapse:collapse; margin:12px 0 8px 0; }
+        .sectionHeaderTable { width:100%; border-collapse:collapse; margin:8px 0 6px 0; }
         .sectionIconCell { width:28px; padding-right:10px; vertical-align:middle; }
         .sectionTitleCell { vertical-align:middle; }
         .sectionIcon { width:20px; height:20px; }
@@ -109,7 +109,6 @@ function buildReportStyles(): string
             border:1px solid #d0d0d0; 
             padding:16px; 
             border-radius:6px; 
-            margin-bottom:14px;
         }
         .parcel-block { 
             border: 2px solid #14377C; 
@@ -131,7 +130,7 @@ function buildReportStyles(): string
 
 #endregion
 
-#region SECTION 04 - Executive Summary
+#region SECTION 04 - Executive Summary (Fixed)
 
 function generateExecutiveSummary(Mpdf $mpdf, array $report): void
 {
@@ -152,7 +151,7 @@ function generateExecutiveSummary(Mpdf $mpdf, array $report): void
 
 #endregion
 
-#region SECTION 05 - Main Body & Artifacts
+#region SECTION 05 - Main Body & Artifacts (unchanged)
 
 function generateMainBody(Mpdf $mpdf, string $bodyHtml): void
 {
