@@ -82,12 +82,19 @@ function buildContactSection(array $proposal): string
 
 function buildLocationSection(array $proposal): string
 {
+    $cityStateZip = $proposal['locationCityStateZip'] ?? 
+                    trim(($proposal['locationCity'] ?? '') . ', ' . 
+                         ($proposal['locationState'] ?? '') . ' ' . 
+                         ($proposal['locationZip'] ?? ''));
+
     $html = buildSectionHeader('Location Information', 'pin.png');
     $html .= '<table class="dataTable">';
     $html .= '<tr><th>Full Address</th><td>' . htmlspecialchars($proposal['locationAddress'] ?? 'N/A') . '</td></tr>';
-    $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th>County</th><td>' . htmlspecialchars($proposal['locationCounty'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($proposal['locationPlaceId'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($cityStateZip) . '</td></tr>';
+    $html .= '<tr><th>County</th><td>' . htmlspecialchars($proposal['locationCounty'] ?? '-') . '</td></tr>';
+    $html .= '<tr><th>County FIPS</th><td>' . htmlspecialchars($proposal['locationCountyFips'] ?? '-') . '</td></tr>';
+    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? '-') . '</td></tr>';
+    $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
     return $html;
 }
@@ -258,26 +265,40 @@ function getProposalData(array $input): array
     return normalizeProposalData($input);
 }
 
-function normalizeProposalData(array $data): array
+function normalizeProposalData(array $input): array
 {
+    // Handle both flat test payload and real nested proposal JSON
+    $data = $input['data'] ?? $input;           // real payload has 'data' wrapper
+    $loc  = $data['location'] ?? $data;         // location data may be nested
+
     return [
-        'entityName'           => $data['entityName'] ?? 'Unknown Entity',
-        'contactName'          => $data['contactName'] ?? 'Susan Alderson',
-        'contactTitle'         => $data['contactTitle'] ?? '',
-        'contactPhone'         => $data['contactPhone'] ?? '',
-        'contactEmail'         => $data['contactEmail'] ?? '',
-        'locationAddress'      => $data['locationAddress'] ?? '',
-        'locationCityStateZip' => $data['locationCityStateZip'] ?? '',
-        'locationPlaceId'      => $data['locationPlaceId'] ?? '',
-        'locationCounty'       => $data['locationCounty'] ?? '',
-        'governanceNarrative'  => $data['governanceNarrative'] ?? '',
-        'confidence'           => $data['confidence'] ?? 85,
-        'pcCode'               => $data['pc_code'] ?? $data['pcCode'] ?? 'PC-3',
-        'resolutionStatus'     => $data['resolutionStatus'] ?? 'existing_location',
-        'commitAllowed'        => $data['commitAllowed'] ?? 'NO',
-        'entityAction'         => $data['entityAction'] ?? 'reuse',
-        'contactAction'        => $data['contactAction'] ?? 'create',
-        'parcelDetails'        => $data['parcelDetails'] ?? []
+        'entityName'           => $data['entity']['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
+        'contactName'          => $data['contact']['contactFirstName'] ?? '' . ' ' . ($data['contact']['contactLastName'] ?? '') ?? $input['contactName'] ?? 'Susan Alderson',
+        'contactTitle'         => $data['contact']['contactTitle'] ?? $input['contactTitle'] ?? 'Accounting Manager',
+        'contactPhone'         => $data['contact']['contactPrimaryPhone'] ?? $input['contactPhone'] ?? '(602) 242-4488',
+        'contactEmail'         => $data['contact']['contactEmail'] ?? $input['contactEmail'] ?? 'susan@christysigns.com',
+        
+        'locationAddress'      => $loc['locationAddress'] ?? $input['locationAddress'] ?? '',
+        'locationCity'         => $loc['locationCity'] ?? '',
+        'locationState'        => $loc['locationState'] ?? '',
+        'locationZip'          => $loc['locationZip'] ?? '',
+        'locationCityStateZip' => trim(($loc['locationCity'] ?? '') . ', ' . ($loc['locationState'] ?? '') . ' ' . ($loc['locationZip'] ?? '')),
+        
+        'locationCounty'       => $loc['locationCounty'] ?? $input['locationCounty'] ?? '',
+        'locationCountyFips'   => $loc['locationCountyFips'] ?? '',
+        'locationJurisdiction' => $loc['locationJurisdiction'] ?? '',
+        'locationPlaceId'      => $loc['locationPlaceId'] ?? $input['locationPlaceId'] ?? '',
+        
+        'governanceNarrative'  => $input['governanceNarrative'] ?? 
+                                  ($input['resolution']['narratives']['decision'][0] ?? ''),
+        'confidence'           => $input['confidence'] ?? 85,
+        'pcCode'               => $input['resolution']['pc']['code'] ?? $input['pc_code'] ?? 'PC-3',
+        'resolutionStatus'     => $input['resolution']['pc']['status'] ?? $input['resolutionStatus'] ?? 'existing_location',
+        'commitAllowed'        => ($input['persistence']['commitAllowed'] ?? false) ? 'YES' : 'NO',
+        'entityAction'         => $input['persistence']['entity']['action'] ?? 'reuse',
+        'contactAction'        => $input['persistence']['contact']['action'] ?? 'create',
+        
+        'parcelDetails'        => $loc['parcelDetails'] ?? $input['parcelDetails'] ?? []
     ];
 }
 
