@@ -262,9 +262,7 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
-    // Support both:
-    // 1. Flat test payload (what you use in test-report.php)
-    // 2. Real nested payload from generateReports.php
+    // Support both flat test payload AND real nested production payload
     $data     = $input['data']     ?? $input;
     $location = $data['location']  ?? $data;
     $contact  = $data['contact']   ?? $data;
@@ -276,7 +274,7 @@ function normalizeProposalData(array $input): array
                                     ($contact['contactSalutation'] ?? '') . ' ' .
                                     ($contact['contactFirstName'] ?? '') . ' ' .
                                     ($contact['contactLastName'] ?? '')
-                                  ) ?: $input['contactName'] ?? 'Susan Alderson',
+                                  ) ?: ($input['contactName'] ?? 'Susan Alderson'),
 
         'contactTitle'         => $contact['contactTitle'] ?? $input['contactTitle'] ?? '',
         'contactPhone'         => $contact['contactPrimaryPhone'] ?? $input['contactPhone'] ?? '',
