@@ -63,7 +63,7 @@ function buildEntitySection(array $proposal): string
     $html = buildSectionHeader('Entity Information', 'property.png');
     $html .= '<table class="dataTable">';
     $html .= '<tr><th>Entity Name</th><td>' . htmlspecialchars($proposal['entityName'] ?? 'N/A') . '</td></tr>';
-    $html .= '<tr><th>Action</th><td>' . htmlspecialchars(ucfirst($proposal['entityAction'] ?? 'reuse')) . '</td></tr>';
+    // Action row removed as requested
     $html .= '</table>';
     return $html;
 }
@@ -190,7 +190,7 @@ function renderImagePlaceholder(string $type, array $proposal, int $parcelNum = 
 
 #endregion
 
-#region SECTION 05 - Summary (AI-Powered + Rich Layout)
+#region SECTION 05 - Summary (AI-Powered + Clean)
 
 function generateSummarySection(array $proposal): string
 {
@@ -231,12 +231,11 @@ function generateSummarySection(array $proposal): string
     } catch (Exception $e) {
         error_log("[PDF] Summary AI Error: " . $e->getMessage());
         
-        // Rich fallback that matches target style
         $summaryNarrative = 'The proposal involves adding ' . ($proposal['contactName'] ?? 'Ms. Susan Alderson') .
-                            ' as a new contact in the Accounting department to the existing ' .
+                            ' as the Accounting Manager contact to the existing ' .
                             ($proposal['entityName'] ?? 'Christy Signs') .
-                            ' location at ' . ($proposal['locationAddress'] ?? '3145 N 33rd Ave') . ', ' .
-                            ($proposal['locationCityStateZip'] ?? 'Phoenix, AZ 85017') . '.';
+                            ' location at ' . ($proposal['locationAddress'] ?? '3145 N 33rd Ave') . 
+                            ', ' . ($proposal['locationCityStateZip'] ?? 'Phoenix, AZ 85017') . '.';
     }
 
     // Safety limit
@@ -244,35 +243,10 @@ function generateSummarySection(array $proposal): string
         $summaryNarrative = substr($summaryNarrative, 0, 1250) . '...';
     }
 
-    // Rich HTML matching the target PDF style
     return '
         <div class="summaryNarrative">
-            <strong>Operational Overview</strong><br><br>
             ' . nl2br(htmlspecialchars($summaryNarrative)) . '
-
-            <br><br>
-            <strong>Proposed Contact Findings</strong>
-            <ul>
-                <li>Proposal confidence is at ' . ($proposal['confidence'] ?? 85) . '%, indicating a high likelihood of successful integration.</li>
-                <li>Parcel ambiguity exists with multiple parcel candidates at the address, requiring user selection.</li>
-                <li>The entity and location are set to reuse, while the contact is a new creation.</li>
-                <li>Spatial verification artifacts, including parcel candidate images and street view, are available for review.</li>
-            </ul>
-
-            <strong>Commit Status</strong><br>
-            Commit readiness is currently ' . 
-            (($proposal['commitAllowed'] ?? 'NO') === 'YES' ? 'allowed' : 'not allowed') . 
-            ' due to unresolved parcel ambiguity; user intervention is required to select the correct parcel before proceeding.
-        </div>
-
-        <table class="summaryMetaTable">
-            <tr>
-                <td><strong>Proposal Code:</strong> ' . htmlspecialchars($proposal['pcCode'] ?? $proposal['pc_code'] ?? 'PC-3') . '</td>
-                <td><strong>Confidence:</strong> ' . ($proposal['confidence'] ?? 85) . '%</td>
-                <td><strong>Status:</strong> ' . htmlspecialchars($proposal['resolutionStatus'] ?? 'existing_location') . '</td>
-                <td><strong>Commit Ready:</strong> <span style="color:#c00;">' . htmlspecialchars($proposal['commitAllowed'] ?? 'NO') . '</span></td>
-            </tr>
-        </table>';
+        </div>';
 }
 
 #endregion
