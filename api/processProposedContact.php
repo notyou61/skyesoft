@@ -645,6 +645,25 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
 $parsed['location']['parcelDetails'] = $parcelDetails;
 
 // -------------------------------------------------
+// JURISDICTION PROMOTION
+// -------------------------------------------------
+
+if (
+    empty($parsed['location']['locationJurisdiction']) &&
+    !empty($parcelDetails[0]['jurisdiction'])
+) {
+
+    $parsed['location']['locationJurisdiction'] =
+        strtoupper(
+            trim(
+                $parcelDetails[0]['jurisdiction']
+            )
+        );
+
+    $locationValidation['jurisdictionResolved'] = true;
+}
+
+// -------------------------------------------------
 // SMARTY USPS VALIDATION (only if parcel not resolved)
 // -------------------------------------------------
 $parcelResolved = $locationValidation['apnResolved'] ?? false;
