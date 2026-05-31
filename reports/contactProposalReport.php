@@ -82,18 +82,13 @@ function buildContactSection(array $proposal): string
 
 function buildLocationSection(array $proposal): string
 {
-    $cityStateZip = $proposal['locationCityStateZip'] ?? 
-                    trim(($proposal['locationCity'] ?? '') . ', ' . 
-                         ($proposal['locationState'] ?? '') . ' ' . 
-                         ($proposal['locationZip'] ?? ''));
-
     $html = buildSectionHeader('Location Information', 'pin.png');
     $html .= '<table class="dataTable">';
     $html .= '<tr><th>Full Address</th><td>' . htmlspecialchars($proposal['locationAddress'] ?? 'N/A') . '</td></tr>';
-    $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($cityStateZip) . '</td></tr>';
-    $html .= '<tr><th>County</th><td>' . htmlspecialchars($proposal['locationCounty'] ?? '-') . '</td></tr>';
-    $html .= '<tr><th>County FIPS</th><td>' . htmlspecialchars($proposal['locationCountyFips'] ?? '-') . '</td></tr>';
-    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? '-') . '</td></tr>';
+    $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>County</th><td>' . htmlspecialchars($proposal['locationCounty'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>County FIPS</th><td>' . htmlspecialchars($proposal['locationCountyFips'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? 'Pending') . '</td></tr>';
     $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
     return $html;
@@ -267,38 +262,32 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
-    // Handle both flat test payload and real nested proposal JSON
-    $data = $input['data'] ?? $input;           // real payload has 'data' wrapper
-    $loc  = $data['location'] ?? $data;         // location data may be nested
-
     return [
-        'entityName'           => $data['entity']['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
-        'contactName'          => $data['contact']['contactFirstName'] ?? '' . ' ' . ($data['contact']['contactLastName'] ?? '') ?? $input['contactName'] ?? 'Susan Alderson',
-        'contactTitle'         => $data['contact']['contactTitle'] ?? $input['contactTitle'] ?? 'Accounting Manager',
-        'contactPhone'         => $data['contact']['contactPrimaryPhone'] ?? $input['contactPhone'] ?? '(602) 242-4488',
-        'contactEmail'         => $data['contact']['contactEmail'] ?? $input['contactEmail'] ?? 'susan@christysigns.com',
+        'entityName'           => $input['entityName'] ?? 'Unknown Entity',
+        'contactName'          => $input['contactName'] ?? 'Susan Alderson',
+        'contactTitle'         => $input['contactTitle'] ?? '',
+        'contactPhone'         => $input['contactPhone'] ?? '',
+        'contactEmail'         => $input['contactEmail'] ?? '',
         
-        'locationAddress'      => $loc['locationAddress'] ?? $input['locationAddress'] ?? '',
-        'locationCity'         => $loc['locationCity'] ?? '',
-        'locationState'        => $loc['locationState'] ?? '',
-        'locationZip'          => $loc['locationZip'] ?? '',
-        'locationCityStateZip' => trim(($loc['locationCity'] ?? '') . ', ' . ($loc['locationState'] ?? '') . ' ' . ($loc['locationZip'] ?? '')),
+        'locationAddress'      => $input['locationAddress'] ?? '',
+        'locationCityStateZip' => $input['locationCityStateZip'] ?? '',
+        'locationPlaceId'      => $input['locationPlaceId'] ?? '',
+        'locationCounty'       => $input['locationCounty'] ?? '',
         
-        'locationCounty'       => $loc['locationCounty'] ?? $input['locationCounty'] ?? '',
-        'locationCountyFips'   => $loc['locationCountyFips'] ?? '',
-        'locationJurisdiction' => $loc['locationJurisdiction'] ?? '',
-        'locationPlaceId'      => $loc['locationPlaceId'] ?? $input['locationPlaceId'] ?? '',
+        // Jurisdiction: use live value if available, otherwise "Pending" as requested
+        'locationJurisdiction' => $input['locationJurisdiction'] ?? 'Pending',
         
-        'governanceNarrative'  => $input['governanceNarrative'] ?? 
-                                  ($input['resolution']['narratives']['decision'][0] ?? ''),
+        'locationCountyFips'   => $input['locationCountyFips'] ?? '',
+        
+        'governanceNarrative'  => $input['governanceNarrative'] ?? '',
         'confidence'           => $input['confidence'] ?? 85,
-        'pcCode'               => $input['resolution']['pc']['code'] ?? $input['pc_code'] ?? 'PC-3',
-        'resolutionStatus'     => $input['resolution']['pc']['status'] ?? $input['resolutionStatus'] ?? 'existing_location',
-        'commitAllowed'        => ($input['persistence']['commitAllowed'] ?? false) ? 'YES' : 'NO',
-        'entityAction'         => $input['persistence']['entity']['action'] ?? 'reuse',
-        'contactAction'        => $input['persistence']['contact']['action'] ?? 'create',
+        'pcCode'               => $input['pc_code'] ?? $input['pcCode'] ?? 'PC-3',
+        'resolutionStatus'     => $input['resolutionStatus'] ?? 'existing_location',
+        'commitAllowed'        => $input['commitAllowed'] ?? 'NO',
+        'entityAction'         => $input['entityAction'] ?? 'reuse',
+        'contactAction'        => $input['contactAction'] ?? 'create',
         
-        'parcelDetails'        => $loc['parcelDetails'] ?? $input['parcelDetails'] ?? []
+        'parcelDetails'        => $input['parcelDetails'] ?? []
     ];
 }
 
