@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — baseReport.php
 //  Universal PDF Renderer
-//  Version: 1.4.1
+//  Version: 1.4.2
 //  Last Updated: 2026-05-31
 // =============================================
 
@@ -21,7 +21,7 @@ function renderReport(array $report): string
             'format'        => 'Letter',
             'margin_left'   => 12,
             'margin_right'  => 12,
-            'margin_top'    => 30,
+            'margin_top'    => 32,      // Increased top margin for header
             'margin_bottom' => 25,
             'margin_header' => 8,
             'margin_footer' => 8,
@@ -53,28 +53,21 @@ function renderReport(array $report): string
 
 #region SECTION 01 - Header Builder
 
-/**
- * Production-ready header using live asset URL.
- */
 function buildReportHeader(array $report): string
 {
     $title = $report['reportTitle'] ?? 'Proposed Contact Report (PC-3)';
 
     return '
-    <div style="border-bottom: 3px solid #14377C; padding-bottom: 6px;">
+    <div style="border-bottom: 3px solid #14377C; padding-bottom: 10px; margin-bottom: 12px;">
         <table style="width:100%; border:none;">
             <tr>
-                <td style="width:78px; padding-right:10px; vertical-align:middle;">
+                <td style="width:78px; padding-right:12px; vertical-align:middle;">
                     <img src="https://skyelighting.com/skyesoft/assets/images/christyLogo.png" 
                          style="width:72px; height:auto;" alt="Christy Signs">
                 </td>
                 <td>
-                    <div style="font-size:14pt; font-weight:700; color:#14377C;">' 
-                        . htmlspecialchars($title) . 
-                    '</div>
-                    <div style="font-size:9pt; color:#555;">
-                        Skyesoft Operational Intelligence | Report Date: ' . date('m/d/y') . '
-                    </div>
+                    <div style="font-size:14pt; font-weight:700; color:#14377C;">' . htmlspecialchars($title) . '</div>
+                    <div style="font-size:9pt; color:#555;">Skyesoft Operational Intelligence | Report Date: ' . date('m/d/y') . '</div>
                 </td>
             </tr>
         </table>
@@ -85,42 +78,54 @@ function buildReportHeader(array $report): string
 
 #region SECTION 02 - Footer Builder
 
-/**
- * Exact footer matching your target PDF
- */
 function buildReportFooter(): string
 {
     return '
     <div style="border-top: 3px solid #14377C; padding-top: 5px; font-size:7.5pt; color:#555; text-align:center;">
-        <div style="font-weight:600;">
-            Christy Signs &nbsp;|&nbsp; 3145 N 33rd Ave, Phoenix, AZ 85017 &nbsp;|&nbsp; (602) 242-4488
-        </div>
-        <div style="font-size:7pt; color:#666;">
-            © 2026 Christy Signs — Confidential Internal Operational Document &nbsp;•&nbsp; Page {PAGENO} of {nbpg}
-        </div>
+        <div style="font-weight:600;">Christy Signs &nbsp;|&nbsp; 3145 N 33rd Ave, Phoenix, AZ 85017 &nbsp;|&nbsp; (602) 242-4488</div>
+        <div style="font-size:7pt; color:#666;">© 2026 Christy Signs — Confidential Internal Operational Document &nbsp;•&nbsp; Page {PAGENO} of {nbpg}</div>
     </div>';
 }
 
 #endregion
 
-#region SECTION 03 - Stylesheet (Clean & Compact)
+#region SECTION 03 - Stylesheet
 
 function buildReportStyles(): string
 {
     return '
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.4; }
-        h1, h2 { color: #14377C; }
-        .sectionHeaderTable { width:100%; border-collapse:collapse; margin:8px 0 6px 0; }
-        .sectionIconCell { width:28px; padding-right:8px; vertical-align:middle; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.4; margin:0; padding:0; }
+        .section { margin-bottom: 18px; page-break-inside: avoid; }
+        .sectionHeaderTable { width:100%; border-collapse:collapse; margin:12px 0 8px 0; }
+        .sectionIconCell { width:28px; padding-right:10px; vertical-align:middle; }
         .sectionTitleCell { vertical-align:middle; }
         .sectionIcon { width:20px; height:20px; }
         .sectionTitle { font-size:13pt; font-weight:700; color:#14377C; }
-        .dataTable { width:100%; border-collapse:collapse; margin:6px 0 12px 0; }
-        .dataTable th, .dataTable td { border:1px solid #ccc; padding:6px 8px; text-align:left; vertical-align:top; }
+        .dataTable { width:100%; border-collapse:collapse; margin:8px 0 14px 0; }
+        .dataTable th, .dataTable td { border:1px solid #ccc; padding:7px 9px; text-align:left; vertical-align:top; }
         .dataTable th { background:#e8e8e8; width:28%; font-weight:700; color:#333; }
-        .highlight, .summaryNarrative, .parcelSummaryBlock { background:#f8f9fa; padding:14px; border-radius:6px; border:1px solid #d0d0d0; }
-        .parcel-block { border: 2px solid #14377C; border-radius: 8px; padding: 14px; margin-bottom: 18px; background: #fafafa; page-break-inside: avoid; }
-        .image-placeholder { border: 2px dashed #14377C; background: #f8f9fa; padding: 40px; text-align: center; min-height: 260px; border-radius: 8px; }
+        .highlight, .summaryNarrative, .parcelSummaryBlock { 
+            background:#f8f9fa; 
+            border:1px solid #d0d0d0; 
+            padding:16px; 
+            border-radius:6px; 
+            margin-bottom:14px;
+        }
+        .parcel-block { 
+            border: 2px solid #14377C; 
+            border-radius: 8px; 
+            padding: 14px; 
+            margin-bottom: 20px; 
+            background: #fafafa; 
+        }
+        .image-placeholder { 
+            border: 2px dashed #14377C; 
+            background: #f8f9fa; 
+            padding: 40px 20px; 
+            text-align: center; 
+            min-height: 260px; 
+            border-radius: 8px; 
+        }
     ';
 }
 
@@ -139,9 +144,10 @@ function generateExecutiveSummary(Mpdf $mpdf, array $report): void
                 </tr>
             </table>
     ');
+
     $mpdf->WriteHTML($report['reportSummary'] ?? '<p>Proposal ready for review.</p>');
+
     $mpdf->WriteHTML('</div>');
-    $mpdf->AddPage();
 }
 
 #endregion
