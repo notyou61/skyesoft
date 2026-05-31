@@ -1466,13 +1466,6 @@ window.SkyIndex = {
             return;
         }
 
-        const d = prop.data || {};
-        const loc = d.location || {};
-        const cont = d.contact || {};
-        const ent = d.entity || {};
-        const res = prop.resolution || {};
-        const pers = prop.persistence || {};
-
         // Optional loading feedback
         const link = document.querySelector('a[onclick*="viewContactReport"]');
         const originalText = link ? link.textContent : 'View Full Report (PDF)';
@@ -1481,36 +1474,11 @@ window.SkyIndex = {
         // Open tab immediately from user interaction
         const pdfWindow = window.open('', '_blank');
 
+        // === SEND THE FULL PROPOSAL (this is the important fix) ===
         const payload = {
             reportType: "contact_proposal",
-            reportTitle: "Proposed Contact Report",
-            
-            // Entity
-            entityName: ent.entityName || "Christy Signs",
-            entityAction: pers.entity?.action || "reuse",
-            
-            // Contact
-            contactName: `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim(),
-            contactTitle: cont.contactTitle || "",
-            contactPhone: cont.contactPrimaryPhone || "",
-            contactEmail: cont.contactEmail || "",
-            contactAction: pers.contact?.action || "create",
-            
-            // Location
-            locationAddress: loc.locationAddress || "",
-            locationCityStateZip: `${loc.locationCity || ''}, ${loc.locationState || ''} ${loc.locationZip || ''}`.trim(),
-            locationPlaceId: loc.locationPlaceId || "",
-            locationCounty: loc.locationCounty || "",
-            
-            // Resolution & Governance
-            governanceNarrative: (res.narratives?.decision?.[0] || "This proposal references an existing operational location."),
-            confidence: prop.confidence || 85,
-            pc_code: res.pc?.code || "PC-3",
-            resolutionStatus: res.pc?.status || "existing_location",
-            commitAllowed: pers.commitAllowed ? "YES" : "NO",
-            
-            // Parcel data
-            parcelDetails: loc.parcelDetails || []
+            proposal: prop,                    // ← Full original proposal object
+            proposalId: prop.activitySessionId || null
         };
 
         fetch('/skyesoft/api/generateReports.php', {
@@ -1537,7 +1505,6 @@ window.SkyIndex = {
                 window.open(url, '_blank');
             }
 
-            // Clean up after a minute
             setTimeout(() => URL.revokeObjectURL(url), 60000);
         })
         .catch(error => {
