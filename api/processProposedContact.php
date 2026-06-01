@@ -654,38 +654,13 @@ if (
 ) {
 
     $parsed['location']['locationJurisdiction'] =
-        ucwords(
-            strtolower(
-                trim(
-                    $parcelDetails[0]['jurisdiction']
-                )
+        strtoupper(
+            trim(
+                $parcelDetails[0]['jurisdiction']
             )
         );
 
-    $locationValidation['jurisdictionResolved'] =
-        true;
-}
-
-// -------------------------------------------------
-// FINAL JURISDICTION CLEANUP
-// -------------------------------------------------
-
-$jur =
-    trim(
-        $parsed['location']['locationJurisdiction']
-        ?? ''
-    );
-
-if (
-    $jur === '' ||
-    strtoupper($jur) === 'NO CITY/TOWN'
-) {
-
-    $parsed['location']['locationJurisdiction'] =
-        'Maricopa County';
-
-    $locationValidation['jurisdictionResolved'] =
-        true;
+    $locationValidation['jurisdictionResolved'] = true;
 }
 
 // -------------------------------------------------
