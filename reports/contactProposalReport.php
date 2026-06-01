@@ -351,12 +351,14 @@ function getProposalData(array $input): array
  */
 function normalizeProposalData(array $input): array
 {
-    // === CASE 1: Already flat payload ===
+    // === CASE 1: Already flat payload (partial) ===
     if (isset($input['entityName']) && isset($input['locationAddress'])) {
-        return $input;
+        $base = $input;
+    } else {
+        $base = [];
     }
 
-    // === CASE 2: Full nested proposal ===
+    // === FULL NESTED STRUCTURE (Source of Truth) ===
     $root     = $input['proposal'] ?? $input;
     $data     = $root['data'] ?? $root;
     $location = $data['location'] ?? [];
@@ -364,7 +366,6 @@ function normalizeProposalData(array $input): array
     $entity   = $data['entity']   ?? [];
     $res      = $root['resolution'] ?? [];
     $pers     = $root['persistence'] ?? [];
-    $parcels  = $location['parcelDetails'] ?? [];
 
     // Build City, State ZIP
     $cityStateZip = trim(implode(', ', array_filter([
@@ -372,56 +373,53 @@ function normalizeProposalData(array $input): array
         trim(($location['locationState'] ?? '') . ' ' . ($location['locationZip'] ?? ''))
     ])));
 
-    // === JURISDICTION - Multi-source ===
-    $jurisdiction = $location['locationJurisdiction'] ?? '';
-
-    if (empty($jurisdiction) && !empty($parcels[0]['jurisdiction'])) {
-        $jurisdiction = trim($parcels[0]['jurisdiction']);
-    }
+    // Jurisdiction (Multi-source, no hardcoding)
+    $jurisdiction = $location['locationJurisdiction'] 
+                 ?? $base['locationJurisdiction'] 
+                 ?? ($location['parcelDetails'][0]['jurisdiction'] ?? '');
 
     if (empty($jurisdiction) || strtoupper($jurisdiction) === 'NO CITY/TOWN') {
         $jurisdiction = 'Maricopa County';
     } else {
-        $jurisdiction = ucwords(strtolower($jurisdiction));   // PHOENIX → Phoenix
+        $jurisdiction = ucwords(strtolower($jurisdiction));
     }
 
-    // === COUNTY FIPS - Multi-source ===
-    $countyFips = $location['locationCountyFips'] ?? '';
-    if (empty($countyFips) && !empty($parcels)) {
-        $countyFips = '04013';   // Maricopa County
-    }
+    // County FIPS (No hardcoding - only from available data)
+    $countyFips = $location['locationCountyFips'] 
+               ?? $base['locationCountyFips'] 
+               ?? '';
 
     return [
-        'entityName'           => $entity['entityName'] ?? 'Unknown Entity',
+        'entityName'           => $entity['entityName'] ?? $base['entityName'] ?? 'Unknown Entity',
 
         'contactName'          => trim(implode(' ', array_filter([
                                     $contact['contactSalutation'] ?? '',
                                     $contact['contactFirstName']  ?? '',
                                     $contact['contactLastName']   ?? ''
-                                  ]))) ?: 'Unknown Contact',
+                                  ]))) ?: $base['contactName'] ?? 'Unknown Contact',
 
-        'contactTitle'         => $contact['contactTitle'] ?? '',
-        'contactPhone'         => $contact['contactPrimaryPhone'] ?? '',
-        'contactEmail'         => $contact['contactEmail'] ?? '',
+        'contactTitle'         => $contact['contactTitle'] ?? $base['contactTitle'] ?? '',
+        'contactPhone'         => $contact['contactPrimaryPhone'] ?? $base['contactPhone'] ?? '',
+        'contactEmail'         => $contact['contactEmail'] ?? $base['contactEmail'] ?? '',
 
         // === LOCATION FIELDS ===
-        'locationAddress'      => $location['locationAddress'] ?? '',
-        'locationCityStateZip' => $cityStateZip ?: '—',
-        'locationCounty'       => $location['locationCounty'] ?? '',
-        'locationCountyFips'   => $countyFips,                    // ← Improved
-        'locationJurisdiction' => $jurisdiction,                  // ← Improved
-        'locationPlaceId'      => $location['locationPlaceId'] ?? '',
+        'locationAddress'      => $location['locationAddress'] ?? $base['locationAddress'] ?? '',
+        'locationCityStateZip' => $cityStateZip ?: $base['locationCityStateZip'] ?? '—',
+        'locationCounty'       => $location['locationCounty'] ?? $base['locationCounty'] ?? '',
+        'locationCountyFips'   => $countyFips,                    // Purely from data
+        'locationJurisdiction' => $jurisdiction,
+        'locationPlaceId'      => $location['locationPlaceId'] ?? $base['locationPlaceId'] ?? '',
 
         'governanceNarrative'  => $root['resolution']['narratives']['decision'][0] 
-                               ?? $root['governanceNarrative'] 
-                               ?? 'This proposal references an existing operational location.',
+                               ?? $base['governanceNarrative'] 
+                               ?? '',
 
-        'confidence'           => $root['confidence'] ?? 85,
-        'pc_code'              => $res['pc']['code'] ?? 'PC-X',
-        'resolutionStatus'     => $res['pc']['status'] ?? 'existing_location',
+        'confidence'           => $root['confidence'] ?? $base['confidence'] ?? 85,
+        'pc_code'              => $res['pc']['code'] ?? $base['pc_code'] ?? '',
+        'resolutionStatus'     => $res['pc']['status'] ?? $base['resolutionStatus'] ?? '',
         'commitAllowed'        => ($pers['commitAllowed'] ?? false) ? 'YES' : 'NO',
 
-        'parcelDetails'        => $parcels
+        'parcelDetails'        => $location['parcelDetails'] ?? $base['parcelDetails'] ?? []
     ];
 }
 
