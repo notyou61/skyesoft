@@ -351,14 +351,14 @@ function getProposalData(array $input): array
  */
 function normalizeProposalData(array $input): array
 {
-    // === CASE 1: Already flat payload (partial) ===
+    // === CASE 1: Already flat payload ===
     if (isset($input['entityName']) && isset($input['locationAddress'])) {
         $base = $input;
     } else {
         $base = [];
     }
 
-    // === FULL NESTED STRUCTURE (Source of Truth) ===
+    // === FULL NESTED PROPOSAL - Source of Truth ===
     $root     = $input['proposal'] ?? $input;
     $data     = $root['data'] ?? $root;
     $location = $data['location'] ?? [];
@@ -373,7 +373,7 @@ function normalizeProposalData(array $input): array
         trim(($location['locationState'] ?? '') . ' ' . ($location['locationZip'] ?? ''))
     ])));
 
-    // Jurisdiction (Multi-source, no hardcoding)
+    // === JURISDICTION - Aggressive Extraction ===
     $jurisdiction = $location['locationJurisdiction'] 
                  ?? $base['locationJurisdiction'] 
                  ?? ($location['parcelDetails'][0]['jurisdiction'] ?? '');
@@ -381,13 +381,13 @@ function normalizeProposalData(array $input): array
     if (empty($jurisdiction) || strtoupper($jurisdiction) === 'NO CITY/TOWN') {
         $jurisdiction = 'Maricopa County';
     } else {
-        $jurisdiction = ucwords(strtolower($jurisdiction));
+        $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
     }
 
-    // County FIPS (No hardcoding - only from available data)
+    // === COUNTY FIPS - Aggressive Extraction ===
     $countyFips = $location['locationCountyFips'] 
                ?? $base['locationCountyFips'] 
-               ?? '';
+               ?? ($location['countyFips'] ?? '');
 
     return [
         'entityName'           => $entity['entityName'] ?? $base['entityName'] ?? 'Unknown Entity',
@@ -402,12 +402,11 @@ function normalizeProposalData(array $input): array
         'contactPhone'         => $contact['contactPrimaryPhone'] ?? $base['contactPhone'] ?? '',
         'contactEmail'         => $contact['contactEmail'] ?? $base['contactEmail'] ?? '',
 
-        // === LOCATION FIELDS ===
         'locationAddress'      => $location['locationAddress'] ?? $base['locationAddress'] ?? '',
         'locationCityStateZip' => $cityStateZip ?: $base['locationCityStateZip'] ?? '—',
         'locationCounty'       => $location['locationCounty'] ?? $base['locationCounty'] ?? '',
-        'locationCountyFips'   => $countyFips,                    // Purely from data
-        'locationJurisdiction' => $jurisdiction,
+        'locationCountyFips'   => $countyFips,                    // Should now get "04013"
+        'locationJurisdiction' => $jurisdiction,                  // Should now get "Phoenix"
         'locationPlaceId'      => $location['locationPlaceId'] ?? $base['locationPlaceId'] ?? '',
 
         'governanceNarrative'  => $root['resolution']['narratives']['decision'][0] 
