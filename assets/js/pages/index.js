@@ -1481,36 +1481,106 @@ window.SkyIndex = {
         // Open tab immediately from user interaction
         const pdfWindow = window.open('', '_blank');
 
+        const rawJurisdiction =
+            loc.locationJurisdiction
+            || loc.parcelDetails?.[0]?.jurisdiction
+            || "";
+
+        const locationJurisdiction =
+            !rawJurisdiction ||
+            rawJurisdiction.toUpperCase() === "NO CITY/TOWN"
+                ? "Maricopa County"
+                : rawJurisdiction
+                    .toLowerCase()
+                    .replace(
+                        /\b\w/g,
+                        char => char.toUpperCase()
+                    );
+
         const payload = {
             reportType: "contact_proposal",
             reportTitle: "Proposed Contact Report",
-            
+
             // Entity
-            entityName: ent.entityName || "Christy Signs",
-            entityAction: pers.entity?.action || "reuse",
-            
+            entityName:
+                ent.entityName
+                || "",
+
+            entityAction:
+                pers.entity?.action
+                || "",
+
             // Contact
-            contactName: `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim(),
-            contactTitle: cont.contactTitle || "",
-            contactPhone: cont.contactPrimaryPhone || "",
-            contactEmail: cont.contactEmail || "",
-            contactAction: pers.contact?.action || "create",
-            
+            contactName:
+                `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`
+                    .trim(),
+
+            contactTitle:
+                cont.contactTitle
+                || "",
+
+            contactPhone:
+                cont.contactPrimaryPhone
+                || "",
+
+            contactEmail:
+                cont.contactEmail
+                || "",
+
+            contactAction:
+                pers.contact?.action
+                || "",
+
             // Location
-            locationAddress: loc.locationAddress || "",
-            locationCityStateZip: `${loc.locationCity || ''}, ${loc.locationState || ''} ${loc.locationZip || ''}`.trim(),
-            locationPlaceId: loc.locationPlaceId || "",
-            locationCounty: loc.locationCounty || "",
-            
+            locationAddress:
+                loc.locationAddress
+                || "",
+
+            locationCityStateZip:
+                `${loc.locationCity || ''}, ${loc.locationState || ''} ${loc.locationZip || ''}`
+                    .trim(),
+
+            locationPlaceId:
+                loc.locationPlaceId
+                || "",
+
+            locationCounty:
+                loc.locationCounty
+                || "",
+
+            locationCountyFips:
+                loc.locationCountyFips
+                || "",
+
+            locationJurisdiction:
+                locationJurisdiction,
+
             // Resolution & Governance
-            governanceNarrative: (res.narratives?.decision?.[0] || "This proposal references an existing operational location."),
-            confidence: prop.confidence || 85,
-            pc_code: res.pc?.code || "PC-3",
-            resolutionStatus: res.pc?.status || "existing_location",
-            commitAllowed: pers.commitAllowed ? "YES" : "NO",
-            
+            governanceNarrative:
+                res.narratives?.decision?.[0]
+                || "",
+
+            confidence:
+                prop.confidence
+                || "",
+
+            pc_code:
+                res.pc?.code
+                || "",
+
+            resolutionStatus:
+                res.pc?.status
+                || "",
+
+            commitAllowed:
+                pers.commitAllowed
+                    ? "YES"
+                    : "NO",
+
             // Parcel data
-            parcelDetails: loc.parcelDetails || []
+            parcelDetails:
+                loc.parcelDetails
+                || []
         };
 
         fetch('/skyesoft/api/generateReports.php', {
