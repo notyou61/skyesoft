@@ -92,23 +92,20 @@ try {
         throw new Exception('PDF generation returned empty content');
     }
 
-    // === SUCCESS: Deliver PDF for viewing in new tab ===
-    header('Content-Type: application/pdf');
-    // Filename: Use provided filename
-    $filename =
-        $report['reportFilename']
-        ?? ($report['reportType'] ?? 'report');
+    // === DYNAMIC FILENAME ===
+    $filename = $report['reportFilename'] 
+        ?? ($report['reportTitle'] ?? $report['reportType'] ?? 'Report');
 
-    $filename = preg_replace(
-        '/[\\\\\\/:"*?<>|]+/',
-        '',
-        $filename
-    );
-    header(
-        'Content-Disposition: inline; filename="'
-        . $filename
-        . '.pdf"'
-    );
+    // Clean filename (remove invalid characters)
+    $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
+
+    if (empty($filename)) {
+        $filename = 'Proposed_Contact_Report';
+    }
+
+    // === SUCCESS: Deliver PDF ===
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
     header('Content-Length: ' . strlen($pdfContent));
     header('Cache-Control: no-cache, must-revalidate');
     header('Pragma: no-cache');
