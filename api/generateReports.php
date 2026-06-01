@@ -94,8 +94,21 @@ try {
 
     // === SUCCESS: Deliver PDF for viewing in new tab ===
     header('Content-Type: application/pdf');
-    header('Content-Disposition: inline; filename="Proposed_Contact_Report_' 
-           . date('Ymd_His') . '.pdf"');
+    // Filename: Use provided filename
+    $filename =
+        $report['reportFilename']
+        ?? ($report['reportType'] ?? 'report');
+
+    $filename = preg_replace(
+        '/[\\\\\\/:"*?<>|]+/',
+        '',
+        $filename
+    );
+    header(
+        'Content-Disposition: inline; filename="'
+        . $filename
+        . '.pdf"'
+    );
     header('Content-Length: ' . strlen($pdfContent));
     header('Cache-Control: no-cache, must-revalidate');
     header('Pragma: no-cache');

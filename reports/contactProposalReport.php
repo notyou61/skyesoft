@@ -16,14 +16,43 @@ function generateContactProposalReport(array $input): array
     $bodyHtml = buildContactProposalBody($proposal);
     
     return [
-        'reportType'     => 'contact_proposal',
-        'reportTitle'    => $proposal['reportTitle'] ?? 'Proposed Contact Report (PC-3)',
-        'reportSummary'  => generateSummarySection($proposal),
-        'reportBodyHtml' => $bodyHtml,
-        'reportArtifacts'=> collectArtifacts($proposal),
-        'reportMeta'     => [
-            'generated_at' => date('Y-m-d H:i:s'),
-            'proposal_id'  => $input['proposalId'] ?? null
+        'reportType'      => 'contact_proposal',
+
+        'reportTitle'     =>
+            $proposal['reportTitle']
+            ?? 'Proposed Contact Report (PC-3)',
+
+        // -------------------------------------------------
+        // Dynamic PDF Filename
+        // -------------------------------------------------
+
+        'reportFilename'  =>
+            'Proposed Contact Report - '
+            . trim(
+                $proposal['contactName']
+                ?? 'Unknown Contact'
+            ),
+
+        'reportSummary'   =>
+            generateSummarySection(
+                $proposal
+            ),
+
+        'reportBodyHtml'  =>
+            $bodyHtml,
+
+        'reportArtifacts' =>
+            collectArtifacts(
+                $proposal
+            ),
+
+        'reportMeta'      => [
+            'generated_at' =>
+                date('Y-m-d H:i:s'),
+
+            'proposal_id'  =>
+                $input['proposalId']
+                ?? null
         ]
     ];
 }
