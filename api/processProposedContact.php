@@ -645,7 +645,7 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
 $parsed['location']['parcelDetails'] = $parcelDetails;
 
 // -------------------------------------------------
-// JURISDICTION PROMOTION
+// JURISDICTION PROMOTION (Sets the Jurisdiction)
 // -------------------------------------------------
 
 if (
