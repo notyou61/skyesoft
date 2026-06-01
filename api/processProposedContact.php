@@ -654,12 +654,18 @@ if (
 ) {
 
     $parsed['location']['locationJurisdiction'] =
-        strtoupper(
-            trim(
-                $parcelDetails[0]['jurisdiction']
-            )
+        trim(
+            $parcelDetails[0]['jurisdiction']
         );
 
+    $locationValidation['jurisdictionResolved'] = true;
+}
+
+// Final cleanup: Convert "NO CITY/TOWN" → "Maricopa County"
+$jur = trim($parsed['location']['locationJurisdiction'] ?? '');
+
+if ($jur === '' || strtoupper($jur) === 'NO CITY/TOWN') {
+    $parsed['location']['locationJurisdiction'] = 'Maricopa County';
     $locationValidation['jurisdictionResolved'] = true;
 }
 
