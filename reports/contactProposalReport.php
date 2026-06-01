@@ -11,49 +11,40 @@ declare(strict_types=1);
 
 function generateContactProposalReport(array $input): array
 {
-    
+    // Normalize the input (handles both flat and full nested proposal)
     $proposal = getProposalData($input);
-    
+
     $bodyHtml = buildContactProposalBody($proposal);
-    
+
+    // Dynamic Report Title based on PC code or fallback
+    $pcCode = $proposal['pc_code'] 
+           ?? $proposal['pcCode'] 
+           ?? $proposal['resolution']['pc']['code'] 
+           ?? 'PC-X';
+
+    $reportTitle = 'Proposed Contact Report' 
+                 . ($pcCode ? " ({$pcCode})" : '');
+
     return [
         'reportType'      => 'contact_proposal',
 
-        'reportTitle'     =>
-            $proposal['reportTitle']
-            ?? 'Proposed Contact Report (PC-3)',
+        'reportTitle'     => $reportTitle,
 
         // -------------------------------------------------
         // Dynamic PDF Filename
         // -------------------------------------------------
+        'reportFilename'  => 'Proposed Contact Report - ' 
+                          . trim($proposal['contactName'] ?? 'Unknown Contact'),
 
-        'reportFilename'  =>
-            'Proposed Contact Report - '
-            . trim(
-                $proposal['contactName']
-                ?? 'Unknown Contact'
-            ),
+        'reportSummary'   => generateSummarySection($proposal),
 
-        'reportSummary'   =>
-            generateSummarySection(
-                $proposal
-            ),
+        'reportBodyHtml'  => $bodyHtml,
 
-        'reportBodyHtml'  =>
-            $bodyHtml,
-
-        'reportArtifacts' =>
-            collectArtifacts(
-                $proposal
-            ),
+        'reportArtifacts' => collectArtifacts($proposal),
 
         'reportMeta'      => [
-            'generated_at' =>
-                date('Y-m-d H:i:s'),
-
-            'proposal_id'  =>
-                $input['proposalId']
-                ?? null
+            'generated_at' => date('Y-m-d H:i:s'),
+            'proposal_id'  => $input['proposalId'] ?? $input['activitySessionId'] ?? null,
         ]
     ];
 }
@@ -351,7 +342,12 @@ function getProposalData(array $input): array
  */
 function normalizeProposalData(array $input): array
 {
-    // Unwrap common nesting patterns
+    // === ALREADY NORMALIZED FLAT PAYLOAD ===
+    if (isset($input['entityName']) && isset($input['locationAddress'])) {
+        return $input;   // Return as-is
+    }
+
+    // === FULL NESTED PROPOSAL (Source of Truth) ===
     $proposal = $input['proposal'] ?? $input;
     $data     = $proposal['data']     ?? $proposal;
     $location = $data['location']     ?? [];
@@ -360,32 +356,34 @@ function normalizeProposalData(array $input): array
     $res      = $proposal['resolution'] ?? [];
     $pers     = $proposal['persistence'] ?? [];
 
-    // === CITY, STATE ZIP ===
+    // City, State ZIP
     $cityStateZip = trim(implode(', ', array_filter([
         $location['locationCity'] ?? '',
         trim(($location['locationState'] ?? '') . ' ' . ($location['locationZip'] ?? ''))
     ])));
 
-    // === JURISDICTION (with cleanup) ===
+    // Jurisdiction
     $jurisdiction = $location['locationJurisdiction'] ?? 'Pending';
     if (empty($jurisdiction) || strtoupper($jurisdiction) === 'NO CITY/TOWN') {
         $jurisdiction = 'Maricopa County';
     }
 
+    // Contact Name (with salutation)
+    $contactName = trim(implode(' ', array_filter([
+        $contact['contactSalutation'] ?? '',
+        $contact['contactFirstName']  ?? '',
+        $contact['contactLastName']   ?? ''
+    ])));
+
     return [
         'entityName'           => $entity['entityName'] ?? 'Unknown Entity',
 
-        'contactName'          => trim(implode(' ', array_filter([
-                                    $contact['contactSalutation'] ?? '',
-                                    $contact['contactFirstName']  ?? '',
-                                    $contact['contactLastName']   ?? ''
-                                  ]))) ?: 'Unknown Contact',
+        'contactName'          => $contactName ?: 'Unknown Contact',
 
         'contactTitle'         => $contact['contactTitle'] ?? '',
         'contactPhone'         => $contact['contactPrimaryPhone'] ?? '',
         'contactEmail'         => $contact['contactEmail'] ?? '',
 
-        // Location fields expected by buildLocationSection()
         'locationAddress'      => $location['locationAddress'] ?? '',
         'locationCityStateZip' => $cityStateZip ?: '—',
         'locationCounty'       => $location['locationCounty'] ?? '',
@@ -393,10 +391,13 @@ function normalizeProposalData(array $input): array
         'locationJurisdiction' => $jurisdiction,
         'locationPlaceId'      => $location['locationPlaceId'] ?? '',
 
-        'governanceNarrative'  => $proposal['governanceNarrative'] ?? 
-                                  ($res['narratives']['decision'][0] ?? ''),
+        'governanceNarrative'  => $proposal['governanceNarrative'] 
+                               ?? ($res['narratives']['decision'][0] ?? ''),
+
         'confidence'           => $proposal['confidence'] ?? 85,
-        'pcCode'               => $res['pc']['code'] ?? 'PC-3',
+        'pc_code'              => $res['pc']['code'] ?? $proposal['pc_code'] ?? $proposal['pcCode'] ?? 'PC-X',
+        'pcCode'               => $res['pc']['code'] ?? $proposal['pc_code'] ?? $proposal['pcCode'] ?? 'PC-X', // support both
+
         'resolutionStatus'     => $res['pc']['status'] ?? 'existing_location',
         'commitAllowed'        => ($pers['commitAllowed'] ?? false) ? 'YES' : 'NO',
 
