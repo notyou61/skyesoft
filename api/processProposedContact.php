@@ -644,24 +644,22 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
 // Attach to parsed location
 $parsed['location']['parcelDetails'] = $parcelDetails;
 
-// -------------------------------------------------
-// JURISDICTION PROMOTION
-// -------------------------------------------------
+// === JURISDICTION - ROBUST EXTRACTION ===
+$jur = 'Pending';
 
-if (
-    empty($parsed['location']['locationJurisdiction']) &&
-    !empty($parcelDetails[0]['jurisdiction'])
-) {
-
-    $parsed['location']['locationJurisdiction'] =
-        strtoupper(
-            trim(
-                $parcelDetails[0]['jurisdiction']
-            )
-        );
-
-    $locationValidation['jurisdictionResolved'] = true;
+if (!empty($proposal['location']['locationJurisdiction'])) {
+    $jur = $proposal['location']['locationJurisdiction'];
+} elseif (!empty($proposal['data']['location']['locationJurisdiction'])) {
+    $jur = $proposal['data']['location']['locationJurisdiction'];
+} elseif (!empty($proposal['locationJurisdiction'])) {
+    $jur = $proposal['locationJurisdiction'];
 }
+
+// Final cleanup
+if (empty($jur) || strtoupper($jur) === 'NO CITY/TOWN') {
+    $jur = 'Maricopa County';
+}
+
 
 // -------------------------------------------------
 // SMARTY USPS VALIDATION (only if parcel not resolved)

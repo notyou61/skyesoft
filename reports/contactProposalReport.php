@@ -291,40 +291,43 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
-    // The real data is now under $input['proposal']
+    // Unwrap common nesting patterns
     $proposal = $input['proposal'] ?? $input;
-    $data     = $proposal['data']     ?? $proposal;
-    $location = $data['location']     ?? $data;
-    $contact  = $data['contact']      ?? $data;
-    $entity   = $data['entity']       ?? $data;
+    $data     = $proposal['data'] ?? $proposal;
+    $location = $data['location'] ?? $data['parsed']['location'] ?? $data;
+    $contact  = $data['contact']  ?? $data;
+    $entity   = $data['entity']   ?? $data;
     $res      = $proposal['resolution'] ?? [];
     $pers     = $proposal['persistence'] ?? [];
 
+    // === DYNAMIC FIELD MAPPER ===
+    $loc = normalizeLocationFields($location);
+
     return [
-        'entityName'           => $entity['entityName'] ?? 'Unknown Entity',
+        'entityName'           => $entity['name'] ?? $entity['entityName'] ?? 'Unknown Entity',
 
-        'contactName'          => trim(
-                                    ($contact['contactSalutation'] ?? '') . ' ' .
-                                    ($contact['contactFirstName'] ?? '') . ' ' .
-                                    ($contact['contactLastName'] ?? '')
-                                  ) ?: 'Susan Alderson',
+        'contactName'          => trim(implode(' ', array_filter([
+                                    $contact['salutation'] ?? $contact['contactSalutation'] ?? '',
+                                    $contact['firstName']  ?? $contact['contactFirstName'] ?? '',
+                                    $contact['lastName']   ?? $contact['contactLastName'] ?? ''
+                                  ]))) ?: 'Susan Alderson',
 
-        'contactTitle'         => $contact['contactTitle'] ?? '',
-        'contactPhone'         => $contact['contactPrimaryPhone'] ?? '',
-        'contactEmail'         => $contact['contactEmail'] ?? '',
+        'contactTitle'         => $contact['title'] ?? $contact['contactTitle'] ?? '',
+        'contactPhone'         => $contact['primaryPhone'] ?? $contact['contactPrimaryPhone'] ?? '',
+        'contactEmail'         => $contact['email'] ?? $contact['contactEmail'] ?? '',
 
-        'locationAddress'      => $location['locationAddress'] ?? '',
-        'locationCity'         => $location['locationCity'] ?? '',
-        'locationState'        => $location['locationState'] ?? '',
-        'locationZip'          => $location['locationZip'] ?? '',
-        'locationCityStateZip' => trim(($location['locationCity'] ?? '') . ', ' . 
-                                  ($location['locationState'] ?? '') . ' ' . 
-                                  ($location['locationZip'] ?? '')),
+        // === LOCATION FIELDS (Dynamic) ===
+        'locationAddress'      => $loc['address'] ?? '',
+        'locationCity'         => $loc['city'] ?? '',
+        'locationState'        => $loc['state'] ?? '',
+        'locationZip'          => $loc['zip'] ?? '',
 
-        'locationCounty'       => $location['locationCounty'] ?? '',
-        'locationCountyFips'   => $location['locationCountyFips'] ?? '',
-        'locationJurisdiction' => $location['locationJurisdiction'] ?? 'Pending',
-        'locationPlaceId'      => $location['locationPlaceId'] ?? '',
+        'locationCityStateZip' => buildCityStateZip($loc),
+
+        'locationCounty'       => $loc['county'] ?? '',
+        'locationCountyFips'   => $loc['countyFips'] ?? '',
+        'locationJurisdiction' => $loc['locationJurisdiction'] ?? $loc['jurisdiction'] ?? 'Pending',
+        'locationPlaceId'      => $loc['locationPlaceId'] ?? $loc['placeId'] ?? '',
 
         'governanceNarrative'  => $proposal['governanceNarrative'] ?? 
                                   ($res['narratives']['decision'][0] ?? ''),
@@ -333,8 +336,50 @@ function normalizeProposalData(array $input): array
         'resolutionStatus'     => $res['pc']['status'] ?? 'existing_location',
         'commitAllowed'        => ($pers['commitAllowed'] ?? false) ? 'YES' : 'NO',
 
-        'parcelDetails'        => $location['parcelDetails'] ?? []
+        'parcelDetails'        => $loc['parcelDetails'] ?? []
     ];
+}
+
+// ================================================
+// HELPER FUNCTIONS (Dynamic & Reusable)
+// ================================================
+
+function normalizeLocationFields(array $loc): array
+{
+    $map = [
+        'address'      => ['address', 'locationAddress', 'formattedAddress'],
+        'city'         => ['city', 'locationCity'],
+        'state'        => ['state', 'locationState'],
+        'zip'          => ['zip', 'locationZip'],
+        'county'       => ['county', 'locationCounty'],
+        'countyFips'   => ['countyFips', 'locationCountyFips'],
+        'locationJurisdiction' => ['locationJurisdiction', 'jurisdiction'],
+        'locationPlaceId' => ['locationPlaceId', 'placeId'],
+        'parcelDetails'=> ['parcelDetails']
+    ];
+
+    $normalized = [];
+    foreach ($map as $targetKey => $possibleKeys) {
+        foreach ($possibleKeys as $key) {
+            if (!empty($loc[$key]) || (isset($loc[$key]) && $loc[$key] !== '')) {
+                $normalized[$targetKey] = $loc[$key];
+                break;
+            }
+        }
+    }
+
+    return $normalized;
+}
+
+function buildCityStateZip(array $loc): string
+{
+    $city  = $loc['city'] ?? '';
+    $state = $loc['state'] ?? '';
+    $zip   = $loc['zip'] ?? '';
+
+    $stateZip = trim($state . ($zip ? ' ' . $zip : ''));
+    
+    return trim(implode(', ', array_filter([$city, $stateZip])));
 }
 
 function collectArtifacts(array $proposal): array
