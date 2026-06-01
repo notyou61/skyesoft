@@ -351,13 +351,12 @@ function getProposalData(array $input): array
  */
 function normalizeProposalData(array $input): array
 {
-    // Support both direct flat payload AND full nested proposal
+    // === ALREADY FLAT PAYLOAD ===
     if (isset($input['entityName']) && isset($input['locationAddress'])) {
-        // Already normalized flat payload → return as-is
         return $input;
     }
 
-    // Full nested proposal structure (source of truth)
+    // === FULL NESTED PROPOSAL (Source of Truth) ===
     $proposal = $input['proposal'] ?? $input;
     $data     = $proposal['data']     ?? $proposal;
     $location = $data['location']     ?? [];
@@ -372,7 +371,7 @@ function normalizeProposalData(array $input): array
         trim(($location['locationState'] ?? '') . ' ' . ($location['locationZip'] ?? ''))
     ])));
 
-    // Jurisdiction
+    // Jurisdiction + Final Cleanup
     $jurisdiction = $location['locationJurisdiction'] ?? 'Pending';
     if (empty($jurisdiction) || strtoupper($jurisdiction) === 'NO CITY/TOWN') {
         $jurisdiction = 'Maricopa County';
@@ -391,17 +390,19 @@ function normalizeProposalData(array $input): array
         'contactPhone'         => $contact['contactPrimaryPhone'] ?? '',
         'contactEmail'         => $contact['contactEmail'] ?? '',
 
+        // === LOCATION FIELDS ===
         'locationAddress'      => $location['locationAddress'] ?? '',
         'locationCityStateZip' => $cityStateZip ?: '—',
         'locationCounty'       => $location['locationCounty'] ?? '',
-        'locationCountyFips'   => $location['locationCountyFips'] ?? '',
-        'locationJurisdiction' => $jurisdiction,
+        'locationCountyFips'   => $location['locationCountyFips'] ?? '',     // ← Critical
+        'locationJurisdiction' => $jurisdiction,                             // ← Critical
         'locationPlaceId'      => $location['locationPlaceId'] ?? '',
 
-        'governanceNarrative'  => $proposal['governanceNarrative'] ?? 
-                                  ($res['narratives']['decision'][0] ?? ''),
+        'governanceNarrative'  => $proposal['governanceNarrative'] 
+                               ?? ($res['narratives']['decision'][0] ?? ''),
+
         'confidence'           => $proposal['confidence'] ?? 85,
-        'pc_code'              => $res['pc']['code'] ?? 'PC-3',           // Note: pc_code to match payload
+        'pc_code'              => $res['pc']['code'] ?? 'PC-X',
         'resolutionStatus'     => $res['pc']['status'] ?? 'existing_location',
         'commitAllowed'        => ($pers['commitAllowed'] ?? false) ? 'YES' : 'NO',
 
