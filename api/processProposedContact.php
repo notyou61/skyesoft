@@ -644,22 +644,37 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
 // Attach to parsed location
 $parsed['location']['parcelDetails'] = $parcelDetails;
 
-// === JURISDICTION - ROBUST EXTRACTION ===
-$jur = 'Pending';
+// -------------------------------------------------
+// JURISDICTION PROMOTION + TITLE CASE NORMALIZATION
+// -------------------------------------------------
 
-if (!empty($proposal['location']['locationJurisdiction'])) {
-    $jur = $proposal['location']['locationJurisdiction'];
-} elseif (!empty($proposal['data']['location']['locationJurisdiction'])) {
-    $jur = $proposal['data']['location']['locationJurisdiction'];
-} elseif (!empty($proposal['locationJurisdiction'])) {
-    $jur = $proposal['locationJurisdiction'];
+if (
+    empty($parsed['location']['locationJurisdiction']) &&
+    !empty($parcelDetails[0]['jurisdiction'])
+) {
+
+    $rawJur = trim($parcelDetails[0]['jurisdiction']);
+
+    // Convert to Title Case (handles PHOENIX → Phoenix)
+    $normalizedJur = ucwords(strtolower($rawJur));
+
+    $parsed['location']['locationJurisdiction'] = $normalizedJur;
+
+    $locationValidation['jurisdictionResolved'] = true;
+
+    error_log("[JURISDICTION] Normalized: {$rawJur} → {$normalizedJur}");
 }
 
-// Final cleanup
-if (empty($jur) || strtoupper($jur) === 'NO CITY/TOWN') {
-    $jur = 'Maricopa County';
-}
+// -------------------------------------------------
+// FINAL JURISDICTION CLEANUP
+// -------------------------------------------------
 
+$jur = trim($parsed['location']['locationJurisdiction'] ?? '');
+
+if ($jur === '' || strtoupper($jur) === 'NO CITY/TOWN') {
+    $parsed['location']['locationJurisdiction'] = 'Maricopa County';
+    $locationValidation['jurisdictionResolved'] = true;
+}
 
 // -------------------------------------------------
 // SMARTY USPS VALIDATION (only if parcel not resolved)
