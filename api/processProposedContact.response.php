@@ -96,7 +96,12 @@ $data['location'] = [
     'locationState'        => $parsed['location']['state'] ?? '',
     'locationZip'          => $parsed['location']['zip'] ?? '',
     'locationCounty'       => $parsed['location']['county'] ?? '',
-    'locationCountyFips'   => $parsed['location']['countyFips'] ?? '',
+    
+    // === CRITICAL FIELDS FOR REPORT ===
+    'locationCountyFips'   => $parsed['location']['countyFips'] 
+                           ?? $parsed['location']['locationCountyFips'] 
+                           ?? '',
+    
     'locationJurisdiction' => $parsed['location']['locationJurisdiction'] 
                            ?? $parsed['location']['jurisdiction'] 
                            ?? ($selectedParcel['jurisdiction'] ?? ''),
