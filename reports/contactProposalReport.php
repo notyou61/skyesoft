@@ -88,82 +88,92 @@ function buildContactProposalBody(array $proposal): string
 
 #region SECTION 02 - Core Sections
 
+/**
+ * Builds the Entity Information section
+ */
 function buildEntitySection(array $proposal): string
 {
     $html = buildSectionHeader('Entity Information', 'property.png');
     $html .= '<table class="dataTable">';
-    $html .= '<tr><th>Entity Name</th><td>' . htmlspecialchars($proposal['entityName'] ?? 'N/A') . '</td></tr>';
-    // Action row removed as requested
+    $html .= '<tr><th>Entity Name</th><td>' 
+        . htmlspecialchars($proposal['entityName'] ?? 'N/A') 
+        . '</td></tr>';
     $html .= '</table>';
     return $html;
 }
 
+/**
+ * Builds the Contact Information section
+ */
 function buildContactSection(array $proposal): string
 {
     $html = buildSectionHeader('Contact Information', 'users.png');
     $html .= '<table class="dataTable">';
-    $html .= '<tr><th>Contact Name</th><td>' . htmlspecialchars($proposal['contactName'] ?? 'N/A') . '</td></tr>';
-    $html .= '<tr><th>Title</th><td>' . htmlspecialchars($proposal['contactTitle'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th>Phone</th><td>' . htmlspecialchars($proposal['contactPhone'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th>Email</th><td>' . htmlspecialchars($proposal['contactEmail'] ?? '—') . '</td></tr>';
+    
+    $html .= '<tr><th>Contact Name</th><td>' 
+        . htmlspecialchars($proposal['contactName'] ?? 'N/A') 
+        . '</td></tr>';
+    
+    $html .= '<tr><th>Title</th><td>' 
+        . htmlspecialchars($proposal['contactTitle'] ?? '—') 
+        . '</td></tr>';
+    
+    $html .= '<tr><th>Phone</th><td>' 
+        . htmlspecialchars($proposal['contactPhone'] ?? '—') 
+        . '</td></tr>';
+    
+    $html .= '<tr><th>Email</th><td>' 
+        . htmlspecialchars($proposal['contactEmail'] ?? '—') 
+        . '</td></tr>';
+    
     $html .= '</table>';
     return $html;
 }
 
+/**
+ * Builds the Location Information section
+ * Uses normalized flat keys from normalizeProposalData()
+ */
 function buildLocationSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Information', 'pin.png');
     $html .= '<table class="dataTable">';
 
     // Full Address
-    $fullAddress = $proposal['locationAddress'] 
-                ?? $proposal['location']['address'] 
-                ?? $proposal['location']['formattedAddress'] 
-                ?? 'N/A';
-    
-    $html .= '<tr><th>Full Address</th><td>' . htmlspecialchars($fullAddress) . '</td></tr>';
+    $fullAddress = $proposal['locationAddress'] ?? 'N/A';
+    $html .= '<tr><th>Full Address</th><td>' 
+        . htmlspecialchars($fullAddress) 
+        . '</td></tr>';
 
     // City, State ZIP
-    $cityStateZip = $proposal['locationCityStateZip'] 
-                 ?? buildCityStateZip($proposal['location'] ?? $proposal)
-                 ?? '—';
-    
-    $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($cityStateZip) . '</td></tr>';
+    $cityStateZip = $proposal['locationCityStateZip'] ?? '—';
+    $html .= '<tr><th>City, State ZIP</th><td>' 
+        . htmlspecialchars($cityStateZip) 
+        . '</td></tr>';
 
     // County
-    $county = $proposal['locationCounty'] 
-           ?? $proposal['location']['county'] 
-           ?? '—';
-    
-    $html .= '<tr><th>County</th><td>' . htmlspecialchars($county) . '</td></tr>';
+    $county = $proposal['locationCounty'] ?? '—';
+    $html .= '<tr><th>County</th><td>' 
+        . htmlspecialchars($county) 
+        . '</td></tr>';
 
     // County FIPS
-    $fips = $proposal['locationCountyFips'] 
-         ?? $proposal['location']['countyFips'] 
-         ?? '—';
-    
-    $html .= '<tr><th>County FIPS</th><td>' . htmlspecialchars($fips) . '</td></tr>';
+    $fips = $proposal['locationCountyFips'] ?? '—';
+    $html .= '<tr><th>County FIPS</th><td>' 
+        . htmlspecialchars($fips) 
+        . '</td></tr>';
 
-    // Jurisdiction (with Title Case + Cleanup)
-    $jur = $proposal['locationJurisdiction'] 
-        ?? $proposal['location']['locationJurisdiction'] 
-        ?? $proposal['location']['jurisdiction'] 
-        ?? 'Pending';
-
-    if (empty($jur) || strtoupper($jur) === 'NO CITY/TOWN') {
-        $jur = 'Maricopa County';
-    } else {
-        $jur = ucwords(strtolower($jur));   // PHOENIX → Phoenix
-    }
-
-    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($jur) . '</td></tr>';
+    // Jurisdiction
+    $jur = $proposal['locationJurisdiction'] ?? 'Pending';
+    $html .= '<tr><th>Jurisdiction</th><td>' 
+        . htmlspecialchars($jur) 
+        . '</td></tr>';
 
     // Place ID
-    $placeId = $proposal['locationPlaceId'] 
-            ?? $proposal['location']['locationPlaceId'] 
-            ?? 'N/A';
-    
-    $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($placeId) . '</td></tr>';
+    $placeId = $proposal['locationPlaceId'] ?? 'N/A';
+    $html .= '<tr><th>Place ID</th><td>' 
+        . htmlspecialchars($placeId) 
+        . '</td></tr>';
 
     $html .= '</table>';
     return $html;
@@ -328,52 +338,60 @@ function generateSummarySection(array $proposal): string
 
 #endregion
 
-#region SECTION 06 - Data Source
+#region SECTION 06 - Data Source (Normalized Proposal)
 
 function getProposalData(array $input): array
 {
     return normalizeProposalData($input);
 }
 
+/**
+ * Normalizes the raw proposal JSON into a flat, predictable structure
+ * for report generation.
+ */
 function normalizeProposalData(array $input): array
 {
     // Unwrap common nesting patterns
     $proposal = $input['proposal'] ?? $input;
-    $data     = $proposal['data'] ?? $proposal;
-    $location = $data['location'] ?? $data['parsed']['location'] ?? $data;
-    $contact  = $data['contact']  ?? $data;
-    $entity   = $data['entity']   ?? $data;
+    $data     = $proposal['data']     ?? $proposal;
+    $location = $data['location']     ?? [];
+    $contact  = $data['contact']      ?? [];
+    $entity   = $data['entity']       ?? [];
     $res      = $proposal['resolution'] ?? [];
     $pers     = $proposal['persistence'] ?? [];
 
-    // === DYNAMIC FIELD MAPPER ===
-    $loc = normalizeLocationFields($location);
+    // === CITY, STATE ZIP ===
+    $cityStateZip = trim(implode(', ', array_filter([
+        $location['locationCity'] ?? '',
+        trim(($location['locationState'] ?? '') . ' ' . ($location['locationZip'] ?? ''))
+    ])));
+
+    // === JURISDICTION (with cleanup) ===
+    $jurisdiction = $location['locationJurisdiction'] ?? 'Pending';
+    if (empty($jurisdiction) || strtoupper($jurisdiction) === 'NO CITY/TOWN') {
+        $jurisdiction = 'Maricopa County';
+    }
 
     return [
-        'entityName'           => $entity['name'] ?? $entity['entityName'] ?? 'Unknown Entity',
+        'entityName'           => $entity['entityName'] ?? 'Unknown Entity',
 
         'contactName'          => trim(implode(' ', array_filter([
-                                    $contact['salutation'] ?? $contact['contactSalutation'] ?? '',
-                                    $contact['firstName']  ?? $contact['contactFirstName'] ?? '',
-                                    $contact['lastName']   ?? $contact['contactLastName'] ?? ''
-                                  ]))) ?: 'Susan Alderson',
+                                    $contact['contactSalutation'] ?? '',
+                                    $contact['contactFirstName']  ?? '',
+                                    $contact['contactLastName']   ?? ''
+                                  ]))) ?: 'Unknown Contact',
 
-        'contactTitle'         => $contact['title'] ?? $contact['contactTitle'] ?? '',
-        'contactPhone'         => $contact['primaryPhone'] ?? $contact['contactPrimaryPhone'] ?? '',
-        'contactEmail'         => $contact['email'] ?? $contact['contactEmail'] ?? '',
+        'contactTitle'         => $contact['contactTitle'] ?? '',
+        'contactPhone'         => $contact['contactPrimaryPhone'] ?? '',
+        'contactEmail'         => $contact['contactEmail'] ?? '',
 
-        // === LOCATION FIELDS (Dynamic) ===
-        'locationAddress'      => $loc['address'] ?? '',
-        'locationCity'         => $loc['city'] ?? '',
-        'locationState'        => $loc['state'] ?? '',
-        'locationZip'          => $loc['zip'] ?? '',
-
-        'locationCityStateZip' => buildCityStateZip($loc),
-
-        'locationCounty'       => $loc['county'] ?? '',
-        'locationCountyFips'   => $loc['countyFips'] ?? '',
-        'locationJurisdiction' => $loc['locationJurisdiction'] ?? $loc['jurisdiction'] ?? 'Pending',
-        'locationPlaceId'      => $loc['locationPlaceId'] ?? $loc['placeId'] ?? '',
+        // Location fields expected by buildLocationSection()
+        'locationAddress'      => $location['locationAddress'] ?? '',
+        'locationCityStateZip' => $cityStateZip ?: '—',
+        'locationCounty'       => $location['locationCounty'] ?? '',
+        'locationCountyFips'   => $location['locationCountyFips'] ?? '',
+        'locationJurisdiction' => $jurisdiction,
+        'locationPlaceId'      => $location['locationPlaceId'] ?? '',
 
         'governanceNarrative'  => $proposal['governanceNarrative'] ?? 
                                   ($res['narratives']['decision'][0] ?? ''),
@@ -382,51 +400,17 @@ function normalizeProposalData(array $input): array
         'resolutionStatus'     => $res['pc']['status'] ?? 'existing_location',
         'commitAllowed'        => ($pers['commitAllowed'] ?? false) ? 'YES' : 'NO',
 
-        'parcelDetails'        => $loc['parcelDetails'] ?? []
+        'parcelDetails'        => $location['parcelDetails'] ?? []
     ];
 }
 
 // ================================================
-// HELPER FUNCTIONS (Dynamic & Reusable)
+// HELPER FUNCTIONS
 // ================================================
 
-function normalizeLocationFields(array $loc): array
-{
-    $map = [
-        'address'      => ['address', 'locationAddress', 'formattedAddress'],
-        'city'         => ['city', 'locationCity'],
-        'state'        => ['state', 'locationState'],
-        'zip'          => ['zip', 'locationZip'],
-        'county'       => ['county', 'locationCounty'],
-        'countyFips'   => ['countyFips', 'locationCountyFips'],
-        'locationJurisdiction' => ['locationJurisdiction', 'jurisdiction'],
-        'locationPlaceId' => ['locationPlaceId', 'placeId'],
-        'parcelDetails'=> ['parcelDetails']
-    ];
-
-    $normalized = [];
-    foreach ($map as $targetKey => $possibleKeys) {
-        foreach ($possibleKeys as $key) {
-            if (!empty($loc[$key]) || (isset($loc[$key]) && $loc[$key] !== '')) {
-                $normalized[$targetKey] = $loc[$key];
-                break;
-            }
-        }
-    }
-
-    return $normalized;
-}
-
-function buildCityStateZip(array $loc): string
-{
-    $city  = $loc['city'] ?? $loc['locationCity'] ?? '';
-    $state = $loc['state'] ?? $loc['locationState'] ?? '';
-    $zip   = $loc['zip'] ?? $loc['locationZip'] ?? '';
-
-    $stateZip = trim($state . ($zip ? ' ' . $zip : ''));
-    return trim(implode(', ', array_filter([$city, $stateZip])));
-}
-
+/**
+ * Returns placeholder artifacts (can be expanded later)
+ */
 function collectArtifacts(array $proposal): array
 {
     return [
