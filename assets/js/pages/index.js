@@ -1484,15 +1484,8 @@ window.SkyIndex = {
         const contactTitle = cont.contactTitle || '';
         const entityName = ent.entityName || 'Unknown Entity';
 
-        // === Professional Report Title (for PDF header + browser tab) ===
-        let reportTitle = 'Proposed Contact Report';
-        if (contactName !== 'Unknown Contact') {
-            reportTitle += `: ${contactName}`;
-            if (contactTitle) {
-                reportTitle += `, ${contactTitle}`;
-            }
-            reportTitle += ` | ${entityName}`;
-        }
+        // === Clean Report Title (for PDF header) ===
+        const reportTitle = 'Proposed Contact Report';
 
         // === Professional Filename (for download) ===
         let reportFilename = `Proposed Contact Report: ${contactName}`;
@@ -1511,7 +1504,7 @@ window.SkyIndex = {
 
         const payload = {
             reportType: "contact_proposal",
-            reportTitle: reportTitle,                    // ← Improved
+            reportTitle: reportTitle,                    // ← Clean title for PDF
 
             entityName: entityName,
             entityAction: pers.entity?.action || "",

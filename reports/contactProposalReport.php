@@ -15,7 +15,7 @@ function generateContactProposalReport(array $input): array
     
     $bodyHtml = buildContactProposalBody($proposal);
 
-    // === Build Contact Information for Title/Filename ===
+    // === Build Descriptive Filename for Download ===
     $contactName  = trim($proposal['contactName'] ?? '');
     if (empty($contactName)) {
         $contactName = 'Unknown Contact';
@@ -24,30 +24,19 @@ function generateContactProposalReport(array $input): array
     $contactTitle = trim($proposal['contactTitle'] ?? '');
     $entityName   = trim($proposal['entityName'] ?? 'Unknown Entity');
 
-    // === Professional Report Title (appears in PDF header + browser tab) ===
-    $reportTitle = 'Proposed Contact Report';
-    if (!empty($contactName)) {
-        $reportTitle .= ': ' . $contactName;
-        if (!empty($contactTitle)) {
-            $reportTitle .= ', ' . $contactTitle;
-        }
-        $reportTitle .= ' | ' . $entityName;
-    }
-
-    // === Professional Filename (for download) ===
-    $reportFilename = 'Proposed Contact Report: ' . $contactName;
+    $reportFilename = "Proposed Contact Report: {$contactName}";
     if (!empty($contactTitle)) {
-        $reportFilename .= ', ' . $contactTitle;
+        $reportFilename .= ", {$contactTitle}";
     }
-    $reportFilename .= ' - ' . $entityName;
+    $reportFilename .= " - {$entityName}";
 
     return [
         'reportType'      => 'contact_proposal',
 
-        'reportTitle'     => $reportTitle,           // ← Improved
+        'reportTitle'     => 'Proposed Contact Report',     // ← Clean title for PDF header
 
         // -------------------------------------------------
-        // Dynamic PDF Filename (Used for download)
+        // Dynamic Download Filename
         // -------------------------------------------------
         'reportFilename'  => $reportFilename,
 
