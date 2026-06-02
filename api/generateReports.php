@@ -117,7 +117,7 @@ try {
         $filename = 'Proposed_Contact_Report';
     }
 
-    // === HTML WRAPPER (Recommended) - Proper Browser Tab Title ===
+    // === HTML WRAPPER - Proper Tab Title ===
     $base64Pdf = base64_encode($pdfContent);
 
     $html = <<<HTML
@@ -132,7 +132,7 @@ try {
             padding: 0;
             height: 100%;
             overflow: hidden;
-            background: #f8f9fa;
+            background: #f4f4f4;
         }
         embed {
             width: 100%;
@@ -142,12 +142,15 @@ try {
     </style>
 </head>
 <body>
-    <embed src="data:application/pdf;base64,{$base64Pdf}" type="application/pdf">
+    <embed src="data:application/pdf;base64,{$base64Pdf}" type="application/pdf" />
 </body>
 </html>
 HTML;
 
     header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    
     echo $html;
     exit;
 
