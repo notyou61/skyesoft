@@ -105,17 +105,19 @@ try {
     }
 
     // === DYNAMIC FILENAME ===
+    $displayTitle = $report['reportTitle'] ?? 'Proposed Contact Report';
+    
     $filename = $report['reportFilename'] 
-        ?? ($report['reportTitle'] ?? $report['reportType'] ?? 'Report');
+             ?? $displayTitle 
+             ?? 'Proposed_Contact_Report';
 
     // Clean filename (remove invalid characters)
     $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
-
     if (empty($filename)) {
         $filename = 'Proposed_Contact_Report';
     }
 
-    // === SUCCESS: Deliver PDF ===
+    // === SUCCESS: Deliver PDF Directly (Most Reliable) ===
     header('Content-Type: application/pdf');
     header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
     header('Content-Length: ' . strlen($pdfContent));
