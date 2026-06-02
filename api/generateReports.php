@@ -97,7 +97,6 @@ try {
     // Load universal renderer
     require_once __DIR__ . '/../reports/templates/baseReport.php';
 
-    // Generate PDF
     $pdfContent = renderReport($report);
 
     if (empty($pdfContent)) {
@@ -111,20 +110,35 @@ try {
              ?? $displayTitle 
              ?? 'Proposed_Contact_Report';
 
-    // Clean filename for download
+    // Clean filename
     $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
     if (empty($filename)) {
         $filename = 'Proposed_Contact_Report';
     }
 
-    // === SUCCESS: Deliver PDF (Most Reliable Method) ===
-    header('Content-Type: application/pdf');
-    header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
-    header('Content-Length: ' . strlen($pdfContent));
+    // === HTML WRAPPER - Controls Tab Title ===
+    $base64Pdf = base64_encode($pdfContent);
+
+    $html = '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>' . htmlspecialchars($displayTitle) . '</title>
+    <style>
+        body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#f8f9fa; }
+        embed { width:100%; height:100vh; border:none; }
+    </style>
+</head>
+<body>
+    <embed src="data:application/pdf;base64,' . $base64Pdf . '" type="application/pdf" />
+</body>
+</html>';
+
+    header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-cache, must-revalidate');
     header('Pragma: no-cache');
     
-    echo $pdfContent;
+    echo $html;
     exit;
 
 } catch (Throwable $e) {

@@ -15,29 +15,39 @@ function generateContactProposalReport(array $input): array
     
     $bodyHtml = buildContactProposalBody($proposal);
 
-    // === Build Professional Dynamic Filename ===
-    $contactPart = trim($proposal['contactName'] ?? '');
-    if (empty($contactPart)) {
-        $contactPart = 'Unknown Contact';
+    // === Build Contact Information for Title/Filename ===
+    $contactName  = trim($proposal['contactName'] ?? '');
+    if (empty($contactName)) {
+        $contactName = 'Unknown Contact';
     }
 
-    $titlePart = trim($proposal['contactTitle'] ?? '');
-    if (!empty($titlePart)) {
-        $contactPart .= ', ' . $titlePart;
+    $contactTitle = trim($proposal['contactTitle'] ?? '');
+    $entityName   = trim($proposal['entityName'] ?? 'Unknown Entity');
+
+    // === Professional Report Title (appears in PDF header + browser tab) ===
+    $reportTitle = 'Proposed Contact Report';
+    if (!empty($contactName)) {
+        $reportTitle .= ': ' . $contactName;
+        if (!empty($contactTitle)) {
+            $reportTitle .= ', ' . $contactTitle;
+        }
+        $reportTitle .= ' | ' . $entityName;
     }
 
-    $entityPart = trim($proposal['entityName'] ?? 'Unknown Entity');
-
-    $reportFilename = "Proposed Contact Report: {$contactPart} - {$entityPart}";
+    // === Professional Filename (for download) ===
+    $reportFilename = 'Proposed Contact Report: ' . $contactName;
+    if (!empty($contactTitle)) {
+        $reportFilename .= ', ' . $contactTitle;
+    }
+    $reportFilename .= ' - ' . $entityName;
 
     return [
         'reportType'      => 'contact_proposal',
 
-        'reportTitle'     => $proposal['reportTitle'] 
-                          ?? 'Proposed Contact Report',
+        'reportTitle'     => $reportTitle,           // ← Improved
 
         // -------------------------------------------------
-        // Dynamic PDF Filename (Used for browser tab + download)
+        // Dynamic PDF Filename (Used for download)
         // -------------------------------------------------
         'reportFilename'  => $reportFilename,
 

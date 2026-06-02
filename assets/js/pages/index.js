@@ -1478,11 +1478,28 @@ window.SkyIndex = {
         const originalText = link ? link.textContent : 'View Full Report (PDF)';
         if (link) link.textContent = 'Generating PDF...';
 
-        // Build clean, professional filename
-        const reportFilename = 
-            `Proposed Contact Report: ${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim() +
-            (cont.contactTitle ? `, ${cont.contactTitle}` : '') +
-            ` - ${ent.entityName || 'Unknown Entity'}`;
+        // Build Contact Info
+        const contactFirstLast = `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim();
+        const contactName = contactFirstLast || 'Unknown Contact';
+        const contactTitle = cont.contactTitle || '';
+        const entityName = ent.entityName || 'Unknown Entity';
+
+        // === Professional Report Title (for PDF header + browser tab) ===
+        let reportTitle = 'Proposed Contact Report';
+        if (contactName !== 'Unknown Contact') {
+            reportTitle += `: ${contactName}`;
+            if (contactTitle) {
+                reportTitle += `, ${contactTitle}`;
+            }
+            reportTitle += ` | ${entityName}`;
+        }
+
+        // === Professional Filename (for download) ===
+        let reportFilename = `Proposed Contact Report: ${contactName}`;
+        if (contactTitle) {
+            reportFilename += `, ${contactTitle}`;
+        }
+        reportFilename += ` - ${entityName}`;
 
         // Jurisdiction normalization
         const rawJurisdiction = loc.locationJurisdiction || loc.parcelDetails?.[0]?.jurisdiction || "";
@@ -1494,13 +1511,13 @@ window.SkyIndex = {
 
         const payload = {
             reportType: "contact_proposal",
-            reportTitle: "Proposed Contact Report",
+            reportTitle: reportTitle,                    // ← Improved
 
-            entityName: ent.entityName || "",
+            entityName: entityName,
             entityAction: pers.entity?.action || "",
 
-            contactName: `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim(),
-            contactTitle: cont.contactTitle || "",
+            contactName: contactName,
+            contactTitle: contactTitle,
             contactPhone: cont.contactPrimaryPhone || "",
             contactEmail: cont.contactEmail || "",
             contactAction: pers.contact?.action || "",
@@ -1520,11 +1537,11 @@ window.SkyIndex = {
 
             parcelDetails: loc.parcelDetails || [],
 
-            // Critical: Custom filename for tab title + download
+            // Critical: Custom filename for download
             reportFilename: reportFilename
         };
 
-        // === FORM POST (Replaces fetch + blob + pdfWindow) ===
+        // === FORM POST ===
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '/skyesoft/api/generateReports.php';
