@@ -104,20 +104,20 @@ try {
         throw new Exception('PDF generation returned empty content');
     }
 
-    // === DYNAMIC FILENAME ===
+    // === DYNAMIC TITLE & FILENAME ===
     $displayTitle = $report['reportTitle'] ?? 'Proposed Contact Report';
     
     $filename = $report['reportFilename'] 
              ?? $displayTitle 
              ?? 'Proposed_Contact_Report';
 
-    // Clean filename (remove invalid characters)
+    // Clean filename for download
     $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
     if (empty($filename)) {
         $filename = 'Proposed_Contact_Report';
     }
 
-    // === SUCCESS: Deliver PDF Directly (Most Reliable) ===
+    // === SUCCESS: Deliver PDF (Most Reliable Method) ===
     header('Content-Type: application/pdf');
     header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
     header('Content-Length: ' . strlen($pdfContent));
@@ -128,7 +128,6 @@ try {
     exit;
 
 } catch (Throwable $e) {
-    // === ERROR: Return clear JSON for frontend ===
     http_response_code(500);
     echo json_encode([
         'error'   => $e->getMessage(),
