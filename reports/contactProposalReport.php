@@ -11,54 +11,48 @@ declare(strict_types=1);
 
 function generateContactProposalReport(array $input): array
 {
-    
     $proposal = getProposalData($input);
     
     $bodyHtml = buildContactProposalBody($proposal);
-    
+
+    // === Build Professional Dynamic Filename ===
+    $contactPart = trim($proposal['contactName'] ?? '');
+    if (empty($contactPart)) {
+        $contactPart = 'Unknown Contact';
+    }
+
+    $titlePart = trim($proposal['contactTitle'] ?? '');
+    if (!empty($titlePart)) {
+        $contactPart .= ', ' . $titlePart;
+    }
+
+    $entityPart = trim($proposal['entityName'] ?? 'Unknown Entity');
+
+    $reportFilename = "Proposed Contact Report: {$contactPart} - {$entityPart}";
+
     return [
         'reportType'      => 'contact_proposal',
 
-        'reportTitle'     =>
-            $proposal['reportTitle']
-            ?? 'Proposed Contact Report (PC-3)',
+        'reportTitle'     => $proposal['reportTitle'] 
+                          ?? 'Proposed Contact Report',
 
         // -------------------------------------------------
-        // Dynamic PDF Filename
+        // Dynamic PDF Filename (Used for browser tab + download)
         // -------------------------------------------------
+        'reportFilename'  => $reportFilename,
 
-        'reportFilename'  =>
-            'Proposed Contact Report - '
-            . trim(
-                $proposal['contactName']
-                ?? 'Unknown Contact'
-            ),
+        'reportSummary'   => generateSummarySection($proposal),
 
-        'reportSummary'   =>
-            generateSummarySection(
-                $proposal
-            ),
+        'reportBodyHtml'  => $bodyHtml,
 
-        'reportBodyHtml'  =>
-            $bodyHtml,
-
-        'reportArtifacts' =>
-            collectArtifacts(
-                $proposal
-            ),
+        'reportArtifacts' => collectArtifacts($proposal),
 
         'reportMeta'      => [
-            'generated_at' =>
-                date('Y-m-d H:i:s'),
-
-            'proposal_id'  =>
-                $input['proposalId']
-                ?? null
+            'generated_at' => date('Y-m-d H:i:s'),
+            'proposal_id'  => $input['proposalId'] ?? $input['activitySessionId'] ?? null,
         ]
     ];
 }
-
-#endregion
 
 #region SECTION 01 - HTML Body Builder
 

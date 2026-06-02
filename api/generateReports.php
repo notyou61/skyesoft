@@ -21,17 +21,29 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 #region SECTION 01 - Request Intake
 
-$rawInput = file_get_contents('php://input');
-$input = json_decode($rawInput, true) ?: $_POST;
+// Handle both direct JSON and form POST with 'payload' key
+$input = [];
 
-// Debug: Log what we received
-error_log("Report Request Received: " . json_encode(array_keys($input)));
+if (!empty($_POST['payload'])) {
+    // New Form POST method (recommended)
+    $input = json_decode($_POST['payload'], true) ?? [];
+    error_log("[generateReports] Received via POST['payload'] — Keys: " . json_encode(array_keys($input)));
+} 
+else {
+    // Legacy: raw JSON body
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true) ?: $_POST;
+    error_log("[generateReports] Received via php://input or direct POST");
+}
+
+// Debug received data
+error_log("Report Request Received Keys: " . json_encode(array_keys($input)));
 
 $reportType = strtolower(trim($input['reportType'] ?? ''));
 
-// Fallback: Try to find reportType deeper in the payload
+// Fallback for safety
 if (empty($reportType) && !empty($input['data'])) {
-    $reportType = 'contact_proposal'; // Default for now
+    $reportType = 'contact_proposal';
 }
 
 $proposalId = $input['proposalId'] ?? null;
@@ -94,11 +106,13 @@ try {
 
     // === DYNAMIC FILENAME ===
     $filename = $report['reportFilename'] 
-        ?? ($report['reportTitle'] ?? $report['reportType'] ?? 'Report');
+             ?? $report['reportTitle'] 
+             ?? ($report['reportType'] ?? 'Report');
 
-    // Clean filename (remove invalid characters)
+    // Clean filename (remove invalid characters for safe download)
     $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
 
+    // Fallback if still empty
     if (empty($filename)) {
         $filename = 'Proposed_Contact_Report';
     }
