@@ -87,7 +87,7 @@ try {
         throw new Exception('Generator function not found: ' . $generator);
     }
 
-    // Generate the report data
+        // Generate the report data
     $report = call_user_func($generator, $input);
 
     if (empty($report) || !is_array($report)) {
@@ -104,11 +104,9 @@ try {
     }
 
     // === DYNAMIC FILENAME ===
-    $displayTitle = $report['reportTitle'] ?? 'Proposed Contact Report';
-    
     $filename = $report['reportFilename'] 
-             ?? $displayTitle 
-             ?? 'Proposed_Contact_Report';
+             ?? $report['reportTitle'] 
+             ?? 'Proposed Contact Report';
 
     // Clean filename
     $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
@@ -116,7 +114,7 @@ try {
         $filename = 'Proposed_Contact_Report';
     }
 
-    // === DIRECT PDF DELIVERY (Most Reliable) ===
+    // === DIRECT PDF DELIVERY (Stable & Reliable) ===
     header('Content-Type: application/pdf');
     header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
     header('Content-Length: ' . strlen($pdfContent));
