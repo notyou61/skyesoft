@@ -1478,155 +1478,74 @@ window.SkyIndex = {
         const originalText = link ? link.textContent : 'View Full Report (PDF)';
         if (link) link.textContent = 'Generating PDF...';
 
-        // Open tab immediately from user interaction
-        const pdfWindow = window.open('', '_blank');
+        // Build clean, professional filename
+        const reportFilename = 
+            `Proposed Contact Report: ${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim() +
+            (cont.contactTitle ? `, ${cont.contactTitle}` : '') +
+            ` - ${ent.entityName || 'Unknown Entity'}`;
 
-        const rawJurisdiction =
-            loc.locationJurisdiction
-            || loc.parcelDetails?.[0]?.jurisdiction
-            || "";
+        // Jurisdiction normalization
+        const rawJurisdiction = loc.locationJurisdiction || loc.parcelDetails?.[0]?.jurisdiction || "";
 
-        const locationJurisdiction =
-            !rawJurisdiction ||
+        const locationJurisdiction = !rawJurisdiction || 
             rawJurisdiction.toUpperCase() === "NO CITY/TOWN"
                 ? "Maricopa County"
-                : rawJurisdiction
-                    .toLowerCase()
-                    .replace(
-                        /\b\w/g,
-                        char => char.toUpperCase()
-                    );
+                : rawJurisdiction.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
 
         const payload = {
             reportType: "contact_proposal",
             reportTitle: "Proposed Contact Report",
 
-            // Entity
-            entityName:
-                ent.entityName
-                || "",
+            entityName: ent.entityName || "",
+            entityAction: pers.entity?.action || "",
 
-            entityAction:
-                pers.entity?.action
-                || "",
+            contactName: `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim(),
+            contactTitle: cont.contactTitle || "",
+            contactPhone: cont.contactPrimaryPhone || "",
+            contactEmail: cont.contactEmail || "",
+            contactAction: pers.contact?.action || "",
 
-            // Contact
-            contactName:
-                `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`
-                    .trim(),
+            locationAddress: loc.locationAddress || "",
+            locationCityStateZip: `${loc.locationCity || ''}, ${loc.locationState || ''} ${loc.locationZip || ''}`.trim(),
+            locationPlaceId: loc.locationPlaceId || "",
+            locationCounty: loc.locationCounty || "",
+            locationCountyFips: loc.locationCountyFips || "",
+            locationJurisdiction: locationJurisdiction,
 
-            contactTitle:
-                cont.contactTitle
-                || "",
+            governanceNarrative: res.narratives?.decision?.[0] || "",
+            confidence: prop.confidence || 85,
+            pc_code: res.pc?.code || "",
+            resolutionStatus: res.pc?.status || "",
+            commitAllowed: pers.commitAllowed ? "YES" : "NO",
 
-            contactPhone:
-                cont.contactPrimaryPhone
-                || "",
+            parcelDetails: loc.parcelDetails || [],
 
-            contactEmail:
-                cont.contactEmail
-                || "",
-
-            contactAction:
-                pers.contact?.action
-                || "",
-
-            // Location
-            locationAddress:
-                loc.locationAddress
-                || "",
-
-            locationCityStateZip:
-                `${loc.locationCity || ''}, ${loc.locationState || ''} ${loc.locationZip || ''}`
-                    .trim(),
-
-            locationPlaceId:
-                loc.locationPlaceId
-                || "",
-
-            locationCounty:
-                loc.locationCounty
-                || "",
-
-            locationCountyFips:
-                loc.locationCountyFips
-                || "",
-
-            locationJurisdiction:
-                locationJurisdiction,
-
-            // Resolution & Governance
-            governanceNarrative:
-                res.narratives?.decision?.[0]
-                || "",
-
-            confidence:
-                prop.confidence
-                || "",
-
-            pc_code:
-                res.pc?.code
-                || "",
-
-            resolutionStatus:
-                res.pc?.status
-                || "",
-
-            commitAllowed:
-                pers.commitAllowed
-                    ? "YES"
-                    : "NO",
-
-            // Parcel data
-            parcelDetails:
-                loc.parcelDetails
-                || []
+            // Critical: Custom filename for tab title + download
+            reportFilename: reportFilename
         };
 
-        fetch('/skyesoft/api/generateReports.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`HTTP ${response.status}: ${text}`);
-                });
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            console.log('[PDF Success] Type:', blob.type, 'Size:', blob.size, 'bytes');
+        // === FORM POST (Replaces fetch + blob + pdfWindow) ===
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/skyesoft/api/generateReports.php';
+        form.target = '_blank';
 
-            const url = URL.createObjectURL(blob);
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'payload';
+        input.value = JSON.stringify(payload);
 
-            if (pdfWindow) {
-                pdfWindow.location.href = url;
-            } else {
-                window.open(url, '_blank');
-            }
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
 
-            // Clean up after a minute
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-        })
-        .catch(error => {
-            console.error('PDF Generation Error:', error);
-
-            if (pdfWindow) {
-                pdfWindow.document.write(`
-                    <h2 style="color:red;">PDF Generation Failed</h2>
-                    <p>${error.message}</p>
-                `);
-            }
-
-            alert('Could not generate the report. Please try again.');
-        })
-        .finally(() => {
-            if (link) {
+        // Restore link text
+        if (link) {
+            setTimeout(() => {
                 link.textContent = originalText;
-            }
-        });
+            }, 2000);
+        }
     },
     // #endregion
 
