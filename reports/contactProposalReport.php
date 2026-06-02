@@ -54,6 +54,8 @@ function generateContactProposalReport(array $input): array
     ];
 }
 
+#endregion
+
 #region SECTION 01 - HTML Body Builder
 
 function buildContactProposalBody(array $proposal): string
