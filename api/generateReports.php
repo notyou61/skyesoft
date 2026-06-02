@@ -104,54 +104,25 @@ try {
         throw new Exception('PDF generation returned empty content');
     }
 
-    // === DYNAMIC TITLE & FILENAME ===
-    $displayTitle = $report['reportTitle'] ?? 'Proposed Contact Report';
-    
+    // === DYNAMIC FILENAME ===
     $filename = $report['reportFilename'] 
-             ?? $displayTitle 
-             ?? 'Proposed_Contact_Report';
+        ?? ($report['reportTitle'] ?? $report['reportType'] ?? 'Report');
 
-    // Clean filename for download
+    // Clean filename (remove invalid characters)
     $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
+
     if (empty($filename)) {
         $filename = 'Proposed_Contact_Report';
     }
 
-    // === HTML WRAPPER - Proper Tab Title ===
-    $base64Pdf = base64_encode($pdfContent);
-
-    $html = <<<HTML
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{$displayTitle}</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-            background: #f4f4f4;
-        }
-        embed {
-            width: 100%;
-            height: 100vh;
-            border: none;
-        }
-    </style>
-</head>
-<body>
-    <embed src="data:application/pdf;base64,{$base64Pdf}" type="application/pdf" />
-</body>
-</html>
-HTML;
-
-    header('Content-Type: text/html; charset=utf-8');
+    // === SUCCESS: Deliver PDF ===
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
+    header('Content-Length: ' . strlen($pdfContent));
     header('Cache-Control: no-cache, must-revalidate');
     header('Pragma: no-cache');
     
-    echo $html;
+    echo $pdfContent;
     exit;
 
 } catch (Throwable $e) {
