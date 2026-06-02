@@ -104,27 +104,51 @@ try {
         throw new Exception('PDF generation returned empty content');
     }
 
-    // === DYNAMIC FILENAME ===
+    // === DYNAMIC TITLE & FILENAME ===
+    $displayTitle = $report['reportTitle'] ?? 'Proposed Contact Report';
+    
     $filename = $report['reportFilename'] 
-             ?? $report['reportTitle'] 
-             ?? ($report['reportType'] ?? 'Report');
+             ?? $displayTitle 
+             ?? 'Proposed_Contact_Report';
 
-    // Clean filename (remove invalid characters for safe download)
+    // Clean filename for download
     $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
-
-    // Fallback if still empty
     if (empty($filename)) {
         $filename = 'Proposed_Contact_Report';
     }
 
-    // === SUCCESS: Deliver PDF ===
-    header('Content-Type: application/pdf');
-    header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
-    header('Content-Length: ' . strlen($pdfContent));
-    header('Cache-Control: no-cache, must-revalidate');
-    header('Pragma: no-cache');
-    
-    echo $pdfContent;
+    // === HTML WRAPPER (Recommended) - Proper Browser Tab Title ===
+    $base64Pdf = base64_encode($pdfContent);
+
+    $html = <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{$displayTitle}</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
+        embed {
+            width: 100%;
+            height: 100vh;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <embed src="data:application/pdf;base64,{$base64Pdf}" type="application/pdf">
+</body>
+</html>
+HTML;
+
+    header('Content-Type: text/html; charset=utf-8');
+    echo $html;
     exit;
 
 } catch (Throwable $e) {
