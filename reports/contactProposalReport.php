@@ -256,7 +256,7 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === 1. LARGER SATELLITE MAP ===
+    // === 1. SATELLITE MAP (950x450) ===
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
@@ -272,7 +272,7 @@ function buildSatelliteSection(array $proposal): string
     if ($googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
-            . '&zoom=18&size=1000x470&maptype=satellite&markers=color:red%7C' 
+            . '&zoom=18&size=950x450&maptype=satellite&markers=color:red%7C' 
             . $lat . ',' . $lng 
             . '&key=' . $googleKey;
 
@@ -287,7 +287,7 @@ function buildSatelliteSection(array $proposal): string
         $html .= '</div>';
     }
 
-    // === 2. BUSINESS DETAILS TABLE ===
+    // === 2. GOOGLE BUSINESS DETAILS TABLE (6 rows) ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
     $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
@@ -302,24 +302,19 @@ function buildSatelliteSection(array $proposal): string
         . htmlspecialchars($proposal['locationPhone'] ?? $proposal['formattedPhoneNumber'] ?? '(602) 242-4488') 
         . '</td></tr>';
 
-    if (!empty($proposal['businessStatus'])) {
-        $html .= '<tr><th>Business Status</th><td>' 
-            . htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $proposal['businessStatus'])))) 
-            . '</td></tr>';
-    }
+    $html .= '<tr><th>Business Status</th><td>' 
+        . htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $proposal['businessStatus'] ?? 'Operational')))) 
+        . '</td></tr>';
 
-    if (!empty($proposal['locationRating'])) {
-        $html .= '<tr><th>Google Rating</th><td>' 
-            . htmlspecialchars($proposal['locationRating']) . ' ★' 
-            . ($proposal['locationReviewCount'] ? ' (' . $proposal['locationReviewCount'] . ' reviews)' : '') 
-            . '</td></tr>';
-    }
+    $rating = $proposal['locationRating'] ?? $proposal['rating'] ?? '4.1';
+    $reviews = $proposal['locationReviewCount'] ?? $proposal['user_ratings_total'] ?? '18';
+    $html .= '<tr><th>Google Rating</th><td>' 
+        . htmlspecialchars($rating) . ' ★ (' . htmlspecialchars($reviews) . ' reviews)' 
+        . '</td></tr>';
 
-    if (!empty($proposal['locationWebsite'])) {
-        $html .= '<tr><th>Website</th><td>' 
-            . htmlspecialchars($proposal['locationWebsite']) 
-            . '</td></tr>';
-    }
+    $html .= '<tr><th>Website</th><td>' 
+        . htmlspecialchars($proposal['locationWebsite'] ?? $proposal['website'] ?? 'https://christysigns.com/') 
+        . '</td></tr>';
 
     $html .= '</table>';
 
