@@ -55,12 +55,22 @@ function generateContactProposalReport(array $input): array
 }
 
 // =============================================
-//  Load Environment Helper (Required for skyesoftGetEnv)
+//  Load Environment Helper (Critical for skyesoftGetEnv)
 // =============================================
-if (!function_exists('skyesoftLoadEnv')) {
-    require_once __DIR__ . '/../../utils/envLoader.php';   // Adjust path if needed
+
+$envLoaderPath = __DIR__ . '/../api/utils/envLoader.php';
+
+if (file_exists($envLoaderPath)) {
+    require_once $envLoaderPath;
+    if (function_exists('skyesoftLoadEnv')) {
+        skyesoftLoadEnv();
+        error_log("[ENV] Successfully loaded envLoader.php from: " . $envLoaderPath);
+    } else {
+        error_log("[ENV] envLoader.php loaded but skyesoftLoadEnv() not found");
+    }
+} else {
+    error_log("[ENV] WARNING: envLoader.php not found at: " . $envLoaderPath);
 }
-skyesoftLoadEnv();
 
 #endregion
 
@@ -191,15 +201,7 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // Load environment if not already loaded
-    if (!function_exists('skyesoftGetEnv')) {
-        if (file_exists(__DIR__ . '/../../utils/envLoader.php')) {
-            require_once __DIR__ . '/../../utils/envLoader.php';
-            skyesoftLoadEnv();
-        }
-    }
-
-    // === Dynamic Coordinates + Consistent Env Loader ===
+    // Dynamic coordinates
     $lat = $proposal['locationLatitude'] 
         ?? $proposal['latitude'] 
         ?? $proposal['data']['location']['latitude'] 
@@ -210,7 +212,14 @@ function buildSatelliteSection(array $proposal): string
         ?? $proposal['data']['location']['longitude'] 
         ?? -112.1288006;
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
+    // Use project-standard function if available
+    $googleKey = '';
+    if (function_exists('skyesoftGetEnv')) {
+        $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY');
+    }
+    if (empty($googleKey)) {
+        $googleKey = getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
+    }
 
     if (!empty($googleKey)) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
