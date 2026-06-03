@@ -85,12 +85,13 @@ $resolutionMethod = match ($parcelStatus) {
     default             => 'unresolved'
 };
 
-// === GOOGLE STATIC MAP (Satellite) ===
+// === GOOGLE STATIC MAP (Satellite) - WITH DEBUGGING ===
 $lat = $parsed['location']['latitude'] ?? null;
 $lng = $parsed['location']['longitude'] ?? null;
 $googleKey = getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: ($googleApiKey ?? '');
 
 $staticMapUrl = null;
+
 if ($lat && $lng && $googleKey) {
     $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
         . $lat . ',' . $lng 
@@ -98,9 +99,9 @@ if ($lat && $lng && $googleKey) {
         . $lat . ',' . $lng 
         . '&key=' . $googleKey;
     
-    error_log("[STATIC MAP] ✅ Generated for lat=$lat, lng=$lng");
+    error_log("[STATIC MAP] ✅ SUCCESS - URL generated for lat=$lat, lng=$lng");
 } else {
-    error_log("[STATIC MAP] ⚠️ Skipped - Missing data | Lat: " . ($lat ? 'present' : 'missing') 
+    error_log("[STATIC MAP] ❌ FAILED - Missing data | Lat: " . ($lat ? 'present' : 'missing') 
               . " | Lng: " . ($lng ? 'present' : 'missing') 
               . " | Key: " . ($googleKey ? 'present' : 'missing'));
 }
@@ -117,7 +118,6 @@ $data['location'] = [
     'locationZip'          => $parsed['location']['zip'] ?? '',
     'locationCounty'       => $parsed['location']['county'] ?? '',
     
-    // === CRITICAL FIELDS FOR REPORT ===
     'locationCountyFips'   => $parsed['location']['countyFips'] 
                            ?? $parsed['location']['locationCountyFips'] 
                            ?? '',
