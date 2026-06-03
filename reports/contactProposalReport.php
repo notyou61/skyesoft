@@ -197,7 +197,7 @@ function buildLocationSection(array $proposal): string
 
 #region SECTION 03 - Visual & Governance Sections
 
-function buildSatelliteSection(array $proposal): string
+function buildSatelliteSection1(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
@@ -248,6 +248,243 @@ function buildSatelliteSection(array $proposal): string
     }
 
     $html .= '</table>';
+
+    return $html;
+}
+
+function buildSatelliteSection(array $proposal): string
+{
+    $html =
+        buildSectionHeader(
+            'Location Overview — Satellite Context',
+            'pin.png'
+        );
+
+    // =================================================
+    // SATELLITE MAP
+    // =================================================
+
+    $lat =
+        $proposal['locationLatitude']
+        ?? $proposal['latitude']
+        ?? ($proposal['data']['location']['latitude'] ?? null);
+
+    $lng =
+        $proposal['locationLongitude']
+        ?? $proposal['longitude']
+        ?? ($proposal['data']['location']['longitude'] ?? null);
+
+    $staticMapKey =
+        skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?: '';
+
+    if (
+        $lat &&
+        $lng &&
+        $staticMapKey
+    ) {
+
+        $staticMapUrl =
+            'https://maps.googleapis.com/maps/api/staticmap?center='
+            . $lat . ',' . $lng
+            . '&zoom=18'
+            . '&size=950x450'
+            . '&maptype=satellite'
+            . '&markers=color:red%7C'
+            . $lat . ',' . $lng
+            . '&key='
+            . $staticMapKey;
+
+        $html .=
+            '<div style="text-align:center; margin:12px 0 16px 0;">';
+
+        $html .=
+            '<img src="'
+            . htmlspecialchars($staticMapUrl)
+            . '" style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" alt="Satellite View">';
+
+        $html .=
+            '</div>';
+
+    } else {
+
+        $html .=
+            '<div class="image-placeholder" style="min-height:260px;">';
+
+        $html .=
+            '📍 Satellite imagery unavailable at this time';
+
+        $html .=
+            '</div>';
+    }
+
+    // =================================================
+    // GOOGLE BUSINESS PLACE DETAILS
+    // =================================================
+
+    $businessPlaceId =
+        $proposal['locationBusinessPlaceId']
+        ?? $proposal['businessPlaceId']
+        ?? '';
+
+    $placeApiKey =
+        skyesoftGetEnv('GOOGLE_MAPS_PLACE_ID_API_KEY')
+        ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
+        ?: '';
+
+    $businessData = [];
+
+    if (
+        !empty($businessPlaceId) &&
+        !empty($placeApiKey)
+    ) {
+
+        $detailsUrl =
+            'https://maps.googleapis.com/maps/api/place/details/json'
+            . '?place_id='
+            . urlencode($businessPlaceId)
+            . '&fields='
+            . urlencode(
+                'name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,business_status'
+            )
+            . '&key='
+            . urlencode($placeApiKey);
+
+        $response =
+            @file_get_contents(
+                $detailsUrl
+            );
+
+        if ($response) {
+
+            $json =
+                json_decode(
+                    $response,
+                    true
+                );
+
+            if (
+                ($json['status'] ?? '') === 'OK'
+            ) {
+
+                $businessData =
+                    $json['result']
+                    ?? [];
+            }
+        }
+    }
+
+    // =================================================
+    // BUSINESS INTELLIGENCE TABLE
+    // =================================================
+
+    $html .=
+        '<table class="dataTable" style="margin-top:12px;">';
+
+    if (!empty($businessData['name'])) {
+
+        $html .=
+            '<tr>'
+            . '<th style="width:35%;">Business Name</th>'
+            . '<td>'
+            . htmlspecialchars(
+                $businessData['name']
+            )
+            . '</td>'
+            . '</tr>';
+    }
+
+    if (!empty($businessData['formatted_address'])) {
+
+        $html .=
+            '<tr>'
+            . '<th>Google Address</th>'
+            . '<td>'
+            . htmlspecialchars(
+                $businessData['formatted_address']
+            )
+            . '</td>'
+            . '</tr>';
+    }
+
+    if (!empty($businessData['formatted_phone_number'])) {
+
+        $html .=
+            '<tr>'
+            . '<th>Phone Number</th>'
+            . '<td>'
+            . htmlspecialchars(
+                $businessData['formatted_phone_number']
+            )
+            . '</td>'
+            . '</tr>';
+    }
+
+    if (!empty($businessData['business_status'])) {
+
+        $html .=
+            '<tr>'
+            . '<th>Business Status</th>'
+            . '<td>'
+            . htmlspecialchars(
+                ucwords(
+                    strtolower(
+                        $businessData['business_status']
+                    )
+                )
+            )
+            . '</td>'
+            . '</tr>';
+    }
+
+    if (!empty($businessData['rating'])) {
+
+        $html .=
+            '<tr>'
+            . '<th>Google Rating</th>'
+            . '<td>';
+
+        $html .=
+            htmlspecialchars(
+                (string)$businessData['rating']
+            )
+            . ' ★';
+
+        if (
+            !empty(
+                $businessData['user_ratings_total']
+            )
+        ) {
+
+            $html .=
+                ' ('
+                . htmlspecialchars(
+                    (string)$businessData['user_ratings_total']
+                )
+                . ' reviews)';
+        }
+
+        $html .=
+            '</td>'
+            . '</tr>';
+    }
+
+    if (!empty($businessData['website'])) {
+
+        $html .=
+            '<tr>'
+            . '<th>Website</th>'
+            . '<td>'
+            . htmlspecialchars(
+                $businessData['website']
+            )
+            . '</td>'
+            . '</tr>';
+    }
+
+    $html .=
+        '</table>';
 
     return $html;
 }
