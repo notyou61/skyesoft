@@ -199,35 +199,50 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
-    error_log("=== buildSatelliteSection() EXECUTED ===");
-
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === AGGRESSIVE COORDINATE EXTRACTION ===
-    $lat = $proposal['locationLatitude']
-        ?? $proposal['latitude']
-        ?? ($proposal['data']['location']['latitude'] ?? null)
-        ?? ($proposal['data']['latitude'] ?? null)
-        ?? null;
-
-    $lng = $proposal['locationLongitude']
-        ?? $proposal['longitude']
-        ?? ($proposal['data']['location']['longitude'] ?? null)
-        ?? ($proposal['data']['longitude'] ?? null)
-        ?? null;
-
-    error_log("[MAP] Final Lat: " . ($lat ?? 'NULL') . " | Lng: " . ($lng ?? 'NULL'));
-
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+    $placeId = $proposal['locationPlaceId'] ?? null;
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_PLACE_ID_API_KEY') 
+              ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY') 
               ?: '';
 
+    $lat = null;
+    $lng = null;
+
+    // === Fetch Place Details if we have Place ID and Key ===
+    if ($placeId && $googleKey) {
+        $url = "https://maps.googleapis.com/maps/api/place/details/json?place_id=" 
+            . $placeId 
+            . "&fields=name,formatted_address,geometry,formatted_phone_number,website,rating,user_ratings_total,business_status"
+            . "&key=" . $googleKey;
+
+        $context = stream_context_create(['http' => ['timeout' => 8]]);
+        $raw = @file_get_contents($url, false, $context);
+
+        if ($raw) {
+            $data = json_decode($raw, true);
+            if (isset($data['result']['geometry']['location'])) {
+                $lat = $data['result']['geometry']['location']['lat'];
+                $lng = $data['result']['geometry']['location']['lng'];
+
+                // Enrich proposal with Place Details
+                $proposal['locationName'] = $data['result']['name'] ?? $proposal['locationName'];
+                $proposal['locationPhone'] = $data['result']['formatted_phone_number'] ?? '';
+                $proposal['locationWebsite'] = $data['result']['website'] ?? '';
+                $proposal['locationRating'] = $data['result']['rating'] ?? '';
+                $proposal['locationReviewCount'] = $data['result']['user_ratings_total'] ?? '';
+                $proposal['businessStatus'] = $data['result']['business_status'] ?? '';
+            }
+        }
+    }
+
+    // === SATELLITE MAP ===
     if ($lat && $lng && $googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
             . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
             . $lat . ',' . $lng 
-            . '&key=' . $googleKey;
+            . '&key=' . $googleKey;   // You can use STATIC key here if preferred
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
@@ -240,18 +255,32 @@ function buildSatelliteSection(array $proposal): string
         $html .= '</div>';
     }
 
-    // === Place ID Info ===
+    // === Place Details Table ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
-    if (!empty($proposal['locationName'] ?? $proposal['entityName'])) {
+    if (!empty($proposal['locationName'])) {
         $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
-            . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName']) 
-            . '</td></tr>';
+            . htmlspecialchars($proposal['locationName']) . '</td></tr>';
     }
 
     if (!empty($proposal['locationPlaceId'])) {
         $html .= '<tr><th>Google Place ID</th><td>' 
-            . htmlspecialchars($proposal['locationPlaceId']) 
+            . htmlspecialchars($proposal['locationPlaceId']) . '</td></tr>';
+    }
+
+    if (!empty($proposal['locationPhone'])) {
+        $html .= '<tr><th>Phone Number</th><td>' 
+            . htmlspecialchars($proposal['locationPhone']) . '</td></tr>';
+    }
+
+    if (!empty($proposal['locationWebsite'])) {
+        $html .= '<tr><th>Website</th><td>' 
+            . htmlspecialchars($proposal['locationWebsite']) . '</td></tr>';
+    }
+
+    if (!empty($proposal['locationRating'])) {
+        $html .= '<tr><th>Google Rating</th><td>' 
+            . htmlspecialchars($proposal['locationRating']) . ' ★' 
             . '</td></tr>';
     }
 
