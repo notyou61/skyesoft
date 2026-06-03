@@ -54,6 +54,14 @@ function generateContactProposalReport(array $input): array
     ];
 }
 
+// =============================================
+//  Load Environment Helper (Required for skyesoftGetEnv)
+// =============================================
+if (!function_exists('skyesoftLoadEnv')) {
+    require_once __DIR__ . '/../../utils/envLoader.php';   // Adjust path if needed
+}
+skyesoftLoadEnv();
+
 #endregion
 
 #region SECTION 01 - HTML Body Builder
@@ -183,6 +191,14 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
+    // Load environment if not already loaded
+    if (!function_exists('skyesoftGetEnv')) {
+        if (file_exists(__DIR__ . '/../../utils/envLoader.php')) {
+            require_once __DIR__ . '/../../utils/envLoader.php';
+            skyesoftLoadEnv();
+        }
+    }
+
     // === Dynamic Coordinates + Consistent Env Loader ===
     $lat = $proposal['locationLatitude'] 
         ?? $proposal['latitude'] 
@@ -194,7 +210,7 @@ function buildSatelliteSection(array $proposal): string
         ?? $proposal['data']['location']['longitude'] 
         ?? -112.1288006;
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY');
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
 
     if (!empty($googleKey)) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
@@ -210,7 +226,7 @@ function buildSatelliteSection(array $proposal): string
         $html .= '</div>';
     } else {
         $html .= '<div class="image-placeholder">❌ Google Maps API Key not configured</div>';
-        error_log('[MAP] ERROR: GOOGLE_MAPS_STATIC_API_KEY not found via skyesoftGetEnv()');
+        error_log('[MAP] ERROR: GOOGLE_MAPS_STATIC_API_KEY not found');
     }
 
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
