@@ -183,7 +183,7 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === DIRECT MAP INJECTION (Bypasses placeholder issues) ===
+    // === DIRECT MAP INJECTION (Most Reliable) ===
     if (!empty($proposal['staticMapUrl'])) {
         $html .= '<div style="text-align:center; margin:15px 0 10px 0;">';
         $html .= '<img src="' . htmlspecialchars($proposal['staticMapUrl']) . '" ';
