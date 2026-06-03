@@ -209,36 +209,43 @@ function processReportArtifacts(string $html, array $artifacts): string
 {
     if (empty($artifacts)) return $html;
 
-    // === SATELLITE MAP ===
+    // === SATELLITE MAP (Fixed Placeholder Match) ===
     if (!empty($artifacts['staticMapUrl'])) {
         $html = str_replace(
-            '[SATELLITE IMAGE PLACEHOLDER -1]', 
+            '[SATELLITE IMAGE PLACEHOLDER]', 
             '<div style="text-align:center; margin:15px 0;">
                 <img src="' . htmlspecialchars($artifacts['staticMapUrl']) . '" 
-                    style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
-                    alt="Satellite View">
-            </div>', 
+                     style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
+                     alt="Satellite View">
+             </div>', 
             $html
         );
     } else {
         $html = str_replace(
-            '[SATELLITE IMAGE PLACEHOLDER - 2]', 
-            '<div class="image-placeholder">[SATELLITE IMAGE PLACEHOLDER - 3]</div>', 
+            '[SATELLITE IMAGE PLACEHOLDER]', 
+            '<div class="image-placeholder">📍 Satellite image not available yet</div>', 
             $html
         );
     }
 
-    // Street View and Parcel Maps (existing logic)
+    // === STREET VIEW ===
     if (!empty($artifacts['streetview'])) {
-        $html = str_replace('[Street View Image will be inserted here by baseReport.php]', 
-            getEmbeddedImageHtml($artifacts['streetview'], 'Street View'), $html);
+        $html = str_replace(
+            '[Street View Image will be inserted here by baseReport.php]', 
+            getEmbeddedImageHtml($artifacts['streetview'], 'Street View'), 
+            $html
+        );
     }
 
+    // === PARCEL MAPS ===
     if (!empty($artifacts['parcel_maps']) && is_array($artifacts['parcel_maps'])) {
         foreach ($artifacts['parcel_maps'] as $path) {
             if ($path) {
-                $html = str_replace('[Parcel Aerial Image Placeholder]', 
-                    getEmbeddedImageHtml($path, 'Parcel Aerial'), $html);
+                $html = str_replace(
+                    '[Parcel Aerial Image Placeholder]', 
+                    getEmbeddedImageHtml($path, 'Parcel Aerial'), 
+                    $html
+                );
             }
         }
     }
@@ -256,7 +263,11 @@ function getEmbeddedImageHtml(string $imagePath, string $alt = 'Image'): string
     $data = base64_encode(file_get_contents($imagePath));
     $src = 'data:' . $mime . ';base64,' . $data;
 
-    return '<div style="text-align:center; margin:12px 0;"><img src="' . $src . '" style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" alt="' . htmlspecialchars($alt) . '"></div>';
+    return '<div style="text-align:center; margin:12px 0;">
+                <img src="' . $src . '" 
+                     style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
+                     alt="' . htmlspecialchars($alt) . '">
+            </div>';
 }
 
 #endregion
