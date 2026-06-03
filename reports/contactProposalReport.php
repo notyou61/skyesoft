@@ -201,7 +201,7 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === 1. SATELLITE MAP - Robust Version ===
+    // === 1. SATELLITE MAP - Robust & Reliable ===
     $lat = $proposal['locationLatitude'] 
         ?? $proposal['latitude'] 
         ?? ($proposal['data']['location']['latitude'] ?? null);
@@ -210,7 +210,6 @@ function buildSatelliteSection(array $proposal): string
         ?? $proposal['longitude'] 
         ?? ($proposal['data']['location']['longitude'] ?? null);
 
-    // Try both environment methods
     $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
               ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
               ?: '';
@@ -231,13 +230,9 @@ function buildSatelliteSection(array $proposal): string
         $html .= '<div class="image-placeholder" style="min-height:260px;">';
         $html .= '📍 Satellite imagery unavailable at this time';
         $html .= '</div>';
-        
-        error_log("[MAP] Failed - Lat: " . ($lat ? 'yes' : 'no') 
-            . " | Lng: " . ($lng ? 'yes' : 'no') 
-            . " | Key: " . (substr($googleKey, 0, 8) . '...'));
     }
 
-    // === 2. Simple Place Info Table ===
+    // === 2. Place ID Details (Clean & DRY) ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
     if (!empty($proposal['locationName'] ?? $proposal['entityName'])) {
