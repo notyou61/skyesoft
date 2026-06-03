@@ -202,23 +202,27 @@ function buildSatelliteSection(array $proposal): string
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
     // === 1. SATELLITE MAP ===
-    $lat = $proposal['locationLatitude'] 
-        ?? $proposal['latitude'] 
-        ?? $proposal['data']['location']['latitude'] 
+    $lat = $proposal['locationLatitude']
+        ?? $proposal['latitude']
+        ?? $proposal['data']['location']['latitude']
         ?? null;
 
-    $lng = $proposal['locationLongitude'] 
-        ?? $proposal['longitude'] 
-        ?? $proposal['data']['location']['longitude'] 
+    $lng = $proposal['locationLongitude']
+        ?? $proposal['longitude']
+        ?? $proposal['data']['location']['longitude']
         ?? null;
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
+    $googleKey =
+        skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?: '';
 
     if ($lat && $lng && $googleKey) {
-        $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
-            . $lat . ',' . $lng 
-            . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
-            . $lat . ',' . $lng 
+        $staticMapUrl =
+            'https://maps.googleapis.com/maps/api/staticmap?center='
+            . $lat . ',' . $lng
+            . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C'
+            . $lat . ',' . $lng
             . '&key=' . $googleKey;
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
@@ -232,42 +236,91 @@ function buildSatelliteSection(array $proposal): string
         $html .= '</div>';
     }
 
-    // === 2. GOOGLE PLACE DETAILS TABLE (Clean - No N/A) ===
+    // === 2. GOOGLE BUSINESS / LOCATION DETAILS ===
+    $businessName =
+        $proposal['locationName']
+        ?? $proposal['businessName']
+        ?? $proposal['entityName']
+        ?? '';
+
+    $googleAddress =
+        $proposal['googleFormattedAddress']
+        ?? $proposal['formattedAddress']
+        ?? $proposal['locationFormattedAddress']
+        ?? '';
+
+    $phone =
+        $proposal['locationPhone']
+        ?? $proposal['formattedPhoneNumber']
+        ?? $proposal['contactPhone']
+        ?? '';
+
+    $businessStatus =
+        $proposal['businessStatus']
+        ?? $proposal['business_status']
+        ?? '';
+
+    $rating =
+        $proposal['locationRating']
+        ?? $proposal['rating']
+        ?? '';
+
+    $reviewCount =
+        $proposal['locationReviewCount']
+        ?? $proposal['userRatingsTotal']
+        ?? $proposal['user_ratings_total']
+        ?? '';
+
+    $website =
+        $proposal['locationWebsite']
+        ?? $proposal['website']
+        ?? '';
+
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
-    // Only show rows with real data
-    if (!empty($proposal['locationName'])) {
-        $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
-            . htmlspecialchars($proposal['locationName']) . '</td></tr>';
-    }
-
-    if (!empty($proposal['locationPlaceId'])) {
-        $html .= '<tr><th>Google Place ID</th><td>' 
-            . htmlspecialchars($proposal['locationPlaceId']) . '</td></tr>';
-    }
-
-    if (!empty($proposal['locationPhone'])) {
-        $html .= '<tr><th>Phone</th><td>' 
-            . htmlspecialchars($proposal['locationPhone']) . '</td></tr>';
-    }
-
-    if (!empty($proposal['locationWebsite'])) {
-        $html .= '<tr><th>Website</th><td>' 
-            . htmlspecialchars($proposal['locationWebsite']) . '</td></tr>';
-    }
-
-    if (!empty($proposal['locationRating'])) {
-        $rating = $proposal['locationRating'];
-        $count  = $proposal['locationReviewCount'] ?? '';
-        $html .= '<tr><th>Google Rating</th><td>' 
-            . htmlspecialchars($rating) . ' ★' 
-            . ($count ? ' (' . $count . ' reviews)' : '') 
+    if ($businessName !== '') {
+        $html .= '<tr><th style="width:35%;">Business Name</th><td>'
+            . htmlspecialchars($businessName)
             . '</td></tr>';
     }
 
-    if (!empty($proposal['businessStatus'])) {
-        $html .= '<tr><th>Business Status</th><td>' 
-            . htmlspecialchars(ucwords(strtolower($proposal['businessStatus']))) 
+    if ($googleAddress !== '') {
+        $html .= '<tr><th>Google Address</th><td>'
+            . htmlspecialchars($googleAddress)
+            . '</td></tr>';
+    }
+
+    if ($phone !== '') {
+        $html .= '<tr><th>Phone Number</th><td>'
+            . htmlspecialchars($phone)
+            . '</td></tr>';
+    }
+
+    if ($businessStatus !== '') {
+        $html .= '<tr><th>Business Status</th><td>'
+            . htmlspecialchars(
+                ucwords(
+                    strtolower(
+                        str_replace('_', ' ', $businessStatus)
+                    )
+                )
+            )
+            . '</td></tr>';
+    }
+
+    if ($rating !== '') {
+        $html .= '<tr><th>Google Rating</th><td>'
+            . htmlspecialchars((string)$rating)
+            . ' ★'
+            . ($reviewCount !== ''
+                ? ' (' . htmlspecialchars((string)$reviewCount) . ' reviews)'
+                : '')
+            . '</td></tr>';
+    }
+
+    if ($website !== '') {
+        $html .= '<tr><th>Website</th><td>'
+            . htmlspecialchars($website)
             . '</td></tr>';
     }
 
