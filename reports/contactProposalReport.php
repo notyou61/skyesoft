@@ -201,7 +201,7 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === Dynamic Coordinates ===
+    // === 1. SATELLITE MAP ===
     $lat = $proposal['locationLatitude'] 
         ?? $proposal['latitude'] 
         ?? $proposal['data']['location']['latitude'] 
@@ -214,7 +214,6 @@ function buildSatelliteSection(array $proposal): string
 
     $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
 
-    // === Render Map if possible ===
     if ($lat && $lng && $googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
@@ -222,36 +221,55 @@ function buildSatelliteSection(array $proposal): string
             . $lat . ',' . $lng 
             . '&key=' . $googleKey;
 
-        $html .= '<div style="text-align:center; margin:15px 0 10px 0;">';
+        $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
         $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Satellite View of Location">';
+        $html .= 'alt="Satellite View">';
         $html .= '</div>';
     } else {
-        // Silent fallback - no visible error message
-        $html .= '<div class="image-placeholder" style="min-height:280px;">';
+        $html .= '<div class="image-placeholder" style="min-height:260px;">';
         $html .= '📍 Satellite imagery unavailable at this time';
         $html .= '</div>';
     }
 
-    // === Details Table ===
+    // === 2. GOOGLE PLACE DETAILS TABLE (Clean - No N/A) ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
-    
-    $html .= '<tr><th style="width:35%;">Location Name</th><td>' 
-        . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName'] ?? '—') 
-        . '</td></tr>';
 
-    $html .= '<tr><th>Address</th><td>' 
-        . htmlspecialchars($proposal['locationAddress'] ?? '—') 
-        . '</td></tr>';
+    // Only show rows with real data
+    if (!empty($proposal['locationName'])) {
+        $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
+            . htmlspecialchars($proposal['locationName']) . '</td></tr>';
+    }
 
-    $html .= '<tr><th>City, State ZIP</th><td>' 
-        . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') 
-        . '</td></tr>';
+    if (!empty($proposal['locationPlaceId'])) {
+        $html .= '<tr><th>Google Place ID</th><td>' 
+            . htmlspecialchars($proposal['locationPlaceId']) . '</td></tr>';
+    }
 
-    $html .= '<tr><th>Place ID</th><td>' 
-        . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') 
-        . '</td></tr>';
+    if (!empty($proposal['locationPhone'])) {
+        $html .= '<tr><th>Phone</th><td>' 
+            . htmlspecialchars($proposal['locationPhone']) . '</td></tr>';
+    }
+
+    if (!empty($proposal['locationWebsite'])) {
+        $html .= '<tr><th>Website</th><td>' 
+            . htmlspecialchars($proposal['locationWebsite']) . '</td></tr>';
+    }
+
+    if (!empty($proposal['locationRating'])) {
+        $rating = $proposal['locationRating'];
+        $count  = $proposal['locationReviewCount'] ?? '';
+        $html .= '<tr><th>Google Rating</th><td>' 
+            . htmlspecialchars($rating) . ' ★' 
+            . ($count ? ' (' . $count . ' reviews)' : '') 
+            . '</td></tr>';
+    }
+
+    if (!empty($proposal['businessStatus'])) {
+        $html .= '<tr><th>Business Status</th><td>' 
+            . htmlspecialchars(ucwords(strtolower($proposal['businessStatus']))) 
+            . '</td></tr>';
+    }
 
     $html .= '</table>';
 
