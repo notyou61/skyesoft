@@ -200,28 +200,23 @@ function buildLocationSection(array $proposal): string
 function buildSatelliteSection(array $proposal): string
 {
     error_log("=== buildSatelliteSection() EXECUTED ===");
-    error_log("Top-level keys: " . json_encode(array_keys($proposal)));
 
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === DEBUG: Show what data we actually have ===
-    $debugInfo = '<div style="background:#f8f9fa; padding:8px; font-size:9pt; border:1px solid #ddd; margin:8px 0;">';
-    $debugInfo .= '<strong>Debug Info (remove after fix):</strong><br>';
-    $debugInfo .= 'locationLatitude: ' . ($proposal['locationLatitude'] ?? 'NULL') . '<br>';
-    $debugInfo .= 'latitude: ' . ($proposal['latitude'] ?? 'NULL') . '<br>';
-    $debugInfo .= 'data->location->latitude: ' . ($proposal['data']['location']['latitude'] ?? 'NULL') . '<br>';
-    $debugInfo .= '</div>';
-
-    $html .= $debugInfo;
-
-    // === Try to get coordinates ===
+    // === AGGRESSIVE COORDINATE EXTRACTION ===
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
-        ?? ($proposal['data']['location']['latitude'] ?? null);
+        ?? ($proposal['data']['location']['latitude'] ?? null)
+        ?? ($proposal['data']['latitude'] ?? null)
+        ?? null;
 
     $lng = $proposal['locationLongitude']
         ?? $proposal['longitude']
-        ?? ($proposal['data']['location']['longitude'] ?? null);
+        ?? ($proposal['data']['location']['longitude'] ?? null)
+        ?? ($proposal['data']['longitude'] ?? null)
+        ?? null;
+
+    error_log("[MAP] Final Lat: " . ($lat ?? 'NULL') . " | Lng: " . ($lng ?? 'NULL'));
 
     $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
               ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
