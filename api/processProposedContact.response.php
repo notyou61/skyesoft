@@ -85,7 +85,7 @@ $resolutionMethod = match ($parcelStatus) {
     default             => 'unresolved'
 };
 
-// === GOOGLE STATIC MAP (Satellite) - WITH DEBUGGING ===
+// === GOOGLE STATIC MAP (Satellite) - DEBUG ENABLED ===
 $lat = $parsed['location']['latitude'] ?? null;
 $lng = $parsed['location']['longitude'] ?? null;
 $googleKey = getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: ($googleApiKey ?? '');
@@ -99,7 +99,7 @@ if ($lat && $lng && $googleKey) {
         . $lat . ',' . $lng 
         . '&key=' . $googleKey;
     
-    error_log("[STATIC MAP] ✅ SUCCESS - URL generated for lat=$lat, lng=$lng");
+    error_log("[STATIC MAP] ✅ SUCCESS - URL generated | Lat=$lat, Lng=$lng");
 } else {
     error_log("[STATIC MAP] ❌ FAILED - Missing data | Lat: " . ($lat ? 'present' : 'missing') 
               . " | Lng: " . ($lng ? 'present' : 'missing') 
@@ -126,7 +126,6 @@ $data['location'] = [
                            ?? $parsed['location']['jurisdiction'] 
                            ?? ($selectedParcel['jurisdiction'] ?? ''),
 
-    // === STATIC MAP URL ===
     'staticMapUrl'         => $staticMapUrl,
 
     'parcelDetails' => $parsed['location']['parcelDetails'] ?? [],
