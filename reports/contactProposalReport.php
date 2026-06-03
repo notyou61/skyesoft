@@ -181,12 +181,24 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
-    $html = buildSectionHeader('Location Overview — Satellite Context (test)', 'pin.png');
-    $html .= renderImagePlaceholder('satellite', $proposal);
+    $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+
+    // Use staticMapUrl if available
+    if (!empty($proposal['staticMapUrl'])) {
+        $html .= '<div style="text-align:center; margin:15px 0;">';
+        $html .= '<img src="' . htmlspecialchars($proposal['staticMapUrl']) . '" ';
+        $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
+        $html .= 'alt="Satellite View">';
+        $html .= '</div>';
+    } else {
+        $html .= renderImagePlaceholder('satellite', $proposal);
+    }
+
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= htmlspecialchars($proposal['locationAddress'] ?? '') . ', ';
     $html .= htmlspecialchars($proposal['locationCityStateZip'] ?? '') . ' • Google Satellite View';
     $html .= '</p>';
+
     return $html;
 }
 
@@ -266,8 +278,17 @@ function insertPageBreak(): string
 
 function renderImagePlaceholder(string $type, array $proposal, int $parcelNum = 0): string
 {
+    if ($type === 'satellite' && !empty($proposal['staticMapUrl'])) {
+        return '<div style="text-align:center; margin:15px 0;">
+            <img src="' . htmlspecialchars($proposal['staticMapUrl']) . '" 
+                 style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
+                 alt="Satellite View">
+        </div>';
+    }
+
     $label = strtoupper($type);
     if ($type === 'parcel') $label .= ' ' . $parcelNum;
+
     return '<div class="image-placeholder">[ ' . $label . ' IMAGE PLACEHOLDER ]</div>';
 }
 
