@@ -181,7 +181,7 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
-    $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+    $html = buildSectionHeader('Location Overview — Satellite Context (test)', 'pin.png');
     $html .= renderImagePlaceholder('satellite', $proposal);
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= htmlspecialchars($proposal['locationAddress'] ?? '') . ', ';
