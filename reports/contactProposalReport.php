@@ -9,6 +9,10 @@ declare(strict_types=1);
 
 #region SECTION 00 - Main Report Generator
 
+// FORCE RELOAD - REMOVE AFTER TESTING
+opcache_invalidate(__FILE__, true);
+error_log("=== contactProposalReport.php RELOADED ===");
+
 function generateContactProposalReport(array $input): array
 {
     $proposal = getProposalData($input);
@@ -199,15 +203,11 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
+    error_log("=== buildSatelliteSection() CALLED ===");
+
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === DEBUG: Log what we have ===
-    error_log("[MAP DEBUG] Proposal keys: " . json_encode(array_keys($proposal)));
-    if (isset($proposal['data'])) {
-        error_log("[MAP DEBUG] data->location keys: " . json_encode(array_keys($proposal['data']['location'] ?? [])));
-    }
-
-    // === Extract Coordinates (more paths) ===
+    // === Extract Coordinates (multiple paths) ===
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? null);
@@ -216,11 +216,16 @@ function buildSatelliteSection(array $proposal): string
         ?? $proposal['longitude']
         ?? ($proposal['data']['location']['longitude'] ?? null);
 
-    error_log("[MAP DEBUG] Extracted Lat: " . ($lat ?? 'NULL') . " | Lng: " . ($lng ?? 'NULL'));
+    error_log("[MAP DEBUG] Lat: " . ($lat ?? 'NULL') . " | Lng: " . ($lng ?? 'NULL'));
 
-    // === TEMPORARY HARDCODED KEY ===
-    $googleKey = 'AIzaSyCmwpA1R3tW1fOXQZAkabPogtKs5Pl9TFk';
+    // === API Key ===
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+              ?: '';
 
+    error_log("[MAP DEBUG] Key length: " . strlen($googleKey));
+
+    // === Render Map ===
     if ($lat && $lng && $googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
