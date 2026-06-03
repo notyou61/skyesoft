@@ -10,7 +10,6 @@ declare(strict_types=1);
 #region SECTION 00 - Main Report Generator
 
 // FORCE RELOAD - REMOVE AFTER TESTING
-opcache_invalidate(__FILE__, true);
 error_log("=== contactProposalReport.php RELOADED ===");
 
 function generateContactProposalReport(array $input): array
