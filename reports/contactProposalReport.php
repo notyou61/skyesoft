@@ -201,7 +201,13 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === SATELLITE MAP ===
+    // === DEBUG: Log what we have ===
+    error_log("[MAP DEBUG] Proposal keys: " . json_encode(array_keys($proposal)));
+    if (isset($proposal['data'])) {
+        error_log("[MAP DEBUG] data->location keys: " . json_encode(array_keys($proposal['data']['location'] ?? [])));
+    }
+
+    // === Extract Coordinates (more paths) ===
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? null);
@@ -210,8 +216,10 @@ function buildSatelliteSection(array $proposal): string
         ?? $proposal['longitude']
         ?? ($proposal['data']['location']['longitude'] ?? null);
 
-    // === TEMPORARY HARDCODED KEY (for testing) ===
-    $googleKey = 'AIzaSyCmwpA1R3tW1fOXQZAkabPogtKs5Pl9TFk';   // ← Your working key
+    error_log("[MAP DEBUG] Extracted Lat: " . ($lat ?? 'NULL') . " | Lng: " . ($lng ?? 'NULL'));
+
+    // === TEMPORARY HARDCODED KEY ===
+    $googleKey = 'AIzaSyCmwpA1R3tW1fOXQZAkabPogtKs5Pl9TFk';
 
     if ($lat && $lng && $googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
