@@ -201,7 +201,7 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === Dynamic Coordinates ===
+    // === SATELLITE MAP ===
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? null);
@@ -210,17 +210,15 @@ function buildSatelliteSection(array $proposal): string
         ?? $proposal['longitude']
         ?? ($proposal['data']['location']['longitude'] ?? null);
 
-    // === Get API Key (try multiple methods) ===
     $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
               ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
               ?: '';
 
-    // === Render Map if we have everything ===
     if ($lat && $lng && $googleKey) {
-        $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center='
-            . $lat . ',' . $lng
-            . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C'
-            . $lat . ',' . $lng
+        $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
+            . $lat . ',' . $lng 
+            . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
+            . $lat . ',' . $lng 
             . '&key=' . $googleKey;
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
@@ -229,13 +227,12 @@ function buildSatelliteSection(array $proposal): string
         $html .= 'alt="Satellite View of Location">';
         $html .= '</div>';
     } else {
-        // Silent graceful fallback - no visible error message
         $html .= '<div class="image-placeholder" style="min-height:260px;">';
         $html .= '📍 Satellite imagery unavailable at this time';
         $html .= '</div>';
     }
 
-    // === Simple Place Details Table ===
+    // === Place ID Info ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
     if (!empty($proposal['locationName'] ?? $proposal['entityName'])) {
