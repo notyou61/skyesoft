@@ -209,23 +209,23 @@ function processReportArtifacts(string $html, array $artifacts): string
 {
     if (empty($artifacts)) return $html;
 
-    // === SATELLITE MAP (Fixed Placeholder Match) ===
+    // === SATELLITE MAP - Multiple possible placeholders ===
     if (!empty($artifacts['staticMapUrl'])) {
-        $html = str_replace(
-            '[SATELLITE IMAGE PLACEHOLDER]', 
-            '<div style="text-align:center; margin:15px 0;">
+        $mapHtml = '<div style="text-align:center; margin:15px 0;">
                 <img src="' . htmlspecialchars($artifacts['staticMapUrl']) . '" 
                      style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
                      alt="Satellite View">
-             </div>', 
-            $html
-        );
+             </div>';
+
+        // Try multiple common placeholder variations
+        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER]', $mapHtml, $html);
+        $html = str_replace('[ Satellite Image Placeholder ]', $mapHtml, $html);
+        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER -1]', $mapHtml, $html);
+        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - 2]', $mapHtml, $html);
+        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - 3]', $mapHtml, $html);
     } else {
-        $html = str_replace(
-            '[SATELLITE IMAGE PLACEHOLDER]', 
-            '<div class="image-placeholder">📍 Satellite image not available yet</div>', 
-            $html
-        );
+        $placeholderHtml = '<div class="image-placeholder">📍 Satellite image not available yet</div>';
+        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER]', $placeholderHtml, $html);
     }
 
     // === STREET VIEW ===
