@@ -203,23 +203,17 @@ function buildSatelliteSection(array $proposal): string
 
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // Extract coordinates from multiple possible locations
-    $lat = $proposal['locationLatitude']
-        ?? $proposal['latitude']
-        ?? ($proposal['data']['location']['latitude'] ?? null);
+    // === TEMPORARY HARDCODED COORDINATES (working values) ===
+    $lat = 33.4848523;
+    $lng = -112.1288006;
 
-    $lng = $proposal['locationLongitude']
-        ?? $proposal['longitude']
-        ?? ($proposal['data']['location']['longitude'] ?? null);
-
-    error_log("[MAP] Lat: " . ($lat ?? 'NULL') . " | Lng: " . ($lng ?? 'NULL'));
-
-    // Use the working API key
     $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
               ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: 'AIzaSyCmwpA1R3tW1fOXQZAkabPogtKs5Pl9TFk'; // fallback
+              ?: 'AIzaSyCmwpA1R3tW1fOXQZAkabPogtKs5Pl9TFk';
 
-    if ($lat && $lng && $googleKey) {
+    error_log("[MAP] Using Lat: $lat | Lng: $lng | Key length: " . strlen($googleKey));
+
+    if ($googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
             . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
@@ -237,7 +231,7 @@ function buildSatelliteSection(array $proposal): string
         $html .= '</div>';
     }
 
-    // Simple Place ID info
+    // === Place ID Info ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
     if (!empty($proposal['locationName'] ?? $proposal['entityName'])) {
