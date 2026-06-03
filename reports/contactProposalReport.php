@@ -200,20 +200,34 @@ function buildLocationSection(array $proposal): string
 function buildSatelliteSection(array $proposal): string
 {
     error_log("=== buildSatelliteSection() EXECUTED ===");
+    error_log("Top-level keys: " . json_encode(array_keys($proposal)));
 
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === TEMPORARY HARDCODED COORDINATES (working values) ===
-    $lat = 33.4848523;
-    $lng = -112.1288006;
+    // === DEBUG: Show what data we actually have ===
+    $debugInfo = '<div style="background:#f8f9fa; padding:8px; font-size:9pt; border:1px solid #ddd; margin:8px 0;">';
+    $debugInfo .= '<strong>Debug Info (remove after fix):</strong><br>';
+    $debugInfo .= 'locationLatitude: ' . ($proposal['locationLatitude'] ?? 'NULL') . '<br>';
+    $debugInfo .= 'latitude: ' . ($proposal['latitude'] ?? 'NULL') . '<br>';
+    $debugInfo .= 'data->location->latitude: ' . ($proposal['data']['location']['latitude'] ?? 'NULL') . '<br>';
+    $debugInfo .= '</div>';
+
+    $html .= $debugInfo;
+
+    // === Try to get coordinates ===
+    $lat = $proposal['locationLatitude']
+        ?? $proposal['latitude']
+        ?? ($proposal['data']['location']['latitude'] ?? null);
+
+    $lng = $proposal['locationLongitude']
+        ?? $proposal['longitude']
+        ?? ($proposal['data']['location']['longitude'] ?? null);
 
     $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
               ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: 'AIzaSyCmwpA1R3tW1fOXQZAkabPogtKs5Pl9TFk';
+              ?: '';
 
-    error_log("[MAP] Using Lat: $lat | Lng: $lng | Key length: " . strlen($googleKey));
-
-    if ($googleKey) {
+    if ($lat && $lng && $googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
             . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
