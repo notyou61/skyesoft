@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 #region SECTION 00 - Main Report Generator
 
-// FORCE RELOAD - REMOVE AFTER TESTING
-error_log("=== contactProposalReport.php RELOADED ===");
-
 function generateContactProposalReport(array $input): array
 {
     $proposal = getProposalData($input);
@@ -202,11 +199,11 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
-    error_log("=== buildSatelliteSection() CALLED ===");
+    error_log("=== buildSatelliteSection() EXECUTED ===");
 
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === Extract Coordinates (multiple paths) ===
+    // Extract coordinates from multiple possible locations
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? null);
@@ -215,16 +212,13 @@ function buildSatelliteSection(array $proposal): string
         ?? $proposal['longitude']
         ?? ($proposal['data']['location']['longitude'] ?? null);
 
-    error_log("[MAP DEBUG] Lat: " . ($lat ?? 'NULL') . " | Lng: " . ($lng ?? 'NULL'));
+    error_log("[MAP] Lat: " . ($lat ?? 'NULL') . " | Lng: " . ($lng ?? 'NULL'));
 
-    // === API Key ===
+    // Use the working API key
     $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
               ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: '';
+              ?: 'AIzaSyCmwpA1R3tW1fOXQZAkabPogtKs5Pl9TFk'; // fallback
 
-    error_log("[MAP DEBUG] Key length: " . strlen($googleKey));
-
-    // === Render Map ===
     if ($lat && $lng && $googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
@@ -243,7 +237,7 @@ function buildSatelliteSection(array $proposal): string
         $html .= '</div>';
     }
 
-    // === Place ID Info ===
+    // Simple Place ID info
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
     if (!empty($proposal['locationName'] ?? $proposal['entityName'])) {
