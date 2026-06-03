@@ -218,14 +218,14 @@ function processReportArtifacts(string $html, array $artifacts): string
              </div>';
 
         // Try multiple common placeholder variations
-        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER]', $mapHtml, $html);
-        $html = str_replace('[ Satellite Image Placeholder ]', $mapHtml, $html);
-        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER -1]', $mapHtml, $html);
+        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - 0]', $mapHtml, $html);
+        $html = str_replace('[ Satellite Image Placeholder - LC]', $mapHtml, $html);
+        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - 1]', $mapHtml, $html);
         $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - 2]', $mapHtml, $html);
         $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - 3]', $mapHtml, $html);
     } else {
         $placeholderHtml = '<div class="image-placeholder">📍 Satellite image not available yet</div>';
-        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER]', $placeholderHtml, $html);
+        $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - Other]', $placeholderHtml, $html);
     }
 
     // === STREET VIEW ===
