@@ -210,9 +210,8 @@ function buildSatelliteSection(array $proposal): string
         ?? $proposal['longitude']
         ?? ($proposal['data']['location']['longitude'] ?? null);
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: '';
+    // === TEMPORARY HARDCODED KEY (for testing) ===
+    $googleKey = 'AIzaSyCmwpA1R3tW1fOXQZAkabPogtKs5Pl9TFk';   // ← Your working key
 
     if ($lat && $lng && $googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
