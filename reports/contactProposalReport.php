@@ -201,53 +201,39 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === 1. SATELLITE MAP - Robust & Reliable ===
+    // Dynamic coordinates from proposal data
     $lat = $proposal['locationLatitude'] 
         ?? $proposal['latitude'] 
-        ?? ($proposal['data']['location']['latitude'] ?? null);
+        ?? $proposal['data']['location']['latitude'] 
+        ?? 33.4848523;
 
     $lng = $proposal['locationLongitude'] 
         ?? $proposal['longitude'] 
-        ?? ($proposal['data']['location']['longitude'] ?? null);
+        ?? $proposal['data']['location']['longitude'] 
+        ?? -112.1288006;
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
-              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
-              ?: '';
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
 
-    if ($lat && $lng && $googleKey) {
+    if (!empty($googleKey)) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
             . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
             . $lat . ',' . $lng 
             . '&key=' . $googleKey;
 
-        $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
+        $html .= '<div style="text-align:center; margin:15px 0 10px 0;">';
         $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
         $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
         $html .= 'alt="Satellite View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px;">';
-        $html .= '📍 Satellite imagery unavailable at this time';
-        $html .= '</div>';
+        $html .= '<div class="image-placeholder">❌ Google Maps API Key not configured</div>';
     }
 
-    // === 2. Place ID Details (Clean & DRY) ===
-    $html .= '<table class="dataTable" style="margin-top:12px;">';
-
-    if (!empty($proposal['locationName'] ?? $proposal['entityName'])) {
-        $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
-            . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName']) 
-            . '</td></tr>';
-    }
-
-    if (!empty($proposal['locationPlaceId'])) {
-        $html .= '<tr><th>Google Place ID</th><td>' 
-            . htmlspecialchars($proposal['locationPlaceId']) 
-            . '</td></tr>';
-    }
-
-    $html .= '</table>';
+    $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
+    $html .= htmlspecialchars($proposal['locationAddress'] ?? '') . ', ';
+    $html .= htmlspecialchars($proposal['locationCityStateZip'] ?? '') . ' • Google Satellite View';
+    $html .= '</p>';
 
     return $html;
 }
