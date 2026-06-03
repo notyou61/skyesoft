@@ -212,7 +212,7 @@ function processReportArtifacts(string $html, array $artifacts): string
     // === SATELLITE MAP ===
     if (!empty($artifacts['staticMapUrl'])) {
         $html = str_replace(
-            '[SATELLITE IMAGE PLACEHOLDER]', 
+            '[SATELLITE IMAGE PLACEHOLDER -1]', 
             '<div style="text-align:center; margin:15px 0;">
                 <img src="' . htmlspecialchars($artifacts['staticMapUrl']) . '" 
                     style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
@@ -222,8 +222,8 @@ function processReportArtifacts(string $html, array $artifacts): string
         );
     } else {
         $html = str_replace(
-            '[SATELLITE IMAGE PLACEHOLDER]', 
-            '<div class="image-placeholder">[SATELLITE IMAGE PLACEHOLDER]</div>', 
+            '[SATELLITE IMAGE PLACEHOLDER - 2]', 
+            '<div class="image-placeholder">[SATELLITE IMAGE PLACEHOLDER - 3]</div>', 
             $html
         );
     }
