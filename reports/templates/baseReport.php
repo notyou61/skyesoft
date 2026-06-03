@@ -216,17 +216,14 @@ function processReportArtifacts(string $html, array $artifacts): string
             '<div style="text-align:center; margin:15px 0;">
                 <img src="' . htmlspecialchars($artifacts['staticMapUrl']) . '" 
                     style="max-width:100%; height:auto; border:1px solid #ddd; border-radius:6px;" 
-                    alt="Satellite View">
+                    alt="Satellite View of Location">
             </div>', 
             $html
         );
     } else {
         $html = str_replace(
             '[SATELLITE IMAGE PLACEHOLDER]', 
-            '<div class="image-placeholder">
-                📍 Satellite image not available<br>
-                <small style="color:#666;">(Check Google Maps API key and coordinates)</small>
-            </div>', 
+            '<div class="image-placeholder">[SATELLITE IMAGE PLACEHOLDER]</div>', 
             $html
         );
     }
