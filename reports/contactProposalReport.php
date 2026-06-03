@@ -201,7 +201,7 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === 1. SATELLITE MAP ===
+    // === 1. SATELLITE MAP - Robust Version ===
     $lat = $proposal['locationLatitude'] 
         ?? $proposal['latitude'] 
         ?? ($proposal['data']['location']['latitude'] ?? null);
@@ -210,6 +210,7 @@ function buildSatelliteSection(array $proposal): string
         ?? $proposal['longitude'] 
         ?? ($proposal['data']['location']['longitude'] ?? null);
 
+    // Try both environment methods
     $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
               ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
               ?: '';
@@ -224,30 +225,31 @@ function buildSatelliteSection(array $proposal): string
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
         $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Satellite View">';
+        $html .= 'alt="Satellite View of Location">';
         $html .= '</div>';
     } else {
         $html .= '<div class="image-placeholder" style="min-height:260px;">';
         $html .= '📍 Satellite imagery unavailable at this time';
         $html .= '</div>';
+        
+        error_log("[MAP] Failed - Lat: " . ($lat ? 'yes' : 'no') 
+            . " | Lng: " . ($lng ? 'yes' : 'no') 
+            . " | Key: " . (substr($googleKey, 0, 8) . '...'));
     }
 
-    // === 2. PLACE DETAILS TABLE (Safe) ===
+    // === 2. Simple Place Info Table ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
-    $fields = [
-        'Business Name'     => $proposal['locationName'] ?? $proposal['entityName'] ?? '',
-        'Google Place ID'   => $proposal['locationPlaceId'] ?? '',
-        'Phone Number'      => $proposal['locationPhone'] ?? $proposal['formattedPhoneNumber'] ?? '',
-        'Website'           => $proposal['locationWebsite'] ?? $proposal['website'] ?? '',
-    ];
+    if (!empty($proposal['locationName'] ?? $proposal['entityName'])) {
+        $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
+            . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName']) 
+            . '</td></tr>';
+    }
 
-    foreach ($fields as $label => $value) {
-        if (!empty($value)) {
-            $html .= '<tr><th style="width:35%;">' . htmlspecialchars($label) . '</th><td>' 
-                . htmlspecialchars($value) 
-                . '</td></tr>';
-        }
+    if (!empty($proposal['locationPlaceId'])) {
+        $html .= '<tr><th>Google Place ID</th><td>' 
+            . htmlspecialchars($proposal['locationPlaceId']) 
+            . '</td></tr>';
     }
 
     $html .= '</table>';
