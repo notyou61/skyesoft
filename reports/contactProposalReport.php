@@ -197,7 +197,7 @@ function buildLocationSection(array $proposal): string
 
 #region SECTION 03 - Visual & Governance Sections
 
-function buildSatelliteSection(array $proposal): string
+function buildSatelliteSection1(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
@@ -252,6 +252,79 @@ function buildSatelliteSection(array $proposal): string
     return $html;
 }
 
+function buildSatelliteSection(array $proposal): string
+{
+    $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+
+    // === 1. LARGER SATELLITE MAP ===
+    $lat = $proposal['locationLatitude']
+        ?? $proposal['latitude']
+        ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
+
+    $lng = $proposal['locationLongitude']
+        ?? $proposal['longitude']
+        ?? ($proposal['data']['location']['longitude'] ?? -112.1288006);
+
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+              ?: '';
+
+    if ($googleKey) {
+        $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
+            . $lat . ',' . $lng 
+            . '&zoom=18&size=980x460&maptype=satellite&markers=color:red%7C' 
+            . $lat . ',' . $lng 
+            . '&key=' . $googleKey;
+
+        $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
+        $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
+        $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
+        $html .= 'alt="Satellite View of Location">';
+        $html .= '</div>';
+    } else {
+        $html .= '<div class="image-placeholder" style="min-height:260px;">';
+        $html .= '📍 Satellite imagery unavailable at this time';
+        $html .= '</div>';
+    }
+
+    // === 2. BUSINESS DETAILS TABLE ===
+    $html .= '<table class="dataTable" style="margin-top:12px;">';
+
+    $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
+        . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName'] ?? 'Christy Signs') 
+        . '</td></tr>';
+
+    $html .= '<tr><th>Google Address</th><td>' 
+        . htmlspecialchars($proposal['formattedAddress'] ?? $proposal['locationAddress'] ?? '3145 N 33rd Ave, Phoenix, AZ 85017, USA') 
+        . '</td></tr>';
+
+    $html .= '<tr><th>Phone Number</th><td>' 
+        . htmlspecialchars($proposal['locationPhone'] ?? $proposal['formattedPhoneNumber'] ?? '(602) 242-4488') 
+        . '</td></tr>';
+
+    if (!empty($proposal['businessStatus'])) {
+        $html .= '<tr><th>Business Status</th><td>' 
+            . htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $proposal['businessStatus'])))) 
+            . '</td></tr>';
+    }
+
+    if (!empty($proposal['locationRating'])) {
+        $html .= '<tr><th>Google Rating</th><td>' 
+            . htmlspecialchars($proposal['locationRating']) . ' ★' 
+            . ($proposal['locationReviewCount'] ? ' (' . $proposal['locationReviewCount'] . ' reviews)' : '') 
+            . '</td></tr>';
+    }
+
+    if (!empty($proposal['locationWebsite'])) {
+        $html .= '<tr><th>Website</th><td>' 
+            . htmlspecialchars($proposal['locationWebsite']) 
+            . '</td></tr>';
+    }
+
+    $html .= '</table>';
+
+    return $html;
+}
 
 function buildParcelSummarySection(array $proposal): string
 {
