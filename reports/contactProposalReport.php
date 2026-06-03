@@ -201,7 +201,7 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === SATELLITE MAP (Stable) ===
+    // === SATELLITE MAP - Larger Size ===
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
@@ -217,13 +217,13 @@ function buildSatelliteSection(array $proposal): string
     if ($googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
-            . '&zoom=18&size=900x420&maptype=satellite&markers=color:red%7C' 
+            . '&zoom=18&size=950x450&maptype=satellite&markers=color:red%7C' 
             . $lat . ',' . $lng 
             . '&key=' . $googleKey;
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
-        $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
+        $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
         $html .= 'alt="Satellite View of Location">';
         $html .= '</div>';
     } else {
@@ -232,7 +232,7 @@ function buildSatelliteSection(array $proposal): string
         $html .= '</div>';
     }
 
-    // === Place ID Details Table ===
+    // === Place ID Info ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
     if (!empty($proposal['locationName'] ?? $proposal['entityName'])) {
