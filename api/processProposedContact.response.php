@@ -85,17 +85,38 @@ $resolutionMethod = match ($parcelStatus) {
     default             => 'unresolved'
 };
 
+// === GOOGLE STATIC MAP (Satellite) ===
+$lat = $parsed['location']['latitude'] ?? null;
+$lng = $parsed['location']['longitude'] ?? null;
+$googleKey = getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: ($googleApiKey ?? '');
+
+$staticMapUrl = null;
+if ($lat && $lng && $googleKey) {
+    $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
+        . $lat . ',' . $lng 
+        . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
+        . $lat . ',' . $lng 
+        . '&key=' . $googleKey;
+    
+    error_log("[STATIC MAP] ✅ Generated for lat=$lat, lng=$lng");
+} else {
+    error_log("[STATIC MAP] ⚠️ Skipped - Missing data | Lat: " . ($lat ? 'present' : 'missing') 
+              . " | Lng: " . ($lng ? 'present' : 'missing') 
+              . " | Key: " . ($googleKey ? 'present' : 'missing'));
+}
+
 $data['location'] = [
     'locationName'         => $parsed['location']['locationName'] ?? '',
     'locationPlaceId'      => $parsed['location']['locationPlaceId'] ?? null,
-    'locationLatitude'     => $parsed['location']['latitude'] ?? null,
-    'locationLongitude'    => $parsed['location']['longitude'] ?? null,
+    'locationLatitude'     => $lat,
+    'locationLongitude'    => $lng,
     'locationAddress'      => $parsed['location']['address'] ?? '',
     'locationAddressSuite' => $parsed['location']['locationAddressSuite'] ?? '',
     'locationCity'         => $parsed['location']['city'] ?? '',
     'locationState'        => $parsed['location']['state'] ?? '',
     'locationZip'          => $parsed['location']['zip'] ?? '',
     'locationCounty'       => $parsed['location']['county'] ?? '',
+    
     // === CRITICAL FIELDS FOR REPORT ===
     'locationCountyFips'   => $parsed['location']['countyFips'] 
                            ?? $parsed['location']['locationCountyFips'] 
@@ -104,14 +125,10 @@ $data['location'] = [
     'locationJurisdiction' => $parsed['location']['locationJurisdiction'] 
                            ?? $parsed['location']['jurisdiction'] 
                            ?? ($selectedParcel['jurisdiction'] ?? ''),
-// === MAP URL for Report ===
-    'staticMapUrl' => !empty($parsed['location']['latitude']) && !empty($parsed['location']['longitude']) 
-        ? 'https://maps.googleapis.com/maps/api/staticmap?center=' 
-          . $parsed['location']['latitude'] . ',' . $parsed['location']['longitude'] 
-          . '&zoom=17&size=800x400&maptype=satellite&markers=color:red%7C' 
-          . $parsed['location']['latitude'] . ',' . $parsed['location']['longitude'] 
-          . '&key=' . (getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: $googleApiKey ?? '')
-        : null,
+
+    // === STATIC MAP URL ===
+    'staticMapUrl'         => $staticMapUrl,
+
     'parcelDetails' => $parsed['location']['parcelDetails'] ?? [],
     'parcelResolution' => [
         'status'                => $parcelStatus,
@@ -121,6 +138,7 @@ $data['location'] = [
         'resolutionMethod'      => $resolutionMethod,
         'bestMatchConfidence'   => $selectedParcel['confidence'] ?? null
     ],
+
     'locationIsBilling'  => 0,
     'locationNote'       => '',
     'locationZone'       => '',
