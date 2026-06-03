@@ -192,15 +192,39 @@ function generateMainBody(Mpdf $mpdf, string $bodyHtml): void
     $mpdf->WriteHTML($bodyHtml);
 }
 
+function getEmbeddedImageHtmlFromUrl(string $url, string $alt = 'Image'): string
+{
+    if (empty($url)) {
+        return '<div class="image-placeholder">📍 Satellite image not available yet</div>';
+    }
+
+    return '<div style="text-align:center; margin:12px 0;">
+                <img src="' . htmlspecialchars($url) . '" 
+                     style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
+                     alt="' . htmlspecialchars($alt) . '">
+            </div>';
+}
+
 function processReportArtifacts(string $html, array $artifacts): string
 {
     if (empty($artifacts)) return $html;
 
-    if (!empty($artifacts['satellite'])) {
-        $html = str_replace('[Satellite Image will be inserted here by baseReport.php]', 
-            getEmbeddedImageHtml($artifacts['satellite'], 'Satellite View'), $html);
+    // === SATELLITE / STATIC MAP ===
+    if (!empty($artifacts['staticMapUrl'])) {
+        $html = str_replace(
+            '[SATELLITE IMAGE PLACEHOLDER]', 
+            getEmbeddedImageHtmlFromUrl($artifacts['staticMapUrl'], 'Satellite View'), 
+            $html
+        );
+    } elseif (!empty($artifacts['satellite'])) {
+        $html = str_replace(
+            '[SATELLITE IMAGE PLACEHOLDER]', 
+            getEmbeddedImageHtml($artifacts['satellite'], 'Satellite View'), 
+            $html
+        );
     }
 
+    // Street View and Parcel Maps (existing logic)
     if (!empty($artifacts['streetview'])) {
         $html = str_replace('[Street View Image will be inserted here by baseReport.php]', 
             getEmbeddedImageHtml($artifacts['streetview'], 'Street View'), $html);

@@ -96,7 +96,6 @@ $data['location'] = [
     'locationState'        => $parsed['location']['state'] ?? '',
     'locationZip'          => $parsed['location']['zip'] ?? '',
     'locationCounty'       => $parsed['location']['county'] ?? '',
-    
     // === CRITICAL FIELDS FOR REPORT ===
     'locationCountyFips'   => $parsed['location']['countyFips'] 
                            ?? $parsed['location']['locationCountyFips'] 
@@ -105,7 +104,14 @@ $data['location'] = [
     'locationJurisdiction' => $parsed['location']['locationJurisdiction'] 
                            ?? $parsed['location']['jurisdiction'] 
                            ?? ($selectedParcel['jurisdiction'] ?? ''),
-
+// === MAP URL for Report ===
+    'staticMapUrl' => !empty($parsed['location']['latitude']) && !empty($parsed['location']['longitude']) 
+        ? 'https://maps.googleapis.com/maps/api/staticmap?center=' 
+          . $parsed['location']['latitude'] . ',' . $parsed['location']['longitude'] 
+          . '&zoom=17&size=800x400&maptype=satellite&markers=color:red%7C' 
+          . $parsed['location']['latitude'] . ',' . $parsed['location']['longitude'] 
+          . '&key=' . (getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: $googleApiKey ?? '')
+        : null,
     'parcelDetails' => $parsed['location']['parcelDetails'] ?? [],
     'parcelResolution' => [
         'status'                => $parcelStatus,
@@ -115,7 +121,6 @@ $data['location'] = [
         'resolutionMethod'      => $resolutionMethod,
         'bestMatchConfidence'   => $selectedParcel['confidence'] ?? null
     ],
-
     'locationIsBilling'  => 0,
     'locationNote'       => '',
     'locationZone'       => '',
