@@ -199,9 +199,12 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection1(array $proposal): string
 {
-    $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+    // Wrap the entire section to keep Satellite + Parcel Summary together
+    $html = '<div class="satellite-group">';
 
-    // === SATELLITE MAP - Larger Size ===
+    $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+
+    // === SATELLITE MAP (950x450) ===
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
@@ -232,64 +235,8 @@ function buildSatelliteSection1(array $proposal): string
         $html .= '</div>';
     }
 
-    // === Place ID Info ===
-    $html .= '<table class="dataTable" style="margin-top:12px;">';
-
-    if (!empty($proposal['locationName'] ?? $proposal['entityName'])) {
-        $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
-            . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName']) 
-            . '</td></tr>';
-    }
-
-    if (!empty($proposal['locationPlaceId'])) {
-        $html .= '<tr><th>Google Place ID</th><td>' 
-            . htmlspecialchars($proposal['locationPlaceId']) 
-            . '</td></tr>';
-    }
-
-    $html .= '</table>';
-
-    return $html;
-}
-
-function buildSatelliteSection(array $proposal): string
-{
-    $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
-
-    // === 1. SATELLITE MAP (950x450) ===
-    $lat = $proposal['locationLatitude']
-        ?? $proposal['latitude']
-        ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
-
-    $lng = $proposal['locationLongitude']
-        ?? $proposal['longitude']
-        ?? ($proposal['data']['location']['longitude'] ?? -112.1288006);
-
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: '';
-
-    if ($googleKey) {
-        $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
-            . $lat . ',' . $lng 
-            . '&zoom=18&size=950x450&maptype=satellite&markers=color:red%7C' 
-            . $lat . ',' . $lng 
-            . '&key=' . $googleKey;
-
-        $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
-        $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
-        $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Satellite View of Location">';
-        $html .= '</div>';
-    } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px;">';
-        $html .= '📍 Satellite imagery unavailable at this time';
-        $html .= '</div>';
-    }
-
-    // === 2. GOOGLE BUSINESS DETAILS TABLE (6 rows) ===
-    $html .= '<table class="dataTable" style="margin-top:12px;">';
-
+    // === GOOGLE BUSINESS DETAILS (6 rows) ===
+    $html .= '<table class="dataTable" style="margin-top:12px; margin-bottom:20px;">';
     $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
         . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName'] ?? 'Christy Signs') 
         . '</td></tr>';
@@ -315,19 +262,106 @@ function buildSatelliteSection(array $proposal): string
     $html .= '<tr><th>Website</th><td>' 
         . htmlspecialchars($proposal['locationWebsite'] ?? $proposal['website'] ?? 'https://christysigns.com/') 
         . '</td></tr>';
-
     $html .= '</table>';
+
+    // === PARCEL SUMMARY (kept together) ===
+    $html .= buildParcelSummarySection($proposal);
+
+    $html .= '</div>'; // Close .satellite-group
+
+    return $html;
+}
+
+function buildSatelliteSection(array $proposal): string
+{
+    $html = '<div class="satellite-group" style="page-break-inside:avoid; break-inside:avoid;">';
+
+    $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+
+    // === SATELLITE MAP (950x450) ===
+    $lat = $proposal['locationLatitude']
+        ?? $proposal['latitude']
+        ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
+
+    $lng = $proposal['locationLongitude']
+        ?? $proposal['longitude']
+        ?? ($proposal['data']['location']['longitude'] ?? -112.1288006);
+
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+              ?: '';
+
+    if ($googleKey) {
+        $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
+            . $lat . ',' . $lng 
+            . '&zoom=18&size=950x450&maptype=satellite&markers=color:red%7C' 
+            . $lat . ',' . $lng 
+            . '&key=' . $googleKey;
+
+        $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
+        $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
+        $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
+        $html .= 'alt="Satellite View of Location">';
+        $html .= '</div>';
+    } else {
+        $html .= '<div class="image-placeholder" style="min-height:260px;">';
+        $html .= '📍 Satellite imagery unavailable at this time';
+        $html .= '</div>';
+    }
+
+    // === GOOGLE BUSINESS DETAILS (6 rows) ===
+    $html .= '<table class="dataTable" style="margin-top:12px; margin-bottom:20px; page-break-inside:avoid;">';
+    $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
+        . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName'] ?? 'Christy Signs') 
+        . '</td></tr>';
+
+    $html .= '<tr><th>Google Address</th><td>' 
+        . htmlspecialchars($proposal['formattedAddress'] ?? $proposal['locationAddress'] ?? '3145 N 33rd Ave, Phoenix, AZ 85017, USA') 
+        . '</td></tr>';
+
+    $html .= '<tr><th>Phone Number</th><td>' 
+        . htmlspecialchars($proposal['locationPhone'] ?? $proposal['formattedPhoneNumber'] ?? '(602) 242-4488') 
+        . '</td></tr>';
+
+    $html .= '<tr><th>Business Status</th><td>' 
+        . htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $proposal['businessStatus'] ?? 'Operational')))) 
+        . '</td></tr>';
+
+    $rating = $proposal['locationRating'] ?? $proposal['rating'] ?? '4.1';
+    $reviews = $proposal['locationReviewCount'] ?? $proposal['user_ratings_total'] ?? '18';
+    $html .= '<tr><th>Google Rating</th><td>' 
+        . htmlspecialchars($rating) . ' ★ (' . htmlspecialchars($reviews) . ' reviews)' 
+        . '</td></tr>';
+
+    $html .= '<tr><th>Website</th><td>' 
+        . htmlspecialchars($proposal['locationWebsite'] ?? $proposal['website'] ?? 'https://christysigns.com/') 
+        . '</td></tr>';
+    $html .= '</table>';
+
+    // === PARCEL SUMMARY (inline, no new header break) ===
+    $html .= '<div style="page-break-inside:avoid; break-inside:avoid; margin-top:8px;">';
+    $html .= buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
+    $html .= '<div class="parcelSummaryBlock" style="page-break-inside:avoid;">';
+    $html .= '<strong>Multiple parcel candidates exist at this address.</strong><br><br>';
+    $html .= 'Review and selection is required before proceeding.';
+    $html .= '</div>';
+    $html .= '</div>';
+
+    $html .= '</div>'; // Close satellite-group
 
     return $html;
 }
 
 function buildParcelSummarySection(array $proposal): string
 {
-    $html = buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
-    $html .= '<div class="parcelSummaryBlock">';
+    $html = '<div style="page-break-inside:avoid; margin-top:10px;">';
+    $html .= buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
+    $html .= '<div class="parcelSummaryBlock" style="page-break-inside:avoid;">';
     $html .= '<strong>Multiple parcel candidates exist at this address.</strong><br><br>';
     $html .= 'Review and selection is required before proceeding.';
     $html .= '</div>';
+    $html .= '</div>';
+
     return $html;
 }
 

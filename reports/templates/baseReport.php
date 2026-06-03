@@ -94,7 +94,12 @@ function buildReportFooter(): string
 function buildReportStyles(): string
 {
     return '
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #222; line-height: 1.4; }
+        body { 
+            font-family: Helvetica, Arial, sans-serif; 
+            font-size: 11pt; 
+            color: #222; 
+            line-height: 1.4; 
+        }
         
         .sectionHeaderTable { 
             width:100%; 
@@ -129,24 +134,46 @@ function buildReportStyles(): string
             margin:0; 
         }
         
-        .dataTable { width:100%; border-collapse:collapse; margin:8px 0 14px 0; }
-        .dataTable th, .dataTable td { border:1px solid #ccc; padding:7px 9px; text-align:left; vertical-align:top; }
-        .dataTable th { background:#e8e8e8; width:28%; font-weight:700; color:#333; }
+        .dataTable { 
+            width:100%; 
+            border-collapse:collapse; 
+            margin:8px 0 14px 0; 
+            page-break-inside: avoid; 
+        }
+        .dataTable th, .dataTable td { 
+            border:1px solid #ccc; 
+            padding:7px 9px; 
+            text-align:left; 
+            vertical-align:top; 
+        }
+        .dataTable th { 
+            background:#e8e8e8; 
+            width:28%; 
+            font-weight:700; 
+            color:#333; 
+        }
         
-        .summaryNarrative, .highlight, .parcelSummaryBlock { 
+        .summaryNarrative, 
+        .highlight, 
+        .parcelSummaryBlock,
+        .satellite-container { 
             background:#f8f9fa; 
             border:1px solid #d0d0d0; 
             padding:16px; 
             border-radius:6px; 
             margin-bottom:14px;
+            page-break-inside: avoid;
         }
+        
         .parcel-block { 
             border: 2px solid #14377C; 
             border-radius: 8px; 
             padding: 14px; 
             margin-bottom: 20px; 
             background: #fafafa; 
+            page-break-inside: avoid;
         }
+        
         .image-placeholder { 
             border: 2px dashed #14377C; 
             background: #f8f9fa; 
@@ -154,6 +181,14 @@ function buildReportStyles(): string
             text-align: center; 
             min-height: 260px; 
             border-radius: 8px; 
+            page-break-inside: avoid;
+        }
+
+        /* Force the entire Satellite + Parcel group to stay together */
+        .satellite-group {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            margin-bottom: 25px;
         }
     ';
 }
