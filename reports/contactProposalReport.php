@@ -201,25 +201,25 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === 1. SATELLITE MAP (using Static Key) ===
+    // === 1. SATELLITE MAP ===
     $lat = $proposal['locationLatitude'] 
         ?? $proposal['latitude'] 
-        ?? $proposal['data']['location']['latitude'] 
-        ?? null;
+        ?? ($proposal['data']['location']['latitude'] ?? null);
 
     $lng = $proposal['locationLongitude'] 
         ?? $proposal['longitude'] 
-        ?? $proposal['data']['location']['longitude'] 
-        ?? null;
+        ?? ($proposal['data']['location']['longitude'] ?? null);
 
-    $staticKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
+              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
+              ?: '';
 
-    if ($lat && $lng && $staticKey) {
+    if ($lat && $lng && $googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
             . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
             . $lat . ',' . $lng 
-            . '&key=' . $staticKey;
+            . '&key=' . $googleKey;
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
@@ -232,44 +232,22 @@ function buildSatelliteSection(array $proposal): string
         $html .= '</div>';
     }
 
-    // === 2. GOOGLE PLACE DETAILS TABLE (Clean + DRY) ===
+    // === 2. PLACE DETAILS TABLE (Safe) ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
-    if (!empty($proposal['locationName'])) {
-        $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
-            . htmlspecialchars($proposal['locationName']) . '</td></tr>';
-    }
+    $fields = [
+        'Business Name'     => $proposal['locationName'] ?? $proposal['entityName'] ?? '',
+        'Google Place ID'   => $proposal['locationPlaceId'] ?? '',
+        'Phone Number'      => $proposal['locationPhone'] ?? $proposal['formattedPhoneNumber'] ?? '',
+        'Website'           => $proposal['locationWebsite'] ?? $proposal['website'] ?? '',
+    ];
 
-    if (!empty($proposal['locationPlaceId'])) {
-        $html .= '<tr><th>Google Place ID</th><td>' 
-            . htmlspecialchars($proposal['locationPlaceId']) . '</td></tr>';
-    }
-
-    if (!empty($proposal['locationPhone'] ?? $proposal['formattedPhoneNumber'])) {
-        $html .= '<tr><th>Phone Number</th><td>' 
-            . htmlspecialchars($proposal['locationPhone'] ?? $proposal['formattedPhoneNumber']) 
-            . '</td></tr>';
-    }
-
-    if (!empty($proposal['locationWebsite'] ?? $proposal['website'])) {
-        $html .= '<tr><th>Website</th><td>' 
-            . htmlspecialchars($proposal['locationWebsite'] ?? $proposal['website']) 
-            . '</td></tr>';
-    }
-
-    if (!empty($proposal['locationRating'] ?? $proposal['rating'])) {
-        $rating = $proposal['locationRating'] ?? $proposal['rating'];
-        $count  = $proposal['locationReviewCount'] ?? $proposal['userRatingsTotal'] ?? '';
-        $html .= '<tr><th>Google Rating</th><td>' 
-            . htmlspecialchars($rating) . ' ★' 
-            . ($count ? ' (' . htmlspecialchars($count) . ' reviews)' : '') 
-            . '</td></tr>';
-    }
-
-    if (!empty($proposal['businessStatus'])) {
-        $html .= '<tr><th>Business Status</th><td>' 
-            . htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $proposal['businessStatus'])))) 
-            . '</td></tr>';
+    foreach ($fields as $label => $value) {
+        if (!empty($value)) {
+            $html .= '<tr><th style="width:35%;">' . htmlspecialchars($label) . '</th><td>' 
+                . htmlspecialchars($value) 
+                . '</td></tr>';
+        }
     }
 
     $html .= '</table>';
