@@ -215,8 +215,8 @@ function processReportArtifacts(string $html, array $artifacts): string
             '[SATELLITE IMAGE PLACEHOLDER]', 
             '<div style="text-align:center; margin:15px 0;">
                 <img src="' . htmlspecialchars($artifacts['staticMapUrl']) . '" 
-                    style="max-width:100%; height:auto; border:1px solid #ddd; border-radius:6px;" 
-                    alt="Satellite View of Location">
+                    style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
+                    alt="Satellite View">
             </div>', 
             $html
         );
