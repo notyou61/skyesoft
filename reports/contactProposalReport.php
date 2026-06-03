@@ -256,7 +256,7 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === 1. LARGER SATELLITE MAP ===
+    // === 1. SATELLITE MAP (Larger) ===
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
@@ -290,24 +290,29 @@ function buildSatelliteSection(array $proposal): string
     // === 2. BUSINESS DETAILS TABLE ===
     $html .= '<table class="dataTable" style="margin-top:12px;">';
 
+    // Business Name
     $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
         . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName'] ?? 'Christy Signs') 
         . '</td></tr>';
 
+    // Google Address
     $html .= '<tr><th>Google Address</th><td>' 
         . htmlspecialchars($proposal['formattedAddress'] ?? $proposal['locationAddress'] ?? '3145 N 33rd Ave, Phoenix, AZ 85017, USA') 
         . '</td></tr>';
 
+    // Phone Number
     $html .= '<tr><th>Phone Number</th><td>' 
         . htmlspecialchars($proposal['locationPhone'] ?? $proposal['formattedPhoneNumber'] ?? '(602) 242-4488') 
         . '</td></tr>';
 
+    // Business Status
     if (!empty($proposal['businessStatus'])) {
         $html .= '<tr><th>Business Status</th><td>' 
             . htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $proposal['businessStatus'])))) 
             . '</td></tr>';
     }
 
+    // Google Rating
     if (!empty($proposal['locationRating'])) {
         $html .= '<tr><th>Google Rating</th><td>' 
             . htmlspecialchars($proposal['locationRating']) . ' ★' 
@@ -315,6 +320,7 @@ function buildSatelliteSection(array $proposal): string
             . '</td></tr>';
     }
 
+    // Website
     if (!empty($proposal['locationWebsite'])) {
         $html .= '<tr><th>Website</th><td>' 
             . htmlspecialchars($proposal['locationWebsite']) 
