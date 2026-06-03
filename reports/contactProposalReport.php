@@ -183,25 +183,24 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === AGGRESSIVE MAP URL EXTRACTION ===
-    $mapUrl = $proposal['staticMapUrl'] 
-           ?? $proposal['data']['location']['staticMapUrl'] 
-           ?? $proposal['location']['staticMapUrl'] 
-           ?? null;
+    // === HARDCODED GOOGLE STATIC MAP FOR TESTING ===
+    $lat = 33.4848523;
+    $lng = -112.1288006;
+    
+    $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
+        . $lat . ',' . $lng 
+        . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
+        . $lat . ',' . $lng 
+        . '&key=' . getenv('GOOGLE_MAPS_STATIC_API_KEY');
 
-    if ($mapUrl) {
-        $html .= '<div style="text-align:center; margin:15px 0 10px 0;">';
-        $html .= '<img src="' . htmlspecialchars($mapUrl) . '" ';
-        $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Satellite View of Location">';
-        $html .= '</div>';
-    } else {
-        $html .= '<div class="image-placeholder">[SATELLITE IMAGE PLACEHOLDER]</div>';
-    }
+    $html .= '<div style="text-align:center; margin:15px 0 10px 0;">';
+    $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
+    $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
+    $html .= 'alt="Satellite View of Location">';
+    $html .= '</div>';
 
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
-    $html .= htmlspecialchars($proposal['locationAddress'] ?? '') . ', ';
-    $html .= htmlspecialchars($proposal['locationCityStateZip'] ?? '') . ' • Google Satellite View';
+    $html .= '3145 N 33rd Ave, Phoenix, AZ 85017 • Google Satellite View';
     $html .= '</p>';
 
     return $html;
