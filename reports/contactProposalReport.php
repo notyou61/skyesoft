@@ -196,7 +196,7 @@ function buildSatelliteSection(array $proposal): string
         $html .= 'alt="Satellite View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder">[SATELLITE IMAGE PLACEHOLDER!]</div>';
+        $html .= '<div class="image-placeholder">[SATELLITE IMAGE PLACEHOLDER]</div>';
     }
 
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
