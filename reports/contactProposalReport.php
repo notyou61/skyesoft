@@ -183,15 +183,15 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // Use staticMapUrl if available
+    // === DIRECT MAP INJECTION (Bypasses placeholder issues) ===
     if (!empty($proposal['staticMapUrl'])) {
-        $html .= '<div style="text-align:center; margin:15px 0;">';
+        $html .= '<div style="text-align:center; margin:15px 0 10px 0;">';
         $html .= '<img src="' . htmlspecialchars($proposal['staticMapUrl']) . '" ';
         $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Satellite View">';
+        $html .= 'alt="Satellite View of Location">';
         $html .= '</div>';
     } else {
-        $html .= renderImagePlaceholder('satellite', $proposal);
+        $html .= '<div class="image-placeholder">[SATELLITE IMAGE PLACEHOLDER!]</div>';
     }
 
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';

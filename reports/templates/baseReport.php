@@ -209,8 +209,6 @@ function processReportArtifacts(string $html, array $artifacts): string
 {
     if (empty($artifacts)) return $html;
 
-    if (1 == 2) {
-        // Placeholder for future artifact types (e.g., 3D models, interactive maps)
         // === SATELLITE MAP - Multiple possible placeholders ===
         if (!empty($artifacts['staticMapUrl'])) {
             $mapHtml = '<div style="text-align:center; margin:15px 0;">
@@ -229,7 +227,6 @@ function processReportArtifacts(string $html, array $artifacts): string
             $placeholderHtml = '<div class="image-placeholder">📍 Satellite image not available yet</div>';
             $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - Other]', $placeholderHtml, $html);
         }
-    }
 
     // === STREET VIEW ===
     if (!empty($artifacts['streetview'])) {
