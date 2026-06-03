@@ -183,10 +183,15 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === DIRECT MAP INJECTION (Most Reliable) ===
-    if (!empty($proposal['staticMapUrl'])) {
+    // === AGGRESSIVE MAP URL EXTRACTION ===
+    $mapUrl = $proposal['staticMapUrl'] 
+           ?? $proposal['data']['location']['staticMapUrl'] 
+           ?? $proposal['location']['staticMapUrl'] 
+           ?? null;
+
+    if ($mapUrl) {
         $html .= '<div style="text-align:center; margin:15px 0 10px 0;">';
-        $html .= '<img src="' . htmlspecialchars($proposal['staticMapUrl']) . '" ';
+        $html .= '<img src="' . htmlspecialchars($mapUrl) . '" ';
         $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
         $html .= 'alt="Satellite View of Location">';
         $html .= '</div>';
