@@ -201,27 +201,21 @@ function buildSatelliteSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // Dynamic coordinates
+    // === Dynamic Coordinates ===
     $lat = $proposal['locationLatitude'] 
         ?? $proposal['latitude'] 
         ?? $proposal['data']['location']['latitude'] 
-        ?? 33.4848523;
+        ?? null;
 
     $lng = $proposal['locationLongitude'] 
         ?? $proposal['longitude'] 
         ?? $proposal['data']['location']['longitude'] 
-        ?? -112.1288006;
+        ?? null;
 
-    // Use project-standard function if available
-    $googleKey = '';
-    if (function_exists('skyesoftGetEnv')) {
-        $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY');
-    }
-    if (empty($googleKey)) {
-        $googleKey = getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
-    }
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
 
-    if (!empty($googleKey)) {
+    // === Render Map if possible ===
+    if ($lat && $lng && $googleKey) {
         $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
             . $lat . ',' . $lng 
             . '&zoom=18&size=800x400&maptype=satellite&markers=color:red%7C' 
@@ -234,14 +228,32 @@ function buildSatelliteSection(array $proposal): string
         $html .= 'alt="Satellite View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder">❌ Google Maps API Key not configured</div>';
-        error_log('[MAP] ERROR: GOOGLE_MAPS_STATIC_API_KEY not found');
+        // Silent fallback - no visible error message
+        $html .= '<div class="image-placeholder" style="min-height:280px;">';
+        $html .= '📍 Satellite imagery unavailable at this time';
+        $html .= '</div>';
     }
 
-    $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
-    $html .= htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave') . ', ';
-    $html .= htmlspecialchars($proposal['locationCityStateZip'] ?? 'Phoenix, AZ 85017') . ' • Google Satellite View';
-    $html .= '</p>';
+    // === Details Table ===
+    $html .= '<table class="dataTable" style="margin-top:12px;">';
+    
+    $html .= '<tr><th style="width:35%;">Location Name</th><td>' 
+        . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName'] ?? '—') 
+        . '</td></tr>';
+
+    $html .= '<tr><th>Address</th><td>' 
+        . htmlspecialchars($proposal['locationAddress'] ?? '—') 
+        . '</td></tr>';
+
+    $html .= '<tr><th>City, State ZIP</th><td>' 
+        . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') 
+        . '</td></tr>';
+
+    $html .= '<tr><th>Place ID</th><td>' 
+        . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') 
+        . '</td></tr>';
+
+    $html .= '</table>';
 
     return $html;
 }
