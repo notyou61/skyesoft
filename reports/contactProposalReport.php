@@ -311,11 +311,12 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
+    error_log("[STREETVIEW] buildStreetViewSection() WAS CALLED");
+
     $html = '<div class="streetview-section" style="page-break-inside:avoid; break-inside:avoid;">';
 
     $html .= buildSectionHeader('Street View Verification', 'property.png');
 
-    // Extract coordinates
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
@@ -328,13 +329,14 @@ function buildStreetViewSection(array $proposal): string
               ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
               ?: '';
 
+    error_log("[STREETVIEW] Key present: " . (!empty($googleKey) ? 'YES' : 'NO'));
+
     if ($googleKey) {
         $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=950x450' 
             . '&location=' . $lat . ',' . $lng 
             . '&heading=180&pitch=5&fov=80&key=' . $googleKey;
 
-        // Debug logging
-        error_log("[STREETVIEW DEBUG] Using URL: " . $streetViewUrl);
+        error_log("[STREETVIEW DEBUG] Final URL: " . $streetViewUrl);
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
