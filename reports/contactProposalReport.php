@@ -1,6 +1,13 @@
 <?php
 declare(strict_types=1);
 
+// FORCE REFRESH - Remove after debugging
+if (function_exists('opcache_invalidate')) {
+    opcache_invalidate(__FILE__, true);
+}
+error_log("[REPORT] contactProposalReport.php LOADED - " . date('H:i:s'));
+
+
 // =============================================
 //  Skyesoft — contactProposalReport.php
 //  Version: 1.6.0
