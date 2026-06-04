@@ -466,8 +466,6 @@ $locationValidation = [
     'issues'               => []
 ];
 
-$googleData = null;
-
 if (!empty($googleApiKey) && !empty($fullAddress)) {
 
     $googleData = validateLocationWithGoogle([
@@ -500,6 +498,38 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
         $locationValidation['placeIdResolved'] = true;
         $locationValidation['latLonResolved']  = true;
         $locationValidation['confidence']      = 90;
+
+        // =====================================================
+        // EPHEMERAL STREET VIEW IMAGE (Option A - Pre-generate)
+        // =====================================================
+        $latForStreetView = $googleData['lat'] ?? null;
+        $lngForStreetView = $googleData['lng'] ?? null;
+
+        $googleKeyForStreetView = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
+                            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
+                            ?: $googleApiKey 
+                            ?: '';
+
+        if ($latForStreetView && $lngForStreetView && $googleKeyForStreetView) {
+            $streetViewPath = generateStreetViewImage(
+                (string)$latForStreetView, 
+                (string)$lngForStreetView, 
+                $googleKeyForStreetView
+            );
+
+            if ($streetViewPath) {
+                // Store it so the report can use it
+                if (!isset($parsed['reportArtifacts'])) {
+                    $parsed['reportArtifacts'] = [];
+                }
+                $parsed['reportArtifacts']['streetview'] = $streetViewPath;
+
+                error_log("[STREETVIEW] Ephemeral image generated: " . $streetViewPath);
+            } else {
+                error_log("[STREETVIEW] Failed to generate image for lat/lng: $latForStreetView,$lngForStreetView");
+            }
+        }
+
     } else {
         $locationValidation['issues'][] = 'google_place_not_resolved';
     }

@@ -9,9 +9,6 @@ if (function_exists('opcache_invalidate')) {
 }
 error_log("=== contactProposalReport.php FULLY RELOADED at " . date('H:i:s') . " ===");
 
-// ... rest of your code
-
-
 // =============================================
 //  Skyesoft — contactProposalReport.php
 //  Version: 1.6.0
@@ -63,6 +60,30 @@ function generateContactProposalReport(array $input): array
             'proposal_id'  => $input['proposalId'] ?? $input['activitySessionId'] ?? null,
         ]
     ];
+}
+
+function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?string
+{
+    if (empty($googleKey) || empty($lat) || empty($lng)) {
+        return null;
+    }
+
+    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320' 
+        . '&location=' . $lat . ',' . $lng 
+        . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
+
+    $imageData = @file_get_contents($url);
+
+    if ($imageData === false || strlen($imageData) < 1000) {
+        error_log("[STREETVIEW] Failed to fetch image from Google");
+        return null;
+    }
+
+    // Save ephemerally (you can change the path)
+    $tempPath = '/tmp/streetview-' . uniqid() . '.jpg';
+    file_put_contents($tempPath, $imageData);
+
+    return $tempPath;
 }
 
 // =============================================
@@ -327,31 +348,14 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    error_log("[STREETVIEW] buildStreetViewSection() EXECUTED");
+    $html = buildSectionHeader('Street View Verification', 'property.png');
 
-    // Strong wrapper table (mPDF respects tables better for page-break)
-    $html = '<table class="streetview-section" style="width:100%; page-break-inside:avoid !important; break-inside:avoid !important; margin-bottom:20px;">';
-    $html .= '<tr><td>';
+    // Use the pre-generated ephemeral image
+    $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
 
-    $html .= buildSectionHeader('Street View Verification', 'property.png');
-
-    $lat = $proposal['locationLatitude'] ?? $proposal['latitude'] ?? 33.4848523;
-    $lng = $proposal['locationLongitude'] ?? $proposal['longitude'] ?? -112.1288006;
-
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
-              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
-              ?: '';
-
-    if ($googleKey) {
-        $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=640x320' 
-            . '&location=' . $lat . ',' . $lng 
-            . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
-
-        error_log("[STREETVIEW] URL: " . $streetViewUrl);
-
+    if ($streetViewPath && file_exists($streetViewPath)) {
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
-        $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
-        $html .= 'width="640" height="320" ';
+        $html .= '<img src="' . htmlspecialchars($streetViewPath) . '" ';
         $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
@@ -364,8 +368,6 @@ function buildStreetViewSection(array $proposal): string
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
-
-    $html .= '</td></tr></table>';
 
     return $html;
 }
