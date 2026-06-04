@@ -1,11 +1,10 @@
 <?php
 declare(strict_types=1);
 
-// FORCE REFRESH - Remove after debugging
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
 }
-error_log("[REPORT] contactProposalReport.php LOADED - " . date('H:i:s'));
+error_log("=== contactProposalReport.php RELOADED ===");
 
 
 // =============================================
@@ -323,48 +322,27 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    error_log("[STREETVIEW] === buildStreetViewSection() EXECUTED ===");
+    error_log("[STREETVIEW] FUNCTION EXECUTED");
 
-    $html = '<div class="streetview-section" style="page-break-inside:avoid; break-inside:avoid;">';
+    $html = buildSectionHeader('Street View Verification', 'property.png');
 
-    $html .= buildSectionHeader('Street View Verification', 'property.png');
+    $lat = $proposal['locationLatitude'] ?? $proposal['latitude'] ?? 33.4848523;
+    $lng = $proposal['locationLongitude'] ?? $proposal['longitude'] ?? -112.1288006;
 
-    $lat = $proposal['locationLatitude']
-        ?? $proposal['latitude']
-        ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
-
-    $lng = $proposal['locationLongitude']
-        ?? $proposal['longitude']
-        ?? ($proposal['data']['location']['longitude'] ?? -112.1288006);
-
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: '';
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
 
     if ($googleKey) {
-        // Good heading for this location (facing the building)
-        $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=950x450' 
-            . '&location=' . $lat . ',' . $lng 
-            . '&heading=200&pitch=0&fov=80&key=' . $googleKey;
-
-        error_log("[STREETVIEW] Using URL: " . $streetViewUrl);
+        $url = "https://maps.googleapis.com/maps/api/streetview?size=950x450&location=$lat,$lng&heading=200&pitch=5&fov=80&key=$googleKey";
+        error_log("[STREETVIEW] URL: " . $url);
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
-        $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
-        $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Street View of Location">';
+        $html .= '<img src="' . htmlspecialchars($url) . '" style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px;">';
-        $html .= '📍 Street View imagery unavailable at this time';
-        $html .= '</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px;">📍 Street View unavailable</div>';
     }
 
-    $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
-    $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
-    $html .= '</p>';
-
-    $html .= '</div>';
+    $html .= '<p style="text-align:center; font-size:9.5pt; color:#444;">Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '') . '</p>';
 
     return $html;
 }
