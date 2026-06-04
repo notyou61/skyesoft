@@ -329,7 +329,9 @@ function buildStreetViewSection(array $proposal): string
 {
     error_log("[STREETVIEW] buildStreetViewSection() EXECUTED");
 
-    $html = buildSectionHeader('Street View Verification', 'property.png');
+    $html = '<div class="streetview-section" style="page-break-inside:avoid; break-inside:avoid;">';
+
+    $html .= buildSectionHeader('Street View Verification', 'property.png');
 
     $lat = $proposal['locationLatitude'] ?? $proposal['latitude'] ?? 33.4848523;
     $lng = $proposal['locationLongitude'] ?? $proposal['longitude'] ?? -112.1288006;
@@ -351,7 +353,7 @@ function buildStreetViewSection(array $proposal): string
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:280px;">';
+        $html .= '<div class="image-placeholder" style="min-height:260px;">';
         $html .= '📍 Street View imagery unavailable at this time';
         $html .= '</div>';
     }
@@ -359,6 +361,8 @@ function buildStreetViewSection(array $proposal): string
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
+
+    $html .= '</div>';
 
     return $html;
 }
