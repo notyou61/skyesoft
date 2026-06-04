@@ -311,12 +311,43 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    $html = '<div class="streetview-section">';
+    $html = '<div class="streetview-section" style="page-break-inside:avoid; break-inside:avoid;">';
+
     $html .= buildSectionHeader('Street View Verification', 'property.png');
-    $html .= renderImagePlaceholder('streetview', $proposal);
+
+    // === STREET VIEW IMAGE ===
+    $lat = $proposal['locationLatitude']
+        ?? $proposal['latitude']
+        ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
+
+    $lng = $proposal['locationLongitude']
+        ?? $proposal['longitude']
+        ?? ($proposal['data']['location']['longitude'] ?? -112.1288006);
+
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+              ?: '';
+
+    if ($googleKey) {
+        $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=950x450&location=' 
+            . $lat . ',' . $lng 
+            . '&heading=0&pitch=0&fov=90&key=' . $googleKey;
+
+        $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
+        $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
+        $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
+        $html .= 'alt="Street View of Location">';
+        $html .= '</div>';
+    } else {
+        $html .= '<div class="image-placeholder" style="min-height:260px;">';
+        $html .= '📍 Street View imagery unavailable at this time';
+        $html .= '</div>';
+    }
+
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
-    $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '');
+    $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
+
     $html .= '</div>';
 
     return $html;
