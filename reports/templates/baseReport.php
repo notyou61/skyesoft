@@ -185,10 +185,14 @@ function buildReportStyles(): string
         }
 
         /* Force the entire Satellite + Parcel group to stay together */
-        .streetview-section,
         .satellite-group,
         .parcelSummaryBlock,
         .dataTable {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        .streetview-section {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }

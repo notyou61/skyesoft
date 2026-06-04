@@ -329,7 +329,9 @@ function buildStreetViewSection(array $proposal): string
 {
     error_log("[STREETVIEW] buildStreetViewSection() EXECUTED");
 
-    $html = buildSectionHeader('Street View Verification', 'property.png');
+    $html = '<div class="streetview-section" style="page-break-inside:avoid !important; break-inside:avoid !important;">';
+
+    $html .= buildSectionHeader('Street View Verification', 'property.png');
 
     $lat = $proposal['locationLatitude'] ?? $proposal['latitude'] ?? 33.4848523;
     $lng = $proposal['locationLongitude'] ?? $proposal['longitude'] ?? -112.1288006;
@@ -339,7 +341,6 @@ function buildStreetViewSection(array $proposal): string
               ?: '';
 
     if ($googleKey) {
-        // Correct full URL + proper 640px max size
         $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=640x320' 
             . '&location=' . $lat . ',' . $lng 
             . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
@@ -350,7 +351,13 @@ function buildStreetViewSection(array $proposal): string
         $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
         $html .= 'width="640" height="320" ';
         $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Street View of Location">';
+        $html .= 'alt="Street View of Location" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';">';
+
+        // Hidden fallback that shows if image fails to load
+        $html .= '<div class="image-placeholder" style="min-height:280px; display:none;">';
+        $html .= '📍 Street View imagery unavailable at this time';
+        $html .= '</div>';
+
         $html .= '</div>';
     } else {
         $html .= '<div class="image-placeholder" style="min-height:280px;">';
@@ -361,6 +368,8 @@ function buildStreetViewSection(array $proposal): string
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
+
+    $html .= '</div>';
 
     return $html;
 }
