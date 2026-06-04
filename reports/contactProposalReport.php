@@ -327,20 +327,15 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    error_log("[STREETVIEW] buildStreetViewSection() EXECUTED");
+    error_log("[STREETVIEW] buildStreetViewSection EXECUTED");
 
     $html = buildSectionHeader('Street View Verification', 'property.png');
 
-    $lat = $proposal['locationLatitude']
-        ?? $proposal['latitude']
-        ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
+    $lat = $proposal['locationLatitude'] ?? $proposal['latitude'] ?? 33.4848523;
+    $lng = $proposal['locationLongitude'] ?? $proposal['longitude'] ?? -112.1288006;
 
-    $lng = $proposal['locationLongitude']
-        ?? $proposal['longitude']
-        ?? ($proposal['data']['location']['longitude'] ?? -112.1288006);
-
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
+              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
               ?: '';
 
     if ($googleKey) {
@@ -348,7 +343,7 @@ function buildStreetViewSection(array $proposal): string
             . '&location=' . $lat . ',' . $lng 
             . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
 
-        error_log("[STREETVIEW] URL: " . $streetViewUrl);
+        error_log("[STREETVIEW] URL generated: " . $streetViewUrl);
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
