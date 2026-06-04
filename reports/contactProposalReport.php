@@ -329,9 +329,7 @@ function buildStreetViewSection(array $proposal): string
 {
     error_log("[STREETVIEW] buildStreetViewSection() EXECUTED");
 
-    $html = '<div class="streetview-section" style="page-break-inside:avoid; break-inside:avoid;">';
-
-    $html .= buildSectionHeader('Street View Verification', 'property.png');
+    $html = buildSectionHeader('Street View Verification', 'property.png');
 
     $lat = $proposal['locationLatitude'] ?? $proposal['latitude'] ?? 33.4848523;
     $lng = $proposal['locationLongitude'] ?? $proposal['longitude'] ?? -112.1288006;
@@ -341,7 +339,8 @@ function buildStreetViewSection(array $proposal): string
               ?: '';
 
     if ($googleKey) {
-        $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=950x450' 
+        // Correct URL + max allowed size (640px)
+        $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=640x320' 
             . '&location=' . $lat . ',' . $lng 
             . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
 
@@ -349,6 +348,7 @@ function buildStreetViewSection(array $proposal): string
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
+        $html .= 'width="640" height="320" ';
         $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
@@ -361,8 +361,6 @@ function buildStreetViewSection(array $proposal): string
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
-
-    $html .= '</div>';
 
     return $html;
 }
