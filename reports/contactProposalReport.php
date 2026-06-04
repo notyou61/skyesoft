@@ -329,9 +329,11 @@ function buildStreetViewSection(array $proposal): string
               ?: '';
 
     if ($googleKey) {
-        $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=950x450&location=' 
-            . $lat . ',' . $lng 
-            . '&heading=0&pitch=0&fov=90&key=' . $googleKey;
+        // Try heading=180 or 190 for better front view of the building
+        $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=950x450' 
+            . '&location=' . $lat . ',' . $lng 
+            . '&heading=180&pitch=5&fov=80'   // Adjusted for better building view
+            . '&key=' . $googleKey;
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
