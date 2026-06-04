@@ -62,29 +62,6 @@ function generateContactProposalReport(array $input): array
     ];
 }
 
-function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?string
-{
-    if (empty($googleKey) || empty($lat) || empty($lng)) {
-        return null;
-    }
-
-    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320' 
-        . '&location=' . $lat . ',' . $lng 
-        . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
-
-    $imageData = @file_get_contents($url);
-
-    if ($imageData === false || strlen($imageData) < 1000) {
-        error_log("[STREETVIEW] Failed to fetch image from Google");
-        return null;
-    }
-
-    // Save ephemerally (you can change the path)
-    $tempPath = '/tmp/streetview-' . uniqid() . '.jpg';
-    file_put_contents($tempPath, $imageData);
-
-    return $tempPath;
-}
 
 // =============================================
 //  Load Environment Helper (Critical for skyesoftGetEnv)
