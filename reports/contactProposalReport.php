@@ -327,7 +327,7 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    error_log("[STREETVIEW] buildStreetViewSection EXECUTED");
+    error_log("[STREETVIEW] buildStreetViewSection() EXECUTED");
 
     $html = buildSectionHeader('Street View Verification', 'property.png');
 
@@ -343,7 +343,7 @@ function buildStreetViewSection(array $proposal): string
             . '&location=' . $lat . ',' . $lng 
             . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
 
-        error_log("[STREETVIEW] URL generated: " . $streetViewUrl);
+        error_log("[STREETVIEW] URL: " . $streetViewUrl);
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
@@ -351,7 +351,7 @@ function buildStreetViewSection(array $proposal): string
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px;">';
+        $html .= '<div class="image-placeholder" style="min-height:280px;">';
         $html .= '📍 Street View imagery unavailable at this time';
         $html .= '</div>';
     }
