@@ -329,10 +329,9 @@ function buildStreetViewSection(array $proposal): string
 {
     error_log("[STREETVIEW] buildStreetViewSection() EXECUTED");
 
-    $html = '<div class="streetview-section" style="page-break-inside:avoid; break-inside:avoid;">';
+    $html = buildSectionHeader('Street View Verification', 'property.png');
 
-    $html .= buildSectionHeader('Street View Verification', 'property.png');
-
+    // Try live Street View Static API first
     $lat = $proposal['locationLatitude'] ?? $proposal['latitude'] ?? 33.4848523;
     $lng = $proposal['locationLongitude'] ?? $proposal['longitude'] ?? -112.1288006;
 
@@ -345,7 +344,7 @@ function buildStreetViewSection(array $proposal): string
             . '&location=' . $lat . ',' . $lng 
             . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
 
-        error_log("[STREETVIEW] URL: " . $streetViewUrl);
+        error_log("[STREETVIEW] Trying URL: " . $streetViewUrl);
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
@@ -353,16 +352,16 @@ function buildStreetViewSection(array $proposal): string
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px;">';
-        $html .= '📍 Street View imagery unavailable at this time';
+        // Fallback to placeholder
+        $html .= '<div class="image-placeholder" style="min-height:280px;">';
+        $html .= '📍 Street View imagery unavailable at this time<br><br>';
+        $html .= '<small>Street View Static API needs to be enabled on your Google key</small>';
         $html .= '</div>';
     }
 
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
-
-    $html .= '</div>';
 
     return $html;
 }
