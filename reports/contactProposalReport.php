@@ -80,6 +80,8 @@ function buildContactProposalBody(array $proposal): string
 {
     $html = '';
 
+    error_log("[BODY] Starting buildContactProposalBody()");
+
     // Page 1
     $html .= buildEntitySection($proposal);
     $html .= buildContactSection($proposal);
@@ -88,7 +90,8 @@ function buildContactProposalBody(array $proposal): string
     // Page 2
     $html .= buildSatelliteSection($proposal);
 
-    // Page 3
+    // Page 3 - Street View (Force call)
+    error_log("[BODY] Calling buildStreetViewSection()");
     $html .= buildStreetViewSection($proposal);
 
     // Page 4+
@@ -96,6 +99,8 @@ function buildContactProposalBody(array $proposal): string
     $html .= buildParcelDetailSection($proposal);
 
     $html .= buildGovernanceSection($proposal);
+
+    error_log("[BODY] Finished buildContactProposalBody()");
 
     return $html;
 }
