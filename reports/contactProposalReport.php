@@ -80,20 +80,20 @@ function buildContactProposalBody(array $proposal): string
 {
     $html = '';
 
-    // ==================== PAGE 1 ====================
+    // Page 1
     $html .= buildEntitySection($proposal);
     $html .= buildContactSection($proposal);
     $html .= buildLocationSection($proposal);
 
-    // ==================== PAGE 2 ====================
+    // Page 2
     $html .= buildSatelliteSection($proposal);
 
-    // ==================== PAGE 3 ====================
+    // Page 3
     $html .= buildStreetViewSection($proposal);
 
-    // ==================== PAGE 4+ ====================
-    $html .= buildParcelSummarySection($proposal);   // Summary first
-    $html .= buildParcelDetailSection($proposal);    // Then detailed parcels
+    // Page 4+
+    $html .= buildParcelSummarySection($proposal);
+    $html .= buildParcelDetailSection($proposal);
 
     $html .= buildGovernanceSection($proposal);
 
@@ -264,15 +264,6 @@ function buildSatelliteSection(array $proposal): string
         . htmlspecialchars($proposal['locationWebsite'] ?? $proposal['website'] ?? 'https://christysigns.com/') 
         . '</td></tr>';
     $html .= '</table>';
-
-    // === INLINE PARCEL SUMMARY (No duplicate header) ===
-    $html .= '<div style="page-break-inside:avoid; break-inside:avoid; margin-top:8px;">';
-    $html .= buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
-    $html .= '<div class="parcelSummaryBlock" style="page-break-inside:avoid;">';
-    $html .= '<strong>Multiple parcel candidates exist at this address.</strong><br><br>';
-    $html .= 'Review and selection is required before proceeding.';
-    $html .= '</div>';
-    $html .= '</div>';
 
     $html .= '</div>'; // Close satellite-group
 
