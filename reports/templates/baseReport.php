@@ -195,6 +195,7 @@ function buildReportStyles(): string
         .streetview-section {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+            margin-bottom: 25px;
         }
     ';
 }

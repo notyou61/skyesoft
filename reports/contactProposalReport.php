@@ -329,7 +329,9 @@ function buildStreetViewSection(array $proposal): string
 {
     error_log("[STREETVIEW] buildStreetViewSection() EXECUTED");
 
-    $html = '<div class="streetview-section" style="page-break-inside:avoid !important; break-inside:avoid !important;">';
+    // Strong wrapper table (mPDF respects tables better for page-break)
+    $html = '<table class="streetview-section" style="width:100%; page-break-inside:avoid !important; break-inside:avoid !important; margin-bottom:20px;">';
+    $html .= '<tr><td>';
 
     $html .= buildSectionHeader('Street View Verification', 'property.png');
 
@@ -351,13 +353,7 @@ function buildStreetViewSection(array $proposal): string
         $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
         $html .= 'width="640" height="320" ';
         $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Street View of Location" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';">';
-
-        // Hidden fallback that shows if image fails to load
-        $html .= '<div class="image-placeholder" style="min-height:280px; display:none;">';
-        $html .= '📍 Street View imagery unavailable at this time';
-        $html .= '</div>';
-
+        $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
         $html .= '<div class="image-placeholder" style="min-height:280px;">';
@@ -369,7 +365,7 @@ function buildStreetViewSection(array $proposal): string
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
 
-    $html .= '</div>';
+    $html .= '</td></tr></table>';
 
     return $html;
 }
