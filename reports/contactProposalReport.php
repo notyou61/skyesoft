@@ -315,7 +315,7 @@ function buildStreetViewSection(array $proposal): string
 
     $html .= buildSectionHeader('Street View Verification', 'property.png');
 
-    // === STREET VIEW IMAGE ===
+    // Extract coordinates
     $lat = $proposal['locationLatitude']
         ?? $proposal['latitude']
         ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
@@ -329,11 +329,12 @@ function buildStreetViewSection(array $proposal): string
               ?: '';
 
     if ($googleKey) {
-        // Try heading=180 or 190 for better front view of the building
         $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=950x450' 
             . '&location=' . $lat . ',' . $lng 
-            . '&heading=180&pitch=5&fov=80'   // Adjusted for better building view
-            . '&key=' . $googleKey;
+            . '&heading=180&pitch=5&fov=80&key=' . $googleKey;
+
+        // Debug logging
+        error_log("[STREETVIEW DEBUG] Using URL: " . $streetViewUrl);
 
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
