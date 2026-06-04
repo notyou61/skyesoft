@@ -185,7 +185,9 @@ function buildReportStyles(): string
         }
 
         /* Force the entire Satellite + Parcel group to stay together */
-        .satellite-group {
+        .satellite-group,
+        .streetview-section,
+        .parcel-summary-group {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
             margin-bottom: 25px;

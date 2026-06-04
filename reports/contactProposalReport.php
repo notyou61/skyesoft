@@ -320,11 +320,14 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    $html = buildSectionHeader('Street View Verification', 'property.png');
+    $html = '<div class="streetview-section">';
+    $html .= buildSectionHeader('Street View Verification', 'property.png');
     $html .= renderImagePlaceholder('streetview', $proposal);
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '');
     $html .= '</p>';
+    $html .= '</div>';
+
     return $html;
 }
 
