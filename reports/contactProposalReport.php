@@ -80,19 +80,21 @@ function buildContactProposalBody(array $proposal): string
 {
     $html = '';
 
-    // Page 1 - Core Information
+    // ==================== PAGE 1 ====================
     $html .= buildEntitySection($proposal);
     $html .= buildContactSection($proposal);
     $html .= buildLocationSection($proposal);
 
-    // Page 2 - Satellite + Business + Parcel Summary
+    // ==================== PAGE 2 ====================
     $html .= buildSatelliteSection($proposal);
 
-    // Page 3 - Street View
+    // ==================== PAGE 3 ====================
     $html .= buildStreetViewSection($proposal);
 
-    // Page 4+ - Detailed Parcels + Governance
-    $html .= buildParcelDetailSection($proposal);
+    // ==================== PAGE 4+ ====================
+    $html .= buildParcelSummarySection($proposal);   // Summary first
+    $html .= buildParcelDetailSection($proposal);    // Then detailed parcels
+
     $html .= buildGovernanceSection($proposal);
 
     return $html;
