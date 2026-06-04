@@ -339,7 +339,7 @@ function buildStreetViewSection(array $proposal): string
               ?: '';
 
     if ($googleKey) {
-        // Correct URL + max allowed size (640px)
+        // Correct full URL + proper 640px max size
         $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=640x320' 
             . '&location=' . $lat . ',' . $lng 
             . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
@@ -353,7 +353,7 @@ function buildStreetViewSection(array $proposal): string
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px;">';
+        $html .= '<div class="image-placeholder" style="min-height:280px;">';
         $html .= '📍 Street View imagery unavailable at this time';
         $html .= '</div>';
     }
