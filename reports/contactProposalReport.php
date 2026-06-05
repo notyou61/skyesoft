@@ -325,10 +325,13 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    // Match the wrapper style used in Satellite section
-    $html = '<div class="streetview-section" style="page-break-inside:avoid !important; break-inside:avoid !important; margin-bottom:25px;">';
+    // Follow the exact pattern that works in test_mpdf.php
+    $html = '<div class="section">';
 
     $html .= buildSectionHeader('Street View Verification', 'property.png');
+
+    // Inner content wrapper (keeps image + caption together)
+    $html .= '<div style="page-break-inside:avoid !important; break-inside:avoid !important;">';
 
     $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
 
@@ -339,18 +342,18 @@ function buildStreetViewSection(array $proposal): string
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
-        // Match the placeholder style from Satellite section
         $html .= '<div class="image-placeholder" style="min-height:260px;">';
         $html .= '📍 Street View imagery unavailable at this time';
         $html .= '</div>';
     }
 
-    // Caption styled consistently with other sections
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
 
-    $html .= '</div>';
+    $html .= '</div>'; // close inner content wrapper
+
+    $html .= '</div>'; // close .section
 
     return $html;
 }

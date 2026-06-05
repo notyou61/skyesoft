@@ -192,12 +192,17 @@ function buildReportStyles(): string
             break-inside: avoid !important;
         }
 
+        .section {
+            page-break-inside: avoid;
+            margin-top: 8px;
+            margin-bottom: 12px;
+        }
+
         .streetview-section {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
 
-        /* Make sure placeholder matches Satellite section exactly */
         .streetview-section .image-placeholder {
             min-height: 260px;
             font-size: 11pt;
