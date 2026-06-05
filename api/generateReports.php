@@ -87,7 +87,56 @@ try {
         throw new Exception('Generator function not found: ' . $generator);
     }
 
-        // Generate the report data
+    // =====================================================
+    // EPHEMERAL STREET VIEW IMAGE (for contact_proposal only)
+    // =====================================================
+    if ($reportType === 'contact_proposal') {
+
+        // Extract lat/lng from multiple possible payload structures
+        $lat = $input['latitude']
+            ?? $input['data']['location']['latitude']
+            ?? $input['proposal']['data']['location']['latitude']
+            ?? null;
+
+        $lng = $input['longitude']
+            ?? $input['data']['location']['longitude']
+            ?? $input['proposal']['data']['location']['longitude']
+            ?? null;
+
+        $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+            ?: '';
+
+        if ($lat && $lng && $googleKey) {
+
+            // Load the helper function if not already available
+            if (!function_exists('generateStreetViewImage')) {
+                require_once __DIR__ . '/../reports/contactProposalReport.php';
+            }
+
+            $streetViewPath = generateStreetViewImage(
+                (string)$lat,
+                (string)$lng,
+                $googleKey
+            );
+
+            if ($streetViewPath) {
+                if (!isset($input['reportArtifacts'])) {
+                    $input['reportArtifacts'] = [];
+                }
+
+                $input['reportArtifacts']['streetview'] = $streetViewPath;
+
+                error_log("[generateReports] ✅ Street View image generated: " . $streetViewPath);
+            } else {
+                error_log("[generateReports] ❌ Street View generation returned null");
+            }
+        } else {
+            error_log("[generateReports] Skipping Street View - missing lat/lng or API key");
+        }
+    }
+
+    // Generate the report data
     $report = call_user_func($generator, $input);
 
     if (empty($report) || !is_array($report)) {
@@ -104,8 +153,8 @@ try {
     }
 
     // === DYNAMIC FILENAME ===
-    $filename = $report['reportFilename'] 
-             ?? $report['reportTitle'] 
+    $filename = $report['reportFilename']
+             ?? $report['reportTitle']
              ?? 'Proposed Contact Report';
 
     // Clean filename
@@ -120,7 +169,7 @@ try {
     header('Content-Length: ' . strlen($pdfContent));
     header('Cache-Control: no-cache, must-revalidate');
     header('Pragma: no-cache');
-    
+
     echo $pdfContent;
     exit;
 
@@ -133,6 +182,46 @@ try {
         'trace'   => $e->getTraceAsString()
     ]);
     exit;
+}
+
+#endregion
+
+#region SECTION 05 - Helper Functions
+
+// Generate Ephemeral Street View Image
+function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?string
+{
+    if (empty($googleKey) || empty($lat) || empty($lng)) {
+        error_log("[generateReports] generateStreetViewImage() - Missing lat, lng, or API key");
+        return null;
+    }
+
+    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
+        . '&location=' . $lat . ',' . $lng
+        . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
+
+    $imageData = @file_get_contents($url);
+
+    if ($imageData === false || strlen($imageData) < 1000) {
+        error_log("[generateReports] generateStreetViewImage() - Google API call failed or returned invalid image");
+        return null;
+    }
+
+    // Save to controlled ephemeral directory
+    $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
+
+    if (!is_dir($ephemeralDir)) {
+        mkdir($ephemeralDir, 0755, true);
+    }
+
+    $tempPath = $ephemeralDir . 'streetview-' . uniqid() . '.jpg';
+
+    if (file_put_contents($tempPath, $imageData) === false) {
+        error_log("[generateReports] generateStreetViewImage() - Failed to write image to disk: " . $tempPath);
+        return null;
+    }
+
+    return $tempPath;
 }
 
 #endregion
