@@ -1293,9 +1293,11 @@ function generateProposalReport(string $proposalId, array $proposal): ?string {
         return null;
     }
 }
+
 function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?string
 {
     if (empty($googleKey) || empty($lat) || empty($lng)) {
+        error_log("[STREETVIEW] Missing lat/lng or API key");
         return null;
     }
 
@@ -1306,14 +1308,26 @@ function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?
     $imageData = @file_get_contents($url);
 
     if ($imageData === false || strlen($imageData) < 1000) {
-        error_log("[STREETVIEW] Failed to fetch image from Google");
+        error_log("[STREETVIEW] Google API call failed or returned invalid image");
         return null;
     }
 
-    // Save ephemerally
-    $tempPath = '/tmp/streetview-' . uniqid() . '.jpg';
-    file_put_contents($tempPath, $imageData);
+    // Use controlled ephemeral folder instead of /tmp
+    $ephemeralDir = __DIR__ . '/../../data/runtimeEphemeral/streetview/';
+    
+    // Create folder if it doesn't exist
+    if (!is_dir($ephemeralDir)) {
+        mkdir($ephemeralDir, 0755, true);
+    }
 
+    $tempPath = $ephemeralDir . 'streetview-' . uniqid() . '.jpg';
+
+    if (file_put_contents($tempPath, $imageData) === false) {
+        error_log("[STREETVIEW] Failed to write image to: $tempPath");
+        return null;
+    }
+
+    error_log("[STREETVIEW] Ephemeral image saved: " . $tempPath);
     return $tempPath;
 }
 
