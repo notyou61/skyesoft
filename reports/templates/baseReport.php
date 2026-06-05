@@ -193,7 +193,7 @@ function buildReportStyles(): string
         }
 
         .streetview-section,
-        .streetview-section > div {
+        .streetview-section {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }

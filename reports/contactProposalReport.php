@@ -325,13 +325,11 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    // === TIGHTEST POSSIBLE WRAPPER ===
-    $html = '<div class="streetview-section" style="page-break-inside:avoid !important; break-inside:avoid !important; margin-bottom:25px;">';
+    // === TABLE WRAPPER (more reliable in mPDF) ===
+    $html = '<table class="streetview-section" style="width:100%; page-break-inside:avoid !important; break-inside:avoid !important; margin-bottom:25px; border-collapse:collapse;">';
+    $html .= '<tr><td style="padding:0;">';
 
     $html .= buildSectionHeader('Street View Verification', 'property.png');
-
-    // === Content block with extra protection ===
-    $html .= '<div style="page-break-before:avoid !important; break-before:avoid !important;">';
 
     $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
 
@@ -351,9 +349,7 @@ function buildStreetViewSection(array $proposal): string
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
 
-    $html .= '</div>'; // close inner content block
-
-    $html .= '</div>'; // close main wrapper
+    $html .= '</td></tr></table>';
 
     return $html;
 }
