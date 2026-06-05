@@ -195,18 +195,14 @@ function buildReportStyles(): string
         .streetview-section {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            font-size: 11pt;           /* ← This fixes the smaller text */
-            line-height: 1.4;
         }
 
-        .streetview-section td {
-            padding: 0;
-            vertical-align: top;
-        }
-
+        /* Make sure placeholder matches Satellite section exactly */
         .streetview-section .image-placeholder {
+            min-height: 260px;
             font-size: 11pt;
         }
+
     ';
 }
 

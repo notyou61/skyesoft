@@ -325,9 +325,8 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    // === TABLE WRAPPER (more reliable in mPDF) ===
-    $html = '<table class="streetview-section" style="width:100%; page-break-inside:avoid !important; break-inside:avoid !important; margin-bottom:25px; border-collapse:collapse;">';
-    $html .= '<tr><td style="padding:0;">';
+    // Match the wrapper style used in Satellite section
+    $html = '<div class="streetview-section" style="page-break-inside:avoid !important; break-inside:avoid !important; margin-bottom:25px;">';
 
     $html .= buildSectionHeader('Street View Verification', 'property.png');
 
@@ -340,16 +339,18 @@ function buildStreetViewSection(array $proposal): string
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:280px; margin:15px 0;">';
+        // Match the placeholder style from Satellite section
+        $html .= '<div class="image-placeholder" style="min-height:260px;">';
         $html .= '📍 Street View imagery unavailable at this time';
         $html .= '</div>';
     }
 
+    // Caption styled consistently with other sections
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
 
-    $html .= '</td></tr></table>';
+    $html .= '</div>';
 
     return $html;
 }
