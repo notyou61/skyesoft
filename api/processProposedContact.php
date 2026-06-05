@@ -505,52 +505,9 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
         $locationValidation['confidence']      = 90;
 
         // =====================================================
-        // EPHEMERAL STREET VIEW IMAGE
+        // NOTE: Street View image generation has been moved to
+        // generateReports.php (called at report rendering time)
         // =====================================================
-        $latForStreetView     = $googleData['lat'] ?? null;
-        $lngForStreetView     = $googleData['lng'] ?? null;
-
-        $googleKeyForStreetView = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-            ?: ($googleApiKey ?? '')
-            ?: '';
-
-        // === Key Diagnostic Logs ===
-        error_log('[STREETVIEW] placeId = ' . ($googleData['placeId'] ?? 'NULL'));
-        error_log('[STREETVIEW] lat     = ' . ($latForStreetView ?? 'NULL'));
-        error_log('[STREETVIEW] lng     = ' . ($lngForStreetView ?? 'NULL'));
-        error_log('[STREETVIEW] apiKey  = ' . (!empty($googleKeyForStreetView) ? 'PRESENT' : 'MISSING'));
-
-        if ($latForStreetView && $lngForStreetView && $googleKeyForStreetView) {
-
-            error_log('[STREETVIEW] Conditions met. Attempting image generation...');
-
-            $streetViewPath = generateStreetViewImage(
-                (string)$latForStreetView,
-                (string)$lngForStreetView,
-                $googleKeyForStreetView
-            );
-
-            if ($streetViewPath) {
-                if (!isset($parsed['reportArtifacts'])) {
-                    $parsed['reportArtifacts'] = [];
-                }
-
-                $parsed['reportArtifacts']['streetview'] = $streetViewPath;
-
-                error_log('[STREETVIEW] ✅ SUCCESS - Image saved to: ' . $streetViewPath);
-            } else {
-                error_log('[STREETVIEW] ❌ FAILED - generateStreetViewImage() returned null/false');
-            }
-
-        } else {
-            error_log(
-                '[STREETVIEW] SKIPPED - Missing required data. ' .
-                'lat=' . ($latForStreetView ?? 'NULL') . ', ' .
-                'lng=' . ($lngForStreetView ?? 'NULL') . ', ' .
-                'key=' . (!empty($googleKeyForStreetView) ? 'PRESENT' : 'MISSING')
-            );
-        }
 
     } else {
         $locationValidation['issues'][] = 'google_place_not_resolved';

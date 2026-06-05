@@ -1294,41 +1294,4 @@ function generateProposalReport(string $proposalId, array $proposal): ?string {
     }
 }
 
-function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?string
-{
-    if (empty($googleKey) || empty($lat) || empty($lng)) {
-        error_log("[STREETVIEW] Missing lat/lng or API key");
-        return null;
-    }
-
-    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320' 
-        . '&location=' . $lat . ',' . $lng 
-        . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
-
-    $imageData = @file_get_contents($url);
-
-    if ($imageData === false || strlen($imageData) < 1000) {
-        error_log("[STREETVIEW] Google API call failed or returned invalid image");
-        return null;
-    }
-
-    // Use controlled ephemeral folder instead of /tmp
-    $ephemeralDir = __DIR__ . '/../../data/runtimeEphemeral/streetview/';
-    
-    // Create folder if it doesn't exist
-    if (!is_dir($ephemeralDir)) {
-        mkdir($ephemeralDir, 0755, true);
-    }
-
-    $tempPath = $ephemeralDir . 'streetview-' . uniqid() . '.jpg';
-
-    if (file_put_contents($tempPath, $imageData) === false) {
-        error_log("[STREETVIEW] Failed to write image to: $tempPath");
-        return null;
-    }
-
-    error_log("[STREETVIEW] Ephemeral image saved: " . $tempPath);
-    return $tempPath;
-}
-
 ?>
