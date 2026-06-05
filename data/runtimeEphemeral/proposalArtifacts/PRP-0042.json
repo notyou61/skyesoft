@@ -1,0 +1,91 @@
+{
+  "data": {
+    "reportTitle": "Proposed Contact Report (PC-3)",
+    "entityName": "Christy Signs",
+    "contactName": "Ms Susan Alderson",
+    "contactTitle": "Accounting",
+    "contactPhone": "(602) 242-4488",
+    "contactEmail": "susan@christysigns.com",
+    "locationAddress": "3145 N 33rd Ave",
+    "locationCityStateZip": "Phoenix, AZ 85017",
+    "locationPlaceId": "ChIJeTvhT3ATK4cRpfapSIlCjFw",
+    "locationLatitude": 33.4848,
+    "locationLongitude": -112.1288,
+    "confidence": 85,
+    "pcCode": "PC-3",
+    "resolutionStatus": "multiple_parcels",
+    "commitAllowed": "NO",
+    "governanceNarrative": "This proposal references an existing operational location. Review: Multiple parcel candidates were found at this address and user selection is required before commit.",
+    "entityAction": "reuse",
+    "locationAction": "reuse",
+    "contactAction": "create",
+    "location": {
+      "parcelDetails": [
+        {
+          "apnRaw": "10803009E",
+          "apnDisplay": "108-03-009E",
+          "address": "3145 N 33RD AVE",
+          "city": "PHOENIX",
+          "owner": "RONALD L REYNOLDS AND JACQUELINE S REYNOLDS FAMILY TRUST",
+          "confidence": 98,
+          "lat": 33.484779,
+          "lng": -112.128762
+        },
+        {
+          "apnRaw": "10803051",
+          "apnDisplay": "108-03-051",
+          "address": "3145 N 33RD AVE",
+          "city": "PHOENIX",
+          "owner": "J2 FLOWER LLC",
+          "confidence": 98,
+          "lat": 33.485107,
+          "lng": -112.128783
+        }
+      ]
+    }
+  },
+  "proposal": {
+    "proposalCode": "PRP-0042",
+    "proposalType": "contact",
+    "proposalStatus": "pending",
+    "proposalCreatedOn": 1779737915,
+    "proposalReason": "multiple_parcels",
+    "artifactRegistry": {
+      "artifactRuntimeRoot": "/data/runtimeEphemeral/proposalArtifacts/",
+      "artifacts": [
+        {
+          "artifactCode": "IMG-PRP0042-PARCEL-01",
+          "artifactCategory": "image",
+          "artifactType": "parcel_candidate",
+          "artifactFilename": "IMG-PRP0042-PARCEL-01.png",
+          "artifactStatus": "runtime",
+          "generatedOn": 1779737934
+        },
+        {
+          "artifactCode": "IMG-PRP0042-PARCEL-02",
+          "artifactCategory": "image",
+          "artifactType": "parcel_candidate",
+          "artifactFilename": "IMG-PRP0042-PARCEL-02.png",
+          "artifactStatus": "runtime",
+          "generatedOn": 1779737955
+        },
+        {
+          "artifactCode": "IMG-PRP0042-STREET-01",
+          "artifactCategory": "image",
+          "artifactType": "street_view",
+          "artifactFilename": "IMG-PRP0042-STREET-01.jpg",
+          "artifactStatus": "runtime",
+          "generatedOn": 1779737966
+        },
+        {
+          "artifactCode": "IMG-PRP0042-GMAP-01",
+          "artifactCategory": "image",
+          "artifactType": "google_map",
+          "artifactFilename": "IMG-PRP0042-GMAP-01.png",
+          "artifactStatus": "runtime",
+          "generatedOn": 1779737972
+        }
+      ]
+    }
+  }
+}

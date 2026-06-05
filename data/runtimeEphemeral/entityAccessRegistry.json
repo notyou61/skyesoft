@@ -1,0 +1,211 @@
+{
+  "entities": [
+    {
+      "entityId": 200,
+      "entityName": "City of Phoenix",
+      "entityType": "jurisdiction",
+      "entityNote": "Payments, EPR, Inspections. Password: Ch!r1s7y3&459",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 201,
+      "entityName": "City of Mesa",
+      "entityType": "jurisdiction",
+      "entityNote": "DIMES Portal. Password: comPassword1234!",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 202,
+      "entityName": "City of Scottsdale",
+      "entityType": "jurisdiction",
+      "entityNote": "One Stop Shop / Planning",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 203,
+      "entityName": "Town of Gilbert",
+      "entityType": "jurisdiction",
+      "entityNote": "Permitting. Password: togPassword1234!",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 204,
+      "entityName": "City of Tempe",
+      "entityType": "jurisdiction",
+      "entityNote": "Permitting. Password: approval$2024!",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 205,
+      "entityName": "City of Glendale",
+      "entityType": "jurisdiction",
+      "entityNote": "New portal. Code: 005850",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 206,
+      "entityName": "City of Chandler",
+      "entityType": "jurisdiction",
+      "entityNote": "Permitting. Password: Chandler!2026",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 207,
+      "entityName": "City of Goodyear",
+      "entityType": "jurisdiction",
+      "entityNote": "Permitting. Password: SignCode@51R",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 208,
+      "entityName": "City of Surprise",
+      "entityType": "jurisdiction",
+      "entityNote": "Permitting. Password: approval$2024!",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 209,
+      "entityName": "City of Avondale",
+      "entityType": "jurisdiction",
+      "entityNote": "Permitting. Password: Avondale!2024",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 210,
+      "entityName": "County of Pinal",
+      "entityType": "jurisdiction",
+      "entityNote": "Permitting. Password: PinalLogin2026!",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 211,
+      "entityName": "Town of Queen Creek",
+      "entityType": "jurisdiction",
+      "entityNote": "Permitting. Password: toQCPassword1234!",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 212,
+      "entityName": "Arizona 811",
+      "entityType": "service",
+      "entityNote": "Company ID: 33933 | Password: Ch!r1s7y3&459",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 213,
+      "entityName": "Wells Fargo",
+      "entityType": "vendor",
+      "entityNote": "Password: wfPassword1234!",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    },
+    {
+      "entityId": 214,
+      "entityName": "Dropbox",
+      "entityType": "software",
+      "entityNote": "Password: dropPassword1234!",
+      "entityDate": 1770000000,
+      "entityIsNotValid": false
+    }
+  ],
+
+  "contacts": [
+    {
+      "contactId": 300,
+      "contactEntityId": 200,
+      "contactFirstName": "Jacob",
+      "contactLastName": "Romero",
+      "contactTitle": "Inspector",
+      "contactPrimaryPhone": "6025340059",
+      "contactEmail": "jacob.romero@phoenix.gov",
+      "contactNote": "City of Phoenix. Password: Ch!r1s7y3&459",
+      "contactDate": 1770000000,
+      "contactIsNotValid": false
+    },
+    {
+      "contactId": 301,
+      "contactEntityId": 200,
+      "contactFirstName": "Dennis",
+      "contactLastName": "Martin",
+      "contactTitle": "Inspector",
+      "contactPrimaryPhone": "6025011138",
+      "contactEmail": "dennis.martin@phoenix.gov",
+      "contactNote": "Inspections. Password: Ch!r1s7y3&459",
+      "contactDate": 1770000000,
+      "contactIsNotValid": false
+    },
+    {
+      "contactId": 302,
+      "contactEntityId": 203,
+      "contactFirstName": "Jasmine",
+      "contactLastName": "Carter",
+      "contactTitle": "",
+      "contactPrimaryPhone": "4805036713",
+      "contactEmail": "jasmine.carter@gilbertaz.gov",
+      "contactNote": "Town of Gilbert. Password: togPassword1234!",
+      "contactDate": 1770000000,
+      "contactIsNotValid": false
+    },
+    {
+      "contactId": 303,
+      "contactEntityId": 206,
+      "contactFirstName": "Joe",
+      "contactLastName": "Sauer",
+      "contactTitle": "",
+      "contactPrimaryPhone": "4807823065",
+      "contactEmail": "joseph.sauer@chandleraz.gov",
+      "contactNote": "City of Chandler. Password: Chandler!2026",
+      "contactDate": 1770000000,
+      "contactIsNotValid": false
+    },
+    {
+      "contactId": 304,
+      "contactEntityId": 209,
+      "contactFirstName": "Linda",
+      "contactLastName": "Herring",
+      "contactTitle": "Planning Technician",
+      "contactPrimaryPhone": "6233334024",
+      "contactEmail": "lherring@avondaleaz.gov",
+      "contactNote": "City of Avondale. Password: Avondale!2024",
+      "contactDate": 1770000000,
+      "contactIsNotValid": false
+    },
+    {
+      "contactId": 305,
+      "contactEntityId": 205,
+      "contactFirstName": "Maria",
+      "contactLastName": "Morfin",
+      "contactTitle": "",
+      "contactPrimaryPhone": "6239303129",
+      "contactEmail": "mmorfin@glendaleaz.com",
+      "contactNote": "City of Glendale contact",
+      "contactDate": 1770000000,
+      "contactIsNotValid": false
+    },
+    {
+      "contactId": 306,
+      "contactEntityId": 207,
+      "contactFirstName": "Guadalupe",
+      "contactLastName": "Ortiz Cortez",
+      "contactTitle": "",
+      "contactPrimaryPhone": "6238827997",
+      "contactEmail": "guadalupe.ortizcortez@goodyearaz.gov",
+      "contactNote": "City of Goodyear. Password: SignCode@51R",
+      "contactDate": 1770000000,
+      "contactIsNotValid": false
+    }
+  ]
+}

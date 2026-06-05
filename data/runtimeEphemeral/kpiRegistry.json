@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "schema": "proto-skyesoft-kpi-permits",
+    "generatedOn": 1768594417,
+    "source": "permitRegistry.json"
+  },
+
+  "atAGlance": {
+    "totalActive": 130,
+    "oldestOutstandingDays": 94,
+    "averageTurnaroundDays": 18.6,
+    "permitsCompletedThisMonth": 12
+  },
+
+  "statusBreakdown": {
+    "need_to_submit": 16,
+    "submitted": 20,
+    "under_review": 52,
+    "corrections": 1,
+    "ready_to_issue": 20,
+    "issued": 21,
+    "inspections": 0,
+    "finaled": 13
+  },
+
+  "performance": {
+    "averageNotesPerPermit": 3.4,
+    "fastestTurnaroundDays": 2,
+    "slowestTurnaroundDays": 117
+  },
+
+  "byJurisdiction": {
+    "mesa": {
+      "averageTurnaroundDays": 14.2,
+      "averageFees": 185.00
+    },
+    "phoenix": {
+      "averageTurnaroundDays": 21.8,
+      "averageFees": 240.50
+    }
+  }
+}
