@@ -325,12 +325,14 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    // === STRONG WRAPPER: Keeps header + content together ===
+    // === TIGHTEST POSSIBLE WRAPPER ===
     $html = '<div class="streetview-section" style="page-break-inside:avoid !important; break-inside:avoid !important; margin-bottom:25px;">';
 
     $html .= buildSectionHeader('Street View Verification', 'property.png');
 
-    // Use the pre-generated ephemeral image
+    // === Content block with extra protection ===
+    $html .= '<div style="page-break-before:avoid !important; break-before:avoid !important;">';
+
     $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
 
     if ($streetViewPath && file_exists($streetViewPath)) {
@@ -349,7 +351,9 @@ function buildStreetViewSection(array $proposal): string
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
 
-    $html .= '</div>'; // ← Close the wrapper (critical for page-break control)
+    $html .= '</div>'; // close inner content block
+
+    $html .= '</div>'; // close main wrapper
 
     return $html;
 }
