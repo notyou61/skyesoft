@@ -109,10 +109,6 @@ try {
 
         if ($lat && $lng && $googleKey) {
 
-            // Load the helper function if not already available
-            if (!function_exists('generateStreetViewImage')) {
-                require_once __DIR__ . '/../reports/contactProposalReport.php';
-            }
 
             $streetViewPath = generateStreetViewImage(
                 (string)$lat,
