@@ -108,7 +108,6 @@ function buildReportStyles(): string
             margin-top:4px; 
             margin-bottom:6px; 
             border-bottom:1.5px solid #888;
-            page-break-after: avoid !important;
         }
         .sectionIconCell { 
             width:22px; 
