@@ -502,32 +502,109 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
         // =====================================================
         // EPHEMERAL STREET VIEW IMAGE (Option A - Pre-generate)
         // =====================================================
-        $latForStreetView = $googleData['lat'] ?? null;
-        $lngForStreetView = $googleData['lng'] ?? null;
 
-        $googleKeyForStreetView = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
-                            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
-                            ?: $googleApiKey 
-                            ?: '';
+        $latForStreetView =
+            $googleData['lat']
+            ?? null;
 
-        if ($latForStreetView && $lngForStreetView && $googleKeyForStreetView) {
-            $streetViewPath = generateStreetViewImage(
-                (string)$latForStreetView, 
-                (string)$lngForStreetView, 
-                $googleKeyForStreetView
+        $lngForStreetView =
+            $googleData['lng']
+            ?? null;
+
+        $googleKeyForStreetView =
+            skyesoftGetEnv(
+                'GOOGLE_MAPS_STATIC_API_KEY'
+            )
+            ?: getenv(
+                'GOOGLE_MAPS_STATIC_API_KEY'
+            )
+            ?: $googleApiKey
+            ?: '';
+
+        // Debug
+        error_log(
+            '[STREETVIEW] placeId='
+            . ($googleData['placeId'] ?? 'NULL')
+        );
+
+        error_log(
+            '[STREETVIEW] lat='
+            . ($latForStreetView ?? 'NULL')
+        );
+
+        error_log(
+            '[STREETVIEW] lng='
+            . ($lngForStreetView ?? 'NULL')
+        );
+
+        error_log(
+            '[STREETVIEW] apiKey='
+            . (
+                !empty($googleKeyForStreetView)
+                    ? 'PRESENT'
+                    : 'MISSING'
+            )
+        );
+
+        if (
+            $latForStreetView &&
+            $lngForStreetView &&
+            $googleKeyForStreetView
+        ) {
+
+            error_log(
+                '[STREETVIEW] Attempting image generation...'
             );
 
-            if ($streetViewPath) {
-                // Store it so the report can use it
-                if (!isset($parsed['reportArtifacts'])) {
-                    $parsed['reportArtifacts'] = [];
-                }
-                $parsed['reportArtifacts']['streetview'] = $streetViewPath;
+            $streetViewPath =
+                generateStreetViewImage(
+                    (string)$latForStreetView,
+                    (string)$lngForStreetView,
+                    $googleKeyForStreetView
+                );
 
-                error_log("[STREETVIEW] Ephemeral image generated: " . $streetViewPath);
+            if ($streetViewPath) {
+
+                if (
+                    !isset(
+                        $parsed['reportArtifacts']
+                    )
+                ) {
+
+                    $parsed['reportArtifacts'] =
+                        [];
+                }
+
+                $parsed['reportArtifacts']['streetview'] =
+                    $streetViewPath;
+
+                error_log(
+                    '[STREETVIEW] Image generated: '
+                    . $streetViewPath
+                );
+
             } else {
-                error_log("[STREETVIEW] Failed to generate image for lat/lng: $latForStreetView,$lngForStreetView");
+
+                error_log(
+                    '[STREETVIEW] generateStreetViewImage() returned FALSE'
+                );
             }
+
+        } else {
+
+            error_log(
+                '[STREETVIEW] Skipped generation. '
+                . 'lat='
+                . ($latForStreetView ?? 'NULL')
+                . ', lng='
+                . ($lngForStreetView ?? 'NULL')
+                . ', key='
+                . (
+                    !empty($googleKeyForStreetView)
+                        ? 'PRESENT'
+                        : 'MISSING'
+                )
+            );
         }
 
     } else {
