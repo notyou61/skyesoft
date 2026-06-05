@@ -325,7 +325,10 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    $html = buildSectionHeader('Street View Verification', 'property.png');
+    // === STRONG WRAPPER: Keeps header + content together ===
+    $html = '<div class="streetview-section" style="page-break-inside:avoid !important; break-inside:avoid !important; margin-bottom:25px;">';
+
+    $html .= buildSectionHeader('Street View Verification', 'property.png');
 
     // Use the pre-generated ephemeral image
     $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
@@ -337,7 +340,7 @@ function buildStreetViewSection(array $proposal): string
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:280px;">';
+        $html .= '<div class="image-placeholder" style="min-height:280px; margin:15px 0;">';
         $html .= '📍 Street View imagery unavailable at this time';
         $html .= '</div>';
     }
@@ -345,6 +348,8 @@ function buildStreetViewSection(array $proposal): string
     $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
+
+    $html .= '</div>'; // ← Close the wrapper (critical for page-break control)
 
     return $html;
 }

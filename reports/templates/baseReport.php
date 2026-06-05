@@ -107,7 +107,8 @@ function buildReportStyles(): string
             border:none; 
             margin-top:4px; 
             margin-bottom:6px; 
-            border-bottom:1.5px solid #888; 
+            border-bottom:1.5px solid #888;
+            page-break-after: avoid !important;
         }
         .sectionIconCell { 
             width:22px; 
@@ -195,7 +196,6 @@ function buildReportStyles(): string
         .streetview-section {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            margin-bottom: 25px;
         }
     ';
 }
