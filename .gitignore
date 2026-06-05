@@ -23,6 +23,9 @@ assets/data/authoritative/promptLedger.json
 # Allow ledger templates (schema-only, no data)
 !assets/data/authoritative/promptLedger.template.json
 
+# Runtime-generated Street View imagery
+data/runtimeEphemeral/streetview/
+
 # Generated reports
 reports/**/*.json
 
