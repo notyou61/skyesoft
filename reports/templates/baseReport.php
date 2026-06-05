@@ -192,10 +192,20 @@ function buildReportStyles(): string
             break-inside: avoid !important;
         }
 
-        .streetview-section,
         .streetview-section {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+            font-size: 11pt;           /* ← This fixes the smaller text */
+            line-height: 1.4;
+        }
+
+        .streetview-section td {
+            padding: 0;
+            vertical-align: top;
+        }
+
+        .streetview-section .image-placeholder {
+            font-size: 11pt;
         }
     ';
 }
