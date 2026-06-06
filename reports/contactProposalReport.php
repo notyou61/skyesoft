@@ -299,27 +299,61 @@ function buildParcelSummarySection(array $proposal): string
 
 function buildParcelDetailSection(array $proposal): string
 {
-    $parcels = $proposal['parcelDetails'] ?? [];
-    if (empty($parcels)) {
-        return buildSectionHeader('Parcel Candidates – Visual Review', 'compass.png') . '<p>No parcel details available.</p>';
+    $parcelDetails = $proposal['parcelDetails'] ?? [];
+
+    if (empty($parcelDetails)) {
+        return ''; // Nothing to show
     }
 
-    $html = buildSectionHeader('Parcel Candidates – Visual Review', 'compass.png');
+    $html = '<div class="section">';
 
-    foreach ($parcels as $index => $p) {
-        $n = $index + 1;
-        $html .= '<div class="parcel-block">';
-        $html .= '<div style="display:flex; justify-content:space-between; margin-bottom:8px;">';
-        $html .= '<strong>Parcel ' . $n . ' • APN: ' . htmlspecialchars($p['apnDisplay'] ?? $p['apnRaw'] ?? '') . '</strong>';
-        $html .= '<span style="background:#e6f0ff; padding:4px 12px; border-radius:5px;">Confidence: ' . ($p['confidence'] ?? 98) . '%</span>';
+    // Section Header
+    $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
+
+    $html .= '<div class="parcelSummaryBlock" style="margin-bottom:16px;">';
+    $html .= 'The following parcel candidates were identified for this location. ';
+    $html .= 'Please review and select the correct parcel(s) before proceeding.';
+    $html .= '</div>';
+
+    foreach ($parcelDetails as $index => $parcel) {
+        $parcelNum = $index + 1;
+        $apn = $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? 'Unknown APN';
+        $owner = $parcel['owner'] ?? '—';
+        $address = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
+
+        $html .= '<div class="parcel-block" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 20px;">';
+
+        // Header row with APN and Confidence
+        $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">';
+        $html .= '<div>';
+        $html .= '<span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>';
+        $html .= '<span style="font-size:12pt; font-weight:600; margin-left:12px;">APN: ' . htmlspecialchars($apn) . '</span>';
         $html .= '</div>';
-        $html .= '<table class="dataTable">';
-        $html .= '<tr><th>Owner</th><td>' . htmlspecialchars($p['owner'] ?? '—') . '</td></tr>';
-        $html .= '<tr><th>Address</th><td>' . htmlspecialchars($p['address'] ?? '') . '</td></tr>';
+
+        $confidence = $parcel['confidence'] ?? 95;
+        $html .= '<div style="background:#e6f0ff; color:#14377C; padding:4px 14px; border-radius:5px; font-size:10pt; font-weight:600;">';
+        $html .= 'Confidence: ' . $confidence . '%';
+        $html .= '</div>';
+        $html .= '</div>';
+
+        // Details Table
+        $html .= '<table class="dataTable" style="margin-bottom:10px;">';
+        $html .= '<tr><th style="width:22%;">Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
+        $html .= '<tr><th>Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
         $html .= '</table>';
-        $html .= renderImagePlaceholder('parcel', $proposal, $n);
+
+        // Image placeholder / future dynamic image
+        $html .= '<div style="text-align:center; margin:10px 0;">';
+        $html .= '<div class="image-placeholder" style="min-height:220px; display:flex; align-items:center; justify-content:center; background:#f8f9fa; border:1px dashed #14377C;">';
+        $html .= '<span style="color:#555; font-size:10.5pt;">Parcel Map Image<br><small>(Dynamic generation coming next)</small></span>';
         $html .= '</div>';
+        $html .= '</div>';
+
+        $html .= '</div>'; // close parcel-block
     }
+
+    $html .= '</div>'; // close section
+
     return $html;
 }
 
@@ -389,6 +423,48 @@ function buildGovernanceSection(array $proposal): string
     $html = buildSectionHeader('Governance &amp; Operational Narrative', 'scales.png');
     $html .= '<div class="highlight">' . nl2br(htmlspecialchars($narrative)) . '</div>';
     return $html;
+}
+
+function generateParcelMapImage(string $lat, string $lng, string $apn, string $googleKey): ?string
+{
+    if (empty($googleKey) || empty($lat) || empty($lng)) {
+        error_log("[PARCEL MAP] Missing lat, lng or API key");
+        return null;
+    }
+
+    // Clean APN for filename
+    $safeApn = preg_replace('/[^A-Za-z0-9]/', '', $apn);
+    $filename = 'parcel-' . $safeApn . '-' . uniqid() . '.png';
+
+    $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/parcelMaps/';
+    if (!is_dir($ephemeralDir)) {
+        mkdir($ephemeralDir, 0755, true);
+    }
+
+    $outputPath = $ephemeralDir . $filename;
+
+    // Google Static Maps URL (satellite + marker)
+    $mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
+        . 'center=' . $lat . ',' . $lng
+        . '&zoom=19'
+        . '&size=800x500'
+        . '&maptype=satellite'
+        . '&markers=color:red%7Clabel:P%7C' . $lat . ',' . $lng
+        . '&key=' . $googleKey;
+
+    $imageData = @file_get_contents($mapUrl);
+
+    if ($imageData === false || strlen($imageData) < 1000) {
+        error_log("[PARCEL MAP] Failed to fetch image from Google for APN: $apn");
+        return null;
+    }
+
+    if (file_put_contents($outputPath, $imageData) === false) {
+        error_log("[PARCEL MAP] Failed to save image to: $outputPath");
+        return null;
+    }
+
+    return $outputPath;
 }
 
 #endregion
