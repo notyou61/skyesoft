@@ -96,62 +96,138 @@ try {
     // =====================================================
     // EPHEMERAL STREET VIEW IMAGE (for contact_proposal only)
     // =====================================================
+
     if ($reportType === 'contact_proposal') {
 
-        error_log("[STREETVIEW] Starting Street View check in generateReports.php");
+        error_log(
+            "[STREETVIEW] Starting Street View check in generateReports.php"
+        );
 
-        $lat = $input['latitude']
+        $lat =
+            $input['latitude']
             ?? $input['data']['location']['latitude']
             ?? $input['proposal']['data']['location']['latitude']
             ?? $input['parsed']['location']['latitude']
             ?? $input['location']['latitude']
             ?? null;
 
-        $lng = $input['longitude']
+        $lng =
+            $input['longitude']
             ?? $input['data']['location']['longitude']
             ?? $input['proposal']['data']['location']['longitude']
             ?? $input['parsed']['location']['longitude']
             ?? $input['location']['longitude']
             ?? null;
 
-        // Use the working key (GOOGLE_MAPS_PLACE_ID_API_KEY)
-        $googleKey = skyesoftGetEnv('GOOGLE_MAPS_PLACE_ID_API_KEY')
-            ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
-            ?: skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+        $streetAddress =
+            $input['locationAddress']
+            ?? $input['data']['location']['locationAddress']
+            ?? $input['proposal']['data']['location']['locationAddress']
+            ?? $input['parsed']['location']['locationAddress']
+            ?? $input['location']['locationAddress']
+            ?? '';
+
+        // Use the working key
+        $googleKey =
+            skyesoftGetEnv(
+                'GOOGLE_MAPS_PLACE_ID_API_KEY'
+            )
+            ?: getenv(
+                'GOOGLE_MAPS_PLACE_ID_API_KEY'
+            )
+            ?: skyesoftGetEnv(
+                'GOOGLE_MAPS_STATIC_API_KEY'
+            )
+            ?: getenv(
+                'GOOGLE_MAPS_STATIC_API_KEY'
+            )
             ?: '';
 
-        error_log("[STREETVIEW] lat = " . ($lat ?? 'MISSING'));
-        error_log("[STREETVIEW] lng = " . ($lng ?? 'MISSING'));
-        error_log("[STREETVIEW] API Key = " . (!empty($googleKey) ? 'PRESENT' : 'MISSING'));
+        error_log(
+            "[STREETVIEW] lat = "
+            . ($lat ?? 'MISSING')
+        );
 
-        if ($lat && $lng && $googleKey) {
+        error_log(
+            "[STREETVIEW] lng = "
+            . ($lng ?? 'MISSING')
+        );
 
-            if (!function_exists('generateStreetViewImage')) {
-                require_once __DIR__ . '/../reports/contactProposalReport.php';
+        error_log(
+            "[STREETVIEW] address = "
+            . ($streetAddress ?: 'MISSING')
+        );
+
+        error_log(
+            "[STREETVIEW] API Key = "
+            . (
+                !empty($googleKey)
+                    ? 'PRESENT'
+                    : 'MISSING'
+            )
+        );
+
+        if (
+            $lat &&
+            $lng &&
+            $googleKey
+        ) {
+
+            if (
+                !function_exists(
+                    'generateStreetViewImage'
+                )
+            ) {
+
+                require_once
+                    __DIR__
+                    . '/../reports/contactProposalReport.php';
             }
 
-            error_log("[STREETVIEW] Conditions OK. Calling generateStreetViewImage()...");
-
-            $streetViewPath = generateStreetViewImage(
-                (string)$lat,
-                (string)$lng,
-                $googleKey
+            error_log(
+                "[STREETVIEW] Conditions OK. Calling generateStreetViewImage()..."
             );
 
-            if ($streetViewPath) {
-                if (!isset($input['reportArtifacts'])) {
-                    $input['reportArtifacts'] = [];
-                }
-                $input['reportArtifacts']['streetview'] = $streetViewPath;
+            $streetViewPath =
+                generateStreetViewImage(
+                    (string)$lat,
+                    (string)$lng,
+                    $googleKey,
+                    $streetAddress
+                );
 
-                error_log("[generateReports] ✅ Street View image generated: " . $streetViewPath);
+            if ($streetViewPath) {
+
+                if (
+                    !isset(
+                        $input['reportArtifacts']
+                    )
+                ) {
+
+                    $input['reportArtifacts'] =
+                        [];
+                }
+
+                $input['reportArtifacts']['streetview'] =
+                    $streetViewPath;
+
+                error_log(
+                    "[generateReports] ✅ Street View image generated: "
+                    . $streetViewPath
+                );
+
             } else {
-                error_log("[generateReports] ❌ Street View generation returned null");
+
+                error_log(
+                    "[generateReports] ❌ Street View generation returned null"
+                );
             }
 
         } else {
-            error_log("[generateReports] Skipping Street View - missing lat/lng or API key");
+
+            error_log(
+                "[generateReports] Skipping Street View - missing lat/lng or API key"
+            );
         }
     }
 
@@ -207,17 +283,80 @@ try {
 
 #region SECTION 05 - Helper Functions
 
+// Infer Street View Heading based on address (simple heuristic)
+function inferStreetViewHeading(string $address): int
+{
+    preg_match(
+        '/^\s*(\d+)/',
+        $address,
+        $matches
+    );
+
+    $streetNumber =
+        isset($matches[1])
+            ? (int)$matches[1]
+            : 0;
+
+    $isOdd =
+        $streetNumber > 0
+            ? ($streetNumber % 2 === 1)
+            : true;
+
+    $upper =
+        strtoupper($address);
+
+    // Avenue = North/South roadway
+    if (
+        strpos($upper, ' AVE') !== false
+    ) {
+
+        return $isOdd
+            ? 90      // East
+            : 270;    // West
+    }
+
+    // Street / Road = East/West roadway
+    if (
+        strpos($upper, ' ST') !== false ||
+        strpos($upper, ' RD') !== false
+    ) {
+
+        return $isOdd
+            ? 180     // South
+            : 0;      // North
+    }
+
+    // Fallback
+    return 90;
+}
+
 // Generate Ephemeral Street View Image
-function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?string
+function generateStreetViewImage(
+    string $lat,
+    string $lng,
+    string $googleKey,
+    string $address = ''
+): ?string
 {
     if (empty($googleKey) || empty($lat) || empty($lng)) {
         error_log("[generateReports] generateStreetViewImage() - Missing lat, lng or API key");
         return null;
     }
 
-    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
+    $heading =
+        inferStreetViewHeading(
+            $address
+        );
+
+    $fov = 85;
+
+    $url =
+        'https://maps.googleapis.com/maps/api/streetview?size=640x320'
         . '&location=' . $lat . ',' . $lng
-        . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
+        . '&heading=' . $heading
+        . '&pitch=5'
+        . '&fov=' . $fov
+        . '&key=' . $googleKey;
 
     error_log("[generateReports] generateStreetViewImage() - Calling URL: " . $url);
 
