@@ -211,7 +211,7 @@ try {
 function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?string
 {
     if (empty($googleKey) || empty($lat) || empty($lng)) {
-        error_log("[generateReports] generateStreetViewImage() - Missing lat, lng, or API key");
+        error_log("[generateReports] generateStreetViewImage() - Missing lat, lng or API key");
         return null;
     }
 
@@ -219,16 +219,22 @@ function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?
         . '&location=' . $lat . ',' . $lng
         . '&heading=200&pitch=5&fov=80&key=' . $googleKey;
 
+    error_log("[generateReports] generateStreetViewImage() - Calling URL: " . $url);
+
     $imageData = @file_get_contents($url);
 
-    if ($imageData === false || strlen($imageData) < 1000) {
-        error_log("[generateReports] generateStreetViewImage() - Google API call failed or returned invalid image");
+    if ($imageData === false) {
+        error_log("[generateReports] generateStreetViewImage() - file_get_contents() returned false. Possible network/API error.");
         return null;
     }
 
-    // Save to controlled ephemeral directory
-    $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
+    if (strlen($imageData) < 1000) {
+        error_log("[generateReports] generateStreetViewImage() - Google returned very small/invalid response (size: " . strlen($imageData) . " bytes). Check API key permissions.");
+        return null;
+    }
 
+    // Save to disk
+    $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
     if (!is_dir($ephemeralDir)) {
         mkdir($ephemeralDir, 0755, true);
     }
@@ -236,7 +242,7 @@ function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?
     $tempPath = $ephemeralDir . 'streetview-' . uniqid() . '.jpg';
 
     if (file_put_contents($tempPath, $imageData) === false) {
-        error_log("[generateReports] generateStreetViewImage() - Failed to write image to disk: " . $tempPath);
+        error_log("[generateReports] generateStreetViewImage() - Failed to write file to: " . $tempPath);
         return null;
     }
 
