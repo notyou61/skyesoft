@@ -221,19 +221,30 @@ function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?
 
     error_log("[generateReports] generateStreetViewImage() - Calling URL: " . $url);
 
-    $imageData = @file_get_contents($url);
+    // Use curl instead of file_get_contents for better reliability and error reporting
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
-    if ($imageData === false) {
-        error_log("[generateReports] generateStreetViewImage() - file_get_contents() returned false. Possible network/API error.");
+    $imageData = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($imageData === false || $httpCode != 200) {
+        error_log("[generateReports] generateStreetViewImage() - cURL failed. HTTP Code: $httpCode | cURL Error: $curlError");
         return null;
     }
 
     if (strlen($imageData) < 1000) {
-        error_log("[generateReports] generateStreetViewImage() - Google returned very small/invalid response (size: " . strlen($imageData) . " bytes). Check API key permissions.");
+        error_log("[generateReports] generateStreetViewImage() - Google returned invalid/small image (size: " . strlen($imageData) . " bytes)");
         return null;
     }
 
-    // Save to disk
+    // Save the image
     $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
     if (!is_dir($ephemeralDir)) {
         mkdir($ephemeralDir, 0755, true);
@@ -242,7 +253,7 @@ function generateStreetViewImage(string $lat, string $lng, string $googleKey): ?
     $tempPath = $ephemeralDir . 'streetview-' . uniqid() . '.jpg';
 
     if (file_put_contents($tempPath, $imageData) === false) {
-        error_log("[generateReports] generateStreetViewImage() - Failed to write file to: " . $tempPath);
+        error_log("[generateReports] generateStreetViewImage() - Failed to write image to disk");
         return null;
     }
 
