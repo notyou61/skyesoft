@@ -92,23 +92,39 @@ try {
     // =====================================================
     if ($reportType === 'contact_proposal') {
 
-        // Extract lat/lng from multiple possible payload structures
+        error_log("[STREETVIEW] Starting Street View check in generateReports.php");
+
+        // Extract lat/lng — now includes the 'parsed' structure
         $lat = $input['latitude']
             ?? $input['data']['location']['latitude']
             ?? $input['proposal']['data']['location']['latitude']
+            ?? $input['parsed']['location']['latitude']
+            ?? $input['location']['latitude']
             ?? null;
 
         $lng = $input['longitude']
             ?? $input['data']['location']['longitude']
             ?? $input['proposal']['data']['location']['longitude']
+            ?? $input['parsed']['location']['longitude']
+            ?? $input['location']['longitude']
             ?? null;
 
         $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
             ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
             ?: '';
 
+        error_log("[STREETVIEW] lat = " . ($lat ?? 'MISSING'));
+        error_log("[STREETVIEW] lng = " . ($lng ?? 'MISSING'));
+        error_log("[STREETVIEW] API Key = " . (!empty($googleKey) ? 'PRESENT' : 'MISSING'));
+
         if ($lat && $lng && $googleKey) {
 
+            // Safety check in case the function isn't loaded
+            if (!function_exists('generateStreetViewImage')) {
+                require_once __DIR__ . '/../reports/contactProposalReport.php';
+            }
+
+            error_log("[STREETVIEW] Conditions OK. Calling generateStreetViewImage()...");
 
             $streetViewPath = generateStreetViewImage(
                 (string)$lat,
@@ -127,6 +143,7 @@ try {
             } else {
                 error_log("[generateReports] ❌ Street View generation returned null");
             }
+
         } else {
             error_log("[generateReports] Skipping Street View - missing lat/lng or API key");
         }
