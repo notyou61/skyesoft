@@ -333,11 +333,19 @@ function buildStreetViewSection(array $proposal): string
 
     $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
 
-    // Get coordinates (try multiple possible keys)
-    $lat = $proposal['latitude'] ?? $proposal['locationLatitude'] ?? null;
-    $lng = $proposal['longitude'] ?? $proposal['locationLongitude'] ?? null;
+    // Try to get coordinates from multiple possible keys
+    $lat = $proposal['latitude'] 
+        ?? $proposal['locationLatitude'] 
+        ?? $proposal['data']['location']['latitude'] 
+        ?? null;
+
+    $lng = $proposal['longitude'] 
+        ?? $proposal['locationLongitude'] 
+        ?? $proposal['data']['location']['longitude'] 
+        ?? null;
 
     if ($streetViewPath && file_exists($streetViewPath)) {
+
         // === IMAGE ===
         $html .= '<div style="text-align:center; margin:4px 0 8px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewPath) . '" ';
@@ -345,13 +353,18 @@ function buildStreetViewSection(array $proposal): string
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
 
-        // === LINK TO INTERACTIVE STREET VIEW ===
-        if ($lat && $lng) {
-            $streetViewUrl = 'https://www.google.com/maps/@' . $lat . ',' . $lng . ',3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i13312!8i6656';
+        // === CAPTION ===
+        $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin:0 0 8px 0;">';
+        $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
+        $html .= '</p>';
 
-            $html .= '<div style="text-align:center; margin-bottom:12px;">';
+        // === LINK (below image + caption) ===
+        if ($lat && $lng) {
+            $streetViewUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i13312!8i6656";
+
+            $html .= '<div style="text-align:center; margin-bottom:8px;">';
             $html .= '<a href="' . htmlspecialchars($streetViewUrl) . '" target="_blank" ';
-            $html .= 'style="font-size:9.5pt; color:#14377C; text-decoration:none;">';
+            $html .= 'style="font-size:9.5pt; color:#14377C; text-decoration:underline;">';
             $html .= '🔗 Open interactive Street View in new tab';
             $html .= '</a>';
             $html .= '</div>';
@@ -362,11 +375,11 @@ function buildStreetViewSection(array $proposal): string
         $html .= '<div class="image-placeholder" style="min-height:260px; display:flex; align-items:center; justify-content:center;">';
         $html .= '<span style="font-size:11pt; color:#555;">📍 Street View imagery unavailable at this time</span>';
         $html .= '</div>';
-    }
 
-    $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:4px;">';
-    $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
-    $html .= '</p>';
+        $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
+        $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
+        $html .= '</p>';
+    }
 
     $html .= '</div>'; // close inner wrapper
     $html .= '</div>'; // close .section
