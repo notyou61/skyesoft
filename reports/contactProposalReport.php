@@ -427,14 +427,14 @@ function buildGovernanceSection(array $proposal): string
 
 function generateParcelMapImage(string $lat, string $lng, string $apn, string $googleKey): ?string
 {
-    if (empty($googleKey) || empty($lat) || empty($lng)) {
-        error_log("[PARCEL MAP] Missing lat, lng or API key");
+    if (empty($googleKey) || empty($lat) || empty($lng) || empty($apn)) {
+        error_log("[PARCEL MAP] Missing required parameters for APN: $apn");
         return null;
     }
 
-    // Clean APN for filename
+    // Create safe filename
     $safeApn = preg_replace('/[^A-Za-z0-9]/', '', $apn);
-    $filename = 'parcel-' . $safeApn . '-' . uniqid() . '.png';
+    $filename = 'parcelmap-' . $safeApn . '-' . uniqid() . '.png';
 
     $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/parcelMaps/';
     if (!is_dir($ephemeralDir)) {
@@ -443,24 +443,24 @@ function generateParcelMapImage(string $lat, string $lng, string $apn, string $g
 
     $outputPath = $ephemeralDir . $filename;
 
-    // Google Static Maps URL (satellite + marker)
+    // High-quality satellite image centered on the parcel
     $mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
         . 'center=' . $lat . ',' . $lng
-        . '&zoom=19'
-        . '&size=800x500'
+        . '&zoom=20'
+        . '&size=900x550'
         . '&maptype=satellite'
-        . '&markers=color:red%7Clabel:P%7C' . $lat . ',' . $lng
+        . '&markers=color:red%7Csize:mid%7Clabel:' . urlencode(substr($apn, -5)) . '%7C' . $lat . ',' . $lng
         . '&key=' . $googleKey;
 
     $imageData = @file_get_contents($mapUrl);
 
-    if ($imageData === false || strlen($imageData) < 1000) {
-        error_log("[PARCEL MAP] Failed to fetch image from Google for APN: $apn");
+    if ($imageData === false || strlen($imageData) < 3000) {
+        error_log("[PARCEL MAP] Failed to fetch image for APN: $apn");
         return null;
     }
 
     if (file_put_contents($outputPath, $imageData) === false) {
-        error_log("[PARCEL MAP] Failed to save image to: $outputPath");
+        error_log("[PARCEL MAP] Failed to write image to disk: $outputPath");
         return null;
     }
 
