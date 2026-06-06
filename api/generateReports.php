@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
 
-// Force all error_log() messages from this file to go to our known log file
-ini_set('error_log', __DIR__ . '/logs/php-error.log');
 
 // =============================================
 //  Skyesoft — generateReports.php
@@ -12,6 +10,14 @@ ini_set('error_log', __DIR__ . '/logs/php-error.log');
 // =============================================
 
 #region SECTION 00 - Error Reporting & Headers
+
+// This file is the main entry point for generating PDF reports based on incoming data.
+if (function_exists('opcache_invalidate')) {
+    opcache_invalidate(__FILE__, true);
+}
+
+// Force all error_log() messages from this file to go to our known log file
+ini_set('error_log', __DIR__ . '/logs/php-error.log');
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
