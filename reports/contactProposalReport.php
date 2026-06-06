@@ -325,7 +325,6 @@ function buildParcelDetailSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    // Follow the exact pattern that works in test_mpdf.php
     $html = '<div class="section">';
 
     $html .= buildSectionHeader('Street View Verification', 'property.png');
@@ -333,17 +332,23 @@ function buildStreetViewSection(array $proposal): string
     // Inner content wrapper (keeps image + caption together)
     $html .= '<div style="page-break-inside:avoid !important; break-inside:avoid !important;">';
 
+    // Get the street view path (now coming from generateReports.php via normalizeProposalData)
     $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
 
+    // Debug log (remove after testing)
+    error_log("[STREETVIEW] Path received: " . ($streetViewPath ?? 'NULL'));
+
     if ($streetViewPath && file_exists($streetViewPath)) {
+        // === REAL IMAGE ===
         $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewPath) . '" ';
         $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px;">';
-        $html .= '📍 Street View imagery unavailable at this time';
+        // === PLACEHOLDER (cleaner version) ===
+        $html .= '<div class="image-placeholder" style="min-height:260px; display:flex; align-items:center; justify-content:center;">';
+        $html .= '<span style="font-size:11pt; color:#555;">📍 Street View imagery unavailable at this time</span>';
         $html .= '</div>';
     }
 
@@ -352,7 +357,6 @@ function buildStreetViewSection(array $proposal): string
     $html .= '</p>';
 
     $html .= '</div>'; // close inner content wrapper
-
     $html .= '</div>'; // close .section
 
     return $html;
@@ -532,8 +536,8 @@ function normalizeProposalData(array $input): array
         'locationAddress'      => $location['locationAddress'] ?? $base['locationAddress'] ?? '',
         'locationCityStateZip' => $cityStateZip ?: $base['locationCityStateZip'] ?? '—',
         'locationCounty'       => $location['locationCounty'] ?? $base['locationCounty'] ?? '',
-        'locationCountyFips'   => $countyFips,                    // Should now get "04013"
-        'locationJurisdiction' => $jurisdiction,                  // Should now get "Phoenix"
+        'locationCountyFips'   => $countyFips,
+        'locationJurisdiction' => $jurisdiction,
         'locationPlaceId'      => $location['locationPlaceId'] ?? $base['locationPlaceId'] ?? '',
 
         'governanceNarrative'  => $root['resolution']['narratives']['decision'][0] 
@@ -545,7 +549,17 @@ function normalizeProposalData(array $input): array
         'resolutionStatus'     => $res['pc']['status'] ?? $base['resolutionStatus'] ?? '',
         'commitAllowed'        => ($pers['commitAllowed'] ?? false) ? 'YES' : 'NO',
 
-        'parcelDetails'        => $location['parcelDetails'] ?? $base['parcelDetails'] ?? []
+        'parcelDetails'        => $location['parcelDetails'] ?? $base['parcelDetails'] ?? [],
+
+        // =====================================================
+        // CRITICAL FIX: Carry over reportArtifacts (Street View, etc.)
+        // This allows buildStreetViewSection() to receive the image
+        // generated in generateReports.php
+        // =====================================================
+        'reportArtifacts'      => $input['reportArtifacts'] 
+                               ?? $root['reportArtifacts'] 
+                               ?? $data['reportArtifacts'] 
+                               ?? []
     ];
 }
 
