@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+// Force all error_log() messages from this file to go to our known log file
+ini_set('error_log', __DIR__ . '/logs/php-error.log');
+
 // =============================================
 //  Skyesoft — generateReports.php
 //  Main Report Controller
