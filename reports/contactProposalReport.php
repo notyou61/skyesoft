@@ -329,24 +329,20 @@ function buildStreetViewSection(array $proposal): string
 
     $html .= buildSectionHeader('Street View Verification', 'property.png');
 
-    // Inner content wrapper (keeps image + caption together)
+    // Inner content wrapper
     $html .= '<div style="page-break-inside:avoid !important; break-inside:avoid !important;">';
 
-    // Get the street view path (now coming from generateReports.php via normalizeProposalData)
     $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
 
-    // Debug log (remove after testing)
-    error_log("[STREETVIEW] Path received: " . ($streetViewPath ?? 'NULL'));
-
     if ($streetViewPath && file_exists($streetViewPath)) {
-        // === REAL IMAGE ===
-        $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
+        // === REAL IMAGE - Reduced top margin ===
+        $html .= '<div style="text-align:center; margin:4px 0 12px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewPath) . '" ';
         $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
     } else {
-        // === PLACEHOLDER (cleaner version) ===
+        // Placeholder
         $html .= '<div class="image-placeholder" style="min-height:260px; display:flex; align-items:center; justify-content:center;">';
         $html .= '<span style="font-size:11pt; color:#555;">📍 Street View imagery unavailable at this time</span>';
         $html .= '</div>';
@@ -356,7 +352,7 @@ function buildStreetViewSection(array $proposal): string
     $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
     $html .= '</p>';
 
-    $html .= '</div>'; // close inner content wrapper
+    $html .= '</div>'; // close inner wrapper
     $html .= '</div>'; // close .section
 
     return $html;
