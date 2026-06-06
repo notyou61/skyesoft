@@ -1522,6 +1522,12 @@ window.SkyIndex = {
             locationCountyFips: loc.locationCountyFips || "",
             locationJurisdiction: locationJurisdiction,
 
+            // =====================================================
+            // ADD THESE TWO LINES
+            // =====================================================
+            latitude: loc.latitude || loc.locationLatitude || null,
+            longitude: loc.longitude || loc.locationLongitude || null,
+
             governanceNarrative: res.narratives?.decision?.[0] || "",
             confidence: prop.confidence || 85,
             pc_code: res.pc?.code || "",
