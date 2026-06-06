@@ -41,6 +41,9 @@ error_log("Report Request Received Keys: " . json_encode(array_keys($input)));
 
 $reportType = strtolower(trim($input['reportType'] ?? ''));
 
+error_log("=== generateReports.php LOADED ===" . date('Y-m-d H:i:s'));
+error_log("[generateReports] reportType received = '" . $reportType . "'");
+
 // Fallback for safety
 if (empty($reportType) && !empty($input['data'])) {
     $reportType = 'contact_proposal';
