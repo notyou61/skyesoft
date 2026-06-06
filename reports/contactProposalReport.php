@@ -561,6 +561,17 @@ function normalizeProposalData(array $input): array
         'locationJurisdiction' => $jurisdiction,
         'locationPlaceId'      => $location['locationPlaceId'] ?? $base['locationPlaceId'] ?? '',
 
+        // =====================================================
+        // Latitude & Longitude (needed for Street View link)
+        // =====================================================
+        'latitude'             => $location['latitude'] 
+                               ?? $location['locationLatitude'] 
+                               ?? ($base['latitude'] ?? null),
+
+        'longitude'            => $location['longitude'] 
+                               ?? $location['locationLongitude'] 
+                               ?? ($base['longitude'] ?? null),
+
         'governanceNarrative'  => $root['resolution']['narratives']['decision'][0] 
                                ?? $base['governanceNarrative'] 
                                ?? '',
@@ -574,8 +585,6 @@ function normalizeProposalData(array $input): array
 
         // =====================================================
         // CRITICAL FIX: Carry over reportArtifacts (Street View, etc.)
-        // This allows buildStreetViewSection() to receive the image
-        // generated in generateReports.php
         // =====================================================
         'reportArtifacts'      => $input['reportArtifacts'] 
                                ?? $root['reportArtifacts'] 
