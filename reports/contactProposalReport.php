@@ -333,7 +333,7 @@ function buildStreetViewSection(array $proposal): string
 
     $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
 
-    // Try to get coordinates from multiple possible keys
+    // Get coordinates
     $lat = $proposal['latitude'] 
         ?? $proposal['locationLatitude'] 
         ?? $proposal['data']['location']['latitude'] 
@@ -346,7 +346,7 @@ function buildStreetViewSection(array $proposal): string
 
     if ($streetViewPath && file_exists($streetViewPath)) {
 
-        // === IMAGE ===
+        // === STREET VIEW IMAGE ===
         $html .= '<div style="text-align:center; margin:4px 0 8px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewPath) . '" ';
         $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
@@ -354,15 +354,15 @@ function buildStreetViewSection(array $proposal): string
         $html .= '</div>';
 
         // === CAPTION ===
-        $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin:0 0 8px 0;">';
+        $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin:0 0 10px 0;">';
         $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
         $html .= '</p>';
 
-        // === LINK (below image + caption) ===
+        // === LINK ===
         if ($lat && $lng) {
             $streetViewUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i13312!8i6656";
 
-            $html .= '<div style="text-align:center; margin-bottom:8px;">';
+            $html .= '<div style="text-align:center; margin-bottom:12px;">';
             $html .= '<a href="' . htmlspecialchars($streetViewUrl) . '" target="_blank" ';
             $html .= 'style="font-size:9.5pt; color:#14377C; text-decoration:underline;">';
             $html .= '🔗 Open interactive Street View in new tab';
@@ -370,15 +370,51 @@ function buildStreetViewSection(array $proposal): string
             $html .= '</div>';
         }
 
+        // === GOOGLE BUSINESS DETAILS TABLE (matching Satellite style) ===
+        $html .= '<table class="dataTable" style="margin-top:8px; margin-bottom:12px; page-break-inside:avoid;">';
+
+        $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
+            . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName'] ?? 'Christy Signs') 
+            . '</td></tr>';
+
+        $html .= '<tr><th>Google Address</th><td>' 
+            . htmlspecialchars($proposal['formattedAddress'] ?? $proposal['locationAddress'] ?? '3145 N 33rd Ave, Phoenix, AZ 85017, USA') 
+            . '</td></tr>';
+
+        if (!empty($proposal['locationPhone'] ?? $proposal['formattedPhoneNumber'])) {
+            $html .= '<tr><th>Phone Number</th><td>' 
+                . htmlspecialchars($proposal['locationPhone'] ?? $proposal['formattedPhoneNumber']) 
+                . '</td></tr>';
+        }
+
+        if (!empty($proposal['businessStatus'])) {
+            $html .= '<tr><th>Business Status</th><td>' 
+                . htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $proposal['businessStatus'])))) 
+                . '</td></tr>';
+        }
+
+        $rating = $proposal['locationRating'] ?? $proposal['rating'] ?? null;
+        $reviews = $proposal['locationReviewCount'] ?? $proposal['user_ratings_total'] ?? null;
+        if ($rating) {
+            $html .= '<tr><th>Google Rating</th><td>' 
+                . htmlspecialchars($rating) . ' ★' 
+                . ($reviews ? ' (' . htmlspecialchars($reviews) . ' reviews)' : '') 
+                . '</td></tr>';
+        }
+
+        if (!empty($proposal['locationWebsite'] ?? $proposal['website'])) {
+            $html .= '<tr><th>Website</th><td>' 
+                . htmlspecialchars($proposal['locationWebsite'] ?? $proposal['website']) 
+                . '</td></tr>';
+        }
+
+        $html .= '</table>';
+
     } else {
         // Placeholder
         $html .= '<div class="image-placeholder" style="min-height:260px; display:flex; align-items:center; justify-content:center;">';
         $html .= '<span style="font-size:11pt; color:#555;">📍 Street View imagery unavailable at this time</span>';
         $html .= '</div>';
-
-        $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin-top:8px;">';
-        $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
-        $html .= '</p>';
     }
 
     $html .= '</div>'; // close inner wrapper
