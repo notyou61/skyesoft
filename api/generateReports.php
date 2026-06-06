@@ -96,138 +96,69 @@ try {
     // =====================================================
     // EPHEMERAL STREET VIEW IMAGE (for contact_proposal only)
     // =====================================================
-
     if ($reportType === 'contact_proposal') {
 
-        error_log(
-            "[STREETVIEW] Starting Street View check in generateReports.php"
-        );
+        error_log("[STREETVIEW] Starting Street View check in generateReports.php");
 
-        $lat =
-            $input['latitude']
+        $lat = $input['latitude']
             ?? $input['data']['location']['latitude']
             ?? $input['proposal']['data']['location']['latitude']
             ?? $input['parsed']['location']['latitude']
             ?? $input['location']['latitude']
             ?? null;
 
-        $lng =
-            $input['longitude']
+        $lng = $input['longitude']
             ?? $input['data']['location']['longitude']
             ?? $input['proposal']['data']['location']['longitude']
             ?? $input['parsed']['location']['longitude']
             ?? $input['location']['longitude']
             ?? null;
 
-        $streetAddress =
-            $input['locationAddress']
+        $streetAddress = $input['locationAddress']
             ?? $input['data']['location']['locationAddress']
             ?? $input['proposal']['data']['location']['locationAddress']
             ?? $input['parsed']['location']['locationAddress']
             ?? $input['location']['locationAddress']
             ?? '';
 
-        // Use the working key
-        $googleKey =
-            skyesoftGetEnv(
-                'GOOGLE_MAPS_PLACE_ID_API_KEY'
-            )
-            ?: getenv(
-                'GOOGLE_MAPS_PLACE_ID_API_KEY'
-            )
-            ?: skyesoftGetEnv(
-                'GOOGLE_MAPS_STATIC_API_KEY'
-            )
-            ?: getenv(
-                'GOOGLE_MAPS_STATIC_API_KEY'
-            )
+        $googleKey = skyesoftGetEnv('GOOGLE_MAPS_PLACE_ID_API_KEY')
+            ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
+            ?: skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
             ?: '';
 
-        error_log(
-            "[STREETVIEW] lat = "
-            . ($lat ?? 'MISSING')
-        );
+        error_log("[STREETVIEW] lat = " . ($lat ?? 'MISSING'));
+        error_log("[STREETVIEW] lng = " . ($lng ?? 'MISSING'));
+        error_log("[STREETVIEW] address = " . ($streetAddress ?: 'MISSING'));
+        error_log("[STREETVIEW] API Key = " . (!empty($googleKey) ? 'PRESENT' : 'MISSING'));
 
-        error_log(
-            "[STREETVIEW] lng = "
-            . ($lng ?? 'MISSING')
-        );
+        if ($lat && $lng && $googleKey) {
 
-        error_log(
-            "[STREETVIEW] address = "
-            . ($streetAddress ?: 'MISSING')
-        );
-
-        error_log(
-            "[STREETVIEW] API Key = "
-            . (
-                !empty($googleKey)
-                    ? 'PRESENT'
-                    : 'MISSING'
-            )
-        );
-
-        if (
-            $lat &&
-            $lng &&
-            $googleKey
-        ) {
-
-            if (
-                !function_exists(
-                    'generateStreetViewImage'
-                )
-            ) {
-
-                require_once
-                    __DIR__
-                    . '/../reports/contactProposalReport.php';
+            if (!function_exists('generateStreetViewImage')) {
+                require_once __DIR__ . '/../reports/contactProposalReport.php';
             }
 
-            error_log(
-                "[STREETVIEW] Conditions OK. Calling generateStreetViewImage()..."
-            );
+            error_log("[STREETVIEW] Conditions OK. Calling generateStreetViewImage()...");
 
-            $streetViewPath =
-                generateStreetViewImage(
-                    (string)$lat,
-                    (string)$lng,
-                    $googleKey,
-                    $streetAddress
-                );
+            $streetViewPath = generateStreetViewImage(
+                (string)$lat,
+                (string)$lng,
+                $googleKey,
+                $streetAddress
+            );
 
             if ($streetViewPath) {
-
-                if (
-                    !isset(
-                        $input['reportArtifacts']
-                    )
-                ) {
-
-                    $input['reportArtifacts'] =
-                        [];
+                if (!isset($input['reportArtifacts'])) {
+                    $input['reportArtifacts'] = [];
                 }
+                $input['reportArtifacts']['streetview'] = $streetViewPath;
 
-                $input['reportArtifacts']['streetview'] =
-                    $streetViewPath;
-
-                error_log(
-                    "[generateReports] ✅ Street View image generated: "
-                    . $streetViewPath
-                );
-
+                error_log("[generateReports] ✅ Street View image generated: " . $streetViewPath);
             } else {
-
-                error_log(
-                    "[generateReports] ❌ Street View generation returned null"
-                );
+                error_log("[generateReports] ❌ Street View generation returned null");
             }
-
         } else {
-
-            error_log(
-                "[generateReports] Skipping Street View - missing lat/lng or API key"
-            );
+            error_log("[generateReports] Skipping Street View - missing lat/lng or API key");
         }
     }
 
@@ -258,7 +189,7 @@ try {
         $filename = 'Proposed_Contact_Report';
     }
 
-    // === DIRECT PDF DELIVERY (Stable & Reliable) ===
+    // === DIRECT PDF DELIVERY (Clean & Reliable) ===
     header('Content-Type: application/pdf');
     header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
     header('Content-Length: ' . strlen($pdfContent));
@@ -269,6 +200,9 @@ try {
     exit;
 
 } catch (Throwable $e) {
+    // Log the error for debugging
+    error_log("[generateReports] ERROR: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+
     http_response_code(500);
     echo json_encode([
         'error'   => $e->getMessage(),
