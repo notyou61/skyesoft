@@ -289,9 +289,9 @@ function resolveGeographyFromAddress(string $address, array $googleData = []): ?
     return null;
 }
 
-// 📦 lookupMaricopaParcel — ArcGIS parcel lookup for Maricopa County (Rich Data Version)
 function lookupMaricopaParcel(string $address): array {
     if (empty(trim($address))) {
+        error_log("[Parcel] Empty address passed to lookupMaricopaParcel()");
         return [];
     }
 
@@ -300,11 +300,14 @@ function lookupMaricopaParcel(string $address): array {
     $cleanAddress = str_replace(', USA', '', trim($address));
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
 
-    error_log("[Parcel DEBUG] Searching for: " . $cleanAddress);
+    error_log("[Parcel DEBUG] === Starting parcel lookup ===");
+    error_log("[Parcel DEBUG] Searching for address: " . $cleanAddress);
 
     $candidates = [];
     $safeAddr = str_replace("'", "''", $cleanAddress);
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
+
+    error_log("[Parcel DEBUG] ArcGIS WHERE clause: " . $where);
 
     $params = http_build_query([
         'where'             => $where,
@@ -318,15 +321,20 @@ function lookupMaricopaParcel(string $address): array {
         'f'                 => 'json'
     ]);
 
-    $response = @file_get_contents($url . '?' . $params);
+    $fullUrl = $url . '?' . $params;
+    error_log("[Parcel DEBUG] Full ArcGIS URL: " . $fullUrl);
+
+    $response = @file_get_contents($fullUrl);
 
     if (!$response) {
-        error_log("[Parcel DEBUG] HTTP request failed");
+        error_log("[Parcel DEBUG] ❌ HTTP request to ArcGIS failed or returned empty");
         return [];
     }
 
     $data = json_decode($response, true);
     $features = $data['features'] ?? [];
+
+    error_log("[Parcel DEBUG] ArcGIS returned " . count($features) . " raw features");
 
     foreach ($features as $feature) {
         $attr = $feature['attributes'] ?? [];
@@ -337,7 +345,7 @@ function lookupMaricopaParcel(string $address): array {
         $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
         $dbAddress = trim($attr['PHYSICAL_ADDRESS'] ?? '');
 
-        // Calculate centroid from polygon
+        // Calculate centroid
         $latitude  = null;
         $longitude = null;
 
@@ -369,7 +377,6 @@ function lookupMaricopaParcel(string $address): array {
             'jurisdiction'    => trim($attr['JURISDICTION'] ?? ''),
             'owner'           => trim($attr['OWNER_NAME'] ?? ''),
 
-            // === NEW RICH FIELDS ===
             'mailingAddress'  => trim($attr['MAIL_ADDRESS'] ?? ''),
             'mailingCity'     => trim($attr['MAIL_CITY'] ?? ''),
             'mailingState'    => trim($attr['MAIL_STATE'] ?? ''),
@@ -386,7 +393,6 @@ function lookupMaricopaParcel(string $address): array {
             'subdivision'     => trim($attr['SUBDIVISION'] ?? ''),
             'yearBuilt'       => $attr['YEAR_BUILT'] ?? null,
 
-            // Coordinates
             'latitude'        => $latitude,
             'longitude'       => $longitude,
 
@@ -396,13 +402,15 @@ function lookupMaricopaParcel(string $address): array {
         ];
     }
 
-    // Deduplicate + sort
+    // Deduplicate + sort by confidence
     $unique = [];
     foreach ($candidates as $c) {
         $unique[$c['apnRaw']] = $c;
     }
     $candidates = array_values($unique);
     usort($candidates, fn($a, $b) => $b['confidence'] <=> $a['confidence']);
+
+    error_log("[Parcel DEBUG] Final unique parcel candidates returned: " . count($candidates));
 
     return $candidates;
 }
