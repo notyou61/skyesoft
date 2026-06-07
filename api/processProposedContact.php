@@ -616,14 +616,23 @@ $parcelDetails = [];
 
 if ($isMaricopa && !empty($parsed['location']['address'])) {
 
-    // NEW - Use fuller address for better matching
+    // -------------------------------------------------
+    // TEMP DEBUG — Parcel Address Construction
+    // -------------------------------------------------
     $parcelLookupAddress = trim(implode(', ', array_filter([
         $parsed['location']['address'] ?? '',
         $parsed['location']['city'] ?? '',
         $parsed['location']['state'] ?? ''
     ])));
 
-    error_log("[MARICOPA-DEBUG] Full lookup address being sent to ArcGIS: " . $parcelLookupAddress);
+    error_log("[PARCEL-CALL] Raw parcelLookupAddress = '" . $parcelLookupAddress . "'");
+    error_log("[PARCEL-CALL] location.address = '" . ($parsed['location']['address'] ?? 'MISSING') . "'");
+    error_log("[PARCEL-CALL] location.city    = '" . ($parsed['location']['city'] ?? 'MISSING') . "'");
+    error_log("[PARCEL-CALL] location.state   = '" . ($parsed['location']['state'] ?? 'MISSING') . "'");
+
+    $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
+
+    error_log("[PARCEL-CALL] lookupMaricopaParcel returned " . count($rawParcels) . " candidates");
 
     $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
 
