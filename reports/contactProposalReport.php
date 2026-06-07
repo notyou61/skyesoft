@@ -322,14 +322,10 @@ function buildParcelDetailSection(array $proposal): string
     }
 
     $html = '<div class="section">';
-
-    // Section Header
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
 
-    // Intro text
     $html .= '<div class="parcelSummaryBlock" style="margin-bottom:16px;">';
-    $html .= 'The following parcel candidates were identified for this location. ';
-    $html .= 'Please review and select the correct parcel(s) before proceeding.';
+    $html .= 'The following parcel candidates were identified for this location. Please review and select the correct parcel(s) before proceeding.';
     $html .= '</div>';
 
     foreach ($parcelDetails as $index => $parcel) {
@@ -338,51 +334,56 @@ function buildParcelDetailSection(array $proposal): string
         $owner     = $parcel['owner'] ?? '—';
         $address   = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
 
-        // Try to get the image (either attached to parcel or from artifacts array)
+        // Get generated image if available
         $parcelImage = $parcel['parcelMapImage'] ?? ($parcelMaps[$index] ?? null);
+
+        // Build Maricopa County link (you can enhance this with real parcel-specific params later)
+        $maricopaLink = 'https://maps.mcassessor.maricopa.gov/ipa.aspx?1=' . urlencode($parcel['latitude'] ?? '') . 
+                        '&2=' . urlencode($parcel['longitude'] ?? '') . 
+                        '&a=' . urlencode($address);
 
         $html .= '<div class="parcel-block" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 20px;">';
 
-        // Header: Parcel number + APN + Confidence
+        // Header
         $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">';
         $html .= '<div>';
         $html .= '<span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>';
         $html .= '<span style="font-size:12pt; font-weight:600; margin-left:12px;">APN: ' . htmlspecialchars($apn) . '</span>';
         $html .= '</div>';
-
-        $confidence = $parcel['confidence'] ?? 95;
         $html .= '<div style="background:#e6f0ff; color:#14377C; padding:4px 14px; border-radius:5px; font-size:10pt; font-weight:600;">';
-        $html .= 'Confidence: ' . $confidence . '%';
+        $html .= 'Confidence: ' . ($parcel['confidence'] ?? 98) . '%';
         $html .= '</div>';
         $html .= '</div>';
 
-        // Details Table
+        // Details
         $html .= '<table class="dataTable" style="margin-bottom:12px;">';
         $html .= '<tr><th style="width:22%;">Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
         $html .= '<tr><th>Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
         $html .= '</table>';
 
-        // Parcel Map Image
+        // Image or Placeholder + Link
         if ($parcelImage && file_exists($parcelImage)) {
             $html .= '<div style="text-align:center; margin:10px 0;">';
-            $html .= '<img src="' . htmlspecialchars($parcelImage) . '" ';
-            $html .= 'style="max-width:100%; max-height:420px; height:auto; border:1px solid #bbb; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">';
-
-            $html .= '<div style="font-size:9pt; color:#555; margin-top:6px; font-weight:500;">';
-            $html .= 'Maricopa County Aerial Imagery • Parcel Map';
-            $html .= '</div>';
+            $html .= '<img src="' . htmlspecialchars($parcelImage) . '" style="max-width:100%; max-height:420px; height:auto; border:1px solid #bbb; border-radius:6px;">';
+            $html .= '<div style="font-size:9pt; color:#555; margin-top:6px;">Maricopa County Aerial Imagery • Parcel Map</div>';
             $html .= '</div>';
         } else {
-            // Placeholder if image not generated yet
             $html .= '<div style="padding:20px; background:#f8f9fa; border:1px dashed #14377C; border-radius:6px; text-align:center; margin:10px 0;">';
             $html .= '<span style="color:#666; font-size:10.5pt;">Parcel map image not available</span>';
             $html .= '</div>';
         }
 
+        // Link to official Maricopa map
+        $html .= '<div style="text-align:center; margin-top:8px;">';
+        $html .= '<a href="' . htmlspecialchars($maricopaLink) . '" target="_blank" style="font-size:9.5pt; color:#14377C; text-decoration:underline;">';
+        $html .= '🔗 View on Maricopa County Assessor Map';
+        $html .= '</a>';
+        $html .= '</div>';
+
         $html .= '</div>'; // close parcel-block
     }
 
-    $html .= '</div>'; // close section
+    $html .= '</div>';
 
     return $html;
 }
