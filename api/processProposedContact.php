@@ -547,9 +547,9 @@ $address = trim(preg_replace('/\s+/', ' ', $address));
 $parsed['location']['address'] = $address;
 $parsed['location']['locationAddressRaw'] = $rawInputOriginal;
 
-// -------------------------------------------------
-// CENSUS GEO + ROBUST GOOGLE FALLBACK
-// -------------------------------------------------
+// =====================================================
+// CLEAN COUNTY RESOLUTION — NO FALLBACKS
+// =====================================================
 $geoAddress = trim(
     $parsed['location']['formattedAddress'] 
     ?? ($parsed['location']['address'] . ', ' 
@@ -558,37 +558,46 @@ $geoAddress = trim(
        . ($parsed['location']['zip'] ?? ''))
 );
 
-error_log("🔍 Geography enrichment for: " . $geoAddress);
+error_log("[COUNTY] Starting clean resolution for: " . $geoAddress);
 
+// Primary source: Census
 $geo = resolveGeographyFromAddress($geoAddress);
 
 if ($geo && !empty($geo['county'])) {
     $parsed['location']['county']     = trim($geo['county']);
     $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';
-    error_log("✅ Census success: {$geo['county']} ({$geo['countyFips']})");
+    error_log("[COUNTY] ✅ Census returned: {$geo['county']} (FIPS: {$geo['countyFips']})");
 } 
-elseif (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
-    foreach ($parsed['location']['googleData']['addressComponents'] as $comp) {
-        if (in_array('administrative_area_level_2', $comp['types'] ?? [])) {
-            $countyName = trim(str_replace(' County', '', $comp['long_name']));
-            $parsed['location']['county']     = $countyName;
-            $parsed['location']['countyFips'] = '04013';   // Maricopa
-            error_log("✅ Google fallback county: {$countyName} (04013)");
-            break;
+else {
+    // Strict Google addressComponents only (no loose fallbacks)
+    $countyName = null;
+
+    if (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
+        foreach ($parsed['location']['googleData']['addressComponents'] as $comp) {
+            if (in_array('administrative_area_level_2', $comp['types'] ?? [])) {
+                $countyName = trim(str_replace(' County', '', $comp['long_name']));
+                break;
+            }
         }
     }
-} 
-// Final safety net
-elseif (stripos($parsed['location']['city'] ?? '', 'Phoenix') !== false || 
-        stripos($parsed['location']['address'] ?? '', 'Phoenix') !== false) {
-    $parsed['location']['county']     = 'Maricopa';
-    $parsed['location']['countyFips'] = '04013';
-    error_log("✅ Phoenix city/address fallback applied");
+
+    if ($countyName) {
+        $parsed['location']['county']     = $countyName;
+        $parsed['location']['countyFips'] = '04013'; // Only set if we actually got it from Google
+        error_log("[COUNTY] ✅ Google addressComponents returned: {$countyName}");
+    } else {
+        // Explicitly leave empty — no guessing
+        $parsed['location']['county']     = '';
+        $parsed['location']['countyFips'] = '';
+        error_log("[COUNTY] ❌ No county resolved from Census or Google addressComponents");
+    }
 }
 
-$parsed['location']['county']     = $parsed['location']['county'] ?? '';
-$parsed['location']['countyFips'] = $parsed['location']['countyFips'] ?? '';
+// Final normalization
+$parsed['location']['county']     = trim($parsed['location']['county'] ?? '');
+$parsed['location']['countyFips'] = trim($parsed['location']['countyFips'] ?? '');
 
+error_log("[COUNTY] Final value → county: '{$parsed['location']['county']}' | countyFips: '{$parsed['location']['countyFips']}'");
 
 // -------------------------------------------------
 // MARICOPA PARCEL LOOKUP + STATEFUL NORMALIZATION
