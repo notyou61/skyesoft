@@ -289,7 +289,7 @@ function resolveGeographyFromAddress(string $address, array $googleData = []): ?
     return null;
 }
 
-// 📦 lookupMaricopaParcel — ArcGIS parcel lookup for Maricopa County (with per-parcel lat/lon)
+// 📦 lookupMaricopaParcel — ArcGIS parcel lookup for Maricopa County (Rich Data Version)
 function lookupMaricopaParcel(string $address): array {
     if (empty(trim($address))) {
         return [];
@@ -308,9 +308,12 @@ function lookupMaricopaParcel(string $address): array {
 
     $params = http_build_query([
         'where'             => $where,
-        'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-        'returnGeometry'    => 'true',           // ← Enable geometry
-        'outSR'             => '4326',           // ← WGS84 lat/lon
+        'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME,' .
+                               'MAIL_ADDRESS,MAIL_CITY,MAIL_STATE,MAIL_ZIP,' .
+                               'DEED_NUMBER,SALE_DATE,SALE_PRICE,' .
+                               'SECTION,TOWNSHIP,RANGE,LOT_SIZE,MCR,SUBDIVISION,YEAR_BUILT',
+        'returnGeometry'    => 'true',
+        'outSR'             => '4326',
         'geometryPrecision' => 6,
         'f'                 => 'json'
     ]);
@@ -334,23 +337,20 @@ function lookupMaricopaParcel(string $address): array {
         $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
         $dbAddress = trim($attr['PHYSICAL_ADDRESS'] ?? '');
 
-        // === Calculate centroid from polygon rings ===
+        // Calculate centroid from polygon
         $latitude  = null;
         $longitude = null;
 
         if (!empty($geom['rings'][0])) {
             $ring = $geom['rings'][0];
             $count = count($ring);
-
             if ($count > 0) {
                 $sumX = 0;
                 $sumY = 0;
-
                 foreach ($ring as $point) {
-                    $sumX += $point[0];   // longitude
-                    $sumY += $point[1];   // latitude
+                    $sumX += $point[0];
+                    $sumY += $point[1];
                 }
-
                 $longitude = round($sumX / $count, 6);
                 $latitude  = round($sumY / $count, 6);
             }
@@ -362,24 +362,41 @@ function lookupMaricopaParcel(string $address): array {
         }
 
         $candidates[] = [
-            'apnRaw'       => $apnRaw,
-            'apnDisplay'   => formatAPN($apnRaw),
-            'address'      => $dbAddress,
-            'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
-            'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
-            'owner'        => trim($attr['OWNER_NAME'] ?? ''),
+            'apnRaw'          => $apnRaw,
+            'apnDisplay'      => formatAPN($apnRaw),
+            'address'         => $dbAddress,
+            'city'            => trim($attr['PHYSICAL_CITY'] ?? ''),
+            'jurisdiction'    => trim($attr['JURISDICTION'] ?? ''),
+            'owner'           => trim($attr['OWNER_NAME'] ?? ''),
 
-            // === NEW: Per-parcel unique coordinates ===
-            'latitude'     => $latitude,
-            'longitude'    => $longitude,
+            // === NEW RICH FIELDS ===
+            'mailingAddress'  => trim($attr['MAIL_ADDRESS'] ?? ''),
+            'mailingCity'     => trim($attr['MAIL_CITY'] ?? ''),
+            'mailingState'    => trim($attr['MAIL_STATE'] ?? ''),
+            'mailingZip'      => trim($attr['MAIL_ZIP'] ?? ''),
+            'deedNumber'      => trim($attr['DEED_NUMBER'] ?? ''),
+            'saleDate'        => trim($attr['SALE_DATE'] ?? ''),
+            'salePrice'       => $attr['SALE_PRICE'] ?? null,
 
-            'source'       => 'mca_arcgis_mcassessor',
-            'confidence'   => $score,
-            'matchedInput' => $cleanAddress
+            'section'         => trim($attr['SECTION'] ?? ''),
+            'township'        => trim($attr['TOWNSHIP'] ?? ''),
+            'range'           => trim($attr['RANGE'] ?? ''),
+            'lotSizeSqFt'     => $attr['LOT_SIZE'] ?? null,
+            'mcr'             => trim($attr['MCR'] ?? ''),
+            'subdivision'     => trim($attr['SUBDIVISION'] ?? ''),
+            'yearBuilt'       => $attr['YEAR_BUILT'] ?? null,
+
+            // Coordinates
+            'latitude'        => $latitude,
+            'longitude'       => $longitude,
+
+            'source'          => 'mca_arcgis_mcassessor',
+            'confidence'      => $score,
+            'matchedInput'    => $cleanAddress
         ];
     }
 
-    // Deduplicate and sort
+    // Deduplicate + sort
     $unique = [];
     foreach ($candidates as $c) {
         $unique[$c['apnRaw']] = $c;

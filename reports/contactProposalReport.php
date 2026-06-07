@@ -332,15 +332,54 @@ function buildParcelDetailSection(array $proposal): string
         $html .= '</div>';
         $html .= '</div>';
 
-        // Details Table
+        // === Main Details Table ===
         $html .= '<table class="dataTable" style="margin-bottom:14px;">';
         $html .= '<tr><th style="width:22%;">Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
-        $html .= '<tr><th>Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
+        $html .= '<tr><th>Property Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
+
+        // NEW: Mailing Address
+        if (!empty($parcel['mailingAddress'])) {
+            $mailing = trim($parcel['mailingAddress']);
+            if (!empty($parcel['mailingCity']) || !empty($parcel['mailingState'])) {
+                $mailing .= '<br>' . trim(($parcel['mailingCity'] ?? '') . ', ' . ($parcel['mailingState'] ?? '') . ' ' . ($parcel['mailingZip'] ?? ''));
+            }
+            $html .= '<tr><th>Mailing Address</th><td>' . $mailing . '</td></tr>';
+        }
+
+        // NEW: Deed + Sale Information
+        if (!empty($parcel['deedNumber']) || !empty($parcel['saleDate']) || !empty($parcel['salePrice'])) {
+            $saleInfo = '';
+            if (!empty($parcel['deedNumber'])) {
+                $saleInfo .= '<strong>Deed:</strong> ' . htmlspecialchars($parcel['deedNumber']) . '<br>';
+            }
+            if (!empty($parcel['saleDate'])) {
+                $saleInfo .= '<strong>Sale Date:</strong> ' . htmlspecialchars($parcel['saleDate']) . ' ';
+            }
+            if (!empty($parcel['salePrice'])) {
+                $saleInfo .= '| <strong>Sale Price:</strong> $' . number_format((float)$parcel['salePrice']);
+            }
+            $html .= '<tr><th>Deed / Sale Info</th><td>' . $saleInfo . '</td></tr>';
+        }
+
+        // NEW: Property Details
+        if (!empty($parcel['lotSizeSqFt']) || !empty($parcel['yearBuilt']) || !empty($parcel['subdivision'])) {
+            $propDetails = '';
+            if (!empty($parcel['lotSizeSqFt'])) {
+                $propDetails .= '<strong>Lot Size:</strong> ' . number_format((float)$parcel['lotSizeSqFt']) . ' sq ft<br>';
+            }
+            if (!empty($parcel['yearBuilt'])) {
+                $propDetails .= '<strong>Year Built:</strong> ' . htmlspecialchars($parcel['yearBuilt']) . '<br>';
+            }
+            if (!empty($parcel['subdivision'])) {
+                $propDetails .= '<strong>Subdivision:</strong> ' . htmlspecialchars($parcel['subdivision']);
+            }
+            $html .= '<tr><th>Property Details</th><td>' . $propDetails . '</td></tr>';
+        }
+
         $html .= '</table>';
 
-        // === Maricopa County Link (Primary Action) ===
+        // === Maricopa County Link ===
         $maricopaUrl = 'https://mcassessor.maricopa.gov/';
-
         if (!empty($apn)) {
             $maricopaUrl = 'https://mcassessor.maricopa.gov/Parcel/' . urlencode($apnRaw);
         }

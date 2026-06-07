@@ -609,24 +609,52 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
     $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
 
     // -------------------------------------------------
-    // STATEFUL PARCEL CANDIDATE NORMALIZATION
+    // STATEFUL PARCEL CANDIDATE NORMALIZATION (Rich Data)
     // -------------------------------------------------
     $parcelDetails = array_map(function ($p) {
         return [
+            // === Core Identification ===
             'apnRaw'          => $p['apnRaw'] ?? null,
             'apnDisplay'      => $p['apnDisplay'] ?? null,
+
+            // === Location ===
             'address'         => $p['address'] ?? '',
             'city'            => $p['city'] ?? '',
             'jurisdiction'    => $p['jurisdiction'] ?? '',
+
+            // === Ownership ===
             'owner'           => $p['owner'] ?? '',
-            'source'          => $p['source'] ?? 'mca_arcgis_mcassessor',
-            'confidence'      => $p['confidence'] ?? 70,
-            'matchedInput'    => $p['matchedInput'] ?? '',
-            // === NEW: Capture coordinates from Maricopa API ===
+
+            // === Mailing Address (New) ===
+            'mailingAddress'  => $p['mailingAddress'] ?? '',
+            'mailingCity'     => $p['mailingCity'] ?? '',
+            'mailingState'    => $p['mailingState'] ?? '',
+            'mailingZip'      => $p['mailingZip'] ?? '',
+
+            // === Transactional Data (New) ===
+            'deedNumber'      => $p['deedNumber'] ?? '',
+            'saleDate'        => $p['saleDate'] ?? '',
+            'salePrice'       => $p['salePrice'] ?? null,
+
+            // === Property Details (New) ===
+            'section'         => $p['section'] ?? '',
+            'township'        => $p['township'] ?? '',
+            'range'           => $p['range'] ?? '',
+            'lotSizeSqFt'     => $p['lotSizeSqFt'] ?? null,
+            'mcr'             => $p['mcr'] ?? '',
+            'subdivision'     => $p['subdivision'] ?? '',
+            'yearBuilt'       => $p['yearBuilt'] ?? null,
+
+            // === Coordinates (Already added previously) ===
             'latitude'        => $p['latitude'] ?? null,
             'longitude'       => $p['longitude'] ?? null,
 
-            // === OPERATIONAL STATE ===
+            // === Source & Confidence ===
+            'source'          => $p['source'] ?? 'mca_arcgis_mcassessor',
+            'confidence'      => $p['confidence'] ?? 70,
+            'matchedInput'    => $p['matchedInput'] ?? '',
+
+            // === OPERATIONAL STATE (Keep these) ===
             'provided'        => true,
             'selected'        => false,
             'resolutionSource'=> 'unresolved'
