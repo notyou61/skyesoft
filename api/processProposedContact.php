@@ -85,3 +85,10 @@ implode(', ', array_keys($inputData))
 }
 
 #endregion
+
+echo json_encode([
+    'success' => true,
+    'status' => 'bootstrap_complete'
+]);
+
+exit;
