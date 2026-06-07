@@ -618,8 +618,21 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
 
     $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
 
+    if (!is_array($rawParcels)) {
+        error_log('[PARCEL-CALL] lookupMaricopaParcel returned non-array');
+        $rawParcels = [];
+    }
+
     // === ENHANCED TRACING LOGS ===
-    error_log('[PARCEL-CALL] count=' . count($rawParcels));
+    error_log(
+        '[PARCEL-CALL] type=' .
+        gettype($rawParcels)
+    );
+
+    error_log(
+        '[PARCEL-CALL] count=' .
+        (is_array($rawParcels) ? count($rawParcels) : 0)
+    );
 
     if (!empty($rawParcels)) {
         error_log('[PARCEL-CALL] first=' . json_encode($rawParcels[0]));
