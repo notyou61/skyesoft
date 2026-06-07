@@ -400,8 +400,6 @@ if (!isset($parsed['contact']['primaryPhoneExtension'])) {
 
 #region SECTION 07 — 🧩 Data Processing & Enrichment (Deterministic — Consolidated & Corrected)
 
-$parsed['location']['_activeCodeVersion'] = 'county-clean-v4-' . date('His');
-
 // =====================================================
 // DEFENSIVE SALUTATION HELPER (Critical Fix)
 // =====================================================
@@ -413,6 +411,7 @@ if (!function_exists('inferSalutation')) {
             return null;
         }
         
+        // Conservative default - safer than guessing gender
         return 'Ms.';
     }
 }
@@ -422,7 +421,7 @@ if (!function_exists('inferSalutation')) {
 // -------------------------------------------------
 $parsed = normalizeParsed($parsed);
 $parsed = inferMissingFields($parsed);
-$parsed = inferLocationName($parsed);
+$parsed = inferLocationName($parsed); // Early inference
 
 // -------------------------------------------------
 // 🧠 SALUTATION
@@ -480,6 +479,7 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
         'zip'     => $parsed['location']['zip'] ?? ''
     ]);
 
+    // Retry with full address if first attempt fails
     if (empty($googleData['placeId']) && !empty($fullAddress)) {
         $googleData = validateLocationWithGoogle([
             'address' => $fullAddress,
@@ -490,11 +490,13 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
     }
 
     if (!empty($googleData['placeId'])) {
+
         $parsed['location']['locationPlaceId']  = $googleData['placeId'];
         $parsed['location']['latitude']         = $googleData['lat'] ?? null;
         $parsed['location']['longitude']        = $googleData['lng'] ?? null;
         $parsed['location']['formattedAddress'] = str_replace(', USA', '', $googleData['address'] ?? $fullAddress);
 
+        // --- DIAGNOSTIC LOGS ---
         error_log("[STREETVIEW-DEBUG] Place ID resolved successfully");
         error_log("[STREETVIEW-DEBUG] lat = " . ($googleData['lat'] ?? 'MISSING'));
         error_log("[STREETVIEW-DEBUG] lng = " . ($googleData['lng'] ?? 'MISSING'));
@@ -505,6 +507,12 @@ if (!empty($googleApiKey) && !empty($fullAddress)) {
         $locationValidation['placeIdResolved'] = true;
         $locationValidation['latLonResolved']  = true;
         $locationValidation['confidence']      = 90;
+
+        // =====================================================
+        // NOTE: Street View image generation has been moved to
+        // generateReports.php (called at report rendering time)
+        // =====================================================
+
     } else {
         $locationValidation['issues'][] = 'google_place_not_resolved';
         error_log('[STREETVIEW] Google Place ID was not resolved');
@@ -556,14 +564,16 @@ $geoAddress = trim(
 
 error_log("[COUNTY] Starting clean resolution for: " . $geoAddress);
 
+// --- Primary: Census ---
 $geo = resolveGeographyFromAddress($geoAddress);
 
 if ($geo && !empty($geo['county'])) {
     $parsed['location']['county']     = trim($geo['county']);
-    $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';
+    $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';   // Only what Census actually returned
     error_log("[COUNTY] ✅ Census returned county: '{$parsed['location']['county']}' | FIPS: '{$parsed['location']['countyFips']}'");
 } 
 else {
+    // --- Secondary: Strict Google addressComponents only ---
     $countyName = null;
 
     if (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
@@ -577,15 +587,17 @@ else {
 
     if ($countyName) {
         $parsed['location']['county']     = $countyName;
-        $parsed['location']['countyFips'] = '';
+        $parsed['location']['countyFips'] = '';   // No hardcoding — Google does not provide FIPS here
         error_log("[COUNTY] ✅ Google addressComponents returned county: '{$countyName}' (FIPS left empty)");
     } else {
+        // Explicit empty — no guessing, no defaults
         $parsed['location']['county']     = '';
         $parsed['location']['countyFips'] = '';
         error_log("[COUNTY] ❌ No county resolved from Census or Google addressComponents");
     }
 }
 
+// Final normalization (always runs)
 $parsed['location']['county']     = trim($parsed['location']['county'] ?? '');
 $parsed['location']['countyFips'] = trim($parsed['location']['countyFips'] ?? '');
 
@@ -597,7 +609,7 @@ error_log("[COUNTY] Final → county: '{$parsed['location']['county']}' | county
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
-$isMaricopa = strtoupper(str_replace(' COUNTY', '', $county)) === 'MARICOPA';
+$isMaricopa = ($county === 'MARICOPA');
 $locationValidation['isMaricopa'] = $isMaricopa;
 
 error_log("[MARICOPA-CHECK] county='" . ($parsed['location']['county'] ?? 'MISSING') . 
@@ -608,6 +620,9 @@ $parcelDetails = [];
 
 if ($isMaricopa && !empty($parsed['location']['address'])) {
 
+    // -------------------------------------------------
+    // TEMP DEBUG — Parcel Address Construction
+    // -------------------------------------------------
     $parcelLookupAddress = trim(implode(', ', array_filter([
         $parsed['location']['address'] ?? '',
         $parsed['location']['city'] ?? '',
@@ -615,47 +630,45 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
     ])));
 
     error_log("[PARCEL-CALL] Raw parcelLookupAddress = '" . $parcelLookupAddress . "'");
+    error_log("[PARCEL-CALL] location.address = '" . ($parsed['location']['address'] ?? 'MISSING') . "'");
+    error_log("[PARCEL-CALL] location.city    = '" . ($parsed['location']['city'] ?? 'MISSING') . "'");
+    error_log("[PARCEL-CALL] location.state   = '" . ($parsed['location']['state'] ?? 'MISSING') . "'");
 
     $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
 
-    if (!is_array($rawParcels)) {
-        error_log('[PARCEL-CALL] lookupMaricopaParcel returned non-array');
-        $rawParcels = [];
-    }
+    error_log("[PARCEL-CALL] lookupMaricopaParcel returned " . count($rawParcels) . " candidates");
 
-    // === ENHANCED TRACING LOGS ===
-    error_log(
-        '[PARCEL-CALL] type=' .
-        gettype($rawParcels)
-    );
-
-    error_log(
-        '[PARCEL-CALL] count=' .
-        (is_array($rawParcels) ? count($rawParcels) : 0)
-    );
-
-    if (!empty($rawParcels)) {
-        error_log('[PARCEL-CALL] first=' . json_encode($rawParcels[0]));
-    }
+    $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
 
     // -------------------------------------------------
-    // STATEFUL PARCEL CANDIDATE NORMALIZATION
+    // STATEFUL PARCEL CANDIDATE NORMALIZATION (Rich Data)
     // -------------------------------------------------
     $parcelDetails = array_map(function ($p) {
         return [
+            // === Core Identification ===
             'apnRaw'          => $p['apnRaw'] ?? null,
             'apnDisplay'      => $p['apnDisplay'] ?? null,
+
+            // === Location ===
             'address'         => $p['address'] ?? '',
             'city'            => $p['city'] ?? '',
             'jurisdiction'    => $p['jurisdiction'] ?? '',
+
+            // === Ownership ===
             'owner'           => $p['owner'] ?? '',
+
+            // === Mailing Address (New) ===
             'mailingAddress'  => $p['mailingAddress'] ?? '',
             'mailingCity'     => $p['mailingCity'] ?? '',
             'mailingState'    => $p['mailingState'] ?? '',
             'mailingZip'      => $p['mailingZip'] ?? '',
+
+            // === Transactional Data (New) ===
             'deedNumber'      => $p['deedNumber'] ?? '',
             'saleDate'        => $p['saleDate'] ?? '',
             'salePrice'       => $p['salePrice'] ?? null,
+
+            // === Property Details (New) ===
             'section'         => $p['section'] ?? '',
             'township'        => $p['township'] ?? '',
             'range'           => $p['range'] ?? '',
@@ -663,11 +676,17 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
             'mcr'             => $p['mcr'] ?? '',
             'subdivision'     => $p['subdivision'] ?? '',
             'yearBuilt'       => $p['yearBuilt'] ?? null,
+
+            // === Coordinates (Already added previously) ===
             'latitude'        => $p['latitude'] ?? null,
             'longitude'       => $p['longitude'] ?? null,
+
+            // === Source & Confidence ===
             'source'          => $p['source'] ?? 'mca_arcgis_mcassessor',
             'confidence'      => $p['confidence'] ?? 70,
             'matchedInput'    => $p['matchedInput'] ?? '',
+
+            // === OPERATIONAL STATE (Keep these) ===
             'provided'        => true,
             'selected'        => false,
             'resolutionSource'=> 'unresolved'
@@ -676,6 +695,9 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
 
     error_log("[MARICOPA-DEBUG] Normalized " . count($parcelDetails) . " parcel candidates");
 
+    // -------------------------------------------------
+    // Automatic selection when exactly one candidate
+    // -------------------------------------------------
     if (count($parcelDetails) === 1) {
         $parcelDetails[0]['selected']         = true;
         $parcelDetails[0]['resolutionSource'] = 'automatic';
@@ -695,19 +717,22 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
 // Attach to parsed location
 $parsed['location']['parcelDetails'] = $parcelDetails;
 
-error_log('[PARCEL-ATTACH] count=' . count($parsed['location']['parcelDetails']));
-
 // -------------------------------------------------
 // JURISDICTION PROMOTION + TITLE CASE NORMALIZATION
 // -------------------------------------------------
+
 if (
     empty($parsed['location']['locationJurisdiction']) &&
-    !empty($parcelDetails[0]['jurisdiction'] ?? null)
+    !empty($parcelDetails[0]['jurisdiction'])
 ) {
+
     $rawJur = trim($parcelDetails[0]['jurisdiction']);
+
+    // Convert to Title Case (handles PHOENIX → Phoenix)
     $normalizedJur = ucwords(strtolower($rawJur));
 
     $parsed['location']['locationJurisdiction'] = $normalizedJur;
+
     $locationValidation['jurisdictionResolved'] = true;
 
     error_log("[JURISDICTION] Normalized: {$rawJur} → {$normalizedJur}");
@@ -716,6 +741,7 @@ if (
 // -------------------------------------------------
 // FINAL JURISDICTION CLEANUP
 // -------------------------------------------------
+
 $jur = trim($parsed['location']['locationJurisdiction'] ?? '');
 
 if ($jur === '' || strtoupper($jur) === 'NO CITY/TOWN') {
@@ -754,6 +780,7 @@ $parsed = inferLocationName($parsed);
 // =====================================================
 // Proposal Type Detection — Proposed Location (PL)
 // =====================================================
+
 $hasStrongContactIndicators =
     !empty(trim($parsed['contact']['email'] ?? '')) ||
     !empty(trim($parsed['contact']['primaryPhoneRaw'] ?? '')) ||
@@ -766,9 +793,13 @@ $isLocationOnlyProposal =
     !empty(trim($parsed['location']['address'] ?? '')) &&
     $hasStrongContactIndicators === false;
 
+
+
+
 // =====================================================
 // Data Integrity + Duplicates
 // =====================================================
+
 $dataIntegrityStatus = [
     'status' => 'complete',
     'missing' => []
@@ -777,12 +808,8 @@ $dataIntegrityStatus = [
 $missing = validateParsed($parsed) ?? [];
 
 // =====================================================
-// PCM-07 Defaults
+// PCM-07 — Relax Contact Requirements
 // =====================================================
-
-$isExplicitLocationOnlyIntent = false;
-$declaredEntityName = '';
-
 if ($isExplicitLocationOnlyIntent === true) {
 
     $relaxFields = [
@@ -831,6 +858,37 @@ if ($isExplicitLocationOnlyIntent === true) {
     $missing = $filtered;
 }
 
+// =====================================================
+// Relax Contact Requirements For General Location-Only
+// =====================================================
+if ($isLocationOnlyProposal === true && !$isExplicitLocationOnlyIntent) {
+
+    error_log('[PCM-07] General Location-Only relaxation applied');
+
+    $relaxFieldsGeneral = [
+        'contactFirstName', 'firstName',
+        'contactLastName',  'lastName',
+        'contactEmail',     'email',
+        'contactPrimaryPhone', 'primaryPhone',
+        'contact.contactMethod',
+        'contactMethod'
+    ];
+
+    $filtered = [];
+    if (is_array($missing)) {
+        foreach ($missing as $field) {
+            if (!in_array($field, $relaxFieldsGeneral, true)) {
+                $filtered[] = $field;
+            }
+        }
+    }
+    $missing = $filtered;
+}
+
+// =====================================================
+// Final Integrity Decision
+// =====================================================
+
 if (!empty($missing)) {
     $dataIntegrityStatus['status'] = 'incomplete';
     $dataIntegrityStatus['missing'] = $missing;
@@ -840,7 +898,10 @@ if (!empty($missing)) {
     error_log('[PCM-07] ✅ Validation PASSED after relaxation — ready for PCM decision');
 }
 
+// =====================================================
 // Duplicate Checks
+// =====================================================
+
 if (!$pdo) {
     $duplicate = ['status' => 'none'];
     $locationDuplicate = ['status' => 'none'];
@@ -852,6 +913,8 @@ if (!$pdo) {
     error_log('[ENTITY DUPLICATE] ' . json_encode($entityDuplicate));
     error_log('[LOCATION DUPLICATE] ' . json_encode($locationDuplicate));
 }
+
+$parsed['location']['_activeCodeVersion'] = 'county-clean-v3-' . date('His');
 
 #endregion
 
