@@ -589,6 +589,7 @@ elseif (stripos($parsed['location']['city'] ?? '', 'Phoenix') !== false ||
 $parsed['location']['county']     = $parsed['location']['county'] ?? '';
 $parsed['location']['countyFips'] = $parsed['location']['countyFips'] ?? '';
 
+
 // -------------------------------------------------
 // MARICOPA PARCEL LOOKUP + STATEFUL NORMALIZATION
 // -------------------------------------------------
@@ -597,6 +598,10 @@ $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
 $isMaricopa = ($county === 'MARICOPA');
 $locationValidation['isMaricopa'] = $isMaricopa;
+
+error_log("[MARICOPA-CHECK] county='" . ($parsed['location']['county'] ?? 'MISSING') . 
+          "' | address='" . ($parsed['location']['address'] ?? 'MISSING') . 
+          "' | isMaricopa=" . ($isMaricopa ? 'true' : 'false'));
 
 $parcelDetails = [];
 
