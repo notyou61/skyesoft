@@ -8,25 +8,57 @@ declare(strict_types=1);
  * Last Updated: 2026-05-28
  */
 
-#region SECTION 00 — Force Fresh Code
+#region SECTION 00 — Force Fresh Code + Early Address Logging
 
-error_log('[PROCESS] REQUEST_METHOD=' . ($_SERVER['REQUEST_METHOD'] ?? 'unknown'));
+error_log('=== PROCESSPROPOSEDCONTACT.PHP START === ' . date('Y-m-d H:i:s'));
+
+// Aggressive cache clearing
+if (function_exists('opcache_reset')) {
+    opcache_reset();
+    error_log('[OPCACHE] Full opcache_reset() executed');
+} elseif (function_exists('opcache_invalidate')) {
+    opcache_invalidate(__FILE__, true);
+    error_log('[OPCACHE] Fallback invalidate executed');
+}
 
 $rawInput = file_get_contents('php://input');
-
 error_log('[PROCESS] INPUT_LENGTH=' . strlen($rawInput));
-error_log('[PROCESS] INPUT_PREVIEW=' . substr($rawInput, 0, 500));
 
-error_log("=== PROCESSPROPOSEDCONTACT.PHP v1.6.1 START === " . date('Y-m-d H:i:s'));
+// Decode input early so we can inspect it
+$inputData = json_decode($rawInput, true);
 
-if (function_exists('opcache_invalidate')) {
-    opcache_invalidate(__FILE__, true);
-    error_log("[OPCACHE] Main file invalidated");
+if (is_array($inputData)) {
+    // Log the top-level keys so we know the structure
+    error_log('[EARLY INPUT] Top level keys: ' . implode(', ', array_keys($inputData)));
+
+    // Try to find the address in common locations
+    $addr = $inputData['location']['locationAddress'] 
+         ?? $inputData['location']['address'] 
+         ?? $inputData['data']['location']['locationAddress'] 
+         ?? $inputData['data']['location']['address'] 
+         ?? 'NOT FOUND';
+
+    $city = $inputData['location']['locationCity'] 
+         ?? $inputData['location']['city'] 
+         ?? $inputData['data']['location']['locationCity'] 
+         ?? $inputData['data']['location']['city'] 
+         ?? 'NOT FOUND';
+
+    $state = $inputData['location']['locationState'] 
+          ?? $inputData['location']['state'] 
+          ?? $inputData['data']['location']['locationState'] 
+          ?? $inputData['data']['location']['state'] 
+          ?? 'NOT FOUND';
+
+    error_log('[EARLY ADDRESS] locationAddress = ' . $addr);
+    error_log('[EARLY ADDRESS] locationCity    = ' . $city);
+    error_log('[EARLY ADDRESS] locationState   = ' . $state);
+} else {
+    error_log('[EARLY INPUT] Failed to decode JSON input');
 }
 
 require_once __DIR__ . '/utils/processProposedContact.utils.php';
-
-error_log("[PIPELINE] Utils file loaded successfully");
+error_log('[PIPELINE] Utils file loaded successfully');
 
 #endregion
 
