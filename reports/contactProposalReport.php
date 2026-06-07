@@ -315,14 +315,25 @@ function buildParcelSummarySection(array $proposal): string
 function buildParcelDetailSection(array $proposal): string
 {
     $parcelDetails = $proposal['parcelDetails'] ?? [];
-    $proposalCode  = $proposal['proposalCode'] ?? $proposal['code'] ?? '';
 
     if (empty($parcelDetails)) {
         return '';
     }
 
-    // Base path to proposalArtifacts
-    $artifactsPath = __DIR__ . '/../../data/runtimeEphemeral/proposalArtifacts/';
+    // Robust path resolution for proposalArtifacts
+    $possiblePaths = [
+        __DIR__ . '/../../data/runtimeEphemeral/proposalArtifacts/',
+        __DIR__ . '/../data/runtimeEphemeral/proposalArtifacts/',
+        dirname(__DIR__, 2) . '/data/runtimeEphemeral/proposalArtifacts/',
+    ];
+
+    $artifactsPath = '';
+    foreach ($possiblePaths as $path) {
+        if (is_dir($path)) {
+            $artifactsPath = $path;
+            break;
+        }
+    }
 
     $html = '<div class="section">';
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
@@ -333,15 +344,17 @@ function buildParcelDetailSection(array $proposal): string
 
     foreach ($parcelDetails as $index => $parcel) {
         $parcelNum = $index + 1;
-        $apn       = $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? 'Unknown APN';
+        $apnRaw    = $parcel['apnRaw'] ?? $parcel['apnDisplay'] ?? '';
+        $apn       = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $apnRaw)); // Normalize APN
+
         $owner     = $parcel['owner'] ?? '—';
         $address   = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
 
-        // Look for saved parcel image (e.g. IMG-PRP0042-PARCEL-01.png)
+        // Look for image using APN-based naming: PARCEL-10803009E.png
         $parcelImage = null;
-        if ($proposalCode) {
-            $expectedFilename = 'IMG-' . $proposalCode . '-PARCEL-' . str_pad($parcelNum, 2, '0', STR_PAD_LEFT) . '.png';
-            $fullPath = $artifactsPath . $expectedFilename;
+        if (!empty($apn) && !empty($artifactsPath)) {
+            $filename = 'PARCEL-' . $apn . '.png';
+            $fullPath = $artifactsPath . $filename;
 
             if (file_exists($fullPath)) {
                 $parcelImage = $fullPath;
@@ -354,14 +367,14 @@ function buildParcelDetailSection(array $proposal): string
         $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">';
         $html .= '<div>';
         $html .= '<span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>';
-        $html .= '<span style="font-size:12pt; font-weight:600; margin-left:12px;">APN: ' . htmlspecialchars($apn) . '</span>';
+        $html .= '<span style="font-size:12pt; font-weight:600; margin-left:12px;">APN: ' . htmlspecialchars($apnRaw) . '</span>';
         $html .= '</div>';
         $html .= '<div style="background:#e6f0ff; color:#14377C; padding:4px 14px; border-radius:5px; font-size:10pt; font-weight:600;">';
         $html .= 'Confidence: ' . ($parcel['confidence'] ?? 98) . '%';
         $html .= '</div>';
         $html .= '</div>';
 
-        // Details
+        // Details Table
         $html .= '<table class="dataTable" style="margin-bottom:12px;">';
         $html .= '<tr><th style="width:22%;">Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
         $html .= '<tr><th>Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
