@@ -1512,6 +1512,11 @@ if (
 
     ]);
 
+    error_log(
+        "[askOpenAI] Calling processor: "
+        . $processorUrl
+    );
+
     $proposalResponse =
         curl_exec($ch);
 
@@ -1540,6 +1545,11 @@ if (
         exit;
     }
 
+    error_log(
+        "[askOpenAI] Processor response length: "
+        . strlen((string)$proposalResponse)
+    );
+
     $httpCode =
         curl_getinfo(
             $ch,
@@ -1555,14 +1565,15 @@ if (
             "[askOpenAI] Proposal processor returned HTTP {$httpCode}"
         );
 
+        error_log(
+            "[askOpenAI] Proposal processor body: "
+            . substr((string)$proposalResponse, 0, 5000)
+        );
+
         echo json_encode([
-
-            'status' =>
-                'error',
-
-            'message' =>
-                'Proposal processor returned invalid response.'
-
+            'status'       => 'error',
+            'httpCode'     => $httpCode,
+            'rawResponse'  => $proposalResponse
         ]);
 
         exit;
