@@ -627,84 +627,69 @@ $parcelDetails = [];
 
 if ($isMaricopa && !empty($parsed['location']['address'])) {
 
-    // -------------------------------------------------
-    // TEMP DEBUG — Parcel Address Construction
-    // -------------------------------------------------
+    // Build the lookup address
     $parcelLookupAddress = trim(implode(', ', array_filter([
         $parsed['location']['address'] ?? '',
         $parsed['location']['city'] ?? '',
         $parsed['location']['state'] ?? ''
     ])));
 
-    error_log("[PARCEL-CALL] Raw parcelLookupAddress = '" . $parcelLookupAddress . "'");
-    error_log("[PARCEL-CALL] location.address = '" . ($parsed['location']['address'] ?? 'MISSING') . "'");
-    error_log("[PARCEL-CALL] location.city    = '" . ($parsed['location']['city'] ?? 'MISSING') . "'");
-    error_log("[PARCEL-CALL] location.state   = '" . ($parsed['location']['state'] ?? 'MISSING') . "'");
+    // === REQUESTED LOGS ===
+    error_log('[PARCEL] Lookup Address=' . $parcelLookupAddress);
 
     $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
 
-    error_log("[PARCEL-CALL] lookupMaricopaParcel returned " . count($rawParcels) . " candidates");
+    // === REQUESTED LOGS ===
+    error_log('[PARCEL] Raw Count=' . count($rawParcels));
 
-    $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
+    if (!empty($rawParcels)) {
+        error_log('[PARCEL] First Parcel=' . json_encode($rawParcels[0]));
+    }
 
-    // -------------------------------------------------
-    // STATEFUL PARCEL CANDIDATE NORMALIZATION (Rich Data)
-    // -------------------------------------------------
+    // Normalize
     $parcelDetails = array_map(function ($p) {
         return [
-            // === Core Identification ===
-            'apnRaw'          => $p['apnRaw'] ?? null,
-            'apnDisplay'      => $p['apnDisplay'] ?? null,
-
-            // === Location ===
-            'address'         => $p['address'] ?? '',
-            'city'            => $p['city'] ?? '',
-            'jurisdiction'    => $p['jurisdiction'] ?? '',
-
-            // === Ownership ===
-            'owner'           => $p['owner'] ?? '',
-
-            // === Mailing Address (New) ===
-            'mailingAddress'  => $p['mailingAddress'] ?? '',
-            'mailingCity'     => $p['mailingCity'] ?? '',
-            'mailingState'    => $p['mailingState'] ?? '',
-            'mailingZip'      => $p['mailingZip'] ?? '',
-
-            // === Transactional Data (New) ===
-            'deedNumber'      => $p['deedNumber'] ?? '',
-            'saleDate'        => $p['saleDate'] ?? '',
-            'salePrice'       => $p['salePrice'] ?? null,
-
-            // === Property Details (New) ===
-            'section'         => $p['section'] ?? '',
-            'township'        => $p['township'] ?? '',
-            'range'           => $p['range'] ?? '',
-            'lotSizeSqFt'     => $p['lotSizeSqFt'] ?? null,
-            'mcr'             => $p['mcr'] ?? '',
-            'subdivision'     => $p['subdivision'] ?? '',
-            'yearBuilt'       => $p['yearBuilt'] ?? null,
-
-            // === Coordinates (Already added previously) ===
-            'latitude'        => $p['latitude'] ?? null,
-            'longitude'       => $p['longitude'] ?? null,
-
-            // === Source & Confidence ===
-            'source'          => $p['source'] ?? 'mca_arcgis_mcassessor',
-            'confidence'      => $p['confidence'] ?? 70,
-            'matchedInput'    => $p['matchedInput'] ?? '',
-
-            // === OPERATIONAL STATE (Keep these) ===
-            'provided'        => true,
-            'selected'        => false,
-            'resolutionSource'=> 'unresolved'
+            'apnRaw'           => $p['apnRaw'] ?? null,
+            'apnDisplay'       => $p['apnDisplay'] ?? null,
+            'address'          => $p['address'] ?? '',
+            'city'             => $p['city'] ?? '',
+            'jurisdiction'     => $p['jurisdiction'] ?? '',
+            'owner'            => $p['owner'] ?? '',
+            'mailingAddress'   => $p['mailingAddress'] ?? '',
+            'mailingCity'      => $p['mailingCity'] ?? '',
+            'mailingState'     => $p['mailingState'] ?? '',
+            'mailingZip'       => $p['mailingZip'] ?? '',
+            'deedNumber'       => $p['deedNumber'] ?? '',
+            'saleDate'         => $p['saleDate'] ?? '',
+            'salePrice'        => $p['salePrice'] ?? null,
+            'section'          => $p['section'] ?? '',
+            'township'         => $p['township'] ?? '',
+            'range'            => $p['range'] ?? '',
+            'lotSizeSqFt'      => $p['lotSizeSqFt'] ?? null,
+            'mcr'              => $p['mcr'] ?? '',
+            'subdivision'      => $p['subdivision'] ?? '',
+            'yearBuilt'        => $p['yearBuilt'] ?? null,
+            'latitude'         => $p['latitude'] ?? null,
+            'longitude'        => $p['longitude'] ?? null,
+            'source'           => $p['source'] ?? 'mca_arcgis_mcassessor',
+            'confidence'       => $p['confidence'] ?? 70,
+            'matchedInput'     => $p['matchedInput'] ?? '',
+            'provided'         => true,
+            'selected'         => false,
+            'resolutionSource' => 'unresolved'
         ];
     }, $rawParcels ?? []);
 
-    error_log("[MARICOPA-DEBUG] Normalized " . count($parcelDetails) . " parcel candidates");
+    // Attach
+    $parsed['location']['parcelDetails'] = $parcelDetails;
 
-    // -------------------------------------------------
-    // Automatic selection when exactly one candidate
-    // -------------------------------------------------
+    // === REQUESTED LOG ===
+    error_log(
+        '[PARCEL] Attached Count=' . 
+        count($parsed['location']['parcelDetails'] ?? [])
+    );
+
+    // Status logic
     if (count($parcelDetails) === 1) {
         $parcelDetails[0]['selected']         = true;
         $parcelDetails[0]['resolutionSource'] = 'automatic';
@@ -712,6 +697,7 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
         $locationValidation['parcelStatus']         = 'resolved';
         $locationValidation['apnResolved']          = true;
         $locationValidation['jurisdictionResolved'] = true;
+
     } elseif (count($parcelDetails) > 1) {
         $locationValidation['parcelStatus'] = 'multiple_matches';
         $locationValidation['apnResolved']  = false;
