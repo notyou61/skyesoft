@@ -297,7 +297,6 @@ function buildParcelSummarySection(array $proposal): string
     return $html;
 }
 
-
 function buildParcelDetailSection(array $proposal): string
 {
     $parcelDetails = $proposal['parcelDetails'] ?? [];
@@ -305,10 +304,6 @@ function buildParcelDetailSection(array $proposal): string
     if (empty($parcelDetails)) {
         return '';
     }
-
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-                ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-                ?: '';
 
     $html = '<div class="section">';
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
@@ -324,10 +319,6 @@ function buildParcelDetailSection(array $proposal): string
         $owner     = $parcel['owner'] ?? '—';
         $address   = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
 
-        // Coordinates (for Google image + Maricopa link)
-        $lat = $parcel['latitude'] ?? $proposal['latitude'] ?? $proposal['locationLatitude'] ?? null;
-        $lng = $parcel['longitude'] ?? $proposal['longitude'] ?? $proposal['locationLongitude'] ?? null;
-
         $html .= '<div class="parcel-block" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px;">';
 
         // Header
@@ -342,45 +333,27 @@ function buildParcelDetailSection(array $proposal): string
         $html .= '</div>';
 
         // Details Table
-        $html .= '<table class="dataTable" style="margin-bottom:12px;">';
+        $html .= '<table class="dataTable" style="margin-bottom:14px;">';
         $html .= '<tr><th style="width:22%;">Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
         $html .= '<tr><th>Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
         $html .= '</table>';
 
-        // === Dynamic Google Satellite Preview ===
-        if ($googleKey && $lat && $lng) {
-            $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
-                . 'center=' . $lat . ',' . $lng
-                . '&zoom=19&size=900x420&maptype=satellite'
-                . '&markers=color:red%7Csize:mid%7C' . $lat . ',' . $lng
-                . '&key=' . $googleKey;
-
-            $html .= '<div style="text-align:center; margin:10px 0;">';
-            $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
-            $html .= 'style="max-width:100%; max-height:420px; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-            $html .= 'alt="Satellite view of parcel">';
-            $html .= '</div>';
-        }
-
-        // === Maricopa County Link (Always shown) ===
+        // === Maricopa County Link (Primary Action) ===
         $maricopaUrl = 'https://mcassessor.maricopa.gov/';
 
-        // If we have a clean APN, we can try to make a better link (adjust if you have the exact URL format)
         if (!empty($apn)) {
-            // Example format - adjust if Maricopa has a direct APN link
             $maricopaUrl = 'https://mcassessor.maricopa.gov/Parcel/' . urlencode($apnRaw);
-        } elseif ($lat && $lng) {
-            $maricopaUrl = 'https://www.maricopa.gov/gis/?lat=' . $lat . '&lng=' . $lng;
         }
 
-        $html .= '<div style="text-align:center; margin:12px 0 8px 0;">';
+        $html .= '<div style="text-align:center; margin:16px 0 8px 0;">';
         $html .= '<a href="' . htmlspecialchars($maricopaUrl) . '" target="_blank" ';
-        $html .= 'style="display:inline-block; background:#14377C; color:white; padding:10px 24px; border-radius:6px; text-decoration:none; font-weight:600; font-size:11pt;">';
+        $html .= 'style="display:inline-block; background:#14377C; color:white; padding:12px 28px; border-radius:6px; text-decoration:none; font-weight:600; font-size:11.5pt;">';
         $html .= '🗺️ Open in Maricopa County Map Viewer';
         $html .= '</a>';
-        $html .= '<div style="font-size:9pt; color:#666; margin-top:6px;">';
-        $html .= 'Official Maricopa County parcel boundaries &amp; ownership';
         $html .= '</div>';
+
+        $html .= '<div style="text-align:center; font-size:9.5pt; color:#555; margin-bottom:8px;">';
+        $html .= 'Official Maricopa County parcel boundaries, ownership &amp; records';
         $html .= '</div>';
 
         $html .= '</div>'; // close parcel-block
