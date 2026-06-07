@@ -286,120 +286,76 @@ function buildSatelliteSection(array $proposal): string
 
 function buildParcelSummarySection(array $proposal): string
 {
-    // Try to get AI-generated narrative first
-    $narrative = $proposal['parcelSummaryNarrative'] 
-              ?? $proposal['reportArtifacts']['parcel_summary_narrative'] 
-              ?? '';
-
-    $html = '<div class="section" style="page-break-inside:avoid;">';
-
+    $html = '<div style="page-break-inside:avoid; margin-top:10px;">';
     $html .= buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
-
     $html .= '<div class="parcelSummaryBlock" style="page-break-inside:avoid;">';
-
-    if (!empty($narrative)) {
-        // Use AI-generated narrative
-        $html .= nl2br(htmlspecialchars($narrative));
-    } else {
-        // Fallback message
-        $html .= '<strong>Multiple parcel candidates exist at this address.</strong><br><br>';
-        $html .= 'Review and selection is required before proceeding.';
-    }
-
+    $html .= '<strong>Multiple parcel candidates exist at this address.</strong><br><br>';
+    $html .= 'Review and selection is required before proceeding.';
     $html .= '</div>';
     $html .= '</div>';
 
     return $html;
 }
 
-function buildParcelDetailSection(array $proposal): string
-{
-    $parcelDetails = $proposal['parcelDetails'] ?? [];
+if (!function_exists('buildParcelDetailSection')) {
 
-    if (empty($parcelDetails)) {
-        return '';
-    }
+    function buildParcelDetailSection(array $proposal): string
+    {
+        $parcelDetails = $proposal['parcelDetails'] ?? [];
 
-    // Robust path resolution for proposalArtifacts
-    $possiblePaths = [
-        __DIR__ . '/../../data/runtimeEphemeral/proposalArtifacts/',
-        __DIR__ . '/../data/runtimeEphemeral/proposalArtifacts/',
-        dirname(__DIR__, 2) . '/data/runtimeEphemeral/proposalArtifacts/',
-    ];
-
-    $artifactsPath = '';
-    foreach ($possiblePaths as $path) {
-        if (is_dir($path)) {
-            $artifactsPath = $path;
-            break;
-        }
-    }
-
-    $html = '<div class="section">';
-    $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
-
-    $html .= '<div class="parcelSummaryBlock" style="margin-bottom:16px;">';
-    $html .= 'The following parcel candidates were identified for this location. Please review and select the correct parcel(s) before proceeding.';
-    $html .= '</div>';
-
-    foreach ($parcelDetails as $index => $parcel) {
-        $parcelNum = $index + 1;
-        $apnRaw    = $parcel['apnRaw'] ?? $parcel['apnDisplay'] ?? '';
-        $apn       = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $apnRaw)); // Normalize APN
-
-        $owner     = $parcel['owner'] ?? '—';
-        $address   = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
-
-        // Look for image using APN-based naming: PARCEL-10803009E.png
-        $parcelImage = null;
-        if (!empty($apn) && !empty($artifactsPath)) {
-            $filename = 'PARCEL-' . $apn . '.png';
-            $fullPath = $artifactsPath . $filename;
-
-            if (file_exists($fullPath)) {
-                $parcelImage = $fullPath;
-            }
+        if (empty($parcelDetails)) {
+            return '';
         }
 
-        $html .= '<div class="parcel-block" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 20px;">';
+        $html = '<div class="section">';
+        $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
 
-        // Header
-        $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">';
-        $html .= '<div>';
-        $html .= '<span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>';
-        $html .= '<span style="font-size:12pt; font-weight:600; margin-left:12px;">APN: ' . htmlspecialchars($apnRaw) . '</span>';
-        $html .= '</div>';
-        $html .= '<div style="background:#e6f0ff; color:#14377C; padding:4px 14px; border-radius:5px; font-size:10pt; font-weight:600;">';
-        $html .= 'Confidence: ' . ($parcel['confidence'] ?? 98) . '%';
-        $html .= '</div>';
+        $html .= '<div class="parcelSummaryBlock" style="margin-bottom:16px;">';
+        $html .= 'The following parcel candidates were identified for this location. ';
+        $html .= 'Please review and select the correct parcel(s) before proceeding.';
         $html .= '</div>';
 
-        // Details Table
-        $html .= '<table class="dataTable" style="margin-bottom:12px;">';
-        $html .= '<tr><th style="width:22%;">Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
-        $html .= '<tr><th>Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
-        $html .= '</table>';
+        foreach ($parcelDetails as $index => $parcel) {
+            $parcelNum = $index + 1;
+            $apn       = $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? 'Unknown APN';
+            $owner     = $parcel['owner'] ?? '—';
+            $address   = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
 
-        // Image
-        if ($parcelImage) {
+            $html .= '<div class="parcel-block" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 20px;">';
+
+            // Header
+            $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">';
+            $html .= '<div>';
+            $html .= '<span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>';
+            $html .= '<span style="font-size:12pt; font-weight:600; margin-left:12px;">APN: ' . htmlspecialchars($apn) . '</span>';
+            $html .= '</div>';
+
+            $confidence = $parcel['confidence'] ?? 95;
+            $html .= '<div style="background:#e6f0ff; color:#14377C; padding:4px 14px; border-radius:5px; font-size:10pt; font-weight:600;">';
+            $html .= 'Confidence: ' . $confidence . '%';
+            $html .= '</div>';
+            $html .= '</div>';
+
+            // Details Table
+            $html .= '<table class="dataTable" style="margin-bottom:10px;">';
+            $html .= '<tr><th style="width:22%;">Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
+            $html .= '<tr><th>Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
+            $html .= '</table>';
+
+            // Image placeholder (we'll improve this next)
             $html .= '<div style="text-align:center; margin:10px 0;">';
-            $html .= '<img src="' . htmlspecialchars($parcelImage) . '" style="max-width:100%; max-height:420px; height:auto; border:1px solid #bbb; border-radius:6px;">';
-            $html .= '<div style="font-size:9pt; color:#555; margin-top:6px; font-weight:500;">';
-            $html .= 'Maricopa County Aerial Imagery • Highlighted Building Footprint';
+            $html .= '<div class="image-placeholder" style="min-height:220px; display:flex; align-items:center; justify-content:center; background:#f8f9fa; border:1px dashed #14377C;">';
+            $html .= '<span style="color:#555; font-size:10.5pt;">Parcel Map Image<br><small>(Dynamic generation coming next)</small></span>';
             $html .= '</div>';
             $html .= '</div>';
-        } else {
-            $html .= '<div style="padding:20px; background:#f8f9fa; border:1px dashed #14377C; border-radius:6px; text-align:center; margin:10px 0;">';
-            $html .= '<span style="color:#666; font-size:10.5pt;">Parcel map image not available</span>';
-            $html .= '</div>';
+
+            $html .= '</div>'; // close parcel-block
         }
 
-        $html .= '</div>'; // close parcel-block
+        $html .= '</div>';
+
+        return $html;
     }
-
-    $html .= '</div>';
-
-    return $html;
 }
 
 function buildStreetViewSection(array $proposal): string
