@@ -315,11 +315,14 @@ function buildParcelSummarySection(array $proposal): string
 function buildParcelDetailSection(array $proposal): string
 {
     $parcelDetails = $proposal['parcelDetails'] ?? [];
-    $parcelMaps    = $proposal['reportArtifacts']['parcel_maps'] ?? [];
+    $proposalCode  = $proposal['proposalCode'] ?? $proposal['code'] ?? '';
 
     if (empty($parcelDetails)) {
         return '';
     }
+
+    // Base path to proposalArtifacts
+    $artifactsPath = __DIR__ . '/../../data/runtimeEphemeral/proposalArtifacts/';
 
     $html = '<div class="section">';
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
@@ -334,13 +337,16 @@ function buildParcelDetailSection(array $proposal): string
         $owner     = $parcel['owner'] ?? '—';
         $address   = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
 
-        // Get generated image if available
-        $parcelImage = $parcel['parcelMapImage'] ?? ($parcelMaps[$index] ?? null);
+        // Look for saved parcel image (e.g. IMG-PRP0042-PARCEL-01.png)
+        $parcelImage = null;
+        if ($proposalCode) {
+            $expectedFilename = 'IMG-' . $proposalCode . '-PARCEL-' . str_pad($parcelNum, 2, '0', STR_PAD_LEFT) . '.png';
+            $fullPath = $artifactsPath . $expectedFilename;
 
-        // Build Maricopa County link (you can enhance this with real parcel-specific params later)
-        $maricopaLink = 'https://maps.mcassessor.maricopa.gov/ipa.aspx?1=' . urlencode($parcel['latitude'] ?? '') . 
-                        '&2=' . urlencode($parcel['longitude'] ?? '') . 
-                        '&a=' . urlencode($address);
+            if (file_exists($fullPath)) {
+                $parcelImage = $fullPath;
+            }
+        }
 
         $html .= '<div class="parcel-block" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 20px;">';
 
@@ -361,24 +367,19 @@ function buildParcelDetailSection(array $proposal): string
         $html .= '<tr><th>Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
         $html .= '</table>';
 
-        // Image or Placeholder + Link
-        if ($parcelImage && file_exists($parcelImage)) {
+        // Image
+        if ($parcelImage) {
             $html .= '<div style="text-align:center; margin:10px 0;">';
             $html .= '<img src="' . htmlspecialchars($parcelImage) . '" style="max-width:100%; max-height:420px; height:auto; border:1px solid #bbb; border-radius:6px;">';
-            $html .= '<div style="font-size:9pt; color:#555; margin-top:6px;">Maricopa County Aerial Imagery • Parcel Map</div>';
+            $html .= '<div style="font-size:9pt; color:#555; margin-top:6px; font-weight:500;">';
+            $html .= 'Maricopa County Aerial Imagery • Highlighted Building Footprint';
+            $html .= '</div>';
             $html .= '</div>';
         } else {
             $html .= '<div style="padding:20px; background:#f8f9fa; border:1px dashed #14377C; border-radius:6px; text-align:center; margin:10px 0;">';
             $html .= '<span style="color:#666; font-size:10.5pt;">Parcel map image not available</span>';
             $html .= '</div>';
         }
-
-        // Link to official Maricopa map
-        $html .= '<div style="text-align:center; margin-top:8px;">';
-        $html .= '<a href="' . htmlspecialchars($maricopaLink) . '" target="_blank" style="font-size:9.5pt; color:#14377C; text-decoration:underline;">';
-        $html .= '🔗 View on Maricopa County Assessor Map';
-        $html .= '</a>';
-        $html .= '</div>';
 
         $html .= '</div>'; // close parcel-block
     }
