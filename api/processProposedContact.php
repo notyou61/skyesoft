@@ -619,34 +619,35 @@ $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 $isMaricopa = ($county === 'MARICOPA');
 $locationValidation['isMaricopa'] = $isMaricopa;
 
-error_log("[MARICOPA-CHECK] county='" . ($parsed['location']['county'] ?? 'MISSING') . 
-          "' | address='" . ($parsed['location']['address'] ?? 'MISSING') . 
-          "' | isMaricopa=" . ($isMaricopa ? 'true' : 'false'));
+error_log('[PARCEL TEST] location.address=' . json_encode($parsed['location']['address'] ?? null));
+error_log('[PARCEL TEST] location.locationAddress=' . json_encode($parsed['location']['locationAddress'] ?? null));
+error_log('[PARCEL TEST] isMaricopa=' . json_encode($isMaricopa));
 
 $parcelDetails = [];
 
-if ($isMaricopa && !empty($parsed['location']['address'])) {
+if (
+    $isMaricopa &&
+    !empty($parsed['location']['locationAddress'])
+) {
 
-    // Build the lookup address
+    // Build lookup address using the correct standardized field names
     $parcelLookupAddress = trim(implode(', ', array_filter([
-        $parsed['location']['address'] ?? '',
-        $parsed['location']['city'] ?? '',
-        $parsed['location']['state'] ?? ''
+        $parsed['location']['locationAddress'] ?? '',
+        $parsed['location']['locationCity'] ?? '',
+        $parsed['location']['locationState'] ?? ''
     ])));
 
-    // === REQUESTED LOGS ===
     error_log('[PARCEL] Lookup Address=' . $parcelLookupAddress);
 
     $rawParcels = lookupMaricopaParcel($parcelLookupAddress);
 
-    // === REQUESTED LOGS ===
     error_log('[PARCEL] Raw Count=' . count($rawParcels));
 
     if (!empty($rawParcels)) {
         error_log('[PARCEL] First Parcel=' . json_encode($rawParcels[0]));
     }
 
-    // Normalize
+    // Normalize parcel candidates
     $parcelDetails = array_map(function ($p) {
         return [
             'apnRaw'           => $p['apnRaw'] ?? null,
@@ -680,16 +681,12 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
         ];
     }, $rawParcels ?? []);
 
-    // Attach
+    // Attach to parsed
     $parsed['location']['parcelDetails'] = $parcelDetails;
 
-    // === REQUESTED LOG ===
-    error_log(
-        '[PARCEL] Attached Count=' . 
-        count($parsed['location']['parcelDetails'] ?? [])
-    );
+    error_log('[PARCEL] Attached Count=' . count($parsed['location']['parcelDetails'] ?? []));
 
-    // Status logic
+    // Set status flags
     if (count($parcelDetails) === 1) {
         $parcelDetails[0]['selected']         = true;
         $parcelDetails[0]['resolutionSource'] = 'automatic';
