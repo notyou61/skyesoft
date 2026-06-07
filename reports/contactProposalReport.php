@@ -300,9 +300,10 @@ function buildParcelSummarySection(array $proposal): string
 function buildParcelDetailSection(array $proposal): string
 {
     $parcelDetails = $proposal['parcelDetails'] ?? [];
+    $parcelMaps    = $proposal['reportArtifacts']['parcel_maps'] ?? [];
 
     if (empty($parcelDetails)) {
-        return ''; // Nothing to show
+        return '';
     }
 
     $html = '<div class="section">';
@@ -310,6 +311,7 @@ function buildParcelDetailSection(array $proposal): string
     // Section Header
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
 
+    // Intro text
     $html .= '<div class="parcelSummaryBlock" style="margin-bottom:16px;">';
     $html .= 'The following parcel candidates were identified for this location. ';
     $html .= 'Please review and select the correct parcel(s) before proceeding.';
@@ -317,13 +319,16 @@ function buildParcelDetailSection(array $proposal): string
 
     foreach ($parcelDetails as $index => $parcel) {
         $parcelNum = $index + 1;
-        $apn = $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? 'Unknown APN';
-        $owner = $parcel['owner'] ?? '—';
-        $address = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
+        $apn       = $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? 'Unknown APN';
+        $owner     = $parcel['owner'] ?? '—';
+        $address   = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
+
+        // Try to get the image (either attached to parcel or from artifacts array)
+        $parcelImage = $parcel['parcelMapImage'] ?? ($parcelMaps[$index] ?? null);
 
         $html .= '<div class="parcel-block" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 20px;">';
 
-        // Header row with APN and Confidence
+        // Header: Parcel number + APN + Confidence
         $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">';
         $html .= '<div>';
         $html .= '<span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>';
@@ -337,17 +342,27 @@ function buildParcelDetailSection(array $proposal): string
         $html .= '</div>';
 
         // Details Table
-        $html .= '<table class="dataTable" style="margin-bottom:10px;">';
+        $html .= '<table class="dataTable" style="margin-bottom:12px;">';
         $html .= '<tr><th style="width:22%;">Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
         $html .= '<tr><th>Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
         $html .= '</table>';
 
-        // Image placeholder / future dynamic image
-        $html .= '<div style="text-align:center; margin:10px 0;">';
-        $html .= '<div class="image-placeholder" style="min-height:220px; display:flex; align-items:center; justify-content:center; background:#f8f9fa; border:1px dashed #14377C;">';
-        $html .= '<span style="color:#555; font-size:10.5pt;">Parcel Map Image<br><small>(Dynamic generation coming next)</small></span>';
-        $html .= '</div>';
-        $html .= '</div>';
+        // Parcel Map Image
+        if ($parcelImage && file_exists($parcelImage)) {
+            $html .= '<div style="text-align:center; margin:10px 0;">';
+            $html .= '<img src="' . htmlspecialchars($parcelImage) . '" ';
+            $html .= 'style="max-width:100%; max-height:420px; height:auto; border:1px solid #bbb; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">';
+
+            $html .= '<div style="font-size:9pt; color:#555; margin-top:6px; font-weight:500;">';
+            $html .= 'Maricopa County Aerial Imagery • Parcel Map';
+            $html .= '</div>';
+            $html .= '</div>';
+        } else {
+            // Placeholder if image not generated yet
+            $html .= '<div style="padding:20px; background:#f8f9fa; border:1px dashed #14377C; border-radius:6px; text-align:center; margin:10px 0;">';
+            $html .= '<span style="color:#666; font-size:10.5pt;">Parcel map image not available</span>';
+            $html .= '</div>';
+        }
 
         $html .= '</div>'; // close parcel-block
     }
