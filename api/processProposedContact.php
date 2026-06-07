@@ -910,6 +910,8 @@ if (!$pdo) {
     error_log('[LOCATION DUPLICATE] ' . json_encode($locationDuplicate));
 }
 
+$parsed['location']['_activeCodeVersion'] = 'county-clean-v3-' . date('His');
+
 #endregion
 
 #region SECTION 08 — PCM DECISION — Governance Matrix (PC + RS Model)
