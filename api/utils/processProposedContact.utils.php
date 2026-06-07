@@ -289,7 +289,7 @@ function resolveGeographyFromAddress(string $address, array $googleData = []): ?
     return null;
 }
 
-// 📦 lookupMaricopaParcel — ArcGIS parcel lookup for Maricopa County
+// 📦 lookupMaricopaParcel — ArcGIS parcel lookup for Maricopa County (with per-parcel lat/lon)
 function lookupMaricopaParcel(string $address): array {
     if (empty(trim($address))) {
         return [];
@@ -307,10 +307,12 @@ function lookupMaricopaParcel(string $address): array {
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$safeAddr}%')";
 
     $params = http_build_query([
-        'where'          => $where,
-        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-        'returnGeometry' => 'false',
-        'f'              => 'json'
+        'where'             => $where,
+        'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+        'returnGeometry'    => 'true',           // ← Enable geometry
+        'outSR'             => '4326',           // ← WGS84 lat/lon
+        'geometryPrecision' => 6,
+        'f'                 => 'json'
     ]);
 
     $response = @file_get_contents($url . '?' . $params);
@@ -325,10 +327,34 @@ function lookupMaricopaParcel(string $address): array {
 
     foreach ($features as $feature) {
         $attr = $feature['attributes'] ?? [];
+        $geom = $feature['geometry'] ?? [];
+
         if (empty($attr['APN'])) continue;
 
         $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
         $dbAddress = trim($attr['PHYSICAL_ADDRESS'] ?? '');
+
+        // === Calculate centroid from polygon rings ===
+        $latitude  = null;
+        $longitude = null;
+
+        if (!empty($geom['rings'][0])) {
+            $ring = $geom['rings'][0];
+            $count = count($ring);
+
+            if ($count > 0) {
+                $sumX = 0;
+                $sumY = 0;
+
+                foreach ($ring as $point) {
+                    $sumX += $point[0];   // longitude
+                    $sumY += $point[1];   // latitude
+                }
+
+                $longitude = round($sumX / $count, 6);
+                $latitude  = round($sumY / $count, 6);
+            }
+        }
 
         $score = 80;
         if (stripos($dbAddress, '3145 N 33RD AVE') !== false) {
@@ -342,6 +368,11 @@ function lookupMaricopaParcel(string $address): array {
             'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
             'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
             'owner'        => trim($attr['OWNER_NAME'] ?? ''),
+
+            // === NEW: Per-parcel unique coordinates ===
+            'latitude'     => $latitude,
+            'longitude'    => $longitude,
+
             'source'       => 'mca_arcgis_mcassessor',
             'confidence'   => $score,
             'matchedInput' => $cleanAddress
