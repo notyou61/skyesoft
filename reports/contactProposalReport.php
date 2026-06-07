@@ -286,11 +286,26 @@ function buildSatelliteSection(array $proposal): string
 
 function buildParcelSummarySection(array $proposal): string
 {
-    $html = '<div style="page-break-inside:avoid; margin-top:10px;">';
+    // Try to get AI-generated narrative first
+    $narrative = $proposal['parcelSummaryNarrative'] 
+              ?? $proposal['reportArtifacts']['parcel_summary_narrative'] 
+              ?? '';
+
+    $html = '<div class="section" style="page-break-inside:avoid;">';
+
     $html .= buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
+
     $html .= '<div class="parcelSummaryBlock" style="page-break-inside:avoid;">';
-    $html .= '<strong>Multiple parcel candidates exist at this address.</strong><br><br>';
-    $html .= 'Review and selection is required before proceeding.';
+
+    if (!empty($narrative)) {
+        // Use AI-generated narrative
+        $html .= nl2br(htmlspecialchars($narrative));
+    } else {
+        // Fallback message
+        $html .= '<strong>Multiple parcel candidates exist at this address.</strong><br><br>';
+        $html .= 'Review and selection is required before proceeding.';
+    }
+
     $html .= '</div>';
     $html .= '</div>';
 
