@@ -597,7 +597,7 @@ error_log("[COUNTY] Final → county: '{$parsed['location']['county']}' | county
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
-$isMaricopa = ($county === 'MARICOPA');
+$isMaricopa = strtoupper(str_replace(' COUNTY', '', $county)) === 'MARICOPA';
 $locationValidation['isMaricopa'] = $isMaricopa;
 
 error_log("[MARICOPA-CHECK] county='" . ($parsed['location']['county'] ?? 'MISSING') . 
@@ -764,8 +764,12 @@ $dataIntegrityStatus = [
 $missing = validateParsed($parsed) ?? [];
 
 // =====================================================
-// PCM-07 — Relax Contact Requirements
+// PCM-07 Defaults
 // =====================================================
+
+$isExplicitLocationOnlyIntent = false;
+$declaredEntityName = '';
+
 if ($isExplicitLocationOnlyIntent === true) {
 
     $relaxFields = [
