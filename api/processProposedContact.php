@@ -1159,7 +1159,7 @@ $reportUrl = $reportPath && file_exists($reportPath)
 
 #region SECTION 12 - FINAL OUTPUT — Response Builder
 
-    require_once __DIR__ . '/detectAndProposeContact.response.php';
+    //require_once __DIR__ . '/detectAndProposeContact.response.php';
 
     // Do NOT echo JSON here — let response.php handle the full output
     global $proposalId, $reportUrl, $parsed, $pcm, $data, $meta, $resolution, $persistence, $aiData, $rawInputOriginal, $activitySessionId;
