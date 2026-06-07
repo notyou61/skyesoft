@@ -622,6 +622,9 @@ if ($isMaricopa && !empty($parsed['location']['address'])) {
             'source'          => $p['source'] ?? 'mca_arcgis_mcassessor',
             'confidence'      => $p['confidence'] ?? 70,
             'matchedInput'    => $p['matchedInput'] ?? '',
+            // === NEW: Capture coordinates from Maricopa API ===
+            'latitude'        => $p['latitude'] ?? null,
+            'longitude'       => $p['longitude'] ?? null,
 
             // === OPERATIONAL STATE ===
             'provided'        => true,
