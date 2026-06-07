@@ -165,15 +165,56 @@ function buildReportStyles(): string
             page-break-inside: avoid;
         }
         
+        /* =============================================
+           IMPROVED: Parcel Block Styling
+           ============================================= */
         .parcel-block { 
-            border: 2px solid #14377C; 
+            border: 1.5px solid #14377C; 
             border-radius: 8px; 
-            padding: 14px; 
-            margin-bottom: 20px; 
-            background: #fafafa; 
+            padding: 16px 18px; 
+            margin-bottom: 22px; 
+            background: #ffffff; 
             page-break-inside: avoid;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         
+        .parcel-block .dataTable {
+            margin-bottom: 12px;
+        }
+        
+        .parcel-block .dataTable th {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-weight: 600;
+            width: 26%;
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
+            font-size: 10pt;
+        }
+        
+        .parcel-block .dataTable td {
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+            font-size: 10pt;
+            line-height: 1.45;
+        }
+        
+        /* Highlight important new rows */
+        .parcel-block .dataTable tr:nth-child(3) td,   /* Mailing Address */
+        .parcel-block .dataTable tr:nth-child(4) td,   /* Deed / Sale Info */
+        .parcel-block .dataTable tr:nth-child(5) td {  /* Property Details */
+            background-color: #f8fafc;
+        }
+        
+        .parcelSummaryBlock {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 14px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
         .image-placeholder { 
             border: 2px dashed #14377C; 
             background: #f8f9fa; 
@@ -184,10 +225,11 @@ function buildReportStyles(): string
             page-break-inside: avoid;
         }
 
-        /* Force the entire Satellite + Parcel group to stay together */
+        /* Force sections to stay together */
         .satellite-group,
         .parcelSummaryBlock,
-        .dataTable {
+        .dataTable,
+        .parcel-block {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
@@ -202,12 +244,6 @@ function buildReportStyles(): string
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
-
-        .streetview-section .image-placeholder {
-            min-height: 260px;
-            font-size: 11pt;
-        }
-
     ';
 }
 
