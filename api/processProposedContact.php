@@ -1172,11 +1172,18 @@ $reportUrl = $reportPath && file_exists($reportPath)
 
 #endregion
 
-#region SECTION 12 - FINAL OUTPUT — Response Builder
+#region SECTION 12 - FINAL OUTPUT — Response Builder (DIAGNOSTIC MODE)
 
-    require_once __DIR__ . '/detectAndProposeContact.response.php';
+error_log('[SECTION12] Reached Section 12');
 
-    // Do NOT echo JSON here — let response.php handle the full output
-    global $proposalId, $reportUrl, $parsed, $pcm, $data, $meta, $resolution, $persistence, $aiData, $rawInputOriginal, $activitySessionId;
+// Temporarily bypass the require to test if this file is even executing
+echo json_encode([
+    'status' => 'diagnostic',
+    'message' => 'Section 12 in processProposedContact.php is running',
+    'hasResponseFile' => file_exists(__DIR__ . '/detectAndProposeContact.response.php'),
+    'time' => date('Y-m-d H:i:s')
+], JSON_UNESCAPED_SLASHES);
+
+exit;
 
 #endregion
