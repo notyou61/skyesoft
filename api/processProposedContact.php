@@ -548,7 +548,7 @@ $parsed['location']['address'] = $address;
 $parsed['location']['locationAddressRaw'] = $rawInputOriginal;
 
 // =====================================================
-// CLEAN COUNTY RESOLUTION — NO FALLBACKS
+// CLEAN COUNTY RESOLUTION — ZERO HARDCODING
 // =====================================================
 $geoAddress = trim(
     $parsed['location']['formattedAddress'] 
@@ -560,16 +560,16 @@ $geoAddress = trim(
 
 error_log("[COUNTY] Starting clean resolution for: " . $geoAddress);
 
-// Primary source: Census
+// --- Primary: Census ---
 $geo = resolveGeographyFromAddress($geoAddress);
 
 if ($geo && !empty($geo['county'])) {
     $parsed['location']['county']     = trim($geo['county']);
-    $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';
-    error_log("[COUNTY] ✅ Census returned: {$geo['county']} (FIPS: {$geo['countyFips']})");
+    $parsed['location']['countyFips'] = $geo['countyFips'] ?? '';   // Only what Census actually returned
+    error_log("[COUNTY] ✅ Census returned county: '{$parsed['location']['county']}' | FIPS: '{$parsed['location']['countyFips']}'");
 } 
 else {
-    // Strict Google addressComponents only (no loose fallbacks)
+    // --- Secondary: Strict Google addressComponents only ---
     $countyName = null;
 
     if (!empty($parsed['location']['googleData']['addressComponents'] ?? [])) {
@@ -583,21 +583,21 @@ else {
 
     if ($countyName) {
         $parsed['location']['county']     = $countyName;
-        $parsed['location']['countyFips'] = '04013'; // Only set if we actually got it from Google
-        error_log("[COUNTY] ✅ Google addressComponents returned: {$countyName}");
+        $parsed['location']['countyFips'] = '';   // No hardcoding — Google does not provide FIPS here
+        error_log("[COUNTY] ✅ Google addressComponents returned county: '{$countyName}' (FIPS left empty)");
     } else {
-        // Explicitly leave empty — no guessing
+        // Explicit empty — no guessing, no defaults
         $parsed['location']['county']     = '';
         $parsed['location']['countyFips'] = '';
         error_log("[COUNTY] ❌ No county resolved from Census or Google addressComponents");
     }
 }
 
-// Final normalization
+// Final normalization (always runs)
 $parsed['location']['county']     = trim($parsed['location']['county'] ?? '');
 $parsed['location']['countyFips'] = trim($parsed['location']['countyFips'] ?? '');
 
-error_log("[COUNTY] Final value → county: '{$parsed['location']['county']}' | countyFips: '{$parsed['location']['countyFips']}'");
+error_log("[COUNTY] Final → county: '{$parsed['location']['county']}' | countyFips: '{$parsed['location']['countyFips']}'");
 
 // -------------------------------------------------
 // MARICOPA PARCEL LOOKUP + STATEFUL NORMALIZATION
