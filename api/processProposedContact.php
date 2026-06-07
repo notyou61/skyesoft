@@ -10,6 +10,13 @@ declare(strict_types=1);
 
 #region SECTION 00 — Force Fresh Code
 
+error_log('[PROCESS] REQUEST_METHOD=' . ($_SERVER['REQUEST_METHOD'] ?? 'unknown'));
+
+$rawInput = file_get_contents('php://input');
+
+error_log('[PROCESS] INPUT_LENGTH=' . strlen($rawInput));
+error_log('[PROCESS] INPUT_PREVIEW=' . substr($rawInput, 0, 500));
+
 error_log("=== PROCESSPROPOSEDCONTACT.PHP v1.6.1 START === " . date('Y-m-d H:i:s'));
 
 if (function_exists('opcache_invalidate')) {
