@@ -7,6 +7,17 @@ declare(strict_types=1);
  * Version: 1.6.0
  */
 
+if (function_exists('opcache_invalidate')) {
+    opcache_invalidate(__FILE__, true);
+    error_log("[OPCACHE] Utils file invalidated on load");
+}
+
+/**
+ * Skyesoft — processProposedContact.utils.php
+ * Internal Utilities & Helper Functions
+ * Version: 1.6.0
+ */
+
 // =====================================================
 // CORE UTILITIES (Preserved)
 // =====================================================
