@@ -104,21 +104,37 @@ $parcelDetails = [];
 foreach ($features as $feature) {
 
     $attr = $feature['attributes'] ?? [];
+    $geom = $feature['geometry'] ?? [];
 
     if (empty($attr['APN'])) {
         continue;
     }
 
-    $apnRaw = preg_replace(
-        '/[^A-Z0-9]/',
-        '',
-        strtoupper($attr['APN'])
-    );
+    $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
 
-    $geom = $feature['geometry'] ?? [];
+    // === Calculate centroid from polygon rings ===
+    $latitude  = null;
+    $longitude = null;
+
+    if (!empty($geom['rings'][0])) {
+        $ring = $geom['rings'][0];           // First ring of the polygon
+        $count = count($ring);
+
+        if ($count > 0) {
+            $sumX = 0;
+            $sumY = 0;
+
+            foreach ($ring as $point) {
+                $sumX += $point[0];          // longitude
+                $sumY += $point[1];          // latitude
+            }
+
+            $longitude = round($sumX / $count, 6);
+            $latitude  = round($sumY / $count, 6);
+        }
+    }
 
     $parcelDetails[] = [
-
         'apnRaw'          => $apnRaw,
         'apnDisplay'      => formatAPN($apnRaw),
 
@@ -126,12 +142,11 @@ foreach ($features as $feature) {
         'propertyCity'    => trim($attr['PHYSICAL_CITY'] ?? ''),
 
         'jurisdiction'    => trim($attr['JURISDICTION'] ?? ''),
-
         'ownerName'       => trim($attr['OWNER_NAME'] ?? ''),
 
-        // === NEW: Per-parcel unique coordinates ===
-        'latitude'        => $geom['y'] ?? null,
-        'longitude'       => $geom['x'] ?? null,
+        // === Per-parcel coordinates (centroid of parcel polygon) ===
+        'latitude'        => $latitude,
+        'longitude'       => $longitude,
 
         'source'          => 'mca_arcgis_mcassessor',
         'confidence'      => 90
