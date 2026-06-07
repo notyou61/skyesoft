@@ -1058,6 +1058,9 @@ $persistence  = $persistence  ?? [];
 $data         = $data         ?? [];
 $locationValidation = $locationValidation ?? [];
 
+// Add this line above the call
+$parcelImages = [];
+
 $proposalResult = createProposalSnapshot(
     $rawInputOriginal,
     $parsed,
@@ -1067,7 +1070,8 @@ $proposalResult = createProposalSnapshot(
     $meta,
     $resolution,
     $persistence,
-    $activitySessionId
+    $activitySessionId,
+    $parcelImages          // ← NEW: Pass the parcel images here
 );
 
 $proposalId = $proposalResult['proposalId'];

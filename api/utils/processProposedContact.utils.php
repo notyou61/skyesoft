@@ -1185,12 +1185,12 @@ function createProposalSnapshot(
     array $meta,
     array $resolution,
     array $persistence,
-    string $activitySessionId
+    string $activitySessionId,
+    array $parcelImages = []          // ← NEW: Accept generated parcel images
 ): array {
 
     $timestamp = microtime(true);
     
-    // FIXED: Proper string conversion for str_pad()
     $uniquePart = (int)($timestamp * 1000) % 999999;
     $proposalId = 'PRP-' . date('Ymd') . '-' . str_pad((string)$uniquePart, 6, '0', STR_PAD_LEFT);
 
@@ -1211,8 +1211,9 @@ function createProposalSnapshot(
 
         'status'            => ($pcm['readyForCommit'] ?? false) ? 'ready' : 'review',
         'reportStatus'      => 'pending',
+
         'artifactRegistry'  => [
-            'parcelImages'  => [],
+            'parcelImages'  => $parcelImages,     // ← Now populated
             'satelliteView' => null,
             'streetView'    => null,
             'pdfReport'     => null
