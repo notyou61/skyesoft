@@ -54,16 +54,18 @@ $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
     "%')";
 
 $params = http_build_query([
-    'where'           => $where,
-    'outFields'       => implode(',', [
+    'where'             => $where,
+    'outFields'         => implode(',', [
         'APN',
         'PHYSICAL_ADDRESS',
         'PHYSICAL_CITY',
         'JURISDICTION',
         'OWNER_NAME'
     ]),
-    'returnGeometry'  => 'false',
-    'f'               => 'json'
+    'returnGeometry'    => 'true',     // ← Enable geometry
+    'outSR'             => '4326',     // ← WGS84 lat/lon
+    'geometryPrecision' => 6,
+    'f'                 => 'json'
 ]);
 
 $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
@@ -113,21 +115,26 @@ foreach ($features as $feature) {
         strtoupper($attr['APN'])
     );
 
+    $geom = $feature['geometry'] ?? [];
+
     $parcelDetails[] = [
 
-        'apnRaw'              => $apnRaw,
-        'apnDisplay'          => formatAPN($apnRaw),
+        'apnRaw'          => $apnRaw,
+        'apnDisplay'      => formatAPN($apnRaw),
 
-        'propertyAddress'     => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
-        'propertyCity'        => trim($attr['PHYSICAL_CITY'] ?? ''),
+        'propertyAddress' => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
+        'propertyCity'    => trim($attr['PHYSICAL_CITY'] ?? ''),
 
-        'jurisdiction'        => trim($attr['JURISDICTION'] ?? ''),
+        'jurisdiction'    => trim($attr['JURISDICTION'] ?? ''),
 
-        'ownerName'           => trim($attr['OWNER_NAME'] ?? ''),
+        'ownerName'       => trim($attr['OWNER_NAME'] ?? ''),
 
-        'source'              => 'mca_arcgis_mcassessor',
-        'confidence'          => 90
+        // === NEW: Per-parcel unique coordinates ===
+        'latitude'        => $geom['y'] ?? null,
+        'longitude'       => $geom['x'] ?? null,
 
+        'source'          => 'mca_arcgis_mcassessor',
+        'confidence'      => 90
     ];
 }
 
