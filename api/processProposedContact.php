@@ -486,15 +486,26 @@ if ($data['location']['locationCensusValidated']) {
 
 #endregion
 
-#region SECTION 09 — Parce#region SECTION 09 — Parcel Resolution (Skeleton)
+#region SECTION 09 — Parcel Resolution
 
-$data['location']['parcelDetails']   = [];
-$data['location']['parcelCount']     = 0;
+require_once __DIR__ . '/utils/resolveParcel.php';
 
-$data['location']['jurisdictionName'] = null;
-$data['location']['jurisdictionType'] = null;
+$parcelResult = resolveParcel(
+    $data['location']['locationLatitude']  ?? null,
+    $data['location']['locationLongitude'] ?? null,
+    $data['location']['locationCounty']    ?? null,
+    $data['location']['locationCountyFips'] ?? null
+);
 
-error_log('[PPC][SECTION-09] Parcel resolution skeleton initialized');
+$data['location']['parcelDetails']   = $parcelResult['parcelDetails']   ?? [];
+$data['location']['parcelCount']     = $parcelResult['parcelCount']     ?? 0;
+$data['location']['jurisdictionName'] = $parcelResult['jurisdictionName'] ?? null;
+$data['location']['jurisdictionType'] = $parcelResult['jurisdictionType'] ?? null;
+
+error_log(
+    '[PPC][SECTION-09] Parcel resolution complete. ' .
+    'Count: ' . $data['location']['parcelCount']
+);
 
 #endregion
 
@@ -502,8 +513,13 @@ error_log('[PPC][SECTION-09] Parcel resolution skeleton initialized');
 
 echo json_encode([
     'success'  => true,
-    'status'   => 'section_09_initialized',
-    'location' => $data['location']
+    'status'   => 'section_09_parcel_resolved',
+    'location' => $data['location'],
+    'debug'    => [
+        'searchAddress' => $searchAddress,
+        'parcelCount'   => $data['location']['parcelCount'],
+        'parcelDetails' => $data['location']['parcelDetails']
+    ]
 ], JSON_PRETTY_PRINT);
 
 exit;
