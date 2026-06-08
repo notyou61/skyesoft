@@ -121,19 +121,14 @@ error_log('[PPC] Input validated');
 // ENVIRONMENT VALIDATION
 // =====================================================
 
-$openAiApiKey =
-skyesoftGetEnv('OPENAI_API_KEY')
-?: getenv('OPENAI_API_KEY');
+$openAiApiKey = skyesoftGetEnv('OPENAI_API_KEY') ?: getenv('OPENAI_API_KEY');
 
 if (empty($openAiApiKey)) {
-
-echo json_encode([
-    'success' => false,
-    'status'  => 'missing_openai_key'
-]);
-
-exit;
-
+    echo json_encode([
+        'success' => false,
+        'status'  => 'missing_openai_key'
+    ]);
+    exit;
 }
 
 error_log('[PPC][SECTION-03] OpenAI key loaded');
@@ -146,30 +141,30 @@ error_log('[PPC][SECTION-03] Starting OpenAI request');
 $systemPrompt = <<<PROMPT
 You are a structured data extraction engine.
 
-Extract entity, contact, and location information.
+Extract entity, contact, and location information from the input.
 
-Return ONLY valid JSON.
+Return ONLY valid JSON in this exact structure. Do not add any explanation or markdown.
 
 {
-"entity": {
-"name": ""
-},
-"contact": {
-"firstName": "",
-"lastName": "",
-"salutation": "",
-"title": "",
-"primaryPhone": "",
-"email": ""
-},
-"location": {
-"address": "",
-"city": "",
-"state": "",
-"zip": "",
-"suite": "",
-"locationName": ""
-}
+  "entity": {
+    "name": ""
+  },
+  "contact": {
+    "firstName": "",
+    "lastName": "",
+    "salutation": "",
+    "title": "",
+    "primaryPhone": "",
+    "email": ""
+  },
+  "location": {
+    "address": "",
+    "city": "",
+    "state": "",
+    "zip": "",
+    "suite": "",
+    "locationName": ""
+  }
 }
 PROMPT;
 
@@ -180,31 +175,31 @@ $userPrompt = $rawInput;
 // =====================================================
 
 $payload = [
-'model' => 'gpt-4o-mini',
-'messages' => [
-[
-'role' => 'system',
-'content' => $systemPrompt
-],
-[
-'role' => 'user',
-'content' => $userPrompt
-]
-],
-'temperature' => 0
+    'model' => 'gpt-4o-mini',
+    'messages' => [
+        [
+            'role'    => 'system',
+            'content' => $systemPrompt
+        ],
+        [
+            'role'    => 'user',
+            'content' => $userPrompt
+        ]
+    ],
+    'temperature' => 0
 ];
 
 $ch = curl_init('https://api.openai.com/v1/chat/completions');
 
 curl_setopt_array($ch, [
-CURLOPT_POST => true,
-CURLOPT_RETURNTRANSFER => true,
-CURLOPT_HTTPHEADER => [
-'Content-Type: application/json',
-'Authorization: Bearer ' . $openAiApiKey
-],
-CURLOPT_POSTFIELDS => json_encode($payload),
-CURLOPT_TIMEOUT => 30
+    CURLOPT_POST           => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER     => [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $openAiApiKey
+    ],
+    CURLOPT_POSTFIELDS     => json_encode($payload),
+    CURLOPT_TIMEOUT        => 30
 ]);
 
 $response = curl_exec($ch);
@@ -213,16 +208,11 @@ error_log('[PPC][SECTION-03] OpenAI response received');
 safeCurlClose($ch);
 
 if (!$response) {
-
-
-echo json_encode([
-    'success' => false,
-    'status'  => 'openai_request_failed'
-]);
-
-exit;
-
-
+    echo json_encode([
+        'success' => false,
+        'status'  => 'openai_request_failed'
+    ]);
+    exit;
 }
 
 // =====================================================
@@ -230,53 +220,53 @@ exit;
 // =====================================================
 
 $responseData = json_decode($response, true);
-
-$content =
-$responseData['choices'][0]['message']['content']
-?? '';
+$content = $responseData['choices'][0]['message']['content'] ?? '';
 
 if (empty($content)) {
-
-
-echo json_encode([
-    'success' => false,
-    'status'  => 'invalid_ai_response'
-]);
-
-exit;
-
+    echo json_encode([
+        'success' => false,
+        'status'  => 'invalid_ai_response'
+    ]);
+    exit;
 }
+
+// =====================================================
+// PARSE AI JSON (Cleaned)
+// =====================================================
 
 $parsed = json_decode(trim($content), true);
 
-$parsed = json_decode($matches[0] ?? '{}', true);
-
-error_log('[PPC][SECTION-03] Parsed JSON created');
+if (json_last_error() !== JSON_ERROR_NONE) {
+    echo json_encode([
+        'success'   => false,
+        'status'    => 'invalid_ai_json',
+        'jsonError' => json_last_error_msg(),
+        'content'   => $content
+    ]);
+    exit;
+}
 
 if (!is_array($parsed)) {
-
-
-echo json_encode([
-    'success' => false,
-    'status'  => 'invalid_ai_json'
-]);
-
-exit;
-
+    echo json_encode([
+        'success' => false,
+        'status'  => 'invalid_ai_json_structure'
+    ]);
+    exit;
 }
 
 error_log('[PPC][SECTION-03] AI extraction complete');
 
 #endregion
 
-#region Output Generation — Placeholder for future implementation
+#region SECTION 99 — Debug Output (Temporary)
 
 echo json_encode([
-    'success' => true,
-    'status' => 'section_03_debug',
-    'content' => $content,
-    'requestId' => $context['requestId']
-]);
+    'success'   => true,
+    'status'    => 'section_03_debug',
+    'requestId' => $context['requestId'],
+    'content'   => $content,
+    'parsed'    => $parsed
+], JSON_PRETTY_PRINT);
 
 exit;
 
