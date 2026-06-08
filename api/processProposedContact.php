@@ -503,8 +503,17 @@ $data['location']['parcelCount']     = $parcelResult['parcelCount']     ?? 0;
 $data['location']['jurisdictionName'] = $parcelResult['jurisdictionName'] ?? null;
 $data['location']['jurisdictionType'] = $parcelResult['jurisdictionType'] ?? null;
 
-// Optional: Add a flag when multiple parcels are found
+// Add flag for multiple parcels
 $data['location']['hasMultipleParcels'] = ($data['location']['parcelCount'] > 1);
+
+// =====================================================
+// ADD FORMATTED APN (e.g. 108-03-009E)
+// =====================================================
+foreach ($data['location']['parcelDetails'] as &$parcel) {
+    $raw = $parcel['parcelNumber'] ?? '';
+    $parcel['parcelNumberFormatted'] = formatAPN($raw);
+}
+unset($parcel); // break reference
 
 error_log(
     '[PPC][SECTION-09] Parcel resolution complete. ' .
