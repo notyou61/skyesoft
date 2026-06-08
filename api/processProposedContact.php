@@ -486,19 +486,24 @@ if ($data['location']['locationCensusValidated']) {
 
 #endregion
 
+#region SECTION 09 — Parce#region SECTION 09 — Parcel Resolution (Skeleton)
+
+$data['location']['parcelDetails']   = [];
+$data['location']['parcelCount']     = 0;
+
+$data['location']['jurisdictionName'] = null;
+$data['location']['jurisdictionType'] = null;
+
+error_log('[PPC][SECTION-09] Parcel resolution skeleton initialized');
+
+#endregion
+
 #region SECTION 99 — Debug Output (Temporary)
 
 echo json_encode([
     'success'  => true,
-    'status'   => 'section_08_county_resolved',
-    'location' => $data['location'],
-    'debug'    => [
-        'searchAddress'     => $searchAddress,
-        'county'            => $data['location']['locationCounty'] ?? null,
-        'countyFips'        => $data['location']['locationCountyFips'] ?? null,
-        'countyGeoId'       => $data['location']['locationCountyGeoId'] ?? null,
-        'censusValidated'   => $data['location']['locationCensusValidated'] ?? false
-    ]
+    'status'   => 'section_09_initialized',
+    'location' => $data['location']
 ], JSON_PRETTY_PRINT);
 
 exit;
