@@ -258,14 +258,61 @@ error_log('[PPC][SECTION-03] AI extraction complete');
 
 #endregion
 
+#region SECTION 04 — Schema Enforcement
+
+$parsed['entity'] =
+    $parsed['entity'] ?? [];
+
+$parsed['contact'] =
+    $parsed['contact'] ?? [];
+
+$parsed['location'] =
+    $parsed['location'] ?? [];
+
+// =====================================================
+// ENTITY
+// =====================================================
+
+$parsed['entity'] = array_merge([
+    'name' => ''
+], $parsed['entity']);
+
+// =====================================================
+// CONTACT
+// =====================================================
+
+$parsed['contact'] = array_merge([
+    'firstName'   => '',
+    'lastName'    => '',
+    'salutation'  => '',
+    'title'       => '',
+    'primaryPhone'=> '',
+    'email'       => ''
+], $parsed['contact']);
+
+// =====================================================
+// LOCATION
+// =====================================================
+
+$parsed['location'] = array_merge([
+    'address'      => '',
+    'city'         => '',
+    'state'        => '',
+    'zip'          => '',
+    'suite'        => '',
+    'locationName' => ''
+], $parsed['location']);
+
+error_log('[PPC][SECTION-04] Schema enforcement complete');
+
+#endregion
+
 #region SECTION 99 — Debug Output (Temporary)
 
 echo json_encode([
-    'success'   => true,
-    'status'    => 'section_03_debug',
-    'requestId' => $context['requestId'],
-    'content'   => $content,
-    'parsed'    => $parsed
+    'success' => true,
+    'status'  => 'section_04_complete',
+    'parsed'  => $parsed
 ], JSON_PRETTY_PRINT);
 
 exit;
