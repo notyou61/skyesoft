@@ -3,10 +3,16 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 3.1.0
- *
- * Uses Maricopa County Assessor ArcGIS (address-based query)
+ * Version: 3.2.0
  */
+
+function formatAPN(string $apnRaw): string {
+    $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $apnRaw));
+    if (strlen($apnRaw) < 8) {
+        return $apnRaw;
+    }
+    return substr($apnRaw, 0, 3) . '-' . substr($apnRaw, 3, 2) . '-' . substr($apnRaw, 5);
+}
 
 function resolveParcel(
     ?float $latitude = null,
@@ -34,9 +40,7 @@ function resolveParcel(
         return $result;
     }
 
-    // =====================================================
-    // NORMALIZE ADDRESS
-    // =====================================================
+    // Normalize address
     $normalized = strtoupper(trim($searchAddress));
     $normalized = str_replace([', USA', ','], ' ', $normalized);
     $normalized = preg_replace('/\s+/', ' ', $normalized);
@@ -48,11 +52,8 @@ function resolveParcel(
         return $result;
     }
 
-    // =====================================================
-    // ARCGIS QUERY (Address LIKE)
-    // =====================================================
-    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . 
-             str_replace("'", "''", $normalized) . "%')";
+    // Build ArcGIS query
+    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $normalized) . "%')";
 
     $params = [
         'where'          => $where,
@@ -61,13 +62,9 @@ function resolveParcel(
         'f'              => 'json'
     ];
 
-    $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . 
-           http_build_query($params);
+    $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . http_build_query($params);
 
-    $context = stream_context_create([
-        'http' => ['timeout' => 12]
-    ]);
-
+    $context = stream_context_create(['http' => ['timeout' => 12]]);
     $response = @file_get_contents($url, false, $context);
 
     if ($response === false) {
@@ -86,10 +83,7 @@ function resolveParcel(
 
     foreach ($data['features'] as $feature) {
         $attr = $feature['attributes'] ?? [];
-
-        if (empty($attr['APN'])) {
-            continue;
-        }
+        if (empty($attr['APN'])) continue;
 
         $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $attr['APN']));
 
@@ -116,20 +110,4 @@ function resolveParcel(
     error_log('[RESOLVE-PARCEL] Resolved ' . $result['parcelCount'] . ' parcel(s)');
 
     return $result;
-}
-
-// =====================================================
-// HELPER: Format APN nicely (e.g. 108-03-009E)
-// =====================================================
-function formatAPN(string $apnRaw): string {
-
-    $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $apnRaw));
-
-    if (strlen($apnRaw) < 8) {
-        return $apnRaw;
-    }
-
-    return substr($apnRaw, 0, 3) . '-' .
-           substr($apnRaw, 3, 2) . '-' .
-           substr($apnRaw, 5);
 }
