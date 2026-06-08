@@ -32,7 +32,6 @@ function validateAddressCensus(string $fullAddress): array
         ];
     }
 
-    // Use Geographies endpoint to get county + FIPS
     $query = http_build_query([
         'address'   => $fullAddress,
         'benchmark' => 'Public_AR_Current',
@@ -43,9 +42,7 @@ function validateAddressCensus(string $fullAddress): array
     $url = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?$query";
 
     $context = stream_context_create([
-        'http' => [
-            'timeout' => 10
-        ]
+        'http' => ['timeout' => 10]
     ]);
 
     $response = @file_get_contents($url, false, $context);
@@ -77,19 +74,22 @@ function validateAddressCensus(string $fullAddress): array
 
     $match = $matches[0];
 
-    // Extract county information from geographies
+    // Extract county information
     $geographies = $match['geographies'] ?? [];
     $county      = $geographies['Counties'][0] ?? null;
 
     $countyName = null;
-    $countyFips = null;
+    $countyFips = null;      // Short version (e.g. "013")
+    $countyGeoId = null;     // Full Census GEOID (e.g. "04013")
 
     if ($county) {
         $countyName = trim(str_replace(' County', '', $county['NAME'] ?? ''));
-        
+
         $stateFips  = str_pad($county['STATE'] ?? '04', 2, '0', STR_PAD_LEFT);
         $countyCode = str_pad($county['COUNTY'] ?? '', 3, '0', STR_PAD_LEFT);
-        $countyFips = $stateFips . $countyCode;
+
+        $countyFips  = $countyCode;           // "013"
+        $countyGeoId = $stateFips . $countyCode; // "04013"
     }
 
     return [
@@ -99,8 +99,9 @@ function validateAddressCensus(string $fullAddress): array
             'lat'     => $match['coordinates']['y'] ?? null,
             'lng'     => $match['coordinates']['x'] ?? null
         ],
-        'county'     => $countyName,
-        'countyFips' => $countyFips
+        'county'      => $countyName,
+        'countyFips'  => $countyFips,
+        'countyGeoId' => $countyGeoId
     ];
 }
 

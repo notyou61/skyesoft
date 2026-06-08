@@ -467,15 +467,17 @@ require_once __DIR__ . '/utils/validateAddressCensus.php';
 
 $censusResult = validateAddressCensus($searchAddress);
 
-$data['location']['locationCensusValidated'] = $censusResult['valid'] ?? false;
+$data['location']['locationCensusValidated'] = $censusResult['valid']     ?? false;
 $data['location']['locationCounty']          = $censusResult['county']     ?? null;
 $data['location']['locationCountyFips']      = $censusResult['countyFips'] ?? null;
+$data['location']['locationCountyGeoId']     = $censusResult['countyGeoId'] ?? null;
 
 if ($data['location']['locationCensusValidated']) {
     error_log(
         '[PPC][SECTION-08] ✅ Census county resolved: ' .
         ($data['location']['locationCounty'] ?? 'N/A') .
-        ' (' . ($data['location']['locationCountyFips'] ?? 'N/A') . ')'
+        ' | FIPS: ' . ($data['location']['locationCountyFips'] ?? 'N/A') .
+        ' | GEOID: ' . ($data['location']['locationCountyGeoId'] ?? 'N/A')
     );
 } else {
     error_log(
