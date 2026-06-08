@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Skyesoft — processProposedContact.php
  * Main Orchestration + Proposal Report Generation
  * Version: 1.6.1
- * Last Updated: 2026-05-28
+ * Last Updated: 2026-06-28
  */
 
 #region SECTION 00 — Bootstrap & Request Initialization
@@ -117,7 +117,10 @@ error_log('[PPC] Input validated');
 
 echo json_encode([
     'success' => true,
-    'status' => 'bootstrap_complete'
+    'status'  => 'input_validated',
+    'inputLength' => strlen($rawInput),
+    'requestId' => $context['requestId'],
+    'pdoConnected' => ($pdo instanceof PDO)
 ]);
 
 exit;
