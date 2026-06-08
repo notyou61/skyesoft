@@ -461,30 +461,36 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
 
 #endregion
 
-#region SECTION 08 — County Resolution
+#region SECTION 08 — Census Validation
+
+require_once __DIR__ . '/utils/validateAddressCensus.php';
 
 $data['location']['locationCounty'] = null;
 $data['location']['locationCountyFips'] = null;
 
-if (
-    !empty($data['location']['locationLatitude']) &&
-    !empty($data['location']['locationLongitude'])
-) {
-
-    error_log(
-        '[PPC][SECTION-08] Coordinates available'
+$censusResult =
+    validateAddressCensus(
+        $searchAddress
     );
 
-}
+$data['location']['locationCensusValidated'] =
+    $censusResult['valid'] ?? false;
+
+error_log(
+    '[PPC][SECTION-08] Census validation complete'
+);
 
 #endregion
 
 #region SECTION 99 — Debug Output (Temporary)
 
 echo json_encode([
-    'success' => true,
-    'status' => 'section_08_initialized',
-    'location' => $data['location']
+    'success'  => true,
+    'status'   => 'section_08_county_resolved',
+    'location' => $data['location'],
+    'debug' => [
+        'searchAddress' => $searchAddress
+    ]
 ], JSON_PRETTY_PRINT);
 
 exit;
