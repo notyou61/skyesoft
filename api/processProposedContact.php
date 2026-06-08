@@ -494,7 +494,8 @@ $parcelResult = resolveParcel(
     $data['location']['locationLatitude']  ?? null,
     $data['location']['locationLongitude'] ?? null,
     $data['location']['locationCounty']    ?? null,
-    $data['location']['locationCountyFips'] ?? null
+    $data['location']['locationCountyFips'] ?? null,
+    $searchAddress                           // ← Pass the search address
 );
 
 $data['location']['parcelDetails']   = $parcelResult['parcelDetails']   ?? [];
@@ -502,10 +503,7 @@ $data['location']['parcelCount']     = $parcelResult['parcelCount']     ?? 0;
 $data['location']['jurisdictionName'] = $parcelResult['jurisdictionName'] ?? null;
 $data['location']['jurisdictionType'] = $parcelResult['jurisdictionType'] ?? null;
 
-error_log(
-    '[PPC][SECTION-09] Parcel resolution complete. ' .
-    'Count: ' . $data['location']['parcelCount']
-);
+error_log('[PPC][SECTION-09] Parcel resolution complete. Count: ' . $data['location']['parcelCount']);
 
 #endregion
 
