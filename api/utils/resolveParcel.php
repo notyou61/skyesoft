@@ -3,26 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 1.0.0
- *
- * Purpose:
- *   Resolve parcel information using latitude/longitude against
- *   Maricopa County GIS data.
- *
- * Inputs:
- *   - latitude
- *   - longitude
- *   - county (optional filter)
- *   - countyFips (optional filter)
- *
- * Output:
- *   [
- *     'success'        => bool,
- *     'parcelCount'    => int,
- *     'parcelDetails'  => array,
- *     'jurisdictionName' => string|null,
- *     'jurisdictionType' => string|null
- *   ]
+ * Version: 1.1.0
  */
 
 function resolveParcel(
@@ -40,34 +21,32 @@ function resolveParcel(
         'jurisdictionType' => null
     ];
 
-    // =====================================================
-    // BASIC VALIDATION
-    // =====================================================
     if ($latitude === null || $longitude === null) {
         error_log('[RESOLVE-PARCEL] Missing latitude or longitude');
         return $result;
     }
 
-    // Only proceed for Maricopa County for now
     if ($countyFips !== '013' && strtolower($county ?? '') !== 'maricopa') {
-        error_log('[RESOLVE-PARCEL] Non-Maricopa county — skipping parcel lookup');
+        error_log('[RESOLVE-PARCEL] Non-Maricopa county — skipping');
         return $result;
     }
 
     // =====================================================
-    // MARICOPA COUNTY PARCEL QUERY (ArcGIS)
+    // BUILD BUFFERED QUERY (more reliable than exact point)
     // =====================================================
     $point = "{$longitude},{$latitude}";
 
     $queryParams = [
-        'where'        => '1=1',
-        'geometry'     => $point,
-        'geometryType' => 'esriGeometryPoint',
-        'inSR'         => '4326',
-        'spatialRel'   => 'esriSpatialRelIntersects',
-        'outFields'    => 'APN,OWNER_NAME,PROP_USE_DESC,SITE_ADDR,CITY,STATE,ZIP',
+        'where'          => '1=1',
+        'geometry'       => $point,
+        'geometryType'   => 'esriGeometryPoint',
+        'inSR'           => '4326',
+        'spatialRel'     => 'esriSpatialRelIntersects',
+        'distance'       => 8,                          // ← Small buffer (feet)
+        'units'          => 'esriSRUnit_Foot',
+        'outFields'      => 'APN,OWNER_NAME,PROP_USE_DESC,SITE_ADDR,CITY,STATE,ZIP,MCR,TRACT,BLK,LOT_SIZE,SUBDIVISION',
         'returnGeometry' => 'false',
-        'f'            => 'json'
+        'f'              => 'json'
     ];
 
     $url = 'https://gis.maricopa.gov/gis/rest/services/Parcels/MapServer/0/query?' . 
@@ -87,7 +66,7 @@ function resolveParcel(
     $data = json_decode($response, true);
 
     if (!isset($data['features']) || !is_array($data['features'])) {
-        error_log('[RESOLVE-PARCEL] Invalid response from ArcGIS');
+        error_log('[RESOLVE-PARCEL] Invalid ArcGIS response');
         return $result;
     }
 
@@ -103,7 +82,10 @@ function resolveParcel(
             'siteAddress'  => $attrs['SITE_ADDR'] ?? null,
             'city'         => $attrs['CITY'] ?? null,
             'state'        => $attrs['STATE'] ?? null,
-            'zip'          => $attrs['ZIP'] ?? null
+            'zip'          => $attrs['ZIP'] ?? null,
+            'mcr'          => $attrs['MCR'] ?? null,
+            'subdivision'  => $attrs['SUBDIVISION'] ?? null,
+            'lotSize'      => $attrs['LOT_SIZE'] ?? null
         ];
     }
 
@@ -111,7 +93,6 @@ function resolveParcel(
     $result['parcelCount']   = count($parcelDetails);
     $result['parcelDetails'] = $parcelDetails;
 
-    // Simple jurisdiction inference (can be expanded later)
     if (!empty($parcelDetails)) {
         $result['jurisdictionName'] = $parcelDetails[0]['city'] ?? 'Maricopa County';
         $result['jurisdictionType'] = 'City';
