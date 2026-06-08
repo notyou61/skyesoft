@@ -558,20 +558,182 @@ error_log(
 
 #endregion
 
+#region SECTION 10 — Governance
+
+// =====================================================
+// INITIALIZATION
+// =====================================================
+
+$parcelCount =
+    count(
+        $data['location']['parcelDetails']
+        ?? []
+    );
+
+$hasMultipleParcels =
+    ($parcelCount > 1);
+
+$locationValidated =
+    (
+        $data['location']['locationValidated']
+        ?? false
+    );
+
+$locationCensusValidated =
+    (
+        $data['location']['locationCensusValidated']
+        ?? false
+    );
+
+$governance = [
+
+    'pc' => [
+        'code'   => null,
+        'status' => null
+    ],
+
+    'rs' => [],
+
+    'readyForCommit' => false,
+    'requiresReview' => false,
+    'blocksCommit'   => true
+
+];
+
+error_log(
+    '[PPC][SECTION-10] Governance initialization complete'
+);
+
+// =====================================================
+// PC CLASSIFICATION
+// =====================================================
+
+// PC-0 = Invalid Location
+
+if (
+    !$locationValidated ||
+    !$locationCensusValidated
+) {
+
+    $governance['pc']['code'] =
+        'PC-0';
+
+    $governance['pc']['status'] =
+        'invalid_location';
+
+    $governance['rs'][] =
+        'RS-1';
+
+    $governance['requiresReview'] =
+        true;
+
+    $governance['blocksCommit'] =
+        true;
+}
+
+// PC-1 = New ELC Candidate
+
+else {
+
+    $governance['pc']['code'] =
+        'PC-1';
+
+    $governance['pc']['status'] =
+        'new_elc';
+}
+
+error_log(
+    '[PPC][SECTION-10] PC classification complete'
+);
+
+// =====================================================
+// RULE EVALUATION
+// =====================================================
+
+// RS-6 = Multiple Parcel Review Required
+
+if ($hasMultipleParcels) {
+
+    $governance['rs'][] =
+        'RS-6';
+
+    $governance['requiresReview'] =
+        true;
+
+    $governance['blocksCommit'] =
+        true;
+}
+
+// RS-5 = No Parcel Found
+
+if ($parcelCount === 0) {
+
+    $governance['rs'][] =
+        'RS-5';
+
+    $governance['requiresReview'] =
+        true;
+
+    $governance['blocksCommit'] =
+        true;
+}
+
+// RS-0 = No Issues
+
+if (
+    empty($governance['rs'])
+) {
+
+    $governance['rs'][] =
+        'RS-0';
+
+    $governance['blocksCommit'] =
+        false;
+}
+
+error_log(
+    '[PPC][SECTION-10] Rule evaluation complete'
+);
+
+// =====================================================
+// FINAL DECISION
+// =====================================================
+
+$governance['readyForCommit'] =
+    !$governance['blocksCommit'];
+
+error_log(
+    '[PPC][SECTION-10] readyForCommit=' .
+    (
+        $governance['readyForCommit']
+        ? 'true'
+        : 'false'
+    )
+);
+
+#endregion
+
 #region SECTION 99 — Debug Output (Temporary)
 
 echo json_encode([
-    'success'  => true,
-    'status'   => 'section_09_parcel_resolved',
-    'location' => $data['location'],
-    'debug'    => [
-        'searchAddress'      => $searchAddress,
-        'parcelCount'        => $data['location']['parcelCount'],
-        'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
-        'parcelDetails'      => $data['location']['parcelDetails']
-    ]
+
+    'success' => true,
+
+    'status' =>
+        'section_10_governance_complete',
+
+    'governance' =>
+        $governance,
+
+    'parcelCount' =>
+        $parcelCount,
+
+    'hasMultipleParcels' =>
+        $hasMultipleParcels
+
 ], JSON_PRETTY_PRINT);
 
 exit;
 
+#endregion
 #endregion
