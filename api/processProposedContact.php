@@ -496,6 +496,7 @@ echo json_encode([
         'searchAddress'     => $searchAddress,
         'county'            => $data['location']['locationCounty'] ?? null,
         'countyFips'        => $data['location']['locationCountyFips'] ?? null,
+        'countyGeoId'       => $data['location']['locationCountyGeoId'] ?? null,
         'censusValidated'   => $data['location']['locationCensusValidated'] ?? false
     ]
 ], JSON_PRETTY_PRINT);
