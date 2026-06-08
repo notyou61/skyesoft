@@ -309,9 +309,80 @@ error_log('[PPC][SECTION-04] Schema enforcement complete');
 
 #region SECTION 99 — Debug Output (Temporary)
 
+#region SECTION 05 — Data Normalization
+
+// =====================================================
+// ENTITY
+// =====================================================
+
+$parsed['entity']['name'] =
+    trim($parsed['entity']['name']);
+
+// =====================================================
+// CONTACT
+// =====================================================
+
+$parsed['contact']['firstName'] =
+    trim($parsed['contact']['firstName']);
+
+$parsed['contact']['lastName'] =
+    trim($parsed['contact']['lastName']);
+
+$parsed['contact']['salutation'] =
+    trim($parsed['contact']['salutation']);
+
+$parsed['contact']['title'] =
+    trim($parsed['contact']['title']);
+
+$parsed['contact']['email'] =
+    strtolower(
+        trim($parsed['contact']['email'])
+    );
+
+// =====================================================
+// PHONE NORMALIZATION
+// =====================================================
+
+$parsed['contact']['primaryPhone'] =
+    preg_replace(
+        '/[^0-9]/',
+        '',
+        $parsed['contact']['primaryPhone']
+    );
+
+// =====================================================
+// LOCATION
+// =====================================================
+
+$parsed['location']['address'] =
+    trim($parsed['location']['address']);
+
+$parsed['location']['city'] =
+    trim($parsed['location']['city']);
+
+$parsed['location']['state'] =
+    strtoupper(
+        trim($parsed['location']['state'])
+    );
+
+$parsed['location']['zip'] =
+    trim($parsed['location']['zip']);
+
+$parsed['location']['suite'] =
+    trim($parsed['location']['suite']);
+
+$parsed['location']['locationName'] =
+    trim($parsed['location']['locationName']);
+
+error_log(
+    '[PPC][SECTION-05] Data normalization complete'
+);
+
+#endregion
+
 echo json_encode([
     'success' => true,
-    'status'  => 'section_04_complete',
+    'status'  => 'section_05_complete',
     'parsed'  => $parsed
 ], JSON_PRETTY_PRINT);
 
