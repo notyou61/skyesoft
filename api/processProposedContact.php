@@ -403,10 +403,50 @@ error_log(
 
 #endregion
 
+#region SECTION 07 — Google Location Validation
+
+// =====================================================
+// BUILD SEARCH ADDRESS
+// =====================================================
+
+$searchAddress = trim(
+    implode(', ', array_filter([
+        $data['location']['locationAddress'],
+        $data['location']['locationCity'],
+        $data['location']['locationState'],
+        $data['location']['locationZip']
+    ]))
+);
+
+error_log(
+    '[PPC][SECTION-07] Search Address: ' .
+    $searchAddress
+);
+
+// =====================================================
+// NO ADDRESS AVAILABLE
+// =====================================================
+
+if ($searchAddress === '') {
+
+    error_log(
+        '[PPC][SECTION-07] No address available'
+    );
+
+} else {
+
+    error_log(
+        '[PPC][SECTION-07] Ready for geocode lookup'
+    );
+}
+
+#endregion
+
 echo json_encode([
     'success' => true,
-    'status'  => 'section_06_complete',
-    'data'    => $data
+    'status' => 'section_07_initialized',
+    'searchAddress' => $searchAddress,
+    'data' => $data
 ], JSON_PRETTY_PRINT);
 
 exit;
