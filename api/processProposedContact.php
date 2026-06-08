@@ -37,7 +37,7 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/utils/processProposedContact.utils.php';
 
-error_log('[PPC] Dependencies loaded');
+error_log('[PPC][SECTION-00] Bootstrap complete');
 
 // =====================================================
 // REQUEST CONTEXT
@@ -83,6 +83,35 @@ error_log(
 implode(', ', array_keys($inputData))
 );
 }
+
+#endregion
+
+#region SECTION 01 — Runtime Services
+
+require_once __DIR__ . '/dbConnect.php';
+require_once __DIR__ . '/utils/envLoader.php';
+
+skyesoftLoadEnv();
+
+$pdo = getPDO() ?? null;
+
+error_log('[PPC] Runtime services loaded');
+
+#endregion
+
+#region SECTION 02 — Input Validation
+
+if ($rawInput === '') {
+
+    echo json_encode([
+        'success' => false,
+        'status'  => 'missing_input'
+    ]);
+
+    exit;
+}
+
+error_log('[PPC] Input validated');
 
 #endregion
 
