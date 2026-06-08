@@ -490,6 +490,17 @@ if ($data['location']['locationCensusValidated']) {
 
 require_once __DIR__ . '/utils/resolveParcel.php';
 
+/**
+ * Format raw APN into readable format (e.g. 10803009E → 108-03-009E)
+ */
+function formatAPN(string $apnRaw): string {
+    $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $apnRaw));
+    if (strlen($apnRaw) < 8) {
+        return $apnRaw;
+    }
+    return substr($apnRaw, 0, 3) . '-' . substr($apnRaw, 3, 2) . '-' . substr($apnRaw, 5);
+}
+
 $parcelResult = resolveParcel(
     $data['location']['locationLatitude']  ?? null,
     $data['location']['locationLongitude'] ?? null,
