@@ -3,16 +3,8 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 3.2.0
+ * Version: 3.3.0 (Minimal)
  */
-
-function formatAPN(string $apnRaw): string {
-    $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $apnRaw));
-    if (strlen($apnRaw) < 8) {
-        return $apnRaw;
-    }
-    return substr($apnRaw, 0, 3) . '-' . substr($apnRaw, 3, 2) . '-' . substr($apnRaw, 5);
-}
 
 function resolveParcel(
     ?float $latitude = null,
@@ -52,7 +44,6 @@ function resolveParcel(
         return $result;
     }
 
-    // Build ArcGIS query
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $normalized) . "%')";
 
     $params = [
@@ -88,13 +79,12 @@ function resolveParcel(
         $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $attr['APN']));
 
         $parcelDetails[] = [
-            'parcelNumber'          => $apnRaw,
-            'parcelNumberFormatted' => formatAPN($apnRaw),
-            'ownerName'             => trim($attr['OWNER_NAME'] ?? ''),
-            'siteAddress'           => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
-            'city'                  => trim($attr['PHYSICAL_CITY'] ?? ''),
-            'jurisdiction'          => trim($attr['JURISDICTION'] ?? ''),
-            'source'                => 'mca_arcgis_mcassessor'
+            'parcelNumber' => $apnRaw,
+            'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
+            'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
+            'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
+            'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
+            'source'       => 'mca_arcgis_mcassessor'
         ];
     }
 
