@@ -35,7 +35,7 @@ error_reporting(E_ALL);
 // DEPENDENCY LOADING
 // =====================================================
 
-//require_once __DIR__ . '/utils/processProposedContact.utils.php';
+require_once __DIR__ . '/utils/processProposedContact.utils.php';
 
 error_log('[PPC] Dependencies loaded');
 
