@@ -273,8 +273,8 @@ error_log('[PPC][SECTION-03] AI extraction complete');
 
 echo json_encode([
     'success' => true,
-    'status' => 'section_03_complete',
-    'parsed' => $parsed,
+    'status' => 'section_03_debug',
+    'content' => $content,
     'requestId' => $context['requestId']
 ]);
 
