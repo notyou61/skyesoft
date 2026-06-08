@@ -495,7 +495,7 @@ $parcelResult = resolveParcel(
     $data['location']['locationLongitude'] ?? null,
     $data['location']['locationCounty']    ?? null,
     $data['location']['locationCountyFips'] ?? null,
-    $searchAddress                           // ← Pass the search address
+    $searchAddress
 );
 
 $data['location']['parcelDetails']   = $parcelResult['parcelDetails']   ?? [];
@@ -503,7 +503,14 @@ $data['location']['parcelCount']     = $parcelResult['parcelCount']     ?? 0;
 $data['location']['jurisdictionName'] = $parcelResult['jurisdictionName'] ?? null;
 $data['location']['jurisdictionType'] = $parcelResult['jurisdictionType'] ?? null;
 
-error_log('[PPC][SECTION-09] Parcel resolution complete. Count: ' . $data['location']['parcelCount']);
+// Optional: Add a flag when multiple parcels are found
+$data['location']['hasMultipleParcels'] = ($data['location']['parcelCount'] > 1);
+
+error_log(
+    '[PPC][SECTION-09] Parcel resolution complete. ' .
+    'Count: ' . $data['location']['parcelCount'] .
+    ($data['location']['hasMultipleParcels'] ? ' (MULTIPLE PARCELS FOUND)' : '')
+);
 
 #endregion
 
@@ -514,9 +521,10 @@ echo json_encode([
     'status'   => 'section_09_parcel_resolved',
     'location' => $data['location'],
     'debug'    => [
-        'searchAddress' => $searchAddress,
-        'parcelCount'   => $data['location']['parcelCount'],
-        'parcelDetails' => $data['location']['parcelDetails']
+        'searchAddress'      => $searchAddress,
+        'parcelCount'        => $data['location']['parcelCount'],
+        'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
+        'parcelDetails'      => $data['location']['parcelDetails']
     ]
 ], JSON_PRETTY_PRINT);
 

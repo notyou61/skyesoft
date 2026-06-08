@@ -2,8 +2,11 @@
 declare(strict_types=1);
 
 /**
- * Skyesoft — Parcel Resolution Utility (Assessor API)
- * Version: 2.1.0
+ * Skyesoft — Parcel Resolution Utility
+ * Version: 3.0.0
+ *
+ * Uses Maricopa County Assessor ArcGIS (address-based query)
+ * Proven to work for addresses like "3145 N 33rd Ave"
  */
 
 function resolveParcel(
@@ -23,67 +26,85 @@ function resolveParcel(
     ];
 
     if ($countyFips !== '013' && strtolower($county ?? '') !== 'maricopa') {
-        error_log('[RESOLVE-PARCEL] Skipping non-Maricopa');
+        error_log('[RESOLVE-PARCEL] Skipping non-Maricopa county');
         return $result;
     }
 
-    $query = $searchAddress ?: (($latitude && $longitude) ? "{$latitude},{$longitude}" : null);
-
-    if (!$query) {
-        error_log('[RESOLVE-PARCEL] No query available');
+    if (!$searchAddress) {
+        error_log('[RESOLVE-PARCEL] No searchAddress provided');
         return $result;
     }
 
-    $url = 'https://mcassessor.maricopa.gov/search/property/?q=' . urlencode($query);
+    // =====================================================
+    // NORMALIZE ADDRESS FOR LIKE QUERY
+    // =====================================================
+    $normalized = strtoupper(trim($searchAddress));
+    $normalized = str_replace([', USA', ','], ' ', $normalized);
+    $normalized = preg_replace('/\s+/', ' ', $normalized);
 
-    error_log('[RESOLVE-PARCEL] Querying Assessor API: ' . $url);
+    // Remove city/state/zip for better matching
+    $normalized = preg_split('/\bPHOENIX\b|\bAZ\b|\d{5}/', $normalized)[0] ?? $normalized;
+    $normalized = trim($normalized);
+
+    if (strlen($normalized) < 5) {
+        error_log('[RESOLVE-PARCEL] Normalized address too short');
+        return $result;
+    }
+
+    // =====================================================
+    // BUILD ARCGIS WHERE CLAUSE (Address LIKE)
+    // =====================================================
+    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . 
+             str_replace("'", "''", $normalized) . "%')";
+
+    $params = [
+        'where'          => $where,
+        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+        'returnGeometry' => 'false',
+        'f'              => 'json'
+    ];
+
+    $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . 
+           http_build_query($params);
+
+    error_log('[RESOLVE-PARCEL] ArcGIS query: ' . $url);
 
     $context = stream_context_create([
-        'http' => [
-            'timeout' => 12,
-            'header'  => "User-Agent: Skyesoft/1.0\r\n"
-        ]
+        'http' => ['timeout' => 12]
     ]);
 
     $response = @file_get_contents($url, false, $context);
 
     if ($response === false) {
-        error_log('[RESOLVE-PARCEL] API request failed');
+        error_log('[RESOLVE-PARCEL] ArcGIS request failed');
         return $result;
     }
 
     $data = json_decode($response, true);
 
-    if (!is_array($data)) {
-        error_log('[RESOLVE-PARCEL] Invalid JSON from Assessor API');
+    if (!isset($data['features']) || !is_array($data['features'])) {
+        error_log('[RESOLVE-PARCEL] Invalid ArcGIS response');
         return $result;
     }
 
-    error_log('[RESOLVE-PARCEL] Raw results count: ' . count($data['results'] ?? []));
-
     $parcelDetails = [];
 
-    foreach (($data['results'] ?? []) as $item) {
+    foreach ($data['features'] as $feature) {
+        $attr = $feature['attributes'] ?? [];
 
-        // Try multiple possible field names (API can vary slightly)
-        $apn = $item['apn'] 
-            ?? $item['parcel_number'] 
-            ?? $item['APN'] 
-            ?? null;
-
-        if (!$apn) {
-            continue; // skip if no APN
+        if (empty($attr['APN'])) {
+            continue;
         }
 
+        $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $attr['APN']));
+
         $parcelDetails[] = [
-            'parcelNumber' => $apn,
-            'ownerName'    => $item['owner'] ?? $item['owner_name'] ?? null,
-            'siteAddress'  => $item['address'] ?? $item['situs_address'] ?? null,
-            'city'         => $item['city'] ?? null,
-            'zip'          => $item['zip'] ?? null,
-            'propertyType' => $item['property_type'] ?? $item['type'] ?? null,
-            'subdivision'  => $item['subdivision'] ?? null,
-            'mcr'          => $item['mcr'] ?? null
+            'parcelNumber' => $apnRaw,
+            'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
+            'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
+            'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
+            'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
+            'source'       => 'mca_arcgis_mcassessor'
         ];
     }
 
@@ -96,7 +117,7 @@ function resolveParcel(
         $result['jurisdictionType'] = 'City';
     }
 
-    error_log('[RESOLVE-PARCEL] Final parcel count: ' . $result['parcelCount']);
+    error_log('[RESOLVE-PARCEL] Resolved ' . $result['parcelCount'] . ' parcel(s)');
 
     return $result;
 }
