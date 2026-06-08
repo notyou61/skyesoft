@@ -266,15 +266,13 @@ error_log('[PPC][SECTION-03] AI extraction complete');
 
 #endregion
 
-
 #region Output Generation — Placeholder for future implementation
 
 echo json_encode([
     'success' => true,
-    'status' => 'section_02_complete',
-    'inputLength' => strlen($rawInput),
-    'requestId' => $context['requestId'],
-    'pdoConnected' => ($pdo instanceof PDO)
+    'status' => 'section_03_complete',
+    'parsed' => $parsed,
+    'requestId' => $context['requestId']
 ]);
 
 exit;
