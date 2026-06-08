@@ -461,24 +461,28 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
 
 #endregion
 
-#region SECTION 08 — Census Validation
+#region SECTION 08 — County Resolution (Census)
 
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 
-$data['location']['locationCounty'] = null;
-$data['location']['locationCountyFips'] = null;
+$censusResult = validateAddressCensus($searchAddress);
 
-$censusResult =
-    validateAddressCensus(
-        $searchAddress
+$data['location']['locationCensusValidated'] = $censusResult['valid'] ?? false;
+$data['location']['locationCounty']          = $censusResult['county']     ?? null;
+$data['location']['locationCountyFips']      = $censusResult['countyFips'] ?? null;
+
+if ($data['location']['locationCensusValidated']) {
+    error_log(
+        '[PPC][SECTION-08] ✅ Census county resolved: ' .
+        ($data['location']['locationCounty'] ?? 'N/A') .
+        ' (' . ($data['location']['locationCountyFips'] ?? 'N/A') . ')'
     );
-
-$data['location']['locationCensusValidated'] =
-    $censusResult['valid'] ?? false;
-
-error_log(
-    '[PPC][SECTION-08] Census validation complete'
-);
+} else {
+    error_log(
+        '[PPC][SECTION-08] ❌ Census validation failed: ' . 
+        ($censusResult['reason'] ?? 'Unknown reason')
+    );
+}
 
 #endregion
 
@@ -488,8 +492,11 @@ echo json_encode([
     'success'  => true,
     'status'   => 'section_08_county_resolved',
     'location' => $data['location'],
-    'debug' => [
-        'searchAddress' => $searchAddress
+    'debug'    => [
+        'searchAddress'     => $searchAddress,
+        'county'            => $data['location']['locationCounty'] ?? null,
+        'countyFips'        => $data['location']['locationCountyFips'] ?? null,
+        'censusValidated'   => $data['location']['locationCensusValidated'] ?? false
     ]
 ], JSON_PRETTY_PRINT);
 

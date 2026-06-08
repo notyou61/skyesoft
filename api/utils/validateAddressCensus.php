@@ -2,53 +2,45 @@
 declare(strict_types=1);
 
 // ======================================================================
-//  Skyesoft — Address Validation Layer (Census)
-//  Version: 1.0.0
+//  Skyesoft — Address Validation + County Resolution (Census)
+//  Version: 1.1.0
 //  Codex Tier: 2 — Validation Enforcement
 //
 //  Role:
-//  Validates U.S. addresses using Census Geocoder (FREE)
+//  Validates U.S. addresses using Census Geocoder (FREE) and resolves county.
 //
 //  Purpose:
 //   • Confirm address exists in national dataset
-//   • Prevent fake or invalid addresses
+//   • Return county name and FIPS code when available
 //
-//  Output:
-//   • valid (bool)
-//   • normalized address + coordinates
-//
+//  Output Structure:
+//   - valid (bool)
+//   - normalized address + coordinates
+//   - county + countyFips (when valid)
 // ======================================================================
 
-#region SECTION X — Address Validation (CENSUS)
+#region SECTION 00 — Address Validation (CENSUS + COUNTY)
 
 function validateAddressCensus(string $fullAddress): array
 {
-    #region INPUT VALIDATION
-
     $fullAddress = trim($fullAddress);
 
     if ($fullAddress === '') {
         return [
-            'valid' => false,
+            'valid'  => false,
             'reason' => 'Empty address input'
         ];
     }
 
-    #endregion
-
-    #region REQUEST BUILD
-
+    // Use Geographies endpoint to get county + FIPS
     $query = http_build_query([
         'address'   => $fullAddress,
         'benchmark' => 'Public_AR_Current',
+        'vintage'   => 'Current_Current',
         'format'    => 'json'
     ]);
 
-    $url = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?$query";
-
-    #endregion
-
-    #region HTTP REQUEST
+    $url = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?$query";
 
     $context = stream_context_create([
         'http' => [
@@ -59,36 +51,46 @@ function validateAddressCensus(string $fullAddress): array
     $response = @file_get_contents($url, false, $context);
 
     if ($response === false) {
-        $error = error_get_last();
-        throw new RuntimeException(
-            'Census request failed: ' . ($error['message'] ?? 'unknown')
-        );
+        return [
+            'valid'  => false,
+            'reason' => 'Census request failed'
+        ];
     }
-
-    #endregion
-
-    #region RESPONSE PARSE
 
     $data = json_decode($response, true);
 
     if (!is_array($data)) {
-        throw new RuntimeException('Invalid Census response.');
+        return [
+            'valid'  => false,
+            'reason' => 'Invalid Census response'
+        ];
     }
 
     $matches = $data['result']['addressMatches'] ?? [];
 
     if (!is_array($matches) || count($matches) === 0) {
         return [
-            'valid' => false,
+            'valid'  => false,
             'reason' => 'Address not found in Census database'
         ];
     }
 
     $match = $matches[0];
 
-    #endregion
+    // Extract county information from geographies
+    $geographies = $match['geographies'] ?? [];
+    $county      = $geographies['Counties'][0] ?? null;
 
-    #region NORMALIZATION
+    $countyName = null;
+    $countyFips = null;
+
+    if ($county) {
+        $countyName = trim(str_replace(' County', '', $county['NAME'] ?? ''));
+        
+        $stateFips  = str_pad($county['STATE'] ?? '04', 2, '0', STR_PAD_LEFT);
+        $countyCode = str_pad($county['COUNTY'] ?? '', 3, '0', STR_PAD_LEFT);
+        $countyFips = $stateFips . $countyCode;
+    }
 
     return [
         'valid' => true,
@@ -96,10 +98,10 @@ function validateAddressCensus(string $fullAddress): array
             'address' => $match['matchedAddress'] ?? $fullAddress,
             'lat'     => $match['coordinates']['y'] ?? null,
             'lng'     => $match['coordinates']['x'] ?? null
-        ]
+        ],
+        'county'     => $countyName,
+        'countyFips' => $countyFips
     ];
-
-    #endregion
 }
 
 #endregion
