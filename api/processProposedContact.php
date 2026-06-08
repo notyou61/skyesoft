@@ -418,35 +418,56 @@ $searchAddress = trim(
     ]))
 );
 
-error_log(
-    '[PPC][SECTION-07] Search Address: ' .
-    $searchAddress
-);
+error_log('[PPC][SECTION-07] Search Address: ' . $searchAddress);
 
 // =====================================================
-// NO ADDRESS AVAILABLE
+// GOOGLE GEOCODE
 // =====================================================
 
-if ($searchAddress === '') {
+$googleApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') 
+    ?: getenv('GOOGLE_MAPS_BACKEND_API_KEY');
 
-    error_log(
-        '[PPC][SECTION-07] No address available'
-    );
+if (!empty($searchAddress) && !empty($googleApiKey)) {
+
+    $geocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?' . 
+        http_build_query([
+            'address' => $searchAddress,
+            'key'     => $googleApiKey
+        ]);
+
+    $geocodeResponse = @file_get_contents($geocodeUrl);
+    $geocodeData     = json_decode($geocodeResponse, true);
+
+    if (isset($geocodeData['results'][0])) {
+
+        $result = $geocodeData['results'][0];
+
+        $data['location']['locationPlaceId']   = $result['place_id'] ?? null;
+        $data['location']['locationLatitude']  = $result['geometry']['location']['lat'] ?? null;
+        $data['location']['locationLongitude'] = $result['geometry']['location']['lng'] ?? null;
+        $data['location']['locationValidated'] = true;
+
+        error_log('[PPC][SECTION-07] Google validation successful');
+
+    } else {
+        error_log('[PPC][SECTION-07] Google returned no results');
+        $data['location']['locationValidated'] = false;
+    }
 
 } else {
-
-    error_log(
-        '[PPC][SECTION-07] Ready for geocode lookup'
-    );
+    error_log('[PPC][SECTION-07] Skipping Google geocode (missing address or API key)');
+    $data['location']['locationValidated'] = false;
 }
 
 #endregion
 
+#region SECTION 99 — Debug Output (Temporary)
+
 echo json_encode([
-    'success' => true,
-    'status' => 'section_07_initialized',
+    'success'       => true,
+    'status'        => 'section_07_geocoded',
     'searchAddress' => $searchAddress,
-    'data' => $data
+    'location'      => $data['location']
 ], JSON_PRETTY_PRINT);
 
 exit;
