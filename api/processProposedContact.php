@@ -137,6 +137,7 @@ exit;
 }
 
 error_log('[PPC][SECTION-03] OpenAI key loaded');
+error_log('[PPC][SECTION-03] Starting OpenAI request');
 
 // =====================================================
 // AI PROMPT CONSTRUCTION
@@ -207,6 +208,7 @@ CURLOPT_TIMEOUT => 30
 ]);
 
 $response = curl_exec($ch);
+error_log('[PPC][SECTION-03] OpenAI response received');
 
 safeCurlClose($ch);
 
@@ -245,10 +247,11 @@ exit;
 
 }
 
-preg_match('/{.*}/s', $content, $matches);
+$parsed = json_decode(trim($content), true);
 
-$parsed =
-json_decode($matches[0] ?? '{}', true);
+$parsed = json_decode($matches[0] ?? '{}', true);
+
+error_log('[PPC][SECTION-03] Parsed JSON created');
 
 if (!is_array($parsed)) {
 
