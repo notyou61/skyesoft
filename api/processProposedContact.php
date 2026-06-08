@@ -488,17 +488,6 @@ if ($data['location']['locationCensusValidated']) {
 
 #region SECTION 09 — Parcel Resolution
 
-/**
- * Format raw APN into readable format (e.g. 10803009E → 108-03-009E)
- */
-function formatAPN(string $apnRaw): string {
-    $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $apnRaw));
-    if (strlen($apnRaw) < 8) {
-        return $apnRaw;
-    }
-    return substr($apnRaw, 0, 3) . '-' . substr($apnRaw, 3, 2) . '-' . substr($apnRaw, 5);
-}
-
 require_once __DIR__ . '/utils/resolveParcel.php';
 
 $parcelResult = resolveParcel(
@@ -518,13 +507,28 @@ $data['location']['jurisdictionType'] = $parcelResult['jurisdictionType'] ?? nul
 $data['location']['hasMultipleParcels'] = ($data['location']['parcelCount'] > 1);
 
 // =====================================================
-// ADD FORMATTED APN (e.g. 108-03-009E)
+// ADD FORMATTED APN INLINE (no function definition)
 // =====================================================
 foreach ($data['location']['parcelDetails'] as &$parcel) {
-    $raw = $parcel['parcelNumber'] ?? '';
-    $parcel['parcelNumberFormatted'] = formatAPN($raw);
+    $raw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $parcel['parcelNumber'] ?? ''));
+
+    if (strlen($raw) >= 8) {
+        if (strlen($raw) === 9) {
+            // Handle 9-character APNs (e.g. 10803009E)
+            $parcel['parcelNumberFormatted'] = substr($raw, 0, 3) . '-' .
+                                               substr($raw, 3, 2) . '-' .
+                                               substr($raw, 5, 3) . substr($raw, 8);
+        } else {
+            // Standard 8-character APNs
+            $parcel['parcelNumberFormatted'] = substr($raw, 0, 3) . '-' .
+                                               substr($raw, 3, 2) . '-' .
+                                               substr($raw, 5);
+        }
+    } else {
+        $parcel['parcelNumberFormatted'] = $raw;
+    }
 }
-unset($parcel); // break reference
+unset($parcel);
 
 error_log(
     '[PPC][SECTION-09] Parcel resolution complete. ' .
