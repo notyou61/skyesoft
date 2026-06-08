@@ -101,6 +101,15 @@ error_log('[PPC] Runtime services loaded');
 
 #region SECTION 02 — Input Validation
 
+if ($rawInput === '') {
+
+    echo json_encode([
+        'success' => false,
+        'status'  => 'missing_input'
+    ]);
+
+    exit;
+}
 
 error_log('[PPC] Input validated');
 
