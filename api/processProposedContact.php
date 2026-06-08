@@ -307,8 +307,6 @@ error_log('[PPC][SECTION-04] Schema enforcement complete');
 
 #endregion
 
-#region SECTION 99 — Debug Output (Temporary)
-
 #region SECTION 05 — Data Normalization
 
 // =====================================================
