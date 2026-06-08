@@ -380,10 +380,33 @@ error_log(
 
 #endregion
 
+#region SECTION 06 — Address Resolution
+
+$data = [
+    'entity'   => $parsed['entity'],
+    'contact'  => $parsed['contact'],
+    'location' => [
+        'locationAddress'   => $parsed['location']['address'],
+        'locationCity'      => $parsed['location']['city'],
+        'locationState'     => $parsed['location']['state'],
+        'locationZip'       => $parsed['location']['zip'],
+        'locationPlaceId'   => null,
+        'locationLatitude'  => null,
+        'locationLongitude' => null,
+        'locationValidated' => false
+    ]
+];
+
+error_log(
+    '[PPC][SECTION-06] Location object initialized'
+);
+
+#endregion
+
 echo json_encode([
     'success' => true,
-    'status'  => 'section_05_complete',
-    'parsed'  => $parsed
+    'status'  => 'section_06_complete',
+    'data'    => $data
 ], JSON_PRETTY_PRINT);
 
 exit;
