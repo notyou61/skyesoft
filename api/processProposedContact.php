@@ -486,7 +486,7 @@ if ($data['location']['locationCensusValidated']) {
 
 #endregion
 
-#region SECTION 09 — Parcel Resolution
+#region SECTION 09 — Parcel Resolution + Enrichment
 
 require_once __DIR__ . '/utils/resolveParcel.php';
 
@@ -502,38 +502,58 @@ $data['location']['parcelDetails']   = $parcelResult['parcelDetails']   ?? [];
 $data['location']['parcelCount']     = $parcelResult['parcelCount']     ?? 0;
 $data['location']['jurisdictionName'] = $parcelResult['jurisdictionName'] ?? null;
 $data['location']['jurisdictionType'] = $parcelResult['jurisdictionType'] ?? null;
-
-// Add flag for multiple parcels
 $data['location']['hasMultipleParcels'] = ($data['location']['parcelCount'] > 1);
 
 // =====================================================
-// ADD FORMATTED APN INLINE (no function definition)
+// ENRICH EACH PARCEL WITH DETAILED ASSESSOR DATA
 // =====================================================
 foreach ($data['location']['parcelDetails'] as &$parcel) {
-    $raw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $parcel['parcelNumber'] ?? ''));
+    $apn = $parcel['parcelNumber'] ?? null;
+    if (!$apn) continue;
 
-    if (strlen($raw) >= 8) {
-        if (strlen($raw) === 9) {
-            // Handle 9-character APNs (e.g. 10803009E)
-            $parcel['parcelNumberFormatted'] = substr($raw, 0, 3) . '-' .
-                                               substr($raw, 3, 2) . '-' .
-                                               substr($raw, 5, 3) . substr($raw, 8);
-        } else {
-            // Standard 8-character APNs
-            $parcel['parcelNumberFormatted'] = substr($raw, 0, 3) . '-' .
-                                               substr($raw, 3, 2) . '-' .
-                                               substr($raw, 5);
-        }
-    } else {
-        $parcel['parcelNumberFormatted'] = $raw;
+    $detailUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
+
+    error_log('[PPC][SECTION-09] Enriching parcel: ' . $apn);
+
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 10,
+            'header'  => "User-Agent: Skyesoft/1.0\r\n"
+        ]
+    ]);
+
+    $detailResponse = @file_get_contents($detailUrl, false, $context);
+
+    if ($detailResponse === false) {
+        error_log('[PPC][SECTION-09] Failed to enrich parcel: ' . $apn);
+        continue;
     }
+
+    $detailData = json_decode($detailResponse, true);
+
+    if (!is_array($detailData)) {
+        error_log('[PPC][SECTION-09] Invalid detail response for: ' . $apn);
+        continue;
+    }
+
+    // Merge useful fields from the detail response
+    $parcel['ownerMailingAddress'] = $detailData['mailing_address'] ?? null;
+    $parcel['propertyType']        = $detailData['property_type'] ?? $detailData['use_code'] ?? null;
+    $parcel['lotSizeSqFt']         = $detailData['lot_size_sqft'] ?? null;
+    $parcel['buildingSizeSqFt']    = $detailData['building_size_sqft'] ?? null;
+    $parcel['yearBuilt']           = $detailData['year_built'] ?? null;
+    $parcel['lastSaleDate']        = $detailData['last_sale_date'] ?? null;
+    $parcel['lastSalePrice']       = $detailData['last_sale_price'] ?? null;
+
+    // Keep the raw detail for future use if needed
+    $parcel['assessorDetail']      = $detailData;
 }
+
 unset($parcel);
 
 error_log(
-    '[PPC][SECTION-09] Parcel resolution complete. ' .
-    'Count: ' . $data['location']['parcelCount'] .
-    ($data['location']['hasMultipleParcels'] ? ' (MULTIPLE PARCELS FOUND)' : '')
+    '[PPC][SECTION-09] Parcel resolution + enrichment complete. ' .
+    'Count: ' . $data['location']['parcelCount']
 );
 
 #endregion
