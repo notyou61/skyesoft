@@ -3,10 +3,9 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 3.0.0
+ * Version: 3.1.0
  *
  * Uses Maricopa County Assessor ArcGIS (address-based query)
- * Proven to work for addresses like "3145 N 33rd Ave"
  */
 
 function resolveParcel(
@@ -36,13 +35,11 @@ function resolveParcel(
     }
 
     // =====================================================
-    // NORMALIZE ADDRESS FOR LIKE QUERY
+    // NORMALIZE ADDRESS
     // =====================================================
     $normalized = strtoupper(trim($searchAddress));
     $normalized = str_replace([', USA', ','], ' ', $normalized);
     $normalized = preg_replace('/\s+/', ' ', $normalized);
-
-    // Remove city/state/zip for better matching
     $normalized = preg_split('/\bPHOENIX\b|\bAZ\b|\d{5}/', $normalized)[0] ?? $normalized;
     $normalized = trim($normalized);
 
@@ -52,7 +49,7 @@ function resolveParcel(
     }
 
     // =====================================================
-    // BUILD ARCGIS WHERE CLAUSE (Address LIKE)
+    // ARCGIS QUERY (Address LIKE)
     // =====================================================
     $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . 
              str_replace("'", "''", $normalized) . "%')";
@@ -66,8 +63,6 @@ function resolveParcel(
 
     $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . 
            http_build_query($params);
-
-    error_log('[RESOLVE-PARCEL] ArcGIS query: ' . $url);
 
     $context = stream_context_create([
         'http' => ['timeout' => 12]
@@ -99,12 +94,13 @@ function resolveParcel(
         $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $attr['APN']));
 
         $parcelDetails[] = [
-            'parcelNumber' => $apnRaw,
-            'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
-            'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
-            'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
-            'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
-            'source'       => 'mca_arcgis_mcassessor'
+            'parcelNumber'          => $apnRaw,
+            'parcelNumberFormatted' => formatAPN($apnRaw),
+            'ownerName'             => trim($attr['OWNER_NAME'] ?? ''),
+            'siteAddress'           => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
+            'city'                  => trim($attr['PHYSICAL_CITY'] ?? ''),
+            'jurisdiction'          => trim($attr['JURISDICTION'] ?? ''),
+            'source'                => 'mca_arcgis_mcassessor'
         ];
     }
 
@@ -120,4 +116,20 @@ function resolveParcel(
     error_log('[RESOLVE-PARCEL] Resolved ' . $result['parcelCount'] . ' parcel(s)');
 
     return $result;
+}
+
+// =====================================================
+// HELPER: Format APN nicely (e.g. 108-03-009E)
+// =====================================================
+function formatAPN(string $apnRaw): string {
+
+    $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $apnRaw));
+
+    if (strlen($apnRaw) < 8) {
+        return $apnRaw;
+    }
+
+    return substr($apnRaw, 0, 3) . '-' .
+           substr($apnRaw, 3, 2) . '-' .
+           substr($apnRaw, 5);
 }
