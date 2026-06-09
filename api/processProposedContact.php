@@ -128,7 +128,7 @@ if (empty($openAiApiKey)) {
 error_log('[PPC][SECTION-03] Starting AI extraction');
 
 // =====================================================
-// STRONG SYSTEM PROMPT (Title + Phone Emphasis)
+// STRONG SYSTEM PROMPT (Title Extraction Emphasis)
 // =====================================================
 $systemPrompt = <<<EOT
 You are an extremely precise structured data extraction engine.
@@ -138,14 +138,15 @@ STEPS:
 2. Extract all fields accurately.
 
 CRITICAL RULES:
-- Title is REQUIRED. Always extract the person's job title/role when present (e.g. "Accounting Manager", "Director of Operations", "Project Manager").
+- Title extraction is MANDATORY when present.
+- If the input contains a job title/role (e.g. Accounting Manager, Director of Operations, Project Manager, etc.), extract it into the "title" field.
+- Do NOT guess or invent a title if none is clearly present.
 - Extract any phone number present.
 - Put the cleaned/formatted version in "primaryPhone".
 - Put the exact original text in "primaryPhoneRaw".
 - Be accurate with names and email.
 
 Return ONLY valid JSON in this exact structure. No extra text.
-
 {
   "intent": "contact_proposal",
   "confidence": 85,
@@ -641,6 +642,8 @@ $pcm = [
     'blocksCommit'     => true,
     'action'           => null
 ];
+
+$isExplicitLocationOnlyIntent = $isExplicitLocationOnlyIntent ?? false;
 
 // =====================================================
 // PASS 1 — PC Classification (What is the proposal?)
