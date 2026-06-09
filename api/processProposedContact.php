@@ -558,157 +558,173 @@ error_log(
 
 #endregion
 
-#region SECTION 10 — Governance
+#region SECTION 10 — Database Resolution
 
 // =====================================================
 // INITIALIZATION
 // =====================================================
 
-$parcelCount =
-    count(
-        $data['location']['parcelDetails']
-        ?? []
-    );
+$databaseResolution = [
 
-$hasMultipleParcels =
-    ($parcelCount > 1);
+    'entityFound'   => false,
+    'entityId'      => null,
 
-$locationValidated =
-    (
-        $data['location']['locationValidated']
-        ?? false
-    );
+    'locationFound' => false,
+    'locationId'    => null,
 
-$locationCensusValidated =
-    (
-        $data['location']['locationCensusValidated']
-        ?? false
-    );
-
-$governance = [
-
-    'pc' => [
-        'code'   => null,
-        'status' => null
-    ],
-
-    'rs' => [],
-
-    'readyForCommit' => false,
-    'requiresReview' => false,
-    'blocksCommit'   => true
+    'contactFound'  => false,
+    'contactId'     => null
 
 ];
 
 error_log(
-    '[PPC][SECTION-10] Governance initialization complete'
+    '[PPC][SECTION-10] Database resolution initialized'
 );
 
 // =====================================================
-// PC CLASSIFICATION
+// ENTITY LOOKUP
 // =====================================================
 
-// PC-0 = Invalid Location
+$entityName =
+    trim(
+        $data['entity']['entityName']
+        ?? ''
+    );
 
 if (
-    !$locationValidated ||
-    !$locationCensusValidated
+    $entityName !== ''
 ) {
 
-    $governance['pc']['code'] =
-        'PC-0';
+    $sql = "
+        SELECT
+            entityId
+        FROM
+            tblEntities
+        WHERE
+            entityName = ?
+        LIMIT 1
+    ";
 
-    $governance['pc']['status'] =
-        'invalid_location';
+    $stmt =
+        $pdo->prepare($sql);
 
-    $governance['rs'][] =
-        'RS-1';
+    $stmt->execute([
+        $entityName
+    ]);
 
-    $governance['requiresReview'] =
-        true;
+    $entity =
+        $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $governance['blocksCommit'] =
-        true;
+    if ($entity) {
+
+        $databaseResolution['entityFound'] =
+            true;
+
+        $databaseResolution['entityId'] =
+            (int)$entity['entityId'];
+    }
 }
-
-// PC-1 = New ELC Candidate
-
-else {
-
-    $governance['pc']['code'] =
-        'PC-1';
-
-    $governance['pc']['status'] =
-        'new_elc';
-}
-
-error_log(
-    '[PPC][SECTION-10] PC classification complete'
-);
 
 // =====================================================
-// RULE EVALUATION
+// LOCATION LOOKUP
 // =====================================================
 
-// RS-6 = Multiple Parcel Review Required
-
-if ($hasMultipleParcels) {
-
-    $governance['rs'][] =
-        'RS-6';
-
-    $governance['requiresReview'] =
-        true;
-
-    $governance['blocksCommit'] =
-        true;
-}
-
-// RS-5 = No Parcel Found
-
-if ($parcelCount === 0) {
-
-    $governance['rs'][] =
-        'RS-5';
-
-    $governance['requiresReview'] =
-        true;
-
-    $governance['blocksCommit'] =
-        true;
-}
-
-// RS-0 = No Issues
+$placeId =
+    trim(
+        $data['location']['locationPlaceId']
+        ?? ''
+    );
 
 if (
-    empty($governance['rs'])
+    $placeId !== ''
 ) {
 
-    $governance['rs'][] =
-        'RS-0';
+    $sql = "
+        SELECT
+            locationId
+        FROM
+            tblLocations
+        WHERE
+            locationPlaceId = ?
+        LIMIT 1
+    ";
 
-    $governance['blocksCommit'] =
-        false;
+    $stmt =
+        $pdo->prepare($sql);
+
+    $stmt->execute([
+        $placeId
+    ]);
+
+    $location =
+        $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($location) {
+
+        $databaseResolution['locationFound'] =
+            true;
+
+        $databaseResolution['locationId'] =
+            (int)$location['locationId'];
+    }
+}
+
+// =====================================================
+// CONTACT LOOKUP
+// =====================================================
+
+$firstName =
+    trim(
+        $data['contact']['contactFirstName']
+        ?? ''
+    );
+
+$lastName =
+    trim(
+        $data['contact']['contactLastName']
+        ?? ''
+    );
+
+if (
+    $firstName !== '' &&
+    $lastName !== ''
+) {
+
+    $sql = "
+        SELECT
+            contactId
+        FROM
+            tblContacts
+        WHERE
+            contactFirstName = ?
+        AND
+            contactLastName = ?
+        LIMIT 1
+    ";
+
+    $stmt =
+        $pdo->prepare($sql);
+
+    $stmt->execute([
+        $firstName,
+        $lastName
+    ]);
+
+    $contact =
+        $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($contact) {
+
+        $databaseResolution['contactFound'] =
+            true;
+
+        $databaseResolution['contactId'] =
+            (int)$contact['contactId'];
+    }
 }
 
 error_log(
-    '[PPC][SECTION-10] Rule evaluation complete'
-);
-
-// =====================================================
-// FINAL DECISION
-// =====================================================
-
-$governance['readyForCommit'] =
-    !$governance['blocksCommit'];
-
-error_log(
-    '[PPC][SECTION-10] readyForCommit=' .
-    (
-        $governance['readyForCommit']
-        ? 'true'
-        : 'false'
-    )
+    '[PPC][SECTION-10] Database resolution complete'
 );
 
 #endregion
@@ -720,16 +736,10 @@ echo json_encode([
     'success' => true,
 
     'status' =>
-        'section_10_governance_complete',
+        'section_10_database_resolution',
 
-    'governance' =>
-        $governance,
-
-    'parcelCount' =>
-        $parcelCount,
-
-    'hasMultipleParcels' =>
-        $hasMultipleParcels
+    'databaseResolution' =>
+        $databaseResolution
 
 ], JSON_PRETTY_PRINT);
 
