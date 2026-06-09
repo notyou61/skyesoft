@@ -689,14 +689,61 @@ if ($isExplicitLocationOnlyIntent === true) {
 }
 
 // =====================================================
-// PASS 2 — RS Governance (Can this proposal proceed?)
+// MINIMUM FIELD REQUIREMENTS (Codex-aligned)
 // =====================================================
 
-// RS-1 — Incomplete (always blocking if present)
-if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
-    $pcm['rs'][]         = 'RS-1';
-    $pcm['rsStatuses'][] = 'incomplete';
+$missingRequired = [];
+
+// Always required fields (all PC types)
+if (empty($parsed['entity']['name'])) {
+    $missingRequired[] = 'entity.name';
 }
+if (empty($parsed['location']['address'])) {
+    $missingRequired[] = 'location.address';
+}
+if (empty($parsed['location']['city'])) {
+    $missingRequired[] = 'location.city';
+}
+if (empty($parsed['location']['state'])) {
+    $missingRequired[] = 'location.state';
+}
+if (empty($rawInput)) {
+    $missingRequired[] = 'rawInput.original';
+}
+
+// Contact identity fields required only for PC-1, PC-2, PC-3
+if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'], true)) {
+    if (empty($parsed['contact']['firstName'])) {
+        $missingRequired[] = 'contact.firstName';
+    }
+    if (empty($parsed['contact']['lastName'])) {
+        $missingRequired[] = 'contact.lastName';
+    }
+}
+
+// Apply RS flags based on what is missing
+if (!empty($missingRequired)) {
+
+    $hasContactFieldsMissing = in_array('contact.firstName', $missingRequired) || 
+                               in_array('contact.lastName', $missingRequired);
+
+    if ($hasContactFieldsMissing) {
+        $pcm['rs'][]         = 'RS-3';
+        $pcm['rsStatuses'][] = 'incomplete_contact';
+    } else {
+        $pcm['rs'][]         = 'RS-1';
+        $pcm['rsStatuses'][] = 'incomplete';
+    }
+
+    $pcm['requiresReview'] = true;
+    $pcm['blocksCommit']   = true;
+
+    error_log('[PPC][SECTION-11] Missing required fields per Codex: ' . implode(', ', $missingRequired));
+}
+
+// =====================================================
+// PASS 2 — RS Governance (Can this proposal proceed?)
+// =====================================================
 
 // RS-5 — Duplicate Contact
 if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
@@ -738,7 +785,8 @@ $pcm['blocksCommit'] = in_array('RS-5', $pcm['rs']) ||
                        in_array('RS-6', $pcm['rs']) || 
                        in_array('RS-7', $pcm['rs']) || 
                        in_array('RS-8', $pcm['rs']) ||
-                       in_array('RS-1', $pcm['rs']);
+                       in_array('RS-1', $pcm['rs']) ||
+                       in_array('RS-3', $pcm['rs']);
 
 $pcm['readyForCommit'] = !$pcm['blocksCommit'];
 $pcm['requiresReview'] = count($pcm['rs']) > 0 && $pcm['rs'][0] !== 'RS-0';

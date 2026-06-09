@@ -4730,6 +4730,35 @@
                 "preamble": {
                     "text": "All contacts must exist within a fully qualified Entity–Location–Contact (ELC) relationship. This standard defines the Proposed Contact Matrix (PCM), governance states, validation rules, and creation workflow."
                 },
+                "minimumFieldRequirements": {
+                    "description": "Minimum required fields for a valid Proposed Contact submission. Requirements vary by PC type.",
+                    "rules": {
+                        "alwaysRequired": [
+                            "entity.name",
+                            "location.address",
+                            "location.city",
+                            "location.state",
+                            "rawInput.original",
+                            "rawInput.source"
+                        ],
+                        "requiredForContactProposal": [
+                            "contact.firstName",
+                            "contact.lastName"
+                        ],
+                        "optionalFields": [
+                            "contact.title",
+                            "contact.primaryPhone",
+                            "contact.email",
+                            "location.zip"
+                        ],
+                        "notes": [
+                            "contact.firstName and contact.lastName are only required for PC-1, PC-2, and PC-3.",
+                            "PC-4 (proposed_location) has no contact field requirements.",
+                            "Missing required fields trigger RS-1 (incomplete) or RS-3 (incomplete_contact) as appropriate."
+                        ]
+                    }
+                },
+
                 "proposedContactMatrix": {
                     "description": "Core Proposed Contact (PC) Types",
                     "types": [
@@ -4739,6 +4768,7 @@
                         { "pcCode": "PC-4", "status": "proposed_location",                "description": "Existing Entity + New Location Only (No Contact)" }
                     ]
                 },
+
                 "governanceStates": {
                     "description": "Review / Governance States (RS) — overlay any PC type",
                     "states": [
@@ -4753,6 +4783,7 @@
                         { "rsCode": "RS-8", "status": "invalid_location",   "category": "Block",  "description": "No valid geocode or Place ID" }
                     ]
                 },
+
                 "clientProposalPipeline": {
                     "description": "Client-side Contact Proposal Intake and Qualification Pipeline",
                     "purpose": "Handles user paste normalization, proposal qualification, and UX guidance before server-side governance.",
@@ -4764,34 +4795,34 @@
                     ],
                     "pipelineStages": [
                         {
-                        "stage": 1,
-                        "name": "raw_input_capture",
-                        "description": "Preserve the original pasted content exactly as received from the user."
+                            "stage": 1,
+                            "name": "raw_input_capture",
+                            "description": "Preserve the original pasted content exactly as received from the user."
                         },
                         {
-                        "stage": 2,
-                        "name": "input_normalization",
-                        "description": "Clean and normalize pasted formatting artifacts including whitespace, icons, HTML remnants, and inconsistent line formatting."
+                            "stage": 2,
+                            "name": "input_normalization",
+                            "description": "Clean and normalize pasted formatting artifacts including whitespace, icons, HTML remnants, and inconsistent line formatting."
                         },
                         {
-                        "stage": 3,
-                        "name": "proposal_preview",
-                        "description": "Render normalized content back to the user for visual confirmation before submission."
+                            "stage": 3,
+                            "name": "proposal_preview",
+                            "description": "Render normalized content back to the user for visual confirmation before submission."
                         },
                         {
-                        "stage": 4,
-                        "name": "proposal_qualification",
-                        "description": "Perform lightweight heuristic validation to detect obviously malformed or incomplete submissions before AI extraction."
+                            "stage": 4,
+                            "name": "proposal_qualification",
+                            "description": "Perform lightweight heuristic validation to detect obviously malformed or incomplete submissions before AI extraction."
                         },
                         {
-                        "stage": 5,
-                        "name": "intent_detection",
-                        "description": "Determine whether the normalized content represents a contact/location proposal."
+                            "stage": 5,
+                            "name": "intent_detection",
+                            "description": "Determine whether the normalized content represents a contact/location proposal."
                         },
                         {
-                        "stage": 6,
-                        "name": "server_submission",
-                        "description": "Submit qualified proposal content to the server-side AI extraction and PCM governance pipeline."
+                            "stage": 6,
+                            "name": "server_submission",
+                            "description": "Submit qualified proposal content to the server-side AI extraction and PCM governance pipeline."
                         }
                     ],
                     "qualificationRules": [
@@ -4821,6 +4852,7 @@
                         "Client-side qualification must never replace PCM governance."
                     ]
                 },
+
                 "locationOnlyModel": {
                     "description": "Special rules for PC-4 (proposed_location)",
                     "rules": [
