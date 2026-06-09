@@ -127,7 +127,7 @@ if (empty($openAiApiKey)) {
 error_log('[PPC][SECTION-03] Starting AI extraction');
 
 // =====================================================
-// STRONGER SYSTEM PROMPT (Better Phone Detection)
+// STRONG SYSTEM PROMPT (Title + Phone Emphasis)
 // =====================================================
 $systemPrompt = <<<EOT
 You are an extremely precise structured data extraction engine.
@@ -136,11 +136,12 @@ STEPS:
 1. Clean the messy input (restore line breaks, remove noise).
 2. Extract all fields accurately.
 
-CRITICAL RULES FOR PHONE:
-- Extract any phone number present (formats like (602) 242-4488, 602-242-4488, 6022424488, etc.).
-- Put the cleaned version in "primaryPhone".
+CRITICAL RULES:
+- Title is REQUIRED. Always extract the person's job title/role when present (e.g. "Accounting Manager", "Director of Operations", "Project Manager").
+- Extract any phone number present.
+- Put the cleaned/formatted version in "primaryPhone".
 - Put the exact original text in "primaryPhoneRaw".
-- If multiple phones exist, prefer the first one that looks like a main/business number.
+- Be accurate with names and email.
 
 Return ONLY valid JSON in this exact structure. No extra text.
 
@@ -248,8 +249,32 @@ if (!empty($parsed['contact']['primaryPhoneRaw'])) {
     }
 }
 
-error_log('[PPC][SECTION-03] Extraction complete - Email: ' . 
-    (!empty($parsed['contact']['email']) ? $parsed['contact']['email'] : 'MISSING') .
+// =====================================================
+// INFER SALUTATION (Fallback if AI didn't provide one)
+// =====================================================
+if (empty($parsed['contact']['salutation']) && function_exists('inferSalutation')) {
+    $firstName = $parsed['contact']['firstName'] ?? '';
+    $lastName  = $parsed['contact']['lastName'] ?? '';
+    
+    $inferred = inferSalutation($firstName, $lastName);
+    if ($inferred) {
+        $parsed['contact']['salutation'] = $inferred;
+        $parsed['contact']['salutationInferred'] = true;
+    }
+}
+
+// =====================================================
+// TITLE FALLBACK (from raw input if AI missed it)
+// =====================================================
+if (empty($parsed['contact']['title'])) {
+    if (preg_match('/(?:^|\n)([A-Za-z][A-Za-z\s&]+(?:Manager|Director|Coordinator|Specialist|Supervisor|Analyst|Engineer|Executive|Officer|President|VP|Vice President))/i', $rawInput, $titleMatch)) {
+        $parsed['contact']['title'] = trim($titleMatch[1]);
+    }
+}
+
+error_log('[PPC][SECTION-03] Extraction complete - Title: ' . 
+    (!empty($parsed['contact']['title']) ? $parsed['contact']['title'] : 'MISSING') .
+    ' | Salutation: ' . (!empty($parsed['contact']['salutation']) ? $parsed['contact']['salutation'] : 'MISSING') .
     ' | Phone: ' . (!empty($parsed['contact']['primaryPhone']) ? $parsed['contact']['primaryPhone'] : 'MISSING'));
 
 #endregion
