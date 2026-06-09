@@ -36,6 +36,7 @@ error_reporting(E_ALL);
 // =====================================================
 
 require_once __DIR__ . '/utils/processProposedContact.utils.php';
+require_once __DIR__ . '/askOpenAI.php';
 
 error_log('[PPC][SECTION-00] Bootstrap complete');
 
@@ -250,16 +251,28 @@ if (!empty($parsed['contact']['primaryPhoneRaw'])) {
 }
 
 // =====================================================
-// INFER SALUTATION (Fallback if AI didn't provide one)
+// INFER SALUTATION using askOpenAI.php function
 // =====================================================
-if (empty($parsed['contact']['salutation']) && function_exists('inferSalutation')) {
+if (empty($parsed['contact']['salutation'])) {
+
     $firstName = $parsed['contact']['firstName'] ?? '';
     $lastName  = $parsed['contact']['lastName'] ?? '';
-    
-    $inferred = inferSalutation($firstName, $lastName);
-    if ($inferred) {
-        $parsed['contact']['salutation'] = $inferred;
-        $parsed['contact']['salutationInferred'] = true;
+
+    if (function_exists('inferSalutation')) {
+
+        error_log("[PPC][SECTION-03] Calling inferSalutation for: {$firstName} {$lastName}");
+
+        $inferred = inferSalutation($firstName, $lastName);
+
+        error_log("[PPC][SECTION-03] inferSalutation returned: " . var_export($inferred, true));
+
+        if (!empty($inferred)) {
+            $parsed['contact']['salutation'] = $inferred;
+            $parsed['contact']['salutationInferred'] = true;
+        }
+
+    } else {
+        error_log('[PPC][SECTION-03] WARNING: inferSalutation() function not found');
     }
 }
 
@@ -359,15 +372,25 @@ $parsed['contact']['email'] =
     );
 
 // =====================================================
-// PHONE NORMALIZATION
+// PHONE NORMALIZATION (Preserve formatting from Section 03)
 // =====================================================
 
-$parsed['contact']['primaryPhone'] =
-    preg_replace(
-        '/[^0-9]/',
-        '',
-        $parsed['contact']['primaryPhone']
-    );
+$phoneValue = $parsed['contact']['primaryPhone'] ?? '';
+
+if (!empty($phoneValue)) {
+    // Always store a clean digits-only version for matching
+    $parsed['contact']['primaryPhoneDigits'] = preg_replace('/[^0-9]/', '', $phoneValue);
+
+    // Only re-format if it's still raw digits (no formatting yet)
+    $digitsOnly = preg_replace('/[^0-9]/', '', $phoneValue);
+    if (strlen($digitsOnly) === 10 && strpos($phoneValue, '(') === false) {
+        $parsed['contact']['primaryPhone'] =
+            '(' . substr($digitsOnly, 0, 3) . ') ' .
+            substr($digitsOnly, 3, 3) . '-' .
+            substr($digitsOnly, 6);
+    }
+    // Otherwise keep the already-formatted value from Section 03
+}
 
 // =====================================================
 // LOCATION
