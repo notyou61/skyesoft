@@ -115,82 +115,95 @@ error_log('[PPC] Input validated');
 
 #endregion
 
-#region SECTION 03 — AI Extraction
+#region SECTION 03 — 🧠 Unified AI Prompt Construction & Execution
 
 // =====================================================
 // ENVIRONMENT VALIDATION
 // =====================================================
-
 $openAiApiKey = skyesoftGetEnv('OPENAI_API_KEY') ?: getenv('OPENAI_API_KEY');
 
 if (empty($openAiApiKey)) {
-    echo json_encode([
-        'success' => false,
-        'status'  => 'missing_openai_key'
-    ]);
+    echo json_encode(['success' => false, 'status' => 'missing_openai_key']);
     exit;
 }
 
 error_log('[PPC][SECTION-03] OpenAI key loaded');
-error_log('[PPC][SECTION-03] Starting OpenAI request');
 
 // =====================================================
-// AI PROMPT CONSTRUCTION
+// STRONG SYSTEM PROMPT
 // =====================================================
+$systemPrompt = <<<EOT
+You are an extremely precise structured data extraction engine specialized in cleaning and normalizing messy business contact signatures, website blocks, Outlook signatures, and pasted content.
 
-$systemPrompt = <<<PROMPT
-You are a structured data extraction engine.
+PERFORM THESE STEPS IN ORDER:
 
-Extract entity, contact, and location information from the input.
+1. CLEAN & NORMALIZE FIRST
+   - Restore logical line breaks and structure from collapsed, HTML-contaminated, or poorly formatted input.
+   - Remove noise: icons, emojis, HTML tags, disclaimers ("Sent from my iPhone", confidentiality notices), repeated separators, social media links, decorative text.
+   - Fix common formatting issues: extra spaces, broken lines, inline artifacts.
+   - Do NOT invent or hallucinate information.
 
-Return ONLY valid JSON in this exact structure. Do not add any explanation or markdown.
+2. THEN EXTRACT CLEAN DATA
+   - Extract Entity, Location, and Contact fields from the cleaned text.
+
+Return ONLY valid JSON. No explanations, no markdown, no extra text.
+
+CRITICAL RULES:
+- Use empty string "" for any missing value. Never omit fields.
+- Suite field must contain only actual suite/unit info (e.g. "#120", "Ste 208"). Never place street suffixes (Ave, St, Rd, Dr, Blvd, etc.) into the suite field.
+- Phone numbers: preserve raw version exactly as shown.
+- Entity name: use the company/organization name when present.
+- Do NOT use departments, divisions, slogans, marketing text, or organizational descriptors as locationName values.
+- Only populate locationName when a true physical branch/site/location name is explicitly present.
+- Be conservative with inference — better to use "" than guess.
+
+Return EXACTLY this structure:
 
 {
-  "entity": {
-    "name": ""
-  },
-  "contact": {
-    "firstName": "",
-    "lastName": "",
-    "salutation": "",
-    "title": "",
-    "primaryPhone": "",
-    "email": ""
-  },
-  "location": {
-    "address": "",
-    "city": "",
-    "state": "",
-    "zip": "",
-    "suite": "",
-    "locationName": ""
+  "intent": "contact_proposal",
+  "confidence": 85,
+  "parsed": {
+    "entity": { "name": "" },
+    "contact": {
+      "firstName": "",
+      "lastName": "",
+      "salutation": "",
+      "title": "",
+      "primaryPhone": "",
+      "primaryPhoneRaw": "",
+      "email": ""
+    },
+    "location": {
+      "address": "",
+      "city": "",
+      "state": "",
+      "zip": "",
+      "suite": "",
+      "locationName": ""
+    }
   }
 }
-PROMPT;
-
-$userPrompt = $rawInput;
+EOT;
 
 // =====================================================
-// OPENAI REQUEST
+// USER PROMPT
 // =====================================================
+$extractionPrompt = "Clean and normalize the following pasted contact information, then extract structured data.\n\nINPUT:\n{$rawInput}";
 
+// =====================================================
+// AI REQUEST
+// =====================================================
 $payload = [
-    'model' => 'gpt-4o-mini',
-    'messages' => [
-        [
-            'role'    => 'system',
-            'content' => $systemPrompt
-        ],
-        [
-            'role'    => 'user',
-            'content' => $userPrompt
-        ]
-    ],
-    'temperature' => 0
+    'model'       => 'gpt-4o-mini',
+    'temperature' => 0,
+    'max_tokens'  => 600,
+    'messages'    => [
+        ['role' => 'system', 'content' => $systemPrompt],
+        ['role' => 'user',   'content' => $extractionPrompt]
+    ]
 ];
 
 $ch = curl_init('https://api.openai.com/v1/chat/completions');
-
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_RETURNTRANSFER => true,
@@ -199,62 +212,39 @@ curl_setopt_array($ch, [
         'Authorization: Bearer ' . $openAiApiKey
     ],
     CURLOPT_POSTFIELDS     => json_encode($payload),
-    CURLOPT_TIMEOUT        => 30
+    CURLOPT_TIMEOUT        => 25
 ]);
 
 $response = curl_exec($ch);
-error_log('[PPC][SECTION-03] OpenAI response received');
-
 safeCurlClose($ch);
 
 if (!$response) {
-    echo json_encode([
-        'success' => false,
-        'status'  => 'openai_request_failed'
-    ]);
+    echo json_encode(['success' => false, 'status' => 'openai_request_failed']);
     exit;
 }
-
-// =====================================================
-// RESPONSE VALIDATION
-// =====================================================
 
 $responseData = json_decode($response, true);
 $content = $responseData['choices'][0]['message']['content'] ?? '';
 
-if (empty($content)) {
+// Extract JSON from possible extra text
+preg_match('/\{.*\}/s', $content, $matches);
+$jsonString = $matches[0] ?? $content;
+
+$aiData = json_decode($jsonString, true);
+
+if (!$aiData || !isset($aiData['parsed'])) {
     echo json_encode([
         'success' => false,
-        'status'  => 'invalid_ai_response'
+        'status'  => 'invalid_ai_response',
+        'content' => $content
     ]);
     exit;
 }
 
-// =====================================================
-// PARSE AI JSON (Cleaned)
-// =====================================================
+$parsed = $aiData['parsed'];
 
-$parsed = json_decode(trim($content), true);
-
-if (json_last_error() !== JSON_ERROR_NONE) {
-    echo json_encode([
-        'success'   => false,
-        'status'    => 'invalid_ai_json',
-        'jsonError' => json_last_error_msg(),
-        'content'   => $content
-    ]);
-    exit;
-}
-
-if (!is_array($parsed)) {
-    echo json_encode([
-        'success' => false,
-        'status'  => 'invalid_ai_json_structure'
-    ]);
-    exit;
-}
-
-error_log('[PPC][SECTION-03] AI extraction complete');
+error_log('[PPC][SECTION-03] AI extraction successful - Email: ' . 
+    (!empty($parsed['contact']['email']) ? $parsed['contact']['email'] : 'MISSING'));
 
 #endregion
 
