@@ -128,30 +128,38 @@ if (empty($openAiApiKey)) {
 error_log('[PPC][SECTION-03] Starting AI extraction');
 
 // =====================================================
-// STRONG SYSTEM PROMPT (Title Extraction Emphasis)
+// STRONG SYSTEM PROMPT (Improved Title Extraction)
 // =====================================================
 $systemPrompt = <<<EOT
-You are an extremely precise structured data extraction engine.
+You are an extremely precise structured data extraction engine specialized in cleaning and normalizing messy business contact signatures, Outlook signatures, website blocks, and pasted content.
 
-STEPS:
-1. Clean the messy input (restore line breaks, remove noise).
-2. Extract all fields accurately.
+PERFORM THESE STEPS IN ORDER:
+
+1. CLEAN & NORMALIZE FIRST
+   - Restore logical line breaks and structure from collapsed, HTML-contaminated, or poorly formatted input.
+   - Remove noise: icons, emojis, HTML tags, disclaimers, repeated separators, social media links, and decorative text.
+   - Fix common formatting issues such as extra spaces and broken lines.
+   - Do NOT invent or hallucinate information.
+
+2. THEN EXTRACT CLEAN DATA
+   - Extract Entity, Location, and Contact fields from the cleaned text with high accuracy.
 
 CRITICAL RULES:
-- Title extraction is MANDATORY when present.
-- If the input contains a job title/role (e.g. Accounting Manager, Director of Operations, Project Manager, etc.), extract it into the "title" field.
-- Do NOT guess or invent a title if none is clearly present.
-- Extract any phone number present.
-- Put the cleaned/formatted version in "primaryPhone".
-- Put the exact original text in "primaryPhoneRaw".
-- Be accurate with names and email.
+- Title extraction is MANDATORY when a job title or role is clearly present in the input (e.g. Accounting Manager, Director of Operations, Project Manager, etc.).
+- If no clear title is present, leave the "title" field as an empty string.
+- Use empty string "" for any missing value. Never omit fields.
+- Phone numbers: preserve the raw version exactly as shown in "primaryPhoneRaw" and provide a cleanly formatted version in "primaryPhone".
+- Be conservative with inference — better to use "" than to guess.
 
-Return ONLY valid JSON in this exact structure. No extra text.
+Return ONLY valid JSON in this exact structure. No explanations, no markdown, no extra text.
+
 {
   "intent": "contact_proposal",
   "confidence": 85,
   "parsed": {
-    "entity": { "name": "" },
+    "entity": {
+      "name": ""
+    },
     "contact": {
       "firstName": "",
       "lastName": "",
@@ -176,7 +184,7 @@ EOT;
 // =====================================================
 // USER PROMPT
 // =====================================================
-$extractionPrompt = "Clean and extract structured data from this contact information:\n\n{$rawInput}";
+$extractionPrompt = "Clean and normalize the following pasted contact information, then extract structured data.\n\nINPUT:\n{$rawInput}";
 
 // =====================================================
 // AI CALL
@@ -274,15 +282,6 @@ if (empty($parsed['contact']['salutation'])) {
 
     } else {
         error_log('[PPC][SECTION-03] WARNING: inferSalutation() function not found');
-    }
-}
-
-// =====================================================
-// TITLE FALLBACK (from raw input if AI missed it)
-// =====================================================
-if (empty($parsed['contact']['title'])) {
-    if (preg_match('/(?:^|\n)([A-Za-z][A-Za-z\s&]+(?:Manager|Director|Coordinator|Specialist|Supervisor|Analyst|Engineer|Executive|Officer|President|VP|Vice President))/i', $rawInput, $titleMatch)) {
-        $parsed['contact']['title'] = trim($titleMatch[1]);
     }
 }
 
