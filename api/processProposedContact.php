@@ -705,6 +705,49 @@ error_log(
 
 #endregion
 
+#region SECTION 12 — Final Output Builder
+
+echo json_encode([
+    'success'           => true,
+    'status'            => 'proposed',
+    'proposalId'        => null,                    // Will be generated later in snapshot stage
+    'activitySessionId' => $context['activitySessionId'] ?? '',
+
+    // Core Data
+    'data' => [
+        'entity'   => $data['entity']   ?? [],
+        'contact'  => $data['contact']  ?? [],
+        'location' => $data['location'] ?? []
+    ],
+
+    // Database Resolution Results
+    'databaseResolution' => $databaseResolution ?? [],
+
+    // PCM Governance Decision
+    'pcm' => $pcm ?? [],
+
+    // Meta / Summary Information
+    'meta' => [
+        'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
+        'parcelCount'        => $data['location']['parcelCount'] ?? 0,
+        'censusValidated'    => $data['location']['locationCensusValidated'] ?? false,
+        'googleValidated'    => $data['location']['locationValidated'] ?? false,
+        'searchAddress'      => $searchAddress ?? ''
+    ],
+
+    // Raw Input for debugging / auditing
+    'rawInput' => [
+        'original' => $rawInput,
+        'type'     => 'signature',
+        'source'   => 'skyebot_prompt'
+    ]
+
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+exit;
+
+#endregion
+
 #region SECTION 99 — Debug Output (Temporary)
 
 echo json_encode([
