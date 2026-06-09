@@ -588,9 +588,9 @@ if ($pdo) {
 #region SECTION 11 — PCM Governance (PC + RS Model)
 
 $pcm = [
-    'pc'               => null,      // PC-1, PC-2, PC-3, PC-4
+    'pc'               => null,
     'pcStatus'         => null,
-    'rs'               => [],        // Additive governance overlays
+    'rs'               => [],
     'rsStatuses'       => [],
     'readyForCommit'   => false,
     'requiresReview'   => false,
@@ -611,6 +611,14 @@ if ($isExplicitLocationOnlyIntent === true) {
     $pcm['pc']       = 'PC-4';
     $pcm['pcStatus'] = 'proposed_location';
     $pcm['action']   = 'create_location_only';
+
+} elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
+
+    // NEW: Full Existing ELC
+    $pcm['pc']       = 'PC-0';
+    $pcm['pcStatus'] = 'existing_elc';
+    $pcm['action']   = 'link_existing_elc';
+    $pcm['blocksCommit'] = false;
 
 } elseif ($contactStatus === 'exact') {
 
@@ -636,21 +644,22 @@ if ($isExplicitLocationOnlyIntent === true) {
     $pcm['pc']       = 'PC-1';
     $pcm['pcStatus'] = 'new_elc';
     $pcm['action']   = 'insert_new';
+
 }
 
 // =====================================================
 // PASS 2 — Governance / Review States (RS)
 // =====================================================
 
-// RS-1 — Incomplete
+// RS-1 — Incomplete Proposal
 if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm['rs'][]         = 'RS-1';
     $pcm['rsStatuses'][] = 'incomplete';
     $pcm['blocksCommit'] = true;
 }
 
-// RS-5 — Duplicate Contact (already handled in PC)
-if ($contactStatus === 'exact') {
+// RS-5 — Duplicate Contact (already handled above)
+if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
     $pcm['blocksCommit'] = true;
 }
 
@@ -669,7 +678,7 @@ if (empty($data['location']['locationPlaceId'] ?? null)) {
     $pcm['blocksCommit'] = true;
 }
 
-// RS-0 — Acceptable (default if no blocking issues)
+// RS-0 — Acceptable (default)
 if (empty($pcm['rs'])) {
     $pcm['rs'][]         = 'RS-0';
     $pcm['rsStatuses'][] = 'acceptable';
@@ -692,15 +701,10 @@ error_log(
 #region SECTION 99 — Debug Output (Temporary)
 
 echo json_encode([
-
     'success' => true,
-
-    'status' =>
-        'section_10_database_resolution',
-
-    'databaseResolution' =>
-        $databaseResolution
-
+    'status' => 'section_10_database_resolution',
+    'databaseResolution' => $databaseResolution,
+    'location' => $data['location']
 ], JSON_PRETTY_PRINT);
 
 exit;
