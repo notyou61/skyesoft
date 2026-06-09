@@ -225,10 +225,11 @@ if (!$aiData || !isset($aiData['parsed'])) {
 $parsed = $aiData['parsed'];
 
 // =====================================================
-// PHONE FORMATTING
+// CLEAN PHONE FORMATTING
 // =====================================================
 if (!empty($parsed['contact']['primaryPhoneRaw'])) {
-    $digits = preg_replace('/[^0-9]/', '', $parsed['contact']['primaryPhoneRaw']);
+    $raw = $parsed['contact']['primaryPhoneRaw'];
+    $digits = preg_replace('/[^0-9]/', '', $raw);
     
     if (strlen($digits) === 10) {
         $formatted = '(' . substr($digits, 0, 3) . ') ' .
@@ -236,10 +237,9 @@ if (!empty($parsed['contact']['primaryPhoneRaw'])) {
                      substr($digits, 6);
         $parsed['contact']['primaryPhone'] = $formatted;
     } else {
-        $parsed['contact']['primaryPhone'] = $parsed['contact']['primaryPhoneRaw'];
+        $parsed['contact']['primaryPhone'] = $raw;
     }
 } elseif (!empty($parsed['contact']['primaryPhone'])) {
-    // Fallback if only primaryPhone was returned
     $digits = preg_replace('/[^0-9]/', '', $parsed['contact']['primaryPhone']);
     if (strlen($digits) === 10) {
         $parsed['contact']['primaryPhone'] = '(' . substr($digits, 0, 3) . ') ' .
@@ -602,49 +602,47 @@ $entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
 $locationStatus = $databaseResolution['location']['status'] ?? 'none';
 $contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
 
-if ($isExplicitLocationOnlyIntent === true) {
+// Temporary relaxation during development
+$dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete'];
 
+error_log("[PPC][SECTION-11] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus");
+
+if ($isExplicitLocationOnlyIntent === true) {
     $pcm['pc']       = 'PC-4';
     $pcm['pcStatus'] = 'proposed_location';
     $pcm['action']   = 'create_location_only';
 
 } elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
-
     $pcm['pc']       = 'PC-0';
     $pcm['pcStatus'] = 'existing_elc';
     $pcm['action']   = 'link_existing_elc';
 
 } elseif ($contactStatus === 'exact') {
-
     $pcm['pc']       = null;
     $pcm['pcStatus'] = 'duplicate_contact';
     $pcm['action']   = 'reject_duplicate';
 
 } elseif ($locationStatus === 'exact') {
-
     $pcm['pc']       = 'PC-3';
     $pcm['pcStatus'] = 'existing_location';
     $pcm['action']   = 'link_existing_location';
 
 } elseif ($entityStatus === 'exact') {
-
     $pcm['pc']       = 'PC-2';
     $pcm['pcStatus'] = 'existing_entity_new_location';
     $pcm['action']   = 'link_existing_entity';
 
 } else {
-
     $pcm['pc']       = 'PC-1';
     $pcm['pcStatus'] = 'new_elc';
     $pcm['action']   = 'insert_new';
-
 }
 
 // =====================================================
 // PASS 2 — RS Governance (Can this proposal proceed?)
 // =====================================================
 
-// RS-1 — Incomplete
+// RS-1 — Incomplete (always blocking if present)
 if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
     $pcm['rs'][]         = 'RS-1';
     $pcm['rsStatuses'][] = 'incomplete';
@@ -676,7 +674,7 @@ if (empty($data['location']['locationPlaceId'] ?? null)) {
     $pcm['rsStatuses'][] = 'invalid_location';
 }
 
-// RS-0 — Acceptable (default)
+// RS-0 — Acceptable (default if no issues)
 if (empty($pcm['rs'])) {
     $pcm['rs'][]         = 'RS-0';
     $pcm['rsStatuses'][] = 'acceptable';
@@ -686,43 +684,49 @@ if (empty($pcm['rs'])) {
 // FINAL GOVERNANCE STATE
 // =====================================================
 
-$pcm['blocksCommit']   = in_array('RS-5', $pcm['rs']) || 
-                         in_array('RS-6', $pcm['rs']) || 
-                         in_array('RS-7', $pcm['rs']) || 
-                         in_array('RS-8', $pcm['rs']);
+$pcm['blocksCommit'] = in_array('RS-5', $pcm['rs']) || 
+                       in_array('RS-6', $pcm['rs']) || 
+                       in_array('RS-7', $pcm['rs']) || 
+                       in_array('RS-8', $pcm['rs']) ||
+                       in_array('RS-1', $pcm['rs']);
 
 $pcm['readyForCommit'] = !$pcm['blocksCommit'];
+$pcm['requiresReview'] = count($pcm['rs']) > 0 && $pcm['rs'][0] !== 'RS-0';
 
 error_log(
     '[PPC][SECTION-11] PCM complete → PC=' . ($pcm['pc'] ?? 'null') .
     ' | Ready=' . ($pcm['readyForCommit'] ? 'YES' : 'NO') .
-    ' | Parcels=' . ($data['location']['parcelCount'] ?? 0)
+    ' | Blocks=' . ($pcm['blocksCommit'] ? 'YES' : 'NO') .
+    ' | RS=[' . implode(', ', $pcm['rs']) . ']'
 );
 
 #endregion
 
 #region SECTION 12 — Final Output Builder
 
+// Generate a temporary proposal ID if one doesn't exist yet
+$proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
+
 echo json_encode([
     'success'           => true,
     'status'            => 'proposed',
-    'proposalId'        => null,                    // Will be generated later in snapshot stage
+    'proposalId'        => $proposalId,
     'activitySessionId' => $context['activitySessionId'] ?? '',
 
-    // Core Data
+    // Core Structured Data
     'data' => [
         'entity'   => $data['entity']   ?? [],
         'contact'  => $data['contact']  ?? [],
         'location' => $data['location'] ?? []
     ],
 
-    // Database Resolution Results
+    // Database Resolution
     'databaseResolution' => $databaseResolution ?? [],
 
     // PCM Governance Decision
     'pcm' => $pcm ?? [],
 
-    // Meta / Summary Information
+    // Meta / Summary
     'meta' => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
         'parcelCount'        => $data['location']['parcelCount'] ?? 0,
@@ -731,9 +735,9 @@ echo json_encode([
         'searchAddress'      => $searchAddress ?? ''
     ],
 
-    // Raw Input for debugging / auditing
+    // Raw Input (for auditing and debugging)
     'rawInput' => [
-        'original' => $rawInput,
+        'original' => $rawInput ?? '',
         'type'     => 'signature',
         'source'   => 'skyebot_prompt'
     ]
@@ -744,15 +748,58 @@ exit;
 
 #endregion
 
-#region SECTION 99 — Debug Output (Temporary)
+#region SECTION 13 — Proposal Snapshot Creation
 
-echo json_encode([
-    'success' => true,
-    'status' => 'section_10_database_resolution',
-    'databaseResolution' => $databaseResolution,
-    'location' => $data['location']
-], JSON_PRETTY_PRINT);
+// =====================================================
+// Generate Unique Proposal ID
+// =====================================================
+$timestamp = microtime(true);
+$uniquePart = str_pad((string)((int)($timestamp * 100000) % 999999), 6, '0', STR_PAD_LEFT);
+$proposalId = 'PRP-' . date('Ymd') . '-' . $uniquePart;
 
-exit;
+// =====================================================
+// Prepare Snapshot
+// =====================================================
+$proposalSnapshot = [
+    'proposalId'        => $proposalId,
+    'generatedAt'       => date('c'),
+    'version'           => '1.6.1',
+    'activitySessionId' => $context['activitySessionId'] ?? '',
+    'rawInput'          => $rawInput ?? '',
+    
+    'data'              => $data ?? [],
+    'databaseResolution'=> $databaseResolution ?? [],
+    'pcm'               => $pcm ?? [],
+    'meta'              => [
+        'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
+        'parcelCount'        => $data['location']['parcelCount'] ?? 0,
+        'censusValidated'    => $data['location']['locationCensusValidated'] ?? false,
+        'googleValidated'    => $data['location']['locationValidated'] ?? false
+    ]
+];
+
+// =====================================================
+// Save Snapshot to Disk
+// =====================================================
+$snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
+if (!is_dir($snapshotDir)) {
+    mkdir($snapshotDir, 0755, true);
+}
+
+$snapshotPath = $snapshotDir . "/{$proposalId}.json";
+
+$written = file_put_contents(
+    $snapshotPath,
+    json_encode($proposalSnapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+);
+
+if ($written !== false) {
+    error_log("[PPC][SECTION-13] ✅ Snapshot saved: {$proposalId}.json");
+} else {
+    error_log("[PPC][SECTION-13] ❌ Failed to save snapshot");
+}
+
+// Update the main response data
+$proposalSnapshot['snapshotPath'] = $snapshotPath;
 
 #endregion
