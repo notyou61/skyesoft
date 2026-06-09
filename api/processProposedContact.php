@@ -117,9 +117,6 @@ error_log('[PPC] Input validated');
 
 #region SECTION 03 — 🧠 Unified AI Prompt Construction & Execution
 
-// =====================================================
-// ENVIRONMENT VALIDATION
-// =====================================================
 $openAiApiKey = skyesoftGetEnv('OPENAI_API_KEY') ?: getenv('OPENAI_API_KEY');
 
 if (empty($openAiApiKey)) {
@@ -127,37 +124,25 @@ if (empty($openAiApiKey)) {
     exit;
 }
 
-error_log('[PPC][SECTION-03] OpenAI key loaded');
+error_log('[PPC][SECTION-03] Starting AI extraction');
 
 // =====================================================
-// STRONG SYSTEM PROMPT
+// STRONGER SYSTEM PROMPT (Better Phone Detection)
 // =====================================================
 $systemPrompt = <<<EOT
-You are an extremely precise structured data extraction engine specialized in cleaning and normalizing messy business contact signatures, website blocks, Outlook signatures, and pasted content.
+You are an extremely precise structured data extraction engine.
 
-PERFORM THESE STEPS IN ORDER:
+STEPS:
+1. Clean the messy input (restore line breaks, remove noise).
+2. Extract all fields accurately.
 
-1. CLEAN & NORMALIZE FIRST
-   - Restore logical line breaks and structure from collapsed, HTML-contaminated, or poorly formatted input.
-   - Remove noise: icons, emojis, HTML tags, disclaimers ("Sent from my iPhone", confidentiality notices), repeated separators, social media links, decorative text.
-   - Fix common formatting issues: extra spaces, broken lines, inline artifacts.
-   - Do NOT invent or hallucinate information.
+CRITICAL RULES FOR PHONE:
+- Extract any phone number present (formats like (602) 242-4488, 602-242-4488, 6022424488, etc.).
+- Put the cleaned version in "primaryPhone".
+- Put the exact original text in "primaryPhoneRaw".
+- If multiple phones exist, prefer the first one that looks like a main/business number.
 
-2. THEN EXTRACT CLEAN DATA
-   - Extract Entity, Location, and Contact fields from the cleaned text.
-
-Return ONLY valid JSON. No explanations, no markdown, no extra text.
-
-CRITICAL RULES:
-- Use empty string "" for any missing value. Never omit fields.
-- Suite field must contain only actual suite/unit info (e.g. "#120", "Ste 208"). Never place street suffixes (Ave, St, Rd, Dr, Blvd, etc.) into the suite field.
-- Phone numbers: preserve raw version exactly as shown.
-- Entity name: use the company/organization name when present.
-- Do NOT use departments, divisions, slogans, marketing text, or organizational descriptors as locationName values.
-- Only populate locationName when a true physical branch/site/location name is explicitly present.
-- Be conservative with inference — better to use "" than guess.
-
-Return EXACTLY this structure:
+Return ONLY valid JSON in this exact structure. No extra text.
 
 {
   "intent": "contact_proposal",
@@ -188,10 +173,10 @@ EOT;
 // =====================================================
 // USER PROMPT
 // =====================================================
-$extractionPrompt = "Clean and normalize the following pasted contact information, then extract structured data.\n\nINPUT:\n{$rawInput}";
+$extractionPrompt = "Clean and extract structured data from this contact information:\n\n{$rawInput}";
 
 // =====================================================
-// AI REQUEST
+// AI CALL
 // =====================================================
 $payload = [
     'model'       => 'gpt-4o-mini',
@@ -224,27 +209,24 @@ if (!$response) {
 }
 
 $responseData = json_decode($response, true);
-$content = $responseData['choices'][0]['message']['content'] ?? '';
+$content = trim($responseData['choices'][0]['message']['content'] ?? '');
 
-// Extract JSON from possible extra text
+// Extract JSON
 preg_match('/\{.*\}/s', $content, $matches);
 $jsonString = $matches[0] ?? $content;
 
 $aiData = json_decode($jsonString, true);
 
 if (!$aiData || !isset($aiData['parsed'])) {
-    echo json_encode([
-        'success' => false,
-        'status'  => 'invalid_ai_response',
-        'content' => $content
-    ]);
+    echo json_encode(['success' => false, 'status' => 'invalid_ai_response', 'content' => $content]);
     exit;
 }
 
 $parsed = $aiData['parsed'];
 
-error_log('[PPC][SECTION-03] AI extraction successful - Email: ' . 
-    (!empty($parsed['contact']['email']) ? $parsed['contact']['email'] : 'MISSING'));
+error_log('[PPC][SECTION-03] Extraction complete - Email: ' . 
+    (!empty($parsed['contact']['email']) ? $parsed['contact']['email'] : 'MISSING') .
+    ' | Phone: ' . (!empty($parsed['contact']['primaryPhone']) ? $parsed['contact']['primaryPhone'] : 'MISSING'));
 
 #endregion
 
