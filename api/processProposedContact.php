@@ -445,6 +445,57 @@ error_log(
 
 #endregion
 
+#region SECTION 06A — Canonical Data Mapping (Legacy Contract)
+
+error_log('[PPC][SECTION-06A] Building canonical $data object from parsed AI output');
+
+// =====================================================
+// ENTITY
+// =====================================================
+$data['entity'] = [
+    'entityName'        => $parsed['entity']['name'] ?? '',
+    'entityNameRaw'     => $parsed['entity']['name'] ?? ''
+];
+
+// =====================================================
+// CONTACT
+// =====================================================
+$data['contact'] = [
+    'contactSalutation'      => $parsed['contact']['salutation'] ?? '',
+    'contactFirstName'       => $parsed['contact']['firstName'] ?? '',
+    'contactLastName'        => $parsed['contact']['lastName'] ?? '',
+    'contactTitle'           => $parsed['contact']['title'] ?? '',
+    'contactPrimaryPhone'    => $parsed['contact']['primaryPhone'] ?? '',
+    'contactPrimaryPhoneRaw' => $parsed['contact']['primaryPhoneRaw'] ?? '',
+    'contactEmail'           => $parsed['contact']['email'] ?? '',
+    'contactEmailNormalized' => strtolower(trim($parsed['contact']['email'] ?? '')),
+    'salutationInferred'     => $parsed['contact']['salutationInferred'] ?? false
+];
+
+// =====================================================
+// LOCATION
+// =====================================================
+$data['location'] = [
+    'locationAddress'     => $parsed['location']['address'] ?? '',
+    'locationCity'        => $parsed['location']['city'] ?? '',
+    'locationState'       => $parsed['location']['state'] ?? '',
+    'locationZip'         => $parsed['location']['zip'] ?? '',
+    'locationAddressRaw'  => $rawInputOriginal
+];
+
+// =====================================================
+// RAW INPUT (preserve for audit & reprocessing)
+// =====================================================
+$data['rawInput'] = [
+    'original' => $rawInputOriginal,
+    'source'   => 'skyebot_prompt',
+    'type'     => 'signature'
+];
+
+error_log('[PPC][SECTION-06A] Canonical $data object created successfully');
+
+#endregion
+
 #region SECTION 07 — Google Location Validation
 
 // =====================================================
