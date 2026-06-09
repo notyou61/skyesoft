@@ -560,171 +560,131 @@ error_log(
 
 #region SECTION 10 — Database Resolution
 
-// =====================================================
-// INITIALIZATION
-// =====================================================
-
 $databaseResolution = [
-
-    'entityFound'   => false,
-    'entityId'      => null,
-
-    'locationFound' => false,
-    'locationId'    => null,
-
-    'contactFound'  => false,
-    'contactId'     => null
-
+    'entity'   => null,
+    'location' => null,
+    'contact'  => null
 ];
 
-error_log(
-    '[PPC][SECTION-10] Database resolution initialized'
-);
+if ($pdo) {
+
+    // 1. Entity Resolution
+    $databaseResolution['entity'] = evaluateEntityDuplicate($parsed, $pdo);
+
+    // 2. Location Resolution
+    $databaseResolution['location'] = evaluateLocationDuplicate($parsed, $pdo);
+
+    // 3. Contact Resolution
+    $databaseResolution['contact'] = evaluateDuplicate($parsed, $pdo);
+
+    error_log('[PPC][SECTION-10] Database resolution complete');
+
+} else {
+    error_log('[PPC][SECTION-10] No PDO connection — skipping DB resolution');
+}
+
+#endregion
+
+#region SECTION 11 — PCM Governance (PC + RS Model)
+
+$pcm = [
+    'pc'               => null,      // PC-1, PC-2, PC-3, PC-4
+    'pcStatus'         => null,
+    'rs'               => [],        // Additive governance overlays
+    'rsStatuses'       => [],
+    'readyForCommit'   => false,
+    'requiresReview'   => false,
+    'blocksCommit'     => true,
+    'action'           => null
+];
 
 // =====================================================
-// ENTITY LOOKUP
+// PASS 1 — Proposed Contact (PC) Classification
 // =====================================================
 
-$entityName =
-    trim(
-        $data['entity']['entityName']
-        ?? ''
-    );
+$entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
+$locationStatus = $databaseResolution['location']['status'] ?? 'none';
+$contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
 
-if (
-    $entityName !== ''
-) {
+if ($isExplicitLocationOnlyIntent === true) {
 
-    $sql = "
-        SELECT
-            entityId
-        FROM
-            tblEntities
-        WHERE
-            entityName = ?
-        LIMIT 1
-    ";
+    $pcm['pc']       = 'PC-4';
+    $pcm['pcStatus'] = 'proposed_location';
+    $pcm['action']   = 'create_location_only';
 
-    $stmt =
-        $pdo->prepare($sql);
+} elseif ($contactStatus === 'exact') {
 
-    $stmt->execute([
-        $entityName
-    ]);
+    $pcm['pc']       = null;
+    $pcm['pcStatus'] = 'duplicate_contact';
+    $pcm['action']   = 'reject_duplicate';
+    $pcm['rs'][]     = 'RS-5';
 
-    $entity =
-        $stmt->fetch(PDO::FETCH_ASSOC);
+} elseif ($locationStatus === 'exact') {
 
-    if ($entity) {
+    $pcm['pc']       = 'PC-3';
+    $pcm['pcStatus'] = 'existing_location';
+    $pcm['action']   = 'link_existing_location';
 
-        $databaseResolution['entityFound'] =
-            true;
+} elseif ($entityStatus === 'exact') {
 
-        $databaseResolution['entityId'] =
-            (int)$entity['entityId'];
-    }
+    $pcm['pc']       = 'PC-2';
+    $pcm['pcStatus'] = 'existing_entity_new_location';
+    $pcm['action']   = 'link_existing_entity';
+
+} else {
+
+    $pcm['pc']       = 'PC-1';
+    $pcm['pcStatus'] = 'new_elc';
+    $pcm['action']   = 'insert_new';
 }
 
 // =====================================================
-// LOCATION LOOKUP
+// PASS 2 — Governance / Review States (RS)
 // =====================================================
 
-$placeId =
-    trim(
-        $data['location']['locationPlaceId']
-        ?? ''
-    );
+// RS-1 — Incomplete
+if (($dataIntegrityStatus['status'] ?? 'unknown') !== 'complete') {
+    $pcm['rs'][]         = 'RS-1';
+    $pcm['rsStatuses'][] = 'incomplete';
+    $pcm['blocksCommit'] = true;
+}
 
-if (
-    $placeId !== ''
-) {
+// RS-5 — Duplicate Contact (already handled in PC)
+if ($contactStatus === 'exact') {
+    $pcm['blocksCommit'] = true;
+}
 
-    $sql = "
-        SELECT
-            locationId
-        FROM
-            tblLocations
-        WHERE
-            locationPlaceId = ?
-        LIMIT 1
-    ";
+// RS-6 — Multiple Parcels
+if ($data['location']['hasMultipleParcels'] ?? false) {
+    $pcm['rs'][]         = 'RS-6';
+    $pcm['rsStatuses'][] = 'multiple_parcels';
+    $pcm['requiresReview'] = true;
+    $pcm['blocksCommit'] = true;   // Require user selection
+}
 
-    $stmt =
-        $pdo->prepare($sql);
+// RS-8 — Invalid Location
+if (empty($data['location']['locationPlaceId'] ?? null)) {
+    $pcm['rs'][]         = 'RS-8';
+    $pcm['rsStatuses'][] = 'invalid_location';
+    $pcm['blocksCommit'] = true;
+}
 
-    $stmt->execute([
-        $placeId
-    ]);
-
-    $location =
-        $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($location) {
-
-        $databaseResolution['locationFound'] =
-            true;
-
-        $databaseResolution['locationId'] =
-            (int)$location['locationId'];
-    }
+// RS-0 — Acceptable (default if no blocking issues)
+if (empty($pcm['rs'])) {
+    $pcm['rs'][]         = 'RS-0';
+    $pcm['rsStatuses'][] = 'acceptable';
 }
 
 // =====================================================
-// CONTACT LOOKUP
+// FINAL GOVERNANCE STATE
 // =====================================================
 
-$firstName =
-    trim(
-        $data['contact']['contactFirstName']
-        ?? ''
-    );
-
-$lastName =
-    trim(
-        $data['contact']['contactLastName']
-        ?? ''
-    );
-
-if (
-    $firstName !== '' &&
-    $lastName !== ''
-) {
-
-    $sql = "
-        SELECT
-            contactId
-        FROM
-            tblContacts
-        WHERE
-            contactFirstName = ?
-        AND
-            contactLastName = ?
-        LIMIT 1
-    ";
-
-    $stmt =
-        $pdo->prepare($sql);
-
-    $stmt->execute([
-        $firstName,
-        $lastName
-    ]);
-
-    $contact =
-        $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($contact) {
-
-        $databaseResolution['contactFound'] =
-            true;
-
-        $databaseResolution['contactId'] =
-            (int)$contact['contactId'];
-    }
-}
+$pcm['readyForCommit'] = !$pcm['blocksCommit'];
 
 error_log(
-    '[PPC][SECTION-10] Database resolution complete'
+    '[PPC][SECTION-11] PCM complete → PC=' . ($pcm['pc'] ?? 'null') .
+    ' | Ready=' . ($pcm['readyForCommit'] ? 'YES' : 'NO') .
+    ' | Parcels=' . ($data['location']['parcelCount'] ?? 0)
 );
 
 #endregion
