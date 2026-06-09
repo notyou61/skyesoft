@@ -224,6 +224,30 @@ if (!$aiData || !isset($aiData['parsed'])) {
 
 $parsed = $aiData['parsed'];
 
+// =====================================================
+// PHONE FORMATTING
+// =====================================================
+if (!empty($parsed['contact']['primaryPhoneRaw'])) {
+    $digits = preg_replace('/[^0-9]/', '', $parsed['contact']['primaryPhoneRaw']);
+    
+    if (strlen($digits) === 10) {
+        $formatted = '(' . substr($digits, 0, 3) . ') ' .
+                     substr($digits, 3, 3) . '-' .
+                     substr($digits, 6);
+        $parsed['contact']['primaryPhone'] = $formatted;
+    } else {
+        $parsed['contact']['primaryPhone'] = $parsed['contact']['primaryPhoneRaw'];
+    }
+} elseif (!empty($parsed['contact']['primaryPhone'])) {
+    // Fallback if only primaryPhone was returned
+    $digits = preg_replace('/[^0-9]/', '', $parsed['contact']['primaryPhone']);
+    if (strlen($digits) === 10) {
+        $parsed['contact']['primaryPhone'] = '(' . substr($digits, 0, 3) . ') ' .
+                                             substr($digits, 3, 3) . '-' .
+                                             substr($digits, 6);
+    }
+}
+
 error_log('[PPC][SECTION-03] Extraction complete - Email: ' . 
     (!empty($parsed['contact']['email']) ? $parsed['contact']['email'] : 'MISSING') .
     ' | Phone: ' . (!empty($parsed['contact']['primaryPhone']) ? $parsed['contact']['primaryPhone'] : 'MISSING'));
