@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * ======================================================================
  * Skyesoft — Jurisdiction Resolver
- * Version: 1.1.0
+ * Version: 1.2.0
  *
  * Purpose:
  *   Resolve a jurisdiction name using the Skyesoft
@@ -17,8 +17,9 @@ declare(strict_types=1);
  *   found
  *
  * Special Handling:
- *   • NO CITY/TOWN → Maricopa County
- *   • Unincorporated County Areas
+ *   • NO CITY/TOWN / UNINCORPORATED → Maricopa County
+ *   • Defensive fallback: missing type → 'City'
+ *   • Unknown jurisdiction → 'Unknown' (never null)
  *
  * ======================================================================
  */
@@ -124,11 +125,18 @@ function resolveJurisdiction(?string $jurisdictionName): array
 
         if ($label === $searchValue) {
 
+            $type = $record['jurisdictionType'] ?? null;
+
+            // Defensive fallback: missing type → City
+            if (empty($type)) {
+                $type = 'City';
+            }
+
             return [
                 'found'            => true,
                 'jurisdictionKey'  => $jurisdictionKey,
                 'label'            => $record['label'] ?? null,
-                'jurisdictionType' => $record['jurisdictionType'] ?? null
+                'jurisdictionType' => $type
             ];
         }
 
@@ -144,18 +152,25 @@ function resolveJurisdiction(?string $jurisdictionName): array
                 $searchValue
             ) {
 
+                $type = $record['jurisdictionType'] ?? null;
+
+                // Defensive fallback: missing type → City
+                if (empty($type)) {
+                    $type = 'City';
+                }
+
                 return [
                     'found'            => true,
                     'jurisdictionKey'  => $jurisdictionKey,
                     'label'            => $record['label'] ?? null,
-                    'jurisdictionType' => $record['jurisdictionType'] ?? null
+                    'jurisdictionType' => $type
                 ];
             }
         }
     }
 
     // =====================================================
-    // FALLBACK
+    // FALLBACK (Unknown Jurisdiction)
     // =====================================================
 
     return [
@@ -166,6 +181,6 @@ function resolveJurisdiction(?string $jurisdictionName): array
                 $jurisdictionName
             )
         ),
-        'jurisdictionType' => null
+        'jurisdictionType' => 'Unknown'   // ← Changed from null
     ];
 }
