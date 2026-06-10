@@ -68,6 +68,10 @@ $inputData['input']
 ?? ''
 );
 
+$rawInputOriginal =
+    $inputData['input']
+    ?? '';
+
 $context['activitySessionId'] =
 trim($inputData['activitySessionId'] ?? '');
 
