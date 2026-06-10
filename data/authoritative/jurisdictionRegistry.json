@@ -932,7 +932,7 @@
             "ST JOHNS"
         ],
         "county": null,
-        "jurisdictionType": null,
+        "jurisdictionType": "Town",
         "fips": null,
         "incorporation": null,
         "api": null,
