@@ -4758,17 +4758,36 @@
                         ]
                     }
                 },
-
                 "proposedContactMatrix": {
                     "description": "Core Proposed Contact (PC) Types",
                     "types": [
-                        { "pcCode": "PC-1", "status": "new_elc",                          "description": "New Entity + New Location + New Contact" },
-                        { "pcCode": "PC-2", "status": "existing_entity_new_location",     "description": "Existing Entity + New Location + New Contact" },
-                        { "pcCode": "PC-3", "status": "existing_location",                "description": "Existing Location + New Contact" },
-                        { "pcCode": "PC-4", "status": "proposed_location",                "description": "Existing Entity + New Location Only (No Contact)" }
+                        {
+                            "pcCode": "PC-0",
+                            "status": "existing_elc",
+                            "description": "Existing Entity + Existing Location + Existing Contact"
+                        },
+                        {
+                            "pcCode": "PC-1",
+                            "status": "new_elc",
+                            "description": "New Entity + New Location + New Contact"
+                        },
+                        {
+                            "pcCode": "PC-2",
+                            "status": "existing_entity_new_location",
+                            "description": "Existing Entity + New Location + New Contact"
+                        },
+                        {
+                            "pcCode": "PC-3",
+                            "status": "existing_location",
+                            "description": "Existing Location + New Contact"
+                        },
+                        {
+                            "pcCode": "PC-4",
+                            "status": "proposed_location",
+                            "description": "Existing Entity + New Location Only (No Contact)"
+                        }
                     ]
                 },
-
                 "governanceStates": {
                     "description": "Review / Governance States (RS) — overlay any PC type",
                     "states": [
@@ -4783,7 +4802,6 @@
                         { "rsCode": "RS-8", "status": "invalid_location",   "category": "Block",  "description": "No valid geocode or Place ID" }
                     ]
                 },
-
                 "clientProposalPipeline": {
                     "description": "Client-side Contact Proposal Intake and Qualification Pipeline",
                     "purpose": "Handles user paste normalization, proposal qualification, and UX guidance before server-side governance.",
@@ -4852,7 +4870,6 @@
                         "Client-side qualification must never replace PCM governance."
                     ]
                 },
-
                 "locationOnlyModel": {
                     "description": "Special rules for PC-4 (proposed_location)",
                     "rules": [
