@@ -449,7 +449,7 @@ error_log(
 
 #endregion
 
-#region SECTION 06A — Canonical Data Mapping (Legacy Contract)
+#region SECTION 07 — Canonical Data Mapping (Legacy Contract)
 
 error_log('[PPC][SECTION-06A] Building canonical $data object from parsed AI output');
 
@@ -508,7 +508,7 @@ error_log('[PPC][SECTION-06A] Canonical $data object created successfully');
 
 #endregion
 
-#region SECTION 07 — Google Location Validation
+#region SECTION 08 — Google Location Validation
 
 // =====================================================
 // BUILD SEARCH ADDRESS
@@ -566,7 +566,7 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
 
 #endregion
 
-#region SECTION 08 — County Resolution (Census)
+#region SECTION 09 — County Resolution (Census)
 
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 
@@ -593,79 +593,137 @@ if ($data['location']['locationCensusValidated']) {
 
 #endregion
 
-#region SECTION 09 — Parcel Resolution + Enrichment
+#region SECTION 10 — Parcel Resolution + Enrichment
 
 require_once __DIR__ . '/utils/resolveParcel.php';
 
 $parcelResult = resolveParcel(
-    $data['location']['locationLatitude']  ?? null,
+    $data['location']['locationLatitude'] ?? null,
     $data['location']['locationLongitude'] ?? null,
-    $data['location']['locationCounty']    ?? null,
+    $data['location']['locationCounty'] ?? null,
     $data['location']['locationCountyFips'] ?? null,
     $searchAddress
 );
 
-$data['location']['parcelDetails']   = $parcelResult['parcelDetails']   ?? [];
-$data['location']['parcelCount']     = $parcelResult['parcelCount']     ?? 0;
-$data['location']['jurisdictionName'] = $parcelResult['jurisdictionName'] ?? null;
-$data['location']['jurisdictionType'] = $parcelResult['jurisdictionType'] ?? null;
-$data['location']['hasMultipleParcels'] = ($data['location']['parcelCount'] > 1);
+$data['location']['parcelDetails'] =
+    $parcelResult['parcelDetails'] ?? [];
+
+$data['location']['parcelCount'] =
+    $parcelResult['parcelCount'] ?? 0;
+
+$data['location']['jurisdictionName'] =
+    $parcelResult['jurisdictionName'] ?? null;
+
+$data['location']['jurisdictionType'] =
+    $parcelResult['jurisdictionType'] ?? null;
+
+$data['location']['hasMultipleParcels'] =
+    ($data['location']['parcelCount'] > 1);
 
 // =====================================================
 // ENRICH EACH PARCEL WITH DETAILED ASSESSOR DATA
 // =====================================================
+
 foreach ($data['location']['parcelDetails'] as &$parcel) {
-    $apn = $parcel['parcelNumber'] ?? null;
-    if (!$apn) continue;
 
-    $detailUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
+    $apn =
+        $parcel['parcelNumber'] ?? null;
 
-    error_log('[PPC][SECTION-09] Enriching parcel: ' . $apn);
-
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => 10,
-            'header'  => "User-Agent: Skyesoft/1.0\r\n"
-        ]
-    ]);
-
-    $detailResponse = @file_get_contents($detailUrl, false, $context);
-
-    if ($detailResponse === false) {
-        error_log('[PPC][SECTION-09] Failed to enrich parcel: ' . $apn);
+    if (!$apn) {
         continue;
     }
 
-    $detailData = json_decode($detailResponse, true);
+    $detailUrl =
+        'https://mcassessor.maricopa.gov/parcel/' .
+        urlencode($apn);
+
+    error_log(
+        '[PPC][SECTION-09] Enriching parcel: ' .
+        $apn
+    );
+
+    $context =
+        stream_context_create([
+            'http' => [
+                'timeout' => 10,
+                'header'  => "User-Agent: Skyesoft/1.0\r\n"
+            ]
+        ]);
+
+    $detailResponse =
+        @file_get_contents(
+            $detailUrl,
+            false,
+            $context
+        );
+
+    if ($detailResponse === false) {
+
+        error_log(
+            '[PPC][SECTION-09] Failed to enrich parcel: ' .
+            $apn
+        );
+
+        continue;
+    }
+
+    $detailData =
+        json_decode(
+            $detailResponse,
+            true
+        );
 
     if (!is_array($detailData)) {
-        error_log('[PPC][SECTION-09] Invalid detail response for: ' . $apn);
+
+        error_log(
+            '[PPC][SECTION-09] Invalid detail response for: ' .
+            $apn
+        );
+
         continue;
     }
 
     // Merge useful fields from the detail response
-    $parcel['ownerMailingAddress'] = $detailData['mailing_address'] ?? null;
-    $parcel['propertyType']        = $detailData['property_type'] ?? $detailData['use_code'] ?? null;
-    $parcel['lotSizeSqFt']         = $detailData['lot_size_sqft'] ?? null;
-    $parcel['buildingSizeSqFt']    = $detailData['building_size_sqft'] ?? null;
-    $parcel['yearBuilt']           = $detailData['year_built'] ?? null;
-    $parcel['lastSaleDate']        = $detailData['last_sale_date'] ?? null;
-    $parcel['lastSalePrice']       = $detailData['last_sale_price'] ?? null;
+    $parcel['ownerMailingAddress'] =
+        $detailData['mailing_address'] ?? null;
 
-    // Keep the raw detail for future use if needed
-    $parcel['assessorDetail']      = $detailData;
+    $parcel['propertyType'] =
+        $detailData['property_type'] ??
+        $detailData['use_code'] ??
+        null;
+
+    $parcel['lotSizeSqFt'] =
+        $detailData['lot_size_sqft'] ?? null;
+
+    $parcel['buildingSizeSqFt'] =
+        $detailData['building_size_sqft'] ?? null;
+
+    $parcel['yearBuilt'] =
+        $detailData['year_built'] ?? null;
+
+    $parcel['lastSaleDate'] =
+        $detailData['last_sale_date'] ?? null;
+
+    $parcel['lastSalePrice'] =
+        $detailData['last_sale_price'] ?? null;
+
+    // Keep raw assessor detail for future use if needed
+    $parcel['assessorDetail'] =
+        $detailData;
 }
 
 unset($parcel);
 
 error_log(
     '[PPC][SECTION-09] Parcel resolution + enrichment complete. ' .
-    'Count: ' . $data['location']['parcelCount']
+    'Count=' . ($data['location']['parcelCount'] ?? 0) .
+    ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL') .
+    ' | Type=' . ($data['location']['jurisdictionType'] ?? 'NULL')
 );
 
 #endregion
 
-#region SECTION 10 — Database Resolution
+#region SECTION 11 — Database Resolution
 
 $databaseResolution = [
     'entity'   => null,
@@ -692,7 +750,7 @@ if ($pdo) {
 
 #endregion
 
-#region SECTION 11 — PCM Governance (PC + RS Model)
+#region SECTION 12 — PCM Governance (PC + RS Model)
 
 $pcm = [
     'pc'               => null,      // Proposal Intent
@@ -863,7 +921,7 @@ error_log(
 
 #endregion
 
-#region SECTION 12 — Final Output Builder
+#region SECTION 13 — Final Output Builder
 
 // Generate a temporary proposal ID if one doesn't exist yet
 $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
@@ -909,7 +967,7 @@ exit;
 
 #endregion
 
-#region SECTION 13 — Proposal Snapshot Creation
+#region SECTION 14 — Proposal Snapshot Creation
 
 // =====================================================
 // Generate Unique Proposal ID
