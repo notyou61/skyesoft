@@ -750,7 +750,7 @@ if ($pdo) {
 
 #endregion
 
-#region SECTION 12 — PCM Governance (PC + RS Model)
+#region SECTION 11 — PCM Classification & Governance
 
 $pcm = [
     'pc'               => null,      // Proposal Intent
@@ -773,9 +773,6 @@ $entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
 $locationStatus = $databaseResolution['location']['status'] ?? 'none';
 $contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
 
-// Temporary relaxation during development
-$dataIntegrityStatus = $dataIntegrityStatus ?? ['status' => 'complete'];
-
 error_log("[PPC][SECTION-11] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus");
 
 if ($isExplicitLocationOnlyIntent === true) {
@@ -789,8 +786,9 @@ if ($isExplicitLocationOnlyIntent === true) {
     $pcm['action']   = 'link_existing_elc';
 
 } elseif ($contactStatus === 'exact') {
-    $pcm['pc']       = null;
-    $pcm['pcStatus'] = 'duplicate_contact';
+    // Duplicate contact detected — treat as PC-3 + RS-5 (better Codex alignment)
+    $pcm['pc']       = 'PC-3';
+    $pcm['pcStatus'] = 'existing_location';
     $pcm['action']   = 'reject_duplicate';
 
 } elseif ($locationStatus === 'exact') {
@@ -825,14 +823,8 @@ if (empty($parsed['location']['address'])) {
 if (empty($parsed['location']['city'])) {
     $missingRequired[] = 'location.city';
 }
-if (empty($parsed['location']['state'])) {
-    $missingRequired[] = 'location.state';
-}
-if (empty($rawInput)) {
-    $missingRequired[] = 'rawInput.original';
-}
 
-// Contact identity fields required only for PC-1, PC-2, PC-3
+// Contact identity fields required for PC-1, PC-2, PC-3
 if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'], true)) {
     if (empty($parsed['contact']['firstName'])) {
         $missingRequired[] = 'contact.firstName';
@@ -840,13 +832,27 @@ if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'], true)) {
     if (empty($parsed['contact']['lastName'])) {
         $missingRequired[] = 'contact.lastName';
     }
+    if (empty($parsed['contact']['email'])) {           // ← Required per your note
+        $missingRequired[] = 'contact.email';
+    }
 }
 
 // Apply RS flags based on what is missing
 if (!empty($missingRequired)) {
 
-    $hasContactFieldsMissing = in_array('contact.firstName', $missingRequired) || 
-                               in_array('contact.lastName', $missingRequired);
+    $contactRequiredFields = [
+        'contact.firstName',
+        'contact.lastName',
+        'contact.email'
+    ];
+
+    $hasContactFieldsMissing = false;
+    foreach ($contactRequiredFields as $field) {
+        if (in_array($field, $missingRequired, true)) {
+            $hasContactFieldsMissing = true;
+            break;
+        }
+    }
 
     if ($hasContactFieldsMissing) {
         $pcm['rs'][]         = 'RS-3';
@@ -910,7 +916,12 @@ $pcm['blocksCommit'] = in_array('RS-5', $pcm['rs']) ||
                        in_array('RS-3', $pcm['rs']);
 
 $pcm['readyForCommit'] = !$pcm['blocksCommit'];
-$pcm['requiresReview'] = count($pcm['rs']) > 0 && $pcm['rs'][0] !== 'RS-0';
+
+// Future-safe requiresReview logic
+$pcm['requiresReview'] = !(
+    count($pcm['rs']) === 1 && 
+    $pcm['rs'][0] === 'RS-0'
+);
 
 error_log(
     '[PPC][SECTION-11] PCM complete → PC=' . ($pcm['pc'] ?? 'null') .
