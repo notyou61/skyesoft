@@ -480,11 +480,19 @@ $data['contact'] = [
 // LOCATION
 // =====================================================
 $data['location'] = [
-    'locationAddress'     => $parsed['location']['address'] ?? '',
-    'locationCity'        => $parsed['location']['city'] ?? '',
-    'locationState'       => $parsed['location']['state'] ?? '',
-    'locationZip'         => $parsed['location']['zip'] ?? '',
-    'locationAddressRaw'  => $rawInputOriginal
+    'locationAddress'    => $parsed['location']['address'] ?? '',
+    'locationCity'       => $parsed['location']['city'] ?? '',
+    'locationState'      => $parsed['location']['state'] ?? '',
+    'locationZip'        => $parsed['location']['zip'] ?? '',
+    'locationAddressRaw' => trim(
+        ($parsed['location']['address'] ?? '') .
+        ', ' .
+        ($parsed['location']['city'] ?? '') .
+        ', ' .
+        ($parsed['location']['state'] ?? '') .
+        ' ' .
+        ($parsed['location']['zip'] ?? '')
+    )
 ];
 
 // =====================================================
