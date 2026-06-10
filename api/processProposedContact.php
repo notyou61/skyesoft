@@ -773,7 +773,7 @@ $entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
 $locationStatus = $databaseResolution['location']['status'] ?? 'none';
 $contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
 
-error_log("[PPC][SECTION-11] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus");
+error_log("[PPC][SECTION-12] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus");
 
 if ($isExplicitLocationOnlyIntent === true) {
     $pcm['pc']       = 'PC-4';
@@ -832,7 +832,7 @@ if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'], true)) {
     if (empty($parsed['contact']['lastName'])) {
         $missingRequired[] = 'contact.lastName';
     }
-    if (empty($parsed['contact']['email'])) {           // ← Required per your note
+    if (empty($parsed['contact']['email'])) {
         $missingRequired[] = 'contact.email';
     }
 }
@@ -865,7 +865,7 @@ if (!empty($missingRequired)) {
     $pcm['requiresReview'] = true;
     $pcm['blocksCommit']   = true;
 
-    error_log('[PPC][SECTION-11] Missing required fields per Codex: ' . implode(', ', $missingRequired));
+    error_log('[PPC][SECTION-12] Missing required fields per Codex: ' . implode(', ', $missingRequired));
 }
 
 // =====================================================
@@ -924,68 +924,21 @@ $pcm['requiresReview'] = !(
 );
 
 error_log(
-    '[PPC][SECTION-11] PCM complete → PC=' . ($pcm['pc'] ?? 'null') .
+    '[PPC][SECTION-12] PCM complete → PC=' . ($pcm['pc'] ?? 'null') .
     ' | Ready=' . ($pcm['readyForCommit'] ? 'YES' : 'NO') .
     ' | Blocks=' . ($pcm['blocksCommit'] ? 'YES' : 'NO') .
     ' | RS=[' . implode(', ', $pcm['rs']) . ']'
 );
 
-#endregion
 
-#region SECTION 13 — Final Output Builder
-
-// Generate a temporary proposal ID if one doesn't exist yet
+// =====================================================
+// SINGLE PROPOSAL ID GENERATION (used by both snapshot and response)
+// =====================================================
 $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 
-echo json_encode([
-    'success'           => true,
-    'status'            => 'proposed',
-    'proposalId'        => $proposalId,
-    'activitySessionId' => $context['activitySessionId'] ?? '',
-
-    // Core Structured Data
-    'data' => [
-        'entity'   => $data['entity']   ?? [],
-        'contact'  => $data['contact']  ?? [],
-        'location' => $data['location'] ?? []
-    ],
-
-    // Database Resolution
-    'databaseResolution' => $databaseResolution ?? [],
-
-    // PCM Governance Decision
-    'pcm' => $pcm ?? [],
-
-    // Meta / Summary
-    'meta' => [
-        'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
-        'parcelCount'        => $data['location']['parcelCount'] ?? 0,
-        'censusValidated'    => $data['location']['locationCensusValidated'] ?? false,
-        'googleValidated'    => $data['location']['locationValidated'] ?? false,
-        'searchAddress'      => $searchAddress ?? ''
-    ],
-
-    // Raw Input (for auditing and debugging)
-    'rawInput' => [
-        'original' => $rawInput ?? '',
-        'type'     => 'signature',
-        'source'   => 'skyebot_prompt'
-    ]
-
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-exit;
-
 #endregion
 
-#region SECTION 14 — Proposal Snapshot Creation
-
-// =====================================================
-// Generate Unique Proposal ID
-// =====================================================
-$timestamp = microtime(true);
-$uniquePart = str_pad((string)((int)($timestamp * 100000) % 999999), 6, '0', STR_PAD_LEFT);
-$proposalId = 'PRP-' . date('Ymd') . '-' . $uniquePart;
+#region SECTION 13 — Proposal Snapshot Creation
 
 // =====================================================
 // Prepare Snapshot
@@ -1029,7 +982,50 @@ if ($written !== false) {
     error_log("[PPC][SECTION-13] ❌ Failed to save snapshot");
 }
 
-// Update the main response data
+// Attach path for reference
 $proposalSnapshot['snapshotPath'] = $snapshotPath;
+
+#endregion
+
+#region SECTION 14 — Final Output Builder
+
+echo json_encode([
+    'success'           => true,
+    'status'            => 'proposed',
+    'proposalId'        => $proposalId,
+    'activitySessionId' => $context['activitySessionId'] ?? '',
+
+    // Core Structured Data
+    'data' => [
+        'entity'   => $data['entity']   ?? [],
+        'contact'  => $data['contact']  ?? [],
+        'location' => $data['location'] ?? []
+    ],
+
+    // Database Resolution
+    'databaseResolution' => $databaseResolution ?? [],
+
+    // PCM Governance Decision
+    'pcm' => $pcm ?? [],
+
+    // Meta / Summary
+    'meta' => [
+        'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
+        'parcelCount'        => $data['location']['parcelCount'] ?? 0,
+        'censusValidated'    => $data['location']['locationCensusValidated'] ?? false,
+        'googleValidated'    => $data['location']['locationValidated'] ?? false,
+        'searchAddress'      => $searchAddress ?? ''
+    ],
+
+    // Raw Input (for auditing and debugging)
+    'rawInput' => [
+        'original' => $rawInput ?? '',
+        'type'     => 'signature',
+        'source'   => 'skyebot_prompt'
+    ]
+
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+exit;
 
 #endregion
