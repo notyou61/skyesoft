@@ -772,7 +772,11 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
                 l.locationId,
                 l.locationEntityId AS entityId,
                 l.locationName,
-                l.locationPlaceId
+                l.locationPlaceId,
+                l.locationParcelNumber,
+                l.locationParcelNumberRaw,
+                l.locationHasMultipleParcels,
+                l.locationParcelCount
             FROM tblLocations l
             WHERE l.locationPlaceId = :placeId
             LIMIT 1
@@ -784,10 +788,15 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
             error_log('✅ GLOBAL EXISTING LOCATION MATCH (PlaceId)');
 
             return [
-                'status'           => 'exact',
-                'entityId'         => (int)$row['entityId'],
-                'locationId'       => (int)$row['locationId'],
-                'matchType'        => 'placeId_global'
+                'status'                    => 'exact',
+                'entityId'                  => (int)$row['entityId'],
+                'locationId'                => (int)$row['locationId'],
+                'matchType'                 => 'placeId_global',
+
+                'locationParcelNumber'      => $row['locationParcelNumber'] ?? null,
+                'locationParcelNumberRaw'   => $row['locationParcelNumberRaw'] ?? null,
+                'locationHasMultipleParcels'=> (bool)($row['locationHasMultipleParcels'] ?? false),
+                'locationParcelCount'       => (int)($row['locationParcelCount'] ?? 0)
             ];
         }
     }
@@ -816,7 +825,11 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
         $stmt = $pdo->prepare("
             SELECT 
                 locationId,
-                locationName
+                locationName,
+                locationParcelNumber,
+                locationParcelNumberRaw,
+                locationHasMultipleParcels,
+                locationParcelCount
             FROM tblLocations
             WHERE locationEntityId = :entityId
               AND locationAddress = :address
@@ -833,11 +846,19 @@ function evaluateLocationDuplicate(array $parsed, PDO $pdo): array {
         if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             error_log('✅ ENTITY ADDRESS MATCH');
 
+            // Diagnostic log — remove after verification
+            error_log('[LOCATION ROW] ' . json_encode($row));
+
             return [
-                'status'     => 'exact',
-                'entityId'   => $entityId,
-                'locationId' => (int)$row['locationId'],
-                'matchType'  => 'address'
+                'status'                    => 'exact',
+                'entityId'                  => $entityId,
+                'locationId'                => (int)$row['locationId'],
+                'matchType'                 => 'address',
+
+                'locationParcelNumber'      => $row['locationParcelNumber'] ?? null,
+                'locationParcelNumberRaw'   => $row['locationParcelNumberRaw'] ?? null,
+                'locationHasMultipleParcels'=> (bool)($row['locationHasMultipleParcels'] ?? false),
+                'locationParcelCount'       => (int)($row['locationParcelCount'] ?? 0)
             ];
         }
     }
