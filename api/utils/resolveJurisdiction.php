@@ -43,6 +43,9 @@ function resolveJurisdiction(?string $jurisdictionName): array
 
     $registryContent = file_get_contents($registryFile);
     $registry = json_decode($registryContent, true);
+    // NEW DIAGNOSTIC
+    error_log('[RESOLVE-JURISDICTION] Registry loaded. Phoenix entry: ' . 
+        json_encode($registry['phoenix'] ?? $registry['Phoenix'] ?? 'NOT_FOUND', JSON_PRETTY_PRINT));
 
     if (!is_array($registry) || empty($registry)) {
         error_log('[RESOLVE-JURISDICTION] Invalid registry. Preview: ' . substr($registryContent, 0, 500));

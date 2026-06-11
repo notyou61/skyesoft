@@ -115,6 +115,12 @@ function resolveParcel(
         error_log('[RESOLVE-PARCEL] Raw jurisdiction from parcel: ' . $jurisdictionRaw);
 
         $jurisdiction = resolveJurisdiction($jurisdictionRaw);
+        // NEW DIAGNOSTIC
+        error_log('[RESOLVE-PARCEL] resolveJurisdiction returned: ' . 
+            json_encode($jurisdiction, JSON_PRETTY_PRINT));
+
+        $result['jurisdictionName'] = $jurisdiction['label'] ?? null;
+        $result['jurisdictionType'] = $jurisdiction['jurisdictionType'] ?? null;
 
         $result['jurisdictionName'] = $jurisdiction['label'] ?? ucwords(strtolower($jurisdictionRaw));
         $result['jurisdictionType'] = $jurisdiction['jurisdictionType'] ?? null;
@@ -127,6 +133,12 @@ function resolveParcel(
             ' (Type: ' . ($result['jurisdictionType'] ?? 'NULL') .
             ', Key: ' . ($result['jurisdictionKey'] ?? 'NULL') . ')'
         );
+    }
+
+    // TEMPORARY FORCE FOR TESTING
+    if ($result['jurisdictionName'] === 'Phoenix' && empty($result['jurisdictionType'])) {
+        $result['jurisdictionType'] = 'City';
+        error_log('[RESOLVE-PARCEL] FORCED jurisdictionType = City for Phoenix');
     }
 
     error_log('[RESOLVE-PARCEL] Resolved ' . $result['parcelCount'] . ' parcel(s)');

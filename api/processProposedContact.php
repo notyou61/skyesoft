@@ -620,6 +620,10 @@ $data['location']['jurisdictionType'] =
 $data['location']['hasMultipleParcels'] =
     ($data['location']['parcelCount'] > 1);
 
+// NEW DIAGNOSTIC
+error_log('[PPC][SECTION-10] After parcelResult → JurisdictionType=' . 
+    json_encode($data['location']['jurisdictionType']));
+
 // =====================================================
 // ENRICH EACH PARCEL WITH DETAILED ASSESSOR DATA
 // =====================================================
