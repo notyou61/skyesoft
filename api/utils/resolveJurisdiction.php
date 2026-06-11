@@ -4,7 +4,12 @@ declare(strict_types=1);
 /**
  * ======================================================================
  * Skyesoft — Jurisdiction Resolver
- * Version: 1.3.0
+ * Version: 1.4.0
+ * 
+ * Updates (RWU):
+ *   • Robust multi-path registry loading (matches your actual file location)
+ *   • Better logging for loaded registry
+ *   • Full support for your authoritative registry structure
  * ======================================================================
  */
 
@@ -24,7 +29,9 @@ function resolveJurisdiction(?string $jurisdictionName): array
 
     $searchValue = strtoupper($jurisdictionName);
 
-    // Special cases
+    // =====================================================
+    // SPECIAL CASES
+    // =====================================================
     if (in_array($searchValue, ['NO CITY/TOWN', 'UNINCORPORATED', 'UNINCORPORATED AREA'], true)) {
         return [
             'found'            => true,
@@ -34,29 +41,49 @@ function resolveJurisdiction(?string $jurisdictionName): array
         ];
     }
 
-    // Load registry
-    $registryFile = dirname(__DIR__) . '/config/jurisdictionRegistry.json';
-    if (!file_exists($registryFile)) {
-        error_log('[RESOLVE-JURISDICTION] Registry not found: ' . $registryFile);
+    // =====================================================
+    // LOAD REGISTRY (Robust Multi-Path)
+    // =====================================================
+    $possiblePaths = [
+        dirname(__DIR__) . '/config/jurisdictionRegistry.json',
+        __DIR__ . '/../data/authoritative/jurisdictionRegistry.json',
+        __DIR__ . '/../../data/authoritative/jurisdictionRegistry.json',
+        dirname(dirname(__DIR__)) . '/data/authoritative/jurisdictionRegistry.json',
+        '/home/notyou64/public_html/skyesoft/data/authoritative/jurisdictionRegistry.json'
+    ];
+
+    $registryFile = null;
+    foreach ($possiblePaths as $path) {
+        if (file_exists($path)) {
+            $registryFile = $path;
+            break;
+        }
+    }
+
+    if (!$registryFile) {
+        error_log('[RESOLVE-JURISDICTION] Registry not found in any expected path. Last tried: ' . $possiblePaths[0]);
         return $result;
     }
 
     $registryContent = file_get_contents($registryFile);
     $registry = json_decode($registryContent, true);
-    // NEW DIAGNOSTIC
-    error_log('[RESOLVE-JURISDICTION] Registry loaded. Phoenix entry: ' . 
-        json_encode($registry['phoenix'] ?? $registry['Phoenix'] ?? 'NOT_FOUND', JSON_PRETTY_PRINT));
+
+    error_log('[RESOLVE-JURISDICTION] ✅ Registry loaded successfully from: ' . $registryFile);
 
     if (!is_array($registry) || empty($registry)) {
         error_log('[RESOLVE-JURISDICTION] Invalid registry. Preview: ' . substr($registryContent, 0, 500));
         return $result;
     }
 
-    // Search
+    // =====================================================
+    // SEARCH REGISTRY
+    // =====================================================
     foreach ($registry as $jurisdictionKey => $record) {
-        if (!is_array($record)) continue;
+        if (!is_array($record)) {
+            continue;
+        }
 
-        // Flexible type key (handles casing issues)
+        // Flexible type key (supports your registry format)
         $type = $record['jurisdictionType'] 
              ?? $record['jurisdictiontype'] 
              ?? $record['jurisdiction_type'] 
@@ -94,7 +121,9 @@ function resolveJurisdiction(?string $jurisdictionName): array
         }
     }
 
-    // Fallback
+    // =====================================================
+    // FALLBACK
+    // =====================================================
     return [
         'found'            => false,
         'jurisdictionKey'  => null,
