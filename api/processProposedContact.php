@@ -882,15 +882,22 @@ if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
     $pcm['rsStatuses'][] = 'duplicate_contact';
 }
 
-// RS-6 — Multiple Parcels
-if ($data['location']['hasMultipleParcels'] ?? false) {
+// RS-6 — Multiple Parcels (only if no parcel has been accepted yet)
+$hasMultipleParcels   = $data['location']['hasMultipleParcels'] ?? false;
+$acceptedParcelNumber = $databaseResolution['location']['locationParcelNumberRaw'] 
+                     ?? $data['location']['locationParcelNumberRaw'] 
+                     ?? null;
+
+if ($hasMultipleParcels && empty($acceptedParcelNumber)) {
     $pcm['rs'][]         = 'RS-6';
     $pcm['rsStatuses'][] = 'multiple_parcels';
     $pcm['requiresReview'] = true;
 }
 
 // RS-7 — Unresolved Parcel (Maricopa only)
-if ($data['location']['locationCounty'] === 'Maricopa' && 
+$countyForCheck = strtolower(trim($data['location']['locationCounty'] ?? ''));
+
+if (in_array($countyForCheck, ['maricopa', 'maricopa county'], true) && 
     ($data['location']['parcelCount'] ?? 0) === 0) {
     $pcm['rs'][]         = 'RS-7';
     $pcm['rsStatuses'][] = 'unresolved_parcel';
