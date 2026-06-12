@@ -1039,34 +1039,56 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 #region SECTION 14 — Narrative Builder
 
 // =====================================================
-// Narrative Builder — Uses askOpenAI.php + Deterministic fallback
+// Narrative Builder — askOpenAI.php + Fully Dynamic Fallback
 // =====================================================
 
-$narratives = [
+$narratives = array(
     'ui'       => null,
     'report'   => null,
     'database' => null,
     'audit'    => null,
     'activity' => null
-];
+);
 
 error_log('[PPC][SECTION-14] Starting Narrative Builder');
 
-$narrativeContext = [
-    'pc'                       => $pcm['pc'] ?? null,
-    'pcStatus'                 => $pcm['pcStatus'] ?? null,
-    'rs'                       => $pcm['rs'] ?? [],
-    'rsStatuses'               => $pcm['rsStatuses'] ?? [],
-    'canCommit'                => $commitPlan['canCommit'] ?? false,
-    'entityName'               => $data['entity']['entityName'] ?? '',
-    'entityId'                 => $commitPlan['entity']['entityId'] ?? null,
-    'contactName'              => trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? '')),
-    'contactTitle'             => $data['contact']['contactTitle'] ?? '',
-    'locationAddress'          => $data['location']['locationAddressRaw'] ?? '',
-    'locationId'               => $commitPlan['location']['locationId'] ?? null,
-    'locationParcelNumberRaw'  => $commitPlan['location']['locationParcelNumberRaw'] ?? null,
-    'commitActions'            => $commitPlan['actions'] ?? []
-];
+// Safe variable extraction
+$pc = (isset($pcm['pc']) ? $pcm['pc'] : 'UNKNOWN');
+$pcStatus = (isset($pcm['pcStatus']) ? $pcm['pcStatus'] : '');
+$rsStatuses = (isset($pcm['rsStatuses']) ? $pcm['rsStatuses'] : array());
+$canCommit = (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
+
+$narrativeContext = array(
+    'pc'                       => $pc,
+    'pcStatus'                 => $pcStatus,
+    'rs'                       => (isset($pcm['rs']) ? $pcm['rs'] : array()),
+    'rsStatuses'               => $rsStatuses,
+    'canCommit'                => $canCommit,
+    'entityName'               => (isset($data['entity']['entityName']) ? $data['entity']['entityName'] : ''),
+    'entityId'                 => (isset($commitPlan['entity']['entityId']) ? $commitPlan['entity']['entityId'] : null),
+    'contactName'              => trim(
+        (isset($data['contact']['contactFirstName']) ? $data['contact']['contactFirstName'] : '') . 
+        ' ' . 
+        (isset($data['contact']['contactLastName']) ? $data['contact']['contactLastName'] : '')
+    ),
+    'contactTitle'             => (isset($data['contact']['contactTitle']) ? $data['contact']['contactTitle'] : ''),
+    'locationAddress'          => (isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : ''),
+    'locationId'               => (isset($commitPlan['location']['locationId']) ? $commitPlan['location']['locationId'] : null),
+    'locationParcelNumberRaw'  => (isset($commitPlan['location']['locationParcelNumberRaw']) ? $commitPlan['location']['locationParcelNumberRaw'] : null),
+    'commitActions'            => (isset($commitPlan['actions']) ? $commitPlan['actions'] : array())
+);
+
+// PC-aware descriptions
+$pcDescriptions = array(
+    'PC-0' => 'an existing entity, location, and contact',
+    'PC-1' => 'a new entity, new location, and new contact',
+    'PC-2' => 'an existing entity with a new location and new contact',
+    'PC-3' => 'an existing location with a new contact',
+    'PC-4' => 'a new location only'
+);
+
+$proposalDescription = (isset($pcDescriptions[$pc]) ? $pcDescriptions[$pc] : 'a proposal');
+$commitStatus = ($canCommit ? 'Ready for commitment.' : 'Requires review before commitment.');
 
 // =====================================================
 // AI Narratives via askOpenAI.php (UI + Report only)
@@ -1101,21 +1123,21 @@ Return ONLY valid JSON:
 EOT;
 
 if (function_exists('askOpenAI')) {
-    $aiResponse = askOpenAI($systemPromptForNarratives, $aiNarrativePrompt, [
+    $aiResponse = askOpenAI($systemPromptForNarratives, $aiNarrativePrompt, array(
         'model'       => 'gpt-4o-mini',
         'temperature' => 0.0,
         'max_tokens'  => 600
-    ]);
+    ));
 
     if ($aiResponse && !empty($aiResponse['content'])) {
         $content = trim($aiResponse['content']);
         preg_match('/\{.*\}/s', $content, $matches);
-        $jsonString = $matches[0] ?? $content;
+        $jsonString = (isset($matches[0]) ? $matches[0] : $content);
 
         $parsed = json_decode($jsonString, true);
         if (is_array($parsed)) {
-            $narratives['ui']    = $parsed['ui'] ?? null;
-            $narratives['report'] = $parsed['report'] ?? null;
+            $narratives['ui']    = (isset($parsed['ui']) ? $parsed['ui'] : null);
+            $narratives['report'] = (isset($parsed['report']) ? $parsed['report'] : null);
             error_log('[PPC][SECTION-14] ✅ AI narratives received from askOpenAI.php');
         }
     }
@@ -1126,33 +1148,47 @@ if (function_exists('askOpenAI')) {
 // =====================================================
 // DETERMINISTIC NARRATIVES
 // =====================================================
-$narratives['database'] = $commitPlan['actions'] ?? [];
+$narratives['database'] = (isset($commitPlan['actions']) ? $commitPlan['actions'] : array());
 
-$narratives['audit'] = [
-    "Entity resolved by " . ($databaseResolution['entity']['matchType'] ?? 'unknown') . " (ID " . ($commitPlan['entity']['entityId'] ?? 'N/A') . ").",
-    "Location resolved by " . ($databaseResolution['location']['matchType'] ?? 'unknown') . " (ID " . ($commitPlan['location']['locationId'] ?? 'N/A') . ", parcel " . ($commitPlan['location']['locationParcelNumberRaw'] ?? 'N/A') . ").",
-    "Contact resolution status: " . ($databaseResolution['contact']['status'] ?? 'none') . ".",
-    "Proposal classified as " . ($pcm['pc'] ?? 'UNKNOWN') . " (" . ($pcm['pcStatus'] ?? '') . ").",
-    "Governance: " . implode(', ', $pcm['rsStatuses'] ?? ['RS-0'])
-];
+$narratives['audit'] = array(
+    "Entity resolved by " . (isset($databaseResolution['entity']['matchType']) ? $databaseResolution['entity']['matchType'] : 'unknown') . 
+    " (ID " . (isset($commitPlan['entity']['entityId']) ? $commitPlan['entity']['entityId'] : 'N/A') . ").",
+    "Location resolved by " . (isset($databaseResolution['location']['matchType']) ? $databaseResolution['location']['matchType'] : 'unknown') .
+    (isset($commitPlan['location']['locationId']) ? " (ID " . $commitPlan['location']['locationId'] . ")" : "") .
+    (isset($commitPlan['location']['locationParcelNumberRaw']) ? ", parcel " . $commitPlan['location']['locationParcelNumberRaw'] : "") . ".",
+    "Contact resolution status: " . (isset($databaseResolution['contact']['status']) ? $databaseResolution['contact']['status'] : 'none') . ".",
+    "Proposal classified as " . $pc . " (" . $pcStatus . ").",
+    "Governance: " . implode(', ', $rsStatuses)
+);
 
-$narratives['activity'] = "Created " . ($pcm['pc'] ?? 'proposal') . " for " . 
-    ($narrativeContext['contactName'] ?: 'new contact') . 
-    " at " . 
-    ($narrativeContext['entityName'] ?: 'the entity') . ".";
+$narratives['activity'] = "Created " . $pc . " proposal for " . 
+    ((isset($narrativeContext['entityName']) && $narrativeContext['entityName'] !== '') ? $narrativeContext['entityName'] : 'the entity') . ".";
 
 // =====================================================
-// Dynamic Fallback (PC-aware, no hardcoding)
+// Dynamic Fallback
 // =====================================================
 if (empty($narratives['ui'])) {
-    $contactName = $narrativeContext['contactName'] ?: 'the contact';
-    $entityName  = $narrativeContext['entityName'] ?: 'the entity';
-    $loc         = $narrativeContext['locationAddress'] ?: 'the location';
-    $pc          = $pcm['pc'] ?? 'UNKNOWN';
+    $contactName = ((isset($narrativeContext['contactName']) && $narrativeContext['contactName'] !== '') 
+        ? $narrativeContext['contactName'] 
+        : 'the contact');
+    $entityName  = ((isset($narrativeContext['entityName']) && $narrativeContext['entityName'] !== '') 
+        ? $narrativeContext['entityName'] 
+        : 'the entity');
+    $loc         = ((isset($narrativeContext['locationAddress']) && $narrativeContext['locationAddress'] !== '') 
+        ? $narrativeContext['locationAddress'] 
+        : 'the location');
 
-    $narratives['ui'] = "This proposal represents a new contact associated with an existing company and location.\n\n{$contactName} was identified for {$entityName} at {$loc}.\n\nClassified as {$pc}. No governance issues detected. Ready for commitment.";
+    $narratives['ui'] = "This proposal represents {$proposalDescription}.\n\n" .
+        "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
+        "Classified as {$pc}. Governance status: " . 
+        implode(', ', $rsStatuses) . ".\n" .
+        $commitStatus;
 
-    $narratives['report'] = "This proposal identifies {$contactName} as a new contact for {$entityName} located at {$loc}.\n\nThe company and location were matched to existing records. Contact resolution status: " . ($databaseResolution['contact']['status'] ?? 'none') . ".\n\nClassified as {$pc} and passed governance review.";
+    $narratives['report'] = "Proposal classified as {$pc} ({$pcStatus}).\n\n" .
+        "Entity: {$entityName}.\n" .
+        "Location: {$loc}.\n" .
+        "Contact: {$contactName}.\n\n" .
+        "Governance status: " . implode(', ', $rsStatuses) . ".";
 }
 
 error_log('[PPC][SECTION-14] Narrative Builder complete');
