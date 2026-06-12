@@ -1071,21 +1071,26 @@ $narrativeContext = [
 ];
 
 // =====================================================
-// AI ONLY FOR UI + REPORT (natural language)
+// AI ONLY FOR UI + REPORT — Strong factual prompt
 // =====================================================
 $systemPromptNarratives = <<<EOT
 You are a precise operational documentation engine for Skyesoft CRM.
 
 Generate ONLY "ui" and "report" narratives. Be strictly factual.
 
-Return ONLY valid JSON with this structure:
+RULES:
+- Use ONLY the facts in the provided context.
+- NEVER mention UI, screen, interface, or proposal review elements.
+- NEVER speculate or add business value.
+- Describe the proposal content, classification, and outcomes only.
+- Be concise, professional, and clear.
+
+Return ONLY valid JSON:
 
 {
-  "ui": "Friendly but factual 2-4 sentence summary for the Proposal Review UI.",
+  "ui": "Factual 2-4 sentence summary describing what the proposal contains and what happens if accepted.",
   "report": "Formal, concise narrative suitable for PDF reports."
 }
-
-Use only the provided context. No speculation.
 EOT;
 
 $userPromptNarratives = "Proposal Context:\n" . 
@@ -1147,18 +1152,19 @@ $narratives['audit'] = [
     "Governance: " . implode(', ', $pcm['rsStatuses'] ?? ['RS-0'])
 ];
 
-$narratives['activity'] = "Proposed " . $narrativeContext['contactName'] . " as a new contact for " . $narrativeContext['entityName'] . ".";
+$narratives['activity'] = "Proposed " . ($narrativeContext['contactName'] ?: 'new contact') . " as a new contact for " . ($narrativeContext['entityName'] ?: 'the entity') . ".";
 
 // =====================================================
-// Strong Fallback for UI/Report if AI failed
+// Dynamic Fallback (No hardcoding)
 // =====================================================
 if (empty($narratives['ui'])) {
-    $contactName = $narrativeContext['contactName'];
-    $entityName  = $narrativeContext['entityName'];
-    $loc         = $narrativeContext['locationAddress'];
+    $contactName = $narrativeContext['contactName'] ?: 'the contact';
+    $entityName  = $narrativeContext['entityName'] ?: 'the entity';
+    $loc         = $narrativeContext['locationAddress'] ?: 'the location';
 
     $narratives['ui'] = "This proposal represents a new contact associated with an existing company and location.\n\n{$contactName} was identified for {$entityName} at {$loc}.\n\nClassified as {$narrativeContext['pc']}. No governance issues detected. Ready for commitment.";
-    $narratives['report'] = "Proposal to add contact {$contactName} ({$narrativeContext['contactTitle']}) for {$entityName} at {$loc}.";
+
+    $narratives['report'] = "This proposal identifies {$contactName} ({$narrativeContext['contactTitle']}) as a new contact for {$entityName} located at {$loc}.\n\nThe company and location were matched to existing records. No existing contact was found.\n\nClassified as {$narrativeContext['pc']} and passed governance with RS-0.";
 }
 
 error_log('[PPC][SECTION-14] Narrative Builder complete (AI + deterministic)');
