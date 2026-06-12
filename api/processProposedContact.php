@@ -952,7 +952,7 @@ $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 #region SECTION 13 — Commit Plan Builder
 
 // =====================================================
-// Commit Plan Builder — Deterministic Database Action Plan
+// Commit Plan Builder — Deterministic + IDs for Accept workflow
 // =====================================================
 
 $commitPlan = [
@@ -960,20 +960,16 @@ $commitPlan = [
     'entity'        => [],
     'location'      => [],
     'contact'       => [],
-    'actions'       => [],          // Ordered list of planned DB operations
+    'actions'       => [],
     'summary'       => ''
 ];
 
-// Base on PCM classification and DB resolutions
 $pc = $pcm['pc'] ?? 'PC-UNKNOWN';
-$entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
-$locationStatus = $databaseResolution['location']['status'] ?? 'none';
-$contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
 
-error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc} | Entity={$entityStatus} | Location={$locationStatus} | Contact={$contactStatus}");
+error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc}");
 
 switch ($pc) {
-    case 'PC-0':  // Existing ELC - No changes needed
+    case 'PC-0':
         $commitPlan['canCommit'] = true;
         $commitPlan['actions'] = ['link_existing_elc'];
         $commitPlan['summary'] = 'No database changes required - ELC already exists';
@@ -982,7 +978,7 @@ switch ($pc) {
         $commitPlan['contact']['action']  = 'link';
         break;
 
-    case 'PC-1':  // New Entity + New Location + New Contact
+    case 'PC-1':
         $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
         $commitPlan['actions'] = ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['summary'] = 'Insert new Entity, Location, Contact and establish relationships';
@@ -991,7 +987,7 @@ switch ($pc) {
         $commitPlan['contact']['action']  = 'insert';
         break;
 
-    case 'PC-2':  // Existing Entity + New Location + New Contact
+    case 'PC-2':
         $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
         $commitPlan['actions'] = ['link_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['summary'] = 'Link to existing Entity, Insert new Location + Contact';
@@ -1000,7 +996,7 @@ switch ($pc) {
         $commitPlan['contact']['action']  = 'insert';
         break;
 
-    case 'PC-3':  // Existing Location + New Contact
+    case 'PC-3':
         $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
         $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact'];
         $commitPlan['summary'] = 'Link to existing Entity + Location, Insert new Contact';
@@ -1009,7 +1005,7 @@ switch ($pc) {
         $commitPlan['contact']['action']  = 'insert';
         break;
 
-    case 'PC-4':  // Location-only
+    case 'PC-4':
         $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
         $commitPlan['actions'] = ['insert_location'];
         $commitPlan['summary'] = 'Insert new Location only';
@@ -1018,26 +1014,32 @@ switch ($pc) {
 
     default:
         $commitPlan['summary'] = 'Unknown PC type - manual review required';
-        error_log("[PPC][SECTION-13] WARNING: Unknown PC type: {$pc}");
         break;
 }
 
-// Final safety gate — always respect PCM governance
-if ($pcm['blocksCommit'] ?? false) {
-    $commitPlan['canCommit'] = false;
-    $commitPlan['summary'] .= ' (Blocked by governance rules)';
+// Attach concrete IDs (critical for future Accept + audit)
+if (!empty($databaseResolution['entity']['entityId'])) {
+    $commitPlan['entity']['entityId'] = $databaseResolution['entity']['entityId'];
+}
+if (!empty($databaseResolution['location']['locationId'])) {
+    $commitPlan['location']['locationId'] = $databaseResolution['location']['locationId'];
+    $commitPlan['location']['locationParcelNumberRaw'] = 
+        $databaseResolution['location']['locationParcelNumberRaw'] ?? null;
 }
 
-error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . 
-    ($commitPlan['canCommit'] ? 'YES' : 'NO') . 
-    ' | Actions=[' . implode(', ', $commitPlan['actions']) . ']');
+if ($pcm['blocksCommit'] ?? false) {
+    $commitPlan['canCommit'] = false;
+    $commitPlan['summary'] .= ' (Blocked by governance)';
+}
+
+error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
 
 #endregion
 
 #region SECTION 14 — Narrative Builder
 
 // =====================================================
-// Narrative Builder — Single AI call using same curl pattern
+// Narrative Builder — Deterministic / Factual only
 // =====================================================
 
 $narratives = [
@@ -1050,62 +1052,65 @@ $narratives = [
 
 error_log('[PPC][SECTION-14] Starting Narrative Builder');
 
-// === Clean, focused context for high-quality narratives ===
+// === Tight, factual context ===
 $narrativeContext = [
-    'proposalId'    => $proposalId,
-    'pc'            => $pcm['pc'] ?? null,
-    'pcStatus'      => $pcm['pcStatus'] ?? null,
-    'rs'            => $pcm['rs'] ?? [],
-    'rsStatuses'    => $pcm['rsStatuses'] ?? [],
-    'canCommit'     => $commitPlan['canCommit'] ?? false,
-    'entity'        => $data['entity']['entityName'] ?? '',
-    'contact'       => trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? '')),
-    'contactTitle'  => $data['contact']['contactTitle'] ?? '',
-    'location'      => $data['location']['locationAddressRaw'] ?? '',
-    'parcel'        => $commitPlan['location']['locationParcelNumberRaw'] ?? null,
-    'commitActions' => $commitPlan['actions'] ?? [],
-    'commitSummary' => $commitPlan['summary'] ?? ''
+    'proposalId'               => $proposalId,
+    'pc'                       => $pcm['pc'] ?? null,
+    'pcStatus'                 => $pcm['pcStatus'] ?? null,
+    'rs'                       => $pcm['rs'] ?? [],
+    'rsStatuses'               => $pcm['rsStatuses'] ?? [],
+    'canCommit'                => $commitPlan['canCommit'] ?? false,
+    'entityName'               => $data['entity']['entityName'] ?? '',
+    'entityId'                 => $commitPlan['entity']['entityId'] ?? null,
+    'contactName'              => trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? '')),
+    'contactTitle'             => $data['contact']['contactTitle'] ?? '',
+    'locationAddress'          => $data['location']['locationAddressRaw'] ?? '',
+    'locationId'               => $commitPlan['location']['locationId'] ?? null,
+    'locationParcelNumberRaw'  => $commitPlan['location']['locationParcelNumberRaw'] ?? null,
+    'commitActions'            => $commitPlan['actions'] ?? [],
+    'commitSummary'            => $commitPlan['summary'] ?? ''
 ];
 
-error_log('[PPC][SECTION-14] Narrative context prepared');
-
 // =====================================================
-// STRONG SYSTEM PROMPT
+// STRONG SYSTEM PROMPT — Factual & Deterministic
 // =====================================================
 $systemPromptNarratives = <<<EOT
-You are an expert business communication assistant for Skyesoft CRM.
+You are a precise operational documentation engine for Skyesoft CRM.
 
-Given a structured contact proposal, generate 5 clear, professional, concise narratives.
+Generate narratives that are strictly factual. 
 
-Return ONLY valid JSON with this exact structure. No explanations, no markdown.
+RULES:
+- Report only facts from the provided context.
+- Do NOT speculate, add business value, marketing language, or future outcomes unless explicitly in the data.
+- Do NOT say "we can commit" or "this proposal outlines integration".
+- Be concise, professional, and audit-ready.
+
+Return ONLY valid JSON with this exact structure:
 
 {
-  "ui": "Friendly, actionable 2-4 sentence summary for Proposal Review UI. Mention readiness if canCommit is true.",
-  "report": "Formal executive-style narrative suitable for PDF reports (3-5 sentences).",
-  "database": "Concise technical summary of the database actions that will occur.",
-  "audit": "Governance and resolution explanation for the audit trail.",
-  "activity": "Short past-tense entry for activity timeline / feed."
+  "ui": "Factual 2-4 sentence summary for Proposal Review UI.",
+  "report": "Formal factual narrative for PDF reports.",
+  "database": "Exact list of database actions.",
+  "audit": "Governance and resolution explanation.",
+  "activity": "Short past-tense activity log entry."
 }
-
-Be factual. Use only the provided context.
 EOT;
 
 // =====================================================
 // USER PROMPT
 // =====================================================
-$userPromptNarratives = "Generate narratives for this proposal:\n\n" .
+$userPromptNarratives = "Generate factual narratives for this proposal:\n\n" .
     json_encode($narrativeContext, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 // =====================================================
-// AI CALL — Same pattern as Section 03
+// AI CALL (exact same pattern as Section 03)
 // =====================================================
 $openAiApiKey = skyesoftGetEnv('OPENAI_API_KEY') ?: getenv('OPENAI_API_KEY');
 
 if (!empty($openAiApiKey)) {
-
     $payload = [
         'model'       => 'gpt-4o-mini',
-        'temperature' => 0.1,
+        'temperature' => 0.0,           // even lower for determinism
         'max_tokens'  => 700,
         'messages'    => [
             ['role' => 'system', 'content' => $systemPromptNarratives],
@@ -1132,7 +1137,6 @@ if (!empty($openAiApiKey)) {
         $responseData = json_decode($response, true);
         $content = trim($responseData['choices'][0]['message']['content'] ?? '');
 
-        // Extract JSON
         preg_match('/\{.*\}/s', $content, $matches);
         $jsonString = $matches[0] ?? $content;
 
@@ -1140,30 +1144,24 @@ if (!empty($openAiApiKey)) {
 
         if (is_array($parsedNarratives)) {
             $narratives = array_merge($narratives, array_filter($parsedNarratives));
-            error_log('[PPC][SECTION-14] ✅ Narratives generated successfully');
-        } else {
-            error_log('[PPC][SECTION-14] WARNING: Could not parse narrative JSON');
+            error_log('[PPC][SECTION-14] ✅ Deterministic narratives generated');
         }
-    } else {
-        error_log('[PPC][SECTION-14] WARNING: OpenAI request failed');
     }
-} else {
-    error_log('[PPC][SECTION-14] WARNING: Missing OpenAI API key');
 }
 
 // =====================================================
-// Improved Fallback
+// Strong Factual Fallback
 // =====================================================
 if (empty($narratives['ui'])) {
-    $contactName = $narrativeContext['contact'];
-    $entityName  = $narrativeContext['entity'];
-    $locationStr = $narrativeContext['location'];
+    $contactName = $narrativeContext['contactName'];
+    $entityName  = $narrativeContext['entityName'];
+    $loc         = $narrativeContext['locationAddress'];
 
     $narratives = [
-        'ui'       => "This proposal adds {$contactName} as a new contact for {$entityName} at the existing location: {$locationStr}.\n\nThe proposal is ready for commitment with no governance issues detected.",
-        'report'   => "Proposal to onboard {$contactName} ({$narrativeContext['contactTitle']}) as a contact for {$entityName} located at {$locationStr}.",
-        'database' => implode(', ', $narrativeContext['commitActions']),
-        'audit'    => "PC: {$narrativeContext['pc']} | RS: " . implode(', ', $narrativeContext['rs']) . " | {$narrativeContext['commitSummary']}",
+        'ui'       => "This proposal represents a new contact associated with an existing company and location.\n\n{$contactName} was identified for {$entityName} at {$loc}.\n\nClassified as {$narrativeContext['pc']}. No governance issues detected. Ready for commitment.",
+        'report'   => "Proposal to add contact {$contactName} ({$narrativeContext['contactTitle']}) for {$entityName} at {$loc}.",
+        'database' => "Actions: " . implode(', ', $narrativeContext['commitActions']) . ".\nEntity ID: {$narrativeContext['entityId']}\nLocation ID: {$narrativeContext['locationId']}",
+        'audit'    => "Entity resolved by normalized name (ID {$narrativeContext['entityId']}).\nLocation resolved by address (ID {$narrativeContext['locationId']}, parcel {$narrativeContext['locationParcelNumberRaw']}).\nNo existing contact found.\nClassified as {$narrativeContext['pc']} / RS: " . implode(', ', $narrativeContext['rs']) . ".",
         'activity' => "Proposed {$contactName} as new contact for {$entityName}."
     ];
 }
