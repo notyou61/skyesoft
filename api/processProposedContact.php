@@ -1039,7 +1039,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 #region SECTION 14 — Narrative Builder
 
 // =====================================================
-// Narrative Builder — AI for UI/Report + Deterministic for others
+// Narrative Builder — Uses askOpenAI.php + Deterministic fallback
 // =====================================================
 
 $narratives = [
@@ -1052,9 +1052,7 @@ $narratives = [
 
 error_log('[PPC][SECTION-14] Starting Narrative Builder');
 
-// === Tight, factual context ===
 $narrativeContext = [
-    'proposalId'               => $proposalId,
     'pc'                       => $pcm['pc'] ?? null,
     'pcStatus'                 => $pcm['pcStatus'] ?? null,
     'rs'                       => $pcm['rs'] ?? [],
@@ -1071,103 +1069,93 @@ $narrativeContext = [
 ];
 
 // =====================================================
-// AI ONLY FOR UI + REPORT — Strong factual prompt
+// AI Narratives via askOpenAI.php (UI + Report only)
 // =====================================================
-$systemPromptNarratives = <<<EOT
+$aiNarrativePrompt = "Generate two factual narratives for this proposal.\n\n" .
+    json_encode($narrativeContext, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+$systemPromptForNarratives = <<<EOT
 You are a precise operational documentation engine for Skyesoft CRM.
 
 Generate ONLY "ui" and "report" narratives. Be strictly factual.
 
-RULES:
-- Use ONLY the facts in the provided context.
-- NEVER mention UI, screen, interface, or proposal review elements.
-- NEVER speculate or add business value.
-- Describe the proposal content, classification, and outcomes only.
-- Be concise, professional, and clear.
+UI Narrative:
+- What was found in the input
+- What already exists in the database
+- What is new
+- What happens if accepted
+
+Report Narrative:
+- Formal operational summary suitable for PDF
+
+Rules:
+- Use only facts from the context
+- Never mention proposal IDs, JSON, UI, screens, interfaces, workflows, or buttons
+- Never speculate
 
 Return ONLY valid JSON:
-
 {
-  "ui": "Factual 2-4 sentence summary describing what the proposal contains and what happens if accepted.",
-  "report": "Formal, concise narrative suitable for PDF reports."
+  "ui": "...",
+  "report": "..."
 }
 EOT;
 
-$userPromptNarratives = "Proposal Context:\n" . 
-    json_encode($narrativeContext, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-$openAiApiKey = skyesoftGetEnv('OPENAI_API_KEY') ?: getenv('OPENAI_API_KEY');
-
-if (!empty($openAiApiKey)) {
-    $payload = [
+if (function_exists('askOpenAI')) {
+    $aiResponse = askOpenAI($systemPromptForNarratives, $aiNarrativePrompt, [
         'model'       => 'gpt-4o-mini',
         'temperature' => 0.0,
-        'max_tokens'  => 500,
-        'messages'    => [
-            ['role' => 'system', 'content' => $systemPromptNarratives],
-            ['role' => 'user',   'content' => $userPromptNarratives]
-        ]
-    ];
-
-    $ch = curl_init('https://api.openai.com/v1/chat/completions');
-    curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $openAiApiKey
-        ],
-        CURLOPT_POSTFIELDS     => json_encode($payload),
-        CURLOPT_TIMEOUT        => 20
+        'max_tokens'  => 600
     ]);
 
-    $response = curl_exec($ch);
-    safeCurlClose($ch);
-
-    if ($response) {
-        $responseData = json_decode($response, true);
-        $content = trim($responseData['choices'][0]['message']['content'] ?? '');
-
+    if ($aiResponse && !empty($aiResponse['content'])) {
+        $content = trim($aiResponse['content']);
         preg_match('/\{.*\}/s', $content, $matches);
         $jsonString = $matches[0] ?? $content;
 
         $parsed = json_decode($jsonString, true);
         if (is_array($parsed)) {
-            if (!empty($parsed['ui']))    $narratives['ui']    = $parsed['ui'];
-            if (!empty($parsed['report'])) $narratives['report'] = $parsed['report'];
+            $narratives['ui']    = $parsed['ui'] ?? null;
+            $narratives['report'] = $parsed['report'] ?? null;
+            error_log('[PPC][SECTION-14] ✅ AI narratives received from askOpenAI.php');
         }
     }
+} else {
+    error_log('[PPC][SECTION-14] WARNING: askOpenAI() function not available');
 }
 
 // =====================================================
-// DETERMINISTIC NARRATIVES (No AI)
+// DETERMINISTIC NARRATIVES
 // =====================================================
 $narratives['database'] = $commitPlan['actions'] ?? [];
 
 $narratives['audit'] = [
     "Entity resolved by " . ($databaseResolution['entity']['matchType'] ?? 'unknown') . " (ID " . ($commitPlan['entity']['entityId'] ?? 'N/A') . ").",
     "Location resolved by " . ($databaseResolution['location']['matchType'] ?? 'unknown') . " (ID " . ($commitPlan['location']['locationId'] ?? 'N/A') . ", parcel " . ($commitPlan['location']['locationParcelNumberRaw'] ?? 'N/A') . ").",
-    "No existing contact matched the supplied email address.",
+    "Contact resolution status: " . ($databaseResolution['contact']['status'] ?? 'none') . ".",
     "Proposal classified as " . ($pcm['pc'] ?? 'UNKNOWN') . " (" . ($pcm['pcStatus'] ?? '') . ").",
     "Governance: " . implode(', ', $pcm['rsStatuses'] ?? ['RS-0'])
 ];
 
-$narratives['activity'] = "Proposed " . ($narrativeContext['contactName'] ?: 'new contact') . " as a new contact for " . ($narrativeContext['entityName'] ?: 'the entity') . ".";
+$narratives['activity'] = "Created " . ($pcm['pc'] ?? 'proposal') . " for " . 
+    ($narrativeContext['contactName'] ?: 'new contact') . 
+    " at " . 
+    ($narrativeContext['entityName'] ?: 'the entity') . ".";
 
 // =====================================================
-// Dynamic Fallback (No hardcoding)
+// Dynamic Fallback (PC-aware, no hardcoding)
 // =====================================================
 if (empty($narratives['ui'])) {
     $contactName = $narrativeContext['contactName'] ?: 'the contact';
     $entityName  = $narrativeContext['entityName'] ?: 'the entity';
     $loc         = $narrativeContext['locationAddress'] ?: 'the location';
+    $pc          = $pcm['pc'] ?? 'UNKNOWN';
 
-    $narratives['ui'] = "This proposal represents a new contact associated with an existing company and location.\n\n{$contactName} was identified for {$entityName} at {$loc}.\n\nClassified as {$narrativeContext['pc']}. No governance issues detected. Ready for commitment.";
+    $narratives['ui'] = "This proposal represents a new contact associated with an existing company and location.\n\n{$contactName} was identified for {$entityName} at {$loc}.\n\nClassified as {$pc}. No governance issues detected. Ready for commitment.";
 
-    $narratives['report'] = "This proposal identifies {$contactName} ({$narrativeContext['contactTitle']}) as a new contact for {$entityName} located at {$loc}.\n\nThe company and location were matched to existing records. No existing contact was found.\n\nClassified as {$narrativeContext['pc']} and passed governance with RS-0.";
+    $narratives['report'] = "This proposal identifies {$contactName} as a new contact for {$entityName} located at {$loc}.\n\nThe company and location were matched to existing records. Contact resolution status: " . ($databaseResolution['contact']['status'] ?? 'none') . ".\n\nClassified as {$pc} and passed governance review.";
 }
 
-error_log('[PPC][SECTION-14] Narrative Builder complete (AI + deterministic)');
+error_log('[PPC][SECTION-14] Narrative Builder complete');
 
 #endregion
 
