@@ -1034,7 +1034,103 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" .
 
 #endregion
 
-#region SECTION 14 — Proposal Snapshot Creation (was old SECTION 13)
+#region SECTION 14 — Narrative Builder
+
+// =====================================================
+// Narrative Builder — Single AI call for all narrative types
+// =====================================================
+
+$narratives = [
+    'ui'       => null,
+    'report'   => null,
+    'database' => null,
+    'audit'    => null,
+    'activity' => null
+];
+
+error_log('[PPC][SECTION-14] Starting Narrative Builder');
+
+$narrativeInput = [
+    'proposalId'        => $proposalId,
+    'pc'                => $pcm,
+    'commitPlan'        => $commitPlan,
+    'entity'            => $data['entity'],
+    'contact'           => $data['contact'],
+    'location'          => $data['location'],
+    'databaseResolution'=> $databaseResolution
+];
+
+// =====================================================
+// Strong System Prompt
+// =====================================================
+$systemPromptNarratives = <<<EOT
+You are an expert business communication assistant for Skyesoft (sign company CRM system).
+
+Given a structured contact proposal, generate 5 clear, professional, concise narratives in plain English.
+
+Return ONLY valid JSON with this exact structure. No extra text.
+
+{
+  "ui": "Short friendly summary for Proposal Review UI (1-2 sentences, actionable).",
+  "report": "Formal professional narrative suitable for PDF reports (executive tone, 2-4 sentences).",
+  "database": "Concise technical description of database actions that will occur.",
+  "audit": "Governance summary explaining resolution and classification for audit trail.",
+  "activity": "Short past-tense entry for activity timeline / feed."
+}
+
+Use only the provided data. Be factual and professional.
+EOT;
+
+// =====================================================
+// User Prompt
+// =====================================================
+$userPromptNarratives = "Generate narratives for this proposal:\n\n" .
+    json_encode($narrativeInput, JSON_PRETTY_PRINT);
+
+// =====================================================
+// Call askOpenAI (using existing helper)
+// =====================================================
+if (function_exists('askOpenAI')) {
+    $aiResponse = askOpenAI($systemPromptNarratives, $userPromptNarratives, [
+        'model'       => 'gpt-4o-mini',
+        'temperature' => 0.1,
+        'max_tokens'  => 700
+    ]);
+
+    if ($aiResponse && !empty($aiResponse['content'])) {
+        $content = trim($aiResponse['content']);
+
+        preg_match('/\{.*\}/s', $content, $matches);
+        $jsonString = $matches[0] ?? $content;
+
+        $parsedNarratives = json_decode($jsonString, true);
+
+        if (is_array($parsedNarratives)) {
+            $narratives = array_merge($narratives, array_filter($parsedNarratives));
+            error_log('[PPC][SECTION-14] ✅ Narratives generated successfully via AI');
+        }
+    }
+}
+
+// Fallback if AI fails or not available
+if (empty($narratives['ui'])) {
+    $contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
+    $entityName  = $data['entity']['entityName'] ?? 'the company';
+
+    $narratives = [
+        'ui'       => "Adding {$contactName} as a new contact for {$entityName} at the existing location.",
+        'report'   => "Proposal to add {$contactName} ({$data['contact']['contactTitle']}) as a contact for {$entityName}.",
+        'database' => implode(', ', $commitPlan['actions'] ?? ['link_entity', 'link_location', 'insert_contact']),
+        'audit'    => "PC: {$pcm['pc']} | RS: " . implode(', ', $pcm['rs'] ?? []) . " | " . ($commitPlan['summary'] ?? ''),
+        'activity' => "Proposed new contact: {$contactName} for {$entityName}"
+    ];
+}
+
+error_log('[PPC][SECTION-14] Narrative Builder complete');
+
+#endregion
+
+#region SECTION 15 — Proposal Snapshot Creation
 
 // =====================================================
 // Prepare Snapshot
@@ -1042,15 +1138,16 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" .
 $proposalSnapshot = [
     'proposalId'        => $proposalId,
     'generatedAt'       => date('c'),
-    'version'           => '1.7.0',                    // ← bumped
+    'version'           => '1.8.0',                    // bumped
     'activitySessionId' => $context['activitySessionId'] ?? '',
     'rawInput'          => $rawInput ?? '',
-    'proposalStatus'    => 'proposed',                 // ← new
+    'proposalStatus'    => 'proposed',
     
     'data'              => $data ?? [],
     'databaseResolution'=> $databaseResolution ?? [],
     'pcm'               => $pcm ?? [],
-    'commitPlan'        => $commitPlan ?? [],          // ← new
+    'commitPlan'        => $commitPlan ?? [],
+    'narratives'        => $narratives ?? [],          // ← NEW
     'meta'              => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
         'parcelCount'        => $data['location']['parcelCount'] ?? 0,
@@ -1075,9 +1172,9 @@ $written = file_put_contents(
 );
 
 if ($written !== false) {
-    error_log("[PPC][SECTION-14] ✅ Snapshot saved: {$proposalId}.json");
+    error_log("[PPC][SECTION-15] ✅ Snapshot saved with narratives: {$proposalId}.json");
 } else {
-    error_log("[PPC][SECTION-14] ❌ Failed to save snapshot");
+    error_log("[PPC][SECTION-15] ❌ Failed to save snapshot");
 }
 
 // Attach path for reference
@@ -1085,7 +1182,7 @@ $proposalSnapshot['snapshotPath'] = $snapshotPath;
 
 #endregion
 
-#region SECTION 15 — Final Output Builder
+#region SECTION 16 — Final Output Builder
 
 echo json_encode([
     'success'           => true,
@@ -1106,8 +1203,11 @@ echo json_encode([
     // PCM Governance Decision
     'pcm' => $pcm ?? [],
 
-    // NEW: Commit Plan (deterministic DB actions)
+    // Commit Plan
     'commitPlan' => $commitPlan ?? [],
+
+    // NEW: Narratives
+    'narratives' => $narratives ?? [],
 
     // Meta / Summary
     'meta' => [
@@ -1118,7 +1218,7 @@ echo json_encode([
         'searchAddress'      => $searchAddress ?? ''
     ],
 
-    // Raw Input (for auditing and debugging)
+    // Raw Input
     'rawInput' => [
         'original' => $rawInput ?? '',
         'type'     => 'signature',
