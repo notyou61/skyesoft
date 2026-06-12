@@ -949,7 +949,92 @@ $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 
 #endregion
 
-#region SECTION 13 — Proposal Snapshot Creation
+#region SECTION 13 — Commit Plan Builder
+
+// =====================================================
+// Commit Plan Builder — Deterministic Database Action Plan
+// =====================================================
+
+$commitPlan = [
+    'canCommit'     => false,
+    'entity'        => [],
+    'location'      => [],
+    'contact'       => [],
+    'actions'       => [],          // Ordered list of planned DB operations
+    'summary'       => ''
+];
+
+// Base on PCM classification and DB resolutions
+$pc = $pcm['pc'] ?? 'PC-UNKNOWN';
+$entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
+$locationStatus = $databaseResolution['location']['status'] ?? 'none';
+$contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
+
+error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc} | Entity={$entityStatus} | Location={$locationStatus} | Contact={$contactStatus}");
+
+switch ($pc) {
+    case 'PC-0':  // Existing ELC - No changes needed
+        $commitPlan['canCommit'] = true;
+        $commitPlan['actions'] = ['link_existing_elc'];
+        $commitPlan['summary'] = 'No database changes required - ELC already exists';
+        $commitPlan['entity']['action']   = 'link';
+        $commitPlan['location']['action'] = 'link';
+        $commitPlan['contact']['action']  = 'link';
+        break;
+
+    case 'PC-1':  // New Entity + New Location + New Contact
+        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['actions'] = ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'];
+        $commitPlan['summary'] = 'Insert new Entity, Location, Contact and establish relationships';
+        $commitPlan['entity']['action']   = 'insert';
+        $commitPlan['location']['action'] = 'insert';
+        $commitPlan['contact']['action']  = 'insert';
+        break;
+
+    case 'PC-2':  // Existing Entity + New Location + New Contact
+        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['actions'] = ['link_entity', 'insert_location', 'insert_contact', 'link_elc'];
+        $commitPlan['summary'] = 'Link to existing Entity, Insert new Location + Contact';
+        $commitPlan['entity']['action']   = 'link';
+        $commitPlan['location']['action'] = 'insert';
+        $commitPlan['contact']['action']  = 'insert';
+        break;
+
+    case 'PC-3':  // Existing Location + New Contact
+        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact'];
+        $commitPlan['summary'] = 'Link to existing Entity + Location, Insert new Contact';
+        $commitPlan['entity']['action']   = 'link';
+        $commitPlan['location']['action'] = 'link';
+        $commitPlan['contact']['action']  = 'insert';
+        break;
+
+    case 'PC-4':  // Location-only
+        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['actions'] = ['insert_location'];
+        $commitPlan['summary'] = 'Insert new Location only';
+        $commitPlan['location']['action'] = 'insert';
+        break;
+
+    default:
+        $commitPlan['summary'] = 'Unknown PC type - manual review required';
+        error_log("[PPC][SECTION-13] WARNING: Unknown PC type: {$pc}");
+        break;
+}
+
+// Final safety gate — always respect PCM governance
+if ($pcm['blocksCommit'] ?? false) {
+    $commitPlan['canCommit'] = false;
+    $commitPlan['summary'] .= ' (Blocked by governance rules)';
+}
+
+error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . 
+    ($commitPlan['canCommit'] ? 'YES' : 'NO') . 
+    ' | Actions=[' . implode(', ', $commitPlan['actions']) . ']');
+
+#endregion
+
+#region SECTION 14 — Proposal Snapshot Creation (was old SECTION 13)
 
 // =====================================================
 // Prepare Snapshot
@@ -957,13 +1042,15 @@ $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 $proposalSnapshot = [
     'proposalId'        => $proposalId,
     'generatedAt'       => date('c'),
-    'version'           => '1.6.1',
+    'version'           => '1.7.0',                    // ← bumped
     'activitySessionId' => $context['activitySessionId'] ?? '',
     'rawInput'          => $rawInput ?? '',
+    'proposalStatus'    => 'proposed',                 // ← new
     
     'data'              => $data ?? [],
     'databaseResolution'=> $databaseResolution ?? [],
     'pcm'               => $pcm ?? [],
+    'commitPlan'        => $commitPlan ?? [],          // ← new
     'meta'              => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
         'parcelCount'        => $data['location']['parcelCount'] ?? 0,
@@ -988,9 +1075,9 @@ $written = file_put_contents(
 );
 
 if ($written !== false) {
-    error_log("[PPC][SECTION-13] ✅ Snapshot saved: {$proposalId}.json");
+    error_log("[PPC][SECTION-14] ✅ Snapshot saved: {$proposalId}.json");
 } else {
-    error_log("[PPC][SECTION-13] ❌ Failed to save snapshot");
+    error_log("[PPC][SECTION-14] ❌ Failed to save snapshot");
 }
 
 // Attach path for reference
@@ -998,7 +1085,7 @@ $proposalSnapshot['snapshotPath'] = $snapshotPath;
 
 #endregion
 
-#region SECTION 14 — Final Output Builder
+#region SECTION 15 — Final Output Builder
 
 echo json_encode([
     'success'           => true,
@@ -1018,6 +1105,9 @@ echo json_encode([
 
     // PCM Governance Decision
     'pcm' => $pcm ?? [],
+
+    // NEW: Commit Plan (deterministic DB actions)
+    'commitPlan' => $commitPlan ?? [],
 
     // Meta / Summary
     'meta' => [
