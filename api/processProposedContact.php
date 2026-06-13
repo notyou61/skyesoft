@@ -1027,7 +1027,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 #region SECTION 14 — UI State Builder
 
 // =====================================================
-// UI State — Dedicated presentation decisions
+// UI State Builder — Pure presentation decisions
 // =====================================================
 
 $uiState = [
@@ -1038,26 +1038,21 @@ $uiState = [
     'canCommit'      => false
 ];
 
-$hasWriteActions = false;
-if (isset($commitPlan['actions'])) {
-    foreach ($commitPlan['actions'] as $action) {
-        if (strpos($action, 'insert') === 0) {
-            $hasWriteActions = true;
-            break;
-        }
-    }
-}
-
-$uiState['canAccept'] = $hasWriteActions && (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
-$uiState['canCommit'] = $uiState['canAccept'];
+$pc = (isset($pcm['pc']) ? $pcm['pc'] : 'UNKNOWN');
 
 if ($pc === 'PC-0') {
     $uiState['proposalStatus'] = 'existing';
     $uiState['canAccept'] = false;
+    $uiState['canReject'] = false;
+    $uiState['canEdit']   = false;
     $uiState['canCommit'] = false;
+} else {
+    $uiState['canAccept'] = (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
+    $uiState['canCommit'] = $uiState['canAccept'];
 }
 
-error_log("[PPC][SECTION-14] UI State built → canAccept=" . ($uiState['canAccept'] ? 'YES' : 'NO'));
+error_log("[PPC][SECTION-14] UI State → proposalStatus=" . $uiState['proposalStatus'] . 
+    " | canAccept=" . ($uiState['canAccept'] ? 'YES' : 'NO'));
 
 #endregion
 
@@ -1076,9 +1071,13 @@ $proposalSnapshot = [
     
     'data'              => $data ?? [],
     'databaseResolution'=> $databaseResolution ?? [],
-    'pcm'               => $pcm ?? [],           // simplified
+    // Inside $proposalSnapshot array:
+    'pcm'               => [
+        'pc' => (isset($pcm['pc']) ? $pcm['pc'] : null),
+        'rs' => (isset($pcm['rs']) ? $pcm['rs'] : [])
+    ],
     'commitPlan'        => $commitPlan ?? [],
-    'ui'                => $uiState ?? [],       // NEW
+    'ui'                => $uiState ?? [],
     'narratives'        => $narratives ?? [],
     'meta'              => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
@@ -1133,17 +1132,16 @@ echo json_encode([
     'databaseResolution' => $databaseResolution ?? [],
 
     // PCM (simplified)
-    'pcm' => $pcm ?? [],
-
-    // Commit Plan (execution instructions)
+    'pcm' => [
+        'pc' => (isset($pcm['pc']) ? $pcm['pc'] : null),
+        'rs' => (isset($pcm['rs']) ? $pcm['rs'] : [])
+    ],
+    // Commit Plan
     'commitPlan' => $commitPlan ?? [],
-
-    // UI State (presentation decisions)
+    // UI State
     'ui' => $uiState ?? [],
-
-    // Narratives (human readable)
+    // Narratives
     'narratives' => $narratives ?? [],
-
     // Meta / Summary
     'meta' => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
