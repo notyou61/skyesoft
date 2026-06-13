@@ -1133,14 +1133,16 @@ if (empty($narratives['ui'])) {
         $contactDisplay .= ' (' . $contactTitle . ')';
     }
 
-    if ($contactStatus === 'exact') {
+    if ($contactStatus === 'exact' && $entityStatus === 'exact' && $locationStatus === 'exact') {
+        // PC-0 case
         $narratives['ui'] = $contactName . " was identified for " . $entityName . " at " . $locationStr . ".\n\n" .
             "The company, location, and contact already exist in the database.\n\n" .
-            "No database changes are required.";
+            "No action is required.";
 
         $narratives['report'] = $contactDisplay . " matched existing records for " . $entityName . " located at " . $locationStr . ".\n\n" .
             "No new records are proposed and no database updates are required.";
     } else {
+        // Other cases
         $narratives['ui'] = $contactName . " was identified as a contact for " . $entityName . " at " . $locationStr . ".\n\n" .
             "The company and location already exist in the database. No matching contact record was found.\n\n" .
             ($canCommit ? 'This proposal is eligible for acceptance.' : 'This proposal requires review before it can be accepted.');
