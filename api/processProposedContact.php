@@ -875,7 +875,7 @@ if (empty($pcm['rs'])) {
 }
 
 // =====================================================
-// FINAL GOVERNANCE STATE
+// FINAL GOVERNANCE STATE — SAFE INITIALIZATION
 // =====================================================
 
 $pcm['blocksCommit']   = in_array('RS-5', $pcm['rs'] ?? []) || 
@@ -893,8 +893,16 @@ $pcm['requiresReview'] = !(
 
 // Build Governance object for UI
 $governance = [
-    'blockingIssues' => $governanceIssues
+    'blockingIssues' => []
 ];
+
+if (in_array('RS-3', $pcm['rs'] ?? [])) {
+    $governance['blockingIssues'][] = [
+        'code' => 'RS-3',
+        'message' => 'Incomplete proposal - required fields are missing',
+        'fields' => $missingRequired ?? []
+    ];
+}
 
 // Simplify PCM
 $pcm = [
@@ -902,7 +910,11 @@ $pcm = [
     'rs' => $pcm['rs'] ?? ['RS-0']
 ];
 
-error_log('[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] . ' | RS=[' . implode(', ', $pcm['rs']) . ']');
+error_log(
+    '[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] .
+    ' | RS=[' . implode(', ', $pcm['rs']) . ']' .
+    ' | Blocks=' . ($pcm['blocksCommit'] ? 'YES' : 'NO')
+);
 
 $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 
@@ -988,7 +1000,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #endregion
 
-#region SECTION 14 — UI State Builder
+#region SECTION 14 — Narrative Builder + UI State
 
 // =====================================================
 // UI State Builder — Presentation decisions
@@ -1022,6 +1034,54 @@ if ($pc === 'PC-0') {
 
 error_log("[PPC][SECTION-14] UI State → proposalStatus=" . $uiState['proposalStatus'] . 
     " | canAccept=" . ($uiState['canAccept'] ? 'YES' : 'NO'));
+
+// =====================================================
+// Narrative Builder — Human-readable explanations
+// =====================================================
+
+$narratives = array(
+    'ui'     => null,
+    'report' => null
+);
+
+error_log('[PPC][SECTION-14] Starting Narrative Builder');
+
+// Safe extraction
+$contactName = trim(
+    (isset($data['contact']['contactFirstName']) ? $data['contact']['contactFirstName'] : '') . 
+    ' ' . 
+    (isset($data['contact']['contactLastName']) ? $data['contact']['contactLastName'] : '')
+);
+$entityName  = (isset($data['entity']['entityName']) ? $data['entity']['entityName'] : '');
+$loc         = (isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : '');
+
+// AI call (keep your existing askOpenAI logic here if you have it)
+// ...
+
+// Dynamic Fallback (always runs if AI didn't produce output)
+if (empty($narratives['ui'])) {
+    if ($pc === 'PC-0') {
+        $narratives['ui'] = $contactName . " was identified for " . $entityName . " at " . $loc . ".\n\n" .
+            "The company, location, and contact already exist in the database.\n\n" .
+            "No action is required.";
+        $narratives['report'] = $contactName . " matched existing records for " . $entityName . " located at " . $loc . ".\n\n" .
+            "No new records are proposed and no database updates are required.";
+    } elseif (in_array('RS-3', $rsList)) {
+        $narratives['ui'] = $contactName . " was identified for " . $entityName . " at " . $loc . ".\n\n" .
+            "The company and location already exist in the database.\n\n" .
+            "Required information is incomplete. The proposal cannot be committed until missing fields are provided.";
+        $narratives['report'] = $contactName . " was identified for " . $entityName . " located at " . $loc . ".\n\n" .
+            "The proposal is incomplete. Missing required fields must be provided before it can be accepted.";
+    } else {
+        $narratives['ui'] = $contactName . " was identified as a contact for " . $entityName . " at " . $loc . ".\n\n" .
+            "The company and location already exist in the database.\n\n" .
+            "This proposal is eligible for acceptance.";
+        $narratives['report'] = $contactName . " was identified for " . $entityName . " located at " . $loc . ".\n\n" .
+            "The company and location matched existing records. A new contact record is proposed.";
+    }
+}
+
+error_log('[PPC][SECTION-14] Narrative Builder complete');
 
 #endregion
 
