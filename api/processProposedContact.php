@@ -756,15 +756,10 @@ if ($pdo) {
 
 #region SECTION 12 — PCM Classification & Governance
 
+// Final simplified PCM (DRY)
 $pcm = [
-    'pc'               => null,      // Proposal Intent
-    'pcStatus'         => null,
-    'rs'               => [],        // Eligibility / Review flags
-    'rsStatuses'       => [],
-    'readyForCommit'   => false,
-    'requiresReview'   => false,
-    'blocksCommit'     => true,
-    'action'           => null
+    'pc' => $pcm['pc'] ?? 'PC-UNKNOWN',
+    'rs' => $pcm['rs'] ?? ['RS-0']
 ];
 
 $isExplicitLocationOnlyIntent = $isExplicitLocationOnlyIntent ?? false;
@@ -952,16 +947,15 @@ $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 #region SECTION 13 — Commit Plan Builder
 
 // =====================================================
-// Commit Plan Builder — Deterministic Database Action Plan
+// Commit Plan Builder — Deterministic Execution Plan
 // =====================================================
 
 $commitPlan = [
-    'canCommit'     => false,
-    'entity'        => [],
-    'location'      => [],
-    'contact'       => [],
-    'actions'       => [],
-    'summary'       => ''
+    'canCommit' => false,
+    'entity'    => [],
+    'location'  => [],
+    'contact'   => [],
+    'actions'   => []
 ];
 
 $pc = (isset($pcm['pc']) ? $pcm['pc'] : 'PC-UNKNOWN');
@@ -969,10 +963,9 @@ $pc = (isset($pcm['pc']) ? $pcm['pc'] : 'PC-UNKNOWN');
 error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc}");
 
 switch ($pc) {
-    case 'PC-0':  // Existing ELC - No action needed
+    case 'PC-0':
         $commitPlan['canCommit'] = true;
         $commitPlan['actions'] = ['link_existing_elc'];
-        $commitPlan['summary'] = 'No database changes required - ELC already exists';
         $commitPlan['entity']['action']   = 'link';
         $commitPlan['location']['action'] = 'link';
         $commitPlan['contact']['action']  = 'link';
@@ -981,7 +974,6 @@ switch ($pc) {
     case 'PC-1':
         $commitPlan['canCommit'] = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
         $commitPlan['actions'] = ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'];
-        $commitPlan['summary'] = 'Insert new Entity, Location, Contact and establish relationships';
         $commitPlan['entity']['action']   = 'insert';
         $commitPlan['location']['action'] = 'insert';
         $commitPlan['contact']['action']  = 'insert';
@@ -990,7 +982,6 @@ switch ($pc) {
     case 'PC-2':
         $commitPlan['canCommit'] = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
         $commitPlan['actions'] = ['link_entity', 'insert_location', 'insert_contact', 'link_elc'];
-        $commitPlan['summary'] = 'Link to existing Entity, Insert new Location + Contact';
         $commitPlan['entity']['action']   = 'link';
         $commitPlan['location']['action'] = 'insert';
         $commitPlan['contact']['action']  = 'insert';
@@ -999,7 +990,6 @@ switch ($pc) {
     case 'PC-3':
         $commitPlan['canCommit'] = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
         $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact'];
-        $commitPlan['summary'] = 'Link to existing Entity + Location, Insert new Contact';
         $commitPlan['entity']['action']   = 'link';
         $commitPlan['location']['action'] = 'link';
         $commitPlan['contact']['action']  = 'insert';
@@ -1008,16 +998,15 @@ switch ($pc) {
     case 'PC-4':
         $commitPlan['canCommit'] = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
         $commitPlan['actions'] = ['insert_location'];
-        $commitPlan['summary'] = 'Insert new Location only';
         $commitPlan['location']['action'] = 'insert';
         break;
 
     default:
-        $commitPlan['summary'] = 'Unknown PC type - manual review required';
+        $commitPlan['actions'] = [];
         break;
 }
 
-// Attach concrete IDs (critical for future Accept + audit)
+// Attach IDs
 if (!empty($databaseResolution['entity']['entityId'])) {
     $commitPlan['entity']['entityId'] = $databaseResolution['entity']['entityId'];
 }
@@ -1027,135 +1016,48 @@ if (!empty($databaseResolution['location']['locationId'])) {
         (isset($databaseResolution['location']['locationParcelNumberRaw']) ? $databaseResolution['location']['locationParcelNumberRaw'] : null);
 }
 
-// Final governance override
 if (isset($pcm['blocksCommit']) && $pcm['blocksCommit']) {
     $commitPlan['canCommit'] = false;
-    $commitPlan['summary'] .= ' (Blocked by governance)';
 }
 
-error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . 
-    ($commitPlan['canCommit'] ? 'YES' : 'NO'));
+error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
 
 #endregion
 
-#region SECTION 14 — Narrative Builder
+#region SECTION 14 — UI State Builder
 
 // =====================================================
-// Narrative Builder — Human-readable only (ui + report)
+// UI State — Dedicated presentation decisions
 // =====================================================
 
-$narratives = array(
-    'ui'     => null,
-    'report' => null
-);
+$uiState = [
+    'proposalStatus' => 'proposed',
+    'canAccept'      => false,
+    'canReject'      => true,
+    'canEdit'        => true,
+    'canCommit'      => false
+];
 
-error_log('[PPC][SECTION-14] Starting Narrative Builder');
-
-// Safe extraction with full resolution context
-$entityName     = (isset($data['entity']['entityName']) ? $data['entity']['entityName'] : '');
-$contactName    = trim(
-    (isset($data['contact']['contactFirstName']) ? $data['contact']['contactFirstName'] : '') . 
-    ' ' . 
-    (isset($data['contact']['contactLastName']) ? $data['contact']['contactLastName'] : '')
-);
-$contactTitle   = (isset($data['contact']['contactTitle']) ? $data['contact']['contactTitle'] : '');
-$locationStr    = (isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : '');
-
-$entityStatus   = (isset($databaseResolution['entity']['status']) ? $databaseResolution['entity']['status'] : 'none');
-$locationStatus = (isset($databaseResolution['location']['status']) ? $databaseResolution['location']['status'] : 'none');
-$contactStatus  = (isset($databaseResolution['contact']['status']) ? $databaseResolution['contact']['status'] : 'none');
-
-$canCommit      = (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
-$commitSummary  = (isset($commitPlan['summary']) ? $commitPlan['summary'] : '');
-
-// =====================================================
-// AI Narratives via askOpenAI.php
-// =====================================================
-$aiNarrativePrompt = "Generate two factual narratives.\n\n" .
-    "Entity: " . $entityName . " (status: " . $entityStatus . ")\n" .
-    "Location: " . $locationStr . " (status: " . $locationStatus . ")\n" .
-    "Contact: " . $contactName . ($contactTitle !== '' ? ' (' . $contactTitle . ')' : '') . " (status: " . $contactStatus . ")\n" .
-    "Commit ready: " . ($canCommit ? 'Yes' : 'No') . "\n" .
-    "Summary: " . $commitSummary;
-
-$systemPromptForNarratives = <<<EOT
-You are a precise operational documentation engine for Skyesoft CRM.
-
-Generate ONLY "ui" and "report" narratives. Be strictly factual.
-
-UI Narrative (2-4 sentences):
-- What existing records were found
-- What new information (if any) was identified
-- What will happen if the proposal is accepted (or if no action is needed)
-
-Report Narrative:
-- Formal business summary suitable for PDF reports
-
-Rules:
-- Use only the facts provided
-- Never mention proposal IDs, PC/RS codes, JSON, UI elements, or governance codes
-- Never speculate
-
-Return ONLY valid JSON:
-{
-  "ui": "...",
-  "report": "..."
-}
-EOT;
-
-if (function_exists('askOpenAI')) {
-    $aiResponse = askOpenAI($systemPromptForNarratives, $aiNarrativePrompt, array(
-        'model'       => 'gpt-4o-mini',
-        'temperature' => 0.0,
-        'max_tokens'  => 500
-    ));
-
-    if ($aiResponse && !empty($aiResponse['content'])) {
-        $content = trim($aiResponse['content']);
-        preg_match('/\{.*\}/s', $content, $matches);
-        $jsonString = (isset($matches[0]) ? $matches[0] : $content);
-
-        $parsed = json_decode($jsonString, true);
-        if (is_array($parsed)) {
-            $narratives['ui']    = (isset($parsed['ui']) ? $parsed['ui'] : null);
-            $narratives['report'] = (isset($parsed['report']) ? $parsed['report'] : null);
-            error_log('[PPC][SECTION-14] ✅ AI narratives received from askOpenAI.php');
+$hasWriteActions = false;
+if (isset($commitPlan['actions'])) {
+    foreach ($commitPlan['actions'] as $action) {
+        if (strpos($action, 'insert') === 0) {
+            $hasWriteActions = true;
+            break;
         }
     }
-} else {
-    error_log('[PPC][SECTION-14] WARNING: askOpenAI() function not available');
 }
 
-// =====================================================
-// Dynamic Fallback
-// =====================================================
-if (empty($narratives['ui'])) {
-    $contactDisplay = $contactName;
-    if ($contactTitle !== '') {
-        $contactDisplay .= ' (' . $contactTitle . ')';
-    }
+$uiState['canAccept'] = $hasWriteActions && (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
+$uiState['canCommit'] = $uiState['canAccept'];
 
-    if ($contactStatus === 'exact' && $entityStatus === 'exact' && $locationStatus === 'exact') {
-        // PC-0 case
-        $narratives['ui'] = $contactName . " was identified for " . $entityName . " at " . $locationStr . ".\n\n" .
-            "The company, location, and contact already exist in the database.\n\n" .
-            "No action is required.";
-
-        $narratives['report'] = $contactDisplay . " matched existing records for " . $entityName . " located at " . $locationStr . ".\n\n" .
-            "No new records are proposed and no database updates are required.";
-    } else {
-        // Other cases
-        $narratives['ui'] = $contactName . " was identified as a contact for " . $entityName . " at " . $locationStr . ".\n\n" .
-            "The company and location already exist in the database. No matching contact record was found.\n\n" .
-            ($canCommit ? 'This proposal is eligible for acceptance.' : 'This proposal requires review before it can be accepted.');
-
-        $narratives['report'] = $contactDisplay . " was identified for " . $entityName . " located at " . $locationStr . ".\n\n" .
-            "The company and location matched existing records in the system. " .
-            "A new contact record is proposed and will be linked to the existing company and location.";
-    }
+if ($pc === 'PC-0') {
+    $uiState['proposalStatus'] = 'existing';
+    $uiState['canAccept'] = false;
+    $uiState['canCommit'] = false;
 }
 
-error_log('[PPC][SECTION-14] Narrative Builder complete');
+error_log("[PPC][SECTION-14] UI State built → canAccept=" . ($uiState['canAccept'] ? 'YES' : 'NO'));
 
 #endregion
 
@@ -1167,15 +1069,16 @@ error_log('[PPC][SECTION-14] Narrative Builder complete');
 $proposalSnapshot = [
     'proposalId'        => $proposalId,
     'generatedAt'       => date('c'),
-    'version'           => '1.9.0',                    // bumped
+    'version'           => '1.9.0',
     'activitySessionId' => $context['activitySessionId'] ?? '',
     'rawInput'          => $rawInput ?? '',
     'proposalStatus'    => 'proposed',
     
     'data'              => $data ?? [],
     'databaseResolution'=> $databaseResolution ?? [],
-    'pcm'               => $pcm ?? [],
+    'pcm'               => $pcm ?? [],           // simplified
     'commitPlan'        => $commitPlan ?? [],
+    'ui'                => $uiState ?? [],       // NEW
     'narratives'        => $narratives ?? [],
     'meta'              => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
@@ -1201,7 +1104,7 @@ $written = file_put_contents(
 );
 
 if ($written !== false) {
-    error_log("[PPC][SECTION-15] ✅ Snapshot saved with narratives: {$proposalId}.json");
+    error_log("[PPC][SECTION-15] ✅ Snapshot saved: {$proposalId}.json");
 } else {
     error_log("[PPC][SECTION-15] ❌ Failed to save snapshot");
 }
@@ -1229,13 +1132,16 @@ echo json_encode([
     // Database Resolution
     'databaseResolution' => $databaseResolution ?? [],
 
-    // PCM Governance Decision
+    // PCM (simplified)
     'pcm' => $pcm ?? [],
 
-    // Commit Plan (includes showAccept / enableAccept)
+    // Commit Plan (execution instructions)
     'commitPlan' => $commitPlan ?? [],
 
-    // Narratives
+    // UI State (presentation decisions)
+    'ui' => $uiState ?? [],
+
+    // Narratives (human readable)
     'narratives' => $narratives ?? [],
 
     // Meta / Summary
