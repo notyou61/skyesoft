@@ -800,19 +800,23 @@ if ($isExplicitLocationOnlyIntent === true) {
 }
 
 // =====================================================
-// PC-AWARE REQUIRED FIELD VALIDATION → RS-3
+// PC-AWARE REQUIRED FIELD VALIDATION → RS-3 + Governance Details
 // =====================================================
 
 $missingRequired = [];
+$governanceIssues = [];
 
-// Always required
-if (empty($parsed['entity']['name'] ?? '')) $missingRequired[] = 'entity.name';
+if (empty($parsed['entity']['name'] ?? '')) {
+    $missingRequired[] = 'entity.name';
+    $governanceIssues[] = ['code' => 'RS-3', 'message' => 'Missing entity name', 'field' => 'entity.name'];
+}
+
 if (empty($parsed['location']['address'] ?? '')) $missingRequired[] = 'location.address';
 if (empty($parsed['location']['city'] ?? '')) $missingRequired[] = 'location.city';
 if (empty($parsed['location']['state'] ?? '')) $missingRequired[] = 'location.state';
 if (empty($parsed['location']['zip'] ?? '')) $missingRequired[] = 'location.zip';
 
-// Contact required for PC-1,2,3
+// Contact fields for PC-1/2/3
 if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'], true)) {
     if (empty($parsed['contact']['firstName'] ?? '')) $missingRequired[] = 'contact.firstName';
     if (empty($parsed['contact']['lastName'] ?? '')) $missingRequired[] = 'contact.lastName';
@@ -820,15 +824,16 @@ if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'], true)) {
     if (empty($parsed['contact']['primaryPhone'] ?? '')) $missingRequired[] = 'contact.primaryPhone';
 }
 
-// Validation requirements
+// Validation / Parcel
 if (empty($data['location']['locationValidated'] ?? false)) $missingRequired[] = 'location.validation';
 if (empty($data['location']['locationCensusValidated'] ?? false)) $missingRequired[] = 'location.census';
 if (($data['location']['parcelCount'] ?? 0) === 0) $missingRequired[] = 'location.parcel';
 
-// Apply RS-3
+// Apply RS-3 + collect issues
 if (!empty($missingRequired)) {
     $pcm['rs'][] = 'RS-3';
     $pcm['rsStatuses'][] = 'incomplete_proposal';
+
     error_log('[PPC][SECTION-12] RS-3 (Incomplete Proposal) — Missing: ' . implode(', ', $missingRequired));
 }
 
@@ -870,33 +875,34 @@ if (empty($pcm['rs'])) {
 }
 
 // =====================================================
-// FINAL GOVERNANCE STATE — SAFE INITIALIZATION
+// FINAL GOVERNANCE STATE
 // =====================================================
 
-$blocksCommit = in_array('RS-5', $pcm['rs'] ?? []) || 
-                in_array('RS-6', $pcm['rs'] ?? []) || 
-                in_array('RS-7', $pcm['rs'] ?? []) || 
-                in_array('RS-8', $pcm['rs'] ?? []) ||
-                in_array('RS-3', $pcm['rs'] ?? []);
+$pcm['blocksCommit']   = in_array('RS-5', $pcm['rs'] ?? []) || 
+                         in_array('RS-6', $pcm['rs'] ?? []) || 
+                         in_array('RS-7', $pcm['rs'] ?? []) || 
+                         in_array('RS-8', $pcm['rs'] ?? []) ||
+                         in_array('RS-3', $pcm['rs'] ?? []);
 
-$readyForCommit = !$blocksCommit;
+$pcm['readyForCommit'] = !$pcm['blocksCommit'];
 
-$requiresReview = !(
+$pcm['requiresReview'] = !(
     count($pcm['rs'] ?? []) === 1 && 
     ($pcm['rs'][0] ?? '') === 'RS-0'
 );
 
-// Simplify PCM for output (DRY)
+// Build Governance object for UI
+$governance = [
+    'blockingIssues' => $governanceIssues
+];
+
+// Simplify PCM
 $pcm = [
     'pc' => $pcm['pc'] ?? 'PC-UNKNOWN',
     'rs' => $pcm['rs'] ?? ['RS-0']
 ];
 
-error_log(
-    '[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] .
-    ' | RS=[' . implode(', ', $pcm['rs']) . ']' .
-    ' | Blocks=' . ($blocksCommit ? 'YES' : 'NO')
-);
+error_log('[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] . ' | RS=[' . implode(', ', $pcm['rs']) . ']');
 
 $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 
@@ -1034,14 +1040,25 @@ $proposalSnapshot = [
     
     'data'              => $data ?? [],
     'databaseResolution'=> $databaseResolution ?? [],
-    // Inside $proposalSnapshot array:
+    
+    // Classification
     'pcm'               => [
         'pc' => (isset($pcm['pc']) ? $pcm['pc'] : null),
         'rs' => (isset($pcm['rs']) ? $pcm['rs'] : [])
     ],
+    
+    // Execution Plan
     'commitPlan'        => $commitPlan ?? [],
+    
+    // UI Presentation State
     'ui'                => $uiState ?? [],
+    
+    // Governance Details (blocking reasons)
+    'governance'        => $governance ?? ['blockingIssues' => []],
+    
+    // Human-readable Narratives
     'narratives'        => $narratives ?? [],
+    
     'meta'              => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
         'parcelCount'        => $data['location']['parcelCount'] ?? 0,
@@ -1094,17 +1111,24 @@ echo json_encode([
     // Database Resolution
     'databaseResolution' => $databaseResolution ?? [],
 
-    // PCM (simplified)
+    // Classification
     'pcm' => [
         'pc' => (isset($pcm['pc']) ? $pcm['pc'] : null),
         'rs' => (isset($pcm['rs']) ? $pcm['rs'] : [])
     ],
-    // Commit Plan
+
+    // Execution Plan
     'commitPlan' => $commitPlan ?? [],
-    // UI State
+
+    // UI Presentation State
     'ui' => $uiState ?? [],
-    // Narratives
+
+    // Governance Details (why blocked, missing fields, etc.)
+    'governance' => $governance ?? ['blockingIssues' => []],
+
+    // Human-readable Narratives
     'narratives' => $narratives ?? [],
+
     // Meta / Summary
     'meta' => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
