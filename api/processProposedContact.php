@@ -836,8 +836,8 @@ if (!empty($missingRequired)) {
 // Other RS Rules
 // =====================================================
 
-// RS-5 — Duplicate
-if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
+// RS-5 — Duplicate Contact
+if ($contactStatus === 'exact' && ($pcm['pc'] ?? '') !== 'PC-0') {
     $pcm['rs'][] = 'RS-5';
     $pcm['rsStatuses'][] = 'duplicate_contact';
 }
@@ -863,33 +863,33 @@ if (empty($data['location']['locationPlaceId'] ?? null)) {
     $pcm['rsStatuses'][] = 'invalid_location';
 }
 
-// Default RS-0
+// RS-0 default
 if (empty($pcm['rs'])) {
-    $pcm['rs'][] = 'RS-0';
-    $pcm['rsStatuses'][] = 'acceptable';
+    $pcm['rs'] = ['RS-0'];
+    $pcm['rsStatuses'] = ['acceptable'];
 }
 
 // =====================================================
-// FINAL GOVERNANCE STATE (Safe initialization)
+// FINAL GOVERNANCE STATE — SAFE INITIALIZATION
 // =====================================================
 
-$pcm['blocksCommit']   = in_array('RS-5', $pcm['rs'] ?? []) || 
-                         in_array('RS-6', $pcm['rs'] ?? []) || 
-                         in_array('RS-7', $pcm['rs'] ?? []) || 
-                         in_array('RS-8', $pcm['rs'] ?? []) ||
-                         in_array('RS-3', $pcm['rs'] ?? []);
+$pcm['blocksCommit']   = in_array('RS-5', $pcm['rs']) || 
+                         in_array('RS-6', $pcm['rs']) || 
+                         in_array('RS-7', $pcm['rs']) || 
+                         in_array('RS-8', $pcm['rs']) ||
+                         in_array('RS-3', $pcm['rs']);
 
 $pcm['readyForCommit'] = !$pcm['blocksCommit'];
 
 $pcm['requiresReview'] = !(
-    count($pcm['rs'] ?? []) === 1 && 
-    ($pcm['rs'][0] ?? '') === 'RS-0'
+    count($pcm['rs']) === 1 && 
+    $pcm['rs'][0] === 'RS-0'
 );
 
-// Simplify for output
+// Simplify PCM for output (DRY)
 $pcm = [
     'pc' => $pcm['pc'] ?? 'PC-UNKNOWN',
-    'rs' => $pcm['rs'] ?? ['RS-0']
+    'rs' => $pcm['rs']
 ];
 
 error_log(
