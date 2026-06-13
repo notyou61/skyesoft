@@ -756,16 +756,10 @@ if ($pdo) {
 
 #region SECTION 12 — PCM Classification & Governance
 
-// Final simplified PCM (DRY)
-$pcm = [
-    'pc' => $pcm['pc'] ?? 'PC-UNKNOWN',
-    'rs' => $pcm['rs'] ?? ['RS-0']
-];
-
 $isExplicitLocationOnlyIntent = $isExplicitLocationOnlyIntent ?? false;
 
 // =====================================================
-// PASS 1 — PC Classification (What is the proposal?)
+// PASS 1 — PC Classification
 // =====================================================
 
 $entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
@@ -785,7 +779,6 @@ if ($isExplicitLocationOnlyIntent === true) {
     $pcm['action']   = 'link_existing_elc';
 
 } elseif ($contactStatus === 'exact') {
-    // Duplicate contact detected — treat as PC-3 + RS-5 (better Codex alignment)
     $pcm['pc']       = 'PC-3';
     $pcm['pcStatus'] = 'existing_location';
     $pcm['action']   = 'reject_duplicate';
@@ -807,68 +800,57 @@ if ($isExplicitLocationOnlyIntent === true) {
 }
 
 // =====================================================
-// MINIMUM FIELD REQUIREMENTS (Codex-aligned)
+// PC-AWARE REQUIRED FIELD VALIDATION → RS-3
 // =====================================================
 
 $missingRequired = [];
 
-// Always required fields (all PC types)
-if (empty($parsed['entity']['name'])) {
+// Always required
+if (empty($parsed['entity']['name'] ?? '')) {
     $missingRequired[] = 'entity.name';
 }
-if (empty($parsed['location']['address'])) {
+if (empty($parsed['location']['address'] ?? '')) {
     $missingRequired[] = 'location.address';
 }
-if (empty($parsed['location']['city'])) {
+if (empty($parsed['location']['city'] ?? '')) {
     $missingRequired[] = 'location.city';
 }
-
-// Contact identity fields required for PC-1, PC-2, PC-3
-if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'], true)) {
-    if (empty($parsed['contact']['firstName'])) {
-        $missingRequired[] = 'contact.firstName';
-    }
-    if (empty($parsed['contact']['lastName'])) {
-        $missingRequired[] = 'contact.lastName';
-    }
-    if (empty($parsed['contact']['email'])) {
-        $missingRequired[] = 'contact.email';
-    }
+if (empty($parsed['location']['state'] ?? '')) {
+    $missingRequired[] = 'location.state';
+}
+if (empty($parsed['location']['zip'] ?? '')) {
+    $missingRequired[] = 'location.zip';
 }
 
-// Apply RS flags based on what is missing
+// PC-specific requirements
+if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'], true)) {
+    if (empty($parsed['contact']['firstName'] ?? '')) $missingRequired[] = 'contact.firstName';
+    if (empty($parsed['contact']['lastName'] ?? '')) $missingRequired[] = 'contact.lastName';
+    if (empty($parsed['contact']['email'] ?? '')) $missingRequired[] = 'contact.email';
+    if (empty($parsed['contact']['primaryPhone'] ?? '')) $missingRequired[] = 'contact.primaryPhone';
+}
+
+// Validation / Parcel requirements
+if (empty($data['location']['locationValidated'] ?? false)) {
+    $missingRequired[] = 'location.validation';
+}
+if (empty($data['location']['locationCensusValidated'] ?? false)) {
+    $missingRequired[] = 'location.census';
+}
+if (($data['location']['parcelCount'] ?? 0) === 0) {
+    $missingRequired[] = 'location.parcel';
+}
+
+// Apply RS-3 if anything is missing
 if (!empty($missingRequired)) {
+    $pcm['rs'][] = 'RS-3';
+    $pcm['rsStatuses'][] = 'incomplete_proposal';
 
-    $contactRequiredFields = [
-        'contact.firstName',
-        'contact.lastName',
-        'contact.email'
-    ];
-
-    $hasContactFieldsMissing = false;
-    foreach ($contactRequiredFields as $field) {
-        if (in_array($field, $missingRequired, true)) {
-            $hasContactFieldsMissing = true;
-            break;
-        }
-    }
-
-    if ($hasContactFieldsMissing) {
-        $pcm['rs'][]         = 'RS-3';
-        $pcm['rsStatuses'][] = 'incomplete_contact';
-    } else {
-        $pcm['rs'][]         = 'RS-1';
-        $pcm['rsStatuses'][] = 'incomplete';
-    }
-
-    $pcm['requiresReview'] = true;
-    $pcm['blocksCommit']   = true;
-
-    error_log('[PPC][SECTION-12] Missing required fields per Codex: ' . implode(', ', $missingRequired));
+    error_log('[PPC][SECTION-12] RS-3 (Incomplete Proposal) — Missing: ' . implode(', ', $missingRequired));
 }
 
 // =====================================================
-// PASS 2 — RS Governance (Can this proposal proceed?)
+// Other RS Rules (RS-5, RS-6, RS-7, RS-8)
 // =====================================================
 
 // RS-5 — Duplicate Contact
@@ -877,7 +859,7 @@ if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
     $pcm['rsStatuses'][] = 'duplicate_contact';
 }
 
-// RS-6 — Multiple Parcels (only if no parcel has been accepted yet)
+// RS-6 — Multiple Parcels
 $hasMultipleParcels   = $data['location']['hasMultipleParcels'] ?? false;
 $acceptedParcelNumber = $databaseResolution['location']['locationParcelNumberRaw'] 
                      ?? $data['location']['locationParcelNumberRaw'] 
@@ -886,12 +868,10 @@ $acceptedParcelNumber = $databaseResolution['location']['locationParcelNumberRaw
 if ($hasMultipleParcels && empty($acceptedParcelNumber)) {
     $pcm['rs'][]         = 'RS-6';
     $pcm['rsStatuses'][] = 'multiple_parcels';
-    $pcm['requiresReview'] = true;
 }
 
-// RS-7 — Unresolved Parcel (Maricopa only)
+// RS-7 — Unresolved Parcel (Maricopa)
 $countyForCheck = strtolower(trim($data['location']['locationCounty'] ?? ''));
-
 if (in_array($countyForCheck, ['maricopa', 'maricopa county'], true) && 
     ($data['location']['parcelCount'] ?? 0) === 0) {
     $pcm['rs'][]         = 'RS-7';
@@ -904,42 +884,40 @@ if (empty($data['location']['locationPlaceId'] ?? null)) {
     $pcm['rsStatuses'][] = 'invalid_location';
 }
 
-// RS-0 — Acceptable (default if no issues)
+// RS-0 default
 if (empty($pcm['rs'])) {
     $pcm['rs'][]         = 'RS-0';
     $pcm['rsStatuses'][] = 'acceptable';
 }
 
 // =====================================================
-// FINAL GOVERNANCE STATE
+// FINAL GOVERNANCE
 // =====================================================
 
 $pcm['blocksCommit'] = in_array('RS-5', $pcm['rs']) || 
                        in_array('RS-6', $pcm['rs']) || 
                        in_array('RS-7', $pcm['rs']) || 
                        in_array('RS-8', $pcm['rs']) ||
-                       in_array('RS-1', $pcm['rs']) ||
                        in_array('RS-3', $pcm['rs']);
 
 $pcm['readyForCommit'] = !$pcm['blocksCommit'];
 
-// Future-safe requiresReview logic
 $pcm['requiresReview'] = !(
-    count($pcm['rs']) === 1 && 
-    $pcm['rs'][0] === 'RS-0'
+    count($pcm['rs']) === 1 && $pcm['rs'][0] === 'RS-0'
 );
+
+// Simplify PCM for output
+$pcm = [
+    'pc' => $pcm['pc'] ?? 'PC-UNKNOWN',
+    'rs' => $pcm['rs'] ?? ['RS-0']
+];
 
 error_log(
-    '[PPC][SECTION-12] PCM complete → PC=' . ($pcm['pc'] ?? 'null') .
-    ' | Ready=' . ($pcm['readyForCommit'] ? 'YES' : 'NO') .
-    ' | Blocks=' . ($pcm['blocksCommit'] ? 'YES' : 'NO') .
-    ' | RS=[' . implode(', ', $pcm['rs']) . ']'
+    '[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] .
+    ' | RS=[' . implode(', ', $pcm['rs']) . ']' .
+    ' | Blocks=' . ($pcm['blocksCommit'] ? 'YES' : 'NO')
 );
 
-
-// =====================================================
-// SINGLE PROPOSAL ID GENERATION (used by both snapshot and response)
-// =====================================================
 $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 
 #endregion
