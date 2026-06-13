@@ -1039,80 +1039,54 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 #region SECTION 14 — Narrative Builder
 
 // =====================================================
-// Narrative Builder — askOpenAI.php + Fully Dynamic Fallback
+// Narrative Builder — AI only for human-readable narratives
 // =====================================================
 
 $narratives = array(
-    'ui'       => null,
-    'report'   => null,
-    'database' => null,
-    'audit'    => null,
-    'activity' => null
+    'ui'     => null,
+    'report' => null
 );
 
 error_log('[PPC][SECTION-14] Starting Narrative Builder');
 
-// Safe variable extraction
-$pc = (isset($pcm['pc']) ? $pcm['pc'] : 'UNKNOWN');
-$pcStatus = (isset($pcm['pcStatus']) ? $pcm['pcStatus'] : '');
-$rsStatuses = (isset($pcm['rsStatuses']) ? $pcm['rsStatuses'] : array());
-$canCommit = (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
-
-$narrativeContext = array(
-    'pc'                       => $pc,
-    'pcStatus'                 => $pcStatus,
-    'rs'                       => (isset($pcm['rs']) ? $pcm['rs'] : array()),
-    'rsStatuses'               => $rsStatuses,
-    'canCommit'                => $canCommit,
-    'entityName'               => (isset($data['entity']['entityName']) ? $data['entity']['entityName'] : ''),
-    'entityId'                 => (isset($commitPlan['entity']['entityId']) ? $commitPlan['entity']['entityId'] : null),
-    'contactName'              => trim(
-        (isset($data['contact']['contactFirstName']) ? $data['contact']['contactFirstName'] : '') . 
-        ' ' . 
-        (isset($data['contact']['contactLastName']) ? $data['contact']['contactLastName'] : '')
-    ),
-    'contactTitle'             => (isset($data['contact']['contactTitle']) ? $data['contact']['contactTitle'] : ''),
-    'locationAddress'          => (isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : ''),
-    'locationId'               => (isset($commitPlan['location']['locationId']) ? $commitPlan['location']['locationId'] : null),
-    'locationParcelNumberRaw'  => (isset($commitPlan['location']['locationParcelNumberRaw']) ? $commitPlan['location']['locationParcelNumberRaw'] : null),
-    'commitActions'            => (isset($commitPlan['actions']) ? $commitPlan['actions'] : array())
+// Safe extraction for context
+$entityName   = (isset($data['entity']['entityName']) ? $data['entity']['entityName'] : '');
+$contactName  = trim(
+    (isset($data['contact']['contactFirstName']) ? $data['contact']['contactFirstName'] : '') . 
+    ' ' . 
+    (isset($data['contact']['contactLastName']) ? $data['contact']['contactLastName'] : '')
 );
+$contactTitle = (isset($data['contact']['contactTitle']) ? $data['contact']['contactTitle'] : '');
+$locationStr  = (isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : '');
+$canCommit    = (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
 
-// PC-aware descriptions
-$pcDescriptions = array(
-    'PC-0' => 'an existing entity, location, and contact',
-    'PC-1' => 'a new entity, new location, and new contact',
-    'PC-2' => 'an existing entity with a new location and new contact',
-    'PC-3' => 'an existing location with a new contact',
-    'PC-4' => 'a new location only'
-);
-
-$proposalDescription = (isset($pcDescriptions[$pc]) ? $pcDescriptions[$pc] : 'a proposal');
-$commitStatus = ($canCommit ? 'Ready for commitment.' : 'Requires review before commitment.');
+$commitStatus = ($canCommit ? 'This proposal is ready for commitment.' : 'This proposal requires review before commitment.');
 
 // =====================================================
-// AI Narratives via askOpenAI.php (UI + Report only)
+// AI Prompt (UI + Report only)
 // =====================================================
-$aiNarrativePrompt = "Generate two factual narratives for this proposal.\n\n" .
-    json_encode($narrativeContext, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+$aiNarrativePrompt = "Generate factual narratives for this proposal.\n\n" .
+    "Entity: " . $entityName . "\n" .
+    "Contact: " . $contactName . ($contactTitle !== '' ? ' (' . $contactTitle . ')' : '') . "\n" .
+    "Location: " . $locationStr . "\n" .
+    "Commit ready: " . ($canCommit ? 'Yes' : 'No');
 
 $systemPromptForNarratives = <<<EOT
 You are a precise operational documentation engine for Skyesoft CRM.
 
 Generate ONLY "ui" and "report" narratives. Be strictly factual.
 
-UI Narrative:
-- What was found in the input
-- What already exists in the database
-- What is new
-- What happens if accepted
+UI Narrative (2-4 sentences):
+- What existing records were found
+- What new information was identified
+- What will happen if the proposal is accepted
 
 Report Narrative:
-- Formal operational summary suitable for PDF
+- Formal business summary suitable for PDF reports
 
 Rules:
-- Use only facts from the context
-- Never mention proposal IDs, JSON, UI, screens, interfaces, workflows, or buttons
+- Use only the facts provided
+- Never mention proposal IDs, PC codes, RS codes, JSON, UI elements, or governance codes
 - Never speculate
 
 Return ONLY valid JSON:
@@ -1126,7 +1100,7 @@ if (function_exists('askOpenAI')) {
     $aiResponse = askOpenAI($systemPromptForNarratives, $aiNarrativePrompt, array(
         'model'       => 'gpt-4o-mini',
         'temperature' => 0.0,
-        'max_tokens'  => 600
+        'max_tokens'  => 500
     ));
 
     if ($aiResponse && !empty($aiResponse['content'])) {
@@ -1146,66 +1120,20 @@ if (function_exists('askOpenAI')) {
 }
 
 // =====================================================
-// DETERMINISTIC NARRATIVES
-// =====================================================
-$narratives['database'] = (isset($commitPlan['actions']) ? $commitPlan['actions'] : array());
-
-$narratives['audit'] = array(
-    "Entity resolved by " . (isset($databaseResolution['entity']['matchType']) ? $databaseResolution['entity']['matchType'] : 'unknown') . 
-    " (ID " . (isset($commitPlan['entity']['entityId']) ? $commitPlan['entity']['entityId'] : 'N/A') . ").",
-    "Location resolved by " . (isset($databaseResolution['location']['matchType']) ? $databaseResolution['location']['matchType'] : 'unknown') .
-    (isset($commitPlan['location']['locationId']) ? " (ID " . $commitPlan['location']['locationId'] . ")" : "") .
-    (isset($commitPlan['location']['locationParcelNumberRaw']) ? ", parcel " . $commitPlan['location']['locationParcelNumberRaw'] : "") . ".",
-    "Contact resolution status: " . (isset($databaseResolution['contact']['status']) ? $databaseResolution['contact']['status'] : 'none') . ".",
-    "Proposal classified as " . $pc . " (" . $pcStatus . ").",
-    "Governance: " . implode(', ', $rsStatuses)
-);
-
-$narratives['activity'] = "Created " . $pc . " proposal for " . 
-    ((isset($narrativeContext['entityName']) && $narrativeContext['entityName'] !== '') ? $narrativeContext['entityName'] : 'the entity') . ".";
-
-// =====================================================
-// Dynamic Fallback
+// Simple Dynamic Fallback
 // =====================================================
 if (empty($narratives['ui'])) {
+    $contactDisplay = $contactName;
+    if ($contactTitle !== '') {
+        $contactDisplay .= ' (' . $contactTitle . ')';
+    }
 
-    $contactName = (
-        isset($narrativeContext['contactName']) &&
-        $narrativeContext['contactName'] !== ''
-    )
-        ? $narrativeContext['contactName']
-        : 'the contact';
-
-    $entityName = (
-        isset($narrativeContext['entityName']) &&
-        $narrativeContext['entityName'] !== ''
-    )
-        ? $narrativeContext['entityName']
-        : 'the entity';
-
-    $loc = (
-        isset($narrativeContext['locationAddress']) &&
-        $narrativeContext['locationAddress'] !== ''
-    )
-        ? $narrativeContext['locationAddress']
-        : 'the location';
-
-    $governanceStatus = !empty($pcm['rsStatuses'])
-        ? implode(', ', $pcm['rsStatuses'])
-        : 'unknown';
-
-    $narratives['ui'] =
-        "This proposal represents {$proposalDescription}.\n\n" .
-        "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-        "Classified as {$pc}. Governance status: {$governanceStatus}.\n" .
+    $narratives['ui'] = $contactName . " was identified as a contact for " . $entityName . " at " . $locationStr . ".\n\n" .
+        "The company and location already exist in the database. No matching contact record was found.\n\n" .
         $commitStatus;
 
-    $narratives['report'] =
-        "Proposal classified as {$pc} ({$pcStatus}).\n\n" .
-        "Entity: {$entityName}.\n" .
-        "Location: {$loc}.\n" .
-        "Contact: {$contactName}.\n\n" .
-        "Governance status: {$governanceStatus}.";
+    $narratives['report'] = $contactDisplay . " was identified for " . $entityName . " located at " . $locationStr . ".\n\n" .
+        "The company and location matched existing records in the system. A new contact record is proposed.";
 }
 
 error_log('[PPC][SECTION-14] Narrative Builder complete');
