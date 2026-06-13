@@ -1039,7 +1039,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 #region SECTION 14 — Narrative Builder
 
 // =====================================================
-// Narrative Builder — AI only for human-readable narratives
+// Narrative Builder — Human-readable only (ui + report)
 // =====================================================
 
 $narratives = array(
@@ -1049,7 +1049,7 @@ $narratives = array(
 
 error_log('[PPC][SECTION-14] Starting Narrative Builder');
 
-// Safe extraction for context
+// Safe extraction
 $entityName   = (isset($data['entity']['entityName']) ? $data['entity']['entityName'] : '');
 $contactName  = trim(
     (isset($data['contact']['contactFirstName']) ? $data['contact']['contactFirstName'] : '') . 
@@ -1060,16 +1060,19 @@ $contactTitle = (isset($data['contact']['contactTitle']) ? $data['contact']['con
 $locationStr  = (isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : '');
 $canCommit    = (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
 
-$commitStatus = ($canCommit ? 'This proposal is ready for commitment.' : 'This proposal requires review before commitment.');
+$commitStatus = ($canCommit 
+    ? 'This proposal is eligible for acceptance.' 
+    : 'This proposal requires review before it can be accepted.');
 
 // =====================================================
-// AI Prompt (UI + Report only)
+// AI Narratives via askOpenAI.php
 // =====================================================
-$aiNarrativePrompt = "Generate factual narratives for this proposal.\n\n" .
+$aiNarrativePrompt = "Generate two factual narratives.\n\n" .
     "Entity: " . $entityName . "\n" .
     "Contact: " . $contactName . ($contactTitle !== '' ? ' (' . $contactTitle . ')' : '') . "\n" .
     "Location: " . $locationStr . "\n" .
-    "Commit ready: " . ($canCommit ? 'Yes' : 'No');
+    "Eligible for acceptance: " . ($canCommit ? 'Yes' : 'No') . "\n" .
+    "Actions: " . implode(', ', (isset($commitPlan['actions']) ? $commitPlan['actions'] : array()));
 
 $systemPromptForNarratives = <<<EOT
 You are a precise operational documentation engine for Skyesoft CRM.
@@ -1078,7 +1081,7 @@ Generate ONLY "ui" and "report" narratives. Be strictly factual.
 
 UI Narrative (2-4 sentences):
 - What existing records were found
-- What new information was identified
+- What new information was identified  
 - What will happen if the proposal is accepted
 
 Report Narrative:
@@ -1086,7 +1089,7 @@ Report Narrative:
 
 Rules:
 - Use only the facts provided
-- Never mention proposal IDs, PC codes, RS codes, JSON, UI elements, or governance codes
+- Never mention proposal IDs, PC/RS codes, JSON, UI elements, or governance codes
 - Never speculate
 
 Return ONLY valid JSON:
@@ -1120,7 +1123,7 @@ if (function_exists('askOpenAI')) {
 }
 
 // =====================================================
-// Simple Dynamic Fallback
+// Dynamic Fallback
 // =====================================================
 if (empty($narratives['ui'])) {
     $contactDisplay = $contactName;
@@ -1133,7 +1136,8 @@ if (empty($narratives['ui'])) {
         $commitStatus;
 
     $narratives['report'] = $contactDisplay . " was identified for " . $entityName . " located at " . $locationStr . ".\n\n" .
-        "The company and location matched existing records in the system. A new contact record is proposed.";
+        "The company and location matched existing records in the system. " .
+        "A new contact record is proposed and will be linked to the existing company and location.";
 }
 
 error_log('[PPC][SECTION-14] Narrative Builder complete');
