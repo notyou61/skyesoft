@@ -952,11 +952,13 @@ $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 #region SECTION 13 — Commit Plan Builder
 
 // =====================================================
-// Commit Plan Builder — Deterministic + IDs for Accept workflow
+// Commit Plan Builder — Deterministic + UI Flags
 // =====================================================
 
 $commitPlan = [
     'canCommit'     => false,
+    'showAccept'    => true,      // Whether to show the Accept button
+    'enableAccept'  => false,     // Whether the Accept button is enabled
     'entity'        => [],
     'location'      => [],
     'contact'       => [],
@@ -964,13 +966,15 @@ $commitPlan = [
     'summary'       => ''
 ];
 
-$pc = $pcm['pc'] ?? 'PC-UNKNOWN';
+$pc = (isset($pcm['pc']) ? $pcm['pc'] : 'PC-UNKNOWN');
 
 error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc}");
 
 switch ($pc) {
-    case 'PC-0':
-        $commitPlan['canCommit'] = true;
+    case 'PC-0':  // Existing ELC - No action needed
+        $commitPlan['canCommit']    = true;
+        $commitPlan['showAccept']   = false;   // Hide Accept button
+        $commitPlan['enableAccept'] = false;
         $commitPlan['actions'] = ['link_existing_elc'];
         $commitPlan['summary'] = 'No database changes required - ELC already exists';
         $commitPlan['entity']['action']   = 'link';
@@ -979,7 +983,9 @@ switch ($pc) {
         break;
 
     case 'PC-1':
-        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['canCommit']    = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
+        $commitPlan['showAccept']   = true;
+        $commitPlan['enableAccept'] = $commitPlan['canCommit'];
         $commitPlan['actions'] = ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['summary'] = 'Insert new Entity, Location, Contact and establish relationships';
         $commitPlan['entity']['action']   = 'insert';
@@ -988,7 +994,9 @@ switch ($pc) {
         break;
 
     case 'PC-2':
-        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['canCommit']    = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
+        $commitPlan['showAccept']   = true;
+        $commitPlan['enableAccept'] = $commitPlan['canCommit'];
         $commitPlan['actions'] = ['link_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['summary'] = 'Link to existing Entity, Insert new Location + Contact';
         $commitPlan['entity']['action']   = 'link';
@@ -997,7 +1005,9 @@ switch ($pc) {
         break;
 
     case 'PC-3':
-        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['canCommit']    = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
+        $commitPlan['showAccept']   = true;
+        $commitPlan['enableAccept'] = $commitPlan['canCommit'];
         $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact'];
         $commitPlan['summary'] = 'Link to existing Entity + Location, Insert new Contact';
         $commitPlan['entity']['action']   = 'link';
@@ -1006,7 +1016,9 @@ switch ($pc) {
         break;
 
     case 'PC-4':
-        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['canCommit']    = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
+        $commitPlan['showAccept']   = true;
+        $commitPlan['enableAccept'] = $commitPlan['canCommit'];
         $commitPlan['actions'] = ['insert_location'];
         $commitPlan['summary'] = 'Insert new Location only';
         $commitPlan['location']['action'] = 'insert';
@@ -1014,25 +1026,32 @@ switch ($pc) {
 
     default:
         $commitPlan['summary'] = 'Unknown PC type - manual review required';
+        $commitPlan['showAccept']   = true;
+        $commitPlan['enableAccept'] = false;
         break;
 }
 
-// Attach concrete IDs (critical for future Accept + audit)
+// Attach concrete IDs
 if (!empty($databaseResolution['entity']['entityId'])) {
     $commitPlan['entity']['entityId'] = $databaseResolution['entity']['entityId'];
 }
 if (!empty($databaseResolution['location']['locationId'])) {
     $commitPlan['location']['locationId'] = $databaseResolution['location']['locationId'];
     $commitPlan['location']['locationParcelNumberRaw'] = 
-        $databaseResolution['location']['locationParcelNumberRaw'] ?? null;
+        (isset($databaseResolution['location']['locationParcelNumberRaw']) ? $databaseResolution['location']['locationParcelNumberRaw'] : null);
 }
 
-if ($pcm['blocksCommit'] ?? false) {
-    $commitPlan['canCommit'] = false;
+// Final governance override
+if (isset($pcm['blocksCommit']) && $pcm['blocksCommit']) {
+    $commitPlan['canCommit']    = false;
+    $commitPlan['enableAccept'] = false;
     $commitPlan['summary'] .= ' (Blocked by governance)';
 }
 
-error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
+error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . 
+    ($commitPlan['canCommit'] ? 'YES' : 'NO') . 
+    " | showAccept=" . ($commitPlan['showAccept'] ? 'YES' : 'NO') .
+    " | enableAccept=" . ($commitPlan['enableAccept'] ? 'YES' : 'NO'));
 
 #endregion
 
@@ -1165,7 +1184,7 @@ error_log('[PPC][SECTION-14] Narrative Builder complete');
 $proposalSnapshot = [
     'proposalId'        => $proposalId,
     'generatedAt'       => date('c'),
-    'version'           => '1.8.0',                    // bumped
+    'version'           => '1.9.0',                    // bumped
     'activitySessionId' => $context['activitySessionId'] ?? '',
     'rawInput'          => $rawInput ?? '',
     'proposalStatus'    => 'proposed',
@@ -1174,7 +1193,7 @@ $proposalSnapshot = [
     'databaseResolution'=> $databaseResolution ?? [],
     'pcm'               => $pcm ?? [],
     'commitPlan'        => $commitPlan ?? [],
-    'narratives'        => $narratives ?? [],          // ← NEW
+    'narratives'        => $narratives ?? [],
     'meta'              => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
         'parcelCount'        => $data['location']['parcelCount'] ?? 0,
@@ -1230,10 +1249,10 @@ echo json_encode([
     // PCM Governance Decision
     'pcm' => $pcm ?? [],
 
-    // Commit Plan
+    // Commit Plan (includes showAccept / enableAccept)
     'commitPlan' => $commitPlan ?? [],
 
-    // NEW: Narratives
+    // Narratives
     'narratives' => $narratives ?? [],
 
     // Meta / Summary
