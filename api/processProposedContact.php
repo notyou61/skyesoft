@@ -1168,27 +1168,44 @@ $narratives['activity'] = "Created " . $pc . " proposal for " .
 // Dynamic Fallback
 // =====================================================
 if (empty($narratives['ui'])) {
-    $contactName = ((isset($narrativeContext['contactName']) && $narrativeContext['contactName'] !== '') 
-        ? $narrativeContext['contactName'] 
-        : 'the contact');
-    $entityName  = ((isset($narrativeContext['entityName']) && $narrativeContext['entityName'] !== '') 
-        ? $narrativeContext['entityName'] 
-        : 'the entity');
-    $loc         = ((isset($narrativeContext['locationAddress']) && $narrativeContext['locationAddress'] !== '') 
-        ? $narrativeContext['locationAddress'] 
-        : 'the location');
 
-    $narratives['ui'] = "This proposal represents {$proposalDescription}.\n\n" .
+    $contactName = (
+        isset($narrativeContext['contactName']) &&
+        $narrativeContext['contactName'] !== ''
+    )
+        ? $narrativeContext['contactName']
+        : 'the contact';
+
+    $entityName = (
+        isset($narrativeContext['entityName']) &&
+        $narrativeContext['entityName'] !== ''
+    )
+        ? $narrativeContext['entityName']
+        : 'the entity';
+
+    $loc = (
+        isset($narrativeContext['locationAddress']) &&
+        $narrativeContext['locationAddress'] !== ''
+    )
+        ? $narrativeContext['locationAddress']
+        : 'the location';
+
+    $governanceStatus = !empty($pcm['rsStatuses'])
+        ? implode(', ', $pcm['rsStatuses'])
+        : 'unknown';
+
+    $narratives['ui'] =
+        "This proposal represents {$proposalDescription}.\n\n" .
         "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-        "Classified as {$pc}. Governance status: " . 
-        implode(', ', $rsStatuses) . ".\n" .
+        "Classified as {$pc}. Governance status: {$governanceStatus}.\n" .
         $commitStatus;
 
-    $narratives['report'] = "Proposal classified as {$pc} ({$pcStatus}).\n\n" .
+    $narratives['report'] =
+        "Proposal classified as {$pc} ({$pcStatus}).\n\n" .
         "Entity: {$entityName}.\n" .
         "Location: {$loc}.\n" .
         "Contact: {$contactName}.\n\n" .
-        "Governance status: " . implode(', ', $rsStatuses) . ".";
+        "Governance status: {$governanceStatus}.";
 }
 
 error_log('[PPC][SECTION-14] Narrative Builder complete');
