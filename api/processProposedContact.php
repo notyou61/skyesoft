@@ -984,13 +984,8 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #region SECTION 14 — UI State Builder
 
-$narratives = array(
-    'ui'     => null,
-    'report' => null
-);
-
 // =====================================================
-// UI State Builder — Pure presentation decisions
+// UI State Builder — Presentation decisions
 // =====================================================
 
 $uiState = [
@@ -1002,12 +997,17 @@ $uiState = [
 ];
 
 $pc = (isset($pcm['pc']) ? $pcm['pc'] : 'UNKNOWN');
+$rsList = (isset($pcm['rs']) ? $pcm['rs'] : []);
 
 if ($pc === 'PC-0') {
     $uiState['proposalStatus'] = 'existing';
     $uiState['canAccept'] = false;
     $uiState['canReject'] = false;
     $uiState['canEdit']   = false;
+    $uiState['canCommit'] = false;
+} elseif (in_array('RS-3', $rsList)) {
+    $uiState['proposalStatus'] = 'incomplete';
+    $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
 } else {
     $uiState['canAccept'] = (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
