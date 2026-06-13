@@ -891,25 +891,34 @@ if (empty($pcm['rs'])) {
 }
 
 // =====================================================
-// FINAL GOVERNANCE
+// FINAL GOVERNANCE STATE
 // =====================================================
+
+if (!isset($pcm['rs'])) {
+    $pcm['rs'] = ['RS-0'];
+}
+if (!isset($pcm['rsStatuses'])) {
+    $pcm['rsStatuses'] = ['acceptable'];
+}
 
 $pcm['blocksCommit'] = in_array('RS-5', $pcm['rs']) || 
                        in_array('RS-6', $pcm['rs']) || 
                        in_array('RS-7', $pcm['rs']) || 
                        in_array('RS-8', $pcm['rs']) ||
-                       in_array('RS-3', $pcm['rs']);
+                       in_array('RS-3', $pcm['rs']) ||
+                       in_array('RS-1', $pcm['rs']);
 
 $pcm['readyForCommit'] = !$pcm['blocksCommit'];
 
 $pcm['requiresReview'] = !(
-    count($pcm['rs']) === 1 && $pcm['rs'][0] === 'RS-0'
+    count($pcm['rs']) === 1 && 
+    $pcm['rs'][0] === 'RS-0'
 );
 
-// Simplify PCM for output
+// Simplify PCM for output (DRY)
 $pcm = [
     'pc' => $pcm['pc'] ?? 'PC-UNKNOWN',
-    'rs' => $pcm['rs'] ?? ['RS-0']
+    'rs' => $pcm['rs']
 ];
 
 error_log(
@@ -1003,6 +1012,11 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 #endregion
 
 #region SECTION 14 — UI State Builder
+
+$narratives = array(
+    'ui'     => null,
+    'report' => null
+);
 
 // =====================================================
 // UI State Builder — Pure presentation decisions
