@@ -8,6 +8,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
+require_once __DIR__ . '/resolveLocation.php';   // ← Make sure this is included
 
 function resolveParcel(
     ?float $latitude = null,
