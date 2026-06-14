@@ -834,6 +834,12 @@ if (!empty($missingRequired)) {
     $pcm['rs'][] = 'RS-3';
     $pcm['rsStatuses'][] = 'incomplete_proposal';
 
+    $governanceIssues[] = [
+        'code' => 'RS-3',
+        'message' => 'Incomplete proposal - required fields are missing',
+        'fields' => $missingRequired
+    ];
+
     error_log('[PPC][SECTION-12] RS-3 (Incomplete Proposal) — Missing: ' . implode(', ', $missingRequired));
 }
 
@@ -878,36 +884,28 @@ if (empty($pcm['rs'])) {
 // FINAL GOVERNANCE STATE — SAFE INITIALIZATION
 // =====================================================
 
-$pcm['blocksCommit']   = in_array('RS-5', $pcm['rs'] ?? []) || 
-                         in_array('RS-6', $pcm['rs'] ?? []) || 
-                         in_array('RS-7', $pcm['rs'] ?? []) || 
-                         in_array('RS-8', $pcm['rs'] ?? []) ||
-                         in_array('RS-3', $pcm['rs'] ?? []);
+$pcm['blocksCommit']   = in_array('RS-5', $pcm['rs']) || 
+                         in_array('RS-6', $pcm['rs']) || 
+                         in_array('RS-7', $pcm['rs']) || 
+                         in_array('RS-8', $pcm['rs']) ||
+                         in_array('RS-3', $pcm['rs']);
 
 $pcm['readyForCommit'] = !$pcm['blocksCommit'];
 
 $pcm['requiresReview'] = !(
-    count($pcm['rs'] ?? []) === 1 && 
-    ($pcm['rs'][0] ?? '') === 'RS-0'
+    count($pcm['rs']) === 1 && 
+    $pcm['rs'][0] === 'RS-0'
 );
 
 // Build Governance object for UI
 $governance = [
-    'blockingIssues' => []
+    'blockingIssues' => $governanceIssues
 ];
 
-if (in_array('RS-3', $pcm['rs'] ?? [])) {
-    $governance['blockingIssues'][] = [
-        'code' => 'RS-3',
-        'message' => 'Incomplete proposal - required fields are missing',
-        'fields' => $missingRequired ?? []
-    ];
-}
-
-// Simplify PCM
+// Simplify PCM for output (DRY)
 $pcm = [
     'pc' => $pcm['pc'] ?? 'PC-UNKNOWN',
-    'rs' => $pcm['rs'] ?? ['RS-0']
+    'rs' => $pcm['rs']
 ];
 
 error_log(
@@ -1046,7 +1044,7 @@ $narratives = array(
 
 error_log('[PPC][SECTION-14] Starting Narrative Builder');
 
-// Safe extraction
+// Safe extraction for context
 $contactName = trim(
     (isset($data['contact']['contactFirstName']) ? $data['contact']['contactFirstName'] : '') . 
     ' ' . 
@@ -1055,10 +1053,67 @@ $contactName = trim(
 $entityName  = (isset($data['entity']['entityName']) ? $data['entity']['entityName'] : '');
 $loc         = (isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : '');
 
-// AI call (keep your existing askOpenAI logic here if you have it)
-// ...
+// =====================================================
+// AI Call via askOpenAI.php
+// =====================================================
+$aiNarrativePrompt = "Generate two factual narratives for this proposal.\n\n" .
+    "Entity: " . $entityName . "\n" .
+    "Contact: " . $contactName . "\n" .
+    "Location: " . $loc . "\n" .
+    "Status: " . $uiState['proposalStatus'];
 
-// Dynamic Fallback (always runs if AI didn't produce output)
+$systemPromptForNarratives = <<<EOT
+You are a precise operational documentation engine for Skyesoft CRM.
+
+Generate ONLY "ui" and "report" narratives. Be strictly factual and professional.
+
+UI Narrative (2-4 sentences):
+- What was found
+- What exists in the database
+- What is new or missing
+- What the user should know
+
+Report Narrative:
+- Formal summary suitable for PDF reports
+
+Rules:
+- Use only the facts provided
+- Never mention proposal IDs, PC/RS codes, JSON, or UI elements
+- Never speculate
+
+Return ONLY valid JSON:
+{
+  "ui": "...",
+  "report": "..."
+}
+EOT;
+
+if (function_exists('askOpenAI')) {
+    $aiResponse = askOpenAI($systemPromptForNarratives, $aiNarrativePrompt, array(
+        'model'       => 'gpt-4o-mini',
+        'temperature' => 0.0,
+        'max_tokens'  => 500
+    ));
+
+    if ($aiResponse && !empty($aiResponse['content'])) {
+        $content = trim($aiResponse['content']);
+        preg_match('/\{.*\}/s', $content, $matches);
+        $jsonString = (isset($matches[0]) ? $matches[0] : $content);
+
+        $parsed = json_decode($jsonString, true);
+        if (is_array($parsed)) {
+            $narratives['ui']    = (isset($parsed['ui']) ? $parsed['ui'] : null);
+            $narratives['report'] = (isset($parsed['report']) ? $parsed['report'] : null);
+            error_log('[PPC][SECTION-14] ✅ AI narratives received from askOpenAI.php');
+        }
+    }
+} else {
+    error_log('[PPC][SECTION-14] WARNING: askOpenAI() function not available');
+}
+
+// =====================================================
+// Dynamic Fallback
+// =====================================================
 if (empty($narratives['ui'])) {
     if ($pc === 'PC-0') {
         $narratives['ui'] = $contactName . " was identified for " . $entityName . " at " . $loc . ".\n\n" .
