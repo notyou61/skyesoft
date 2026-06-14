@@ -8,7 +8,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
-require_once __DIR__ . '/resolveLocation.php';   // Your reliable MCA function
+//require_once __DIR__ . '/resolveLocation.php';   // Your reliable MCA function
 
 function resolveParcel(
     ?float $latitude = null,
