@@ -916,6 +916,10 @@ $rsList = $pcm['rs'] ?? [];
 
 error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc}");
 
+$canCommit = !in_array('RS-3', $rsList) && !in_array('RS-5', $rsList) && 
+             !in_array('RS-6', $rsList) && !in_array('RS-7', $rsList) && 
+             !in_array('RS-8', $rsList);
+
 switch ($pc) {
     case 'PC-0':
         $commitPlan['canCommit'] = false;
@@ -924,25 +928,25 @@ switch ($pc) {
         break;
 
     case 'PC-1':
-        $commitPlan['canCommit'] = !in_array('RS-3', $rsList);
+        $commitPlan['canCommit'] = $canCommit;
         $commitPlan['actions'] = ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['summary'] = 'Insert new Entity, Location, Contact and establish relationships';
         break;
 
     case 'PC-2':
-        $commitPlan['canCommit'] = !in_array('RS-3', $rsList);
+        $commitPlan['canCommit'] = $canCommit;
         $commitPlan['actions'] = ['link_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['summary'] = 'Link existing Entity, Insert new Location + Contact';
         break;
 
     case 'PC-3':
-        $commitPlan['canCommit'] = !in_array('RS-3', $rsList);
+        $commitPlan['canCommit'] = $canCommit;
         $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact'];
         $commitPlan['summary'] = 'Link existing Entity + Location, Insert new Contact';
         break;
 
     case 'PC-4':
-        $commitPlan['canCommit'] = !in_array('RS-3', $rsList);
+        $commitPlan['canCommit'] = $canCommit;
         $commitPlan['actions'] = ['insert_location'];
         $commitPlan['summary'] = 'Insert new Location only';
         break;
@@ -999,8 +1003,8 @@ $entityName  = $data['entity']['entityName'] ?? 'Unknown Entity';
 $loc         = $data['location']['locationAddressRaw'] ?? 'Unknown Location';
 
 if (in_array('RS-3', $rsList)) {
-    $narratives['ui'] = "The proposal for {$entityName} is incomplete.\n\nContact name could not be determined or is invalid.\n\nThe proposal must be corrected before it can be accepted.";
-    $narratives['report'] = "Incomplete proposal for {$entityName}. Contact name is missing or invalid.";
+    $narratives['ui'] = "The proposal for {$entityName} is incomplete.\n\nRequired contact information is missing.\n\nThe proposal cannot be accepted until the missing fields are provided.";
+    $narratives['report'] = "Incomplete proposal for {$entityName}. Required contact information is missing.";
 } elseif (in_array('RS-6', $rsList)) {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nMultiple parcels were found. Parcel selection is required.";
     $narratives['report'] = "New proposal for {$contactName} at {$entityName}. Multiple parcels detected — selection required.";
