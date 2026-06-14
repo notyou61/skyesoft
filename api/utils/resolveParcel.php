@@ -4,11 +4,10 @@ declare(strict_types=1);
 /**
  * Skyesoft — Parcel Resolution Utility
  * Version: 4.1.0
- * Pure dynamic search - no hardcoding, no fallback
+ * Includes reliable MCA function directly (no external require)
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
-//require_once __DIR__ . '/resolveLocation.php';   // Your reliable MCA function
 
 function resolveParcel(
     ?float $latitude = null,
@@ -32,89 +31,142 @@ function resolveParcel(
         return $result;
     }
 
-    $original = $searchAddress;
-    $upper = strtoupper(trim($searchAddress));
+    // Extract street and city
+    $parts = explode(',', $searchAddress);
+    $street = trim($parts[0] ?? $searchAddress);
+    $city   = trim($parts[1] ?? 'Phoenix');
 
-    error_log('[RESOLVE-PARCEL] Original: ' . $original);
+    error_log('[RESOLVE-PARCEL] Looking up: ' . $searchAddress);
 
-    // Extremely aggressive search terms
-    $searchTerms = [
-        preg_replace('/[^A-Z0-9 ]/', '', $upper),                    // Broadest
-        preg_replace('/\b(RD|ROAD|ST|AVE|AV|BLVD|DR|LN|PL|WAY|CT)\b/', '', $upper),
-        preg_replace('/\b(E|W|N|S)\b/', '', $upper),
-        $upper,
+    // Call the reliable MCA function (included below)
+    $mcaResult = getMaricopaParcelFromAddress($street, $city);
+
+    if ($mcaResult && !empty($mcaResult['parcelNumber'])) {
+        $result['success'] = true;
+        $result['parcelCount'] = 1;
+        $result['parcelDetails'] = [[
+            'parcelNumber' => $mcaResult['parcelNumber'],
+            'ownerName'    => $mcaResult['ownerName'] ?? '',
+            'siteAddress'  => $searchAddress,
+            'city'         => $city,
+            'jurisdiction' => $mcaResult['jurisdiction'] ?? 'Phoenix',
+            'source'       => 'mca_official_search'
+        ]];
+
+        $result['jurisdictionName'] = $mcaResult['jurisdiction'] ?? 'Phoenix';
+        $result['jurisdictionType'] = 'City';
+
+        error_log('[RESOLVE-PARCEL] ✅ MCA Success — Parcel ' . $mcaResult['parcelNumber']);
+        return $result;
+    }
+
+    error_log('[RESOLVE-PARCEL] ❌ MCA lookup failed for ' . $searchAddress);
+    return $result;
+}
+
+/* =====================================================
+   RELIABLE MCA FUNCTION (included directly)
+   ===================================================== */
+function getMaricopaParcelFromAddress(
+    string $street,
+    string $city,
+    string $state = 'AZ',
+    string $zip = '',
+    string $suite = ''
+): ?array {
+
+    $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
+
+    if (empty($apiKey) || empty(trim($street)) || empty(trim($city))) {
+        error_log('[MCA] Missing API key or required inputs');
+        return null;
+    }
+
+    $street = trim($street);
+    $suite  = trim($suite);
+    $city   = trim($city);
+    $state  = strtoupper(trim($state));
+    $zip    = trim($zip);
+
+    $fullQuery = trim($street . ($suite ? ' ' . $suite : '') . ', ' . $city . ', ' . $state . ($zip ? ' ' . $zip : ''));
+
+    error_log('[MCA FULL QUERY] ' . $fullQuery);
+
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 12,
+            'header'  => "AUTHORIZATION: {$apiKey}\r\nUser-Agent: Skyesoft/1.0\r\n"
+        ]
+    ]);
+
+    $attempts = [
+        $fullQuery,
+        $street . ' ' . $city,
+        preg_replace('/\s*,\s*.*/', '', $street),
+        preg_replace('/\s+(RD|ST|AVE|AV|BLVD|DR|LN|PL|WAY|CT|HWY|PKWY|TER|CIR)$/i', '', $street)
     ];
 
-    // Dynamic "Number + Street Name"
-    if (preg_match('/(\d+)\s+([A-Z ]{3,})/', $upper, $m)) {
-        array_unshift($searchTerms, trim($m[1] . ' ' . $m[2]));
-    }
+    $attempts = array_unique(array_filter($attempts, fn($a) => trim($a) !== ''));
 
     $data = null;
 
-    foreach ($searchTerms as $term) {
-        $term = trim($term);
-        if (strlen($term) < 6) continue;
+    foreach ($attempts as $attempt) {
+        $query = urlencode(trim($attempt));
+        $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
 
-        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
-
-        $params = [
-            'where'          => $where,
-            'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-            'returnGeometry' => 'false',
-            'f'              => 'json'
-        ];
-
-        $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . http_build_query($params);
-
-        $context = stream_context_create(['http' => ['timeout' => 15]]);
         $response = @file_get_contents($url, false, $context);
 
-        if ($response !== false) {
-            $data = json_decode($response, true);
-            if (isset($data['features']) && count($data['features']) > 0) {
-                error_log('[RESOLVE-PARCEL] ✅ Success with term: "' . $term . '" (' . count($data['features']) . ' parcels)');
+        if ($response && stripos($response, '<html') === false) {
+            $decoded = json_decode($response, true);
+            if (is_array($decoded) && !empty($decoded['Results'])) {
+                $data = $decoded;
+                error_log('[MCA SUCCESS] with attempt: ' . $attempt);
                 break;
             }
         }
     }
 
-    if (empty($data['features'])) {
-        error_log('[RESOLVE-PARCEL] ❌ No parcels found for ' . $original);
-        return $result;
+    if (!$data || empty($data['Results'])) {
+        error_log('[MCA] No results for: ' . $fullQuery);
+        return null;
     }
 
-    // Build parcel list
-    $parcelDetails = [];
-    foreach ($data['features'] as $feature) {
-        $attr = $feature['attributes'] ?? [];
-        if (empty($attr['APN'])) continue;
+    // Extract target number
+    preg_match('/^\d+/', $street, $tNum);
+    $targetNumber = $tNum[0] ?? '';
 
-        $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
+    foreach ($data['Results'] as $r) {
+        $apiAddress = trim($r['SitusAddress'] ?? '');
+        if (empty($apiAddress)) continue;
 
-        $parcelDetails[] = [
-            'parcelNumber' => $apnRaw,
-            'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
-            'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
-            'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
-            'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
-            'source'       => 'mca_arcgis_mcassessor'
+        $apiUpper = strtoupper($apiAddress);
+        preg_match('/^\d+/', $apiUpper, $aNum);
+        $apiNumber = $aNum[0] ?? '';
+
+        if ($targetNumber && $apiNumber && $apiNumber !== $targetNumber) continue;
+
+        $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
+        if (strlen($apnRaw) < 8) continue;
+
+        if (preg_match('/^(\d{3})(\d{2})(\d{3})([A-Z]?)$/', $apnRaw, $m)) {
+            $formatted = "{$m[1]}-{$m[2]}-{$m[3]}{$m[4]}";
+        } else {
+            $formatted = $apnRaw;
+        }
+
+        $jurisdiction = ucwords(strtolower(trim($r['SitusCity'] ?? 'Phoenix')));
+
+        error_log('[MCA ACCEPTED] ' . $apiAddress . ' → ' . $formatted);
+
+        return [
+            'parcelNumber' => $formatted,
+            'jurisdiction' => $jurisdiction,
+            'ownerName'    => trim($r['OwnerName'] ?? '')
         ];
     }
 
-    $result['success']       = true;
-    $result['parcelCount']   = count($parcelDetails);
-    $result['parcelDetails'] = $parcelDetails;
-
-    if (!empty($parcelDetails)) {
-        $jurisdictionRaw = trim($parcelDetails[0]['jurisdiction'] ?? '');
-        $jurisdiction = resolveJurisdiction($jurisdictionRaw);
-
-        $result['jurisdictionName'] = $jurisdiction['label'] ?? ucwords(strtolower($jurisdictionRaw));
-        $result['jurisdictionType'] = $jurisdiction['jurisdictionType'] ?? 'City';
-    }
-
-    error_log('[RESOLVE-PARCEL] Resolved ' . $result['parcelCount'] . ' parcel(s) for ' . $original);
-
-    return $result;
+    error_log('[MCA] No valid match after filtering');
+    return null;
 }
+
+#endregion
