@@ -884,15 +884,15 @@ if (empty($pcm['rs'])) {
 // FINAL GOVERNANCE STATE — SAFE INITIALIZATION
 // =====================================================
 
-$pcm['blocksCommit']   = in_array('RS-5', $pcm['rs']) || 
-                         in_array('RS-6', $pcm['rs']) || 
-                         in_array('RS-7', $pcm['rs']) || 
-                         in_array('RS-8', $pcm['rs']) ||
-                         in_array('RS-3', $pcm['rs']);
+$blocksCommit = in_array('RS-5', $pcm['rs']) || 
+                in_array('RS-6', $pcm['rs']) || 
+                in_array('RS-7', $pcm['rs']) || 
+                in_array('RS-8', $pcm['rs']) ||
+                in_array('RS-3', $pcm['rs']);
 
-$pcm['readyForCommit'] = !$pcm['blocksCommit'];
+$readyForCommit = !$blocksCommit;
 
-$pcm['requiresReview'] = !(
+$requiresReview = !(
     count($pcm['rs']) === 1 && 
     $pcm['rs'][0] === 'RS-0'
 );
@@ -911,7 +911,7 @@ $pcm = [
 error_log(
     '[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] .
     ' | RS=[' . implode(', ', $pcm['rs']) . ']' .
-    ' | Blocks=' . ($pcm['blocksCommit'] ? 'YES' : 'NO')
+    ' | Blocks=' . ($blocksCommit ? 'YES' : 'NO')
 );
 
 $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
