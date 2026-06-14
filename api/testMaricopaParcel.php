@@ -8,8 +8,8 @@ require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
 // #region 📍 Test Address
-$rawAddress = '7401 E CAMELBACK RD SCOTTSDALE AZ 85251';
-// $rawAddress = '3145 N 33rd Ave Phoenix AZ 85017';
+//$rawAddress = '7401 E CAMELBACK RD SCOTTSDALE AZ 85251';
+$rawAddress = '3145 N 33rd Ave Phoenix AZ 85017';
 // #endregion
 
 echo "Testing address: " . $rawAddress . "\n\n";
