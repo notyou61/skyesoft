@@ -12,65 +12,45 @@ $rawAddress = '7401 E CAMELBACK RD SCOTTSDALE AZ 85251';
 // $rawAddress = '3145 N 33rd Ave Phoenix AZ 85017';
 // #endregion
 
-$original = $rawAddress;
-$upper = strtoupper(trim($rawAddress));
-
-error_log('=== PARCEL TEST START ===');
-error_log('Original Address: ' . $original);
-
-// Multi-stage normalization
-$normalized = $upper;
-$normalized = str_replace([', USA', ','], ' ', $normalized);
-$normalized = preg_replace('/\s+/', ' ', $normalized);
-
-$searchTerms = [
-    $normalized,
-    preg_replace('/\b(E|W|N|S)\b/', '', $normalized),
-    preg_replace('/\b(RD|ROAD|ST|AVE|BLVD)\b/', '', $normalized),
-    preg_replace('/[^A-Z0-9 ]/', '', $normalized)
-];
-
 echo "Testing address: " . $rawAddress . "\n\n";
 
-$data = null;
+// Try search endpoint first
+$searchQuery = urlencode($rawAddress);
 
-foreach ($searchTerms as $term) {
-    echo "Trying term: " . $term . "\n";
+$url = 'https://mcassessor.maricopa.gov/search/property/?q=' . $searchQuery;
 
-    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
+echo "Search URL: " . $url . "\n";
 
-    $params = http_build_query([
-        'where'          => $where,
-        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-        'returnGeometry' => 'false',
-        'f'              => 'json'
-    ]);
+$response = @file_get_contents($url);
 
-    $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
-
-    echo "URL: " . $url . "\n";
-
-    $response = @file_get_contents($url);
-
-    if ($response === false) {
-        echo "Request failed.\n\n";
-        continue;
-    }
-
-    $data = json_decode($response, true);
-
-    $count = isset($data['features']) ? count($data['features']) : 0;
-    echo "Results found: " . $count . "\n\n";
-
-    if ($count > 0) {
-        echo "SUCCESS with term: " . $term . "\n";
-        break;
-    }
+if ($response === false) {
+    echo "Request failed.\n";
+    exit;
 }
 
-if (isset($data['features']) && count($data['features']) > 0) {
-    echo json_encode($data['features'], JSON_PRETTY_PRINT);
+$data = json_decode($response, true);
+
+$candidateCount = isset($data['results']) ? count($data['results']) : 0;
+
+echo "Results found: " . $candidateCount . "\n\n";
+
+if ($candidateCount > 0) {
+    echo json_encode($data['results'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 } else {
-    echo "No results found for any search term.\n";
-    echo "Raw response preview: " . substr($response ?? '', 0, 500);
+    echo "No results from /search/property\n";
+    echo "Raw response preview: " . substr($response, 0, 800) . "...\n";
+}
+
+// Optional: Try direct parcel lookup if we have an APN
+if (isset($data['results'][0]['apn'])) {
+    $apn = $data['results'][0]['apn'];
+    $detailUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
+    echo "\nTrying direct parcel details: " . $detailUrl . "\n";
+    
+    $detailResponse = @file_get_contents($detailUrl);
+    if ($detailResponse !== false) {
+        $detail = json_decode($detailResponse, true);
+        echo "Parcel Details:\n";
+        echo json_encode($detail, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
 }
