@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 3.5.0
+ * Version: 3.6.0
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -25,37 +25,25 @@ function resolveParcel(
         'jurisdictionKey'  => null
     ];
 
-    if (
-        $countyFips !== '013' &&
-        strtolower($county ?? '') !== 'maricopa'
-    ) {
-        error_log('[RESOLVE-PARCEL] Skipping non-Maricopa county');
-        return $result;
-    }
-
     if (!$searchAddress) {
         error_log('[RESOLVE-PARCEL] No searchAddress provided');
         return $result;
     }
 
     // =====================================================
-    // NORMALIZE ADDRESS
+    // NORMALIZE ADDRESS (More flexible)
     // =====================================================
     $normalized = strtoupper(trim($searchAddress));
-    $normalized = str_replace([', USA', ','], ' ', $normalized);
+    $normalized = str_replace([', USA', ',', '  '], ' ', $normalized);
     $normalized = preg_replace('/\s+/', ' ', $normalized);
-    $normalized = preg_split('/\bPHOENIX\b|\bAZ\b|\d{5}/', $normalized)[0] ?? $normalized;
-    $normalized = trim($normalized);
 
-    if (strlen($normalized) < 5) {
-        error_log('[RESOLVE-PARCEL] Normalized address too short');
-        return $result;
-    }
+    error_log('[RESOLVE-PARCEL] Original: ' . $searchAddress);
+    error_log('[RESOLVE-PARCEL] Normalized: ' . $normalized);
 
     // =====================================================
-    // MCA ASSESSOR QUERY
+    // MCA ASSESSOR QUERY - Broader matching
     // =====================================================
-    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
+    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . 
              str_replace("'", "''", $normalized) . "%')";
 
     $params = [
@@ -68,7 +56,7 @@ function resolveParcel(
     $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' .
            http_build_query($params);
 
-    $context = stream_context_create(['http' => ['timeout' => 12]]);
+    $context = stream_context_create(['http' => ['timeout' => 15]]);
     $response = @file_get_contents($url, false, $context);
 
     if ($response === false) {
@@ -77,6 +65,7 @@ function resolveParcel(
     }
 
     $data = json_decode($response, true);
+
     if (!isset($data['features']) || !is_array($data['features'])) {
         error_log('[RESOLVE-PARCEL] Invalid ArcGIS response');
         return $result;
@@ -90,7 +79,7 @@ function resolveParcel(
         $attr = $feature['attributes'] ?? [];
         if (empty($attr['APN'])) continue;
 
-        $apnRaw = strtoupper(preg_replace('/[^A-Z0-9]/', '', $attr['APN']));
+        $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
 
         $parcelDetails[] = [
             'parcelNumber' => $apnRaw,
@@ -107,40 +96,19 @@ function resolveParcel(
     $result['parcelDetails'] = $parcelDetails;
 
     // =====================================================
-    // JURISDICTION RESOLUTION (Improved)
+    // JURISDICTION RESOLUTION
     // =====================================================
     if (!empty($parcelDetails)) {
         $jurisdictionRaw = trim($parcelDetails[0]['jurisdiction'] ?? '');
 
-        error_log('[RESOLVE-PARCEL] Raw jurisdiction from parcel: ' . $jurisdictionRaw);
-
         $jurisdiction = resolveJurisdiction($jurisdictionRaw);
-        // NEW DIAGNOSTIC
-        error_log('[RESOLVE-PARCEL] resolveJurisdiction returned: ' . 
-            json_encode($jurisdiction, JSON_PRETTY_PRINT));
-
-        $result['jurisdictionName'] = $jurisdiction['label'] ?? null;
-        $result['jurisdictionType'] = $jurisdiction['jurisdictionType'] ?? null;
 
         $result['jurisdictionName'] = $jurisdiction['label'] ?? ucwords(strtolower($jurisdictionRaw));
         $result['jurisdictionType'] = $jurisdiction['jurisdictionType'] ?? null;
         $result['jurisdictionKey']  = $jurisdiction['jurisdictionKey'] ?? null;
-
-        error_log(
-            '[RESOLVE-PARCEL] Resolved jurisdiction: ' .
-            $jurisdictionRaw . ' → ' .
-            ($result['jurisdictionName'] ?? 'NULL') .
-            ' (Type: ' . ($result['jurisdictionType'] ?? 'NULL') .
-            ', Key: ' . ($result['jurisdictionKey'] ?? 'NULL') . ')'
-        );
     }
 
-    // TEMPORARY FORCE FOR TESTING
-    if ($result['jurisdictionName'] === 'Phoenix' && empty($result['jurisdictionType'])) {
-        $result['jurisdictionType'] = 'City';
-        error_log('[RESOLVE-PARCEL] FORCED jurisdictionType = City for Phoenix');
-    }
+    error_log('[RESOLVE-PARCEL] Resolved ' . $result['parcelCount'] . ' parcel(s) for address: ' . $searchAddress);
 
-    error_log('[RESOLVE-PARCEL] Resolved ' . $result['parcelCount'] . ' parcel(s)');
     return $result;
 }
