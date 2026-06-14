@@ -876,16 +876,13 @@ $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 
 #region SECTION 13 — Commit Plan Builder
 
-// =====================================================
-// Commit Plan Builder — Deterministic Execution Plan
-// =====================================================
-
 $commitPlan = [
     'canCommit' => false,
     'entity'    => [],
     'location'  => [],
     'contact'   => [],
-    'actions'   => []
+    'actions'   => [],
+    'summary'   => ''
 ];
 
 $pc = $pcm['pc'] ?? 'PC-UNKNOWN';
@@ -894,46 +891,32 @@ error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc}");
 
 switch ($pc) {
     case 'PC-0':
-        // Existing ELC - No database changes needed
-        $commitPlan['canCommit'] = false;
+        $commitPlan['canCommit'] = false;   // Nothing to do
         $commitPlan['actions'] = ['link_existing_elc'];
-        $commitPlan['entity']['action']   = 'link';
-        $commitPlan['location']['action'] = 'link';
-        $commitPlan['contact']['action']  = 'link';
         $commitPlan['summary'] = 'No database changes required - ELC already exists';
         break;
 
     case 'PC-1':
-        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['canCommit'] = true;    // RS-0 = acceptable
         $commitPlan['actions'] = ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'];
-        $commitPlan['entity']['action']   = 'insert';
-        $commitPlan['location']['action'] = 'insert';
-        $commitPlan['contact']['action']  = 'insert';
         $commitPlan['summary'] = 'Insert new Entity, Location, Contact and establish relationships';
         break;
 
     case 'PC-2':
-        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['canCommit'] = true;
         $commitPlan['actions'] = ['link_entity', 'insert_location', 'insert_contact', 'link_elc'];
-        $commitPlan['entity']['action']   = 'link';
-        $commitPlan['location']['action'] = 'insert';
-        $commitPlan['contact']['action']  = 'insert';
         $commitPlan['summary'] = 'Link existing Entity, Insert new Location + Contact';
         break;
 
     case 'PC-3':
-        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['canCommit'] = true;
         $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact'];
-        $commitPlan['entity']['action']   = 'link';
-        $commitPlan['location']['action'] = 'link';
-        $commitPlan['contact']['action']  = 'insert';
         $commitPlan['summary'] = 'Link existing Entity + Location, Insert new Contact';
         break;
 
     case 'PC-4':
-        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
+        $commitPlan['canCommit'] = true;
         $commitPlan['actions'] = ['insert_location'];
-        $commitPlan['location']['action'] = 'insert';
         $commitPlan['summary'] = 'Insert new Location only';
         break;
 
@@ -948,17 +931,18 @@ if (!empty($databaseResolution['entity']['entityId'])) {
 }
 if (!empty($databaseResolution['location']['locationId'])) {
     $commitPlan['location']['locationId'] = $databaseResolution['location']['locationId'];
-    $commitPlan['location']['locationParcelNumberRaw'] = 
-        $databaseResolution['location']['locationParcelNumberRaw'] ?? null;
+    $commitPlan['location']['locationParcelNumberRaw'] = $databaseResolution['location']['locationParcelNumberRaw'] ?? null;
 }
 
-error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO') . " | Actions=[" . implode(', ', $commitPlan['actions']) . "]");
+error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
 
 #endregion
 
 #region SECTION 14 — Narrative Builder + UI State
 
-// UI State
+// =====================================================
+// UI State Builder
+// =====================================================
 $uiState = [
     'proposalStatus' => 'proposed',
     'canAccept'      => false,
@@ -973,48 +957,38 @@ $rsList = $pcm['rs'] ?? [];
 if ($pc === 'PC-0') {
     $uiState['proposalStatus'] = 'existing';
     $uiState['canAccept'] = $uiState['canReject'] = $uiState['canEdit'] = $uiState['canCommit'] = false;
-} elseif (in_array('RS-6', $rsList)) {
-    $uiState['proposalStatus'] = 'multiple_parcels';
-    $uiState['canAccept'] = false;
-    $uiState['canCommit'] = false;
-} elseif (in_array('RS-7', $rsList) || in_array('RS-3', $rsList)) {
-    $uiState['proposalStatus'] = in_array('RS-7', $rsList) ? 'unresolved_parcel' : 'incomplete';
+} elseif (in_array('RS-6', $rsList) || in_array('RS-7', $rsList) || in_array('RS-3', $rsList)) {
+    $uiState['proposalStatus'] = in_array('RS-6', $rsList) ? 'multiple_parcels' : (in_array('RS-7', $rsList) ? 'unresolved_parcel' : 'incomplete');
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
 } else {
-    $uiState['canAccept'] = $commitPlan['canCommit'] ?? false;
-    $uiState['canCommit'] = $uiState['canAccept'];
+    // RS-0 or acceptable cases
+    $uiState['canAccept'] = true;
+    $uiState['canCommit'] = true;
 }
 
-// Simple deterministic narratives (fast & reliable)
+error_log("[PPC][SECTION-14] UI State → proposalStatus=" . $uiState['proposalStatus'] . " | canAccept=" . ($uiState['canAccept'] ? 'YES' : 'NO'));
+
+// Narratives (keep your current good version or the one I gave last time)
+
+$narratives = ['ui' => null, 'report' => null];
+
 $contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
 $entityName  = $data['entity']['entityName'] ?? 'Unknown Entity';
 $loc         = $data['location']['locationAddressRaw'] ?? 'Unknown Location';
-$parcelCount = $data['location']['parcelCount'] ?? 0;
 
 if (in_array('RS-6', $rsList)) {
-    $narratives = [
-        'ui' => "{$contactName} was identified for {$entityName} at {$loc}.\n\nMultiple parcels ({$parcelCount}) were found. Parcel selection is required.",
-        'report' => "Proposal for {$contactName} at {$entityName}. Multiple parcels detected — selection required."
-    ];
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nMultiple parcels were found. Parcel selection is required.";
 } elseif (in_array('RS-7', $rsList)) {
-    $narratives = [
-        'ui' => "{$contactName} was identified for {$entityName} at {$loc}.\n\nThe location could not be matched to a specific parcel.\n\nParcel resolution is required.",
-        'report' => "Proposal for {$contactName} at {$entityName}. Parcel resolution needed."
-    ];
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nParcel resolution is required.";
 } elseif ($pc === 'PC-0') {
-    $narratives = [
-        'ui' => "{$contactName} was identified for {$entityName} at {$loc}.\n\nAll records already exist. No action required.",
-        'report' => "Existing record match."
-    ];
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nAll records already exist. No action required.";
 } else {
-    $narratives = [
-        'ui' => "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.",
-        'report' => "New proposal for {$contactName} at {$entityName}."
-    ];
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.";
+    $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}.";
 }
 
-error_log('[PPC][SECTION-14] Narrative Builder complete (deterministic)');
+error_log('[PPC][SECTION-14] Narrative Builder complete');
 
 #endregion
 
