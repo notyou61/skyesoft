@@ -888,69 +888,71 @@ $commitPlan = [
     'actions'   => []
 ];
 
-$pc = (isset($pcm['pc']) ? $pcm['pc'] : 'PC-UNKNOWN');
+$pc = $pcm['pc'] ?? 'PC-UNKNOWN';
 
 error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc}");
 
 switch ($pc) {
     case 'PC-0':
-        $commitPlan['canCommit'] = true;
+        // Existing ELC - No database changes needed
+        $commitPlan['canCommit'] = false;
         $commitPlan['actions'] = ['link_existing_elc'];
         $commitPlan['entity']['action']   = 'link';
         $commitPlan['location']['action'] = 'link';
         $commitPlan['contact']['action']  = 'link';
+        $commitPlan['summary'] = 'No database changes required - ELC already exists';
         break;
 
     case 'PC-1':
-        $commitPlan['canCommit'] = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
+        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
         $commitPlan['actions'] = ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['entity']['action']   = 'insert';
         $commitPlan['location']['action'] = 'insert';
         $commitPlan['contact']['action']  = 'insert';
+        $commitPlan['summary'] = 'Insert new Entity, Location, Contact and establish relationships';
         break;
 
     case 'PC-2':
-        $commitPlan['canCommit'] = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
+        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
         $commitPlan['actions'] = ['link_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['entity']['action']   = 'link';
         $commitPlan['location']['action'] = 'insert';
         $commitPlan['contact']['action']  = 'insert';
+        $commitPlan['summary'] = 'Link existing Entity, Insert new Location + Contact';
         break;
 
     case 'PC-3':
-        $commitPlan['canCommit'] = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
+        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
         $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact'];
         $commitPlan['entity']['action']   = 'link';
         $commitPlan['location']['action'] = 'link';
         $commitPlan['contact']['action']  = 'insert';
+        $commitPlan['summary'] = 'Link existing Entity + Location, Insert new Contact';
         break;
 
     case 'PC-4':
-        $commitPlan['canCommit'] = (isset($pcm['readyForCommit']) ? $pcm['readyForCommit'] : false);
+        $commitPlan['canCommit'] = $pcm['readyForCommit'] ?? false;
         $commitPlan['actions'] = ['insert_location'];
         $commitPlan['location']['action'] = 'insert';
+        $commitPlan['summary'] = 'Insert new Location only';
         break;
 
     default:
-        $commitPlan['actions'] = [];
+        $commitPlan['summary'] = 'Unknown PC type';
         break;
 }
 
-// Attach IDs
+// Attach IDs where available
 if (!empty($databaseResolution['entity']['entityId'])) {
     $commitPlan['entity']['entityId'] = $databaseResolution['entity']['entityId'];
 }
 if (!empty($databaseResolution['location']['locationId'])) {
     $commitPlan['location']['locationId'] = $databaseResolution['location']['locationId'];
     $commitPlan['location']['locationParcelNumberRaw'] = 
-        (isset($databaseResolution['location']['locationParcelNumberRaw']) ? $databaseResolution['location']['locationParcelNumberRaw'] : null);
+        $databaseResolution['location']['locationParcelNumberRaw'] ?? null;
 }
 
-if (isset($pcm['blocksCommit']) && $pcm['blocksCommit']) {
-    $commitPlan['canCommit'] = false;
-}
-
-error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
+error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO') . " | Actions=[" . implode(', ', $commitPlan['actions']) . "]");
 
 #endregion
 
