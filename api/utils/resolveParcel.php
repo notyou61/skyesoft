@@ -4,11 +4,11 @@ declare(strict_types=1);
 /**
  * Skyesoft — Parcel Resolution Utility
  * Version: 4.1.0
- * Aggressive dynamic search - no hardcoding
+ * Pure dynamic search - no hardcoding, no fallback
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
-require_once __DIR__ . '/resolveLocation.php';   // ← Make sure this is included
+require_once __DIR__ . '/resolveLocation.php';   // Your reliable MCA function
 
 function resolveParcel(
     ?float $latitude = null,
@@ -39,13 +39,13 @@ function resolveParcel(
 
     // Extremely aggressive search terms
     $searchTerms = [
-        preg_replace('/[^A-Z0-9 ]/', '', $upper),                    // Broadest possible
-        preg_replace('/\b(RD|ROAD|ST|AVE|AV|BLVD|DR|LN|PL|WAY|CT|PKWY)\b/', '', $upper),
+        preg_replace('/[^A-Z0-9 ]/', '', $upper),                    // Broadest
+        preg_replace('/\b(RD|ROAD|ST|AVE|AV|BLVD|DR|LN|PL|WAY|CT)\b/', '', $upper),
         preg_replace('/\b(E|W|N|S)\b/', '', $upper),
         $upper,
     ];
 
-    // Dynamic "Number + Street Name" - most effective
+    // Dynamic "Number + Street Name"
     if (preg_match('/(\d+)\s+([A-Z ]{3,})/', $upper, $m)) {
         array_unshift($searchTerms, trim($m[1] . ' ' . $m[2]));
     }
@@ -73,7 +73,7 @@ function resolveParcel(
         if ($response !== false) {
             $data = json_decode($response, true);
             if (isset($data['features']) && count($data['features']) > 0) {
-                error_log('[RESOLVE-PARCEL] ✅ SUCCESS with term: "' . $term . '" (' . count($data['features']) . ' parcels)');
+                error_log('[RESOLVE-PARCEL] ✅ Success with term: "' . $term . '" (' . count($data['features']) . ' parcels)');
                 break;
             }
         }
