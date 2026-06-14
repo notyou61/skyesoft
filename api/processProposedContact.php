@@ -912,36 +912,37 @@ $commitPlan = [
 ];
 
 $pc = $pcm['pc'] ?? 'PC-UNKNOWN';
+$rsList = $pcm['rs'] ?? [];
 
 error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc}");
 
 switch ($pc) {
     case 'PC-0':
-        $commitPlan['canCommit'] = false;   // Nothing to do
+        $commitPlan['canCommit'] = false;
         $commitPlan['actions'] = ['link_existing_elc'];
         $commitPlan['summary'] = 'No database changes required - ELC already exists';
         break;
 
     case 'PC-1':
-        $commitPlan['canCommit'] = true;    // RS-0 = acceptable
+        $commitPlan['canCommit'] = !in_array('RS-3', $rsList);
         $commitPlan['actions'] = ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['summary'] = 'Insert new Entity, Location, Contact and establish relationships';
         break;
 
     case 'PC-2':
-        $commitPlan['canCommit'] = true;
+        $commitPlan['canCommit'] = !in_array('RS-3', $rsList);
         $commitPlan['actions'] = ['link_entity', 'insert_location', 'insert_contact', 'link_elc'];
         $commitPlan['summary'] = 'Link existing Entity, Insert new Location + Contact';
         break;
 
     case 'PC-3':
-        $commitPlan['canCommit'] = true;
+        $commitPlan['canCommit'] = !in_array('RS-3', $rsList);
         $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact'];
         $commitPlan['summary'] = 'Link existing Entity + Location, Insert new Contact';
         break;
 
     case 'PC-4':
-        $commitPlan['canCommit'] = true;
+        $commitPlan['canCommit'] = !in_array('RS-3', $rsList);
         $commitPlan['actions'] = ['insert_location'];
         $commitPlan['summary'] = 'Insert new Location only';
         break;
@@ -966,9 +967,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #region SECTION 14 — Narrative Builder + UI State
 
-// =====================================================
-// UI State Builder
-// =====================================================
+// UI State
 $uiState = [
     'proposalStatus' => 'proposed',
     'canAccept'      => false,
@@ -983,32 +982,31 @@ $rsList = $pcm['rs'] ?? [];
 if ($pc === 'PC-0') {
     $uiState['proposalStatus'] = 'existing';
     $uiState['canAccept'] = $uiState['canReject'] = $uiState['canEdit'] = $uiState['canCommit'] = false;
-} elseif (in_array('RS-6', $rsList) || in_array('RS-7', $rsList) || in_array('RS-3', $rsList)) {
+} elseif (in_array('RS-3', $rsList) || in_array('RS-6', $rsList) || in_array('RS-7', $rsList)) {
     $uiState['proposalStatus'] = in_array('RS-6', $rsList) ? 'multiple_parcels' : (in_array('RS-7', $rsList) ? 'unresolved_parcel' : 'incomplete');
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
 } else {
-    // RS-0 or acceptable cases
     $uiState['canAccept'] = true;
     $uiState['canCommit'] = true;
 }
 
-error_log("[PPC][SECTION-14] UI State → proposalStatus=" . $uiState['proposalStatus'] . " | canAccept=" . ($uiState['canAccept'] ? 'YES' : 'NO'));
-
-// Narratives (keep your current good version or the one I gave last time)
-
+// Narratives
 $narratives = ['ui' => null, 'report' => null];
 
 $contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
 $entityName  = $data['entity']['entityName'] ?? 'Unknown Entity';
 $loc         = $data['location']['locationAddressRaw'] ?? 'Unknown Location';
 
-if (in_array('RS-6', $rsList)) {
+if (in_array('RS-3', $rsList)) {
+    $narratives['ui'] = "The proposal for {$entityName} is incomplete.\n\nContact name could not be determined or is invalid.\n\nThe proposal must be corrected before it can be accepted.";
+    $narratives['report'] = "Incomplete proposal for {$entityName}. Contact name is missing or invalid.";
+} elseif (in_array('RS-6', $rsList)) {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nMultiple parcels were found. Parcel selection is required.";
-} elseif (in_array('RS-7', $rsList)) {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nParcel resolution is required.";
+    $narratives['report'] = "New proposal for {$contactName} at {$entityName}. Multiple parcels detected — selection required.";
 } elseif ($pc === 'PC-0') {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nAll records already exist. No action required.";
+    $narratives['report'] = "Existing record match.";
 } else {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.";
     $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}.";
