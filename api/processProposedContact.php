@@ -793,17 +793,34 @@ $missingRequired = [];
 $governanceIssues = [];
 
 // Entity
-if (empty($data['entity']['entityName'] ?? '')) {
+if (empty(trim($data['entity']['entityName'] ?? ''))) {
     $missingRequired[] = 'entity.name';
 }
 
-// === NEW: Contact Name Validation (Critical) ===
-$contactFullName = trim(
-    ($data['contact']['contactFirstName'] ?? '') . ' ' . 
-    ($data['contact']['contactLastName'] ?? '')
-);
-$entityName = trim($data['entity']['entityName'] ?? '');
+// === Contact Name Validation (Fixed) ===
+$contactFirstName = trim($data['contact']['contactFirstName'] ?? '');
+$contactLastName  = trim($data['contact']['contactLastName'] ?? '');
 
+if (empty($contactFirstName)) {
+    $missingRequired[] = 'contact.firstName';
+    $governanceIssues[] = [
+        'code' => 'RS-3',
+        'message' => 'Contact first name is required',
+        'fields' => ['contact.firstName']
+    ];
+}
+if (empty($contactLastName)) {
+    $missingRequired[] = 'contact.lastName';
+    $governanceIssues[] = [
+        'code' => 'RS-3',
+        'message' => 'Contact last name is required',
+        'fields' => ['contact.lastName']
+    ];
+}
+
+// Contact name == Entity name protection (kept from your version)
+$contactFullName = trim($contactFirstName . ' ' . $contactLastName);
+$entityName = trim($data['entity']['entityName'] ?? '');
 if (empty($contactFullName) || strcasecmp($contactFullName, $entityName) === 0) {
     $missingRequired[] = 'contact.name';
     $governanceIssues[] = [
@@ -814,15 +831,15 @@ if (empty($contactFullName) || strcasecmp($contactFullName, $entityName) === 0) 
 }
 
 // Location basics
-if (empty($data['location']['locationAddress'] ?? '')) $missingRequired[] = 'location.address';
-if (empty($data['location']['locationCity'] ?? '')) $missingRequired[] = 'location.city';
-if (empty($data['location']['locationState'] ?? '')) $missingRequired[] = 'location.state';
-if (empty($data['location']['locationZip'] ?? '')) $missingRequired[] = 'location.zip';
+if (empty(trim($data['location']['locationAddress'] ?? ''))) $missingRequired[] = 'location.address';
+if (empty(trim($data['location']['locationCity'] ?? ''))) $missingRequired[] = 'location.city';
+if (empty(trim($data['location']['locationState'] ?? ''))) $missingRequired[] = 'location.state';
+if (empty(trim($data['location']['locationZip'] ?? ''))) $missingRequired[] = 'location.zip';
 
 // Contact fields for PC-1/2/3
 if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'])) {
-    if (empty($data['contact']['contactEmail'] ?? '')) $missingRequired[] = 'contact.email';
-    if (empty($data['contact']['contactPrimaryPhone'] ?? '')) $missingRequired[] = 'contact.primaryPhone';
+    if (empty(trim($data['contact']['contactEmail'] ?? ''))) $missingRequired[] = 'contact.email';
+    if (empty(trim($data['contact']['contactPrimaryPhone'] ?? ''))) $missingRequired[] = 'contact.primaryPhone';
 }
 
 // Validation + Parcel
@@ -835,11 +852,14 @@ if (!empty($missingRequired)) {
         $pcm['rs'][] = 'RS-3';
         $pcm['rsStatuses'][] = 'incomplete_proposal';
     }
-    $governanceIssues[] = [
-        'code' => 'RS-3',
-        'message' => 'Incomplete proposal - required fields are missing',
-        'fields' => $missingRequired
-    ];
+    // Only add generic issue if no specific ones were added
+    if (empty($governanceIssues)) {
+        $governanceIssues[] = [
+            'code' => 'RS-3',
+            'message' => 'Incomplete proposal - required fields are missing',
+            'fields' => $missingRequired
+        ];
+    }
 }
 
 // RS-5 Duplicate Contact
