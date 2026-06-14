@@ -772,34 +772,17 @@ $contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
 error_log("[PPC][SECTION-12] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus");
 
 if ($isExplicitLocationOnlyIntent === true) {
-    $pcm['pc']       = 'PC-4';
-    $pcm['pcStatus'] = 'proposed_location';
-    $pcm['action']   = 'create_location_only';
-
+    $pcm['pc'] = 'PC-4';
 } elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
-    $pcm['pc']       = 'PC-0';
-    $pcm['pcStatus'] = 'existing_elc';
-    $pcm['action']   = 'link_existing_elc';
-
+    $pcm['pc'] = 'PC-0';
 } elseif ($contactStatus === 'exact') {
-    $pcm['pc']       = 'PC-3';
-    $pcm['pcStatus'] = 'existing_location';
-    $pcm['action']   = 'reject_duplicate';
-
+    $pcm['pc'] = 'PC-3';
 } elseif ($locationStatus === 'exact') {
-    $pcm['pc']       = 'PC-3';
-    $pcm['pcStatus'] = 'existing_location';
-    $pcm['action']   = 'link_existing_location';
-
+    $pcm['pc'] = 'PC-3';
 } elseif ($entityStatus === 'exact') {
-    $pcm['pc']       = 'PC-2';
-    $pcm['pcStatus'] = 'existing_entity_new_location';
-    $pcm['action']   = 'link_existing_entity';
-
+    $pcm['pc'] = 'PC-2';
 } else {
-    $pcm['pc']       = 'PC-1';
-    $pcm['pcStatus'] = 'new_elc';
-    $pcm['action']   = 'insert_new';
+    $pcm['pc'] = 'PC-1';
 }
 
 // =====================================================
@@ -809,18 +792,13 @@ if ($isExplicitLocationOnlyIntent === true) {
 $missingRequired = [];
 $governanceIssues = [];
 
-// Entity
-if (empty($data['entity']['entityName'] ?? '')) {
-    $missingRequired[] = 'entity.name';
-}
-
-// Location basics
+// Basic required fields
+if (empty($data['entity']['entityName'] ?? '')) $missingRequired[] = 'entity.name';
 if (empty($data['location']['locationAddress'] ?? '')) $missingRequired[] = 'location.address';
 if (empty($data['location']['locationCity'] ?? '')) $missingRequired[] = 'location.city';
 if (empty($data['location']['locationState'] ?? '')) $missingRequired[] = 'location.state';
 if (empty($data['location']['locationZip'] ?? '')) $missingRequired[] = 'location.zip';
 
-// Contact (for PC-1/2/3)
 if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'])) {
     if (empty($data['contact']['contactFirstName'] ?? '')) $missingRequired[] = 'contact.firstName';
     if (empty($data['contact']['contactLastName'] ?? '')) $missingRequired[] = 'contact.lastName';
@@ -828,60 +806,48 @@ if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'])) {
     if (empty($data['contact']['contactPrimaryPhone'] ?? '')) $missingRequired[] = 'contact.primaryPhone';
 }
 
-// Validation + Parcel
-if (empty($data['location']['locationValidated'] ?? false)) $missingRequired[] = 'location.validation';
-if (empty($data['location']['locationCensusValidated'] ?? false)) $missingRequired[] = 'location.census';
-
-// RS-3 — Incomplete Proposal
+// RS-3 Incomplete Proposal
 if (!empty($missingRequired)) {
     $pcm['rs'][] = 'RS-3';
-    $pcm['rsStatuses'][] = 'incomplete_proposal';
-
     $governanceIssues[] = [
-        'code'    => 'RS-3',
+        'code' => 'RS-3',
         'message' => 'Incomplete proposal - required fields are missing',
-        'fields'  => $missingRequired
+        'fields' => $missingRequired
     ];
 }
 
-// RS-5 — Duplicate Contact
+// RS-5 Duplicate Contact
 if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
     $pcm['rs'][] = 'RS-5';
-    $pcm['rsStatuses'][] = 'duplicate_contact';
+    $governanceIssues[] = ['code' => 'RS-5', 'message' => 'Duplicate contact detected'];
 }
 
-// RS-6 — Multiple Parcels
+// RS-6 Multiple Parcels
 if (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1) {
     $pcm['rs'][] = 'RS-6';
-    $pcm['rsStatuses'][] = 'multiple_parcels';
-
     $governanceIssues[] = [
-        'code'    => 'RS-6',
+        'code' => 'RS-6',
         'message' => 'Multiple parcels found for this address - selection required',
-        'details' => [
-            'parcelCount' => $data['location']['parcelCount'] ?? 0
-        ]
+        'details' => ['parcelCount' => $data['location']['parcelCount'] ?? 0]
     ];
 }
 
-// RS-7 — Unresolved Parcel
+// RS-7 Unresolved Parcel
 if (strtolower($data['location']['locationCounty'] ?? '') === 'maricopa' && 
     ($data['location']['parcelCount'] ?? 0) === 0) {
     $pcm['rs'][] = 'RS-7';
-    $pcm['rsStatuses'][] = 'unresolved_parcel';
     $governanceIssues[] = ['code' => 'RS-7', 'message' => 'Parcel could not be resolved'];
 }
 
-// RS-8 — Invalid Location
+// RS-8 Invalid Location
 if (empty($data['location']['locationPlaceId'] ?? null)) {
     $pcm['rs'][] = 'RS-8';
-    $pcm['rsStatuses'][] = 'invalid_location';
+    $governanceIssues[] = ['code' => 'RS-8', 'message' => 'Invalid location'];
 }
 
 // Default RS-0
 if (empty($pcm['rs'])) {
     $pcm['rs'] = ['RS-0'];
-    $pcm['rsStatuses'] = ['acceptable'];
 }
 
 // =====================================================
@@ -894,26 +860,15 @@ $blocksCommit = in_array('RS-3', $pcm['rs']) ||
                 in_array('RS-7', $pcm['rs']) || 
                 in_array('RS-8', $pcm['rs']);
 
-$readyForCommit = !$blocksCommit;
-
-$requiresReview = count($pcm['rs']) > 1 || !in_array('RS-0', $pcm['rs']);
-
-// Governance object for UI
-$governance = [
-    'blockingIssues' => $governanceIssues
-];
+$governance = ['blockingIssues' => $governanceIssues];
 
 // Simplify PCM for output
 $pcm = [
-    'pc' => $pcm['pc'] ?? 'PC-UNKNOWN',
-    'rs' => $pcm['rs'] ?? ['RS-0']
+    'pc' => $pcm['pc'],
+    'rs' => $pcm['rs']
 ];
 
-error_log(
-    '[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] .
-    ' | RS=[' . implode(', ', $pcm['rs']) . ']' .
-    ' | Blocks=' . ($blocksCommit ? 'YES' : 'NO')
-);
+error_log('[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] . ' | RS=[' . implode(', ', $pcm['rs']) . '] | Blocks=' . ($blocksCommit ? 'YES' : 'NO'));
 
 $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
 
@@ -1001,9 +956,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #region SECTION 14 — Narrative Builder + UI State
 
-// =====================================================
-// UI State Builder
-// =====================================================
+// UI State
 $uiState = [
     'proposalStatus' => 'proposed',
     'canAccept'      => false,
@@ -1012,8 +965,8 @@ $uiState = [
     'canCommit'      => false
 ];
 
-$pc = isset($pcm['pc']) ? $pcm['pc'] : 'UNKNOWN';
-$rsList = isset($pcm['rs']) ? $pcm['rs'] : [];
+$pc = $pcm['pc'] ?? 'UNKNOWN';
+$rsList = $pcm['rs'] ?? [];
 
 if ($pc === 'PC-0') {
     $uiState['proposalStatus'] = 'existing';
@@ -1023,111 +976,32 @@ if ($pc === 'PC-0') {
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
 } else {
-    $uiState['canAccept'] = isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false;
+    $uiState['canAccept'] = $commitPlan['canCommit'] ?? false;
     $uiState['canCommit'] = $uiState['canAccept'];
 }
 
-error_log("[PPC][SECTION-14] UI State → proposalStatus=" . $uiState['proposalStatus'] . 
-    " | canAccept=" . ($uiState['canAccept'] ? 'YES' : 'NO'));
+// Narratives
+$narratives = ['ui' => null, 'report' => null];
 
-// =====================================================
-// Narrative Builder
-// =====================================================
-$narratives = [
-    'ui'     => null,
-    'report' => null
-];
+$contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
+$entityName  = $data['entity']['entityName'] ?? 'Unknown Entity';
+$loc         = $data['location']['locationAddressRaw'] ?? 'Unknown Location';
+$parcelCount = $data['location']['parcelCount'] ?? 0;
 
-error_log('[PPC][SECTION-14] Starting Narrative Builder');
-
-// Safe context
-$contactName = trim(
-    (isset($data['contact']['contactFirstName']) ? $data['contact']['contactFirstName'] : '') . 
-    ' ' . 
-    (isset($data['contact']['contactLastName']) ? $data['contact']['contactLastName'] : '')
-);
-$entityName  = isset($data['entity']['entityName']) ? $data['entity']['entityName'] : 'Unknown Entity';
-$loc         = isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : 'Unknown Location';
-$parcelCount = isset($data['location']['parcelCount']) ? $data['location']['parcelCount'] : 0;
-
-$entityExists   = isset($databaseResolution['entity']['status']) && $databaseResolution['entity']['status'] === 'exact';
-$locationExists = isset($databaseResolution['location']['status']) && $databaseResolution['location']['status'] === 'exact';
-
-// Try AI first
-if (function_exists('askOpenAI')) {
-    $aiNarrativePrompt = "Entity: {$entityName}\nContact: {$contactName}\nLocation: {$loc}\n" .
-        "Entity Exists: " . ($entityExists ? 'yes' : 'no') . "\n" .
-        "Location Exists: " . ($locationExists ? 'yes' : 'no') . "\n" .
-        "Parcel Count: {$parcelCount}\nStatus: {$uiState['proposalStatus']}";
-
-    $systemPromptForNarratives = <<<EOT
-You are a precise operational documentation engine for Skyesoft CRM.
-
-Generate ONLY "ui" and "report" narratives. Be strictly factual.
-
-UI Narrative (2-4 sentences):
-- What was found
-- What already exists vs what is new
-- Any issues (especially multiple parcels)
-- What the user should do next
-
-Report Narrative:
-- Formal business summary
-
-Rules:
-- Never say something exists unless the status is 'exact'
-- For RS-6 / multiple parcels: clearly state selection is required
-- Never mention proposal IDs, PC/RS codes, JSON, or UI elements
-
-Return ONLY valid JSON:
-{
-  "ui": "...",
-  "report": "..."
-}
-EOT;
-
-    $aiResponse = askOpenAI($systemPromptForNarratives, $aiNarrativePrompt, [
-        'model'       => 'gpt-4o-mini',
-        'temperature' => 0.0,
-        'max_tokens'  => 500
-    ]);
-
-    if ($aiResponse && !empty($aiResponse['content'])) {
-        $content = trim($aiResponse['content']);
-        preg_match('/\{.*\}/s', $content, $matches);
-        $jsonString = isset($matches[0]) ? $matches[0] : $content;
-
-        $parsed = json_decode($jsonString, true);
-        if (is_array($parsed)) {
-            $narratives['ui']    = $parsed['ui'] ?? null;
-            $narratives['report'] = $parsed['report'] ?? null;
-            error_log('[PPC][SECTION-14] ✅ AI narratives received');
-        }
-    }
-}
-
-// =====================================================
-// Reliable Dynamic Fallback
-// =====================================================
-if (empty($narratives['ui'])) {
-    if (in_array('RS-6', $rsList)) {
-        $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-            "Multiple parcels ({$parcelCount}) were found for this address.\n\n" .
-            "Parcel selection is required before this proposal can be accepted.";
-        $narratives['report'] = "Proposal for {$contactName} at {$entityName}, {$loc}. Multiple parcels detected — review and select parcel required.";
-    } elseif ($pc === 'PC-0') {
-        $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-            "The company, location, and contact already exist in the database.\n\nNo action is required.";
-        $narratives['report'] = "{$contactName} matched existing records for {$entityName}.";
-    } elseif (in_array('RS-3', $rsList)) {
-        $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-            "Required information is incomplete. The proposal cannot be committed until missing fields are provided.";
-        $narratives['report'] = "Incomplete proposal for {$contactName} at {$entityName}.";
-    } else {
-        $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-            "This proposal is eligible for acceptance.";
-        $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}.";
-    }
+if (in_array('RS-6', $rsList)) {
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
+        "Multiple parcels ({$parcelCount}) were found for this address.\n\n" .
+        "Parcel selection is required before this proposal can be accepted.";
+    $narratives['report'] = "Proposal for {$contactName} at {$entityName}, {$loc}. Multiple parcels detected — review and select parcel required.";
+} elseif ($pc === 'PC-0') {
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThe company, location, and contact already exist in the database.\n\nNo action is required.";
+    $narratives['report'] = "{$contactName} matched existing records for {$entityName}.";
+} elseif (in_array('RS-3', $rsList)) {
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nRequired information is incomplete. The proposal cannot be committed until missing fields are provided.";
+    $narratives['report'] = "Incomplete proposal for {$contactName} at {$entityName}.";
+} else {
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.";
+    $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}.";
 }
 
 error_log('[PPC][SECTION-14] Narrative Builder complete');
