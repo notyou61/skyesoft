@@ -792,23 +792,49 @@ if ($isExplicitLocationOnlyIntent === true) {
 $missingRequired = [];
 $governanceIssues = [];
 
-// Basic required fields
-if (empty($data['entity']['entityName'] ?? '')) $missingRequired[] = 'entity.name';
+// Entity
+if (empty($data['entity']['entityName'] ?? '')) {
+    $missingRequired[] = 'entity.name';
+}
+
+// === NEW: Contact Name Validation (Critical) ===
+$contactFullName = trim(
+    ($data['contact']['contactFirstName'] ?? '') . ' ' . 
+    ($data['contact']['contactLastName'] ?? '')
+);
+$entityName = trim($data['entity']['entityName'] ?? '');
+
+if (empty($contactFullName) || strcasecmp($contactFullName, $entityName) === 0) {
+    $missingRequired[] = 'contact.name';
+    $governanceIssues[] = [
+        'code' => 'RS-3',
+        'message' => 'Contact name is missing or identical to entity name',
+        'fields' => ['contact.firstName', 'contact.lastName']
+    ];
+}
+
+// Location basics
 if (empty($data['location']['locationAddress'] ?? '')) $missingRequired[] = 'location.address';
 if (empty($data['location']['locationCity'] ?? '')) $missingRequired[] = 'location.city';
 if (empty($data['location']['locationState'] ?? '')) $missingRequired[] = 'location.state';
 if (empty($data['location']['locationZip'] ?? '')) $missingRequired[] = 'location.zip';
 
+// Contact fields for PC-1/2/3
 if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'])) {
-    if (empty($data['contact']['contactFirstName'] ?? '')) $missingRequired[] = 'contact.firstName';
-    if (empty($data['contact']['contactLastName'] ?? '')) $missingRequired[] = 'contact.lastName';
     if (empty($data['contact']['contactEmail'] ?? '')) $missingRequired[] = 'contact.email';
     if (empty($data['contact']['contactPrimaryPhone'] ?? '')) $missingRequired[] = 'contact.primaryPhone';
 }
 
-// RS-3 Incomplete Proposal
+// Validation + Parcel
+if (empty($data['location']['locationValidated'] ?? false)) $missingRequired[] = 'location.validation';
+if (empty($data['location']['locationCensusValidated'] ?? false)) $missingRequired[] = 'location.census';
+
+// RS-3 — Incomplete Proposal
 if (!empty($missingRequired)) {
-    $pcm['rs'][] = 'RS-3';
+    if (!in_array('RS-3', $pcm['rs'] ?? [])) {
+        $pcm['rs'][] = 'RS-3';
+        $pcm['rsStatuses'][] = 'incomplete_proposal';
+    }
     $governanceIssues[] = [
         'code' => 'RS-3',
         'message' => 'Incomplete proposal - required fields are missing',
