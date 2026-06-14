@@ -956,7 +956,9 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #region SECTION 14 — Narrative Builder + UI State
 
-// UI State
+// =====================================================
+// UI State Builder
+// =====================================================
 $uiState = [
     'proposalStatus' => 'proposed',
     'canAccept'      => false,
@@ -975,6 +977,10 @@ if ($pc === 'PC-0') {
     $uiState['proposalStatus'] = 'multiple_parcels';
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
+} elseif (in_array('RS-7', $rsList)) {
+    $uiState['proposalStatus'] = 'unresolved_parcel';
+    $uiState['canAccept'] = false;
+    $uiState['canCommit'] = false;
 } elseif (in_array('RS-3', $rsList)) {
     $uiState['proposalStatus'] = 'incomplete';
     $uiState['canAccept'] = false;
@@ -984,7 +990,9 @@ if ($pc === 'PC-0') {
     $uiState['canCommit'] = $uiState['canAccept'];
 }
 
-// Narratives
+// =====================================================
+// Narrative Builder
+// =====================================================
 $narratives = ['ui' => null, 'report' => null];
 
 $contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
@@ -997,13 +1005,18 @@ if (in_array('RS-6', $rsList)) {
         "Multiple parcels ({$parcelCount}) were found for this address.\n\n" .
         "Parcel selection is required before this proposal can be accepted.";
     $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}. Multiple parcels detected — review and select one parcel required.";
+} elseif (in_array('RS-7', $rsList)) {
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
+        "The location could not be matched to a specific parcel in Maricopa County.\n\n" .
+        "Parcel resolution is required before this proposal can proceed.";
+    $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}. Parcel resolution needed.";
 } elseif ($pc === 'PC-0') {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
         "The company, location, and contact already exist in the database.\n\nNo action is required.";
     $narratives['report'] = "{$contactName} matched existing records for {$entityName}.";
 } elseif (in_array('RS-3', $rsList)) {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-        "Required information is incomplete. The proposal cannot be committed until missing fields are provided.";
+        "Required information is incomplete.";
     $narratives['report'] = "Incomplete proposal for {$contactName} at {$entityName}.";
 } else {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
