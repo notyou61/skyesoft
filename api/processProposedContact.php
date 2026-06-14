@@ -956,7 +956,9 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #region SECTION 14 — Narrative Builder + UI State
 
-// UI State
+// =====================================================
+// UI State Builder
+// =====================================================
 $uiState = [
     'proposalStatus' => 'proposed',
     'canAccept'      => false,
@@ -971,8 +973,12 @@ $rsList = $pcm['rs'] ?? [];
 if ($pc === 'PC-0') {
     $uiState['proposalStatus'] = 'existing';
     $uiState['canAccept'] = $uiState['canReject'] = $uiState['canEdit'] = $uiState['canCommit'] = false;
-} elseif (in_array('RS-3', $rsList) || in_array('RS-6', $rsList)) {
-    $uiState['proposalStatus'] = in_array('RS-6', $rsList) ? 'multiple_parcels' : 'incomplete';
+} elseif (in_array('RS-6', $rsList)) {
+    $uiState['proposalStatus'] = 'multiple_parcels';
+    $uiState['canAccept'] = false;
+    $uiState['canCommit'] = false;
+} elseif (in_array('RS-3', $rsList)) {
+    $uiState['proposalStatus'] = 'incomplete';
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
 } else {
@@ -980,7 +986,9 @@ if ($pc === 'PC-0') {
     $uiState['canCommit'] = $uiState['canAccept'];
 }
 
-// Narratives
+// =====================================================
+// Narrative Builder
+// =====================================================
 $narratives = ['ui' => null, 'report' => null];
 
 $contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
@@ -992,15 +1000,18 @@ if (in_array('RS-6', $rsList)) {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
         "Multiple parcels ({$parcelCount}) were found for this address.\n\n" .
         "Parcel selection is required before this proposal can be accepted.";
-    $narratives['report'] = "Proposal for {$contactName} at {$entityName}, {$loc}. Multiple parcels detected — review and select parcel required.";
+    $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}. Multiple parcels detected — review and select one parcel required.";
 } elseif ($pc === 'PC-0') {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThe company, location, and contact already exist in the database.\n\nNo action is required.";
-    $narratives['report'] = "{$contactName} matched existing records for {$entityName}.";
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
+        "The company, location, and contact already exist in the database.\n\nNo action is required.";
+    $narratives['report'] = "{$contactName} matched an existing record for {$entityName}.";
 } elseif (in_array('RS-3', $rsList)) {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nRequired information is incomplete. The proposal cannot be committed until missing fields are provided.";
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
+        "Required information is incomplete. The proposal cannot be committed until missing fields are provided.";
     $narratives['report'] = "Incomplete proposal for {$contactName} at {$entityName}.";
 } else {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.";
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
+        "This proposal is eligible for acceptance.";
     $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}.";
 }
 
