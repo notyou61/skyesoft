@@ -17,7 +17,8 @@ skyesoftLoadEnv();
 
 // #region 📍 Test Address
 
-$rawAddress = '3145 N 33rd Ave Phoenix AZ 85017';
+//$rawAddress = '3145 N 33rd Ave Phoenix AZ 85017';
+$rawAddress = '7401 E CAMELBACK RD SCOTTSDALE AZ 85251';
 
 // #endregion
 
