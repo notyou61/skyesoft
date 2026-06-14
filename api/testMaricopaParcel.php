@@ -8,49 +8,66 @@ require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
 // #region 📍 Test Address
-//$rawAddress = '7401 E CAMELBACK RD SCOTTSDALE AZ 85251';
-$rawAddress = '3145 N 33rd Ave Phoenix AZ 85017';
+$rawAddress = '7401 E CAMELBACK RD SCOTTSDALE AZ 85251';
+// $rawAddress = '3145 N 33rd Ave Phoenix AZ 85017';
 // #endregion
 
-echo "Testing address: " . $rawAddress . "\n\n";
+$original = $rawAddress;
+$upper = strtoupper(trim($rawAddress));
 
-// Try search endpoint first
-$searchQuery = urlencode($rawAddress);
+echo "=== TESTING PARCEL RESOLUTION ===\n";
+echo "Address: " . $rawAddress . "\n\n";
 
-$url = 'https://mcassessor.maricopa.gov/search/property/?q=' . $searchQuery;
+// Multi-stage search terms
+$searchTerms = [
+    $upper,
+    preg_replace('/\b(E|W|N|S)\b/', '', $upper),
+    preg_replace('/\b(RD|ROAD|ST|AVE|BLVD)\b/', '', $upper),
+    preg_replace('/[^A-Z0-9 ]/', '', $upper),
+    '7401 E CAMELBACK',   // Very broad for Camelback
+    '3145 N 33RD'         // Very broad for 33rd Ave
+];
 
-echo "Search URL: " . $url . "\n";
+$data = null;
+$successfulTerm = '';
 
-$response = @file_get_contents($url);
+foreach ($searchTerms as $term) {
+    echo "Trying: " . $term . "\n";
 
-if ($response === false) {
-    echo "Request failed.\n";
-    exit;
-}
+    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
 
-$data = json_decode($response, true);
+    $params = http_build_query([
+        'where'          => $where,
+        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+        'returnGeometry' => 'false',
+        'f'              => 'json'
+    ]);
 
-$candidateCount = isset($data['results']) ? count($data['results']) : 0;
+    $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
+    echo "URL: " . $url . "\n";
 
-echo "Results found: " . $candidateCount . "\n\n";
+    $response = @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => 20]]));
 
-if ($candidateCount > 0) {
-    echo json_encode($data['results'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-} else {
-    echo "No results from /search/property\n";
-    echo "Raw response preview: " . substr($response, 0, 800) . "...\n";
-}
-
-// Optional: Try direct parcel lookup if we have an APN
-if (isset($data['results'][0]['apn'])) {
-    $apn = $data['results'][0]['apn'];
-    $detailUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
-    echo "\nTrying direct parcel details: " . $detailUrl . "\n";
-    
-    $detailResponse = @file_get_contents($detailUrl);
-    if ($detailResponse !== false) {
-        $detail = json_decode($detailResponse, true);
-        echo "Parcel Details:\n";
-        echo json_encode($detail, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    if ($response === false) {
+        echo "Request failed (network/timeout)\n\n";
+        continue;
     }
+
+    $data = json_decode($response, true);
+    $count = isset($data['features']) ? count($data['features']) : 0;
+
+    echo "Results: " . $count . "\n\n";
+
+    if ($count > 0) {
+        $successfulTerm = $term;
+        break;
+    }
+}
+
+if (isset($data['features']) && count($data['features']) > 0) {
+    echo "✅ SUCCESS with term: " . $successfulTerm . "\n\n";
+    echo json_encode($data['features'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+} else {
+    echo "❌ No results from any term.\n";
+    echo "Last raw response preview:\n" . substr($response ?? '', 0, 600) . "...\n";
 }
