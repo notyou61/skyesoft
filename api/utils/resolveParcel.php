@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 4.0.2
+ * Version: 4.1.0
+ * Aggressive dynamic search - no hardcoding
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -35,23 +36,24 @@ function resolveParcel(
 
     error_log('[RESOLVE-PARCEL] Original: ' . $original);
 
-    // Build search terms - broad first
+    // Extremely aggressive search terms
     $searchTerms = [
-        preg_replace('/[^A-Z0-9 ]/', '', $upper),                    // Very broad (numbers + letters only)
-        preg_replace('/\b(RD|ROAD|ST|AVE|BLVD|LN|DR|WAY)\b/', '', $upper),
+        preg_replace('/[^A-Z0-9 ]/', '', $upper),                    // Broadest possible
+        preg_replace('/\b(RD|ROAD|ST|AVE|AV|BLVD|DR|LN|PL|WAY|CT|PKWY)\b/', '', $upper),
         preg_replace('/\b(E|W|N|S)\b/', '', $upper),
         $upper,
     ];
 
-    // Dynamic number + street name (very effective)
-    if (preg_match('/(\d+)\s+([A-Z ]+)/', $upper, $m)) {
+    // Dynamic "Number + Street Name" - most effective
+    if (preg_match('/(\d+)\s+([A-Z ]{3,})/', $upper, $m)) {
         array_unshift($searchTerms, trim($m[1] . ' ' . $m[2]));
     }
 
     $data = null;
 
     foreach ($searchTerms as $term) {
-        if (strlen(trim($term)) < 8) continue;
+        $term = trim($term);
+        if (strlen($term) < 6) continue;
 
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
 
@@ -70,7 +72,7 @@ function resolveParcel(
         if ($response !== false) {
             $data = json_decode($response, true);
             if (isset($data['features']) && count($data['features']) > 0) {
-                error_log('[RESOLVE-PARCEL] ✅ Success with term: "' . $term . '" → ' . count($data['features']) . ' parcels');
+                error_log('[RESOLVE-PARCEL] ✅ SUCCESS with term: "' . $term . '" (' . count($data['features']) . ' parcels)');
                 break;
             }
         }
