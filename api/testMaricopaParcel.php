@@ -13,88 +13,62 @@ skyesoftLoadEnv();
 
 // #endregion
 
-
-
 // #region 📍 Test Address
 
-//$rawAddress = '3145 N 33rd Ave Phoenix AZ 85017';
 $rawAddress = '7401 E CAMELBACK RD SCOTTSDALE AZ 85251';
 
 // #endregion
 
-
-
-// #region 🧹 Normalize Address
+// #region 🧹 Multi-Stage Normalization
 
 $normalizedAddress = strtoupper(trim($rawAddress));
-
-$normalizedAddress = str_replace(', USA', '', $normalizedAddress);
-
-// Remove commas
-$normalizedAddress = str_replace(',', ' ', $normalizedAddress);
-
-// Collapse whitespace
+$normalizedAddress = str_replace([', USA', ','], ' ', $normalizedAddress);
 $normalizedAddress = preg_replace('/\s+/', ' ', $normalizedAddress);
 
-// Remove city/state/zip from lookup string
-$normalizedAddress = preg_split(
-    '/\bPHOENIX\b|\bAZ\b|\d{5}/',
-    $normalizedAddress
-)[0];
+$searchTerms = [
+    $normalizedAddress,
+    preg_replace('/\b(E|W|N|S)\b/', '', $normalizedAddress),           // Remove directionals
+    preg_replace('/\b(RD|ROAD|ST|AVE|BLVD)\b/', '', $normalizedAddress), // Remove suffixes
+    preg_replace('/[^A-Z0-9 ]/', '', $normalizedAddress)               // Keep only letters/numbers/spaces
+];
 
-$normalizedAddress = trim($normalizedAddress);
-
-// #endregion
-
-
-
-// #region 🌐 Build ArcGIS Query
-
-$where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
-    str_replace("'", "''", $normalizedAddress) .
-    "%')";
-
-$params = http_build_query([
-    'where'             => $where,
-    'outFields'         => implode(',', [
-        'APN',
-        'PHYSICAL_ADDRESS',
-        'PHYSICAL_CITY',
-        'JURISDICTION',
-        'OWNER_NAME'
-    ]),
-    'returnGeometry'    => 'true',     // ← Enable geometry
-    'outSR'             => '4326',     // ← WGS84 lat/lon
-    'geometryPrecision' => 6,
-    'f'                 => 'json'
-]);
-
-$url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
+error_log('Original: ' . $rawAddress);
 
 // #endregion
 
+// #region 🌐 Try Multiple Queries
 
+$data = null;
 
-// #region 🚀 Execute Request
+foreach ($searchTerms as $term) {
+    if (strlen(trim($term)) < 8) continue;
 
-$response = @file_get_contents($url);
+    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . 
+             str_replace("'", "''", $term) . "%')";
 
-if ($response === false) {
+    $params = http_build_query([
+        'where'             => $where,
+        'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+        'returnGeometry'    => 'true',
+        'outSR'             => '4326',
+        'geometryPrecision' => 6,
+        'f'                 => 'json'
+    ]);
 
-    echo json_encode([
-        'success' => false,
-        'error'   => 'Failed to contact Maricopa ArcGIS service.',
-        'url'     => $url
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
 
-    exit;
+    $response = @file_get_contents($url);
+
+    if ($response !== false) {
+        $data = json_decode($response, true);
+        if (isset($data['features']) && count($data['features']) > 0) {
+            error_log('Success with term: ' . $term);
+            break;
+        }
+    }
 }
 
-$data = json_decode($response, true);
-
 // #endregion
-
-
 
 // #region 📦 Normalize Results
 
@@ -103,33 +77,24 @@ $features = $data['features'] ?? [];
 $parcelDetails = [];
 
 foreach ($features as $feature) {
-
     $attr = $feature['attributes'] ?? [];
     $geom = $feature['geometry'] ?? [];
 
-    if (empty($attr['APN'])) {
-        continue;
-    }
+    if (empty($attr['APN'])) continue;
 
-    $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($attr['APN']));
+    $apnRaw = preg_replace('/[^A-Z0-9-]/', '', strtoupper($attr['APN']));
 
-    // === Calculate centroid from polygon rings ===
-    $latitude  = null;
-    $longitude = null;
-
+    // Calculate centroid
+    $latitude = $longitude = null;
     if (!empty($geom['rings'][0])) {
-        $ring = $geom['rings'][0];           // First ring of the polygon
+        $ring = $geom['rings'][0];
         $count = count($ring);
-
         if ($count > 0) {
-            $sumX = 0;
-            $sumY = 0;
-
+            $sumX = $sumY = 0;
             foreach ($ring as $point) {
-                $sumX += $point[0];          // longitude
-                $sumY += $point[1];          // latitude
+                $sumX += $point[0];
+                $sumY += $point[1];
             }
-
             $longitude = round($sumX / $count, 6);
             $latitude  = round($sumY / $count, 6);
         }
@@ -138,17 +103,12 @@ foreach ($features as $feature) {
     $parcelDetails[] = [
         'apnRaw'          => $apnRaw,
         'apnDisplay'      => formatAPN($apnRaw),
-
         'propertyAddress' => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
         'propertyCity'    => trim($attr['PHYSICAL_CITY'] ?? ''),
-
         'jurisdiction'    => trim($attr['JURISDICTION'] ?? ''),
         'ownerName'       => trim($attr['OWNER_NAME'] ?? ''),
-
-        // === Per-parcel coordinates (centroid of parcel polygon) ===
         'latitude'        => $latitude,
         'longitude'       => $longitude,
-
         'source'          => 'mca_arcgis_mcassessor',
         'confidence'      => 90
     ];
@@ -156,45 +116,26 @@ foreach ($features as $feature) {
 
 // #endregion
 
-
-
 // #region ✅ Output
 
 echo json_encode([
-
     'success'             => true,
-
     'inputAddress'        => $rawAddress,
     'normalizedAddress'   => $normalizedAddress,
-
-    'arcgisWhere'         => $where,
-    'requestUrl'          => $url,
-
+    'searchTerms'         => $searchTerms,
     'candidateCount'      => count($parcelDetails),
-
     'parcelDetails'       => $parcelDetails,
-
-    'rawResponsePreview'  => substr($response, 0, 1000)
-
+    'rawResponsePreview'  => substr($response ?? '', 0, 1000)
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 // #endregion
 
-
-
 // #region 🧰 Helpers
 
 function formatAPN(string $apnRaw): string {
-
     $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($apnRaw));
-
-    if (strlen($apnRaw) < 8) {
-        return $apnRaw;
-    }
-
-    return substr($apnRaw, 0, 3) . '-' .
-           substr($apnRaw, 3, 2) . '-' .
-           substr($apnRaw, 5);
+    if (strlen($apnRaw) < 8) return $apnRaw;
+    return substr($apnRaw, 0, 3) . '-' . substr($apnRaw, 3, 2) . '-' . substr($apnRaw, 5);
 }
 
 // #endregion
