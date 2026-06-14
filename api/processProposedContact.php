@@ -956,9 +956,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #region SECTION 14 — Narrative Builder + UI State
 
-// =====================================================
-// UI State Builder
-// =====================================================
+// UI State
 $uiState = [
     'proposalStatus' => 'proposed',
     'canAccept'      => false,
@@ -986,9 +984,7 @@ if ($pc === 'PC-0') {
     $uiState['canCommit'] = $uiState['canAccept'];
 }
 
-// =====================================================
-// Narrative Builder
-// =====================================================
+// Narratives
 $narratives = ['ui' => null, 'report' => null];
 
 $contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
@@ -1004,7 +1000,7 @@ if (in_array('RS-6', $rsList)) {
 } elseif ($pc === 'PC-0') {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
         "The company, location, and contact already exist in the database.\n\nNo action is required.";
-    $narratives['report'] = "{$contactName} matched an existing record for {$entityName}.";
+    $narratives['report'] = "{$contactName} matched existing records for {$entityName}.";
 } elseif (in_array('RS-3', $rsList)) {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
         "Required information is incomplete. The proposal cannot be committed until missing fields are provided.";
