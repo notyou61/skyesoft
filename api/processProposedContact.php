@@ -956,9 +956,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #region SECTION 14 — Narrative Builder + UI State
 
-// =====================================================
-// UI State Builder
-// =====================================================
+// UI State
 $uiState = [
     'proposalStatus' => 'proposed',
     'canAccept'      => false,
@@ -977,12 +975,8 @@ if ($pc === 'PC-0') {
     $uiState['proposalStatus'] = 'multiple_parcels';
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
-} elseif (in_array('RS-7', $rsList)) {
-    $uiState['proposalStatus'] = 'unresolved_parcel';
-    $uiState['canAccept'] = false;
-    $uiState['canCommit'] = false;
-} elseif (in_array('RS-3', $rsList)) {
-    $uiState['proposalStatus'] = 'incomplete';
+} elseif (in_array('RS-7', $rsList) || in_array('RS-3', $rsList)) {
+    $uiState['proposalStatus'] = in_array('RS-7', $rsList) ? 'unresolved_parcel' : 'incomplete';
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
 } else {
@@ -990,41 +984,35 @@ if ($pc === 'PC-0') {
     $uiState['canCommit'] = $uiState['canAccept'];
 }
 
-// =====================================================
-// Narrative Builder
-// =====================================================
-$narratives = ['ui' => null, 'report' => null];
-
+// Simple deterministic narratives (fast & reliable)
 $contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
 $entityName  = $data['entity']['entityName'] ?? 'Unknown Entity';
 $loc         = $data['location']['locationAddressRaw'] ?? 'Unknown Location';
 $parcelCount = $data['location']['parcelCount'] ?? 0;
 
 if (in_array('RS-6', $rsList)) {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-        "Multiple parcels ({$parcelCount}) were found for this address.\n\n" .
-        "Parcel selection is required before this proposal can be accepted.";
-    $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}. Multiple parcels detected — review and select one parcel required.";
+    $narratives = [
+        'ui' => "{$contactName} was identified for {$entityName} at {$loc}.\n\nMultiple parcels ({$parcelCount}) were found. Parcel selection is required.",
+        'report' => "Proposal for {$contactName} at {$entityName}. Multiple parcels detected — selection required."
+    ];
 } elseif (in_array('RS-7', $rsList)) {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-        "The location could not be matched to a specific parcel in Maricopa County.\n\n" .
-        "Parcel resolution is required before this proposal can proceed.";
-    $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}. Parcel resolution needed.";
+    $narratives = [
+        'ui' => "{$contactName} was identified for {$entityName} at {$loc}.\n\nThe location could not be matched to a specific parcel.\n\nParcel resolution is required.",
+        'report' => "Proposal for {$contactName} at {$entityName}. Parcel resolution needed."
+    ];
 } elseif ($pc === 'PC-0') {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-        "The company, location, and contact already exist in the database.\n\nNo action is required.";
-    $narratives['report'] = "{$contactName} matched existing records for {$entityName}.";
-} elseif (in_array('RS-3', $rsList)) {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-        "Required information is incomplete.";
-    $narratives['report'] = "Incomplete proposal for {$contactName} at {$entityName}.";
+    $narratives = [
+        'ui' => "{$contactName} was identified for {$entityName} at {$loc}.\n\nAll records already exist. No action required.",
+        'report' => "Existing record match."
+    ];
 } else {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\n" .
-        "This proposal is eligible for acceptance.";
-    $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}.";
+    $narratives = [
+        'ui' => "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.",
+        'report' => "New proposal for {$contactName} at {$entityName}."
+    ];
 }
 
-error_log('[PPC][SECTION-14] Narrative Builder complete');
+error_log('[PPC][SECTION-14] Narrative Builder complete (deterministic)');
 
 #endregion
 
