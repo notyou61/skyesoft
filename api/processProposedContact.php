@@ -971,7 +971,9 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #region SECTION 14 — Narrative Builder + UI State
 
-// UI State
+// =====================================================
+// UI State Builder
+// =====================================================
 $uiState = [
     'proposalStatus' => 'proposed',
     'canAccept'      => false,
@@ -991,26 +993,35 @@ if ($pc === 'PC-0') {
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
 } else {
-    $uiState['canAccept'] = true;
-    $uiState['canCommit'] = true;
+    $uiState['canAccept'] = $uiState['canCommit'] = true;
 }
 
-// Narratives
+// =====================================================
+// Narrative Builder
+// =====================================================
 $narratives = ['ui' => null, 'report' => null];
 
 $contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
-$entityName  = $data['entity']['entityName'] ?? 'Unknown Entity';
-$loc         = $data['location']['locationAddressRaw'] ?? 'Unknown Location';
+$entityName  = trim($data['entity']['entityName'] ?? '');
+$loc         = trim($data['location']['locationAddressRaw'] ?? '');
+
+if (empty($entityName)) $entityName = 'the entity';
+if (empty($contactName)) $contactName = 'the contact';
+if (empty($loc)) $loc = 'the provided address';
 
 if (in_array('RS-3', $rsList)) {
-    $narratives['ui'] = "The proposal for {$entityName} is incomplete.\n\nRequired contact information is missing.\n\nThe proposal cannot be accepted until the missing fields are provided.";
-    $narratives['report'] = "Incomplete proposal for {$entityName}. Required contact information is missing.";
+    $missingFields = $governance['blockingIssues'][0]['fields'] ?? ['required information'];
+    $fieldList = implode(', ', $missingFields);
+
+    $narratives['ui'] = "The proposal is incomplete.\n\nRequired information is missing.\n\nMissing fields: {$fieldList}.\n\nThis proposal cannot be accepted until the missing information is provided.";
+    $narratives['report'] = "Incomplete proposal — missing required fields ({$fieldList}).";
 } elseif (in_array('RS-6', $rsList)) {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nMultiple parcels were found. Parcel selection is required.";
+    $parcelCount = $data['location']['parcelCount'] ?? 0;
+    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nMultiple parcels ({$parcelCount}) were found.\n\nParcel selection is required before this proposal can be accepted.";
     $narratives['report'] = "New proposal for {$contactName} at {$entityName}. Multiple parcels detected — selection required.";
 } elseif ($pc === 'PC-0') {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nAll records already exist. No action required.";
-    $narratives['report'] = "Existing record match.";
+    $narratives['report'] = "Existing record match for {$contactName} at {$entityName}.";
 } else {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.";
     $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}.";
