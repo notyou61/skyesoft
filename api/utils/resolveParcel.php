@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 4.0.0
+ * Version: 4.0.1
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -35,17 +35,17 @@ function resolveParcel(
 
     error_log('[RESOLVE-PARCEL] Original: ' . $original);
 
-    // Dynamic search terms - increasingly broad
+    // Dynamic search terms - broad first for multi-parcel properties
     $searchTerms = [
+        preg_replace('/[^A-Z0-9 ]/', '', $upper),                       // Very broad
+        preg_replace('/\b(RD|ROAD|ST|AVE|BLVD|LN|DR|WAY)\b/', '', $upper),
+        preg_replace('/\b(E|W|N|S)\b/', '', $upper),
         $upper,
-        preg_replace('/\b(E|W|N|S)\b/', '', $upper),                    // Remove directionals
-        preg_replace('/\b(RD|ROAD|ST|AVE|BLVD|LN|DR|WAY)\b/', '', $upper), // Remove common suffixes
-        preg_replace('/[^A-Z0-9 ]/', '', $upper),                       // Keep only alphanum + space
     ];
 
-    // Add number + street name only (very effective)
-    if (preg_match('/(\d+)\s+([A-Z ]+)/', $upper, $matches)) {
-        $searchTerms[] = trim($matches[1] . ' ' . $matches[2]);
+    // Street + number only is often most effective
+    if (preg_match('/(\d+)\s+([A-Z ]+)/', $upper, $m)) {
+        array_unshift($searchTerms, trim($m[1] . ' ' . $m[2]));
     }
 
     $data = null;
@@ -64,24 +64,24 @@ function resolveParcel(
 
         $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . http_build_query($params);
 
-        $context = stream_context_create(['http' => ['timeout' => 12]]);
+        $context = stream_context_create(['http' => ['timeout' => 18]]);
         $response = @file_get_contents($url, false, $context);
 
         if ($response !== false) {
             $data = json_decode($response, true);
             if (isset($data['features']) && count($data['features']) > 0) {
-                error_log('[RESOLVE-PARCEL] ✅ Success with term: ' . $term . ' (' . count($data['features']) . ' results)');
+                error_log('[RESOLVE-PARCEL] ✅ Success with "' . $term . '" → ' . count($data['features']) . ' parcels');
                 break;
             }
         }
     }
 
-    if (!isset($data['features']) || !is_array($data['features']) || empty($data['features'])) {
-        error_log('[RESOLVE-PARCEL] ❌ No results for ' . $original);
+    if (empty($data['features'])) {
+        error_log('[RESOLVE-PARCEL] ❌ No parcels found for ' . $original);
         return $result;
     }
 
-    // Build parcel list
+    // Build results
     $parcelDetails = [];
     foreach ($data['features'] as $feature) {
         $attr = $feature['attributes'] ?? [];

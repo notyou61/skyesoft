@@ -89,6 +89,9 @@ implode(', ', array_keys($inputData))
 );
 }
 
+// Allow longer execution for parcel resolution (multiple parcels can be slow)
+set_time_limit(45);   // Max 45 seconds total for the whole proposal
+
 #endregion
 
 #region SECTION 01 — Runtime Services
