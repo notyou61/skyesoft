@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 4.0.1
+ * Version: 4.0.2
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -35,15 +35,15 @@ function resolveParcel(
 
     error_log('[RESOLVE-PARCEL] Original: ' . $original);
 
-    // Dynamic search terms - broad first for multi-parcel properties
+    // Build search terms - broad first
     $searchTerms = [
-        preg_replace('/[^A-Z0-9 ]/', '', $upper),                       // Very broad
+        preg_replace('/[^A-Z0-9 ]/', '', $upper),                    // Very broad (numbers + letters only)
         preg_replace('/\b(RD|ROAD|ST|AVE|BLVD|LN|DR|WAY)\b/', '', $upper),
         preg_replace('/\b(E|W|N|S)\b/', '', $upper),
         $upper,
     ];
 
-    // Street + number only is often most effective
+    // Dynamic number + street name (very effective)
     if (preg_match('/(\d+)\s+([A-Z ]+)/', $upper, $m)) {
         array_unshift($searchTerms, trim($m[1] . ' ' . $m[2]));
     }
@@ -64,13 +64,13 @@ function resolveParcel(
 
         $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . http_build_query($params);
 
-        $context = stream_context_create(['http' => ['timeout' => 18]]);
+        $context = stream_context_create(['http' => ['timeout' => 15]]);
         $response = @file_get_contents($url, false, $context);
 
         if ($response !== false) {
             $data = json_decode($response, true);
             if (isset($data['features']) && count($data['features']) > 0) {
-                error_log('[RESOLVE-PARCEL] ✅ Success with "' . $term . '" → ' . count($data['features']) . ' parcels');
+                error_log('[RESOLVE-PARCEL] ✅ Success with term: "' . $term . '" → ' . count($data['features']) . ' parcels');
                 break;
             }
         }
@@ -81,7 +81,7 @@ function resolveParcel(
         return $result;
     }
 
-    // Build results
+    // Build parcel list
     $parcelDetails = [];
     foreach ($data['features'] as $feature) {
         $attr = $feature['attributes'] ?? [];
