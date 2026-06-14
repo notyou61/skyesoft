@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 3.9.0
+ * Version: 4.0.0
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -35,20 +35,17 @@ function resolveParcel(
 
     error_log('[RESOLVE-PARCEL] Original: ' . $original);
 
-    // Generate search terms - broader is better
+    // Dynamic search terms - increasingly broad
     $searchTerms = [
         $upper,
-        preg_replace('/\b(E|W|N|S)\b/', '', $upper),
-        preg_replace('/\b(RD|ROAD|ST|AVE|BLVD)\b/', '', $upper),
-        preg_replace('/[^A-Z0-9 ]/', '', $upper),
+        preg_replace('/\b(E|W|N|S)\b/', '', $upper),                    // Remove directionals
+        preg_replace('/\b(RD|ROAD|ST|AVE|BLVD|LN|DR|WAY)\b/', '', $upper), // Remove common suffixes
+        preg_replace('/[^A-Z0-9 ]/', '', $upper),                       // Keep only alphanum + space
     ];
 
-    // Add street-only for known problem streets
-    if (strpos($upper, 'CAMELBACK') !== false) {
-        $searchTerms[] = '7401 E CAMELBACK';
-    }
-    if (strpos($upper, '33RD') !== false) {
-        $searchTerms[] = '3145 N 33RD';
+    // Add number + street name only (very effective)
+    if (preg_match('/(\d+)\s+([A-Z ]+)/', $upper, $matches)) {
+        $searchTerms[] = trim($matches[1] . ' ' . $matches[2]);
     }
 
     $data = null;
@@ -67,20 +64,20 @@ function resolveParcel(
 
         $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . http_build_query($params);
 
-        $context = stream_context_create(['http' => ['timeout' => 15]]);
+        $context = stream_context_create(['http' => ['timeout' => 12]]);
         $response = @file_get_contents($url, false, $context);
 
         if ($response !== false) {
             $data = json_decode($response, true);
             if (isset($data['features']) && count($data['features']) > 0) {
-                error_log('[RESOLVE-PARCEL] Success with term: ' . $term);
+                error_log('[RESOLVE-PARCEL] ✅ Success with term: ' . $term . ' (' . count($data['features']) . ' results)');
                 break;
             }
         }
     }
 
     if (!isset($data['features']) || !is_array($data['features']) || empty($data['features'])) {
-        error_log('[RESOLVE-PARCEL] No results for ' . $original);
+        error_log('[RESOLVE-PARCEL] ❌ No results for ' . $original);
         return $result;
     }
 
