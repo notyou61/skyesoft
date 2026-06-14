@@ -1003,7 +1003,6 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 // =====================================================
 // UI State Builder — Presentation decisions
 // =====================================================
-
 $uiState = [
     'proposalStatus' => 'proposed',
     'canAccept'      => false,
@@ -1012,8 +1011,8 @@ $uiState = [
     'canCommit'      => false
 ];
 
-$pc = (isset($pcm['pc']) ? $pcm['pc'] : 'UNKNOWN');
-$rsList = (isset($pcm['rs']) ? $pcm['rs'] : []);
+$pc = isset($pcm['pc']) ? $pcm['pc'] : 'UNKNOWN';
+$rsList = isset($pcm['rs']) ? $pcm['rs'] : [];
 
 if ($pc === 'PC-0') {
     $uiState['proposalStatus'] = 'existing';
@@ -1026,7 +1025,7 @@ if ($pc === 'PC-0') {
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
 } else {
-    $uiState['canAccept'] = (isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false);
+    $uiState['canAccept'] = isset($commitPlan['canCommit']) ? $commitPlan['canCommit'] : false;
     $uiState['canCommit'] = $uiState['canAccept'];
 }
 
@@ -1034,35 +1033,29 @@ error_log("[PPC][SECTION-14] UI State → proposalStatus=" . $uiState['proposalS
     " | canAccept=" . ($uiState['canAccept'] ? 'YES' : 'NO'));
 
 // =====================================================
-// Narrative Builder — Human-readable explanations
+// Narrative Builder
 // =====================================================
-
-$narratives = array(
+$narratives = [
     'ui'     => null,
     'report' => null
-);
+];
 
 error_log('[PPC][SECTION-14] Starting Narrative Builder');
 
-// Safe extraction for context
+// Safe context extraction
 $contactName = trim(
     (isset($data['contact']['contactFirstName']) ? $data['contact']['contactFirstName'] : '') . 
     ' ' . 
     (isset($data['contact']['contactLastName']) ? $data['contact']['contactLastName'] : '')
 );
-$entityName  = (isset($data['entity']['entityName']) ? $data['entity']['entityName'] : '');
-$loc         = (isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : '');
+$entityName  = isset($data['entity']['entityName']) ? $data['entity']['entityName'] : 'Unknown Entity';
+$loc         = isset($data['location']['locationAddressRaw']) ? $data['location']['locationAddressRaw'] : 'Unknown Location';
 
-// =====================================================
-// AI Call via askOpenAI.php
-// =====================================================
-$aiNarrativePrompt = "Generate two factual narratives for this proposal.\n\n" .
-    "Entity: " . $entityName . "\n" .
-    "Contact: " . $contactName . "\n" .
-    "Location: " . $loc . "\n" .
-    "Status: " . $uiState['proposalStatus'];
+// Try AI first
+if (function_exists('askOpenAI')) {
+    $aiNarrativePrompt = "Entity: {$entityName}\nContact: {$contactName}\nLocation: {$loc}\nStatus: {$uiState['proposalStatus']}";
 
-$systemPromptForNarratives = <<<EOT
+    $systemPromptForNarratives = <<<EOT
 You are a precise operational documentation engine for Skyesoft CRM.
 
 Generate ONLY "ui" and "report" narratives. Be strictly factual and professional.
@@ -1088,23 +1081,22 @@ Return ONLY valid JSON:
 }
 EOT;
 
-if (function_exists('askOpenAI')) {
-    $aiResponse = askOpenAI($systemPromptForNarratives, $aiNarrativePrompt, array(
+    $aiResponse = askOpenAI($systemPromptForNarratives, $aiNarrativePrompt, [
         'model'       => 'gpt-4o-mini',
         'temperature' => 0.0,
         'max_tokens'  => 500
-    ));
+    ]);
 
     if ($aiResponse && !empty($aiResponse['content'])) {
         $content = trim($aiResponse['content']);
         preg_match('/\{.*\}/s', $content, $matches);
-        $jsonString = (isset($matches[0]) ? $matches[0] : $content);
+        $jsonString = isset($matches[0]) ? $matches[0] : $content;
 
         $parsed = json_decode($jsonString, true);
         if (is_array($parsed)) {
-            $narratives['ui']    = (isset($parsed['ui']) ? $parsed['ui'] : null);
-            $narratives['report'] = (isset($parsed['report']) ? $parsed['report'] : null);
-            error_log('[PPC][SECTION-14] ✅ AI narratives received from askOpenAI.php');
+            $narratives['ui']    = $parsed['ui'] ?? null;
+            $narratives['report'] = $parsed['report'] ?? null;
+            error_log('[PPC][SECTION-14] ✅ AI narratives received');
         }
     }
 } else {
@@ -1112,27 +1104,18 @@ if (function_exists('askOpenAI')) {
 }
 
 // =====================================================
-// Dynamic Fallback
+// Reliable Dynamic Fallback
 // =====================================================
 if (empty($narratives['ui'])) {
     if ($pc === 'PC-0') {
-        $narratives['ui'] = $contactName . " was identified for " . $entityName . " at " . $loc . ".\n\n" .
-            "The company, location, and contact already exist in the database.\n\n" .
-            "No action is required.";
-        $narratives['report'] = $contactName . " matched existing records for " . $entityName . " located at " . $loc . ".\n\n" .
-            "No new records are proposed and no database updates are required.";
+        $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThe company, location, and contact already exist in the database.\n\nNo action is required.";
+        $narratives['report'] = "{$contactName} matched existing records for {$entityName} located at {$loc}.\n\nNo new records are proposed.";
     } elseif (in_array('RS-3', $rsList)) {
-        $narratives['ui'] = $contactName . " was identified for " . $entityName . " at " . $loc . ".\n\n" .
-            "The company and location already exist in the database.\n\n" .
-            "Required information is incomplete. The proposal cannot be committed until missing fields are provided.";
-        $narratives['report'] = $contactName . " was identified for " . $entityName . " located at " . $loc . ".\n\n" .
-            "The proposal is incomplete. Missing required fields must be provided before it can be accepted.";
+        $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThe company and location already exist in the database.\n\nRequired information is incomplete. The proposal cannot be committed until missing fields are provided.";
+        $narratives['report'] = "{$contactName} was identified for {$entityName} located at {$loc}.\n\nThe proposal is incomplete.";
     } else {
-        $narratives['ui'] = $contactName . " was identified as a contact for " . $entityName . " at " . $loc . ".\n\n" .
-            "The company and location already exist in the database.\n\n" .
-            "This proposal is eligible for acceptance.";
-        $narratives['report'] = $contactName . " was identified for " . $entityName . " located at " . $loc . ".\n\n" .
-            "The company and location matched existing records. A new contact record is proposed.";
+        $narratives['ui'] = "{$contactName} was identified as a contact for {$entityName} at {$loc}.\n\nThe company and location already exist in the database.\n\nThis proposal is eligible for acceptance.";
+        $narratives['report'] = "{$contactName} was identified for {$entityName} located at {$loc}.\n\nA new contact record is proposed.";
     }
 }
 
