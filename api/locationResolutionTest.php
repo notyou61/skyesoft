@@ -17,13 +17,13 @@ $rsCode = 'RS-UNKNOWN';
 $parcelStatus = 'Unknown';
 
 // =====================================================
-// Correct Includes (based on your utils/ folder)
+// Correct Includes for /api/utils/ structure
 // =====================================================
-$baseDir = __DIR__;
+$utilsDir = __DIR__ . '/utils';
 
-require_once $baseDir . '/utils/resolveParcel.php';
-require_once $baseDir . '/utils/validateAddressCensus.php';
-require_once $baseDir . '/utils/resolveJurisdiction.php';
+require_once $utilsDir . '/resolveParcel.php';
+require_once $utilsDir . '/validateAddressCensus.php';
+require_once $utilsDir . '/resolveJurisdiction.php';
 
 // =====================================================
 // Helpers
@@ -39,9 +39,9 @@ function geocodeGoogle($address) {
     if ($response === false) return [];
 
     $data = json_decode($response, true);
-    if (($data['status'] ?? '') !== 'OK') return [];
+    if (($data['status'] ?? '') !== 'OK' || empty($data['results'])) return [];
 
-    $result = $data['results'][0] ?? [];
+    $result = $data['results'][0];
     return [
         'placeId'   => $result['place_id'] ?? '',
         'formatted' => $result['formatted_address'] ?? $address,
@@ -94,8 +94,6 @@ if ($rawAddress !== '') {
     table { border-collapse: collapse; width: 100%; margin: 15px 0; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     th { background: #f0f0f0; }
-    .success { color: #006400; }
-    .warning { color: #d32f2f; }
 </style>
 </head>
 <body>
