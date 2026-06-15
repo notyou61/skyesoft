@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 4.3.0  (Strict Post-Filter)
+ * Version: 4.4.0  (Balanced Filtering)
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -40,12 +40,12 @@ function resolveParcel(
         $inputCity = strtoupper($m[1]);
     }
 
-    // Normalize for searching
+    // Normalize
     $normalized = $upper;
     $normalized = str_replace([', USA', ','], ' ', $normalized);
     $normalized = preg_replace('/\s+/', ' ', $normalized);
 
-    // Extract street components
+    // Extract street parts
     preg_match('/^(\d+)\s*([NSEW]?)\s*([A-Z0-9\s]+)/', $normalized, $matches);
     $streetNumber = $matches[1] ?? '';
     $directional  = trim($matches[2] ?? '');
@@ -53,17 +53,17 @@ function resolveParcel(
 
     $searchTerms = [];
 
-    // Tier 1: Address + City
+    // Tier 1: Address + City (if we have a city)
     if ($streetNumber && $streetName && $inputCity) {
         $searchTerms['address_city'] = trim("$streetNumber $directional $streetName $inputCity");
     }
 
-    // Tier 2: Street only
+    // Tier 2: Street only (most important fallback)
     if ($streetNumber && $streetName) {
         $searchTerms['street'] = trim("$streetNumber $directional $streetName");
     }
 
-    // Tier 3: Root
+    // Tier 3: Number + Root
     if ($streetNumber && $streetName) {
         $root = preg_replace('/\b(ST|STREET|AVE|AVENUE|RD|ROAD|BLVD|DR|LN|WAY)\b/i', '', $streetName);
         if (trim($root)) {
@@ -80,10 +80,10 @@ function resolveParcel(
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
 
         $params = http_build_query([
-            'where'      => $where,
-            'outFields'  => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-            'returnGeometry' => 'false',
-            'f'          => 'json'
+            'where'             => $where,
+            'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+            'returnGeometry'    => 'false',
+            'f'                 => 'json'
         ]);
 
         $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
@@ -107,10 +107,10 @@ function resolveParcel(
     }
 
     // =====================================================
-    // STRICT POST-FILTER (This is the key improvement)
+    // IMPROVED POST-FILTER (More Forgiving)
     // =====================================================
     $goodMatches = [];
-    $otherMatches = [];
+    $fallbackMatches = [];
 
     foreach ($data['features'] as $feature) {
         $attr = $feature['attributes'] ?? [];
@@ -118,22 +118,22 @@ function resolveParcel(
 
         $isGood = false;
 
-        // Prefer correct city or "No City/Town"
+        // Good match = correct city OR "No City/Town"
         if ($inputCity && strpos($city, $inputCity) !== false) {
             $isGood = true;
-        } elseif (strpos($city, 'NO CITY') !== false || $city === '') {
+        } elseif (strpos($city, 'NO CITY') !== false || $city === '' || $city === 'MARICOPA') {
             $isGood = true;
         }
 
         if ($isGood) {
             $goodMatches[] = $attr;
         } else {
-            $otherMatches[] = $attr;
+            $fallbackMatches[] = $attr;
         }
     }
 
-    // If we have any good matches, use ONLY those. Otherwise fall back.
-    $finalResults = !empty($goodMatches) ? $goodMatches : $otherMatches;
+    // Prefer good matches. Only use fallback if we have ZERO good matches.
+    $finalResults = !empty($goodMatches) ? $goodMatches : $fallbackMatches;
 
     // Build output
     $parcelDetails = [];
@@ -166,7 +166,7 @@ function resolveParcel(
     }
 
     error_log('[RESOLVE-PARCEL] Final → Tier: ' . ($result['searchTier'] ?? 'unknown') . 
-              ' | Final Count: ' . $result['parcelCount']);
+              ' | Count: ' . $result['parcelCount']);
 
     return $result;
 }
