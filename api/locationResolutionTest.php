@@ -132,42 +132,30 @@ if ($rawAddress !== '') {
     }
 
     // =====================================================
-    // AI Summary using askOpenAI.php
+    // AI Summary using askOpenAI.php (if available)
     // =====================================================
-    $aiSummary = '';
-
     if ($useAI && function_exists('askOpenAI')) {
 
-        $prompt = "You are Skyesoft's location intelligence assistant. Generate a clear, professional, one-paragraph summary.\n\n" .
+        $prompt = "You are Skyesoft's location intelligence assistant. Generate a clear, professional, one-paragraph summary of the location resolution results.\n\n" .
                   "Start the summary with this exact phrase: \"Skyesoft resolved the details for {$rawAddress}...\"\n\n" .
-                  "Key facts to include:\n" .
+                  "Key facts:\n" .
                   "- Google Place ID: " . ($placeId ?: 'Not available') . "\n" .
                   "- County: " . ($censusResult['county'] ?? 'Unknown') . "\n" .
-                  "- Parcels found: " . ($parcelResult['parcelCount'] ?? 0) . "\n" .
+                  "- Number of parcels found: " . ($parcelResult['parcelCount'] ?? 0) . "\n" .
                   "- Governing Jurisdiction: " . ($jurisdictionName ?: 'Unknown') . "\n" .
                   "- Postal City: " . ($postalCity ?: 'Unknown') . "\n" .
-                  "- Governance: {$rsCode} ({$parcelStatus})\n\n" .
-                  "Write naturally and concisely.";
+                  "- Governance classification: {$rsCode} ({$parcelStatus})\n\n" .
+                  "Write in a natural, concise, and factual tone. Do not add extra commentary.";
 
-        try {
-            $aiResponse = askOpenAI($prompt, [
-                'temperature' => 0.3,
-                'max_tokens'  => 220
-            ]);
+        $aiResponse = askOpenAI($prompt, [
+            'temperature' => 0.3,
+            'max_tokens'  => 250
+        ]);
 
-            if (is_array($aiResponse)) {
-                $aiSummary = trim($aiResponse['content'] ?? $aiResponse['text'] ?? '');
-            } elseif (is_string($aiResponse)) {
-                $aiSummary = trim($aiResponse);
-            }
-
-        } catch (Exception $e) {
-            error_log('[TEST HARNESS] askOpenAI error: ' . $e->getMessage());
-            $aiSummary = "Skyesoft resolved the details for {$rawAddress}. An error occurred while generating the AI summary.";
-        }
+        $aiSummary = trim($aiResponse['content'] ?? '');
 
     } else {
-        // Fallback deterministic version
+        // Fallback deterministic summary
         $aiSummary = "Skyesoft resolved the details for {$rawAddress}. ";
         if (!empty($placeId)) $aiSummary .= "Google successfully validated the address. ";
         if (($censusResult['valid'] ?? false)) $aiSummary .= "Census confirmed the location is in " . ($censusResult['county'] ?? 'Maricopa') . " County. ";
