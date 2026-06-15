@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Location Resolution Test Harness — Polished UI
+// Location Resolution Test Harness — AI Summary + JSON
 // =====================================================
 
 error_reporting(E_ALL);
@@ -123,6 +123,39 @@ if ($rawAddress !== '') {
         $jurisdictionType = $jurisdictionResult['jurisdictionType'] ?? '';
     }
 }
+
+// =====================================================
+// Build AI Summary
+// =====================================================
+$aiSummary = '';
+if ($rawAddress !== '') {
+    $parts = [];
+
+    if (!empty($placeId)) {
+        $parts[] = "Google successfully validated the address with Place ID.";
+    }
+
+    if (($censusResult['valid'] ?? false)) {
+        $parts[] = "Census confirmed the location is in " . ($censusResult['county'] ?? 'Maricopa') . " County.";
+    }
+
+    $parcelCount = $parcelResult['parcelCount'] ?? 0;
+    if ($parcelCount > 0) {
+        $parts[] = "Parcel lookup found {$parcelCount} parcel(s).";
+    } else {
+        $parts[] = "No parcels were found for this address.";
+    }
+
+    if (!empty($jurisdictionName)) {
+        $parts[] = "The governing jurisdiction is {$jurisdictionName}.";
+    }
+
+    if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') {
+        $parts[] = "Governance classified this as {$rsCode} ({$parcelStatus}).";
+    }
+
+    $aiSummary = implode(' ', $parts);
+}
 ?>
 
 <!DOCTYPE html>
@@ -131,41 +164,18 @@ if ($rawAddress !== '') {
 <meta charset="UTF-8">
 <title>Location Resolution Test Harness</title>
 <style>
-    body { 
-        font-family: Arial, sans-serif; 
-        margin: 20px; 
-        line-height: 1.4; 
-        font-size: 14px;
-    }
-    h2 { margin-bottom: 10px; }
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.4; font-size: 14px; }
     input[type="text"] { width: 600px; padding: 8px; font-size: 14px; }
     button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
-    .result { 
-        margin-top: 15px; 
-        padding: 15px; 
-        border: 1px solid #ccc; 
-        background: #f9f9f9; 
-        border-radius: 6px; 
-    }
-    table { 
-        border-collapse: collapse; 
-        width: 100%; 
-        margin-top: 8px; 
-        font-size: 13px;
-    }
-    th, td { 
-        border: 1px solid #ddd; 
-        padding: 6px 8px; 
-        text-align: left; 
-    }
+    .result { margin-top: 15px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; border-radius: 6px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
     th { background: #f0f0f0; }
-    .section-header { 
-        margin: 12px 0 6px 0; 
-        font-size: 15px;
-        font-weight: bold;
-    }
+    .section-header { margin: 12px 0 6px 0; font-size: 15px; font-weight: bold; }
     .success { color: #2e7d32; }
     .error { color: #c62828; }
+    .ai-summary { background: #e8f5e9; padding: 12px; border-left: 4px solid #2e7d32; margin-bottom: 15px; }
+    pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; }
 </style>
 </head>
 <body>
@@ -181,8 +191,13 @@ if ($rawAddress !== '') {
 <?php if ($rawAddress !== ''): ?>
 <div class="result">
 
-    <h3>Input Address</h3>
-    <p><strong><?php echo htmlspecialchars($rawAddress); ?></strong></p>
+    <!-- AI Summary -->
+    <?php if (!empty($aiSummary)): ?>
+    <h3>AI Summary</h3>
+    <div class="ai-summary">
+        <?php echo htmlspecialchars($aiSummary); ?>
+    </div>
+    <?php endif; ?>
 
     <!-- 1. Census -->
     <div class="section-header">
@@ -231,7 +246,6 @@ if ($rawAddress !== '') {
             <span class="error">❌ None Found</span>
         <?php endif; ?>
     </div>
-    <p><strong>RS Code:</strong> <strong><?php echo $rsCode; ?></strong> — <?php echo $parcelStatus; ?></p>
 
     <?php if (!empty($parcelResult['parcelDetails'])): ?>
     <table>
@@ -287,6 +301,31 @@ if ($rawAddress !== '') {
         <tr><td><strong>RS Code</strong></td><td><strong><?php echo htmlspecialchars($rsCode); ?></strong></td></tr>
         <tr><td><strong>Status</strong></td><td><?php echo htmlspecialchars($parcelStatus); ?></td></tr>
     </table>
+
+    <!-- JSON Output -->
+    <h3 style="margin-top:25px">JSON Output (for AI / Skyesoft Prompt)</h3>
+    <?php
+    $jsonOutput = [
+        'inputAddress' => $rawAddress,
+        'google' => [
+            'placeId'   => $placeId ?: null,
+            'latitude'  => $latitude ?: null,
+            'longitude' => $longitude ?: null,
+        ],
+        'census' => $censusResult,
+        'parcel' => $parcelResult,
+        'jurisdiction' => [
+            'governingJurisdiction' => $jurisdictionName ?: null,
+            'jurisdictionType'      => $jurisdictionType ?: null,
+            'postalCity'            => $postalCity ?: null,
+        ],
+        'governance' => [
+            'rsCode'       => $rsCode,
+            'parcelStatus' => $parcelStatus,
+        ]
+    ];
+    ?>
+    <pre><?php echo json_encode($jsonOutput, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES); ?></pre>
 
 </div>
 <?php endif; ?>
