@@ -168,11 +168,23 @@ if ($rawAddress !== '') {
     <?php endif; ?>
 
     <h3>Governance Summary (for Proposed Contact Engine)</h3>
-    <pre>
-Parcel Count: <?php echo $parcelCount; ?>
-RS Code: <?php echo $rsCode; ?>
-Status: <?php echo $parcelStatus; ?>
-    </pre>
+
+    <table style="width:500px;">
+        <tr>
+            <td><strong>Parcel Count</strong></td>
+            <td><?php echo $parcelCount; ?></td>
+        </tr>
+
+        <tr>
+            <td><strong>RS Code</strong></td>
+            <td><?php echo htmlspecialchars($rsCode); ?></td>
+        </tr>
+
+        <tr>
+            <td><strong>Parcel Status</strong></td>
+            <td><?php echo htmlspecialchars($parcelStatus); ?></td>
+        </tr>
+    </table>
 </div>
 <?php endif; ?>
 
