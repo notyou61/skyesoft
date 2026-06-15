@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Location Resolution Test Harness — FIXED INCLUDES
+// Location Resolution Test — Census First
 // =====================================================
 
 error_reporting(E_ALL);
@@ -8,114 +8,65 @@ ini_set('display_errors', 1);
 
 $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 
-echo "<h2>Location Resolution Test Harness</h2>";
-
-// =====================================================
-// FORCE CORRECT PATH (your utils/ folder)
-// =====================================================
-$utilsPath = __DIR__ . '/utils';
-
-echo "<strong>Looking for files in:</strong> " . $utilsPath . "<br><br>";
-
-$files = [
-    'resolveParcel.php',
-    'validateAddressCensus.php',
-    'resolveJurisdiction.php'
-];
-
-foreach ($files as $file) {
-    $fullPath = $utilsPath . '/' . $file;
-    if (file_exists($fullPath)) {
-        echo "✅ Found: $file<br>";
-        require_once $fullPath;
-    } else {
-        echo "❌ MISSING: $file at $fullPath<br>";
-    }
-}
-
-echo "<hr>";
-
-// =====================================================
-// Rest of the test (only runs if files loaded)
-// =====================================================
-if (!function_exists('resolveParcel')) {
-    echo "<h3 style='color:red;'>Cannot continue — missing required functions.</h3>";
-    exit;
-}
-
-$googleResult = [];
 $censusResult = [];
-$parcelResult = [];
-$jurisdictionResult = [];
 
-$rsCode = 'RS-UNKNOWN';
-$parcelStatus = 'Unknown';
-
-function geocodeGoogle($address) {
-    $apiKey = getenv('GOOGLE_MAPS_BACKEND_API_KEY');
-    if (empty($apiKey)) return [];
-    $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($address) . '&key=' . $apiKey;
-    $response = @file_get_contents($url);
-    if ($response === false) return [];
-    $data = json_decode($response, true);
-    if (($data['status'] ?? '') !== 'OK' || empty($data['results'])) return [];
-    $result = $data['results'][0];
-    return [
-        'placeId' => $result['place_id'] ?? '',
-        'formatted' => $result['formatted_address'] ?? $address,
-        'lat' => $result['geometry']['location']['lat'] ?? null,
-        'lng' => $result['geometry']['location']['lng'] ?? null
-    ];
-}
+// Load Census validator
+$utilsDir = __DIR__ . '/utils';
+require_once $utilsDir . '/validateAddressCensus.php';
 
 if ($rawAddress !== '') {
-    $googleResult = geocodeGoogle($rawAddress);
     $censusResult = validateAddressCensus($rawAddress);
-
-    $parcelResult = resolveParcel(
-        $googleResult['lat'] ?? null,
-        $googleResult['lng'] ?? null,
-        $censusResult['county'] ?? null,
-        $censusResult['countyFips'] ?? null,
-        $rawAddress
-    );
-
-    $jurRaw = $parcelResult['jurisdictionName'] ?? ($censusResult['county'] ?? '');
-    $jurisdictionResult = resolveJurisdiction($jurRaw);
-
-    $parcelCount = $parcelResult['parcelCount'] ?? 0;
-    if ($parcelCount === 0) {
-        $rsCode = 'RS-7';
-        $parcelStatus = 'Unresolved Parcel';
-    } elseif ($parcelCount === 1) {
-        $rsCode = 'RS-0';
-        $parcelStatus = 'Single Parcel Found';
-    } else {
-        $rsCode = 'RS-6';
-        $parcelStatus = 'Multiple Parcels Found';
-    }
 }
 ?>
 
-<!-- HTML Output -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Census Address Validation Test</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+    input[type="text"] { width: 650px; padding: 12px; font-size: 16px; }
+    button { padding: 12px 24px; font-size: 16px; cursor: pointer; }
+    .result { margin-top: 30px; padding: 25px; border: 1px solid #ccc; background: #f9f9f9; border-radius: 6px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background: #f0f0f0; }
+    .success { color: green; }
+    .error { color: red; }
+</style>
+</head>
+<body>
+
+<h2>Census Address Validation Test</h2>
+
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
            placeholder="2252 N 44th St Phoenix, AZ 85008" style="width:650px;">
-    <button type="submit">Resolve Location</button>
+    <button type="submit">Validate with Census</button>
 </form>
 
 <?php if ($rawAddress !== ''): ?>
-<div style="margin-top:30px; padding:20px; border:1px solid #ddd; background:#f9f9f9;">
+<div class="result">
     <h3>Input Address</h3>
     <p><strong><?php echo htmlspecialchars($rawAddress); ?></strong></p>
 
-    <h3>Resolution Summary</h3>
-    <table style="width:100%; border-collapse:collapse;">
-        <tr><td><strong>Google Place ID</strong></td><td><?php echo htmlspecialchars($googleResult['placeId'] ?? '—'); ?></td></tr>
-        <tr><td><strong>Jurisdiction</strong></td><td><?php echo htmlspecialchars($jurisdictionResult['label'] ?? '—'); ?></td></tr>
-        <tr><td><strong>County</strong></td><td><?php echo htmlspecialchars($censusResult['county'] ?? '—'); ?></td></tr>
-        <tr><td><strong>Parcel Count</strong></td><td><?php echo $parcelResult['parcelCount'] ?? 0; ?></td></tr>
-        <tr><td><strong>RS Code</strong></td><td><strong><?php echo $rsCode; ?></strong> — <?php echo $parcelStatus; ?></td></tr>
-    </table>
+    <h3>Census Result</h3>
+    <?php if ($censusResult['valid'] ?? false): ?>
+        <p class="success">✅ Address is valid in Census database</p>
+        <table>
+            <tr><td><strong>Normalized Address</strong></td><td><?php echo htmlspecialchars($censusResult['normalized']['address'] ?? '—'); ?></td></tr>
+            <tr><td><strong>County</strong></td><td><?php echo htmlspecialchars($censusResult['county'] ?? '—'); ?></td></tr>
+            <tr><td><strong>County FIPS</strong></td><td><?php echo htmlspecialchars($censusResult['countyFips'] ?? '—'); ?></td></tr>
+            <tr><td><strong>County GEOID</strong></td><td><?php echo htmlspecialchars($censusResult['countyGeoId'] ?? '—'); ?></td></tr>
+            <tr><td><strong>Latitude</strong></td><td><?php echo htmlspecialchars($censusResult['normalized']['lat'] ?? '—'); ?></td></tr>
+            <tr><td><strong>Longitude</strong></td><td><?php echo htmlspecialchars($censusResult['normalized']['lng'] ?? '—'); ?></td></tr>
+        </table>
+    <?php else: ?>
+        <p class="error">❌ <?php echo htmlspecialchars($censusResult['reason'] ?? 'Unknown error'); ?></p>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
+
+</body>
+</html>
