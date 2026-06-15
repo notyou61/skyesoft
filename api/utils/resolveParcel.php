@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 4.2.0  (Stricter Address + City Matching)
+ * Version: 4.3.0  (Strict Post-Filter)
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -34,55 +34,39 @@ function resolveParcel(
     $original = trim($searchAddress);
     $upper = strtoupper($original);
 
-    error_log('[RESOLVE-PARCEL] Original: ' . $original);
+    // Extract input city
+    $inputCity = '';
+    if (preg_match('/\b(BUCKEYE|GOODYEAR|AVONDALE|MARICOPA)\b/i', $upper, $m)) {
+        $inputCity = strtoupper($m[1]);
+    }
 
-    // =====================================================
-    // NORMALIZE + EXTRACT COMPONENTS
-    // =====================================================
+    // Normalize for searching
     $normalized = $upper;
     $normalized = str_replace([', USA', ','], ' ', $normalized);
     $normalized = preg_replace('/\s+/', ' ', $normalized);
 
-    // Extract city if present
-    $inputCity = '';
-    if (preg_match('/\b(BUCKEYE|GOODYEAR|AVONDALE|MARICOPA|GILA BEND)\b/i', $normalized, $cityMatch)) {
-        $inputCity = strtoupper($cityMatch[1]);
-    }
-
-    // Remove city and state/ZIP for street matching
-    $streetOnly = preg_replace('/\b(BUCKEYE|GOODYEAR|AVONDALE|MARICOPA|PHOENIX|SCOTTSDALE|GLENDALE|MESA|CHANDLER|GILBERT|TEMPE|PEORIA|SURPRISE|EL MIRAGE|QUEEN CREEK)\b/i', '', $normalized);
-    $streetOnly = preg_replace('/\bAZ\b|\bARIZONA\b|\d{5}(-\d{4})?/', '', $streetOnly);
-    $streetOnly = preg_replace('/\s+/', ' ', trim($streetOnly));
-
-    // Extract street number and name
-    preg_match('/^(\d+)\s*([NSEW]?)\s*([A-Z0-9\s]+)/', $streetOnly, $matches);
+    // Extract street components
+    preg_match('/^(\d+)\s*([NSEW]?)\s*([A-Z0-9\s]+)/', $normalized, $matches);
     $streetNumber = $matches[1] ?? '';
     $directional  = trim($matches[2] ?? '');
     $streetName   = trim($matches[3] ?? '');
 
     $searchTerms = [];
 
-    // =====================================================
-    // TIER 1: Address + City (Best)
-    // =====================================================
+    // Tier 1: Address + City
     if ($streetNumber && $streetName && $inputCity) {
         $searchTerms['address_city'] = trim("$streetNumber $directional $streetName $inputCity");
     }
 
-    // =====================================================
-    // TIER 2: Full street match
-    // =====================================================
+    // Tier 2: Street only
     if ($streetNumber && $streetName) {
         $searchTerms['street'] = trim("$streetNumber $directional $streetName");
     }
 
-    // =====================================================
-    // TIER 3: Number + Street Root (Last resort)
-    // =====================================================
+    // Tier 3: Root
     if ($streetNumber && $streetName) {
         $root = preg_replace('/\b(ST|STREET|AVE|AVENUE|RD|ROAD|BLVD|DR|LN|WAY)\b/i', '', $streetName);
-        $root = trim($root);
-        if ($root) {
+        if (trim($root)) {
             $searchTerms['root'] = trim("$streetNumber $directional $root");
         }
     }
@@ -96,15 +80,15 @@ function resolveParcel(
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
 
         $params = http_build_query([
-            'where'             => $where,
-            'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-            'returnGeometry'    => 'false',
-            'f'                 => 'json'
+            'where'      => $where,
+            'outFields'  => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+            'returnGeometry' => 'false',
+            'f'          => 'json'
         ]);
 
         $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
 
-        error_log("[RESOLVE-PARCEL] Tier [{$tier}] → {$term}");
+        error_log("[RESOLVE-PARCEL] Tier [{$tier}] trying: {$term}");
 
         $response = @file_get_contents($url);
         if ($response === false) continue;
@@ -118,36 +102,40 @@ function resolveParcel(
     }
 
     if (empty($data['features'])) {
-        error_log('[RESOLVE-PARCEL] No results found');
         $result['searchTier'] = 'none';
         return $result;
     }
 
     // =====================================================
-    // FILTER RESULTS (Prefer correct city or "No City/Town")
+    // STRICT POST-FILTER (This is the key improvement)
     // =====================================================
-    $filtered = [];
+    $goodMatches = [];
+    $otherMatches = [];
+
     foreach ($data['features'] as $feature) {
         $attr = $feature['attributes'] ?? [];
-        $addr = strtoupper($attr['PHYSICAL_ADDRESS'] ?? '');
-        $city = strtoupper($attr['PHYSICAL_CITY'] ?? '');
+        $city = strtoupper(trim($attr['PHYSICAL_CITY'] ?? ''));
 
-        // Strong preference for correct city or unincorporated
-        $isGoodCity = ($inputCity && strpos($city, $inputCity) !== false) || 
-                      strpos($city, 'NO CITY') !== false || 
-                      $city === '';
+        $isGood = false;
 
-        if ($isGoodCity || empty($filtered)) {
-            $filtered[] = $attr;
+        // Prefer correct city or "No City/Town"
+        if ($inputCity && strpos($city, $inputCity) !== false) {
+            $isGood = true;
+        } elseif (strpos($city, 'NO CITY') !== false || $city === '') {
+            $isGood = true;
+        }
+
+        if ($isGood) {
+            $goodMatches[] = $attr;
+        } else {
+            $otherMatches[] = $attr;
         }
     }
 
-    // If we have good city matches, use them. Otherwise fall back to all results.
-    $finalResults = !empty($filtered) ? $filtered : $data['features'];
+    // If we have any good matches, use ONLY those. Otherwise fall back.
+    $finalResults = !empty($goodMatches) ? $goodMatches : $otherMatches;
 
-    // =====================================================
-    // BUILD OUTPUT
-    // =====================================================
+    // Build output
     $parcelDetails = [];
     foreach ($finalResults as $attr) {
         if (empty($attr['APN'])) continue;
@@ -178,7 +166,7 @@ function resolveParcel(
     }
 
     error_log('[RESOLVE-PARCEL] Final → Tier: ' . ($result['searchTier'] ?? 'unknown') . 
-              ' | Count: ' . $result['parcelCount']);
+              ' | Final Count: ' . $result['parcelCount']);
 
     return $result;
 }
