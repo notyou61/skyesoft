@@ -128,16 +128,18 @@ if ($rawAddress !== '') {
     // =====================================================
     $summaryLines = [];
 
-    $summaryLines[] = "Skyesoft resolved the details for " . htmlspecialchars($rawAddress) . ".";
+    // 1. Census
+    if (($censusResult['valid'] ?? false)) {
+        $summaryLines[] = "Skyesoft resolved the details for " . htmlspecialchars($rawAddress) . ".";
+        $summaryLines[] = "Census confirmed the location is in " . ucwords(strtolower($censusResult['county'] ?? 'Maricopa')) . " County.";
+    }
 
+    // 2. Google
     if (!empty($placeId)) {
         $summaryLines[] = "Google successfully validated the address and returned a Place ID.";
     }
 
-    if (($censusResult['valid'] ?? false)) {
-        $summaryLines[] = "Census confirmed the location is in " . ($censusResult['county'] ?? 'Maricopa') . " County.";
-    }
-
+    // 3. Parcel
     $parcelCount = $parcelResult['parcelCount'] ?? 0;
     if ($parcelCount > 0) {
         $summaryLines[] = "Parcel lookup found {$parcelCount} parcel(s) for this address.";
@@ -145,13 +147,18 @@ if ($rawAddress !== '') {
         $summaryLines[] = "No parcels were found for this address.";
     }
 
+    // 4. Jurisdiction
     if (!empty($jurisdictionName)) {
-        $summaryLines[] = "The governing jurisdiction is {$jurisdictionName}.";
-        if (!empty($postalCity) && $postalCity !== $jurisdictionName) {
-            $summaryLines[] = "The postal city is listed as {$postalCity}.";
+        $jurisdictionTitle = ucwords(strtolower($jurisdictionName));
+        $summaryLines[] = "The governing jurisdiction is {$jurisdictionTitle}.";
+        
+        if (!empty($postalCity) && strtolower($postalCity) !== strtolower($jurisdictionName)) {
+            $postalTitle = ucwords(strtolower($postalCity));
+            $summaryLines[] = "The postal city is listed as {$postalTitle}.";
         }
     }
 
+    // 5. Governance
     if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') {
         $summaryLines[] = "Governance classified this as {$rsCode} ({$parcelStatus}).";
     }
@@ -176,13 +183,13 @@ if ($rawAddress !== '') {
     .section-header { margin: 12px 0 6px 0; font-size: 15px; font-weight: bold; }
     .success { color: #2e7d32; }
     .error { color: #c62828; }
-    .ai-summary { 
-        background: #e8f5e9; 
-        padding: 14px 16px; 
-        border-left: 5px solid #2e7d32; 
-        margin-bottom: 20px; 
-        font-size: 14.5px; 
-        line-height: 1.6; 
+    .ai-summary {
+        background: #e8f5e9;
+        padding: 10px 14px;
+        border-left: 5px solid #2e7d32;
+        margin-bottom: 18px;
+        font-size: 14.5px;
+        line-height: 1.45;
         white-space: pre-line;
     }
     pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
@@ -273,7 +280,7 @@ if ($rawAddress !== '') {
                 <td><?php echo htmlspecialchars($p['parcelNumber'] ?? ''); ?></td>
                 <td><?php echo htmlspecialchars($p['ownerName'] ?? ''); ?></td>
                 <td><?php echo htmlspecialchars($p['siteAddress'] ?? ''); ?></td>
-                <td><?php echo htmlspecialchars($p['jurisdiction'] ?? ''); ?></td>
+                <td><?php echo htmlspecialchars(ucwords(strtolower($p['jurisdiction'] ?? ''))); ?></td>
             </tr>
         <?php endforeach; ?>
         </tbody>
@@ -290,9 +297,9 @@ if ($rawAddress !== '') {
         <?php endif; ?>
     </div>
     <table>
-        <tr><td style="width:180px"><strong>Governing Jurisdiction</strong></td><td><?php echo htmlspecialchars($jurisdictionName ?: '—'); ?></td></tr>
+        <tr><td style="width:180px"><strong>Governing Jurisdiction</strong></td><td><?php echo htmlspecialchars(ucwords(strtolower($jurisdictionName ?: '—'))); ?></td></tr>
         <tr><td><strong>Jurisdiction Type</strong></td><td><?php echo htmlspecialchars($jurisdictionType ?: '—'); ?></td></tr>
-        <tr><td><strong>Postal City</strong></td><td><?php echo htmlspecialchars($postalCity ?: '—'); ?></td></tr>
+        <tr><td><strong>Postal City</strong></td><td><?php echo htmlspecialchars(ucwords(strtolower($postalCity ?: '—'))); ?></td></tr>
     </table>
 
     <!-- 5. Governance -->
