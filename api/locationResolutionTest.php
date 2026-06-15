@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Location Resolution Test Harness — Full Pipeline
+// Location Resolution Test Harness — Full Pipeline (Fixed Google)
 // =====================================================
 
 error_reporting(E_ALL);
@@ -28,32 +28,72 @@ $parcelStatus = 'Unknown';
 // =====================================================
 $utilsDir = __DIR__ . '/utils';
 
-require_once __DIR__ . '/resolveLocation.php';           // ← Your working file
+require_once __DIR__ . '/utils/envLoader.php';
+skyesoftLoadEnv();
+
 require_once $utilsDir . '/validateAddressCensus.php';
 require_once $utilsDir . '/resolveParcel.php';
 require_once $utilsDir . '/resolveJurisdiction.php';
+
+// =====================================================
+// Google Geocode (using your working code from SECTION-07)
+// =====================================================
+function getGooglePlaceData($searchAddress) {
+    $googleApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') 
+        ?: getenv('GOOGLE_MAPS_BACKEND_API_KEY');
+
+    if (!empty($searchAddress) && !empty($googleApiKey)) {
+
+        $geocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?' . 
+            http_build_query([
+                'address' => $searchAddress,
+                'key'     => $googleApiKey
+            ]);
+
+        $geocodeResponse = @file_get_contents($geocodeUrl);
+        $geocodeData     = json_decode($geocodeResponse, true);
+
+        if (isset($geocodeData['results'][0])) {
+            $result = $geocodeData['results'][0];
+
+            return [
+                'placeId'   => $result['place_id'] ?? null,
+                'latitude'  => $result['geometry']['location']['lat'] ?? null,
+                'longitude' => $result['geometry']['location']['lng'] ?? null,
+                'validated' => true
+            ];
+        } else {
+            error_log('[TEST] Google returned no results for: ' . $searchAddress);
+        }
+    } else {
+        error_log('[TEST] Skipping Google geocode (missing address or API key)');
+    }
+
+    return [
+        'placeId'   => null,
+        'latitude'  => null,
+        'longitude' => null,
+        'validated' => false
+    ];
+}
 
 // =====================================================
 // Process Request
 // =====================================================
 if ($rawAddress !== '') {
 
-    // 1. Google Geocode (using your existing function)
-    $input = ['address' => $rawAddress];
-    $googleResult = getGoogleGeocode($input);
-
-    if ($googleResult) {
-        $placeId   = $googleResult['placeId']   ?? '';
-        $latitude  = $googleResult['latitude']  ?? $googleResult['lat'] ?? '';
-        $longitude = $googleResult['longitude'] ?? $googleResult['lng'] ?? '';
-    }
+    // 1. Google (using your proven logic)
+    $googleResult = getGooglePlaceData($rawAddress);
+    $placeId   = $googleResult['placeId']   ?? '';
+    $latitude  = $googleResult['latitude']  ?? '';
+    $longitude = $googleResult['longitude'] ?? '';
 
     // 2. Census
     if (function_exists('validateAddressCensus')) {
         $censusResult = validateAddressCensus($rawAddress);
     }
 
-    // 3. Jurisdiction (current function accepts 1 string)
+    // 3. Jurisdiction
     if (function_exists('resolveJurisdiction')) {
         $jurRaw = $censusResult['county'] ?? $rawAddress;
         $jurisdictionResult = resolveJurisdiction($jurRaw);
@@ -72,6 +112,7 @@ if ($rawAddress !== '') {
         );
 
         $parcelCount = $parcelResult['parcelCount'] ?? 0;
+
         if ($parcelCount === 0) {
             $rsCode = 'RS-7';
             $parcelStatus = 'Unresolved Parcel';
@@ -128,7 +169,7 @@ if ($rawAddress !== '') {
             <tr><td><strong>Longitude</strong></td><td><?php echo htmlspecialchars($longitude); ?></td></tr>
         </table>
     <?php else: ?>
-        <p class="error">❌ Google geocoding failed or returned no Place ID.</p>
+        <p class="error">❌ Google validation failed or returned no Place ID.</p>
     <?php endif; ?>
 
     <!-- Census Result -->
