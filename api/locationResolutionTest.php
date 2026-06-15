@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Location Resolution Test — Census First
+// Location Resolution Test — Census + Parcel
 // =====================================================
 
 error_reporting(E_ALL);
@@ -9,13 +9,39 @@ ini_set('display_errors', 1);
 $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 
 $censusResult = [];
+$parcelResult = [];
 
-// Load Census validator
+$rsCode = 'RS-UNKNOWN';
+$parcelStatus = 'Unknown';
+
+// Load utilities
 $utilsDir = __DIR__ . '/utils';
 require_once $utilsDir . '/validateAddressCensus.php';
+require_once $utilsDir . '/resolveParcel.php';
 
 if ($rawAddress !== '') {
     $censusResult = validateAddressCensus($rawAddress);
+
+    $parcelResult = resolveParcel(
+        $censusResult['normalized']['lat'] ?? null,
+        $censusResult['normalized']['lng'] ?? null,
+        $censusResult['county'] ?? null,
+        $censusResult['countyFips'] ?? null,
+        $rawAddress
+    );
+
+    // Determine RS Code
+    $parcelCount = $parcelResult['parcelCount'] ?? 0;
+    if ($parcelCount === 0) {
+        $rsCode = 'RS-7';
+        $parcelStatus = 'Unresolved Parcel';
+    } elseif ($parcelCount === 1) {
+        $rsCode = 'RS-0';
+        $parcelStatus = 'Single Parcel Found';
+    } else {
+        $rsCode = 'RS-6';
+        $parcelStatus = 'Multiple Parcels Found';
+    }
 }
 ?>
 
@@ -23,7 +49,7 @@ if ($rawAddress !== '') {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Census Address Validation Test</title>
+<title>Location Resolution Test — Census + Parcel</title>
 <style>
     body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
     input[type="text"] { width: 650px; padding: 12px; font-size: 16px; }
@@ -38,12 +64,12 @@ if ($rawAddress !== '') {
 </head>
 <body>
 
-<h2>Census Address Validation Test</h2>
+<h2>Location Resolution Test — Census + Parcel</h2>
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
            placeholder="2252 N 44th St Phoenix, AZ 85008" style="width:650px;">
-    <button type="submit">Validate with Census</button>
+    <button type="submit">Resolve Location</button>
 </form>
 
 <?php if ($rawAddress !== ''): ?>
@@ -53,17 +79,32 @@ if ($rawAddress !== '') {
 
     <h3>Census Result</h3>
     <?php if ($censusResult['valid'] ?? false): ?>
-        <p class="success">✅ Address is valid in Census database</p>
+        <p class="success">✅ Valid Address</p>
         <table>
-            <tr><td><strong>Normalized Address</strong></td><td><?php echo htmlspecialchars($censusResult['normalized']['address'] ?? '—'); ?></td></tr>
             <tr><td><strong>County</strong></td><td><?php echo htmlspecialchars($censusResult['county'] ?? '—'); ?></td></tr>
-            <tr><td><strong>County FIPS</strong></td><td><?php echo htmlspecialchars($censusResult['countyFips'] ?? '—'); ?></td></tr>
-            <tr><td><strong>County GEOID</strong></td><td><?php echo htmlspecialchars($censusResult['countyGeoId'] ?? '—'); ?></td></tr>
-            <tr><td><strong>Latitude</strong></td><td><?php echo htmlspecialchars($censusResult['normalized']['lat'] ?? '—'); ?></td></tr>
-            <tr><td><strong>Longitude</strong></td><td><?php echo htmlspecialchars($censusResult['normalized']['lng'] ?? '—'); ?></td></tr>
+            <tr><td><strong>FIPS</strong></td><td><?php echo htmlspecialchars($censusResult['countyFips'] ?? '—'); ?></td></tr>
         </table>
     <?php else: ?>
-        <p class="error">❌ <?php echo htmlspecialchars($censusResult['reason'] ?? 'Unknown error'); ?></p>
+        <p class="error">❌ <?php echo htmlspecialchars($censusResult['reason'] ?? 'Unknown'); ?></p>
+    <?php endif; ?>
+
+    <h3>Parcel Result</h3>
+    <p><strong>Parcel Count:</strong> <?php echo $parcelResult['parcelCount'] ?? 0; ?></p>
+    <p><strong>RS Code:</strong> <strong><?php echo $rsCode; ?></strong> — <?php echo $parcelStatus; ?></p>
+
+    <?php if (!empty($parcelResult['parcelDetails'])): ?>
+    <table>
+        <thead><tr><th>APN</th><th>Owner</th><th>Address</th></tr></thead>
+        <tbody>
+        <?php foreach ($parcelResult['parcelDetails'] as $p): ?>
+            <tr>
+                <td><?php echo htmlspecialchars($p['parcelNumber'] ?? ''); ?></td>
+                <td><?php echo htmlspecialchars($p['ownerName'] ?? ''); ?></td>
+                <td><?php echo htmlspecialchars($p['siteAddress'] ?? ''); ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
     <?php endif; ?>
 </div>
 <?php endif; ?>
