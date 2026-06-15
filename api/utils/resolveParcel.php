@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 4.0.0  (Tiered Search Strategy)
+ * Version: 4.1.0  (Improved Buckeye + Unincorporated Support)
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -23,7 +23,7 @@ function resolveParcel(
         'jurisdictionName' => null,
         'jurisdictionType' => null,
         'jurisdictionKey'  => null,
-        'searchTier'       => null,           // NEW: Shows which tier was used
+        'searchTier'       => null,
     ];
 
     if (!$searchAddress) {
@@ -37,46 +37,52 @@ function resolveParcel(
     error_log('[RESOLVE-PARCEL] Original: ' . $original);
 
     // =====================================================
-    // NORMALIZE ADDRESS FOR SEARCHING
+    // IMPROVED NORMALIZATION
     // =====================================================
     $normalized = $upper;
-    $normalized = str_replace([', USA', ','], ' ', $normalized);
+
+    // Remove common suffixes and noise
+    $normalized = str_replace([', USA', ' USA', ','], ' ', $normalized);
     $normalized = preg_replace('/\s+/', ' ', $normalized);
     $normalized = trim($normalized);
 
-    // Extract components
-    preg_match('/^(\d+)\s+([NSEW]?)\s*([A-Z0-9\s]+)/', $normalized, $matches);
+    // Remove city names and ZIP for cleaner street matching
+    $normalized = preg_replace('/\b(PHOENIX|BUCKEYE|SCOTTSDALE|GLENDALE|MESA|CHANDLER|GILBERT|TEMPE|PEORIA|SURPRISE|AVONDALE|GOODYEAR|MARICOPA|QUEEN CREEK|EL MIRAGE|YOUNGSTOWN|WICKENBURG|FOUNTAIN HILLS|PARADISE VALLEY|CAREFREE|CAVE CREEK|LITCHFIELD PARK|TOLLESON)\b/i', '', $normalized);
+    $normalized = preg_replace('/\bAZ\b|\bARIZONA\b|\d{5}(-\d{4})?/', '', $normalized);
+    $normalized = preg_replace('/\s+/', ' ', $normalized);
+    $normalized = trim($normalized);
+
+    // Extract components more reliably
+    preg_match('/^(\d+)\s*([NSEW]?)\.?\s*([A-Z0-9\s]+?)(?:\s+(ST|STREET|AVE|AVENUE|RD|ROAD|BLVD|DR|DRIVE|LN|LANE|WAY|CT|COURT|PL|PLACE))?\s*$/i', $normalized, $matches);
+
     $streetNumber = $matches[1] ?? '';
-    $directional  = trim($matches[2] ?? '');
-    $streetName   = trim($matches[3] ?? '');
+    $directional  = strtoupper(trim($matches[2] ?? ''));
+    $streetName   = strtoupper(trim($matches[3] ?? ''));
 
     $searchTerms = [];
 
     // =====================================================
-    // TIER 1: Exact Physical Address Match (Preferred)
+    // TIER 1: Try with city included (sometimes helps)
     // =====================================================
     if ($streetNumber && $streetName) {
-        $exactTerm = trim("$streetNumber $directional $streetName");
-        $searchTerms['exact'] = $exactTerm;
+        $searchTerms['exact_with_city'] = trim("$streetNumber $directional $streetName BUCKEYE");
     }
 
     // =====================================================
-    // TIER 2: Street Number + Street Name
+    // TIER 2: Clean street match (most reliable)
     // =====================================================
     if ($streetNumber && $streetName) {
-        $streetTerm = trim("$streetNumber $streetName");
-        $searchTerms['street'] = $streetTerm;
+        $searchTerms['street'] = trim("$streetNumber $directional $streetName");
     }
 
     // =====================================================
-    // TIER 3: Number + Street Root (Last Resort)
+    // TIER 3: Number + Street Root (broader fallback)
     // =====================================================
     if ($streetNumber && $streetName) {
-        // Remove common suffixes for broader matching
-        $rootName = preg_replace('/\b(ST|STREET|AVE|AVENUE|RD|ROAD|BLVD|DR|DRIVE|LN|LANE|WAY)\b/i', '', $streetName);
+        $rootName = preg_replace('/\b(ST|STREET|AVE|AVENUE|RD|ROAD|BLVD|DR|DRIVE|LN|LANE|WAY|CT|COURT|PL|PLACE)\b/i', '', $streetName);
         $rootName = trim($rootName);
         if ($rootName) {
-            $searchTerms['root'] = trim("$streetNumber $rootName");
+            $searchTerms['root'] = trim("$streetNumber $directional $rootName");
         }
     }
 
@@ -84,7 +90,7 @@ function resolveParcel(
     $tierUsed = null;
 
     foreach ($searchTerms as $tier => $term) {
-        if (strlen(trim($term)) < 5) continue;
+        if (strlen(trim($term)) < 6) continue;
 
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
 
@@ -97,7 +103,7 @@ function resolveParcel(
 
         $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
 
-        error_log("[RESOLVE-PARCEL] Tier {$tier} trying: {$term}");
+        error_log("[RESOLVE-PARCEL] Tier [{$tier}] trying term: {$term}");
 
         $response = @file_get_contents($url);
 
@@ -107,13 +113,13 @@ function resolveParcel(
 
         if (isset($data['features']) && count($data['features']) > 0) {
             $tierUsed = $tier;
-            error_log("[RESOLVE-PARCEL] Tier {$tier} SUCCESS with " . count($data['features']) . " results");
+            error_log("[RESOLVE-PARCEL] Tier [{$tier}] SUCCESS → " . count($data['features']) . " result(s)");
             break;
         }
     }
 
     if (!isset($data['features']) || empty($data['features'])) {
-        error_log('[RESOLVE-PARCEL] No results found for any tier');
+        error_log('[RESOLVE-PARCEL] No parcels found after all tiers');
         $result['searchTier'] = 'none';
         return $result;
     }
@@ -153,8 +159,8 @@ function resolveParcel(
         $result['jurisdictionKey']  = $jurisdiction['jurisdictionKey'] ?? null;
     }
 
-    error_log('[RESOLVE-PARCEL] Final: Tier=' . ($result['searchTier'] ?? 'unknown') . 
-              ' | Count=' . $result['parcelCount']);
+    error_log('[RESOLVE-PARCEL] Final Result → Tier: ' . ($result['searchTier'] ?? 'unknown') . 
+              ' | Parcels: ' . $result['parcelCount']);
 
     return $result;
 }
