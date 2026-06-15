@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Location Resolution Test Harness (Stable Version)
+// Location Resolution Test Harness
 // =====================================================
 
 error_reporting(E_ALL);
@@ -24,8 +24,11 @@ $postalCity       = '';
 $rsCode       = 'RS-UNKNOWN';
 $parcelStatus = 'Unknown';
 
-// Load utilities
+// =====================================================
+// Load Utilities
+// =====================================================
 $utilsDir = __DIR__ . '/utils';
+
 require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
@@ -34,7 +37,7 @@ require_once $utilsDir . '/resolveParcel.php';
 require_once $utilsDir . '/resolveJurisdiction.php';
 
 // =====================================================
-// Google Geocode
+// Google Geocode Function
 // =====================================================
 function getGooglePlaceData($searchAddress) {
     $googleApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') 
@@ -121,14 +124,39 @@ if ($rawAddress !== '') {
     }
 
     // =====================================================
-    // Summary (Deterministic - Reliable)
+    // Structured Summary (Deterministic)
     // =====================================================
-    $aiSummary = "Skyesoft resolved the details for {$rawAddress}. ";
-    if (!empty($placeId)) $aiSummary .= "Google successfully validated the address. ";
-    if (($censusResult['valid'] ?? false)) $aiSummary .= "Census confirmed the location is in " . ($censusResult['county'] ?? 'Maricopa') . " County. ";
-    $aiSummary .= "Parcel lookup found " . ($parcelResult['parcelCount'] ?? 0) . " parcel(s). ";
-    if (!empty($jurisdictionName)) $aiSummary .= "The governing jurisdiction is {$jurisdictionName}. ";
-    if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') $aiSummary .= "Governance classified this as {$rsCode}.";
+    $summaryLines = [];
+
+    $summaryLines[] = "Skyesoft resolved the details for " . htmlspecialchars($rawAddress) . ".";
+
+    if (!empty($placeId)) {
+        $summaryLines[] = "Google successfully validated the address and returned a Place ID.";
+    }
+
+    if (($censusResult['valid'] ?? false)) {
+        $summaryLines[] = "Census confirmed the location is in " . ($censusResult['county'] ?? 'Maricopa') . " County.";
+    }
+
+    $parcelCount = $parcelResult['parcelCount'] ?? 0;
+    if ($parcelCount > 0) {
+        $summaryLines[] = "Parcel lookup found {$parcelCount} parcel(s) for this address.";
+    } else {
+        $summaryLines[] = "No parcels were found for this address.";
+    }
+
+    if (!empty($jurisdictionName)) {
+        $summaryLines[] = "The governing jurisdiction is {$jurisdictionName}.";
+        if (!empty($postalCity) && $postalCity !== $jurisdictionName) {
+            $summaryLines[] = "The postal city is listed as {$postalCity}.";
+        }
+    }
+
+    if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') {
+        $summaryLines[] = "Governance classified this as {$rsCode} ({$parcelStatus}).";
+    }
+
+    $aiSummary = implode("\n", $summaryLines);
 }
 ?>
 
@@ -148,7 +176,15 @@ if ($rawAddress !== '') {
     .section-header { margin: 12px 0 6px 0; font-size: 15px; font-weight: bold; }
     .success { color: #2e7d32; }
     .error { color: #c62828; }
-    .ai-summary { background: #e8f5e9; padding: 14px; border-left: 5px solid #2e7d32; margin-bottom: 20px; font-size: 14.5px; line-height: 1.5; }
+    .ai-summary { 
+        background: #e8f5e9; 
+        padding: 14px 16px; 
+        border-left: 5px solid #2e7d32; 
+        margin-bottom: 20px; 
+        font-size: 14.5px; 
+        line-height: 1.6; 
+        white-space: pre-line;
+    }
     pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
 </style>
 </head>
