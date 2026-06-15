@@ -1,73 +1,220 @@
 <?php
 
-header('Content-Type: application/json');
+// =====================================================
+// Maricopa Parcel Address Lookup Test
+// =====================================================
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-require_once __DIR__ . '/utils/envLoader.php';
-skyesoftLoadEnv();
+$rawAddress = isset($_POST['address'])
+    ? trim($_POST['address'])
+    : '';
 
-// #region 📍 Test Address
-$rawAddress = '7401 E CAMELBACK RD SCOTTSDALE AZ 85251';
-// $rawAddress = '3145 N 33rd Ave Phoenix AZ 85017';
-// #endregion
+$results = null;
+$parcelCount = 0;
+$message = '';
 
-$original = $rawAddress;
-$upper = strtoupper(trim($rawAddress));
+function normalizeParcelSearchAddress($address) {
+    $address = strtoupper(trim($address));
 
-echo "=== TESTING PARCEL RESOLUTION ===\n";
-echo "Address: " . $rawAddress . "\n\n";
+    // Remove suite/unit fragments for parcel search.
+    $address = preg_replace('/\s+(#|STE|SUITE|UNIT|APT)\s*[A-Z0-9\-]+/i', '', $address);
 
-// Multi-stage search terms
-$searchTerms = [
-    $upper,
-    preg_replace('/\b(E|W|N|S)\b/', '', $upper),
-    preg_replace('/\b(RD|ROAD|ST|AVE|BLVD)\b/', '', $upper),
-    preg_replace('/[^A-Z0-9 ]/', '', $upper),
-    '7401 E CAMELBACK',   // Very broad for Camelback
-    '3145 N 33RD'         // Very broad for 33rd Ave
-];
+    // Remove punctuation.
+    $address = preg_replace('/[^A-Z0-9\s]/', ' ', $address);
 
-$data = null;
-$successfulTerm = '';
+    // Normalize spaces.
+    $address = preg_replace('/\s+/', ' ', $address);
 
-foreach ($searchTerms as $term) {
-    echo "Trying: " . $term . "\n";
+    return trim($address);
+}
 
-    $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
+function buildParcelSearchTerms($address) {
+    $normalized = normalizeParcelSearchAddress($address);
 
-    $params = http_build_query([
-        'where'          => $where,
-        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-        'returnGeometry' => 'false',
-        'f'              => 'json'
-    ]);
+    $terms = array();
 
-    $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
-    echo "URL: " . $url . "\n";
+    // Full normalized address.
+    $terms[] = $normalized;
 
-    $response = @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => 20]]));
-
-    if ($response === false) {
-        echo "Request failed (network/timeout)\n\n";
-        continue;
+    // Remove city/state/zip by keeping street number + direction + street name.
+    if (preg_match('/^(\d+\s+[NSEW]?\s*[A-Z0-9]+)/', $normalized, $matches)) {
+        $terms[] = trim($matches[1]);
     }
 
-    $data = json_decode($response, true);
-    $count = isset($data['features']) ? count($data['features']) : 0;
+    // Remove street suffixes.
+    $terms[] = preg_replace('/\b(RD|ROAD|ST|STREET|AVE|AVENUE|BLVD|DR|DRIVE|LN|LANE|WAY|PKWY)\b/', '', $normalized);
 
-    echo "Results: " . $count . "\n\n";
+    // Deduplicate.
+    $terms = array_unique(array_filter(array_map('trim', $terms)));
 
-    if ($count > 0) {
-        $successfulTerm = $term;
-        break;
+    return $terms;
+}
+
+function lookupMaricopaParcels($address) {
+    $searchTerms = buildParcelSearchTerms($address);
+
+    foreach ($searchTerms as $term) {
+
+        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
+            str_replace("'", "''", $term) .
+            "%')";
+
+        $params = http_build_query(array(
+            'where'          => $where,
+            'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+            'returnGeometry' => 'false',
+            'f'              => 'json'
+        ));
+
+        $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
+
+        $context = stream_context_create(array(
+            'http' => array(
+                'timeout' => 20
+            )
+        ));
+
+        $response = @file_get_contents($url, false, $context);
+
+        if ($response === false) {
+            continue;
+        }
+
+        $data = json_decode($response, true);
+
+        if (!empty($data['features'])) {
+            return array(
+                'term'     => $term,
+                'features' => $data['features']
+            );
+        }
+    }
+
+    return array(
+        'term'     => null,
+        'features' => array()
+    );
+}
+
+if ($rawAddress !== '') {
+    $results = lookupMaricopaParcels($rawAddress);
+    $parcelCount = count($results['features']);
+
+    if ($parcelCount === 0) {
+        $message = 'No parcel available for this address.';
     }
 }
 
-if (isset($data['features']) && count($data['features']) > 0) {
-    echo "✅ SUCCESS with term: " . $successfulTerm . "\n\n";
-    echo json_encode($data['features'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-} else {
-    echo "❌ No results from any term.\n";
-    echo "Last raw response preview:\n" . substr($response ?? '', 0, 600) . "...\n";
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Maricopa Parcel Lookup</title>
+<style>
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 30px;
+    color: #222;
 }
+
+input[type="text"] {
+    width: 520px;
+    padding: 8px;
+    font-size: 14px;
+}
+
+button {
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.result {
+    margin-top: 25px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 15px;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+    font-size: 13px;
+}
+
+th {
+    background: #f2f2f2;
+}
+
+.notice {
+    margin-top: 20px;
+    font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<h2>Maricopa Parcel Lookup</h2>
+
+<form method="post">
+    <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" placeholder="Enter address">
+    <button type="submit">Search Parcels</button>
+</form>
+
+<?php if ($rawAddress !== ''): ?>
+<div class="result">
+
+    <h3>Address</h3>
+    <p><?php echo htmlspecialchars($rawAddress); ?></p>
+
+    <h3>Parcel Count</h3>
+    <p><?php echo (int)$parcelCount; ?></p>
+
+    <?php if ($parcelCount === 0): ?>
+
+        <div class="notice">
+            <?php echo htmlspecialchars($message); ?>
+        </div>
+
+    <?php else: ?>
+
+        <p><strong>Matched Search Term:</strong> <?php echo htmlspecialchars($results['term']); ?></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>APN</th>
+                    <th>Physical Address</th>
+                    <th>City</th>
+                    <th>Jurisdiction</th>
+                    <th>Owner</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($results['features'] as $feature): ?>
+                    <?php $a = isset($feature['attributes']) ? $feature['attributes'] : array(); ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($a['APN'] ?? ''); ?></td>
+                        <td><?php echo htmlspecialchars($a['PHYSICAL_ADDRESS'] ?? ''); ?></td>
+                        <td><?php echo htmlspecialchars($a['PHYSICAL_CITY'] ?? ''); ?></td>
+                        <td><?php echo htmlspecialchars($a['JURISDICTION'] ?? ''); ?></td>
+                        <td><?php echo htmlspecialchars($a['OWNER_NAME'] ?? ''); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+    <?php endif; ?>
+
+</div>
+<?php endif; ?>
+
+</body>
+</html>
