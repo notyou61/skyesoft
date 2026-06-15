@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Location Resolution Test Harness — Jurisdiction from Parcel
+// Location Resolution Test Harness — Polished UI
 // =====================================================
 
 error_reporting(E_ALL);
@@ -37,7 +37,7 @@ require_once $utilsDir . '/resolveParcel.php';
 require_once $utilsDir . '/resolveJurisdiction.php';
 
 // =====================================================
-// Google Geocode (your working logic)
+// Google Geocode Function
 // =====================================================
 function getGooglePlaceData($searchAddress) {
     $googleApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') 
@@ -67,7 +67,7 @@ function getGooglePlaceData($searchAddress) {
 }
 
 // =====================================================
-// Process Request (Census → Google → Parcel → Jurisdiction → Governance)
+// Process Request
 // =====================================================
 if ($rawAddress !== '') {
 
@@ -82,7 +82,7 @@ if ($rawAddress !== '') {
     $latitude  = $googleResult['latitude']  ?? '';
     $longitude = $googleResult['longitude'] ?? '';
 
-    // 3. Parcel (primary source for Jurisdiction)
+    // 3. Parcel
     if (function_exists('resolveParcel')) {
         $parcelResult = resolveParcel(
             $latitude ?: null,
@@ -94,13 +94,11 @@ if ($rawAddress !== '') {
 
         $parcelCount = $parcelResult['parcelCount'] ?? 0;
 
-        // Set Jurisdiction from Parcel data if available
         if (!empty($parcelResult['parcelDetails'][0]['jurisdiction'])) {
             $jurisdictionName = $parcelResult['parcelDetails'][0]['jurisdiction'];
-            $jurisdictionType = 'City'; // Default for now
+            $jurisdictionType = 'City';
         }
 
-        // Set Postal City from parcel if available
         if (!empty($parcelResult['parcelDetails'][0]['city'])) {
             $postalCity = $parcelResult['parcelDetails'][0]['city'];
         }
@@ -117,15 +115,13 @@ if ($rawAddress !== '') {
         }
     }
 
-    // 4. Jurisdiction (fallback if not from parcel)
+    // 4. Jurisdiction fallback
     if (empty($jurisdictionName) && function_exists('resolveJurisdiction')) {
         $jurRaw = $censusResult['county'] ?? $rawAddress;
         $jurisdictionResult = resolveJurisdiction($jurRaw);
         $jurisdictionName = $jurisdictionResult['label'] ?? '';
         $jurisdictionType = $jurisdictionResult['jurisdictionType'] ?? '';
     }
-
-    // 5. Governance already calculated
 }
 ?>
 
@@ -135,24 +131,50 @@ if ($rawAddress !== '') {
 <meta charset="UTF-8">
 <title>Location Resolution Test Harness</title>
 <style>
-    body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-    input[type="text"] { width: 650px; padding: 12px; font-size: 16px; }
-    button { padding: 12px 24px; font-size: 16px; cursor: pointer; }
-    .result { margin-top: 30px; padding: 25px; border: 1px solid #ccc; background: #f9f9f9; border-radius: 6px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    body { 
+        font-family: Arial, sans-serif; 
+        margin: 20px; 
+        line-height: 1.4; 
+        font-size: 14px;
+    }
+    h2 { margin-bottom: 10px; }
+    input[type="text"] { width: 600px; padding: 8px; font-size: 14px; }
+    button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
+    .result { 
+        margin-top: 15px; 
+        padding: 15px; 
+        border: 1px solid #ccc; 
+        background: #f9f9f9; 
+        border-radius: 6px; 
+    }
+    table { 
+        border-collapse: collapse; 
+        width: 100%; 
+        margin-top: 8px; 
+        font-size: 13px;
+    }
+    th, td { 
+        border: 1px solid #ddd; 
+        padding: 6px 8px; 
+        text-align: left; 
+    }
     th { background: #f0f0f0; }
-    .success { color: green; }
-    .error { color: red; }
+    .section-header { 
+        margin: 12px 0 6px 0; 
+        font-size: 15px;
+        font-weight: bold;
+    }
+    .success { color: #2e7d32; }
+    .error { color: #c62828; }
 </style>
 </head>
 <body>
 
-<h2>Location Resolution Test Harness — Jurisdiction from Parcel</h2>
+<h2>Location Resolution Test Harness</h2>
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
-           placeholder="3145 N 33rd Ave, Phoenix, AZ 85017" style="width:650px;">
+           placeholder="3145 N 33rd Ave, Phoenix, AZ 85017">
     <button type="submit">Resolve Location</button>
 </form>
 
@@ -163,38 +185,64 @@ if ($rawAddress !== '') {
     <p><strong><?php echo htmlspecialchars($rawAddress); ?></strong></p>
 
     <!-- 1. Census -->
-    <h3>Census Result</h3>
+    <div class="section-header">
+        1. Census Result 
+        <?php if ($censusResult['valid'] ?? false): ?>
+            <span class="success">✅ Valid Address</span>
+        <?php else: ?>
+            <span class="error">❌ Invalid / Not Found</span>
+        <?php endif; ?>
+    </div>
     <?php if ($censusResult['valid'] ?? false): ?>
-        <p class="success">✅ Valid Address</p>
         <table>
-            <tr><td><strong>County</strong></td><td><?php echo htmlspecialchars($censusResult['county'] ?? '—'); ?></td></tr>
+            <tr><td style="width:180px"><strong>County</strong></td><td><?php echo htmlspecialchars($censusResult['county'] ?? '—'); ?></td></tr>
             <tr><td><strong>County FIPS</strong></td><td><?php echo htmlspecialchars($censusResult['countyFips'] ?? '—'); ?></td></tr>
             <tr><td><strong>County GEOID</strong></td><td><?php echo htmlspecialchars($censusResult['countyGeoId'] ?? '—'); ?></td></tr>
         </table>
     <?php else: ?>
-        <p class="error">❌ <?php echo htmlspecialchars($censusResult['reason'] ?? 'Census validation failed'); ?></p>
+        <p class="error"><?php echo htmlspecialchars($censusResult['reason'] ?? 'Census validation failed'); ?></p>
     <?php endif; ?>
 
     <!-- 2. Google -->
-    <h3>Google Result</h3>
+    <div class="section-header">
+        2. Google Result 
+        <?php if (!empty($placeId)): ?>
+            <span class="success">✅ Valid</span>
+        <?php else: ?>
+            <span class="error">❌ Failed</span>
+        <?php endif; ?>
+    </div>
     <?php if (!empty($placeId)): ?>
         <table>
-            <tr><td><strong>Place ID</strong></td><td><?php echo htmlspecialchars($placeId); ?></td></tr>
+            <tr><td style="width:180px"><strong>Place ID</strong></td><td><?php echo htmlspecialchars($placeId); ?></td></tr>
             <tr><td><strong>Latitude</strong></td><td><?php echo htmlspecialchars($latitude); ?></td></tr>
             <tr><td><strong>Longitude</strong></td><td><?php echo htmlspecialchars($longitude); ?></td></tr>
         </table>
     <?php else: ?>
-        <p class="error">❌ Google validation failed.</p>
+        <p class="error">Google validation failed or returned no Place ID.</p>
     <?php endif; ?>
 
     <!-- 3. Parcel -->
-    <h3>Parcel Result</h3>
-    <p><strong>Parcel Count:</strong> <?php echo $parcelResult['parcelCount'] ?? 0; ?></p>
+    <div class="section-header">
+        3. Parcel Result 
+        <?php if (($parcelResult['parcelCount'] ?? 0) > 0): ?>
+            <span class="success">✅ Found (<?php echo $parcelResult['parcelCount']; ?>)</span>
+        <?php else: ?>
+            <span class="error">❌ None Found</span>
+        <?php endif; ?>
+    </div>
     <p><strong>RS Code:</strong> <strong><?php echo $rsCode; ?></strong> — <?php echo $parcelStatus; ?></p>
 
     <?php if (!empty($parcelResult['parcelDetails'])): ?>
     <table>
-        <thead><tr><th>APN</th><th>Owner</th><th>Address</th><th>Jurisdiction</th></tr></thead>
+        <thead>
+            <tr>
+                <th style="width:140px">APN</th>
+                <th>Owner</th>
+                <th>Address</th>
+                <th style="width:120px">Jurisdiction</th>
+            </tr>
+        </thead>
         <tbody>
         <?php foreach ($parcelResult['parcelDetails'] as $p): ?>
             <tr>
@@ -208,18 +256,32 @@ if ($rawAddress !== '') {
     </table>
     <?php endif; ?>
 
-    <!-- 4. Jurisdiction (from Parcel) + Postal City -->
-    <h3>Jurisdiction Result</h3>
+    <!-- 4. Jurisdiction -->
+    <div class="section-header">
+        4. Jurisdiction Result 
+        <?php if (!empty($jurisdictionName)): ?>
+            <span class="success">✅ Resolved</span>
+        <?php else: ?>
+            <span class="error">❌ Not Resolved</span>
+        <?php endif; ?>
+    </div>
     <table>
-        <tr><td><strong>Governing Jurisdiction</strong></td><td><?php echo htmlspecialchars($jurisdictionName ?: '—'); ?></td></tr>
+        <tr><td style="width:180px"><strong>Governing Jurisdiction</strong></td><td><?php echo htmlspecialchars($jurisdictionName ?: '—'); ?></td></tr>
         <tr><td><strong>Jurisdiction Type</strong></td><td><?php echo htmlspecialchars($jurisdictionType ?: '—'); ?></td></tr>
         <tr><td><strong>Postal City</strong></td><td><?php echo htmlspecialchars($postalCity ?: '—'); ?></td></tr>
     </table>
 
     <!-- 5. Governance -->
-    <h3>Governance Evaluation</h3>
+    <div class="section-header">
+        5. Governance Evaluation
+        <?php if (in_array($rsCode, ['RS-0', 'RS-6'])): ?>
+            <span class="success">✅ Acceptable</span>
+        <?php else: ?>
+            <span class="error">❌ Blocked</span>
+        <?php endif; ?>
+    </div>
     <table>
-        <tr><td><strong>Census Valid</strong></td><td><?php echo ($censusResult['valid'] ?? false) ? 'Yes' : 'No'; ?></td></tr>
+        <tr><td style="width:180px"><strong>Census Valid</strong></td><td><?php echo ($censusResult['valid'] ?? false) ? 'Yes' : 'No'; ?></td></tr>
         <tr><td><strong>Google Valid</strong></td><td><?php echo !empty($placeId) ? 'Yes' : 'No'; ?></td></tr>
         <tr><td><strong>Parcel Count</strong></td><td><?php echo $parcelResult['parcelCount'] ?? 0; ?></td></tr>
         <tr><td><strong>RS Code</strong></td><td><strong><?php echo htmlspecialchars($rsCode); ?></strong></td></tr>
