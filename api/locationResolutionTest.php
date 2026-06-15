@@ -17,13 +17,17 @@ $rsCode = 'RS-UNKNOWN';
 $parcelStatus = 'Unknown';
 
 // =====================================================
+// Correct Includes (based on your utils/ folder)
+// =====================================================
+$baseDir = __DIR__;
+
+require_once $baseDir . '/utils/resolveParcel.php';
+require_once $baseDir . '/utils/validateAddressCensus.php';
+require_once $baseDir . '/utils/resolveJurisdiction.php';
+
+// =====================================================
 // Helpers
 // =====================================================
-require_once __DIR__ . '/resolveParcel.php';
-require_once __DIR__ . '/validateAddressCensus.php';
-require_once __DIR__ . '/resolveJurisdiction.php';
-
-// Google Geocode (simple fallback using file_get_contents)
 function geocodeGoogle($address) {
     $apiKey = getenv('GOOGLE_MAPS_BACKEND_API_KEY');
     if (empty($apiKey)) return [];
@@ -39,22 +43,18 @@ function geocodeGoogle($address) {
 
     $result = $data['results'][0] ?? [];
     return [
-        'placeId' => $result['place_id'] ?? '',
+        'placeId'   => $result['place_id'] ?? '',
         'formatted' => $result['formatted_address'] ?? $address,
-        'lat' => $result['geometry']['location']['lat'] ?? null,
-        'lng' => $result['geometry']['location']['lng'] ?? null
+        'lat'       => $result['geometry']['location']['lat'] ?? null,
+        'lng'       => $result['geometry']['location']['lng'] ?? null
     ];
 }
 
-// Process
+// Process request
 if ($rawAddress !== '') {
-    // 1. Google
     $googleResult = geocodeGoogle($rawAddress);
-
-    // 2. Census
     $censusResult = validateAddressCensus($rawAddress);
 
-    // 3. Parcel
     $parcelResult = resolveParcel(
         $googleResult['lat'] ?? null,
         $googleResult['lng'] ?? null,
@@ -63,11 +63,10 @@ if ($rawAddress !== '') {
         $rawAddress
     );
 
-    // 4. Jurisdiction
     $jurRaw = $parcelResult['jurisdictionName'] ?? ($censusResult['county'] ?? '');
     $jurisdictionResult = resolveJurisdiction($jurRaw);
 
-    // 5. RS Classification
+    // RS Classification
     $parcelCount = $parcelResult['parcelCount'] ?? 0;
     if ($parcelCount === 0) {
         $rsCode = 'RS-7';
@@ -105,7 +104,7 @@ if ($rawAddress !== '') {
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
-           placeholder="3145 N 33rd Ave, Phoenix, AZ 85017">
+           placeholder="3145 N 33rd Ave, Phoenix, AZ 85017" style="width:650px;">
     <button type="submit">Resolve Location</button>
 </form>
 
