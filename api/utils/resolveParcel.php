@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 4.2.0 — Using proven ArcGIS logic from working test
+ * Version: 4.0.0  (Tiered Search Strategy)
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -22,7 +22,8 @@ function resolveParcel(
         'parcelDetails'    => [],
         'jurisdictionName' => null,
         'jurisdictionType' => null,
-        'jurisdictionKey'  => null
+        'jurisdictionKey'  => null,
+        'searchTier'       => null,           // NEW: Shows which tier was used
     ];
 
     if (!$searchAddress) {
@@ -30,106 +31,130 @@ function resolveParcel(
         return $result;
     }
 
-    error_log('[RESOLVE-PARCEL] Looking up: ' . $searchAddress);
+    $original = $searchAddress;
+    $upper = strtoupper(trim($searchAddress));
 
-    // Use the proven lookup from your working test
-    $lookup = lookupMaricopaParcels($searchAddress);
+    error_log('[RESOLVE-PARCEL] Original: ' . $original);
 
-    $features = $lookup['features'] ?? [];
-    $parcelCount = count($features);
+    // =====================================================
+    // NORMALIZE ADDRESS FOR SEARCHING
+    // =====================================================
+    $normalized = $upper;
+    $normalized = str_replace([', USA', ','], ' ', $normalized);
+    $normalized = preg_replace('/\s+/', ' ', $normalized);
+    $normalized = trim($normalized);
 
-    if ($parcelCount > 0) {
-        $result['success'] = true;
-        $result['parcelCount'] = $parcelCount;
+    // Extract components
+    preg_match('/^(\d+)\s+([NSEW]?)\s*([A-Z0-9\s]+)/', $normalized, $matches);
+    $streetNumber = $matches[1] ?? '';
+    $directional  = trim($matches[2] ?? '');
+    $streetName   = trim($matches[3] ?? '');
 
-        foreach ($features as $feature) {
-            $a = $feature['attributes'] ?? [];
-            $apnRaw = trim($a['APN'] ?? '');
+    $searchTerms = [];
 
-            if (empty($apnRaw)) continue;
-
-            $result['parcelDetails'][] = [
-                'parcelNumber' => $apnRaw,
-                'ownerName'    => trim($a['OWNER_NAME'] ?? ''),
-                'siteAddress'  => trim($a['PHYSICAL_ADDRESS'] ?? $searchAddress),
-                'city'         => trim($a['PHYSICAL_CITY'] ?? ''),
-                'jurisdiction' => trim($a['JURISDICTION'] ?? ''),
-                'source'       => 'arcgis_mcassessor'
-            ];
-        }
-
-        // Jurisdiction from first parcel
-        $firstJur = $result['parcelDetails'][0]['jurisdiction'] ?? '';
-        $jurResult = resolveJurisdiction($firstJur);
-
-        $result['jurisdictionName'] = $jurResult['label'] ?? $firstJur;
-        $result['jurisdictionType'] = $jurResult['jurisdictionType'] ?? 'City';
-        $result['jurisdictionKey']  = $jurResult['jurisdictionKey'] ?? null;
-
-        error_log('[RESOLVE-PARCEL] ✅ Success — Found ' . $parcelCount . ' parcel(s)');
-    } else {
-        error_log('[RESOLVE-PARCEL] ❌ No parcels found for ' . $searchAddress);
+    // =====================================================
+    // TIER 1: Exact Physical Address Match (Preferred)
+    // =====================================================
+    if ($streetNumber && $streetName) {
+        $exactTerm = trim("$streetNumber $directional $streetName");
+        $searchTerms['exact'] = $exactTerm;
     }
 
-    return $result;
-}
+    // =====================================================
+    // TIER 2: Street Number + Street Name
+    // =====================================================
+    if ($streetNumber && $streetName) {
+        $streetTerm = trim("$streetNumber $streetName");
+        $searchTerms['street'] = $streetTerm;
+    }
 
-// =====================================================
-// Proven Lookup Function (from your working test)
-// =====================================================
-function lookupMaricopaParcels($address) {
-    $searchTerms = buildParcelSearchTerms($address);
+    // =====================================================
+    // TIER 3: Number + Street Root (Last Resort)
+    // =====================================================
+    if ($streetNumber && $streetName) {
+        // Remove common suffixes for broader matching
+        $rootName = preg_replace('/\b(ST|STREET|AVE|AVENUE|RD|ROAD|BLVD|DR|DRIVE|LN|LANE|WAY)\b/i', '', $streetName);
+        $rootName = trim($rootName);
+        if ($rootName) {
+            $searchTerms['root'] = trim("$streetNumber $rootName");
+        }
+    }
 
-    foreach ($searchTerms as $term) {
-        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
-            str_replace("'", "''", $term) . "%')";
+    $data = null;
+    $tierUsed = null;
+
+    foreach ($searchTerms as $tier => $term) {
+        if (strlen(trim($term)) < 5) continue;
+
+        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
 
         $params = http_build_query([
-            'where'          => $where,
-            'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-            'returnGeometry' => 'false',
-            'f'              => 'json'
+            'where'             => $where,
+            'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+            'returnGeometry'    => 'false',
+            'f'                 => 'json'
         ]);
 
         $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
 
-        $context = stream_context_create(['http' => ['timeout' => 20]]);
-        $response = @file_get_contents($url, false, $context);
+        error_log("[RESOLVE-PARCEL] Tier {$tier} trying: {$term}");
+
+        $response = @file_get_contents($url);
 
         if ($response === false) continue;
 
         $data = json_decode($response, true);
-        if (!empty($data['features'])) {
-            return [
-                'term'     => $term,
-                'features' => $data['features']
-            ];
+
+        if (isset($data['features']) && count($data['features']) > 0) {
+            $tierUsed = $tier;
+            error_log("[RESOLVE-PARCEL] Tier {$tier} SUCCESS with " . count($data['features']) . " results");
+            break;
         }
     }
 
-    return ['term' => null, 'features' => []];
-}
-
-function buildParcelSearchTerms($address) {
-    $normalized = normalizeParcelSearchAddress($address);
-    $terms = [];
-
-    $terms[] = $normalized;
-
-    if (preg_match('/^(\d+\s+[NSEW]?\s*[A-Z0-9]+)/', $normalized, $matches)) {
-        $terms[] = trim($matches[1]);
+    if (!isset($data['features']) || empty($data['features'])) {
+        error_log('[RESOLVE-PARCEL] No results found for any tier');
+        $result['searchTier'] = 'none';
+        return $result;
     }
 
-    $terms[] = preg_replace('/\b(RD|ROAD|ST|STREET|AVE|AVENUE|BLVD|DR|DRIVE|LN|LANE|WAY|PKWY)\b/', '', $normalized);
+    // =====================================================
+    // BUILD RESULTS
+    // =====================================================
+    $parcelDetails = [];
 
-    $terms = array_unique(array_filter(array_map('trim', $terms)));
-    return $terms;
-}
+    foreach ($data['features'] as $feature) {
+        $attr = $feature['attributes'] ?? [];
+        if (empty($attr['APN'])) continue;
 
-function normalizeParcelSearchAddress($address) {
-    $address = strtoupper(trim($address));
-    $address = preg_replace('/\s+(#|STE|SUITE|UNIT|APT)\s*[A-Z0-9\-]+/i', '', $address);
-    $address = preg_replace('/[^A-Z0-9\s]/', ' ', $address);
-    $address = preg_replace('/\s+/', ' ', $address);
-    return trim($address);
+        $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
+
+        $parcelDetails[] = [
+            'parcelNumber' => $apnRaw,
+            'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
+            'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
+            'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
+            'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
+            'source'       => 'mca_arcgis_mcassessor'
+        ];
+    }
+
+    $result['success']       = true;
+    $result['parcelCount']   = count($parcelDetails);
+    $result['parcelDetails'] = $parcelDetails;
+    $result['searchTier']    = $tierUsed ?? 'unknown';
+
+    if (!empty($parcelDetails)) {
+        $jurisdictionRaw = trim($parcelDetails[0]['jurisdiction'] ?? '');
+        $jurisdiction = resolveJurisdiction($jurisdictionRaw);
+
+        $result['jurisdictionName'] = $jurisdiction['label'] ?? ucwords(strtolower($jurisdictionRaw));
+        $result['jurisdictionType'] = $jurisdiction['jurisdictionType'] ?? 'City';
+        $result['jurisdictionKey']  = $jurisdiction['jurisdictionKey'] ?? null;
+    }
+
+    error_log('[RESOLVE-PARCEL] Final: Tier=' . ($result['searchTier'] ?? 'unknown') . 
+              ' | Count=' . $result['parcelCount']);
+
+    return $result;
 }
