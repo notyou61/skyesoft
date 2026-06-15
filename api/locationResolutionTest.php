@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Location Resolution Test Harness — Safe Version
+// Location Resolution Test Harness — Full Pipeline
 // =====================================================
 
 error_reporting(E_ALL);
@@ -24,35 +24,28 @@ $rsCode       = 'RS-UNKNOWN';
 $parcelStatus = 'Unknown';
 
 // =====================================================
-// Load Available Utilities
+// Load Utilities
 // =====================================================
 $utilsDir = __DIR__ . '/utils';
 
-if (file_exists($utilsDir . '/validateAddressCensus.php')) {
-    require_once $utilsDir . '/validateAddressCensus.php';
-}
-if (file_exists($utilsDir . '/resolveParcel.php')) {
-    require_once $utilsDir . '/resolveParcel.php';
-}
-if (file_exists($utilsDir . '/resolveJurisdiction.php')) {
-    require_once $utilsDir . '/resolveJurisdiction.php';
-}
-// Note: validateAddressGoogle.php does not exist yet
+require_once __DIR__ . '/resolveLocation.php';           // ← Your working file
+require_once $utilsDir . '/validateAddressCensus.php';
+require_once $utilsDir . '/resolveParcel.php';
+require_once $utilsDir . '/resolveJurisdiction.php';
 
 // =====================================================
 // Process Request
 // =====================================================
 if ($rawAddress !== '') {
 
-    // 1. Google (placeholder until file is created)
-    if (function_exists('validateAddressGoogle')) {
-        $googleResult = validateAddressGoogle($rawAddress);
+    // 1. Google Geocode (using your existing function)
+    $input = ['address' => $rawAddress];
+    $googleResult = getGoogleGeocode($input);
+
+    if ($googleResult) {
         $placeId   = $googleResult['placeId']   ?? '';
-        $latitude  = $googleResult['latitude']  ?? '';
-        $longitude = $googleResult['longitude'] ?? '';
-    } else {
-        // Temporary fallback: extract from Census if available
-        $placeId = 'Not available (validateAddressGoogle missing)';
+        $latitude  = $googleResult['latitude']  ?? $googleResult['lat'] ?? '';
+        $longitude = $googleResult['longitude'] ?? $googleResult['lng'] ?? '';
     }
 
     // 2. Census
@@ -60,7 +53,7 @@ if ($rawAddress !== '') {
         $censusResult = validateAddressCensus($rawAddress);
     }
 
-    // 3. Jurisdiction (current version only accepts 1 string argument)
+    // 3. Jurisdiction (current function accepts 1 string)
     if (function_exists('resolveJurisdiction')) {
         $jurRaw = $censusResult['county'] ?? $rawAddress;
         $jurisdictionResult = resolveJurisdiction($jurRaw);
@@ -97,7 +90,7 @@ if ($rawAddress !== '') {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Location Resolution Test Harness</title>
+<title>Location Resolution Test Harness — Full Pipeline</title>
 <style>
     body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
     input[type="text"] { width: 650px; padding: 12px; font-size: 16px; }
@@ -112,7 +105,7 @@ if ($rawAddress !== '') {
 </head>
 <body>
 
-<h2>Location Resolution Test Harness</h2>
+<h2>Location Resolution Test Harness — Full Pipeline</h2>
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
@@ -126,19 +119,19 @@ if ($rawAddress !== '') {
     <h3>Input Address</h3>
     <p><strong><?php echo htmlspecialchars($rawAddress); ?></strong></p>
 
-    <!-- Google -->
+    <!-- Google Result -->
     <h3>Google Result</h3>
-    <?php if (!empty($placeId) && $placeId !== 'Not available (validateAddressGoogle missing)'): ?>
+    <?php if (!empty($placeId)): ?>
         <table>
             <tr><td><strong>Place ID</strong></td><td><?php echo htmlspecialchars($placeId); ?></td></tr>
             <tr><td><strong>Latitude</strong></td><td><?php echo htmlspecialchars($latitude); ?></td></tr>
             <tr><td><strong>Longitude</strong></td><td><?php echo htmlspecialchars($longitude); ?></td></tr>
         </table>
     <?php else: ?>
-        <p class="error">❌ Google validation not available yet (validateAddressGoogle.php missing)</p>
+        <p class="error">❌ Google geocoding failed or returned no Place ID.</p>
     <?php endif; ?>
 
-    <!-- Census -->
+    <!-- Census Result -->
     <h3>Census Result</h3>
     <?php if ($censusResult['valid'] ?? false): ?>
         <p class="success">✅ Valid Address</p>
@@ -151,14 +144,14 @@ if ($rawAddress !== '') {
         <p class="error">❌ <?php echo htmlspecialchars($censusResult['reason'] ?? 'Census validation failed'); ?></p>
     <?php endif; ?>
 
-    <!-- Jurisdiction -->
+    <!-- Jurisdiction Result -->
     <h3>Jurisdiction Result</h3>
     <table>
         <tr><td><strong>Jurisdiction Name</strong></td><td><?php echo htmlspecialchars($jurisdictionName ?: '—'); ?></td></tr>
         <tr><td><strong>Jurisdiction Type</strong></td><td><?php echo htmlspecialchars($jurisdictionType ?: '—'); ?></td></tr>
     </table>
 
-    <!-- Parcel -->
+    <!-- Parcel Result -->
     <h3>Parcel Result</h3>
     <p><strong>Parcel Count:</strong> <?php echo $parcelResult['parcelCount'] ?? 0; ?></p>
     <p><strong>RS Code:</strong> <strong><?php echo $rsCode; ?></strong> — <?php echo $parcelStatus; ?></p>
@@ -178,10 +171,10 @@ if ($rawAddress !== '') {
     </table>
     <?php endif; ?>
 
-    <!-- Governance -->
+    <!-- Governance Evaluation -->
     <h3>Governance Evaluation</h3>
     <table>
-        <tr><td><strong>Google Valid</strong></td><td><?php echo !empty($placeId) && $placeId !== 'Not available (validateAddressGoogle missing)' ? 'Yes' : 'No'; ?></td></tr>
+        <tr><td><strong>Google Valid</strong></td><td><?php echo !empty($placeId) ? 'Yes' : 'No'; ?></td></tr>
         <tr><td><strong>Census Valid</strong></td><td><?php echo ($censusResult['valid'] ?? false) ? 'Yes' : 'No'; ?></td></tr>
         <tr><td><strong>Jurisdiction Resolved</strong></td><td><?php echo $jurisdictionName ? 'Yes' : 'No'; ?></td></tr>
         <tr><td><strong>Parcel Count</strong></td><td><?php echo $parcelResult['parcelCount'] ?? 0; ?></td></tr>
