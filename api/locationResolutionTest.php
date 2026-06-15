@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Location Resolution + Governance Test Harness
+// Location Resolution Test Harness — DEBUG VERSION
 // =====================================================
 
 error_reporting(E_ALL);
@@ -8,6 +8,58 @@ ini_set('display_errors', 1);
 
 $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 
+echo "<h2>Location Resolution Test Harness — DEBUG</h2>";
+
+// =====================================================
+// Path Debugging
+// =====================================================
+$utilsDir = __DIR__ . '/utils';
+echo "<strong>Current Directory (__DIR__):</strong> " . __DIR__ . "<br>";
+echo "<strong>Utils Directory:</strong> " . $utilsDir . "<br>";
+
+$filesToCheck = [
+    'resolveParcel.php'       => $utilsDir . '/resolveParcel.php',
+    'validateAddressCensus.php' => $utilsDir . '/validateAddressCensus.php',
+    'resolveJurisdiction.php' => $utilsDir . '/resolveJurisdiction.php'
+];
+
+echo "<h3>File Check</h3><pre>";
+foreach ($filesToCheck as $name => $path) {
+    $exists = file_exists($path) ? '✅ EXISTS' : '❌ NOT FOUND';
+    echo "$name → $path  $exists\n";
+}
+echo "</pre>";
+
+// =====================================================
+// Safe Includes
+// =====================================================
+$includeSuccess = true;
+
+if (file_exists($utilsDir . '/resolveParcel.php')) {
+    require_once $utilsDir . '/resolveParcel.php';
+} else {
+    echo "<p style='color:red;'>❌ Could not load resolveParcel.php</p>";
+    $includeSuccess = false;
+}
+
+if (file_exists($utilsDir . '/validateAddressCensus.php')) {
+    require_once $utilsDir . '/validateAddressCensus.php';
+} else {
+    echo "<p style='color:orange;'>⚠️ Could not load validateAddressCensus.php (continuing...)</p>";
+}
+
+if (file_exists($utilsDir . '/resolveJurisdiction.php')) {
+    require_once $utilsDir . '/resolveJurisdiction.php';
+} else {
+    echo "<p style='color:orange;'>⚠️ Could not load resolveJurisdiction.php (continuing...)</p>";
+}
+
+if (!$includeSuccess) {
+    echo "<h3 style='color:red;'>Cannot continue without resolveParcel.php. Check the file path above.</h3>";
+    exit;
+}
+
+// Rest of the code (same as before)
 $googleResult = [];
 $censusResult = [];
 $parcelResult = [];
@@ -16,31 +68,14 @@ $jurisdictionResult = [];
 $rsCode = 'RS-UNKNOWN';
 $parcelStatus = 'Unknown';
 
-// =====================================================
-// Correct Includes for /api/utils/ structure
-// =====================================================
-$utilsDir = __DIR__ . '/utils';
-
-require_once $utilsDir . '/resolveParcel.php';
-require_once $utilsDir . '/validateAddressCensus.php';
-require_once $utilsDir . '/resolveJurisdiction.php';
-
-// =====================================================
-// Helpers
-// =====================================================
 function geocodeGoogle($address) {
     $apiKey = getenv('GOOGLE_MAPS_BACKEND_API_KEY');
     if (empty($apiKey)) return [];
-
-    $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' .
-           urlencode($address) . '&key=' . $apiKey;
-
+    $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($address) . '&key=' . $apiKey;
     $response = @file_get_contents($url);
     if ($response === false) return [];
-
     $data = json_decode($response, true);
     if (($data['status'] ?? '') !== 'OK' || empty($data['results'])) return [];
-
     $result = $data['results'][0];
     return [
         'placeId'   => $result['place_id'] ?? '',
@@ -50,7 +85,6 @@ function geocodeGoogle($address) {
     ];
 }
 
-// Process request
 if ($rawAddress !== '') {
     $googleResult = geocodeGoogle($rawAddress);
     $censusResult = validateAddressCensus($rawAddress);
@@ -66,7 +100,6 @@ if ($rawAddress !== '') {
     $jurRaw = $parcelResult['jurisdictionName'] ?? ($censusResult['county'] ?? '');
     $jurisdictionResult = resolveJurisdiction($jurRaw);
 
-    // RS Classification
     $parcelCount = $parcelResult['parcelCount'] ?? 0;
     if ($parcelCount === 0) {
         $rsCode = 'RS-7';
@@ -81,11 +114,12 @@ if ($rawAddress !== '') {
 }
 ?>
 
+<!-- The rest of your HTML output (same as previous version) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Location Resolution Test Harness</title>
+<title>Location Resolution Test Harness - DEBUG</title>
 <style>
     body { font-family: Arial, sans-serif; margin: 30px; line-height: 1.5; }
     input[type="text"] { width: 620px; padding: 10px; font-size: 15px; }
@@ -97,8 +131,6 @@ if ($rawAddress !== '') {
 </style>
 </head>
 <body>
-
-<h2>Location Resolution Test Harness</h2>
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
