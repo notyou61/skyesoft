@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Location Resolution Test Harness — AI Summary + JSON
+// Location Resolution Test Harness — AI Powered Summary
 // =====================================================
 
 error_reporting(E_ALL);
@@ -23,6 +23,7 @@ $postalCity       = '';
 
 $rsCode       = 'RS-UNKNOWN';
 $parcelStatus = 'Unknown';
+$aiSummary    = '';
 
 // =====================================================
 // Load Utilities
@@ -35,6 +36,13 @@ skyesoftLoadEnv();
 require_once $utilsDir . '/validateAddressCensus.php';
 require_once $utilsDir . '/resolveParcel.php';
 require_once $utilsDir . '/resolveJurisdiction.php';
+
+// Try to load askOpenAI.php if it exists
+$useAI = false;
+if (file_exists(__DIR__ . '/askOpenAI.php')) {
+    require_once __DIR__ . '/askOpenAI.php';
+    $useAI = true;
+}
 
 // =====================================================
 // Google Geocode Function
@@ -122,39 +130,39 @@ if ($rawAddress !== '') {
         $jurisdictionName = $jurisdictionResult['label'] ?? '';
         $jurisdictionType = $jurisdictionResult['jurisdictionType'] ?? '';
     }
-}
 
-// =====================================================
-// Build AI Summary
-// =====================================================
-$aiSummary = '';
-if ($rawAddress !== '') {
-    $parts = [];
+    // =====================================================
+    // AI Summary using askOpenAI.php (if available)
+    // =====================================================
+    if ($useAI && function_exists('askOpenAI')) {
 
-    if (!empty($placeId)) {
-        $parts[] = "Google successfully validated the address with Place ID.";
-    }
+        $prompt = "You are Skyesoft's location intelligence assistant. Generate a clear, professional, one-paragraph summary of the location resolution results.\n\n" .
+                  "Start the summary with this exact phrase: \"Skyesoft resolved the details for {$rawAddress}...\"\n\n" .
+                  "Key facts:\n" .
+                  "- Google Place ID: " . ($placeId ?: 'Not available') . "\n" .
+                  "- County: " . ($censusResult['county'] ?? 'Unknown') . "\n" .
+                  "- Number of parcels found: " . ($parcelResult['parcelCount'] ?? 0) . "\n" .
+                  "- Governing Jurisdiction: " . ($jurisdictionName ?: 'Unknown') . "\n" .
+                  "- Postal City: " . ($postalCity ?: 'Unknown') . "\n" .
+                  "- Governance classification: {$rsCode} ({$parcelStatus})\n\n" .
+                  "Write in a natural, concise, and factual tone. Do not add extra commentary.";
 
-    if (($censusResult['valid'] ?? false)) {
-        $parts[] = "Census confirmed the location is in " . ($censusResult['county'] ?? 'Maricopa') . " County.";
-    }
+        $aiResponse = askOpenAI($prompt, [
+            'temperature' => 0.3,
+            'max_tokens'  => 250
+        ]);
 
-    $parcelCount = $parcelResult['parcelCount'] ?? 0;
-    if ($parcelCount > 0) {
-        $parts[] = "Parcel lookup found {$parcelCount} parcel(s).";
+        $aiSummary = trim($aiResponse['content'] ?? '');
+
     } else {
-        $parts[] = "No parcels were found for this address.";
+        // Fallback deterministic summary
+        $aiSummary = "Skyesoft resolved the details for {$rawAddress}. ";
+        if (!empty($placeId)) $aiSummary .= "Google successfully validated the address. ";
+        if (($censusResult['valid'] ?? false)) $aiSummary .= "Census confirmed the location is in " . ($censusResult['county'] ?? 'Maricopa') . " County. ";
+        $aiSummary .= "Parcel lookup found " . ($parcelResult['parcelCount'] ?? 0) . " parcel(s). ";
+        if (!empty($jurisdictionName)) $aiSummary .= "The governing jurisdiction is {$jurisdictionName}. ";
+        if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') $aiSummary .= "Governance classified this as {$rsCode}.";
     }
-
-    if (!empty($jurisdictionName)) {
-        $parts[] = "The governing jurisdiction is {$jurisdictionName}.";
-    }
-
-    if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') {
-        $parts[] = "Governance classified this as {$rsCode} ({$parcelStatus}).";
-    }
-
-    $aiSummary = implode(' ', $parts);
 }
 ?>
 
@@ -162,7 +170,7 @@ if ($rawAddress !== '') {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Location Resolution Test Harness</title>
+<title>Location Resolution Test Harness — AI Summary</title>
 <style>
     body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.4; font-size: 14px; }
     input[type="text"] { width: 600px; padding: 8px; font-size: 14px; }
@@ -174,13 +182,13 @@ if ($rawAddress !== '') {
     .section-header { margin: 12px 0 6px 0; font-size: 15px; font-weight: bold; }
     .success { color: #2e7d32; }
     .error { color: #c62828; }
-    .ai-summary { background: #e8f5e9; padding: 12px; border-left: 4px solid #2e7d32; margin-bottom: 15px; }
-    pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; }
+    .ai-summary { background: #e8f5e9; padding: 14px; border-left: 5px solid #2e7d32; margin-bottom: 20px; font-size: 14.5px; line-height: 1.5; }
+    pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
 </style>
 </head>
 <body>
 
-<h2>Location Resolution Test Harness</h2>
+<h2>Location Resolution Test Harness — AI Powered</h2>
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
@@ -195,7 +203,7 @@ if ($rawAddress !== '') {
     <?php if (!empty($aiSummary)): ?>
     <h3>AI Summary</h3>
     <div class="ai-summary">
-        <?php echo htmlspecialchars($aiSummary); ?>
+        <?php echo nl2br(htmlspecialchars($aiSummary)); ?>
     </div>
     <?php endif; ?>
 
