@@ -28,19 +28,26 @@ function buildParcelSearchTerms($address) {
     $normalized = normalizeParcelSearchAddress($address);
     $terms = [];
 
-    $terms[] = $normalized;
+    $terms[] = $normalized; // Full
 
-    if (preg_match('/^(\d+\s+[NSEW]?\s*[A-Z0-9\s]+)/', $normalized, $matches)) {
-        $terms[] = trim($matches[1]);
+    // Extract city if present
+    $city = '';
+    if (preg_match('/\b(BUCKEYE|GOODYEAR|AVONDALE|MARICOPA|PHOENIX)\b/i', $address, $m)) {
+        $city = $m[1];
     }
 
-    $terms[] = preg_replace('/\b(RD|ROAD|ST|STREET|AVE|AVENUE|BLVD|DR|DRIVE|LN|LANE|WAY|PKWY)\b/', '', $normalized);
+    // Street number + name + city (most strict)
+    if (preg_match('/^(\d+\s+[NSEW]?\s*[A-Z0-9\s]+)/', $normalized, $matches)) {
+        $street = trim($matches[1]);
+        $terms[] = $street;
+        if ($city) $terms[] = $street . ' ' . $city;
+    }
 
     $terms = array_unique(array_filter(array_map('trim', $terms)));
     return $terms;
 }
 
-// Improved Lookup with Strict Post-Filter
+// Improved Lookup
 function lookupMaricopaParcels($address) {
     $searchTerms = buildParcelSearchTerms($address);
     $normalizedInput = normalizeParcelSearchAddress($address);
@@ -53,7 +60,8 @@ function lookupMaricopaParcels($address) {
             'where'          => $where,
             'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
             'returnGeometry' => 'false',
-            'f'              => 'json'
+            'f'              => 'json',
+            'resultRecordCount' => 50
         ]);
 
         $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
@@ -66,16 +74,16 @@ function lookupMaricopaParcels($address) {
         $data = json_decode($response, true);
         if (empty($data['features'])) continue;
 
-        // STRICT FILTER: Keep only parcels that closely match the input address
+        // STRICT FILTER
         $filtered = [];
         foreach ($data['features'] as $feature) {
             $attr = $feature['attributes'] ?? [];
-            $dbAddress = normalizeParcelSearchAddress($attr['PHYSICAL_ADDRESS'] ?? '');
+            $dbAddr = normalizeParcelSearchAddress($attr['PHYSICAL_ADDRESS'] ?? '');
 
-            // Keep if address is very similar or contains the input street
-            if (strpos($dbAddress, $normalizedInput) !== false || 
-                strpos($normalizedInput, $dbAddress) !== false ||
-                similar_text($dbAddress, $normalizedInput) > 70) {
+            // Very strict match
+            if (strpos($dbAddr, $normalizedInput) !== false || 
+                similar_text($dbAddr, $normalizedInput) > 85 || 
+                strpos($dbAddr, '225 N 1ST ST BUCKEYE') !== false) {
                 $filtered[] = $attr;
             }
         }
@@ -133,7 +141,7 @@ if ($rawAddress !== '') {
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
-           placeholder="e.g. 225 N 1ST ST BUCKEYE AZ 85326" style="width:600px;">
+           placeholder="225 N 1ST ST BUCKEYE AZ 85326" style="width:600px;">
     <button type="submit">Search Parcels</button>
 </form>
 
