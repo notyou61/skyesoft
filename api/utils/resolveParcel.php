@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.5.0 — Strict Dynamic Filter (Proven from Working Test)
+ * Version: 5.6.0 — Stronger Filter for Phoenix / Buckeye
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -48,9 +48,7 @@ function resolveParcel(
         'searchTier'       => null,
     ];
 
-    if (empty($searchAddress)) {
-        return $result;
-    }
+    if (empty($searchAddress)) return $result;
 
     $original = trim($searchAddress);
     $normalizedInput = normalizeParcelSearchAddress($original);
@@ -87,7 +85,7 @@ function resolveParcel(
             $dbAddr = normalizeParcelSearchAddress($attr['PHYSICAL_ADDRESS'] ?? '');
 
             if (strpos($dbAddr, $normalizedInput) !== false || 
-                similar_text($dbAddr, $normalizedInput) > 82) {
+                similar_text($dbAddr, $normalizedInput) > 85) {
                 $filtered[] = $attr;
             }
         }
@@ -100,7 +98,7 @@ function resolveParcel(
     }
 
     if (empty($data['features'])) {
-        error_log('[RESOLVE-PARCEL] No matching parcels found for ' . $original);
+        error_log('[RESOLVE-PARCEL] No matching parcels found');
         return $result;
     }
 
@@ -134,7 +132,7 @@ function resolveParcel(
         $result['jurisdictionType'] = $jur['jurisdictionType'] ?? 'City';
     }
 
-    error_log('[RESOLVE-PARCEL] ✅ Success - ' . $result['parcelCount'] . ' parcels for ' . $original);
+    error_log('[RESOLVE-PARCEL] ✅ ' . $result['parcelCount'] . ' parcels found');
 
     return $result;
 }
