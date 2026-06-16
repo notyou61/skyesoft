@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.1.0  (Official API with Token + Fallback)
+ * Version: 5.2.0  (Based on Working Test Harness)
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -33,20 +33,19 @@ function resolveParcel(
     }
 
     $original = trim($searchAddress);
-    $token = getenv('MARICOPA_COUNTY_API_KEY') ?: '';
-
     error_log('[RESOLVE-PARCEL] Searching: ' . $original);
 
     // =====================================================
-    // TIER 1: Official Assessor Search API
+    // TIER 1: Official API (Optional - if token exists)
     // =====================================================
+    $token = getenv('MARICOPA_COUNTY_API_KEY') ?: '';
     if (!empty($token)) {
         $url = 'https://mcassessor.maricopa.gov/search/property/?q=' . urlencode($original);
 
         $context = stream_context_create([
             'http' => [
                 'header'  => "User-Agent: Skyesoft Parcel Resolver\r\nAccept: application/json\r\nAuthorization: $token\r\n",
-                'timeout' => 15
+                'timeout' => 12
             ]
         ]);
 
@@ -54,10 +53,9 @@ function resolveParcel(
 
         if ($response !== false) {
             $data = json_decode($response, true);
-
             if (!empty($data['results']) && is_array($data['results'])) {
+                // Parse official results
                 $parcelDetails = [];
-
                 foreach ($data['results'] as $item) {
                     $apn = $item['apn'] ?? $item['APN'] ?? null;
                     if (empty($apn)) continue;
@@ -85,7 +83,7 @@ function resolveParcel(
                         $result['jurisdictionType'] = $jur['jurisdictionType'] ?? 'City';
                     }
 
-                    error_log('[RESOLVE-PARCEL] ✅ Official Search SUCCESS (' . $result['parcelCount'] . ' parcels)');
+                    error_log('[RESOLVE-PARCEL] ✅ Official Search SUCCESS');
                     return $result;
                 }
             }
@@ -93,14 +91,76 @@ function resolveParcel(
     }
 
     // =====================================================
-    // TIER 2: ArcGIS Fallback
+    // TIER 2: ArcGIS (Proven Working Logic from Test Harness)
     // =====================================================
-    error_log('[RESOLVE-PARCEL] Official search failed → using ArcGIS fallback');
+    error_log('[RESOLVE-PARCEL] Using ArcGIS fallback (proven method)');
 
-    // [Your previous reliable ArcGIS code here — or the version I gave earlier]
+    $searchTerms = buildParcelSearchTerms($original);  // Reuse your working helper
 
-    $result['searchTier'] = 'arcgis_fallback';
-    // ... (keep your working ArcGIS logic)
+    $data = null;
+    $matchedTerm = null;
+
+    foreach ($searchTerms as $term) {
+        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
+            str_replace("'", "''", $term) . "%')";
+
+        $params = http_build_query([
+            'where'          => $where,
+            'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+            'returnGeometry' => 'false',
+            'f'              => 'json'
+        ]);
+
+        $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
+
+        $response = @file_get_contents($url);
+        if ($response === false) continue;
+
+        $data = json_decode($response, true);
+        if (!empty($data['features'])) {
+            $matchedTerm = $term;
+            break;
+        }
+    }
+
+    if (empty($data['features'])) {
+        $result['searchTier'] = 'none';
+        error_log('[RESOLVE-PARCEL] No parcels found');
+        return $result;
+    }
+
+    // Build parcel details
+    $parcelDetails = [];
+    foreach ($data['features'] as $feature) {
+        $attr = $feature['attributes'] ?? [];
+        if (empty($attr['APN'])) continue;
+
+        $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
+
+        $parcelDetails[] = [
+            'parcelNumber' => $apnRaw,
+            'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
+            'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
+            'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
+            'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
+            'source'       => 'arcgis'
+        ];
+    }
+
+    $result['success']       = true;
+    $result['parcelCount']   = count($parcelDetails);
+    $result['parcelDetails'] = $parcelDetails;
+    $result['searchSource']  = 'arcgis';
+    $result['searchTier']    = 'arcgis';
+
+    if (!empty($parcelDetails)) {
+        $jurRaw = $parcelDetails[0]['jurisdiction'] ?? '';
+        $jur = resolveJurisdiction($jurRaw);
+        $result['jurisdictionName'] = $jur['label'] ?? ucwords(strtolower($jurRaw));
+        $result['jurisdictionType'] = $jur['jurisdictionType'] ?? 'City';
+    }
+
+    error_log('[RESOLVE-PARCEL] ArcGIS Success → ' . $result['parcelCount'] . ' parcels (term: ' . ($matchedTerm ?? 'unknown') . ')');
 
     return $result;
 }

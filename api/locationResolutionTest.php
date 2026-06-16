@@ -37,7 +37,7 @@ require_once $utilsDir . '/resolveParcel.php';
 require_once $utilsDir . '/resolveJurisdiction.php';
 
 // =====================================================
-// Google Geocode Function
+// Google Geocode
 // =====================================================
 function getGooglePlaceData($searchAddress) {
     $googleApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') 
@@ -124,22 +124,19 @@ if ($rawAddress !== '') {
     }
 
     // =====================================================
-    // Structured Summary (Deterministic)
+    // Structured Summary
     // =====================================================
     $summaryLines = [];
 
-    // 1. Census
     if (($censusResult['valid'] ?? false)) {
         $summaryLines[] = "Skyesoft resolved the details for " . htmlspecialchars($rawAddress) . ".";
         $summaryLines[] = "Census confirmed the location is in " . ucwords(strtolower($censusResult['county'] ?? 'Maricopa')) . " County.";
     }
 
-    // 2. Google
     if (!empty($placeId)) {
         $summaryLines[] = "Google successfully validated the address and returned a Place ID.";
     }
 
-    // 3. Parcel
     $parcelCount = $parcelResult['parcelCount'] ?? 0;
     if ($parcelCount > 0) {
         $summaryLines[] = "Parcel lookup found {$parcelCount} parcel(s) for this address.";
@@ -147,7 +144,6 @@ if ($rawAddress !== '') {
         $summaryLines[] = "No parcels were found for this address.";
     }
 
-    // 4. Jurisdiction
     if (!empty($jurisdictionName)) {
         $jurisdictionTitle = ucwords(strtolower($jurisdictionName));
         $summaryLines[] = "The governing jurisdiction is {$jurisdictionTitle}.";
@@ -158,7 +154,6 @@ if ($rawAddress !== '') {
         }
     }
 
-    // 5. Governance
     if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') {
         $summaryLines[] = "Governance classified this as {$rsCode} ({$parcelStatus}).";
     }
@@ -173,26 +168,26 @@ if ($rawAddress !== '') {
 <meta charset="UTF-8">
 <title>Location Resolution Test Harness</title>
 <style>
-    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.4; font-size: 14px; }
-    input[type="text"] { width: 600px; padding: 8px; font-size: 14px; }
-    button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
-    .result { margin-top: 15px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; border-radius: 6px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
-    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.5; font-size: 14px; }
+    input[type="text"] { width: 620px; padding: 10px; font-size: 15px; }
+    button { padding: 10px 20px; font-size: 15px; cursor: pointer; }
+    .result { margin-top: 20px; padding: 20px; border: 1px solid #ddd; background: #f9f9f9; border-radius: 8px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     th { background: #f0f0f0; }
-    .section-header { margin: 12px 0 6px 0; font-size: 15px; font-weight: bold; }
-    .success { color: #2e7d32; }
-    .error { color: #c62828; }
+    .section-header { margin: 18px 0 8px 0; font-size: 16px; font-weight: bold; }
+    .success { color: #2e7d32; font-weight: bold; }
+    .error { color: #c62828; font-weight: bold; }
     .ai-summary {
         background: #e8f5e9;
-        padding: 10px 14px;
-        border-left: 5px solid #2e7d32;
-        margin-bottom: 18px;
+        padding: 14px;
+        border-left: 6px solid #2e7d32;
+        margin: 15px 0;
         font-size: 14.5px;
-        line-height: 1.45;
+        line-height: 1.5;
         white-space: pre-line;
     }
-    pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+    pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12.5px; }
 </style>
 </head>
 <body>
@@ -201,14 +196,13 @@ if ($rawAddress !== '') {
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
-           placeholder="3145 N 33rd Ave, Phoenix, AZ 85017">
+           placeholder="3145 N 33rd Ave, Phoenix, AZ 85017" style="width:650px;">
     <button type="submit">Resolve Location</button>
 </form>
 
 <?php if ($rawAddress !== ''): ?>
 <div class="result">
 
-    <!-- Summary -->
     <?php if (!empty($aiSummary)): ?>
     <h3>Summary</h3>
     <div class="ai-summary">
@@ -216,7 +210,7 @@ if ($rawAddress !== '') {
     </div>
     <?php endif; ?>
 
-    <!-- 1. Census -->
+    <!-- Census -->
     <div class="section-header">
         1. Census Result 
         <?php if ($censusResult['valid'] ?? false): ?>
@@ -231,11 +225,9 @@ if ($rawAddress !== '') {
             <tr><td><strong>County FIPS</strong></td><td><?php echo htmlspecialchars($censusResult['countyFips'] ?? '—'); ?></td></tr>
             <tr><td><strong>County GEOID</strong></td><td><?php echo htmlspecialchars($censusResult['countyGeoId'] ?? '—'); ?></td></tr>
         </table>
-    <?php else: ?>
-        <p class="error"><?php echo htmlspecialchars($censusResult['reason'] ?? 'Census validation failed'); ?></p>
     <?php endif; ?>
 
-    <!-- 2. Google -->
+    <!-- Google -->
     <div class="section-header">
         2. Google Result 
         <?php if (!empty($placeId)): ?>
@@ -250,11 +242,9 @@ if ($rawAddress !== '') {
             <tr><td><strong>Latitude</strong></td><td><?php echo htmlspecialchars($latitude); ?></td></tr>
             <tr><td><strong>Longitude</strong></td><td><?php echo htmlspecialchars($longitude); ?></td></tr>
         </table>
-    <?php else: ?>
-        <p class="error">Google validation failed or returned no Place ID.</p>
     <?php endif; ?>
 
-    <!-- 3. Parcel -->
+    <!-- Parcel -->
     <div class="section-header">
         3. Parcel Result 
         <?php if (($parcelResult['parcelCount'] ?? 0) > 0): ?>
@@ -287,7 +277,7 @@ if ($rawAddress !== '') {
     </table>
     <?php endif; ?>
 
-    <!-- 4. Jurisdiction -->
+    <!-- Jurisdiction -->
     <div class="section-header">
         4. Jurisdiction Result 
         <?php if (!empty($jurisdictionName)): ?>
@@ -302,7 +292,7 @@ if ($rawAddress !== '') {
         <tr><td><strong>Postal City</strong></td><td><?php echo htmlspecialchars(ucwords(strtolower($postalCity ?: '—'))); ?></td></tr>
     </table>
 
-    <!-- 5. Governance -->
+    <!-- Governance -->
     <div class="section-header">
         5. Governance Evaluation
         <?php if (in_array($rsCode, ['RS-0', 'RS-6'])): ?>
