@@ -2,13 +2,17 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$q = $_GET['q'] ?? $argv[1] ?? '225 N 1ST ST BUCKEYE AZ 85326';
+require_once __DIR__ . '/utils/envLoader.php';
+skyesoftLoadEnv();
 
-$url = 'https://mcassessor.maricopa.gov/search/property/?q=' . urlencode($q);
+$q = $_GET['q'] ?? $argv[1] ?? '225 N 1ST ST BUCKEYE AZ 85326';
+$token = getenv('MARICOPA_COUNTY_API_KEY') ?: '';
 
 echo "<h2>Maricopa Assessor Official Search Test</h2>";
 echo "<strong>Query:</strong> " . htmlspecialchars($q) . "<br>";
-echo "<strong>URL:</strong> <a href='$url' target='_blank'>$url</a><br><br>";
+echo "<strong>Token Present:</strong> " . ($token ? 'Yes' : 'No') . "<br><br>";
+
+$url = 'https://mcassessor.maricopa.gov/search/property/?q=' . urlencode($q);
 
 $ch = curl_init();
 curl_setopt_array($ch, [
@@ -16,9 +20,10 @@ curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_FOLLOWLOCATION => true,
     CURLOPT_TIMEOUT        => 20,
-    CURLOPT_USERAGENT      => 'Skyesoft Parcel Resolver (Test)',
+    CURLOPT_USERAGENT      => 'Skyesoft Parcel Resolver',
     CURLOPT_HTTPHEADER     => [
         'Accept: application/json',
+        'Authorization: ' . $token,
         'Cache-Control: no-cache'
     ]
 ]);
@@ -33,32 +38,23 @@ echo "<strong>Curl Error:</strong> " . ($curlError ?: 'None') . "<br>";
 echo "<strong>Response Length:</strong> " . strlen($response) . " bytes<br><br>";
 
 if ($response === false) {
-    echo "<strong style='color:red'>Request failed completely.</strong>";
+    echo "<strong style='color:red'>Request failed.</strong>";
     exit;
 }
 
-// Raw preview
-echo "<h3>Raw Response Preview (first 800 chars)</h3>";
-echo "<pre>" . htmlspecialchars(substr($response, 0, 800)) . "...</pre>";
+echo "<h3>Raw Response Preview</h3>";
+echo "<pre>" . htmlspecialchars(substr($response, 0, 1200)) . "...</pre>";
 
-// Try to decode
 $data = json_decode($response, true);
-$jsonError = json_last_error_msg();
-
-echo "<h3>JSON Decode Status:</h3>";
-echo "<pre>" . $jsonError . "</pre>";
+echo "<h3>JSON Decode:</h3> " . json_last_error_msg() . "<br><br>";
 
 if (is_array($data)) {
-    echo "<h3>Top Level Keys</h3>";
-    echo "<pre>";
+    echo "<h3>Top Level Keys</h3><pre>";
     print_r(array_keys($data));
     echo "</pre>";
 
-    echo "<h3>Full Decoded Data (first level only)</h3>";
-    echo "<pre>";
+    echo "<h3>Full Decoded Data</h3><pre>";
     print_r($data);
     echo "</pre>";
-} else {
-    echo "<strong style='color:red'>Response is NOT valid JSON.</strong>";
 }
 ?>
