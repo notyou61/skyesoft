@@ -10,6 +10,29 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 $googleResult = null;
 $parcelResult = null;
 $fullResult = null;
+
+// Helper: Try multiple street variations for better parcel lookup success
+function tryGetMaricopaParcel(string $street, string $city): ?array {
+    $variations = [
+        $street,
+        preg_replace('/\b(RD|ROAD|ST|AVE|BLVD|DR|LN)\b/i', '', $street),           // without suffix
+        preg_replace('/\s+(E|W|N|S)\s+/i', ' ', $street),                          // without directional
+        trim(preg_replace('/\s+/', ' ', $street)),                                 // clean spaces
+    ];
+
+    $variations = array_unique(array_filter($variations));
+
+    foreach ($variations as $variant) {
+        if (strlen(trim($variant)) < 5) continue;
+
+        $result = getMaricopaParcelFromAddress($variant, $city);
+        if ($result) {
+            return $result;
+        }
+    }
+
+    return null;
+}
 ?>
 
 <!DOCTYPE html>
@@ -21,7 +44,6 @@ $fullResult = null;
         body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
         input[type="text"] { width: 650px; padding: 10px; font-size: 16px; }
         button { padding: 10px 25px; font-size: 16px; cursor: pointer; }
-        .section { margin-top: 30px; }
         pre { background: #f4f4f4; padding: 15px; border-radius: 6px; overflow-x: auto; }
         .result-box { background: #f9f9f9; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; }
     </style>
@@ -33,7 +55,7 @@ $fullResult = null;
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
-           placeholder="225 N 1st Street, Buckeye, AZ 85326" required>
+           placeholder="100 E CAMELBACK RD PHOENIX 85012" required>
     <button type="submit">Resolve</button>
 </form>
 
@@ -42,7 +64,6 @@ $fullResult = null;
     <div class="result-box">
 
         <?php
-        // Prepare input for resolveLocation
         $input = ['address' => $rawAddress];
 
         // 1. Google Geocode
@@ -55,9 +76,9 @@ $fullResult = null;
         <?php if ($googleResult && !empty($googleResult['city'])): ?>
 
             <?php
-            // 2. Maricopa Parcel Lookup (the working function)
+            // 2. Improved Maricopa Parcel Lookup (with variations)
             $street = extractStreetAddress($googleResult['address'] ?? $rawAddress);
-            $parcelResult = getMaricopaParcelFromAddress($street, $googleResult['city']);
+            $parcelResult = tryGetMaricopaParcel($street, $googleResult['city']);
             ?>
 
             <h3>2. Maricopa Parcel Result</h3>
