@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// Maricopa Parcel Address Lookup + Governance Test
+// Maricopa Parcel Lookup + Governance Test
 // =====================================================
 
 error_reporting(E_ALL);
@@ -23,28 +23,27 @@ function normalizeParcelSearchAddress($address) {
     return trim($address);
 }
 
-// Build multiple search terms for robustness
+// Build search terms
 function buildParcelSearchTerms($address) {
     $normalized = normalizeParcelSearchAddress($address);
     $terms = [];
 
-    $terms[] = $normalized; // Full
+    $terms[] = $normalized;
 
-    // Street number + name only
-    if (preg_match('/^(\d+\s+[NSEW]?\s*[A-Z0-9]+)/', $normalized, $matches)) {
+    if (preg_match('/^(\d+\s+[NSEW]?\s*[A-Z0-9\s]+)/', $normalized, $matches)) {
         $terms[] = trim($matches[1]);
     }
 
-    // Without suffixes
     $terms[] = preg_replace('/\b(RD|ROAD|ST|STREET|AVE|AVENUE|BLVD|DR|DRIVE|LN|LANE|WAY|PKWY)\b/', '', $normalized);
 
     $terms = array_unique(array_filter(array_map('trim', $terms)));
     return $terms;
 }
 
-// Lookup function (unchanged core logic)
+// Improved Lookup with Strict Post-Filter
 function lookupMaricopaParcels($address) {
     $searchTerms = buildParcelSearchTerms($address);
+    $normalizedInput = normalizeParcelSearchAddress($address);
 
     foreach ($searchTerms as $term) {
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
@@ -65,10 +64,26 @@ function lookupMaricopaParcels($address) {
         if ($response === false) continue;
 
         $data = json_decode($response, true);
-        if (!empty($data['features'])) {
+        if (empty($data['features'])) continue;
+
+        // STRICT FILTER: Keep only parcels that closely match the input address
+        $filtered = [];
+        foreach ($data['features'] as $feature) {
+            $attr = $feature['attributes'] ?? [];
+            $dbAddress = normalizeParcelSearchAddress($attr['PHYSICAL_ADDRESS'] ?? '');
+
+            // Keep if address is very similar or contains the input street
+            if (strpos($dbAddress, $normalizedInput) !== false || 
+                strpos($normalizedInput, $dbAddress) !== false ||
+                similar_text($dbAddress, $normalizedInput) > 70) {
+                $filtered[] = $attr;
+            }
+        }
+
+        if (!empty($filtered)) {
             return [
                 'term'     => $term,
-                'features' => $data['features']
+                'features' => $filtered
             ];
         }
     }
@@ -81,9 +96,6 @@ if ($rawAddress !== '') {
     $results = lookupMaricopaParcels($rawAddress);
     $parcelCount = count($results['features'] ?? []);
 
-    // =====================================================
-    // Parcel Governance Classification (RS)
-    // =====================================================
     if ($parcelCount === 0) {
         $rsCode = 'RS-7';
         $parcelStatus = 'Unresolved Parcel';
@@ -121,7 +133,7 @@ if ($rawAddress !== '') {
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
-           placeholder="e.g. 3145 N 33rd Ave Phoenix AZ 85017" style="width:600px;">
+           placeholder="e.g. 225 N 1ST ST BUCKEYE AZ 85326" style="width:600px;">
     <button type="submit">Search Parcels</button>
 </form>
 
@@ -168,22 +180,10 @@ if ($rawAddress !== '') {
     <?php endif; ?>
 
     <h3>Governance Summary (for Proposed Contact Engine)</h3>
-
     <table style="width:500px;">
-        <tr>
-            <td><strong>Parcel Count</strong></td>
-            <td><?php echo $parcelCount; ?></td>
-        </tr>
-
-        <tr>
-            <td><strong>RS Code</strong></td>
-            <td><?php echo htmlspecialchars($rsCode); ?></td>
-        </tr>
-
-        <tr>
-            <td><strong>Parcel Status</strong></td>
-            <td><?php echo htmlspecialchars($parcelStatus); ?></td>
-        </tr>
+        <tr><td><strong>Parcel Count</strong></td><td><?php echo $parcelCount; ?></td></tr>
+        <tr><td><strong>RS Code</strong></td><td><?php echo htmlspecialchars($rsCode); ?></td></tr>
+        <tr><td><strong>Parcel Status</strong></td><td><?php echo htmlspecialchars($parcelStatus); ?></td></tr>
     </table>
 </div>
 <?php endif; ?>
