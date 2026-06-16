@@ -245,7 +245,7 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #endregion
 
-#region SECTION 3 — Maricopa API (RELIABLE VERSION 1.6)
+#region SECTION 3 — Maricopa API (MULTI-PARCEL VERSION 1.7)
 
 function getMaricopaParcelFromAddress(
     string $street,
@@ -301,7 +301,7 @@ function getMaricopaParcelFromAddress(
     $streetClean = preg_replace('/\s+/', ' ', $streetClean);
 
     $targetStreet = trim($streetClean);
-    $targetNorm   = $normalize($targetStreet);
+    $targetNumber = preg_match('/^\d+/', $targetStreet, $m) ? $m[0] : '';
 
     error_log('[MCA CLEAN STREET] ' . $targetStreet);
     #endregion
@@ -309,12 +309,11 @@ function getMaricopaParcelFromAddress(
     #region STEP 4 — Progressive Query Attempts
     $attempts = [];
 
-    $attempts[] = $fullQuery;                                      // 1. Full query
-    $attempts[] = $targetStreet . ($city !== '' ? ' ' . $city : ''); // 2. Street + City
-    $attempts[] = preg_replace('/\s*,\s*.*/', '', $targetStreet);   // 3. Minimal street
-    $attempts[] = preg_replace('/\s+(RD|ST|AVE|AV|BLVD|DR|LN|PL|WAY|CT|HWY|PKWY|TER|CIR)$/i', '', $targetStreet); // 4. No suffix
+    $attempts[] = $fullQuery;
+    $attempts[] = $targetStreet . ($city !== '' ? ' ' . $city : '');
+    $attempts[] = preg_replace('/\s*,\s*.*/', '', $targetStreet);
+    $attempts[] = preg_replace('/\s+(RD|ST|AVE|AV|BLVD|DR|LN|PL|WAY|CT|HWY|PKWY|TER|CIR)$/i', '', $targetStreet);
 
-    // Ultra minimal number + street name
     $ultraMinimal = preg_replace('/^\d+\s+([NSEW]\s+)?(\S+).*$/i', '$1$2', $targetStreet);
     $ultraMinimal = trim($ultraMinimal);
     if ($ultraMinimal !== '' && !in_array($ultraMinimal, $attempts)) {
@@ -332,7 +331,7 @@ function getMaricopaParcelFromAddress(
         ]
     ]);
 
-    $data = null;
+    $allResults = [];
 
     foreach ($attempts as $attempt) {
         $attempt = trim($attempt);
@@ -359,31 +358,29 @@ function getMaricopaParcelFromAddress(
 
         if (is_array($decoded) && !empty($decoded['Results']) && is_array($decoded['Results'])) {
             error_log('[MCA SUCCESS] ' . $attempt . ' (' . count($decoded['Results']) . ' results)');
-            $data = $decoded;
-            break;
+            $allResults = array_merge($allResults, $decoded['Results']);
+            break; // stop after first successful attempt
         }
     }
 
-    if (!$data || empty($data['Results'])) {
+    if (empty($allResults)) {
         error_log('[MCA] No results from ANY attempt for: ' . $fullQuery);
         return null;
     }
     #endregion
 
-    #region STEP 5 — Match + Extract (STRICT VALIDATION)
-    preg_match('/^\d+/', $targetStreet, $tNum);
-    $targetNumber = $tNum[0] ?? '';
+    #region STEP 5 — Strict Validation + Collect ALL Valid Parcels
+    $matches = [];
 
-    foreach ($data['Results'] as $r) {
+    foreach ($allResults as $r) {
         $apiAddress = trim($r['SitusAddress'] ?? '');
         if ($apiAddress === '') continue;
 
         $apiUpper = strtoupper($apiAddress);
+        $apiNumber = preg_match('/^\d+/', $apiUpper, $m) ? $m[0] : '';
 
-        preg_match('/^\d+/', $apiUpper, $aNum);
-        $apiNumber = $aNum[0] ?? '';
-
-        if ($targetNumber !== '' && $apiNumber !== '' && $apiNumber !== $targetNumber) {
+        // Must match street number if we have one
+        if ($targetNumber && $apiNumber && $apiNumber !== $targetNumber) {
             continue;
         }
 
@@ -401,16 +398,29 @@ function getMaricopaParcelFromAddress(
             ? 'Maricopa County'
             : ucwords(strtolower($jurRaw));
 
-        error_log('[PARCEL ACCEPTED] ' . $apiAddress . ' → APN ' . $formatted);
-
-        return [
+        $matches[] = [
             'parcelNumber' => $formatted,
-            'jurisdiction' => $jurisdiction
+            'jurisdiction' => $jurisdiction,
+            'siteAddress'  => $apiAddress
         ];
     }
 
-    error_log('[PARCEL RESULT] No valid match after filtering for: ' . $fullQuery);
-    return null;
+    if (empty($matches)) {
+        error_log('[PARCEL RESULT] No valid match after filtering for: ' . $fullQuery);
+        return null;
+    }
+    #endregion
+
+    #region STEP 6 — Return Structure (supports multiple parcels)
+    error_log('[PARCEL ACCEPTED] Found ' . count($matches) . ' parcel(s)');
+
+    return [
+        'success'       => true,
+        'parcelCount'   => count($matches),
+        'parcels'       => $matches,
+        'parcelNumber'  => $matches[0]['parcelNumber'] ?? null,   // backward compatibility
+        'jurisdiction'  => $matches[0]['jurisdiction'] ?? 'Maricopa County'
+    ];
     #endregion
 }
 
