@@ -15,8 +15,8 @@ echo "</pre>";
 // TEST INPUT (normalized)
 // --------------------
 $input = [
-    //'address' => '3145 N 33rd Ave, Phoenix, AZ 85017'
-    'address' => '225 N 1st Street, Buckeye, AZ 85326'
+    'address' => '3145 N 33rd Ave, Phoenix, AZ 85017'
+    //'address' => '225 N 1st Street, Buckeye, AZ 85326'
 ];
 
 // --------------------
