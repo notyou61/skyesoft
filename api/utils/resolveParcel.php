@@ -3,10 +3,50 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.2.0  (Based on Working Test Harness)
+ * Version: 5.3.0  (Complete with Helpers - No External Dependencies)
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
+
+// =====================================================
+// Helper Functions (moved inside for reliability)
+// =====================================================
+
+function normalizeParcelSearchAddress($address) {
+    $address = strtoupper(trim($address));
+    // Remove suite/unit info
+    $address = preg_replace('/\s+(#|STE|SUITE|UNIT|APT)\s*[A-Z0-9\-]+/i', '', $address);
+    $address = preg_replace('/[^A-Z0-9\s]/', ' ', $address);
+    $address = preg_replace('/\s+/', ' ', $address);
+    return trim($address);
+}
+
+function buildParcelSearchTerms($address) {
+    $normalized = normalizeParcelSearchAddress($address);
+    $terms = [];
+
+    $terms[] = $normalized; // Full
+
+    // Street number + name
+    if (preg_match('/^(\d+\s+[NSEW]?\s*[A-Z0-9\s]+)/', $normalized, $matches)) {
+        $terms[] = trim($matches[1]);
+    }
+
+    // Remove common suffixes
+    $terms[] = preg_replace('/\b(RD|ROAD|ST|STREET|AVE|AVENUE|BLVD|DR|DRIVE|LN|LANE|WAY|PKWY|CT|PL)\b/', '', $normalized);
+
+    // Number + first word of street
+    if (preg_match('/^(\d+)\s+([A-Z]+)/', $normalized, $m)) {
+        $terms[] = $m[1] . ' ' . $m[2];
+    }
+
+    $terms = array_unique(array_filter(array_map('trim', $terms)));
+    return $terms;
+}
+
+// =====================================================
+// Main resolveParcel Function
+// =====================================================
 
 function resolveParcel(
     ?float $latitude = null,
@@ -35,9 +75,7 @@ function resolveParcel(
     $original = trim($searchAddress);
     error_log('[RESOLVE-PARCEL] Searching: ' . $original);
 
-    // =====================================================
-    // TIER 1: Official API (Optional - if token exists)
-    // =====================================================
+    // Try Official API first (if token available)
     $token = getenv('MARICOPA_COUNTY_API_KEY') ?: '';
     if (!empty($token)) {
         $url = 'https://mcassessor.maricopa.gov/search/property/?q=' . urlencode($original);
@@ -54,7 +92,6 @@ function resolveParcel(
         if ($response !== false) {
             $data = json_decode($response, true);
             if (!empty($data['results']) && is_array($data['results'])) {
-                // Parse official results
                 $parcelDetails = [];
                 foreach ($data['results'] as $item) {
                     $apn = $item['apn'] ?? $item['APN'] ?? null;
@@ -91,18 +128,17 @@ function resolveParcel(
     }
 
     // =====================================================
-    // TIER 2: ArcGIS (Proven Working Logic from Test Harness)
+    // ArcGIS Fallback (Proven from your test harness)
     // =====================================================
-    error_log('[RESOLVE-PARCEL] Using ArcGIS fallback (proven method)');
+    error_log('[RESOLVE-PARCEL] Using ArcGIS fallback');
 
-    $searchTerms = buildParcelSearchTerms($original);  // Reuse your working helper
+    $searchTerms = buildParcelSearchTerms($original);
 
     $data = null;
     $matchedTerm = null;
 
     foreach ($searchTerms as $term) {
-        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
-            str_replace("'", "''", $term) . "%')";
+        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
 
         $params = http_build_query([
             'where'          => $where,
@@ -129,7 +165,7 @@ function resolveParcel(
         return $result;
     }
 
-    // Build parcel details
+    // Build results
     $parcelDetails = [];
     foreach ($data['features'] as $feature) {
         $attr = $feature['attributes'] ?? [];
@@ -160,7 +196,7 @@ function resolveParcel(
         $result['jurisdictionType'] = $jur['jurisdictionType'] ?? 'City';
     }
 
-    error_log('[RESOLVE-PARCEL] ArcGIS Success → ' . $result['parcelCount'] . ' parcels (term: ' . ($matchedTerm ?? 'unknown') . ')');
+    error_log('[RESOLVE-PARCEL] ArcGIS Success → ' . $result['parcelCount'] . ' parcels');
 
     return $result;
 }
