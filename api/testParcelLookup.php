@@ -5,57 +5,38 @@ require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
 require_once __DIR__ . '/resolveLocation.php';
+require_once __DIR__ . '/resolveParcel.php';
 
 $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 $googleResult = null;
 $parcelResult = null;
 $fullResult = null;
-
-// Helper: Try multiple street variations for better parcel lookup success
-function tryGetMaricopaParcel(string $street, string $city): ?array {
-    $variations = [
-        $street,
-        preg_replace('/\b(RD|ROAD|ST|AVE|BLVD|DR|LN)\b/i', '', $street),           // without suffix
-        preg_replace('/\s+(E|W|N|S)\s+/i', ' ', $street),                          // without directional
-        trim(preg_replace('/\s+/', ' ', $street)),                                 // clean spaces
-    ];
-
-    $variations = array_unique(array_filter($variations));
-
-    foreach ($variations as $variant) {
-        if (strlen(trim($variant)) < 5) continue;
-
-        $result = getMaricopaParcelFromAddress($variant, $city);
-        if ($result) {
-            return $result;
-        }
-    }
-
-    return null;
-}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Parcel Lookup Test (Working Logic)</title>
+    <title>Parcel Lookup Test (Coordinate-First)</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
         input[type="text"] { width: 650px; padding: 10px; font-size: 16px; }
         button { padding: 10px 25px; font-size: 16px; cursor: pointer; }
         pre { background: #f4f4f4; padding: 15px; border-radius: 6px; overflow-x: auto; }
         .result-box { background: #f9f9f9; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background: #efefef; }
     </style>
 </head>
 <body>
 
-<h2>Parcel Lookup Test Harness</h2>
-<p><strong>Using working logic from resolveLocation.php</strong></p>
+<h2>Parcel Lookup Test Harness — Coordinate-First (resolveParcel v5.12)</h2>
+<p><strong>Testing: Google Geocode → resolveParcel (Tier 1: Coordinates)</strong></p>
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
-           placeholder="100 E CAMELBACK RD PHOENIX 85012" required>
+           placeholder="100 E CAMELBACK RD PHOENIX AZ 85012" required>
     <button type="submit">Resolve</button>
 </form>
 
@@ -73,23 +54,53 @@ function tryGetMaricopaParcel(string $street, string $city): ?array {
         <h3>1. Google Result</h3>
         <pre><?php print_r($googleResult); ?></pre>
 
-        <?php if ($googleResult && !empty($googleResult['city'])): ?>
+        <?php if ($googleResult && isset($googleResult['lat'], $googleResult['lng'])): ?>
 
             <?php
-            // 2. Improved Maricopa Parcel Lookup (with variations)
-            $street = extractStreetAddress($googleResult['address'] ?? $rawAddress);
-            $parcelResult = tryGetMaricopaParcel($street, $googleResult['city']);
+            // 2. New resolveParcel() using coordinates (primary path)
+            $parcelResult = resolveParcel(
+                $googleResult['lat'] ?? null,
+                $googleResult['lng'] ?? null,
+                'Maricopa',
+                '013',
+                $rawAddress
+            );
             ?>
 
-            <h3>2. Maricopa Parcel Result</h3>
+            <h3>2. resolveParcel() Result</h3>
             <pre><?php print_r($parcelResult); ?></pre>
 
+            <?php if (!empty($parcelResult)): ?>
+            <table>
+                <tr>
+                    <th>Success</th>
+                    <td><?php echo $parcelResult['success'] ? '✅ Yes' : '❌ No'; ?></td>
+                </tr>
+                <tr>
+                    <th>Parcel Count</th>
+                    <td><?php echo $parcelResult['parcelCount'] ?? 0; ?></td>
+                </tr>
+                <tr>
+                    <th>Search Source</th>
+                    <td><?php echo htmlspecialchars($parcelResult['searchSource'] ?? 'none'); ?></td>
+                </tr>
+                <tr>
+                    <th>Search Tier</th>
+                    <td><?php echo htmlspecialchars($parcelResult['searchTier'] ?? 'none'); ?></td>
+                </tr>
+                <tr>
+                    <th>Jurisdiction</th>
+                    <td><?php echo htmlspecialchars($parcelResult['jurisdictionName'] ?? ''); ?></td>
+                </tr>
+            </table>
+            <?php endif; ?>
+
             <?php
-            // 3. Full resolveLocation pipeline
+            // 3. Full resolveLocation pipeline (for comparison)
             $fullResult = resolveLocation($input);
             ?>
 
-            <h3>3. Full resolveLocation() Result</h3>
+            <h3>3. Full resolveLocation() Result (Legacy Comparison)</h3>
             <pre><?php print_r($fullResult); ?></pre>
 
         <?php else: ?>
