@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.13.1 — Improved Jurisdiction + Full Candidates
- * Primary: Lat/Lng point-in-polygon
- * Candidates: Address-based search
- * Jurisdiction: Prefers coordinate-aware resolution
+ * Version: 5.13.2 — Jurisdiction + Postal vs Permitting Awareness
+ * Primary: Lat/Lng → Parcel
+ * Candidates: Address search
+ * Jurisdiction: Smart fallback with postal/permit distinction
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -39,6 +39,10 @@ function resolveParcel(
         'jurisdictionType'     => null,
         'searchSource'         => null,
         'searchTier'           => null,
+        // New: Distinguish postal vs permitting jurisdiction
+        'postalCity'           => null,
+        'permittingJurisdiction' => null,
+        'note'                 => null,
     ];
 
     $original = trim($searchAddress ?? '');
@@ -50,11 +54,9 @@ function resolveParcel(
     error_log('[RESOLVE-PARCEL] County: ' . ($county ?? 'NULL'));
     error_log('[RESOLVE-PARCEL] Search Address: ' . $original);
 
-    // Extract street number (for address fallbacks)
+    // Extract street number
     preg_match('/^(\d+)/', $normalized, $numMatch);
     $targetNumber = $numMatch[1] ?? '';
-
-    $primaryFound = false;
 
     // =====================================================
     // TIER 1: COORDINATE-BASED LOOKUP (Primary)
@@ -93,17 +95,17 @@ function resolveParcel(
                         'parcelNumber' => $apnRaw,
                         'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
                         'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
-                        'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
-                        'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
+                        'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),      // Postal city from assessor
+                        'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),       // Permitting jurisdiction
                         'source'       => 'arcgis_coordinate'
                     ];
                 }
 
                 if (!empty($coordParcels)) {
                     $result['primaryParcel'] = $coordParcels[0];
-                    $primaryFound = true;
                     $result['searchSource'] = 'arcgis_coordinate';
                     $result['searchTier'] = 'coordinate';
+                    $result['postalCity'] = $coordParcels[0]['city'] ?? null;
 
                     error_log('[RESOLVE-PARCEL] ✅ Tier 1 Coordinate primaryParcel: ' . $coordParcels[0]['parcelNumber']);
                 }
@@ -112,7 +114,7 @@ function resolveParcel(
     }
 
     // =====================================================
-    // TIER 3: ArcGIS Address Search → CANDIDATES (always run)
+    // TIER 3: ArcGIS Address Search → CANDIDATES
     // =====================================================
     if (!empty($normalized)) {
         error_log('[RESOLVE-PARCEL] Attempting Tier 3: ArcGIS Address candidates');
@@ -176,38 +178,40 @@ function resolveParcel(
     }
 
     // =====================================================
-    // FINALIZE: Jurisdiction (Coordinate-First)
+    // JURISDICTION RESOLUTION (Postal vs Permitting)
     // =====================================================
-    $jurRaw = null;
-
-    // Prefer jurisdiction from primary parcel (coordinate)
+    $parcelJurRaw = null;
     if ($result['primaryParcel'] !== null) {
-        $jurRaw = $result['primaryParcel']['jurisdiction'] ?? $result['primaryParcel']['city'] ?? '';
+        $parcelJurRaw = $result['primaryParcel']['jurisdiction'] ?? $result['primaryParcel']['city'] ?? '';
+        $result['postalCity'] = $result['primaryParcel']['city'] ?? null;
     }
 
-    // If parcel metadata is empty/invalid ("NO CITY/TOWN" or blank), fall back to coordinate jurisdiction resolver
-    if (empty($jurRaw) || stripos($jurRaw, 'NO CITY') !== false || stripos($jurRaw, 'MARICOPA') !== false) {
-        error_log('[RESOLVE-PARCEL] Parcel jurisdiction weak — attempting coordinate jurisdiction fallback');
+    $finalJurRaw = $parcelJurRaw;
+
+    // If parcel jurisdiction is weak ("NO CITY/TOWN", blank, or Maricopa County fallback)
+    if (empty($finalJurRaw) || stripos($finalJurRaw, 'NO CITY') !== false || stripos($finalJurRaw, 'MARICOPA') !== false) {
+        error_log('[RESOLVE-PARCEL] Weak parcel jurisdiction — using coordinate jurisdiction resolver');
         if ($latitude !== null && $longitude !== null && function_exists('resolveJurisdictionByCoordinates')) {
             $coordJur = resolveJurisdictionByCoordinates($latitude, $longitude);
             if (!empty($coordJur['label'])) {
-                $jurRaw = $coordJur['label'];
-                error_log('[RESOLVE-PARCEL] Used coordinate jurisdiction: ' . $jurRaw);
+                $finalJurRaw = $coordJur['label'];
+                $result['note'] = 'Jurisdiction derived from coordinates (postal city differs from permitting authority)';
             }
+        } elseif ($county) {
+            $finalJurRaw = $county;
+            $result['note'] = 'Jurisdiction defaulted to county';
         }
     }
 
-    // Final jurisdiction resolution
-    if (!empty($jurRaw)) {
-        $jur = resolveJurisdiction($jurRaw);
-        $result['jurisdictionName'] = $jur['label'] ?? ucwords(strtolower($jurRaw));
-        $result['jurisdictionType'] = $jur['jurisdictionType'] ?? 'City';
-    } elseif ($county) {
-        $result['jurisdictionName'] = ucwords(strtolower($county));
-        $result['jurisdictionType'] = 'County';
+    // Final jurisdiction normalization
+    if (!empty($finalJurRaw)) {
+        $jur = resolveJurisdiction($finalJurRaw);
+        $result['permittingJurisdiction'] = $jur['label'] ?? ucwords(strtolower($finalJurRaw));
+        $result['jurisdictionName']       = $result['permittingJurisdiction'];
+        $result['jurisdictionType']       = $jur['jurisdictionType'] ?? 'City';
     }
 
-    // Success determination
+    // Success flag
     if ($result['primaryParcel'] !== null || $result['candidateParcelCount'] > 0) {
         $result['success'] = true;
     }
@@ -224,9 +228,8 @@ function resolveParcel(
     if ($result['success']) {
         error_log('[RESOLVE-PARCEL] ✅ Final — Primary: ' . ($result['primaryParcel']['parcelNumber'] ?? 'none') .
                   ' | Candidates: ' . $result['candidateParcelCount'] .
-                  ' | Jurisdiction: ' . ($result['jurisdictionName'] ?? ''));
-    } else {
-        error_log('[RESOLVE-PARCEL] ❌ No parcels found');
+                  ' | Jurisdiction: ' . ($result['jurisdictionName'] ?? '') .
+                  ' | Note: ' . ($result['note'] ?? ''));
     }
 
     return $result;
