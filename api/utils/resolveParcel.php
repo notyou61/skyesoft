@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.13.2 — Jurisdiction + Postal vs Permitting Awareness
+ * Version: 5.14.1 — Google Place Enrichment + Parcel + Jurisdiction
  * Primary: Lat/Lng → Parcel
  * Candidates: Address search
- * Jurisdiction: Smart fallback with postal/permit distinction
+ * Enrichment: Google Place Details (optional input)
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -19,12 +19,16 @@ function normalizeParcelSearchAddress($address) {
     return trim($address);
 }
 
+/**
+ * resolveParcel - Now accepts optional Google Place Details for enrichment
+ */
 function resolveParcel(
     ?float $latitude = null,
     ?float $longitude = null,
     ?string $county = null,
     ?string $countyFips = null,
-    ?string $searchAddress = null
+    ?string $searchAddress = null,
+    ?array $googlePlaceInput = null   // Pass full Place Details response here
 ): array {
 
     $result = [
@@ -39,10 +43,12 @@ function resolveParcel(
         'jurisdictionType'     => null,
         'searchSource'         => null,
         'searchTier'           => null,
-        // New: Distinguish postal vs permitting jurisdiction
+        // Postal vs Permitting
         'postalCity'           => null,
         'permittingJurisdiction' => null,
         'note'                 => null,
+        // Google Place Enrichment
+        'googlePlace'          => null,
     ];
 
     $original = trim($searchAddress ?? '');
@@ -57,6 +63,31 @@ function resolveParcel(
     // Extract street number
     preg_match('/^(\d+)/', $normalized, $numMatch);
     $targetNumber = $numMatch[1] ?? '';
+
+    // =====================================================
+    // GOOGLE PLACE ENRICHMENT (if provided)
+    // =====================================================
+    if (!empty($googlePlaceInput)) {
+        $placeData = $googlePlaceInput['result'] ?? $googlePlaceInput;
+
+        $result['googlePlace'] = [
+            'placeId'          => $placeData['place_id'] ?? null,
+            'name'             => $placeData['name'] ?? null,
+            'formattedAddress' => $placeData['formatted_address'] ?? null,
+            'latitude'         => $latitude,
+            'longitude'        => $longitude,
+            'businessStatus'   => $placeData['business_status'] ?? null,
+            'types'            => $placeData['types'] ?? [],
+            'website'          => $placeData['website'] ?? null,
+            'phoneNumber'      => $placeData['formatted_phone_number'] ?? null,
+            'rating'           => $placeData['rating'] ?? null,
+            'reviewCount'      => $placeData['user_ratings_total'] ?? null,
+            'googleMapsUrl'    => $placeData['url'] ?? null,
+            'source'           => 'google_place_details'
+        ];
+
+        error_log('[RESOLVE-PARCEL] ✅ Google Place enriched: ' . ($result['googlePlace']['name'] ?? 'N/A'));
+    }
 
     // =====================================================
     // TIER 1: COORDINATE-BASED LOOKUP (Primary)
@@ -95,8 +126,8 @@ function resolveParcel(
                         'parcelNumber' => $apnRaw,
                         'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
                         'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
-                        'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),      // Postal city from assessor
-                        'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),       // Permitting jurisdiction
+                        'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
+                        'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
                         'source'       => 'arcgis_coordinate'
                     ];
                 }
@@ -188,7 +219,6 @@ function resolveParcel(
 
     $finalJurRaw = $parcelJurRaw;
 
-    // If parcel jurisdiction is weak ("NO CITY/TOWN", blank, or Maricopa County fallback)
     if (empty($finalJurRaw) || stripos($finalJurRaw, 'NO CITY') !== false || stripos($finalJurRaw, 'MARICOPA') !== false) {
         error_log('[RESOLVE-PARCEL] Weak parcel jurisdiction — using coordinate jurisdiction resolver');
         if ($latitude !== null && $longitude !== null && function_exists('resolveJurisdictionByCoordinates')) {
@@ -203,7 +233,6 @@ function resolveParcel(
         }
     }
 
-    // Final jurisdiction normalization
     if (!empty($finalJurRaw)) {
         $jur = resolveJurisdiction($finalJurRaw);
         $result['permittingJurisdiction'] = $jur['label'] ?? ucwords(strtolower($finalJurRaw));
@@ -211,7 +240,6 @@ function resolveParcel(
         $result['jurisdictionType']       = $jur['jurisdictionType'] ?? 'City';
     }
 
-    // Success flag
     if ($result['primaryParcel'] !== null || $result['candidateParcelCount'] > 0) {
         $result['success'] = true;
     }
@@ -229,7 +257,7 @@ function resolveParcel(
         error_log('[RESOLVE-PARCEL] ✅ Final — Primary: ' . ($result['primaryParcel']['parcelNumber'] ?? 'none') .
                   ' | Candidates: ' . $result['candidateParcelCount'] .
                   ' | Jurisdiction: ' . ($result['jurisdictionName'] ?? '') .
-                  ' | Note: ' . ($result['note'] ?? ''));
+                  ' | Google Place: ' . (!empty($result['googlePlace']['name']) ? 'Yes' : 'No'));
     }
 
     return $result;
