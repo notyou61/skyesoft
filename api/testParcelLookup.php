@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Lookup Test Harness
- * Version: 5.14.4 — Stable + Google Place Enrichment
+ * Version: 5.14.5 — Google Place + Jurisdiction Fix
  */
 
 require_once __DIR__ . '/utils/envLoader.php';
@@ -11,33 +11,12 @@ skyesoftLoadEnv();
 
 require_once __DIR__ . '/resolveLocation.php';
 
-// Safe require for resolveJurisdiction.php (used by resolveParcel)
-$jurPaths = [
-    __DIR__ . '/resolveJurisdiction.php',
-    __DIR__ . '/utils/resolveJurisdiction.php',
-    dirname(__DIR__) . '/resolveJurisdiction.php'
-];
-foreach ($jurPaths as $p) {
-    if (file_exists($p)) { require_once $p; break; }
-}
+// Safe requires
+$jurPaths = [__DIR__.'/resolveJurisdiction.php', __DIR__.'/utils/resolveJurisdiction.php', dirname(__DIR__).'/resolveJurisdiction.php'];
+foreach ($jurPaths as $p) { if (file_exists($p)) { require_once $p; break; } }
 
-// Safe require for resolveParcel.php
-$parcelPaths = [
-    __DIR__ . '/resolveParcel.php',
-    __DIR__ . '/utils/resolveParcel.php',
-    dirname(__DIR__) . '/resolveParcel.php'
-];
-$parcelLoaded = false;
-foreach ($parcelPaths as $p) {
-    if (file_exists($p)) {
-        require_once $p;
-        $parcelLoaded = true;
-        break;
-    }
-}
-if (!$parcelLoaded) {
-    die('<h2 style="color:red;">Error: resolveParcel.php not found. Please upload the latest version.</h2>');
-}
+$parcelPaths = [__DIR__.'/resolveParcel.php', __DIR__.'/utils/resolveParcel.php', dirname(__DIR__).'/resolveParcel.php'];
+foreach ($parcelPaths as $p) { if (file_exists($p)) { require_once $p; break; } }
 
 $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 ?>
@@ -62,7 +41,7 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 </head>
 <body>
 
-<h2>Parcel Lookup Test Harness — v5.14.4 (Google Place Included)</h2>
+<h2>Parcel Lookup Test Harness — v5.14.5 (Google Place + Jurisdiction)</h2>
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
@@ -76,8 +55,6 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 
         <?php
         $input = ['address' => $rawAddress];
-
-        // 1. Google Geocode
         $googleResult = getGoogleGeocode($input);
         ?>
 
@@ -87,15 +64,23 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
         <?php if ($googleResult && isset($googleResult['lat'], $googleResult['lng'])): ?>
 
             <?php
-            // 2. Get Google Place Details (safe)
+            // Direct Google Place Details fetch (more reliable than function)
             $placeDetails = null;
-            if (!empty($googleResult['placeId']) && function_exists('getGooglePlaceDetails')) {
-                $placeDetails = getGooglePlaceDetails($googleResult['placeId']);
+            $googleApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY') ?: '';
+            if (!empty($googleResult['placeId']) && $googleApiKey) {
+                $detailsUrl = 'https://maps.googleapis.com/maps/api/place/details/json?' . http_build_query([
+                    'place_id' => $googleResult['placeId'],
+                    'fields'   => 'name,formatted_address,geometry,business_status,types,website,formatted_phone_number,rating,user_ratings_total,url',
+                    'key'      => $googleApiKey
+                ]);
+                $detailsResponse = @file_get_contents($detailsUrl);
+                if ($detailsResponse) {
+                    $placeDetails = json_decode($detailsResponse, true);
+                }
             }
             ?>
 
             <?php
-            // 3. resolveParcel with Google Place
             $parcelResult = resolveParcel(
                 $googleResult['lat'] ?? null,
                 $googleResult['lng'] ?? null,
@@ -113,7 +98,7 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
             <h4>✅ Google Place Enrichment Object</h4>
             <pre><?php print_r($parcelResult['googlePlace']); ?></pre>
             <?php else: ?>
-            <p><strong>Google Place object is empty</strong> — Place Details function not returning data or not defined.</p>
+            <p><strong>Google Place object is empty</strong> — direct API call also returned no data (check API key / billing).</p>
             <?php endif; ?>
 
             <?php if (!empty($parcelResult)): ?>

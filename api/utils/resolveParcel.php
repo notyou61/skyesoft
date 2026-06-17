@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.14.1 — Google Place Enrichment + Parcel + Jurisdiction
+ * Version: 5.14.2 — Google Place Enrichment + Improved Jurisdiction
  * Primary: Lat/Lng → Parcel
  * Candidates: Address search
  * Enrichment: Google Place Details (optional input)
@@ -209,7 +209,7 @@ function resolveParcel(
     }
 
     // =====================================================
-    // JURISDICTION RESOLUTION (Postal vs Permitting)
+    // JURISDICTION RESOLUTION (Improved - prefers postal city)
     // =====================================================
     $parcelJurRaw = null;
     if ($result['primaryParcel'] !== null) {
@@ -219,15 +219,21 @@ function resolveParcel(
 
     $finalJurRaw = $parcelJurRaw;
 
+    // If GIS returns weak jurisdiction ("NO CITY/TOWN" or "MARICOPA"), prefer the parcel's own city first
     if (empty($finalJurRaw) || stripos($finalJurRaw, 'NO CITY') !== false || stripos($finalJurRaw, 'MARICOPA') !== false) {
-        error_log('[RESOLVE-PARCEL] Weak parcel jurisdiction — using coordinate jurisdiction resolver');
-        if ($latitude !== null && $longitude !== null && function_exists('resolveJurisdictionByCoordinates')) {
+
+        if (!empty($result['postalCity'])) {
+            $finalJurRaw = $result['postalCity'];
+            $result['note'] = 'Used postal city from parcel (NO CITY/TOWN returned by GIS)';
+        } 
+        elseif ($latitude !== null && $longitude !== null && function_exists('resolveJurisdictionByCoordinates')) {
             $coordJur = resolveJurisdictionByCoordinates($latitude, $longitude);
             if (!empty($coordJur['label'])) {
                 $finalJurRaw = $coordJur['label'];
-                $result['note'] = 'Jurisdiction derived from coordinates (postal city differs from permitting authority)';
+                $result['note'] = 'Jurisdiction derived from coordinates';
             }
-        } elseif ($county) {
+        } 
+        elseif ($county) {
             $finalJurRaw = $county;
             $result['note'] = 'Jurisdiction defaulted to county';
         }
