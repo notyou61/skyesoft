@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.14.5 — Improved Address Candidate Search
+ * Version: 5.14.6 — Final Note + Google Place ID
  * Primary: Lat/Lng → Best Parcel
  * Candidates: Address search (excluding primary)
  */
@@ -18,34 +18,22 @@ function normalizeParcelSearchAddress($address) {
     return trim($address);
 }
 
-/**
- * Build multiple search terms for address-based candidate lookup.
- */
 function buildParcelCandidateSearchTerms(string $address): array {
     $normalized = normalizeParcelSearchAddress($address);
-
     $terms = [];
 
-    // Full normalized input
     $terms[] = $normalized;
-
-    // Remove AZ
     $terms[] = preg_replace('/\bAZ\b/', '', $normalized);
 
-    // Street + City + Zip (no state)
     if (preg_match('/^(.+?)\s+(PHOENIX|SCOTTSDALE|BUCKEYE|GOODYEAR|AVONDALE|TEMPE|MESA|CHANDLER|GLENDALE|PEORIA|SURPRISE)\s+(?:AZ\s+)?(\d{5})$/i', $normalized, $m)) {
         $terms[] = trim($m[1] . ' ' . $m[2] . ' ' . $m[3]);
     }
 
-    // Street-only fallback
     if (preg_match('/^(\d+\s+[NSEW]?\s*[A-Z0-9]+\s+[A-Z0-9]+(?:\s+(?:RD|ROAD|ST|STREET|AVE|AVENUE|BLVD|DR|DRIVE|LN|LANE|WAY|PKWY))?)/', $normalized, $m)) {
         $terms[] = trim($m[1]);
     }
 
-    $terms = array_map(function ($term) {
-        return trim(preg_replace('/\s+/', ' ', $term));
-    }, $terms);
-
+    $terms = array_map(fn($t) => trim(preg_replace('/\s+/', ' ', $t)), $terms);
     return array_values(array_unique(array_filter($terms)));
 }
 
@@ -80,33 +68,38 @@ function resolveParcel(
 
     error_log('[RESOLVE-PARCEL] === START === Address: ' . $original);
 
-    preg_match('/^(\d+)/', $normalized, $numMatch);
-    $targetNumber = $numMatch[1] ?? '';
-
     // =====================================================
-    // GOOGLE PLACE ENRICHMENT
+    // GOOGLE PLACE ENRICHMENT (supports full data or just placeId)
     // =====================================================
     if (!empty($googlePlaceInput)) {
-        $placeData = $googlePlaceInput['result'] ?? $googlePlaceInput;
-        $result['googlePlace'] = [
-            'placeId'          => $placeData['place_id'] ?? null,
-            'name'             => $placeData['name'] ?? null,
-            'formattedAddress' => $placeData['formatted_address'] ?? null,
-            'latitude'         => $latitude,
-            'longitude'        => $longitude,
-            'businessStatus'   => $placeData['business_status'] ?? null,
-            'types'            => $placeData['types'] ?? [],
-            'website'          => $placeData['website'] ?? null,
-            'phoneNumber'      => $placeData['formatted_phone_number'] ?? null,
-            'rating'           => $placeData['rating'] ?? null,
-            'reviewCount'      => $placeData['user_ratings_total'] ?? null,
-            'googleMapsUrl'    => $placeData['url'] ?? null,
-            'source'           => 'google_place_details'
-        ];
+        if (isset($googlePlaceInput['placeId']) && !isset($googlePlaceInput['result'])) {
+            // Minimal input: only placeId passed
+            $result['googlePlace'] = [
+                'placeId' => $googlePlaceInput['placeId'],
+                'source'  => 'geocode'
+            ];
+        } else {
+            $placeData = $googlePlaceInput['result'] ?? $googlePlaceInput;
+            $result['googlePlace'] = [
+                'placeId'          => $placeData['place_id'] ?? null,
+                'name'             => $placeData['name'] ?? null,
+                'formattedAddress' => $placeData['formatted_address'] ?? null,
+                'latitude'         => $latitude,
+                'longitude'        => $longitude,
+                'businessStatus'   => $placeData['business_status'] ?? null,
+                'types'            => $placeData['types'] ?? [],
+                'website'          => $placeData['website'] ?? null,
+                'phoneNumber'      => $placeData['formatted_phone_number'] ?? null,
+                'rating'           => $placeData['rating'] ?? null,
+                'reviewCount'      => $placeData['user_ratings_total'] ?? null,
+                'googleMapsUrl'    => $placeData['url'] ?? null,
+                'source'           => 'google_place_details'
+            ];
+        }
     }
 
     // =====================================================
-    // TIER 1: COORDINATE-BASED LOOKUP → PRIMARY PARCEL
+    // TIER 1: COORDINATE → PRIMARY PARCEL
     // =====================================================
     $primaryApn = null;
 
@@ -153,18 +146,14 @@ function resolveParcel(
     }
 
     // =====================================================
-    // ADDRESS-BASED SEARCH → CANDIDATE PARCELS
+    // ADDRESS-BASED CANDIDATES
     // =====================================================
     if (!empty($primaryApn) && !empty($normalized)) {
-
         $candidateTerms = buildParcelCandidateSearchTerms($original);
         $candidates = [];
 
         foreach ($candidateTerms as $term) {
-
-            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
-                str_replace("'", "''", $term) .
-                "%')";
+            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $term) . "%')";
 
             $params = http_build_query([
                 'where'             => $where,
@@ -176,7 +165,6 @@ function resolveParcel(
 
             $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
             $response = @file_get_contents($url);
-
             if ($response === false) continue;
 
             $data = json_decode($response, true);
@@ -187,7 +175,6 @@ function resolveParcel(
                 if (empty($attr['APN'])) continue;
 
                 $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
-
                 if ($apnRaw === $primaryApn) continue;
                 if (isset($candidates[$apnRaw])) continue;
 
@@ -210,25 +197,29 @@ function resolveParcel(
     }
 
     // =====================================================
-    // JURISDICTION (NO CITY/TOWN = County)
+    // JURISDICTION + EXPLANATORY NOTE
     // =====================================================
     if (!empty($result['primaryParcel'])) {
         $jurRaw = $result['primaryParcel']['jurisdiction'] ?? '';
+        $postal = $result['postalCity'] ?? 'Unknown';
 
         if (empty($jurRaw) || stripos($jurRaw, 'NO CITY') !== false) {
             $result['jurisdictionName']       = 'Maricopa County';
             $result['jurisdictionType']       = 'County';
             $result['permittingJurisdiction'] = 'Maricopa County';
-            $result['note'] = 'County jurisdiction (NO CITY/TOWN returned by GIS)';
+            $result['note'] = "postalCity = {$postal} (mailing address). permittingJurisdiction = Maricopa County (actual permitting authority).";
         } else {
             $jur = resolveJurisdiction($jurRaw);
-            $result['jurisdictionName']       = $jur['label'] ?? ucwords(strtolower($jurRaw));
+            $cityName = $jur['label'] ?? ucwords(strtolower($jurRaw));
+
+            $result['jurisdictionName']       = $cityName;
             $result['jurisdictionType']       = $jur['jurisdictionType'] ?? 'City';
-            $result['permittingJurisdiction'] = $result['jurisdictionName'];
+            $result['permittingJurisdiction'] = $cityName;
+            $result['note'] = "postalCity = {$postal}. permittingJurisdiction = {$cityName}.";
         }
     }
 
-    // Success + totals
+    // Success + counts
     if ($result['primaryParcel'] !== null || $result['candidateParcelCount'] > 0) {
         $result['success'] = true;
     }
