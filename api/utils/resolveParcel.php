@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.14.2 — Google Place Enrichment + Improved Jurisdiction
+ * Version: 5.14.3 — Fixed NO CITY/TOWN Jurisdiction Logic
  * Primary: Lat/Lng → Parcel
  * Candidates: Address search
  * Enrichment: Google Place Details (optional input)
@@ -19,53 +19,42 @@ function normalizeParcelSearchAddress($address) {
     return trim($address);
 }
 
-/**
- * resolveParcel - Now accepts optional Google Place Details for enrichment
- */
 function resolveParcel(
     ?float $latitude = null,
     ?float $longitude = null,
     ?string $county = null,
     ?string $countyFips = null,
     ?string $searchAddress = null,
-    ?array $googlePlaceInput = null   // Pass full Place Details response here
+    ?array $googlePlaceInput = null
 ): array {
 
     $result = [
-        'success'              => false,
-        'primaryParcel'        => null,
-        'candidateParcels'     => [],
-        'candidateParcelCount' => 0,
-        // Legacy compatibility
-        'parcelCount'          => 0,
-        'parcelDetails'        => [],
-        'jurisdictionName'     => null,
-        'jurisdictionType'     => null,
-        'searchSource'         => null,
-        'searchTier'           => null,
-        // Postal vs Permitting
-        'postalCity'           => null,
+        'success'                => false,
+        'primaryParcel'          => null,
+        'candidateParcels'       => [],
+        'candidateParcelCount'   => 0,
+        'parcelCount'            => 0,
+        'parcelDetails'          => [],
+        'jurisdictionName'       => null,
+        'jurisdictionType'       => null,
+        'searchSource'           => null,
+        'searchTier'             => null,
+        'postalCity'             => null,
         'permittingJurisdiction' => null,
-        'note'                 => null,
-        // Google Place Enrichment
-        'googlePlace'          => null,
+        'note'                   => null,
+        'googlePlace'            => null,
     ];
 
     $original = trim($searchAddress ?? '');
     $normalized = normalizeParcelSearchAddress($original);
 
-    error_log('[RESOLVE-PARCEL] === START ===');
-    error_log('[RESOLVE-PARCEL] Lat: ' . ($latitude ?? 'NULL'));
-    error_log('[RESOLVE-PARCEL] Lng: ' . ($longitude ?? 'NULL'));
-    error_log('[RESOLVE-PARCEL] County: ' . ($county ?? 'NULL'));
-    error_log('[RESOLVE-PARCEL] Search Address: ' . $original);
+    error_log('[RESOLVE-PARCEL] === START === Address: ' . $original);
 
-    // Extract street number
     preg_match('/^(\d+)/', $normalized, $numMatch);
     $targetNumber = $numMatch[1] ?? '';
 
     // =====================================================
-    // GOOGLE PLACE ENRICHMENT (if provided)
+    // GOOGLE PLACE ENRICHMENT
     // =====================================================
     if (!empty($googlePlaceInput)) {
         $placeData = $googlePlaceInput['result'] ?? $googlePlaceInput;
@@ -85,16 +74,12 @@ function resolveParcel(
             'googleMapsUrl'    => $placeData['url'] ?? null,
             'source'           => 'google_place_details'
         ];
-
-        error_log('[RESOLVE-PARCEL] ✅ Google Place enriched: ' . ($result['googlePlace']['name'] ?? 'N/A'));
     }
 
     // =====================================================
     // TIER 1: COORDINATE-BASED LOOKUP (Primary)
     // =====================================================
     if ($latitude !== null && $longitude !== null) {
-        error_log('[RESOLVE-PARCEL] Attempting Tier 1: Coordinate lookup');
-
         $params = http_build_query([
             'where'             => '1=1',
             'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
@@ -115,7 +100,6 @@ function resolveParcel(
             $data = json_decode($response, true);
             if (!empty($data['features'])) {
                 $coordParcels = [];
-
                 foreach ($data['features'] as $feature) {
                     $attr = $feature['attributes'] ?? [];
                     if (empty($attr['APN'])) continue;
@@ -137,18 +121,15 @@ function resolveParcel(
                     $result['searchSource'] = 'arcgis_coordinate';
                     $result['searchTier'] = 'coordinate';
                     $result['postalCity'] = $coordParcels[0]['city'] ?? null;
-
-                    error_log('[RESOLVE-PARCEL] ✅ Tier 1 Coordinate primaryParcel: ' . $coordParcels[0]['parcelNumber']);
                 }
             }
         }
     }
 
     // =====================================================
-    // TIER 3: ArcGIS Address Search → CANDIDATES
+    // TIER 3: Address Candidates
     // =====================================================
     if (!empty($normalized)) {
-        error_log('[RESOLVE-PARCEL] Attempting Tier 3: ArcGIS Address candidates');
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $normalized) . "%')";
 
         $params = http_build_query([
@@ -166,19 +147,16 @@ function resolveParcel(
             $data = json_decode($response, true);
             if (!empty($data['features'])) {
                 $parcelDetails = [];
-
                 foreach ($data['features'] as $feature) {
                     $attr = $feature['attributes'] ?? [];
                     if (empty($attr['APN'])) continue;
 
                     $dbAddr = normalizeParcelSearchAddress($attr['PHYSICAL_ADDRESS'] ?? '');
-
                     preg_match('/^(\d+)/', $dbAddr, $dbNumMatch);
                     if ($targetNumber && ($dbNumMatch[1] ?? '') !== $targetNumber) continue;
 
                     $similarity = similar_text($dbAddr, $normalized);
-                    $contains   = strpos($dbAddr, $normalized) !== false;
-
+                    $contains = strpos($dbAddr, $normalized) !== false;
                     if (!$contains && $similarity < 75) continue;
 
                     $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
@@ -194,22 +172,15 @@ function resolveParcel(
                 }
 
                 if (!empty($parcelDetails)) {
-                    $result['candidateParcels']     = $parcelDetails;
+                    $result['candidateParcels'] = $parcelDetails;
                     $result['candidateParcelCount'] = count($parcelDetails);
-
-                    if (empty($result['searchSource'])) {
-                        $result['searchSource'] = 'arcgis_address';
-                        $result['searchTier']   = 'arcgis';
-                    }
-
-                    error_log('[RESOLVE-PARCEL] ✅ Tier 3 Address candidates: ' . $result['candidateParcelCount']);
                 }
             }
         }
     }
 
     // =====================================================
-    // JURISDICTION RESOLUTION (Improved - prefers postal city)
+    // JURISDICTION RESOLUTION (Corrected Logic)
     // =====================================================
     $parcelJurRaw = null;
     if ($result['primaryParcel'] !== null) {
@@ -219,33 +190,31 @@ function resolveParcel(
 
     $finalJurRaw = $parcelJurRaw;
 
-    // If GIS returns weak jurisdiction ("NO CITY/TOWN" or "MARICOPA"), prefer the parcel's own city first
-    if (empty($finalJurRaw) || stripos($finalJurRaw, 'NO CITY') !== false || stripos($finalJurRaw, 'MARICOPA') !== false) {
+    // === CORRECTED: NO CITY/TOWN means Unincorporated Maricopa County ===
+    if (empty($finalJurRaw) || stripos($finalJurRaw, 'NO CITY') !== false) {
 
-        if (!empty($result['postalCity'])) {
-            $finalJurRaw = $result['postalCity'];
-            $result['note'] = 'Used postal city from parcel (NO CITY/TOWN returned by GIS)';
-        } 
-        elseif ($latitude !== null && $longitude !== null && function_exists('resolveJurisdictionByCoordinates')) {
-            $coordJur = resolveJurisdictionByCoordinates($latitude, $longitude);
-            if (!empty($coordJur['label'])) {
-                $finalJurRaw = $coordJur['label'];
-                $result['note'] = 'Jurisdiction derived from coordinates';
-            }
-        } 
-        elseif ($county) {
-            $finalJurRaw = $county;
-            $result['note'] = 'Jurisdiction defaulted to county';
-        }
-    }
+        // Always treat NO CITY/TOWN as County jurisdiction
+        $result['jurisdictionName']       = 'Maricopa County';
+        $result['jurisdictionType']       = 'County';
+        $result['permittingJurisdiction'] = 'Maricopa County';
+        $result['note'] = 'County jurisdiction (NO CITY/TOWN returned by GIS)';
 
-    if (!empty($finalJurRaw)) {
+    } elseif (stripos($finalJurRaw, 'MARICOPA') !== false) {
+        // Explicit Maricopa County
+        $result['jurisdictionName']       = 'Maricopa County';
+        $result['jurisdictionType']       = 'County';
+        $result['permittingJurisdiction'] = 'Maricopa County';
+        $result['note'] = 'County jurisdiction';
+
+    } else {
+        // City jurisdiction (normal case)
         $jur = resolveJurisdiction($finalJurRaw);
-        $result['permittingJurisdiction'] = $jur['label'] ?? ucwords(strtolower($finalJurRaw));
-        $result['jurisdictionName']       = $result['permittingJurisdiction'];
+        $result['jurisdictionName']       = $jur['label'] ?? ucwords(strtolower($finalJurRaw));
         $result['jurisdictionType']       = $jur['jurisdictionType'] ?? 'City';
+        $result['permittingJurisdiction'] = $result['jurisdictionName'];
     }
 
+    // Success flag
     if ($result['primaryParcel'] !== null || $result['candidateParcelCount'] > 0) {
         $result['success'] = true;
     }
@@ -253,17 +222,10 @@ function resolveParcel(
     // Legacy compatibility
     if ($result['primaryParcel'] !== null) {
         $result['parcelDetails'] = [$result['primaryParcel']];
-        $result['parcelCount']   = 1;
+        $result['parcelCount'] = 1;
     } else {
         $result['parcelDetails'] = $result['candidateParcels'];
-        $result['parcelCount']   = $result['candidateParcelCount'];
-    }
-
-    if ($result['success']) {
-        error_log('[RESOLVE-PARCEL] ✅ Final — Primary: ' . ($result['primaryParcel']['parcelNumber'] ?? 'none') .
-                  ' | Candidates: ' . $result['candidateParcelCount'] .
-                  ' | Jurisdiction: ' . ($result['jurisdictionName'] ?? '') .
-                  ' | Google Place: ' . (!empty($result['googlePlace']['name']) ? 'Yes' : 'No'));
+        $result['parcelCount'] = $result['candidateParcelCount'];
     }
 
     return $result;
