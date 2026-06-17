@@ -16,6 +16,7 @@ $googleApiKey =
 $geocodeResult = [];
 $findPlaceResult = [];
 $placeDetailsResult = [];
+$reverseGeocodeResult = [];
 
 function curlGetJson($url)
 {
@@ -26,7 +27,7 @@ function curlGetJson($url)
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT        => 20,
-        CURLOPT_USERAGENT      => 'Skyesoft Google Places Test'
+        CURLOPT_USERAGENT      => 'Skyesoft Google Diagnostics Tool'
     ]);
 
     $response = curl_exec($ch);
@@ -55,6 +56,24 @@ if ($address !== '' && $googleApiKey !== '') {
         ]);
 
     $geocodeResult = curlGetJson($geocodeUrl);
+
+    // =====================================================
+    // REVERSE GEOCODE FROM RETURNED COORDINATES
+    // =====================================================
+
+    if (!empty($geocodeResult['results'][0]['geometry']['location'])) {
+        $lat = $geocodeResult['results'][0]['geometry']['location']['lat'];
+        $lng = $geocodeResult['results'][0]['geometry']['location']['lng'];
+
+        $reverseUrl =
+            'https://maps.googleapis.com/maps/api/geocode/json?' .
+            http_build_query([
+                'latlng' => $lat . ',' . $lng,
+                'key'    => $googleApiKey
+            ]);
+
+        $reverseGeocodeResult = curlGetJson($reverseUrl);
+    }
 
     // =====================================================
     // FIND PLACE FROM TEXT
@@ -100,13 +119,12 @@ if ($address !== '' && $googleApiKey !== '') {
         $placeDetailsResult = curlGetJson($detailsUrl);
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Google Places Test</title>
+<title>Google Maps API Diagnostics Tool</title>
 
 <style>
 
@@ -161,7 +179,7 @@ th{
 </head>
 <body>
 
-<h2>Google Places API Test</h2>
+<h2>Google Maps API Diagnostics Tool</h2>
 
 <form method="post">
 
@@ -172,7 +190,7 @@ th{
         placeholder="100 E CAMELBACK RD PHOENIX AZ 85012">
 
     <button type="submit">
-        Test Address
+        Run Diagnostics
     </button>
 
 </form>
@@ -217,43 +235,72 @@ th{
 
 <div class="section">
 
-    <h3>5. Comparison Summary</h3>
+    <h3>5. Reverse Geocode Result</h3>
 
-    <?php
+    <pre><?php print_r($reverseGeocodeResult); ?></pre>
 
-    $geoAddress =
-        $geocodeResult['results'][0]['formatted_address']
-        ?? '';
+</div>
 
-    $geoPlaceId =
-        $geocodeResult['results'][0]['place_id']
-        ?? '';
+<?php
 
-    $geoLat =
-        $geocodeResult['results'][0]['geometry']['location']['lat']
-        ?? '';
+// Additional Geocode fields for diagnostics
+$geoAddress =
+    $geocodeResult['results'][0]['formatted_address']
+    ?? '';
 
-    $geoLng =
-        $geocodeResult['results'][0]['geometry']['location']['lng']
-        ?? '';
+$geoPlaceId =
+    $geocodeResult['results'][0]['place_id']
+    ?? '';
 
-    $placeAddress =
-        $placeDetailsResult['result']['formatted_address']
-        ?? '';
+$geoLat =
+    $geocodeResult['results'][0]['geometry']['location']['lat']
+    ?? '';
 
-    $placePlaceId =
-        $placeDetailsResult['result']['place_id']
-        ?? '';
+$geoLng =
+    $geocodeResult['results'][0]['geometry']['location']['lng']
+    ?? '';
 
-    $placeLat =
-        $placeDetailsResult['result']['geometry']['location']['lat']
-        ?? '';
+$geoLocationType =
+    $geocodeResult['results'][0]['geometry']['location_type']
+    ?? '';
 
-    $placeLng =
-        $placeDetailsResult['result']['geometry']['location']['lng']
-        ?? '';
+$geoTypes =
+    $geocodeResult['results'][0]['types']
+    ?? [];
 
-    ?>
+$geoAddressComponents =
+    $geocodeResult['results'][0]['address_components']
+    ?? [];
+
+$geoViewport =
+    $geocodeResult['results'][0]['geometry']['viewport']
+    ?? [];
+
+$geoPlusCode =
+    $geocodeResult['plus_code']
+    ?? [];
+
+$placeAddress =
+    $placeDetailsResult['result']['formatted_address']
+    ?? '';
+
+$placePlaceId =
+    $placeDetailsResult['result']['place_id']
+    ?? '';
+
+$placeLat =
+    $placeDetailsResult['result']['geometry']['location']['lat']
+    ?? '';
+
+$placeLng =
+    $placeDetailsResult['result']['geometry']['location']['lng']
+    ?? '';
+
+?>
+
+<div class="section">
+
+    <h3>6. Comparison Summary</h3>
 
     <table>
 
@@ -287,7 +334,40 @@ th{
             <td><?php echo htmlspecialchars((string)$placeLng); ?></td>
         </tr>
 
+        <tr>
+            <td>Location Type</td>
+            <td><?php echo htmlspecialchars($geoLocationType); ?></td>
+            <td>—</td>
+        </tr>
+
+        <tr>
+            <td>Types</td>
+            <td><?php echo htmlspecialchars(implode(', ', $geoTypes)); ?></td>
+            <td><?php echo htmlspecialchars(
+                implode(', ', $placeDetailsResult['result']['types'] ?? [])
+            ); ?></td>
+        </tr>
+
     </table>
+
+</div>
+
+<div class="section">
+
+    <h3>7. Geocode Address Components (Key for ZIP/City/County)</h3>
+
+    <pre><?php print_r($geoAddressComponents); ?></pre>
+
+</div>
+
+<div class="section">
+
+    <h3>8. Additional Geocode Data</h3>
+    <p><strong>Viewport:</strong></p>
+    <pre><?php print_r($geoViewport); ?></pre>
+    
+    <p><strong>Plus Code:</strong></p>
+    <pre><?php print_r($geoPlusCode); ?></pre>
 
 </div>
 
