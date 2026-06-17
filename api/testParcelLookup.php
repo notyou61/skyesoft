@@ -5,7 +5,26 @@ require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
 require_once __DIR__ . '/resolveLocation.php';
-require_once __DIR__ . '/resolveParcel.php';
+
+// Robust require for resolveParcel.php
+$possiblePaths = [
+    __DIR__ . '/resolveParcel.php',           // same directory (api/)
+    __DIR__ . '/utils/resolveParcel.php',     // utils subfolder
+    dirname(__DIR__) . '/resolveParcel.php'   // parent directory
+];
+
+$resolveParcelPath = null;
+foreach ($possiblePaths as $path) {
+    if (file_exists($path)) {
+        $resolveParcelPath = $path;
+        require_once $path;
+        break;
+    }
+}
+
+if (!$resolveParcelPath) {
+    die('<h2 style="color:red;">Error: resolveParcel.php not found.<br>Please upload/save the updated resolveParcel.php (v5.12) into the api/ folder first.</h2>');
+}
 
 $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 $googleResult = null;
@@ -27,6 +46,8 @@ $fullResult = null;
         table { border-collapse: collapse; width: 100%; margin-top: 15px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
         th { background: #efefef; }
+        .success { color: green; }
+        .error { color: red; }
     </style>
 </head>
 <body>
@@ -74,7 +95,9 @@ $fullResult = null;
             <table>
                 <tr>
                     <th>Success</th>
-                    <td><?php echo $parcelResult['success'] ? '✅ Yes' : '❌ No'; ?></td>
+                    <td class="<?php echo $parcelResult['success'] ? 'success' : 'error'; ?>">
+                        <?php echo $parcelResult['success'] ? '✅ Yes' : '❌ No'; ?>
+                    </td>
                 </tr>
                 <tr>
                     <th>Parcel Count</th>
