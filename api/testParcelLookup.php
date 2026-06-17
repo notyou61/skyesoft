@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Lookup Test Harness
- * Version: 5.14.3 — Fixed Requires + Google Place
+ * Version: 5.14.4 — Stable + Google Place Enrichment
  */
 
 require_once __DIR__ . '/utils/envLoader.php';
@@ -11,38 +11,32 @@ skyesoftLoadEnv();
 
 require_once __DIR__ . '/resolveLocation.php';
 
-// Robust require for dependencies
-$possibleJurPaths = [
+// Safe require for resolveJurisdiction.php (used by resolveParcel)
+$jurPaths = [
     __DIR__ . '/resolveJurisdiction.php',
     __DIR__ . '/utils/resolveJurisdiction.php',
     dirname(__DIR__) . '/resolveJurisdiction.php'
 ];
-
-foreach ($possibleJurPaths as $path) {
-    if (file_exists($path)) {
-        require_once $path;
-        break;
-    }
+foreach ($jurPaths as $p) {
+    if (file_exists($p)) { require_once $p; break; }
 }
 
-// Robust require for resolveParcel.php
-$possibleParcelPaths = [
+// Safe require for resolveParcel.php
+$parcelPaths = [
     __DIR__ . '/resolveParcel.php',
     __DIR__ . '/utils/resolveParcel.php',
     dirname(__DIR__) . '/resolveParcel.php'
 ];
-
-$resolveParcelPath = null;
-foreach ($possibleParcelPaths as $path) {
-    if (file_exists($path)) {
-        $resolveParcelPath = $path;
-        require_once $path;
+$parcelLoaded = false;
+foreach ($parcelPaths as $p) {
+    if (file_exists($p)) {
+        require_once $p;
+        $parcelLoaded = true;
         break;
     }
 }
-
-if (!$resolveParcelPath) {
-    die('<h2 style="color:red;">Error: resolveParcel.php not found.<br>Please upload the latest version.</h2>');
+if (!$parcelLoaded) {
+    die('<h2 style="color:red;">Error: resolveParcel.php not found. Please upload the latest version.</h2>');
 }
 
 $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
@@ -52,7 +46,7 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Parcel Lookup Test (with Google Place)</title>
+    <title>Parcel Lookup Test (Google Place + Coordinates)</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
         input[type="text"] { width: 650px; padding: 10px; font-size: 16px; }
@@ -68,7 +62,7 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
 </head>
 <body>
 
-<h2>Parcel Lookup Test Harness — v5.14.3 (Google Place Included)</h2>
+<h2>Parcel Lookup Test Harness — v5.14.4 (Google Place Included)</h2>
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
@@ -93,13 +87,15 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
         <?php if ($googleResult && isset($googleResult['lat'], $googleResult['lng'])): ?>
 
             <?php
-            // Get full Google Place Details
+            // 2. Get Google Place Details (safe)
             $placeDetails = null;
             if (!empty($googleResult['placeId']) && function_exists('getGooglePlaceDetails')) {
                 $placeDetails = getGooglePlaceDetails($googleResult['placeId']);
             }
+            ?>
 
-            // 2. resolveParcel with Google Place
+            <?php
+            // 3. resolveParcel with Google Place
             $parcelResult = resolveParcel(
                 $googleResult['lat'] ?? null,
                 $googleResult['lng'] ?? null,
@@ -117,7 +113,7 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
             <h4>✅ Google Place Enrichment Object</h4>
             <pre><?php print_r($parcelResult['googlePlace']); ?></pre>
             <?php else: ?>
-            <p><strong>Google Place object is empty.</strong> (Place Details not returned or function unavailable)</p>
+            <p><strong>Google Place object is empty</strong> — Place Details function not returning data or not defined.</p>
             <?php endif; ?>
 
             <?php if (!empty($parcelResult)): ?>
