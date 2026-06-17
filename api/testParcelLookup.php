@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Skyesoft — Parcel Lookup Test Harness
+ * Version: 5.14.2 — Coordinate-First + Google Place Enrichment
+ * Tests: Google Geocode → Place Details → resolveParcel (with full enrichment)
+ */
+
 require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
@@ -23,7 +29,7 @@ foreach ($possiblePaths as $path) {
 }
 
 if (!$resolveParcelPath) {
-    die('<h2 style="color:red;">Error: resolveParcel.php not found.<br>Please upload/save the updated resolveParcel.php (v5.12) into the api/ folder first.</h2>');
+    die('<h2 style="color:red;">Error: resolveParcel.php not found.<br>Please upload/save the latest resolveParcel.php (v5.14.2) into the api/ folder first.</h2>');
 }
 
 $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
@@ -36,7 +42,7 @@ $fullResult = null;
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Parcel Lookup Test (Coordinate-First)</title>
+    <title>Parcel Lookup Test (Coordinate-First + Google Place)</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
         input[type="text"] { width: 650px; padding: 10px; font-size: 16px; }
@@ -52,8 +58,8 @@ $fullResult = null;
 </head>
 <body>
 
-<h2>Parcel Lookup Test Harness — Coordinate-First (resolveParcel v5.12)</h2>
-<p><strong>Testing: Google Geocode → resolveParcel (Tier 1: Coordinates)</strong></p>
+<h2>Parcel Lookup Test Harness — Coordinate-First + Google Place Enrichment (v5.14.2)</h2>
+<p><strong>Testing: Google Geocode → Place Details → resolveParcel</strong></p>
 
 <form method="post">
     <input type="text" name="address" value="<?php echo htmlspecialchars($rawAddress); ?>" 
@@ -78,18 +84,32 @@ $fullResult = null;
         <?php if ($googleResult && isset($googleResult['lat'], $googleResult['lng'])): ?>
 
             <?php
-            // 2. New resolveParcel() using coordinates (primary path)
+            // Get full Google Place Details for enrichment (safe call)
+            $placeDetails = null;
+            if (!empty($googleResult['placeId']) && function_exists('getGooglePlaceDetails')) {
+                $placeDetails = getGooglePlaceDetails($googleResult['placeId']);
+            }
+            ?>
+
+            <?php
+            // 2. New resolveParcel() using coordinates + Google Place enrichment
             $parcelResult = resolveParcel(
                 $googleResult['lat'] ?? null,
                 $googleResult['lng'] ?? null,
                 'Maricopa',
                 '013',
-                $rawAddress
+                $rawAddress,
+                $placeDetails
             );
             ?>
 
             <h3>2. resolveParcel() Result</h3>
             <pre><?php print_r($parcelResult); ?></pre>
+
+            <?php if (!empty($parcelResult['googlePlace'])): ?>
+            <h4>Google Place Enrichment</h4>
+            <pre><?php print_r($parcelResult['googlePlace']); ?></pre>
+            <?php endif; ?>
 
             <?php if (!empty($parcelResult)): ?>
             <table>
@@ -115,6 +135,12 @@ $fullResult = null;
                     <th>Jurisdiction</th>
                     <td><?php echo htmlspecialchars($parcelResult['jurisdictionName'] ?? ''); ?></td>
                 </tr>
+                <?php if (!empty($parcelResult['note'])): ?>
+                <tr>
+                    <th>Note</th>
+                    <td><?php echo htmlspecialchars($parcelResult['note']); ?></td>
+                </tr>
+                <?php endif; ?>
             </table>
             <?php endif; ?>
 
