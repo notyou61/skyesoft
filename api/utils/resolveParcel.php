@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.14.4 — Primary + Candidate Parcels (Coordinate + Address)
+ * Version: 5.14.5 — Improved Address Candidate Search
  * Primary: Lat/Lng → Best Parcel
  * Candidates: Address search (excluding primary)
  */
@@ -16,6 +16,37 @@ function normalizeParcelSearchAddress($address) {
     $address = preg_replace('/[^A-Z0-9\s]/', ' ', $address);
     $address = preg_replace('/\s+/', ' ', $address);
     return trim($address);
+}
+
+/**
+ * Build multiple search terms for address-based candidate lookup.
+ */
+function buildParcelCandidateSearchTerms(string $address): array {
+    $normalized = normalizeParcelSearchAddress($address);
+
+    $terms = [];
+
+    // Full normalized input
+    $terms[] = $normalized;
+
+    // Remove AZ
+    $terms[] = preg_replace('/\bAZ\b/', '', $normalized);
+
+    // Street + City + Zip (no state)
+    if (preg_match('/^(.+?)\s+(PHOENIX|SCOTTSDALE|BUCKEYE|GOODYEAR|AVONDALE|TEMPE|MESA|CHANDLER|GLENDALE|PEORIA|SURPRISE)\s+(?:AZ\s+)?(\d{5})$/i', $normalized, $m)) {
+        $terms[] = trim($m[1] . ' ' . $m[2] . ' ' . $m[3]);
+    }
+
+    // Street-only fallback
+    if (preg_match('/^(\d+\s+[NSEW]?\s*[A-Z0-9]+\s+[A-Z0-9]+(?:\s+(?:RD|ROAD|ST|STREET|AVE|AVENUE|BLVD|DR|DRIVE|LN|LANE|WAY|PKWY))?)/', $normalized, $m)) {
+        $terms[] = trim($m[1]);
+    }
+
+    $terms = array_map(function ($term) {
+        return trim(preg_replace('/\s+/', ' ', $term));
+    }, $terms);
+
+    return array_values(array_unique(array_filter($terms)));
 }
 
 function resolveParcel(
@@ -123,50 +154,59 @@ function resolveParcel(
 
     // =====================================================
     // ADDRESS-BASED SEARCH → CANDIDATE PARCELS
-    // (Only run if we have a primary parcel from coordinates)
     // =====================================================
     if (!empty($primaryApn) && !empty($normalized)) {
-        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . str_replace("'", "''", $normalized) . "%')";
 
-        $params = http_build_query([
-            'where'             => $where,
-            'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
-            'returnGeometry'    => 'false',
-            'f'                 => 'json',
-            'resultRecordCount' => 40
-        ]);
+        $candidateTerms = buildParcelCandidateSearchTerms($original);
+        $candidates = [];
 
-        $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
-        $response = @file_get_contents($url);
+        foreach ($candidateTerms as $term) {
 
-        if ($response !== false) {
+            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" .
+                str_replace("'", "''", $term) .
+                "%')";
+
+            $params = http_build_query([
+                'where'             => $where,
+                'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+                'returnGeometry'    => 'false',
+                'f'                 => 'json',
+                'resultRecordCount' => 40
+            ]);
+
+            $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
+            $response = @file_get_contents($url);
+
+            if ($response === false) continue;
+
             $data = json_decode($response, true);
-            if (!empty($data['features'])) {
-                $candidates = [];
+            if (empty($data['features'])) continue;
 
-                foreach ($data['features'] as $feature) {
-                    $attr = $feature['attributes'] ?? [];
-                    if (empty($attr['APN'])) continue;
+            foreach ($data['features'] as $feature) {
+                $attr = $feature['attributes'] ?? [];
+                if (empty($attr['APN'])) continue;
 
-                    $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
+                $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
 
-                    // Skip the primary parcel
-                    if ($apnRaw === $primaryApn) continue;
+                if ($apnRaw === $primaryApn) continue;
+                if (isset($candidates[$apnRaw])) continue;
 
-                    $candidates[] = [
-                        'parcelNumber' => $apnRaw,
-                        'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
-                        'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
-                        'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
-                        'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
-                        'source'       => 'arcgis_address'
-                    ];
-                }
-
-                $result['candidateParcels'] = $candidates;
-                $result['candidateParcelCount'] = count($candidates);
+                $candidates[$apnRaw] = [
+                    'parcelNumber' => $apnRaw,
+                    'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
+                    'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
+                    'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
+                    'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
+                    'source'       => 'arcgis_address',
+                    'matchedTerm'  => $term
+                ];
             }
+
+            if (!empty($candidates)) break;
         }
+
+        $result['candidateParcels'] = array_values($candidates);
+        $result['candidateParcelCount'] = count($result['candidateParcels']);
     }
 
     // =====================================================
@@ -193,7 +233,6 @@ function resolveParcel(
         $result['success'] = true;
     }
 
-    // parcelCount = Primary + Candidates
     $result['parcelCount'] = ($result['primaryParcel'] ? 1 : 0) + $result['candidateParcelCount'];
 
     // Legacy compatibility
