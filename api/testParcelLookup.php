@@ -20,7 +20,6 @@ function normalizeParcelSearchAddress($address) {
 
 /**
  * Build multiple search terms for address-based candidate lookup.
- * Helps when MCA stores addresses slightly differently (e.g. missing "AZ").
  */
 function buildParcelCandidateSearchTerms(string $address): array {
     $normalized = normalizeParcelSearchAddress($address);
@@ -178,34 +177,19 @@ function resolveParcel(
             $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
             $response = @file_get_contents($url);
 
-            if ($response === false) {
-                continue;
-            }
+            if ($response === false) continue;
 
             $data = json_decode($response, true);
-
-            if (empty($data['features'])) {
-                continue;
-            }
+            if (empty($data['features'])) continue;
 
             foreach ($data['features'] as $feature) {
                 $attr = $feature['attributes'] ?? [];
-
-                if (empty($attr['APN'])) {
-                    continue;
-                }
+                if (empty($attr['APN'])) continue;
 
                 $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
 
-                // Skip primary parcel
-                if ($apnRaw === $primaryApn) {
-                    continue;
-                }
-
-                // Avoid duplicates
-                if (isset($candidates[$apnRaw])) {
-                    continue;
-                }
+                if ($apnRaw === $primaryApn) continue;
+                if (isset($candidates[$apnRaw])) continue;
 
                 $candidates[$apnRaw] = [
                     'parcelNumber' => $apnRaw,
@@ -218,10 +202,7 @@ function resolveParcel(
                 ];
             }
 
-            // Stop on first successful term
-            if (!empty($candidates)) {
-                break;
-            }
+            if (!empty($candidates)) break;
         }
 
         $result['candidateParcels'] = array_values($candidates);
@@ -252,7 +233,6 @@ function resolveParcel(
         $result['success'] = true;
     }
 
-    // parcelCount = Primary + Candidates
     $result['parcelCount'] = ($result['primaryParcel'] ? 1 : 0) + $result['candidateParcelCount'];
 
     // Legacy compatibility
