@@ -73,20 +73,23 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
         <?php if ($googleResult && isset($googleResult['lat'], $googleResult['lng'])): ?>
 
             <?php
-            $placeDetails = null; // We removed placeId-based fetch
-
             $parcelResult = resolveParcel(
                 $googleResult['lat'] ?? null,
                 $googleResult['lng'] ?? null,
                 'Maricopa',
                 '013',
-                $rawAddress,
-                $placeDetails
+                $rawAddress
             );
             ?>
 
             <h3>2. resolveParcel() Result</h3>
             <pre><?php print_r($parcelResult); ?></pre>
+
+            <h3>Primary Parcel</h3>
+            <pre><?php print_r($parcelResult['primaryParcel'] ?? []); ?></pre>
+
+            <h3>Candidate Parcels</h3>
+            <pre><?php print_r($parcelResult['candidateParcels'] ?? []); ?></pre>
 
             <?php if (!empty($parcelResult)): ?>
             <table>
@@ -94,6 +97,28 @@ $rawAddress = isset($_POST['address']) ? trim($_POST['address']) : '';
                     <th>Success</th>
                     <td class="<?php echo $parcelResult['success'] ? 'success' : 'error'; ?>">
                         <?php echo $parcelResult['success'] ? '✅ Yes' : '❌ No'; ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Primary Parcel</th>
+                    <td>
+                        <?php
+                        echo htmlspecialchars(
+                            $parcelResult['primaryParcel']['parcelNumber']
+                            ?? ''
+                        );
+                        ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Candidate Parcel Count</th>
+                    <td>
+                        <?php
+                        echo count(
+                            $parcelResult['candidateParcels']
+                            ?? []
+                        );
+                        ?>
                     </td>
                 </tr>
                 <tr>
