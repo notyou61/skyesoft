@@ -84,15 +84,13 @@ $fullResult = null;
         <?php if ($googleResult && isset($googleResult['lat'], $googleResult['lng'])): ?>
 
             <?php
-            // Get full Google Place Details for enrichment (safe call)
+            // Get full Google Place Details for enrichment (safe)
             $placeDetails = null;
             if (!empty($googleResult['placeId']) && function_exists('getGooglePlaceDetails')) {
                 $placeDetails = getGooglePlaceDetails($googleResult['placeId']);
             }
-            ?>
 
-            <?php
-            // 2. New resolveParcel() using coordinates + Google Place enrichment
+            // 2. resolveParcel with Google Place enrichment
             $parcelResult = resolveParcel(
                 $googleResult['lat'] ?? null,
                 $googleResult['lng'] ?? null,
@@ -107,8 +105,10 @@ $fullResult = null;
             <pre><?php print_r($parcelResult); ?></pre>
 
             <?php if (!empty($parcelResult['googlePlace'])): ?>
-            <h4>Google Place Enrichment</h4>
+            <h4>✅ Google Place Enrichment Object</h4>
             <pre><?php print_r($parcelResult['googlePlace']); ?></pre>
+            <?php else: ?>
+            <p><strong>Note:</strong> Google Place object not populated (Place Details not passed or unavailable).</p>
             <?php endif; ?>
 
             <?php if (!empty($parcelResult)): ?>
