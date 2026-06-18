@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.14.8 — GooglePlaceID + Narrative Note
+ * Version: 5.14.8 — City-Filtered Candidates + Google Place ID
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -58,7 +58,7 @@ function resolveParcel(
         'postalCity'             => null,
         'permittingJurisdiction' => null,
         'note'                   => null,
-        'googlePlaceID'          => null,   // Simplified as requested
+        'googlePlaceID'          => null,
     ];
 
     $original = trim($searchAddress ?? '');
@@ -81,6 +81,7 @@ function resolveParcel(
     // TIER 1: COORDINATE → PRIMARY PARCEL
     // =====================================================
     $primaryApn = null;
+    $primaryCity = null;
 
     if ($latitude !== null && $longitude !== null) {
         $params = http_build_query([
@@ -116,18 +117,19 @@ function resolveParcel(
                     ];
 
                     $primaryApn = $apnRaw;
+                    $primaryCity = $result['primaryParcel']['city'] ?? null;
                     $result['searchSource'] = 'arcgis_coordinate';
                     $result['searchTier'] = 'coordinate';
-                    $result['postalCity'] = $result['primaryParcel']['city'] ?? null;
+                    $result['postalCity'] = $primaryCity;
                 }
             }
         }
     }
 
     // =====================================================
-    // ADDRESS-BASED CANDIDATES
+    // ADDRESS-BASED CANDIDATES (City-Filtered)
     // =====================================================
-    if (!empty($primaryApn) && !empty($normalized)) {
+    if (!empty($primaryApn) && !empty($normalized) && !empty($primaryCity)) {
         $candidateTerms = buildParcelCandidateSearchTerms($original);
         $candidates = [];
 
@@ -155,13 +157,20 @@ function resolveParcel(
 
                 $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
                 if ($apnRaw === $primaryApn) continue;
+
+                // City filter - only same city as primary parcel
+                $candidateCity = trim($attr['PHYSICAL_CITY'] ?? '');
+                if (strtoupper($candidateCity) !== strtoupper($primaryCity)) {
+                    continue;
+                }
+
                 if (isset($candidates[$apnRaw])) continue;
 
                 $candidates[$apnRaw] = [
                     'parcelNumber' => $apnRaw,
                     'ownerName'    => trim($attr['OWNER_NAME'] ?? ''),
                     'siteAddress'  => trim($attr['PHYSICAL_ADDRESS'] ?? ''),
-                    'city'         => trim($attr['PHYSICAL_CITY'] ?? ''),
+                    'city'         => $candidateCity,
                     'jurisdiction' => trim($attr['JURISDICTION'] ?? ''),
                     'source'       => 'arcgis_address',
                     'matchedTerm'  => $term
@@ -198,7 +207,7 @@ function resolveParcel(
         }
     }
 
-    // Success + counts
+    // Success + totals
     if ($result['primaryParcel'] !== null || $result['candidateParcelCount'] > 0) {
         $result['success'] = true;
     }
