@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.14.6 — Final Note + Google Place ID
+ * Version: 5.14.7 — Final Narrative Note + Google Place ID
  * Primary: Lat/Lng → Best Parcel
  * Candidates: Address search (excluding primary)
  */
@@ -69,11 +69,10 @@ function resolveParcel(
     error_log('[RESOLVE-PARCEL] === START === Address: ' . $original);
 
     // =====================================================
-    // GOOGLE PLACE ENRICHMENT (supports full data or just placeId)
+    // GOOGLE PLACE ENRICHMENT
     // =====================================================
     if (!empty($googlePlaceInput)) {
         if (isset($googlePlaceInput['placeId']) && !isset($googlePlaceInput['result'])) {
-            // Minimal input: only placeId passed
             $result['googlePlace'] = [
                 'placeId' => $googlePlaceInput['placeId'],
                 'source'  => 'geocode'
@@ -197,7 +196,7 @@ function resolveParcel(
     }
 
     // =====================================================
-    // JURISDICTION + EXPLANATORY NOTE
+    // JURISDICTION + NARRATIVE NOTE
     // =====================================================
     if (!empty($result['primaryParcel'])) {
         $jurRaw = $result['primaryParcel']['jurisdiction'] ?? '';
@@ -207,7 +206,7 @@ function resolveParcel(
             $result['jurisdictionName']       = 'Maricopa County';
             $result['jurisdictionType']       = 'County';
             $result['permittingJurisdiction'] = 'Maricopa County';
-            $result['note'] = "postalCity = {$postal} (mailing address). permittingJurisdiction = Maricopa County (actual permitting authority).";
+            $result['note'] = "The postal city is {$postal} (for mailing purposes). This property is in unincorporated Maricopa County, so the permitting jurisdiction is Maricopa County.";
         } else {
             $jur = resolveJurisdiction($jurRaw);
             $cityName = $jur['label'] ?? ucwords(strtolower($jurRaw));
@@ -215,7 +214,7 @@ function resolveParcel(
             $result['jurisdictionName']       = $cityName;
             $result['jurisdictionType']       = $jur['jurisdictionType'] ?? 'City';
             $result['permittingJurisdiction'] = $cityName;
-            $result['note'] = "postalCity = {$postal}. permittingJurisdiction = {$cityName}.";
+            $result['note'] = "The postal city is {$postal}. The permitting jurisdiction is {$cityName}.";
         }
     }
 
