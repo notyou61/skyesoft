@@ -139,8 +139,8 @@ if ($rawAddress !== '') {
         $summaryLines[] = "Governance: {$rsCode} ({$parcelStatus}).";
     }
 
-    // Join and trim - no leading empty lines
-    $aiSummary = trim(implode("\n", array_filter($summaryLines, fn($line) => trim($line) !== '')));
+    // Join with <br> directly - clean, no extra line breaks
+    $aiSummary = implode("<br>", array_filter($summaryLines, fn($line) => trim($line) !== ''));
 }
 ?>
 
@@ -186,7 +186,7 @@ if ($rawAddress !== '') {
 
     <h3>Summary</h3>
     <div class="ai-summary">
-        <?php echo nl2br(htmlspecialchars($aiSummary)); ?>
+        <?php echo $aiSummary; ?>
     </div>
 
     <!-- Census -->
