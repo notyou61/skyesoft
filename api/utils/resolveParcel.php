@@ -3,9 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.14.7 — Final Narrative Note + Google Place ID
- * Primary: Lat/Lng → Best Parcel
- * Candidates: Address search (excluding primary)
+ * Version: 5.14.8 — GooglePlaceID + Narrative Note
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -60,7 +58,7 @@ function resolveParcel(
         'postalCity'             => null,
         'permittingJurisdiction' => null,
         'note'                   => null,
-        'googlePlace'            => null,
+        'googlePlaceID'          => null,   // Simplified as requested
     ];
 
     $original = trim($searchAddress ?? '');
@@ -69,31 +67,13 @@ function resolveParcel(
     error_log('[RESOLVE-PARCEL] === START === Address: ' . $original);
 
     // =====================================================
-    // GOOGLE PLACE ENRICHMENT
+    // GOOGLE PLACE ID
     // =====================================================
     if (!empty($googlePlaceInput)) {
-        if (isset($googlePlaceInput['placeId']) && !isset($googlePlaceInput['result'])) {
-            $result['googlePlace'] = [
-                'placeId' => $googlePlaceInput['placeId'],
-                'source'  => 'geocode'
-            ];
-        } else {
-            $placeData = $googlePlaceInput['result'] ?? $googlePlaceInput;
-            $result['googlePlace'] = [
-                'placeId'          => $placeData['place_id'] ?? null,
-                'name'             => $placeData['name'] ?? null,
-                'formattedAddress' => $placeData['formatted_address'] ?? null,
-                'latitude'         => $latitude,
-                'longitude'        => $longitude,
-                'businessStatus'   => $placeData['business_status'] ?? null,
-                'types'            => $placeData['types'] ?? [],
-                'website'          => $placeData['website'] ?? null,
-                'phoneNumber'      => $placeData['formatted_phone_number'] ?? null,
-                'rating'           => $placeData['rating'] ?? null,
-                'reviewCount'      => $placeData['user_ratings_total'] ?? null,
-                'googleMapsUrl'    => $placeData['url'] ?? null,
-                'source'           => 'google_place_details'
-            ];
+        if (isset($googlePlaceInput['placeId'])) {
+            $result['googlePlaceID'] = $googlePlaceInput['placeId'];
+        } elseif (isset($googlePlaceInput['result']['place_id'])) {
+            $result['googlePlaceID'] = $googlePlaceInput['result']['place_id'];
         }
     }
 
