@@ -137,8 +137,10 @@ if ($rawAddress !== '') {
     if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') {
         $summaryLines[] = "Governance: {$rsCode} ({$parcelStatus}).";
     }
-    $aiSummary = implode("\n", $summaryLines);
-}
+
+    // Join without leading/trailing empty lines
+    $aiSummary = implode("\n", array_filter($summaryLines, fn($line) => trim($line) !== ''));
+    }
 ?>
 
 <!DOCTYPE html>
@@ -155,7 +157,14 @@ if ($rawAddress !== '') {
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     th { background: #f0f0f0; }
     .section-header { margin: 20px 0 8px 0; font-weight: bold; font-size: 16px; }
-    .ai-summary { background: #e8f5e9; padding: 15px; border-left: 6px solid #2e7d32; margin: 15px 0; white-space: pre-line; }
+    .ai-summary {
+        background: #e8f5e9;
+        padding: 15px;
+        border-left: 6px solid #2e7d32;
+        margin: 15px 0;
+        white-space: pre-line;
+        line-height: 1.5;
+    }
     .success { color: #2e7d32; }
     .error { color: #c62828; }
     pre { background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; }
