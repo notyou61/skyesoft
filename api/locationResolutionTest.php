@@ -139,8 +139,8 @@ if ($rawAddress !== '') {
         $summaryLines[] = "Governance: {$rsCode} ({$parcelStatus}).";
     }
 
-    // Join lines cleanly - no leading/trailing empty lines
-    $aiSummary = implode("\n", array_filter($summaryLines, fn($line) => trim($line) !== ''));
+    // Join and trim - no leading empty lines
+    $aiSummary = trim(implode("\n", array_filter($summaryLines, fn($line) => trim($line) !== '')));
 }
 ?>
 
@@ -160,7 +160,7 @@ if ($rawAddress !== '') {
     .section-header { margin: 20px 0 8px 0; font-weight: bold; font-size: 16px; }
     .ai-summary {
         background: #e8f5e9;
-        padding: 12px 15px;   /* Reduced top/bottom padding */
+        padding: 12px 15px;
         border-left: 6px solid #2e7d32;
         margin: 15px 0;
         white-space: pre-line;
