@@ -120,27 +120,27 @@ if ($rawAddress !== '') {
         $jurisdictionType = $jurisdictionResult['jurisdictionType'] ?? 'County';
     }
 
-    // AI-style Summary
-    $summaryLines = [];
+// AI-style Summary
+$summaryLines = [];
 
-    $summaryLines[] = "Skyesoft resolved the details for " . htmlspecialchars($rawAddress) . ".";
-    if (($censusResult['valid'] ?? false)) {
-        $summaryLines[] = "Census confirmed " . ucwords(strtolower($censusResult['county'] ?? 'Maricopa')) . " County.";
-    }
-    if (!empty($placeId)) {
-        $summaryLines[] = "Google validated the address.";
-    }
-    $parcelCount = $parcelResult['parcelCount'] ?? 0;
-    $summaryLines[] = "Parcel lookup found {$parcelCount} parcel(s).";
-    if (!empty($jurisdictionName)) {
-        $summaryLines[] = "Governing jurisdiction: " . ucwords(strtolower($jurisdictionName)) . ".";
-    }
-    if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') {
-        $summaryLines[] = "Governance: {$rsCode} ({$parcelStatus}).";
-    }
+$summaryLines[] = "Skyesoft resolved the details for " . htmlspecialchars($rawAddress) . ".";
+if (($censusResult['valid'] ?? false)) {
+    $summaryLines[] = "Census confirmed " . ucwords(strtolower($censusResult['county'] ?? 'Maricopa')) . " County.";
+}
+if (!empty($placeId)) {
+    $summaryLines[] = "Google validated the address.";
+}
+$parcelCount = $parcelResult['parcelCount'] ?? 0;
+$summaryLines[] = "Parcel lookup found {$parcelCount} parcel(s).";
+if (!empty($jurisdictionName)) {
+    $summaryLines[] = "Governing jurisdiction: " . ucwords(strtolower($jurisdictionName)) . ".";
+}
+if (!empty($rsCode) && $rsCode !== 'RS-UNKNOWN') {
+    $summaryLines[] = "Governance: {$rsCode} ({$parcelStatus}).";
+}
 
-    // Join with <br> directly - clean, no extra line breaks
-    $aiSummary = implode("<br>", array_filter($summaryLines, fn($line) => trim($line) !== ''));
+// Join directly with <br> - cleanest result
+$aiSummary = implode("<br>", array_filter($summaryLines, fn($line) => trim($line) !== ''));
 }
 ?>
 
@@ -163,7 +163,6 @@ if ($rawAddress !== '') {
         padding: 12px 15px;
         border-left: 6px solid #2e7d32;
         margin: 15px 0;
-        white-space: pre-line;
         line-height: 1.5;
     }
     .success { color: #2e7d32; }
