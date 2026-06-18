@@ -76,14 +76,17 @@ if ($rawAddress !== '') {
     $latitude  = $googleResult['latitude']  ?? '';
     $longitude = $googleResult['longitude'] ?? '';
 
-    // 3. Parcel
+    // 3. Parcel (with Google Place ID)
     if (function_exists('resolveParcel')) {
+        $googlePlaceData = !empty($placeId) ? ['placeId' => $placeId] : null;
+
         $parcelResult = resolveParcel(
             $latitude ?: null,
             $longitude ?: null,
             $censusResult['county'] ?? null,
             $censusResult['countyFips'] ?? null,
-            $rawAddress
+            $rawAddress,
+            $googlePlaceData   // ← This passes the Place ID
         );
 
         $parcelCount = $parcelResult['parcelCount'] ?? 0;
