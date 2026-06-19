@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.14.9 — Dynamic Candidate Search + Google Place ID
+ * Version: 5.14.9 — Tight City-Filtered Candidates
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -16,7 +16,7 @@ function normalizeParcelSearchAddress($address) {
     return trim($address);
 }
 
-function buildParcelCandidateSearchTerms(string $address, ?string $primaryCity = null): array {
+function buildParcelCandidateSearchTerms(string $address): array {
     $normalized = normalizeParcelSearchAddress($address);
     $terms = [];
 
@@ -31,39 +31,8 @@ function buildParcelCandidateSearchTerms(string $address, ?string $primaryCity =
         $terms[] = trim($m[1]);
     }
 
-    // Use registry for official names / aliases
-    if ($primaryCity) {
-        $registry = loadJurisdictionRegistry();
-        $cityKey = strtolower(trim($primaryCity));
-
-        if (isset($registry[$cityKey])) {
-            $record = $registry[$cityKey];
-            $terms[] = trim($record['label'] ?? $primaryCity);
-            foreach ($record['aliases'] ?? [] as $alias) {
-                $terms[] = trim($alias);
-            }
-        }
-    }
-
     $terms = array_map(fn($t) => trim(preg_replace('/\s+/', ' ', $t)), $terms);
     return array_values(array_unique(array_filter($terms)));
-}
-
-function loadJurisdictionRegistry(): array {
-    $possiblePaths = [
-        dirname(__DIR__) . '/data/authoritative/jurisdictionRegistry.json',
-        __DIR__ . '/../../data/authoritative/jurisdictionRegistry.json',
-        '/home/notyou64/public_html/skyesoft/data/authoritative/jurisdictionRegistry.json'
-    ];
-
-    foreach ($possiblePaths as $path) {
-        if (file_exists($path)) {
-            $content = file_get_contents($path);
-            $data = json_decode($content, true);
-            return is_array($data) ? $data : [];
-        }
-    }
-    return [];
 }
 
 function resolveParcel(
@@ -72,7 +41,7 @@ function resolveParcel(
     ?string $county = null,
     ?string $countyFips = null,
     ?string $searchAddress = null,
-    ?array $googlePlaceInput = null   // ← Added back
+    ?array $googlePlaceInput = null
 ): array {
 
     $result = [
@@ -172,10 +141,10 @@ function resolveParcel(
     }
 
     // =====================================================
-    // ADDRESS-BASED CANDIDATES (City-Filtered)
+    // ADDRESS-BASED CANDIDATES (Strict City Filter)
     // =====================================================
     if (!empty($primaryApn) && !empty($normalized) && !empty($primaryCity)) {
-        $candidateTerms = buildParcelCandidateSearchTerms($original, $primaryCity);
+        $candidateTerms = buildParcelCandidateSearchTerms($original);
         $candidates = [];
 
         foreach ($candidateTerms as $term) {
@@ -204,7 +173,9 @@ function resolveParcel(
                 if ($apnRaw === $primaryApn) continue;
 
                 $candidateCity = trim($attr['PHYSICAL_CITY'] ?? '');
-                if (strtoupper($candidateCity) !== strtoupper($primaryCity)) continue;
+                if (strtoupper($candidateCity) !== strtoupper($primaryCity)) {
+                    continue;
+                }
 
                 if (isset($candidates[$apnRaw])) continue;
 
