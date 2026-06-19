@@ -1109,6 +1109,24 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
+        // 📍 Location Workflow (Parcel Review vs Location Only)
+        // --------------------------------------------------
+        const locationIntent = await this.isLocationWorkflowIntent(text, normalized);
+        if (locationIntent) {
+            console.log(`[LOCATION] Detected mode: ${locationIntent.mode} (${locationIntent.confidence})`);
+
+            // Suppress BEFORE any further rendering
+            this.suppressRawContactEcho();   // reuse for now, or create suppressRawLocationEcho later
+
+            // Show processing state
+            this.renderLocationProcessingState();   // you'll need to add this method
+
+            // Run specialized Location pipeline with mode
+            await this.executeLocationWorkflow(text, activitySessionId, locationIntent.mode);
+            return;
+        }
+
+        // --------------------------------------------------
         // 📇 Last Contact
         // --------------------------------------------------
         if (normalized === 'last contact') {
@@ -1802,6 +1820,52 @@ window.SkyIndex = {
         // 2. Signature / paste detection (now works on single-line pastes too)
         if (this.isQuickSignatureHint(text)) {
             return true;
+        }
+
+        return false;
+    },
+
+    // ───────────────────────────────────────────────
+    // IS Location Workflow Intent (New Dedicated Method for Cleaner Detection + Routing)
+    // ───────────────────────────────────────────────
+    async isLocationWorkflowIntent(text, normalized) {
+        if (!text || typeof text !== 'string' || text.length < 10) return false;
+
+        const lower = text.toLowerCase().trim();
+
+        // 1. Explicit Location Only triggers (highest priority)
+        if (lower.includes('location only') || 
+            lower.includes('add location only') || 
+            lower.includes('create location only') ||
+            lower.includes('new location only')) {
+            return { mode: 'location_only', confidence: 'high' };
+        }
+
+        // 2. Explicit Parcel Review triggers
+        if (lower.includes('parcel review') || 
+            lower.includes('zoning at') || 
+            lower.includes('sign code for') || 
+            lower.includes('ordinance for') ||
+            lower.includes('parcel for') ||
+            lower.includes('review parcel')) {
+            return { mode: 'parcel_review', confidence: 'high' };
+        }
+
+        // 3. Detect Location Name + Address pattern (e.g. "The Henry" example)
+        // Simple but effective heuristic: capitalized multi-word phrase before/after address signals
+        const hasLocationName = /\b(The |A |At |[A-Z][a-z]+ [A-Z][a-z]+)\b/.test(text) && 
+                            (/\d{1,5}\s+[A-Za-z]/.test(text) || /Phoenix|Glendale|Chandler|Scottsdale|AZ\b/.test(text));
+
+        if (hasLocationName) {
+            return { mode: 'location_only', confidence: 'medium' };
+        }
+
+        // 4. Plain address fallback → Parcel Review
+        const looksLikeAddress = /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central|Central Ave)\b/i.test(text) ||
+                                /\bPhoenix|Glendale|Chandler|Scottsdale|Tempe|AZ\b.*\d{5}/.test(text);
+
+        if (looksLikeAddress) {
+            return { mode: 'parcel_review', confidence: 'medium' };
         }
 
         return false;
