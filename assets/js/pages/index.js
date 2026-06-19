@@ -1332,6 +1332,29 @@ window.SkyIndex = {
                 </div>
             `;
         }
+        // Full Report Button
+        if (data.actionId) {
+            html += `
+                <div style="margin-top:14px;">
+                    <a
+                        href="api/generateReports.php?reportType=location_review&actionId=${data.actionId}"
+                        target="_blank"
+                        style="
+                            display:inline-block;
+                            background:#007aff;
+                            color:white;
+                            padding:8px 14px;
+                            border-radius:6px;
+                            text-decoration:none;
+                            font-size:0.9em;
+                            font-weight:600;
+                        "
+                    >
+                        View Full Report
+                    </a>
+                </div>
+            `;
+        }
 
         html += `</div></div>`;
 
