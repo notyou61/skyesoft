@@ -85,8 +85,7 @@ if ($rawAddress !== '') {
             $longitude ?: null,
             $censusResult['county'] ?? null,
             $censusResult['countyFips'] ?? null,
-            $rawAddress,
-            $googlePlaceData   // ← This passes the Place ID
+            $rawAddress
         );
 
         $parcelCount = $parcelResult['parcelCount'] ?? 0;

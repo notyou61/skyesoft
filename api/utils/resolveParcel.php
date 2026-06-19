@@ -41,7 +41,6 @@ function resolveParcel(
     ?string $county = null,
     ?string $countyFips = null,
     ?string $searchAddress = null,
-    ?array $googlePlaceInput = null
 ): array {
 
     $result = [
@@ -58,24 +57,12 @@ function resolveParcel(
         'postalCity'             => null,
         'permittingJurisdiction' => null,
         'note'                   => null,
-        'googlePlaceID'          => null,
     ];
 
     $original = trim($searchAddress ?? '');
     $normalized = normalizeParcelSearchAddress($original);
 
     error_log('[RESOLVE-PARCEL] === START === Address: ' . $original);
-
-    // =====================================================
-    // GOOGLE PLACE ID
-    // =====================================================
-    if (!empty($googlePlaceInput)) {
-        if (isset($googlePlaceInput['placeId'])) {
-            $result['googlePlaceID'] = $googlePlaceInput['placeId'];
-        } elseif (isset($googlePlaceInput['result']['place_id'])) {
-            $result['googlePlaceID'] = $googlePlaceInput['result']['place_id'];
-        }
-    }
 
     // =====================================================
     // TIER 1: COORDINATE → PRIMARY PARCEL
@@ -188,22 +175,59 @@ function resolveParcel(
     // JURISDICTION + NARRATIVE NOTE
     // =====================================================
     if (!empty($result['primaryParcel'])) {
+
         $jurRaw = $result['primaryParcel']['jurisdiction'] ?? '';
         $postal = $result['postalCity'] ?? 'Unknown';
 
-        if (empty($jurRaw) || stripos($jurRaw, 'NO CITY') !== false) {
+        $parcelNumber =
+            $result['primaryParcel']['parcelNumber']
+            ?? 'Unknown';
+
+        if (
+            empty($jurRaw)
+            || stripos($jurRaw, 'NO CITY') !== false
+        ) {
+
             $result['jurisdictionName']       = 'Maricopa County';
             $result['jurisdictionType']       = 'County';
             $result['permittingJurisdiction'] = 'Maricopa County';
-            $result['note'] = "The postal city is {$postal} (for mailing purposes). This property is in unincorporated Maricopa County, so the permitting jurisdiction is Maricopa County.";
+
+            $result['note'] =
+                "Parcel {$parcelNumber} was identified using coordinate-based parcel resolution. "
+                . "The parcel is located within the {$postal} postal service area; however, "
+                . "GIS returned NO CITY/TOWN for jurisdiction. "
+                . "Permitting authority is Maricopa County.";
+
         } else {
+
             $jur = resolveJurisdiction($jurRaw);
-            $cityName = $jur['label'] ?? ucwords(strtolower($jurRaw));
+
+            $cityName =
+                $jur['label']
+                ?? ucwords(strtolower($jurRaw));
 
             $result['jurisdictionName']       = $cityName;
             $result['jurisdictionType']       = $jur['jurisdictionType'] ?? 'City';
             $result['permittingJurisdiction'] = $cityName;
-            $result['note'] = "The postal city is {$postal}. The permitting jurisdiction is {$cityName}.";
+
+            $result['note'] =
+                "Parcel {$parcelNumber} was identified using coordinate-based parcel resolution. "
+                . "The parcel lies within the {$cityName} jurisdiction and permitting authority "
+                . "is assigned to {$cityName}.";
+        }
+
+        // =====================================================
+        // Candidate Parcel Narrative
+        // =====================================================
+        if (
+            !empty($result['candidateParcelCount'])
+            && $result['candidateParcelCount'] > 0
+        ) {
+
+            $result['note'] .=
+                ' '
+                . $result['candidateParcelCount']
+                . ' additional parcel(s) share this address and have been provided as candidate parcels for review.';
         }
     }
 
