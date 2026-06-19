@@ -65,6 +65,35 @@ function resolveParcel(
     error_log('[RESOLVE-PARCEL] === START === Address: ' . $original);
 
     // =====================================================
+    // NON-MARICOPA COUNTIES
+    // =====================================================
+    if (
+        !empty($countyFips)
+        && $countyFips !== '013'
+    ) {
+
+        $result['success'] = true;
+
+        $result['jurisdictionName'] =
+            $county
+            ? ucwords(strtolower($county)) . ' County'
+            : null;
+
+        $result['jurisdictionType'] = 'County';
+
+        $result['permittingJurisdiction'] =
+            $result['jurisdictionName'];
+
+        $result['note'] =
+            'Location validated successfully. Parcel resolution is currently only supported for Maricopa County, Arizona. No parcel lookup was performed for this jurisdiction.';
+
+        $result['searchSource'] = 'unsupported_county';
+        $result['searchTier']   = 'county_bypass';
+
+        return $result;
+    }
+
+    // =====================================================
     // TIER 1: COORDINATE → PRIMARY PARCEL
     // =====================================================
     $primaryApn = null;
