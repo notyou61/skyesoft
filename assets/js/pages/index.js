@@ -1070,18 +1070,36 @@ window.SkyIndex = {
     // #region 🧠 Command Router
     async handleCommand(text) {
 
-        const activitySessionId = this.getActivitySessionId();
-        console.log('[COMMAND]', text, '| session:', activitySessionId);
+        const activitySessionId =
+            this.getActivitySessionId();
 
-        // 🧵 Echo user message
+        console.log(
+            '[COMMAND]',
+            text,
+            '| session:',
+            activitySessionId
+        );
+
+        // --------------------------------------------------
+        // 🧵 Echo User Input
+        // --------------------------------------------------
         this.appendSystemLine(text, 'user');
 
-        const normalized = (text || '').toString().trim().toLowerCase();
+        const normalized =
+            (text || '')
+                .toString()
+                .trim()
+                .toLowerCase();
 
         // --------------------------------------------------
-        // 📖 Code Reader
+        // 📖 System Commands
         // --------------------------------------------------
-        if (normalized.startsWith('read ') || normalized.startsWith('open ')) {
+
+        if (
+            normalized.startsWith('read ') ||
+            normalized.startsWith('open ')
+        ) {
+
             const file = normalized
                 .replace(/^read\s+/, '')
                 .replace(/^open\s+/, '')
@@ -1091,106 +1109,84 @@ window.SkyIndex = {
             return;
         }
 
-        // --------------------------------------------------
-        // 📇 Contact Creation (EOP + add) — Clean UX
-        // --------------------------------------------------
-        if (await this.isContactCreationIntent(text, normalized)) {
-            console.log('📇 Contact Intent Detected → Clean Workflow');
-
-            // Suppress BEFORE any further rendering
-            this.suppressRawContactEcho();
-
-            // Show processing state
-            this.renderContactProcessingState();
-
-            // Run AI pipeline
-            await this.executeAICommand(text, activitySessionId);
-            return;
-        }
-
-        // --------------------------------------------------
-        // 📇 Last Contact
-        // --------------------------------------------------
         if (normalized === 'last contact') {
+
             if (!this.lastContactId) {
-                this.appendSystemLine('No recent contact available.');
+                this.appendSystemLine(
+                    'No recent contact available.'
+                );
                 return;
             }
-            return await this.handleCommand(`show ${this.lastContactId}`);
+
+            return await this.handleCommand(
+                `show ${this.lastContactId}`
+            );
         }
 
         // --------------------------------------------------
-        // 📇 Show / List Contacts
+        // 🧠 Intent Detection
         // --------------------------------------------------
-        if (normalized.startsWith('show ') || normalized.startsWith('list ')) {
 
-            this.clearOutput();
-            console.log('[CONTACT QUERY]', text);
+        const commandIntent =
+            await this.detectCommandIntent(text);
 
-            try {
-                let location = this.lastLocation || { latitude: null, longitude: null };
+        console.log(
+            '[INTENT]',
+            commandIntent
+        );
 
-                if (location.latitude === null || location.longitude === null) {
-                    location = await this.getLocationSafe();
-                    this.lastLocation = location;
-                }
+        switch (commandIntent?.type) {
 
-                const res = await fetch('/skyesoft/api/getContacts.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        query: text,
-                        latitude: location.latitude,
-                        longitude: location.longitude,
-                        activitySessionId: activitySessionId
-                    })
-                });
+            case 'location_lookup':
 
-                // 🔥 Safe JSON parsing
-                let data;
-                const raw = await res.text();
-                try {
-                    data = JSON.parse(raw);
-                } catch (e) {
-                    console.error('[INVALID JSON]', raw);
-                    this.appendSystemLine('❌ Invalid server response.', 'error');
-                    return;
-                }
+                return await this.processLocationLookup(
+                    commandIntent
+                );
 
-                if (!data?.success || !Array.isArray(data.contacts) || data.contacts.length === 0) {
-                    return await this.executeAICommand(text, activitySessionId);
-                }
+            case 'proposed_location':
 
-                if (data.mode === 'single' && data.contacts.length > 0) {
-                    this.renderContactDetail(data.contacts[0]);
-                } else {
-                    this.appendSystemLine(`📇 ${data.contacts.length} contact(s) found`);
-                    this.renderContactsList(data.contacts);
-                }
+                return await this.processProposedLocation(
+                    commandIntent
+                );
 
-            } catch (err) {
-                console.error('[CONTACT FETCH ERROR]', err);
-                return await this.executeAICommand(text, activitySessionId);
-            }
+            case 'proposed_contact':
 
-            return;
+                return await this.processProposedContact(
+                    commandIntent
+                );
+
+            case 'contact_query':
+
+                return await this.processContactQuery(
+                    commandIntent,
+                    activitySessionId
+                );
         }
 
         // --------------------------------------------------
         // 🎛 UI Actions
         // --------------------------------------------------
-        let canonicalAction = null;
 
-        if (['cls', 'clear', 'reset'].includes(normalized)) {
-            canonicalAction = 'clear_screen';
-        } else if (['logout', 'exit'].includes(normalized)) {
-            canonicalAction = 'logout';
-        }
+        const actionMap = {
+            cls: 'clear_screen',
+            clear: 'clear_screen',
+            reset: 'clear_screen',
+            logout: 'logout',
+            exit: 'logout'
+        };
+
+        const canonicalAction =
+            actionMap[normalized];
 
         if (canonicalAction) {
-            const handler = this.uiActionRegistry?.[canonicalAction];
+
+            const handler =
+                this.uiActionRegistry?.[
+                    canonicalAction
+                ];
+
             if (typeof handler === 'function') {
+
                 await handler.call(this);
                 return;
             }
@@ -1199,7 +1195,11 @@ window.SkyIndex = {
         // --------------------------------------------------
         // 🤖 AI Fallback
         // --------------------------------------------------
-        await this.executeAICommand(text, activitySessionId);
+
+        await this.executeAICommand(
+            text,
+            activitySessionId
+        );
     },
     // #endregion
 
