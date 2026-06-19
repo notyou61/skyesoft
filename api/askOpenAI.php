@@ -1250,6 +1250,7 @@ if ($intent === "parcel_review" ||
 
         insertActionPrompt([
             'actionTypeId'      => 12,
+            'contactId'         => $_SESSION['contactId'] ?? 0,   // ← ADD THIS LINE
             'promptText'        => $addressToReview,
             'responseText'      => $resolutionData['summary'] ?? null,
             'intent'            => 'location.review',
