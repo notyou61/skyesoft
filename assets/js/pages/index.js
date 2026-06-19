@@ -1080,28 +1080,23 @@ window.SkyIndex = {
             return;
         }
 
-// --------------------------------------------------
-// 📍 Location Workflow (Parcel Review vs Location Only)
-// --------------------------------------------------
-const locationIntent =
-    await this.isLocationWorkflowIntent(
-        text,
-        normalized
-    );
+        // --------------------------------------------------
+        // 📍 Location Workflow (Parcel Review vs Location Only)
+        // --------------------------------------------------
+        const locationIntent = await this.isLocationWorkflowIntent(text, normalized);
+        if (locationIntent) {
+            console.log(`[LOCATION] Detected mode: ${locationIntent.mode} (${locationIntent.confidence})`);
 
-if (locationIntent) {
+            // Suppress BEFORE any further rendering
+            this.suppressRawContactEcho();   // reuse for now, or create suppressRawLocationEcho later
 
-    console.log(
-        '[LOCATION INTENT]',
-        locationIntent
-    );
+            // Show processing state
+            this.renderLocationProcessingState();   // you'll need to add this method
 
-    this.appendSystemLine(
-        `📍 Location Intent: ${locationIntent.mode}`
-    );
-
-    return;
-}
+            // Run specialized Location pipeline with mode
+            await this.executeLocationWorkflow(text, activitySessionId, locationIntent.mode);
+            return;
+        }
 
         // --------------------------------------------------
         // 📇 Last Contact
