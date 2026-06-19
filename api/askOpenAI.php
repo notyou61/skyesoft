@@ -1211,7 +1211,7 @@ error_log("[DEBUG] Intent received: " . ($intent ?? 'NULL') . " | Query: " . sub
 
 if ($intent === "parcel_review" || 
     str_contains(strtolower($query), "parcel review") || 
-    preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query)) {   // basic address pattern
+    preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query)) {
 
     error_log("[parcel_review] Handler triggered for query: " . substr($query, 0, 150));
 
@@ -1226,7 +1226,6 @@ if ($intent === "parcel_review" ||
     }
 
     require_once __DIR__ . '/resolveParcelReview.php';
-
     $resolutionData = resolveParcelReview($addressToReview);
 
     if (!$resolutionData['success']) {
@@ -1236,6 +1235,27 @@ if ($intent === "parcel_review" ||
 
     if (empty($resolutionData['summary'])) {
         $resolutionData['summary'] = "Skyesoft completed parcel review for " . htmlspecialchars($addressToReview) . ".";
+    }
+
+    // =====================================================
+    // LOG THE LOCATION REVIEW ACTION
+    // =====================================================
+    if (isset($db) && $db instanceof PDO) {
+
+        require_once __DIR__ . '/actionLogger.php';
+
+        logAction($db, [
+            'actionName' => 'location review',                    // ← New action type (ID 12)
+            'intent'     => 'location_review',
+            'prompt'     => $addressToReview,
+            'response'   => $resolutionData['summary'] ?? null,
+            'lat'        => $resolutionData['google']['latitude'] ?? null,
+            'lng'        => $resolutionData['google']['longitude'] ?? null,
+            'confidence' => 0.90,
+            'origin'     => 1,                                    // 1 = user
+        ]);
+    } else {
+        error_log('[parcel_review] Logging skipped — $db not available');
     }
 
     echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
