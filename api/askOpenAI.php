@@ -1202,6 +1202,53 @@ PROMPT;
     exit;
 }
 
+// =====================================================
+// PARCEL REVIEW HANDLER
+// Uses logic from locationResolutionTest.php
+// =====================================================
+
+if ($intent === "parcel_review" || str_contains(strtolower($query), "parcel review")) {
+
+    error_log("[parcel_review] Intent detected for query: " . substr($query, 0, 150));
+
+    // Extract address (simple regex or take whole query for now)
+    $addressToReview = trim($query);
+
+    // Include the resolution harness logic (or require a refactored function)
+    require_once __DIR__ . '/locationResolutionTest.php';  // adjust path if needed
+
+    // Run resolution (simulate form post)
+    $_POST['address'] = $addressToReview;
+    // The existing file already processes $rawAddress = $_POST['address']
+
+    // Capture output (we already have $jsonOutput and $aiSummary from the file)
+    $resolutionData = [
+        'success' => true,
+        'inputAddress' => $rawAddress ?? $addressToReview,
+        'summary' => $aiSummary ?? 'Resolution completed.',
+        'google' => $googleResult ?? [],
+        'census' => $censusResult ?? [],
+        'parcel' => $parcelResult ?? [],
+        'jurisdiction' => [
+            'name' => $jurisdictionName ?? '',
+            'type' => $jurisdictionType ?? '',
+        ],
+        'governance' => [
+            'rsCode' => $rsCode ?? 'RS-UNKNOWN',
+            'status' => $parcelStatus ?? 'Unknown'
+        ],
+        'fullJson' => $jsonOutput ?? []
+    ];
+
+    // Generate clean narrative if needed
+    if (empty($resolutionData['summary'])) {
+        $resolutionData['summary'] = "Skyesoft completed parcel review for " . htmlspecialchars($addressToReview) . ".";
+    }
+
+    echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
+    exit;   // Important: exit after specialized handling
+}
+
 #endregion
 
 #region SECTION 9 — Skyebot (Authority-Aware, Deterministic)
