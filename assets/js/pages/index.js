@@ -1229,6 +1229,11 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
+            // Ensure location data
+            if (!this.lastLocation || this.lastLocation.latitude === null) {
+                this.lastLocation = await this.getLocationSafe();
+            }
+
             const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
                 method: 'POST',
                 credentials: 'include',
@@ -1251,26 +1256,31 @@ window.SkyIndex = {
                 this.renderParcelReviewResult(data);
             } else if (data.status === 'proposed' || mode === 'location_only') {
                 this.handleContactProposal(data);
+            } else if (data.error) {
+                this.appendSystemLine(`❌ ${data.error}`, 'error');
             } else {
                 this.appendSystemLine(data.summary || data.response || 'Review completed.', 'system');
             }
 
         } catch (err) {
             console.error('[Location Workflow Error]', err);
-            this.appendSystemLine('❌ Parcel review failed.', 'error');
+            this.appendSystemLine('❌ Parcel review failed. Please check the address and try again.', 'error');
         } finally {
             this.setThinking(false);
         }
     },
 
     renderParcelReviewResult(data) {
+        const summary = data.summary || 'Review completed.';
+        const address = data.inputAddress || 'Address';
+
         const html = `
             <div class="commandLine system html">
                 <div style="background:#f8f9fa; padding:15px; border-radius:8px; border-left:5px solid #007aff;">
                     <strong>📍 Parcel Review</strong><br>
-                    <small>${data.inputAddress}</small>
-                    <div style="margin-top:12px; font-size:0.95em;">
-                        ${data.summary}
+                    <small>${address}</small>
+                    <div style="margin-top:12px; font-size:0.95em; line-height:1.5;">
+                        ${summary}
                     </div>
                 </div>
             </div>
