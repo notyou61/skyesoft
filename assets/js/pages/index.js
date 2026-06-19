@@ -1274,7 +1274,7 @@ window.SkyIndex = {
         const summary = data.summary || 'Review completed.';
         const address = data.inputAddress || 'Address';
 
-        const html = `
+        let html = `
             <div class="commandLine system html">
                 <div style="background:#f8f9fa; padding:15px; border-radius:8px; border-left:5px solid #007aff;">
                     <strong>📍 Parcel Review</strong><br>
@@ -1282,9 +1282,30 @@ window.SkyIndex = {
                     <div style="margin-top:12px; font-size:0.95em; line-height:1.5;">
                         ${summary}
                     </div>
-                </div>
-            </div>
         `;
+
+        // Primary Parcel (if available)
+        if (data.parcel?.primaryParcel) {
+            const p = data.parcel.primaryParcel;
+            html += `
+                <div style="margin-top:12px; padding:10px; background:white; border-radius:6px; font-size:0.9em;">
+                    <strong>Primary Parcel:</strong> ${p.parcelNumber || '—'}<br>
+                    Owner: ${p.ownerName || '—'}<br>
+                    Jurisdiction: ${p.jurisdiction || '—'}
+                </div>
+            `;
+        } 
+        // Multiple Parcels Note
+        else if (data.parcel?.parcelCount > 1) {
+            html += `
+                <div style="margin-top:12px; padding:10px; background:#fff3cd; border-radius:6px; font-size:0.9em; color:#856404;">
+                    <strong>Note:</strong> Multiple parcels found (${data.parcel.parcelCount}). Review candidates above.
+                </div>
+            `;
+        }
+
+        html += `</div></div>`;
+
         this.appendSystemHtml(html);
     },
 
