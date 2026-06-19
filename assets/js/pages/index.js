@@ -1253,9 +1253,9 @@ window.SkyIndex = {
             this.replaceLocationProcessingWithResult();
 
             if (data.success && mode === 'parcel_review') {
-                this.renderParcelReviewResult(data);
+                this.renderParcelReviewResult(data);   // Dedicated renderer
             } else if (data.status === 'proposed' || mode === 'location_only') {
-                this.handleContactProposal(data);
+                this.handleContactProposal(data);     // Only for actual contact proposals
             } else if (data.error) {
                 this.appendSystemLine(`❌ ${data.error}`, 'error');
             } else {
@@ -1919,7 +1919,7 @@ window.SkyIndex = {
     // IS Location Workflow Intent (New Dedicated Method for Cleaner Detection + Routing)
     // ───────────────────────────────────────────────
     async isLocationWorkflowIntent(text, normalized) {
-        if (!text || typeof text !== 'string' || text.length < 10) return false;
+        if (!text || typeof text !== 'string' || text.length < 8) return false;
 
         const lower = text.toLowerCase().trim();
 
@@ -1933,26 +1933,25 @@ window.SkyIndex = {
 
         // 2. Explicit Parcel Review triggers
         if (lower.includes('parcel review') || 
+            lower.includes('review parcel') || 
             lower.includes('zoning at') || 
             lower.includes('sign code for') || 
             lower.includes('ordinance for') ||
-            lower.includes('parcel for') ||
-            lower.includes('review parcel')) {
+            lower.includes('parcel for')) {
             return { mode: 'parcel_review', confidence: 'high' };
         }
 
         // 3. Detect Location Name + Address pattern (e.g. "The Henry" example)
-        // Simple but effective heuristic: capitalized multi-word phrase before/after address signals
         const hasLocationName = /\b(The |A |At |[A-Z][a-z]+ [A-Z][a-z]+)\b/.test(text) && 
-                            (/\d{1,5}\s+[A-Za-z]/.test(text) || /Phoenix|Glendale|Chandler|Scottsdale|AZ\b/.test(text));
+                            (/\d{1,5}\s+[A-Za-z]/.test(text) || /Phoenix|Glendale|Chandler|Scottsdale|Buckeye|AZ\b/.test(text));
 
         if (hasLocationName) {
             return { mode: 'location_only', confidence: 'medium' };
         }
 
-        // 4. Plain address fallback → Parcel Review
+        // 4. Plain address fallback → Parcel Review (default)
         const looksLikeAddress = /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central|Central Ave)\b/i.test(text) ||
-                                /\bPhoenix|Glendale|Chandler|Scottsdale|Tempe|AZ\b.*\d{5}/.test(text);
+                                /\bPhoenix|Glendale|Chandler|Scottsdale|Tempe|Buckeye|AZ\b.*\d{5}/.test(text);
 
         if (looksLikeAddress) {
             return { mode: 'parcel_review', confidence: 'medium' };
