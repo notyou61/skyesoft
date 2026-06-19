@@ -1207,9 +1207,13 @@ PROMPT;
 // Clean integration with resolveParcelReview.php
 // =====================================================
 
-if ($intent === "parcel_review" || str_contains(strtolower($query), "parcel review")) {
+error_log("[DEBUG] Intent received: " . ($intent ?? 'NULL') . " | Query: " . substr($query, 0, 100));
 
-    error_log("[parcel_review] Intent detected for query: " . substr($query, 0, 150));
+if ($intent === "parcel_review" || 
+    str_contains(strtolower($query), "parcel review") || 
+    preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query)) {   // basic address pattern
+
+    error_log("[parcel_review] Handler triggered for query: " . substr($query, 0, 150));
 
     $addressToReview = trim($query);
 
@@ -1223,7 +1227,6 @@ if ($intent === "parcel_review" || str_contains(strtolower($query), "parcel revi
 
     require_once __DIR__ . '/resolveParcelReview.php';
 
-    // Call the clean function
     $resolutionData = resolveParcelReview($addressToReview);
 
     if (!$resolutionData['success']) {
@@ -1231,7 +1234,6 @@ if ($intent === "parcel_review" || str_contains(strtolower($query), "parcel revi
         exit;
     }
 
-    // Optional: Enhance with AI narrative if needed
     if (empty($resolutionData['summary'])) {
         $resolutionData['summary'] = "Skyesoft completed parcel review for " . htmlspecialchars($addressToReview) . ".";
     }

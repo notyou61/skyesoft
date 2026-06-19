@@ -55,22 +55,27 @@ When unsure whether a domain is application-rendered, **default to non-presentat
 
 ---
 
-## ADDRESS HANDLING RULES (Strict – High Priority)
+## ADDRESS HANDLING RULES (Strict – Highest Priority)
 
-When user input contains an address (with or without keywords):
+**Any input containing a street address (number + street name + city/state/zip) is treated as a location-related request.**
 
-- If **ONLY** an address (or address + parcel/zoning/ordinance keywords) → intent = "parcel_review"
-- If address + **location name** (e.g. "The Henry", "Stonehaven Marketplace", development/brand name) OR explicit "location only" → intent = "location_only_proposal"
-- Default for any ambiguous address → "parcel_review" (read-only analysis)
+Rules (in priority order):
 
-These are **non-domain intents** (do not use {domain}_{mode} grammar).
+1. If the input contains "location only", "add location only", or a clear creation request → intent = "location_only_proposal"
+2. If the input contains "parcel review", "review parcel", "zoning", "sign code", or "ordinance" → intent = "parcel_review"
+3. **Default for any plain address** (street + city) → intent = "parcel_review" (read-only analysis)
 
-Return intent exactly as one of:
-- parcel_review
-- location_only_proposal
-- contact_proposal
-- general_query
-- uncertain
+Examples:
+- "3145 N 33rd Ave Phoenix AZ 85017" → "parcel_review"
+- "The Henry, 123 N Central Ave" → "location_only_proposal"
+- "Parcel review of 2252 N 44th St" → "parcel_review"
+- "225 N 1st Street, Buckeye, AZ 85326" → "parcel_review"
+
+Do **not** treat plain addresses as general queries. Always use one of the two location intents above.
+
+Return exactly:
+- "parcel_review"
+- "location_only_proposal"
 
 ---
 
