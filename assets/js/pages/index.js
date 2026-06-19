@@ -208,7 +208,7 @@ window.SkyIndex = {
             this.scrollOutputToBottom(output);
         },
 
-        // Appends trusted HTML
+        // Appends system HTML (with safety checks)
         appendSystemHtml(html) {
 
             const output = this.getOutputHost();
@@ -218,13 +218,16 @@ window.SkyIndex = {
                 ? ''
                 : String(html);
 
-            const isGovernanceHtml =
+            const isAllowedHtml =
                 safeHtml.includes('gov-box') ||
                 safeHtml.includes('gov-action') ||
                 safeHtml.includes('gov-panel') ||
-                safeHtml.includes('contact-card'); // ✅ ADD THIS
+                safeHtml.includes('contact-card') ||
+                safeHtml.includes('parcel-review-card') ||      // ← ADD THIS
+                safeHtml.includes('Primary Parcel') ||          // ← ADD THIS (or use a class)
+                safeHtml.includes('Parcel Review');             // ← ADD THIS
 
-            if (!isGovernanceHtml) {
+            if (!isAllowedHtml) {
                 this.appendSystemLine('[Unsupported HTML content]');
                 return;
             }
@@ -1276,30 +1279,57 @@ window.SkyIndex = {
 
         let html = `
             <div class="commandLine system html">
-                <div style="background:#f8f9fa; padding:15px; border-radius:8px; border-left:5px solid #007aff;">
+                <div class="parcel-review-card" style="background:#f8f9fa; padding:16px; border-radius:8px; border-left:5px solid #007aff; max-width:620px;">
+                    
                     <strong>📍 Parcel Review</strong><br>
-                    <small>${address}</small>
-                    <div style="margin-top:12px; font-size:0.95em; line-height:1.5;">
+                    <small style="color:#555;">${address}</small>
+
+                    <div style="margin-top:12px; font-size:0.95em; line-height:1.5; color:#333;">
                         ${summary}
                     </div>
         `;
 
-        // Primary Parcel (if available)
+        // Primary Parcel
         if (data.parcel?.primaryParcel) {
             const p = data.parcel.primaryParcel;
             html += `
-                <div style="margin-top:12px; padding:10px; background:white; border-radius:6px; font-size:0.9em;">
-                    <strong>Primary Parcel:</strong> ${p.parcelNumber || '—'}<br>
-                    Owner: ${p.ownerName || '—'}<br>
-                    Jurisdiction: ${p.jurisdiction || '—'}
+                <div style="margin-top:14px; padding:12px; background:white; border-radius:6px; border:1px solid #ddd;">
+                    <div style="font-weight:600; color:#007aff; margin-bottom:6px;">Primary Parcel</div>
+                    <div style="font-size:0.92em; line-height:1.45;">
+                        <strong>APN:</strong> ${p.parcelNumber || '—'}<br>
+                        <strong>Owner:</strong> ${p.ownerName || '—'}<br>
+                        <strong>Address:</strong> ${p.siteAddress || '—'}<br>
+                        <strong>Jurisdiction:</strong> ${p.jurisdiction || '—'}
+                    </div>
                 </div>
             `;
-        } 
-        // Multiple Parcels Note
-        else if (data.parcel?.parcelCount > 1) {
+        }
+
+        // Candidate Parcels
+        if (data.parcel?.candidateParcels && data.parcel.candidateParcels.length > 0) {
             html += `
-                <div style="margin-top:12px; padding:10px; background:#fff3cd; border-radius:6px; font-size:0.9em; color:#856404;">
-                    <strong>Note:</strong> Multiple parcels found (${data.parcel.parcelCount}). Review candidates above.
+                <div style="margin-top:14px;">
+                    <div style="font-weight:600; margin-bottom:6px; color:#555;">Additional Parcels at this Address</div>
+            `;
+
+            data.parcel.candidateParcels.forEach((c, index) => {
+                html += `
+                    <div style="margin-bottom:8px; padding:10px; background:white; border-radius:6px; border:1px solid #eee; font-size:0.9em;">
+                        <strong>${index + 1}. APN:</strong> ${c.parcelNumber || '—'}<br>
+                        <strong>Owner:</strong> ${c.ownerName || '—'}<br>
+                        <strong>Address:</strong> ${c.siteAddress || '—'}
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+        }
+
+        // Note from backend
+        if (data.parcel?.note) {
+            html += `
+                <div style="margin-top:14px; padding:10px; background:#e8f4fd; border-radius:6px; font-size:0.88em; color:#0d47a1;">
+                    <strong>Note:</strong> ${data.parcel.note}
                 </div>
             `;
         }
