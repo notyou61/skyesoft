@@ -76,9 +76,8 @@ if ($rawAddress !== '') {
     $latitude  = $googleResult['latitude']  ?? '';
     $longitude = $googleResult['longitude'] ?? '';
 
-    // 3. Parcel (with Google Place ID)
+    // 3. Parcel
     if (function_exists('resolveParcel')) {
-        $googlePlaceData = !empty($placeId) ? ['placeId' => $placeId] : null;
 
         $parcelResult = resolveParcel(
             $latitude ?: null,
@@ -88,26 +87,81 @@ if ($rawAddress !== '') {
             $rawAddress
         );
 
-        $parcelCount = $parcelResult['parcelCount'] ?? 0;
+        $parcelCount =
+            $parcelResult['parcelCount']
+            ?? 0;
 
-        if ($parcelCount === 0) {
+        $searchTier =
+            $parcelResult['searchTier']
+            ?? null;
+
+        // =====================================================
+        // Governance Classification
+        // =====================================================
+
+        if ($searchTier === 'county_bypass') {
+
+            $rsCode = 'RS-0';
+            $parcelStatus = 'Parcel Resolution Not Available';
+
+        }
+        elseif ($parcelCount === 0) {
+
             $rsCode = 'RS-7';
             $parcelStatus = 'Unresolved Parcel';
-        } elseif ($parcelCount === 1) {
+
+        }
+        elseif ($parcelCount === 1) {
+
             $rsCode = 'RS-0';
             $parcelStatus = 'Single Parcel Found';
-        } else {
+
+        }
+        else {
+
             $rsCode = 'RS-6';
             $parcelStatus = 'Multiple Parcels Found';
+
         }
 
-        // Jurisdiction from Parcel
-        if (!empty($parcelResult['parcelDetails'][0]['jurisdiction'])) {
-            $jurisdictionName = $parcelResult['parcelDetails'][0]['jurisdiction'];
-            $jurisdictionType = 'City';
+        // =====================================================
+        // Jurisdiction
+        // =====================================================
+
+        if (!empty($parcelResult['jurisdictionName'])) {
+
+            $jurisdictionName =
+                $parcelResult['jurisdictionName'];
+
+            $jurisdictionType =
+                $parcelResult['jurisdictionType']
+                ?? 'Unknown';
+
         }
-        if (!empty($parcelResult['parcelDetails'][0]['city'])) {
-            $postalCity = $parcelResult['parcelDetails'][0]['city'];
+        elseif (!empty($parcelResult['parcelDetails'][0]['jurisdiction'])) {
+
+            $jurisdictionName =
+                $parcelResult['parcelDetails'][0]['jurisdiction'];
+
+            $jurisdictionType = 'City';
+
+        }
+
+        // =====================================================
+        // Postal City
+        // =====================================================
+
+        if (!empty($parcelResult['postalCity'])) {
+
+            $postalCity =
+                $parcelResult['postalCity'];
+
+        }
+        elseif (!empty($parcelResult['parcelDetails'][0]['city'])) {
+
+            $postalCity =
+                $parcelResult['parcelDetails'][0]['city'];
+
         }
     }
 
