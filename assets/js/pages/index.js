@@ -1333,7 +1333,7 @@ window.SkyIndex = {
             `;
         }
         // Full Report Button
-        if (data.actionId) {
+        if (true) {
             html += `
                 <div style="margin-top:14px;">
                     <a
