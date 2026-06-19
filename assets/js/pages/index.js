@@ -367,34 +367,6 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🌍 Location Resolver (non-blocking, permission-aware)
-    async getLocationSafe() {
-
-        return new Promise((resolve) => {
-
-            if (!navigator.geolocation) {
-                resolve({ latitude: null, longitude: null });
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-
-                (pos) => resolve({
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude
-                }),
-
-                () => resolve({
-                    latitude: null,
-                    longitude: null
-                }),
-
-                { timeout: 2500 }
-            );
-        });
-    },
-    // #endregion
-
     // #region 🔑 Get canonical activitySessionId from cookie
     getActivitySessionId() {
         try {
@@ -1219,6 +1191,93 @@ window.SkyIndex = {
         // --------------------------------------------------
         await this.executeAICommand(text, activitySessionId);
     },
+    // #endregion   ← End of handleCommand
+
+    // #region 📍 Location Workflow Helpers (New)
+
+    renderLocationProcessingState() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const processing = document.createElement('div');
+        processing.className = 'commandLine system processing';
+        processing.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">⏳</span>
+                <div>
+                    <strong>📍 Processing parcel review...</strong><br>
+                    <span style="font-size: 0.92em;">Address validation • Parcel lookup • Jurisdiction • Governance</span>
+                </div>
+            </div>
+        `;
+
+        output.appendChild(processing);
+        this.scrollOutputToBottom(output);
+
+        this._currentLocationProcessingEl = processing;
+    },
+
+    replaceLocationProcessingWithResult() {
+        if (this._currentLocationProcessingEl) {
+            this._currentLocationProcessingEl.remove();
+            this._currentLocationProcessingEl = null;
+        }
+    },
+
+    async executeLocationWorkflow(text, activitySessionId, mode = 'parcel_review') {
+
+        this.setThinking(true);
+
+        try {
+            const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userQuery: text,
+                    latitude: this.lastLocation.latitude,
+                    longitude: this.lastLocation.longitude,
+                    activitySessionId: activitySessionId
+                })
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const data = await res.json();
+
+            this.replaceLocationProcessingWithResult();
+
+            if (data.success && mode === 'parcel_review') {
+                this.renderParcelReviewResult(data);
+            } else if (data.status === 'proposed' || mode === 'location_only') {
+                this.handleContactProposal(data);
+            } else {
+                this.appendSystemLine(data.summary || data.response || 'Review completed.', 'system');
+            }
+
+        } catch (err) {
+            console.error('[Location Workflow Error]', err);
+            this.appendSystemLine('❌ Parcel review failed.', 'error');
+        } finally {
+            this.setThinking(false);
+        }
+    },
+
+    renderParcelReviewResult(data) {
+        const html = `
+            <div class="commandLine system html">
+                <div style="background:#f8f9fa; padding:15px; border-radius:8px; border-left:5px solid #007aff;">
+                    <strong>📍 Parcel Review</strong><br>
+                    <small>${data.inputAddress}</small>
+                    <div style="margin-top:12px; font-size:0.95em;">
+                        ${data.summary}
+                    </div>
+                </div>
+            </div>
+        `;
+        this.appendSystemHtml(html);
+    },
+
     // #endregion
 
     // #region 🧠 Command Interface Card
