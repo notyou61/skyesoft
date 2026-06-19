@@ -1238,31 +1238,37 @@ if ($intent === "parcel_review" ||
     }
 
     // =====================================================
-    // LOG LOCATION REVIEW ACTION
+    // LOG LOCATION REVIEW ACTION (with debugging)
     // =====================================================
+    error_log("[DEBUG] Attempting to log location review. Has \$db? " . (isset($db) ? 'YES' : 'NO'));
+
     if (isset($db) && $db instanceof PDO) {
 
         require_once __DIR__ . '/utils/actions.php';
 
+        error_log("[DEBUG] Calling insertActionPrompt with actionTypeId=12");
+
         insertActionPrompt([
-            'actionTypeId'      => 12,                              // ← location review
+            'actionTypeId'      => 12,
             'promptText'        => $addressToReview,
             'responseText'      => $resolutionData['summary'] ?? null,
-            'intent'            => 'location_review',
+            'intent'            => 'location.review',
             'intentConfidence'  => 0.90,
             'latitude'          => $resolutionData['google']['latitude'] ?? null,
             'longitude'         => $resolutionData['google']['longitude'] ?? null,
-            'origin'            => 1,                               // user
+            'origin'            => 1,
             'createdUnixTime'   => time(),
         ], $db);
 
+        error_log("[DEBUG] insertActionPrompt call completed");
+
     } else {
-        error_log('[parcel_review] Logging skipped — $db not available');
+        error_log('[parcel_review] Logging SKIPPED - $db is not available or not a PDO instance');
     }
 
-    echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
-    exit;
-}
+        echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
+        exit;
+    }
 
 #endregion
 
