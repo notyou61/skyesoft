@@ -1232,7 +1232,6 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
-            // Ensure location data
             if (!this.lastLocation || this.lastLocation.latitude === null) {
                 this.lastLocation = await this.getLocationSafe();
             }
@@ -1252,13 +1251,13 @@ window.SkyIndex = {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
-
             this.replaceLocationProcessingWithResult();
 
-            if (data.success && mode === 'parcel_review') {
-                this.renderParcelReviewResult(data);   // Dedicated renderer
+            // === KEY FIX ===
+            if (data.success && (mode === 'parcel_review' || data.parcel)) {
+                this.renderParcelReviewResult(data);
             } else if (data.status === 'proposed' || mode === 'location_only') {
-                this.handleContactProposal(data);     // Only for actual contact proposals
+                this.handleContactProposal(data);
             } else if (data.error) {
                 this.appendSystemLine(`❌ ${data.error}`, 'error');
             } else {
@@ -1267,7 +1266,7 @@ window.SkyIndex = {
 
         } catch (err) {
             console.error('[Location Workflow Error]', err);
-            this.appendSystemLine('❌ Parcel review failed. Please check the address and try again.', 'error');
+            this.appendSystemLine('❌ Parcel review failed.', 'error');
         } finally {
             this.setThinking(false);
         }
