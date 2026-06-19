@@ -1204,49 +1204,40 @@ PROMPT;
 
 // =====================================================
 // PARCEL REVIEW HANDLER
-// Uses logic from locationResolutionTest.php
+// Clean integration with resolveParcelReview.php
 // =====================================================
 
 if ($intent === "parcel_review" || str_contains(strtolower($query), "parcel review")) {
 
     error_log("[parcel_review] Intent detected for query: " . substr($query, 0, 150));
 
-    // Extract address (simple regex or take whole query for now)
     $addressToReview = trim($query);
 
-    // Include the resolution harness logic (or require a refactored function)
-    require_once __DIR__ . '/locationResolutionTest.php';  // adjust path if needed
+    if (empty($addressToReview)) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'No address provided for review'
+        ]);
+        exit;
+    }
 
-    // Run resolution (simulate form post)
-    $_POST['address'] = $addressToReview;
-    // The existing file already processes $rawAddress = $_POST['address']
+    require_once __DIR__ . '/resolveParcelReview.php';
 
-    // Capture output (we already have $jsonOutput and $aiSummary from the file)
-    $resolutionData = [
-        'success' => true,
-        'inputAddress' => $rawAddress ?? $addressToReview,
-        'summary' => $aiSummary ?? 'Resolution completed.',
-        'google' => $googleResult ?? [],
-        'census' => $censusResult ?? [],
-        'parcel' => $parcelResult ?? [],
-        'jurisdiction' => [
-            'name' => $jurisdictionName ?? '',
-            'type' => $jurisdictionType ?? '',
-        ],
-        'governance' => [
-            'rsCode' => $rsCode ?? 'RS-UNKNOWN',
-            'status' => $parcelStatus ?? 'Unknown'
-        ],
-        'fullJson' => $jsonOutput ?? []
-    ];
+    // Call the clean function
+    $resolutionData = resolveParcelReview($addressToReview);
 
-    // Generate clean narrative if needed
+    if (!$resolutionData['success']) {
+        echo json_encode($resolutionData);
+        exit;
+    }
+
+    // Optional: Enhance with AI narrative if needed
     if (empty($resolutionData['summary'])) {
         $resolutionData['summary'] = "Skyesoft completed parcel review for " . htmlspecialchars($addressToReview) . ".";
     }
 
     echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
-    exit;   // Important: exit after specialized handling
+    exit;
 }
 
 #endregion
