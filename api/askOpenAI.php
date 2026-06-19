@@ -1238,22 +1238,24 @@ if ($intent === "parcel_review" ||
     }
 
     // =====================================================
-    // LOG THE LOCATION REVIEW ACTION
+    // LOG LOCATION REVIEW ACTION
     // =====================================================
     if (isset($db) && $db instanceof PDO) {
 
-        require_once __DIR__ . '/actionLogger.php';
+        require_once __DIR__ . '/utils/actions.php';
 
-        logAction($db, [
-            'actionName' => 'location review',                    // ← New action type (ID 12)
-            'intent'     => 'location_review',
-            'prompt'     => $addressToReview,
-            'response'   => $resolutionData['summary'] ?? null,
-            'lat'        => $resolutionData['google']['latitude'] ?? null,
-            'lng'        => $resolutionData['google']['longitude'] ?? null,
-            'confidence' => 0.90,
-            'origin'     => 1,                                    // 1 = user
-        ]);
+        insertActionPrompt([
+            'actionTypeId'      => 12,                              // ← location review
+            'promptText'        => $addressToReview,
+            'responseText'      => $resolutionData['summary'] ?? null,
+            'intent'            => 'location_review',
+            'intentConfidence'  => 0.90,
+            'latitude'          => $resolutionData['google']['latitude'] ?? null,
+            'longitude'         => $resolutionData['google']['longitude'] ?? null,
+            'origin'            => 1,                               // user
+            'createdUnixTime'   => time(),
+        ], $db);
+
     } else {
         error_log('[parcel_review] Logging skipped — $db not available');
     }
