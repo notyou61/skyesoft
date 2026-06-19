@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Skyesoft — Parcel Resolution Utility
- * Version: 5.14.9 — Tight City-Filtered Candidates
+ * Version: 5.14.10 — Full Upgrades Restored + City-Filtered Candidates
  */
 
 require_once __DIR__ . '/resolveJurisdiction.php';
@@ -40,25 +40,29 @@ function resolveParcel(
     ?float $longitude = null,
     ?string $county = null,
     ?string $countyFips = null,
-    ?string $searchAddress = null,
-    ?array $googlePlaceInput = null
+    ?string $searchAddress = null
 ): array {
 
     $result = [
-        'success'                => false,
-        'primaryParcel'          => null,
-        'candidateParcels'       => [],
-        'candidateParcelCount'   => 0,
-        'parcelCount'            => 0,
-        'parcelDetails'          => [],
-        'jurisdictionName'       => null,
-        'jurisdictionType'       => null,
-        'searchSource'           => null,
-        'searchTier'             => null,
-        'postalCity'             => null,
-        'permittingJurisdiction' => null,
-        'note'                   => null,
-        'googlePlaceID'          => null,
+        'success'                   => false,
+        'parcelResolutionAvailable' => true,
+
+        'primaryParcel'             => null,
+        'candidateParcels'          => [],
+        'candidateParcelCount'      => 0,
+        'parcelCount'               => 0,
+        'parcelDetails'             => [],
+
+        'jurisdictionName'          => null,
+        'jurisdictionType'          => null,
+
+        'searchSource'              => null,
+        'searchTier'                => null,
+
+        'postalCity'                => null,
+        'permittingJurisdiction'    => null,
+
+        'note'                      => null,
     ];
 
     $original = trim($searchAddress ?? '');
@@ -67,27 +71,21 @@ function resolveParcel(
     error_log('[RESOLVE-PARCEL] === START === Address: ' . $original);
 
     // =====================================================
-    // GOOGLE PLACE ID
-    // =====================================================
-    if (!empty($googlePlaceInput)) {
-        if (isset($googlePlaceInput['placeId'])) {
-            $result['googlePlaceID'] = $googlePlaceInput['placeId'];
-        } elseif (isset($googlePlaceInput['result']['place_id'])) {
-            $result['googlePlaceID'] = $googlePlaceInput['result']['place_id'];
-        }
-    }
-
-    // =====================================================
-    // NON-MARICOPA COUNTIES
+    // NON-MARICOPA COUNTIES (Bypass)
     // =====================================================
     if (!empty($countyFips) && $countyFips !== '013') {
         $result['success'] = true;
+        $result['parcelResolutionAvailable'] = false;
+
         $result['jurisdictionName'] = $county ? ucwords(strtolower($county)) . ' County' : null;
         $result['jurisdictionType'] = 'County';
         $result['permittingJurisdiction'] = $result['jurisdictionName'];
+
         $result['note'] = 'Location validated successfully. Parcel resolution is currently only supported for Maricopa County, Arizona. No parcel lookup was performed for this jurisdiction.';
+
         $result['searchSource'] = 'unsupported_county';
         $result['searchTier']   = 'county_bypass';
+
         return $result;
     }
 
@@ -141,7 +139,7 @@ function resolveParcel(
     }
 
     // =====================================================
-    // ADDRESS-BASED CANDIDATES (Strict City Filter)
+    // ADDRESS-BASED CANDIDATES (City-Filtered)
     // =====================================================
     if (!empty($primaryApn) && !empty($normalized) && !empty($primaryCity)) {
         $candidateTerms = buildParcelCandidateSearchTerms($original);
@@ -203,12 +201,13 @@ function resolveParcel(
     if (!empty($result['primaryParcel'])) {
         $jurRaw = $result['primaryParcel']['jurisdiction'] ?? '';
         $postal = $result['postalCity'] ?? 'Unknown';
+        $parcelNumber = $result['primaryParcel']['parcelNumber'] ?? 'Unknown';
 
         if (empty($jurRaw) || stripos($jurRaw, 'NO CITY') !== false) {
             $result['jurisdictionName']       = 'Maricopa County';
             $result['jurisdictionType']       = 'County';
             $result['permittingJurisdiction'] = 'Maricopa County';
-            $result['note'] = "The postal city is {$postal} (for mailing purposes). This property is in unincorporated Maricopa County, so the permitting jurisdiction is Maricopa County.";
+            $result['note'] = "Parcel {$parcelNumber} was identified using coordinate-based parcel resolution. The parcel is located within the {$postal} postal service area; however, GIS returned NO CITY/TOWN for jurisdiction. Permitting authority is Maricopa County.";
         } else {
             $jur = resolveJurisdiction($jurRaw);
             $cityName = $jur['label'] ?? ucwords(strtolower($jurRaw));
@@ -216,7 +215,12 @@ function resolveParcel(
             $result['jurisdictionName']       = $cityName;
             $result['jurisdictionType']       = $jur['jurisdictionType'] ?? 'City';
             $result['permittingJurisdiction'] = $cityName;
-            $result['note'] = "The postal city is {$postal}. The permitting jurisdiction is {$cityName}.";
+            $result['note'] = "Parcel {$parcelNumber} was identified using coordinate-based parcel resolution. The parcel lies within the {$cityName} jurisdiction and permitting authority is assigned to {$cityName}.";
+        }
+
+        // Candidate Parcel Narrative
+        if ($result['candidateParcelCount'] > 0) {
+            $result['note'] .= ' ' . $result['candidateParcelCount'] . ' additional parcel(s) share this address and have been provided as candidate parcels for review.';
         }
     }
 
