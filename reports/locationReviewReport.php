@@ -44,7 +44,10 @@ function generateLocationReviewSummary(array $data): string
 {
     $summary = $data['summary'] ?? 'Location review completed.';
 
-    // Convert <br> to actual line breaks for PDF renderer
+    // Convert <br> to actual line breaks for the PDF renderer
+    $summary = str_replace('<br>', "\n", $summary);
+    $summary = str_replace('<br/>', "\n", $summary);
+
     return nl2br(htmlspecialchars($summary));
 }
 
@@ -76,6 +79,12 @@ function normalizeLocationReviewData(array $input): array
 function buildLocationReviewBody(array $data): string
 {
     $html = '';
+
+    // Location Review Summary (with HTML line breaks)
+    $html .= buildSectionHeader('Location Review Summary', 'pin.png');
+    $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6;">';
+    $html .= nl2br(htmlspecialchars($data['summary'] ?? 'Location review completed.'));
+    $html .= '</div>';
 
     $html .= buildPrimaryParcelSection($data);
     $html .= buildCandidateParcelsSection($data);
