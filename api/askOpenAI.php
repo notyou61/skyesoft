@@ -1238,7 +1238,7 @@ if ($intent === "parcel_review" ||
     }
 
     // =====================================================
-    // LOG LOCATION REVIEW ACTION (with debugging)
+    // LOG LOCATION REVIEW + CAPTURE ACTION ID
     // =====================================================
     error_log("[DEBUG] Attempting to log location review. Has \$db? " . (isset($db) ? 'YES' : 'NO'));
 
@@ -1248,15 +1248,18 @@ if ($intent === "parcel_review" ||
 
         error_log("[DEBUG] Calling insertActionPrompt with actionTypeId=12");
 
-        insertActionPrompt([
+        $actionId = insertActionPrompt([
             'actionTypeId'      => 12,
             'contactId'         => $_SESSION['contactId'] ?? 0,
 
             'promptText'        => $addressToReview,
             'responseText'      => $resolutionData['summary'] ?? null,
 
-            'actionPayloadData' => $input,
-            'actionResponseData'=> $resolutionData,
+            'actionPayloadData' => $resolutionData,           // Full structured data
+            'actionResponseData'=> [
+                'cardType'      => 'parcel-review-card',
+                'parcelCount'   => $resolutionData['parcel']['parcelCount'] ?? 0
+            ],
 
             'intent'            => 'location.review',
             'intentConfidence'  => 0.90,
@@ -1268,14 +1271,18 @@ if ($intent === "parcel_review" ||
             'createdUnixTime'   => time(),
         ], $db);
 
-        error_log("[DEBUG] insertActionPrompt call completed");
+        error_log("[DEBUG] insertActionPrompt call completed | actionId=$actionId");
+
+        // Inject actionId into response for PDF report generation
+        $resolutionData['actionId'] = $actionId;
 
     } else {
         error_log('[parcel_review] Logging SKIPPED - $db is not available or not a PDO instance');
     }
 
-        echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
-        exit;
+    echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
+    exit;
+
     }
 
 #endregion

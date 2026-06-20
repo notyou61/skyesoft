@@ -3,17 +3,17 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — actions.php
-//  Version: 1.3.0
+//  Version: 1.4.0
 //  Centralized Action Logging Layer (activitySessionId)
 // ======================================================================
 
 #region SECTION 1 — Action Logging (tblActions)
 
-function insertActionPrompt(array $entry, ?PDO $db): void {
+function insertActionPrompt(array $entry, ?PDO $db): int {
 
     if (!$db) {
         error_log('[actions] DB not available');
-        return;
+        return 0;
     }
 
     if (session_status() === PHP_SESSION_NONE) {
@@ -22,7 +22,7 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     if (empty($entry['promptText'])) {
         error_log('[actions] Missing promptText');
-        return;
+        return 0;
     }
 
     // ─────────────────────────────
@@ -46,7 +46,7 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     if (!$actionTypeId) {
         error_log('[actions] Missing actionTypeId');
-        return;
+        return 0;
     }
 
     // ─────────────────────────────
@@ -114,11 +114,14 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             $userAgent
         ]);
 
-        $actionId = $db->lastInsertId();
+        $actionId = (int)$db->lastInsertId();
         error_log("[actions] SUCCESS | actionId=$actionId | activitySessionId=$activitySessionId");
+
+        return $actionId;
 
     } catch (Throwable $e) {
         error_log('[actions] insert failed: ' . $e->getMessage());
+        return 0;
     }
 }
 
