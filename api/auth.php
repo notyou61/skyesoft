@@ -120,23 +120,25 @@ if ($input['action'] === 'login') {
     $_SESSION['contactId']     = $user['contactId'];
     $_SESSION['username']      = $user['contactEmail'];
 
-    // 🔥 LOG ACTION (BEFORE DESTROY)
+    // 🔥 LOG ACTION
     logAction($pdo, [
-        'actionName' => 'auth.session.logout',
-        'contactId'  => $_SESSION['contactId'],
-        'intent'     => 'ui_logout',
-        'prompt'     => 'logout',
-        'response'   => 'logout_success',
+        'actionName' => 'auth.session.login',
+        'contactId'  => $user['contactId'],
+        'intent'     => 'ui_login',
+        'prompt'     => $username,
+        'response'   => 'login_success',
         'confidence' => 1.00,
-        'lat'        => $_SESSION['lastLatitude'] ?? null,      // ← Optional: last known
-        'lng'        => $_SESSION['lastLongitude'] ?? null,     // ← Optional: last known
+        'lat'        => $input['latitude'] ?? null,
+        'lng'        => $input['longitude'] ?? null,
 
-        // Structured data
+        // Structured data (optional but useful)
         'actionPayloadData' => [
-            'contactId' => $_SESSION['contactId']
+            'username' => $username,
+            'contactId' => $user['contactId']
         ],
         'actionResponseData' => [
-            'status' => 'success'
+            'status' => 'success',
+            'username' => $user['contactEmail']
         ]
     ]);
 
@@ -168,8 +170,8 @@ if ($input['action'] === 'logout') {
         'prompt'     => 'logout',
         'response'   => 'logout_success',
         'confidence' => 1.00,
-        'lat'        => $input['latitude'] ?? null,      // ← ADD THIS
-        'lng'        => $input['longitude'] ?? null,     // ← ADD THIS
+        'lat'        => $_SESSION['lastLatitude'] ?? null,      // ← Optional: last known
+        'lng'        => $_SESSION['lastLongitude'] ?? null,     // ← Optional: last known
 
         // Structured data
         'actionPayloadData' => [
