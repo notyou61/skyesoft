@@ -17,17 +17,15 @@ function generateLocationReviewReport(array $input): array
     $bodyHtml = buildLocationReviewBody($data);
 
     $address = $data['inputAddress'] ?? 'Unknown Address';
-
     $reportFilename = "Location Review - " . preg_replace('/[^A-Za-z0-9 ]/', '', $address);
 
     return [
         'reportType'      => 'location_review',
-
         'reportTitle'     => 'Location / Parcel Review Report',
 
         'reportFilename'  => $reportFilename,
 
-        'reportSummary'   => generateLocationReviewSummary($data),   // ← Use proper HTML summary
+        'reportSummary'   => '',   // ← Keep empty to avoid duplicate
 
         'reportBodyHtml'  => $bodyHtml,
 
