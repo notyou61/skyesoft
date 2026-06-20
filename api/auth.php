@@ -120,25 +120,23 @@ if ($input['action'] === 'login') {
     $_SESSION['contactId']     = $user['contactId'];
     $_SESSION['username']      = $user['contactEmail'];
 
-    // 🔥 LOG ACTION
+    // 🔥 LOG ACTION (BEFORE DESTROY)
     logAction($pdo, [
-        'actionName' => 'auth.session.login',
-        'contactId'  => $user['contactId'],
-        'intent'     => 'ui_login',
-        'prompt'     => $username,
-        'response'   => 'login_success',
+        'actionName' => 'auth.session.logout',
+        'contactId'  => $_SESSION['contactId'],
+        'intent'     => 'ui_logout',
+        'prompt'     => 'logout',
+        'response'   => 'logout_success',
         'confidence' => 1.00,
-        'lat'        => $input['latitude'] ?? null,
-        'lng'        => $input['longitude'] ?? null,
+        'lat'        => $_SESSION['lastLatitude'] ?? null,      // ← Optional: last known
+        'lng'        => $_SESSION['lastLongitude'] ?? null,     // ← Optional: last known
 
-        // Structured data (optional but useful)
+        // Structured data
         'actionPayloadData' => [
-            'username' => $username,
-            'contactId' => $user['contactId']
+            'contactId' => $_SESSION['contactId']
         ],
         'actionResponseData' => [
-            'status' => 'success',
-            'username' => $user['contactEmail']
+            'status' => 'success'
         ]
     ]);
 
