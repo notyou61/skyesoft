@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — locationReviewReport.php
 //  Location / Parcel Review Report Generator
-//  Version: 1.0.1
+//  Version: 1.0.2
 //  Created: 2026-06-20
 // =============================================
 
@@ -16,7 +16,6 @@ function generateLocationReviewReport(array $input): array
 
     $bodyHtml = buildLocationReviewBody($data);
 
-    // === Dynamic Filename ===
     $address = $data['inputAddress'] ?? 'Unknown Address';
     $reportFilename = "Location Review - " . preg_replace('/[^A-Za-z0-9 ]/', '', $address);
 
@@ -26,7 +25,7 @@ function generateLocationReviewReport(array $input): array
 
         'reportFilename'  => $reportFilename,
 
-        'reportSummary'   => generateLocationReviewSummary($data),
+        'reportSummary'   => '',   // No duplicate summary
 
         'reportBodyHtml'  => $bodyHtml,
 
@@ -68,7 +67,12 @@ function buildLocationReviewBody(array $data): string
 {
     $html = '';
 
-    $html .= buildLocationSummarySection($data);
+    // Main Summary (with proper HTML line breaks)
+    $html .= buildSectionHeader('Location Review Summary', 'pin.png');
+    $html .= '<div class="summaryBlock" style="margin-bottom:20px;">';
+    $html .= nl2br(htmlspecialchars($data['summary'] ?? 'Location review completed.'));
+    $html .= '</div>';
+
     $html .= buildPrimaryParcelSection($data);
     $html .= buildCandidateParcelsSection($data);
     $html .= buildGovernanceSection($data);
@@ -79,20 +83,6 @@ function buildLocationReviewBody(array $data): string
 #endregion
 
 #region SECTION 03 - Section Builders
-
-function buildLocationSummarySection(array $data): string
-{
-    $html = buildSectionHeader('Location Review Summary', 'pin.png');
-    $html .= '<div class="summaryBlock">';
-    $html .= nl2br(htmlspecialchars($data['summary']));
-    $html .= '</div>';
-    return $html;
-}
-
-function generateLocationReviewSummary(array $data): string
-{
-    return nl2br(htmlspecialchars($data['summary'] ?? 'Location review completed.'));
-}
 
 function buildPrimaryParcelSection(array $data): string
 {
