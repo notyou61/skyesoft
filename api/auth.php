@@ -129,7 +129,17 @@ if ($input['action'] === 'login') {
         'response'   => 'login_success',
         'confidence' => 1.00,
         'lat'        => $input['latitude'] ?? null,
-        'lng'        => $input['longitude'] ?? null
+        'lng'        => $input['longitude'] ?? null,
+
+        // Structured data (optional but useful)
+        'actionPayloadData' => [
+            'username' => $username,
+            'contactId' => $user['contactId']
+        ],
+        'actionResponseData' => [
+            'status' => 'success',
+            'username' => $user['contactEmail']
+        ]
     ]);
 
     echo json_encode([
@@ -159,7 +169,15 @@ if ($input['action'] === 'logout') {
         'intent'     => 'ui_logout',
         'prompt'     => 'logout',
         'response'   => 'logout_success',
-        'confidence' => 1.00
+        'confidence' => 1.00,
+
+        // Structured data
+        'actionPayloadData' => [
+            'contactId' => $contactId
+        ],
+        'actionResponseData' => [
+            'status' => 'success'
+        ]
     ]);
 
     // Destroy session

@@ -10,7 +10,8 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 // 🧾 logAction() — User action logger (name → ID resolved)
-function logAction(PDO $db, array $p): void
+// Returns the inserted actionId (0 on failure)
+function logAction(PDO $db, array $p): int
 {
     try {
 
@@ -21,7 +22,7 @@ function logAction(PDO $db, array $p): void
 
         // 🔕 Suppress logging
         if (!empty($p['suppressLog'])) {
-            return;
+            return 0;
         }
 
         // --- Required (NEW MODEL)
@@ -31,13 +32,12 @@ function logAction(PDO $db, array $p): void
 
         if ($actionName === '' || $intent === '' || $prompt === '') {
             error_log('logAction: missing required fields (actionName, intent, prompt).');
-            return;
+            return 0;
         }
 
         // --- Resolve actionTypeId (cached)
         static $actionCache = [];
 
-        // 🔎 Resolve actionTypeId (cached + validated)
         if (!isset($actionCache[$actionName])) {
 
             $stmt = $db->prepare("
@@ -53,13 +53,10 @@ function logAction(PDO $db, array $p): void
 
             if ($actionTypeId === false) {
                 error_log("[logAction] Invalid actionName: {$actionName}");
-
-                // Optional strict mode (dev)
                 if (ini_get('display_errors')) {
                     throw new RuntimeException("Invalid actionName: {$actionName}");
                 }
-
-                return;
+                return 0;
             }
 
             $actionCache[$actionName] = (int)$actionTypeId;
@@ -71,12 +68,8 @@ function logAction(PDO $db, array $p): void
         $contactId = !empty($p['contactId']) ? (int)$p['contactId'] : null;
 
         $allowedOrigins = [1, 2, 3];
-
         $originValue = $p['origin'] ?? 1;
-
-        $origin = in_array($originValue, $allowedOrigins, true)
-            ? (int)$originValue
-            : 1;
+        $origin = in_array($originValue, $allowedOrigins, true) ? (int)$originValue : 1;
 
         $response = isset($p['response'])
             ? (is_string($p['response'])
@@ -101,6 +94,23 @@ function logAction(PDO $db, array $p): void
         // 🔥 Canonical session ID
         $activitySessionId = session_id();
 
+        // ============================================================
+        // Structured Action Data (NEW)
+        // ============================================================
+        $actionPayloadData = null;
+        if (array_key_exists('actionPayloadData', $p)) {
+            $actionPayloadData = is_string($p['actionPayloadData'])
+                ? $p['actionPayloadData']
+                : json_encode($p['actionPayloadData'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        $actionResponseData = null;
+        if (array_key_exists('actionResponseData', $p)) {
+            $actionResponseData = is_string($p['actionResponseData'])
+                ? $p['actionResponseData']
+                : json_encode($p['actionResponseData'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
         // --- Insert
         $stmt = $db->prepare("
             INSERT INTO tblActions (
@@ -111,6 +121,8 @@ function logAction(PDO $db, array $p): void
                 activitySessionId,
                 promptText,
                 responseText,
+                actionPayloadData,
+                actionResponseData,
                 intent,
                 intentConfidence,
                 ipAddress,
@@ -125,6 +137,8 @@ function logAction(PDO $db, array $p): void
                 :activitySessionId,
                 :prompt,
                 :response,
+                :actionPayloadData,
+                :actionResponseData,
                 :intent,
                 :confidence,
                 :ip,
@@ -141,6 +155,8 @@ function logAction(PDO $db, array $p): void
             'activitySessionId' => $activitySessionId,
             'prompt'            => $prompt,
             'response'          => $response,
+            'actionPayloadData' => $actionPayloadData,
+            'actionResponseData'=> $actionResponseData,
             'intent'            => $intent,
             'confidence'        => $confidence,
             'ip'                => $ip,
@@ -149,7 +165,12 @@ function logAction(PDO $db, array $p): void
             'ua'                => $ua
         ]);
 
+        $actionId = (int)$db->lastInsertId();
+        error_log("[logAction] SUCCESS | actionId=$actionId | actionName=$actionName");
+        return $actionId;
+
     } catch (Throwable $e) {
         error_log('[logAction ERROR] ' . $e->getMessage());
+        return 0;
     }
 }
