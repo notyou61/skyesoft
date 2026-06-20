@@ -78,21 +78,17 @@ function buildLocationReviewBody(array $data): string
 {
     $html = '';
 
-    // Location Review Summary (clean paragraph)
+    // Location Review Summary
     $html .= buildSectionHeader('Location Review Summary', 'pin.png');
     $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6;">';
-
-    $summary = $data['summary'] ?? 'Location review completed.';
-
-    // Convert <br> tags to spaces and collapse whitespace into a single paragraph
-    $summary = str_replace(['<br>', '<br/>', '<br />'], ' ', $summary);
-    $summary = preg_replace('/\s+/', ' ', $summary);
-
-    $html .= htmlspecialchars(trim($summary));
-
+    $html .= htmlspecialchars(trim(str_replace(['<br>', '<br/>', '<br />'], ' ', $data['summary'] ?? 'Location review completed.')));
     $html .= '</div>';
 
     $html .= buildPrimaryParcelSection($data);
+    
+    // NEW: Google Map Section
+    $html .= buildGoogleMapSection($data);
+
     $html .= buildCandidateParcelsSection($data);
     $html .= buildGovernanceSection($data);
 
@@ -160,6 +156,31 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
             <td class="sectionTitleCell"><div class="sectionTitle">' . htmlspecialchars($title) . '</div></td>
         </tr>
     </table>';
+}
+
+function buildGoogleMapSection(array $data): string
+{
+    $google = $data['google'] ?? [];
+    $lat = $google['latitude'] ?? null;
+    $lng = $google['longitude'] ?? null;
+
+    if (!$lat || !$lng) {
+        return '';
+    }
+
+    $html = buildSectionHeader('Location Map', 'map.png');
+
+    $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?' .
+        'center=' . $lat . ',' . $lng .
+        '&zoom=18&size=900x450&maptype=roadmap' .
+        '&markers=color:red%7C' . $lat . ',' . $lng .
+        '&key=' . (skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: '');
+
+    $html .= '<div style="text-align:center; margin:12px 0;">';
+    $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" alt="Location Map">';
+    $html .= '</div>';
+
+    return $html;
 }
 
 #endregion
