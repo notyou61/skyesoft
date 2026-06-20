@@ -80,7 +80,7 @@ function buildLocationReviewBody(array $data): string
 
     // 1. Location Review Summary
     $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
-    $html .= buildSectionHeader('Location Review Summary', 'pin.png');
+    $html .= buildSectionHeader('Location Review Summary', 'information.png');
     $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6;">';
     $summary = $data['summary'] ?? 'Location review completed.';
     $summary = str_replace(['<br>', '<br/>', '<br />'], ' ', $summary);
@@ -185,12 +185,11 @@ function buildGoogleMapSection(array $data): string
         return '';
     }
 
-    // Use satellite map + correct icon
-    $html = buildSectionHeader('Location Map', 'map.png');   // or 'satellite.png' if available
+    $html = buildSectionHeader('Location Map', 'pin.png');   // ← Use pin icon
 
     $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?' .
         'center=' . $lat . ',' . $lng .
-        '&zoom=19&size=900x500&maptype=satellite' .   // ← Satellite view
+        '&zoom=17&size=900x500&maptype=satellite' .   // ← Zoomed out a bit
         '&markers=color:red%7C' . $lat . ',' . $lng .
         '&key=' . (skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: '');
 
