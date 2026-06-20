@@ -17,15 +17,17 @@ function generateLocationReviewReport(array $input): array
     $bodyHtml = buildLocationReviewBody($data);
 
     $address = $data['inputAddress'] ?? 'Unknown Address';
+
     $reportFilename = "Location Review - " . preg_replace('/[^A-Za-z0-9 ]/', '', $address);
 
     return [
         'reportType'      => 'location_review',
+
         'reportTitle'     => 'Location / Parcel Review Report',
 
         'reportFilename'  => $reportFilename,
 
-        'reportSummary'   => '',   // No duplicate summary
+        'reportSummary'   => generateLocationReviewSummary($data),   // ← Use proper HTML summary
 
         'reportBodyHtml'  => $bodyHtml,
 
@@ -36,6 +38,14 @@ function generateLocationReviewReport(array $input): array
             'actionId'     => $input['actionId'] ?? null,
         ]
     ];
+}
+
+function generateLocationReviewSummary(array $data): string
+{
+    $summary = $data['summary'] ?? 'Location review completed.';
+
+    // Convert <br> to actual line breaks for PDF renderer
+    return nl2br(htmlspecialchars($summary));
 }
 
 #endregion
@@ -66,12 +76,6 @@ function normalizeLocationReviewData(array $input): array
 function buildLocationReviewBody(array $data): string
 {
     $html = '';
-
-    // Main Summary (with proper HTML line breaks)
-    $html .= buildSectionHeader('Location Review Summary', 'pin.png');
-    $html .= '<div class="summaryBlock" style="margin-bottom:20px;">';
-    $html .= nl2br(htmlspecialchars($data['summary'] ?? 'Location review completed.'));
-    $html .= '</div>';
 
     $html .= buildPrimaryParcelSection($data);
     $html .= buildCandidateParcelsSection($data);
