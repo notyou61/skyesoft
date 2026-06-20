@@ -170,6 +170,8 @@ if ($input['action'] === 'logout') {
         'prompt'     => 'logout',
         'response'   => 'logout_success',
         'confidence' => 1.00,
+        'lat'        => $input['latitude'] ?? null,
+        'lng'        => $input['longitude'] ?? null,
 
         // Structured data
         'actionPayloadData' => [
