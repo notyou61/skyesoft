@@ -119,6 +119,11 @@ if ($input['action'] === 'login') {
     $_SESSION['authenticated'] = true;
     $_SESSION['contactId']     = $user['contactId'];
     $_SESSION['username']      = $user['contactEmail'];
+    // Save last known location for future actions (e.g. logout)
+    if (isset($input['latitude']) && isset($input['longitude'])) {
+        $_SESSION['lastLatitude']  = (float)$input['latitude'];
+        $_SESSION['lastLongitude'] = (float)$input['longitude'];
+    }
 
     // 🔥 LOG ACTION
     logAction($pdo, [
