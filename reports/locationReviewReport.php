@@ -80,10 +80,18 @@ function buildLocationReviewBody(array $data): string
 {
     $html = '';
 
-    // Location Review Summary (with HTML line breaks)
+    // Location Review Summary (clean paragraph)
     $html .= buildSectionHeader('Location Review Summary', 'pin.png');
     $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6;">';
-    $html .= nl2br(htmlspecialchars($data['summary'] ?? 'Location review completed.'));
+
+    $summary = $data['summary'] ?? 'Location review completed.';
+
+    // Convert <br> tags to spaces and collapse whitespace into a single paragraph
+    $summary = str_replace(['<br>', '<br/>', '<br />'], ' ', $summary);
+    $summary = preg_replace('/\s+/', ' ', $summary);
+
+    $html .= htmlspecialchars(trim($summary));
+
     $html .= '</div>';
 
     $html .= buildPrimaryParcelSection($data);
