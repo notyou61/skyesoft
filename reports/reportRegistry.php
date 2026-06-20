@@ -4,8 +4,8 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — reportRegistry.php
 //  Report Type Registry
-//  Version: 1.1.0
-//  Last Updated: 2026-05-30
+//  Version: 1.2.0
+//  Last Updated: 2026-06-20
 // =============================================
 
 #region SECTION 00 - Report Registry
@@ -24,6 +24,13 @@ function getReportHandler(string $reportType): ?array
             'file'        => __DIR__ . '/contactProposalReport.php',
             'generator'   => 'generateContactProposalReport',
             'description' => 'Proposed Contact Report'
+        ],
+
+        // NEW: Location / Parcel Review Report
+        'location_review' => [
+            'file'        => __DIR__ . '/locationReviewReport.php',   // We'll create this next
+            'generator'   => 'generateLocationReviewReport',
+            'description' => 'Location Review Report'
         ]
     ];
 

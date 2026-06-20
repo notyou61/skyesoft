@@ -45,10 +45,25 @@ else {
     error_log("[generateReports] Received via php://input or direct POST");
 }
 
+require_once __DIR__ . '/dbConnect.php';   // or wherever getPDO() is defined
+
 // Debug received data
 error_log("Report Request Received Keys: " . json_encode(array_keys($input)));
 
 $reportType = strtolower(trim($input['reportType'] ?? ''));
+
+// =====================================================
+// GET Request Support (for Location Review Reports)
+// =====================================================
+if (empty($reportType) && !empty($_GET['reportType'])) {
+    $reportType = strtolower(trim($_GET['reportType']));
+}
+
+$actionId = isset($_GET['actionId'])
+    ? (int)$_GET['actionId']
+    : (int)($input['actionId'] ?? 0);
+
+error_log("[generateReports] reportType = '{$reportType}' | actionId = {$actionId}");
 
 error_log("=== generateReports.php LOADED ===" . date('Y-m-d H:i:s'));
 error_log("[generateReports] reportType received = '" . $reportType . "'");
@@ -221,6 +236,38 @@ try {
                 }
             }
         }
+    }
+
+    // =====================================================
+    // LOCATION REVIEW REPORT LOADER
+    // =====================================================
+    if ($reportType === 'location_review' && $actionId > 0) {
+
+        $pdo = getPDO();   // ← Use the same pattern as your other files
+
+        $stmt = $pdo->prepare("
+            SELECT actionResponseData
+            FROM tblActions
+            WHERE actionId = ?
+            LIMIT 1
+        ");
+
+        $stmt->execute([$actionId]);
+        $action = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$action || empty($action['actionResponseData'])) {
+            throw new Exception("Location review action {$actionId} not found or has no data.");
+        }
+
+        $payload = json_decode($action['actionResponseData'], true);
+
+        if (!is_array($payload)) {
+            throw new Exception("Invalid actionResponseData for action {$actionId}");
+        }
+
+        $input = array_merge($input, $payload);   // Merge into existing input
+
+        error_log("[generateReports] Loaded Location Review data from actionId {$actionId}");
     }
 
     // Generate the report data
