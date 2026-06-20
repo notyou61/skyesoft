@@ -78,19 +78,36 @@ function buildLocationReviewBody(array $data): string
 {
     $html = '';
 
-    // Location Review Summary
+    // 1. Location Review Summary
+    $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildSectionHeader('Location Review Summary', 'pin.png');
     $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6;">';
-    $html .= htmlspecialchars(trim(str_replace(['<br>', '<br/>', '<br />'], ' ', $data['summary'] ?? 'Location review completed.')));
+    $summary = $data['summary'] ?? 'Location review completed.';
+    $summary = str_replace(['<br>', '<br/>', '<br />'], ' ', $summary);
+    $summary = preg_replace('/\s+/', ' ', $summary);
+    $html .= htmlspecialchars(trim($summary));
+    $html .= '</div>';
     $html .= '</div>';
 
+    // 2. Primary Parcel
+    $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildPrimaryParcelSection($data);
-    
-    // NEW: Google Map Section
-    $html .= buildGoogleMapSection($data);
+    $html .= '</div>';
 
+    // 3. Google Map (Satellite)
+    $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
+    $html .= buildGoogleMapSection($data);
+    $html .= '</div>';
+
+    // 4. Additional Parcels
+    $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildCandidateParcelsSection($data);
+    $html .= '</div>';
+
+    // 5. Governance
+    $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildGovernanceSection($data);
+    $html .= '</div>';
 
     return $html;
 }
@@ -168,15 +185,16 @@ function buildGoogleMapSection(array $data): string
         return '';
     }
 
-    $html = buildSectionHeader('Location Map', 'map.png');
+    // Use satellite map + correct icon
+    $html = buildSectionHeader('Location Map', 'map.png');   // or 'satellite.png' if available
 
     $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?' .
         'center=' . $lat . ',' . $lng .
-        '&zoom=18&size=900x450&maptype=roadmap' .
+        '&zoom=19&size=900x500&maptype=satellite' .   // ← Satellite view
         '&markers=color:red%7C' . $lat . ',' . $lng .
         '&key=' . (skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: '');
 
-    $html .= '<div style="text-align:center; margin:12px 0;">';
+    $html .= '<div style="text-align:center; margin:12px 0; page-break-inside:avoid;">';
     $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" alt="Location Map">';
     $html .= '</div>';
 
