@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — actions.php
-//  Version: 1.2.0
+//  Version: 1.3.0
 //  Centralized Action Logging Layer (activitySessionId)
 // ======================================================================
 
@@ -49,6 +49,29 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         return;
     }
 
+    // ─────────────────────────────
+    // Structured Action Data (NEW)
+    // ─────────────────────────────
+    $actionPayloadData = null;
+    if (isset($entry['actionPayloadData'])) {
+        $actionPayloadData = is_string($entry['actionPayloadData'])
+            ? $entry['actionPayloadData']
+            : json_encode(
+                $entry['actionPayloadData'],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+    }
+
+    $actionResponseData = null;
+    if (isset($entry['actionResponseData'])) {
+        $actionResponseData = is_string($entry['actionResponseData'])
+            ? $entry['actionResponseData']
+            : json_encode(
+                $entry['actionResponseData'],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+    }
+
     // Truncate
     $promptText = function_exists('mb_substr')
         ? mb_substr((string)$entry['promptText'], 0, 5000)
@@ -61,15 +84,16 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         : null;
 
     // ─────────────────────────────
-    // Insert — NEW COLUMN
+    // Insert — NEW COLUMNS
     // ─────────────────────────────
     try {
         $stmt = $db->prepare("
             INSERT INTO tblActions (
                 actionTypeId, contactId, actionOrigin, actionUnix, activitySessionId,
-                promptText, responseText, intent, intentConfidence,
+                promptText, responseText, actionPayloadData, actionResponseData,
+                intent, intentConfidence,
                 ipAddress, latitude, longitude, userAgent
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -77,9 +101,11 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             $contactId,
             $origin,
             $unixTime,
-            $activitySessionId,           // ← New column
+            $activitySessionId,
             $promptText,
             $response,
+            $actionPayloadData,
+            $actionResponseData,
             $intent,
             $confidence,
             $ipAddress,
