@@ -1250,13 +1250,20 @@ if ($intent === "parcel_review" ||
 
         insertActionPrompt([
             'actionTypeId'      => 12,
-            'contactId'         => $_SESSION['contactId'] ?? 0,   // ← ADD THIS LINE
+            'contactId'         => $_SESSION['contactId'] ?? 0,
+
             'promptText'        => $addressToReview,
             'responseText'      => $resolutionData['summary'] ?? null,
+
+            'actionPayloadData' => $input,
+            'actionResponseData'=> $resolutionData,
+
             'intent'            => 'location.review',
             'intentConfidence'  => 0.90,
+
             'latitude'          => $resolutionData['google']['latitude'] ?? null,
             'longitude'         => $resolutionData['google']['longitude'] ?? null,
+
             'origin'            => 1,
             'createdUnixTime'   => time(),
         ], $db);
