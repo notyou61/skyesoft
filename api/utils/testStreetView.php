@@ -41,8 +41,17 @@ error_log("[STREETVIEW TEST] Google Key present: YES");
 // USE THE SAME FUNCTION AS CONTACT PROPOSAL
 // =====================================================
 
+$reportPath = __DIR__ . '/../reports/contactProposalReport.php';
+
+if (file_exists($reportPath)) {
+    require_once $reportPath;
+    error_log("[STREETVIEW TEST] Loaded contactProposalReport.php");
+} else {
+    die("Could not find contactProposalReport.php at: " . $reportPath);
+}
+
 if (!function_exists('generateStreetViewImage')) {
-    require_once __DIR__ . '/../reports/contactProposalReport.php';
+    die("generateStreetViewImage function not found");
 }
 
 error_log("[STREETVIEW TEST] Calling generateStreetViewImage()");
