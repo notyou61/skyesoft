@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Satellite Fallback + Interactive Link + Save
+// Street View Only + Save File
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -34,18 +34,18 @@ if (empty($googleKey)) {
 }
 
 // =====================================================
-// BUILD VISUAL
+// BUILD STREET VIEW
 // =====================================================
 
-$staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
-    . 'center=' . $lat . ',' . $lng
-    . '&zoom=18&size=900x500&maptype=satellite'
-    . '&markers=color:red%7C' . $lat . ',' . $lng
+$streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
+    . '?size=900x500'
+    . '&location=' . $lat . ',' . $lng
+    . '&heading=270'
+    . '&fov=90'
+    . '&pitch=0'
     . '&key=' . urlencode($googleKey);
 
-$interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192";
-
-// Save the image to disk
+// Save the image
 $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
 if (!is_dir($ephemeralDir)) {
     mkdir($ephemeralDir, 0755, true);
@@ -54,13 +54,15 @@ if (!is_dir($ephemeralDir)) {
 $filename = 'streetview-' . uniqid() . '.jpg';
 $fullPath = $ephemeralDir . $filename;
 
-$imageData = @file_get_contents($staticMapUrl);
+$imageData = @file_get_contents($streetViewUrl);
 
 if ($imageData && file_put_contents($fullPath, $imageData)) {
     echo "<p><strong>Image saved:</strong> " . $filename . "</p>";
 } else {
     echo "<p>Failed to save image</p>";
 }
+
+$interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192";
 
 ?>
 <!DOCTYPE html>
@@ -79,8 +81,7 @@ if ($imageData && file_put_contents($fullPath, $imageData)) {
 
 <p><strong>Address:</strong> <?= htmlspecialchars($address) ?></p>
 
-<h3>Satellite View (Fallback)</h3>
-<img src="<?= htmlspecialchars($staticMapUrl) ?>" alt="Satellite View">
+<img src="<?= htmlspecialchars($streetViewUrl) ?>" alt="Street View">
 
 <p style="text-align:center; margin-top:10px;">
     <a href="<?= htmlspecialchars($interactiveUrl) ?>" target="_blank" style="color:#14377C; text-decoration:underline;">
@@ -90,8 +91,8 @@ if ($imageData && file_put_contents($fullPath, $imageData)) {
 
 <hr>
 
-<h3>Generated Satellite URL</h3>
-<pre><?= htmlspecialchars($staticMapUrl) ?></pre>
+<h3>Generated Street View URL</h3>
+<pre><?= htmlspecialchars($streetViewUrl) ?></pre>
 
 </body>
 </html>
