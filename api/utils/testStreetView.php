@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Street View Only + Save File
+// Street View Only + Save File + Logging
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -21,6 +21,8 @@ $lat = 33.4720564;
 $lng = -111.9902556;
 $address = '2252 N 44th St Phoenix, AZ 85008';
 
+error_log("[STREETVIEW TEST] Starting test for address: " . $address);
+
 // =====================================================
 // GOOGLE API KEY
 // =====================================================
@@ -32,6 +34,8 @@ $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
 if (empty($googleKey)) {
     die('Google API Key Missing - Check your .env file');
 }
+
+error_log("[STREETVIEW TEST] Google Key present: YES");
 
 // =====================================================
 // BUILD STREET VIEW
@@ -45,21 +49,41 @@ $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
     . '&pitch=0'
     . '&key=' . urlencode($googleKey);
 
+error_log("[STREETVIEW TEST] Generated URL: " . $streetViewUrl);
+
 // Save the image
 $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
 if (!is_dir($ephemeralDir)) {
     mkdir($ephemeralDir, 0755, true);
+    error_log("[STREETVIEW TEST] Created directory: " . $ephemeralDir);
 }
 
 $filename = 'streetview-' . uniqid() . '.jpg';
 $fullPath = $ephemeralDir . $filename;
 
+error_log("[STREETVIEW TEST] Attempting to save to: " . $fullPath);
+
 $imageData = @file_get_contents($streetViewUrl);
 
-if ($imageData && file_put_contents($fullPath, $imageData)) {
-    echo "<p><strong>Image saved:</strong> " . $filename . "</p>";
+if ($imageData) {
+    $size = strlen($imageData);
+    error_log("[STREETVIEW TEST] Received " . $size . " bytes");
+
+    if ($size > 5000) {  // Real image check
+        if (file_put_contents($fullPath, $imageData)) {
+            echo "<p><strong>Image saved:</strong> " . $filename . " (" . round($size / 1024, 1) . " KB)</p>";
+            error_log("[STREETVIEW TEST] ✅ Successfully saved: " . $fullPath);
+        } else {
+            echo "<p>Failed to save image to disk</p>";
+            error_log("[STREETVIEW TEST] ❌ Failed to write file");
+        }
+    } else {
+        echo "<p>Received placeholder image from Google (" . $size . " bytes)</p>";
+        error_log("[STREETVIEW TEST] ⚠️ Placeholder image received (too small)");
+    }
 } else {
-    echo "<p>Failed to save image</p>";
+    echo "<p>Failed to download image from Google</p>";
+    error_log("[STREETVIEW TEST] ❌ file_get_contents failed");
 }
 
 $interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192";
