@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Dynamic + Fallback
+// Using Payload Data
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -14,12 +14,12 @@ require_once __DIR__ . '/../utils/envLoader.php';
 skyesoftLoadEnv();
 
 // =====================================================
-// TEST ADDRESS
+// TEST ADDRESS FROM PAYLOAD
 // =====================================================
 
-$lat = 33.4720564;
-$lng = -111.9902556;
-$address = '2252 N 44th St Phoenix, AZ 85008';
+$lat = 33.4848225;
+$lng = -112.1288313;
+$address = '3145 N 33rd Ave Phoenix, AZ 85017';
 
 error_log("[STREETVIEW TEST] Starting test for address: " . $address);
 
@@ -36,57 +36,71 @@ if (empty($googleKey)) {
 }
 
 // =====================================================
-// TRY DYNAMIC PANOID
+// STANDALONE generateStreetViewImage
 // =====================================================
 
-$metadataUrl = 'https://maps.googleapis.com/maps/api/streetview/metadata?'
-    . 'location=' . $lat . ',' . $lng
-    . '&key=' . urlencode($googleKey);
+function generateStreetViewImage(
+    string $lat,
+    string $lng,
+    string $googleKey,
+    string $address = ''
+): ?string
+{
+    if (empty($googleKey) || empty($lat) || empty($lng)) {
+        error_log("[STREETVIEW TEST] Missing lat, lng or API key");
+        return null;
+    }
 
-$metadataJson = @file_get_contents($metadataUrl);
-$metadata = json_decode($metadataJson, true);
+    $heading = 270; // West for this address
 
-$panoid = $metadata['pano'] ?? null;
-
-error_log("[STREETVIEW TEST] Panoid: " . ($panoid ?: 'NOT FOUND'));
-
-// =====================================================
-// BUILD STREET VIEW URL
-// =====================================================
-
-if ($panoid) {
-    $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
-        . '?size=900x500'
-        . '&pano=' . $panoid
-        . '&heading=0'
-        . '&fov=90'
-        . '&pitch=0'
-        . '&key=' . urlencode($googleKey);
-} else {
-    $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
-        . '?size=900x500'
+    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
         . '&location=' . $lat . ',' . $lng
-        . '&heading=270'
-        . '&fov=90'
-        . '&pitch=0'
-        . '&key=' . urlencode($googleKey);
+        . '&heading=' . $heading
+        . '&pitch=5'
+        . '&fov=85'
+        . '&key=' . $googleKey;
+
+    error_log("[STREETVIEW TEST] Calling URL: " . $url);
+
+    $imageData = @file_get_contents($url);
+
+    if ($imageData === false || strlen($imageData) < 1000) {
+        error_log("[STREETVIEW TEST] Google returned invalid/small image");
+        return null;
+    }
+
+    // Save the image
+    $ephemeralDir = __DIR__ . '/../../data/runtimeEphemeral/streetview/';
+    if (!is_dir($ephemeralDir)) {
+        mkdir($ephemeralDir, 0755, true);
+    }
+
+    $tempPath = $ephemeralDir . 'streetview-' . uniqid() . '.jpg';
+
+    if (file_put_contents($tempPath, $imageData) === false) {
+        error_log("[STREETVIEW TEST] Failed to write image to disk");
+        return null;
+    }
+
+    error_log("[STREETVIEW TEST] ✅ Saved: " . $tempPath);
+    return $tempPath;
 }
 
-// Save the image
-$ephemeralDir = __DIR__ . '/../../data/runtimeEphemeral/streetview/';
-if (!is_dir($ephemeralDir)) {
-    mkdir($ephemeralDir, 0755, true);
-}
+// =====================================================
+// CALL IT
+// =====================================================
 
-$filename = 'streetview-' . uniqid() . '.jpg';
-$fullPath = $ephemeralDir . $filename;
+$streetViewPath = generateStreetViewImage(
+    (string)$lat,
+    (string)$lng,
+    $googleKey,
+    $address
+);
 
-$imageData = @file_get_contents($streetViewUrl);
-
-if ($imageData && file_put_contents($fullPath, $imageData)) {
-    echo "<p><strong>Image saved:</strong> " . $filename . "</p>";
+if ($streetViewPath) {
+    echo "<p><strong>Image saved:</strong> " . basename($streetViewPath) . "</p>";
 } else {
-    echo "<p>Failed to save image</p>";
+    echo "<p>generateStreetViewImage failed</p>";
 }
 
 $interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192";
@@ -108,7 +122,11 @@ $interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/da
 
 <p><strong>Address:</strong> <?= htmlspecialchars($address) ?></p>
 
-<img src="<?= htmlspecialchars($streetViewUrl) ?>" alt="Street View">
+<?php if ($streetViewPath && file_exists($streetViewPath)): ?>
+    <img src="<?= htmlspecialchars($streetViewPath) ?>" alt="Street View">
+<?php else: ?>
+    <p>No image generated</p>
+<?php endif; ?>
 
 <p style="text-align:center; margin-top:10px;">
     <a href="<?= htmlspecialchars($interactiveUrl) ?>" target="_blank" style="color:#14377C; text-decoration:underline;">
