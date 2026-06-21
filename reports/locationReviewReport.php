@@ -220,20 +220,57 @@ function buildStreetViewSection(array $data): string
 
     if ($streetViewPath && file_exists($streetViewPath)) {
 
-        // === IMAGE ===
+        // === Use Pre-Generated Image ===
         $html .= '<div style="text-align:center; margin:4px 0 8px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewPath) . '" ';
         $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
         $html .= 'alt="Street View of Location">';
         $html .= '</div>';
 
-        // === CAPTION ===
         $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin:0 0 8px 0;">';
         $html .= 'Google Street View • ' . htmlspecialchars($data['inputAddress'] ?? 'Unknown Address');
         $html .= '</p>';
 
+    } else if ($lat && $lng) {
+
+        // === Dynamic Fallback ===
+        $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY');
+
+        if ($googleKey) {
+
+            $address = trim((string)($data['inputAddress'] ?? ''));
+
+            preg_match('/^\s*(\d+)/', $address, $matches);
+            $streetNumber = isset($matches[1]) ? (int)$matches[1] : 0;
+
+            $heading = ($streetNumber % 2 === 0) ? 90 : 270;
+
+            $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
+                . '?size=900x500'
+                . '&location=' . $lat . ',' . $lng
+                . '&heading=' . $heading
+                . '&fov=90'
+                . '&pitch=0'
+                . '&key=' . urlencode($googleKey);
+
+            $html .= '<div style="text-align:center; margin:4px 0 8px 0;">';
+            $html .= '<img src="' . htmlspecialchars($streetViewUrl) . '" ';
+            $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
+            $html .= 'alt="Street View of Location">';
+            $html .= '</div>';
+
+            $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin:0 0 8px 0;">';
+            $html .= 'Google Street View • ' . htmlspecialchars($data['inputAddress'] ?? 'Unknown Address');
+            $html .= '</p>';
+
+        } else {
+            goto placeholder;
+        }
+
     } else {
-        // Placeholder
+        placeholder:
+        // === Placeholder ===
         $html .= '<div class="image-placeholder" style="min-height:260px; display:flex; align-items:center; justify-content:center;">';
         $html .= '<span style="font-size:11pt; color:#555;">📍 Street View imagery unavailable at this time</span>';
         $html .= '</div>';
