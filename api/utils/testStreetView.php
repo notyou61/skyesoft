@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Using Payload Data
+// Using Payload Data + Adjusted Heading
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -51,7 +51,7 @@ function generateStreetViewImage(
         return null;
     }
 
-    $heading = 270; // West for this address
+    $heading = 0; // Try North for this address (adjust as needed)
 
     $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
         . '&location=' . $lat . ',' . $lng
