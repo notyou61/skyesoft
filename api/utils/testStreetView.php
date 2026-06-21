@@ -51,7 +51,7 @@ function generateStreetViewImage(
         return null;
     }
 
-    $heading = 0; // Try North for this address (adjust as needed)
+    $heading = 90; // Adjusted for this address (East)
 
     $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
         . '&location=' . $lat . ',' . $lng
@@ -123,7 +123,7 @@ $interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/da
 <p><strong>Address:</strong> <?= htmlspecialchars($address) ?></p>
 
 <?php if ($streetViewPath && file_exists($streetViewPath)): ?>
-    <img src="<?= htmlspecialchars($streetViewPath) ?>" alt="Street View">
+    <img src="/skyesoft/data/runtimeEphemeral/streetview/<?= basename($streetViewPath) ?>" alt="Street View">
 <?php else: ?>
     <p>No image generated</p>
 <?php endif; ?>
