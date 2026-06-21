@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Using Payload Data + Adjusted Heading
+// Using Adjusted Lat/Lng
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -17,9 +17,9 @@ skyesoftLoadEnv();
 // TEST ADDRESS FROM PAYLOAD
 // =====================================================
 
-$lat = 33.4848225;
-$lng = -112.1288313;
-$address = '3145 N 33rd Ave Phoenix, AZ 85017';
+$lat = 33.4721;
+$lng = -111.9903;
+$address = '2252 N 44th St Phoenix, AZ 85008';
 
 error_log("[STREETVIEW TEST] Starting test for address: " . $address);
 
@@ -51,7 +51,7 @@ function generateStreetViewImage(
         return null;
     }
 
-    $heading = 90; // Adjusted for this address (East)
+    $heading = 270; // West for this address
 
     $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
         . '&location=' . $lat . ',' . $lng
