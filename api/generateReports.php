@@ -299,6 +299,8 @@ try {
             } else {
                 error_log("[IMAGES] ❌ Street View generation failed");
             }
+        } else {
+            error_log("[IMAGES] Skipping Street View - missing lat/lng or key");
         }
     }
 
