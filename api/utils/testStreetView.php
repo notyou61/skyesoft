@@ -51,8 +51,12 @@ $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
 
 error_log("[STREETVIEW TEST] Generated URL: " . $streetViewUrl);
 
-// Save the image
-$ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
+// =====================================================
+// SAVE STREET VIEW IMAGE
+// =====================================================
+
+$ephemeralDir = __DIR__ . '/../../data/runtimeEphemeral/streetview/';
+
 if (!is_dir($ephemeralDir)) {
     mkdir($ephemeralDir, 0755, true);
     error_log("[STREETVIEW TEST] Created directory: " . $ephemeralDir);
@@ -67,7 +71,7 @@ $imageData = @file_get_contents($streetViewUrl);
 
 if ($imageData) {
     $size = strlen($imageData);
-    error_log("[STREETVIEW TEST] Received " . $size . " bytes");
+    error_log("[STREETVIEW TEST] Received " . $size . " bytes from Google");
 
     if ($size > 5000) {  // Real image check
         if (file_put_contents($fullPath, $imageData)) {
