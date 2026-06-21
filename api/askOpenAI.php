@@ -1255,11 +1255,8 @@ if ($intent === "parcel_review" ||
             'promptText'        => $addressToReview,
             'responseText'      => $resolutionData['summary'] ?? null,
 
-            'actionPayloadData' => $resolutionData,           // Full structured data
-            'actionResponseData'=> [
-                'cardType'      => 'parcel-review-card',
-                'parcelCount'   => $resolutionData['parcel']['parcelCount'] ?? 0
-            ],
+            'actionPayloadData' => $input,                    // Original request payload
+            'actionResponseData'=> $resolutionData,           // Full response JSON
 
             'intent'            => 'location.review',
             'intentConfidence'  => 0.90,
