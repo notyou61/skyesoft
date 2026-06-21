@@ -67,11 +67,12 @@ if (
 // STREET VIEW URL
 // =====================================================
 
-$streetViewUrl =
-    'https://maps.googleapis.com/maps/api/streetview'
+$panoid = 'eTWSWopwFhk1iy9PgByh6A';  // From your Google Maps link
+
+$streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
     . '?size=900x500'
-    . '&location=' . urlencode($address)
-    . '&heading=' . $heading
+    . '&pano=' . $panoid
+    . '&heading=0'
     . '&fov=90'
     . '&pitch=0'
     . '&key=' . urlencode($googleKey);
