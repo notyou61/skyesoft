@@ -272,13 +272,23 @@ try {
         // =====================================================
         // PRE-GENERATE STREET VIEW IMAGE
         // =====================================================
-        $lat = $input['google']['latitude'] ?? $input['latitude'] ?? null;
-        $lng = $input['google']['longitude'] ?? $input['longitude'] ?? null;
-        $address = $input['inputAddress'] ?? $input['locationAddress'] ?? '';
+        $lat = $input['google']['latitude'] 
+            ?? $input['latitude'] 
+            ?? null;
+
+        $lng = $input['google']['longitude'] 
+            ?? $input['longitude'] 
+            ?? null;
+
+        $address = $input['inputAddress'] 
+            ?? $input['locationAddress'] 
+            ?? '';
 
         $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
             ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
             ?: '';
+
+        error_log("[IMAGES] Location Review - lat=$lat, lng=$lng, key present? " . (!empty($googleKey) ? 'YES' : 'NO'));
 
         if ($lat && $lng && $googleKey) {
             error_log("[IMAGES] Generating Street View for location review...");
