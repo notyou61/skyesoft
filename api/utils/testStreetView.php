@@ -17,7 +17,7 @@ skyesoftLoadEnv();
 // TEST ADDRESS
 // =====================================================
 
-$address = '2252 N 44th St Phoenix, AZ 85008';   // Change this to test different addresses
+$address = '2252 N 44th St Phoenix, AZ 85008';
 
 // =====================================================
 // GOOGLE API KEY
@@ -32,39 +32,7 @@ if (empty($googleKey)) {
 }
 
 // =====================================================
-// ADDRESS PARITY TEST
-// =====================================================
-
-preg_match('/^\s*(\d+)/', $address, $matches);
-
-$streetNumber = isset($matches[1])
-    ? (int)$matches[1]
-    : 0;
-
-$isOdd = ($streetNumber % 2) === 1;
-
-// =====================================================
-// HEADING TEST
-// =====================================================
-
-$heading = 180;
-
-if (
-    stripos($address, 'AVE') !== false ||
-    stripos($address, 'AVENUE') !== false ||
-    stripos($address, 'RD') !== false ||
-    stripos($address, 'ROAD') !== false
-) {
-
-    $heading = $isOdd ? 180 : 0;
-
-} else {
-
-    $heading = $isOdd ? 90 : 270;
-}
-
-// =====================================================
-// STREET VIEW URL
+// STREET VIEW USING PANOID (Exact View)
 // =====================================================
 
 $panoid = 'eTWSWopwFhk1iy9PgByh6A';  // From your Google Maps link
@@ -93,9 +61,6 @@ $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
 <h2>Skyesoft Street View Test</h2>
 
 <p><strong>Address:</strong> <?= htmlspecialchars($address) ?></p>
-<p><strong>Street Number:</strong> <?= $streetNumber ?></p>
-<p><strong>Odd Address:</strong> <?= $isOdd ? 'YES' : 'NO' ?></p>
-<p><strong>Heading:</strong> <?= $heading ?></p>
 
 <img src="<?= htmlspecialchars($streetViewUrl) ?>" alt="Street View">
 
