@@ -17,7 +17,9 @@ skyesoftLoadEnv();
 // TEST ADDRESS
 // =====================================================
 
-$address = '2252 N 44th St Phoenix, AZ 85008';   // Change this to test different addresses
+$address = '2252 N 44th St Phoenix, AZ 85008';
+$lat = 33.4720564;
+$lng = -111.9902556;
 
 // =====================================================
 // GOOGLE API KEY
@@ -32,49 +34,10 @@ if (empty($googleKey)) {
 }
 
 // =====================================================
-// ADDRESS PARITY TEST
+// TEST MULTIPLE HEADINGS
 // =====================================================
 
-preg_match('/^\s*(\d+)/', $address, $matches);
-
-$streetNumber = isset($matches[1])
-    ? (int)$matches[1]
-    : 0;
-
-$isOdd = ($streetNumber % 2) === 1;
-
-// =====================================================
-// HEADING TEST
-// =====================================================
-
-$heading = 180;
-
-if (
-    stripos($address, 'AVE') !== false ||
-    stripos($address, 'AVENUE') !== false ||
-    stripos($address, 'RD') !== false ||
-    stripos($address, 'ROAD') !== false
-) {
-
-    $heading = $isOdd ? 180 : 0;
-
-} else {
-
-    $heading = $isOdd ? 90 : 270;
-}
-
-// =====================================================
-// STREET VIEW URL
-// =====================================================
-
-$streetViewUrl =
-    'https://maps.googleapis.com/maps/api/streetview'
-    . '?size=900x500'
-    . '&location=' . urlencode($address)
-    . '&heading=' . $heading
-    . '&fov=90'
-    . '&pitch=0'
-    . '&key=' . urlencode($googleKey);
+$headings = [0, 90, 180, 270, 45, 135, 225, 315];
 
 ?>
 <!DOCTYPE html>
@@ -83,7 +46,7 @@ $streetViewUrl =
     <title>Street View Test</title>
     <style>
         body { font-family:Arial, sans-serif; padding:20px; }
-        img { max-width:100%; border:1px solid #bbb; border-radius:6px; }
+        img { max-width:100%; border:1px solid #bbb; border-radius:6px; margin:10px 0; }
         pre { background:#f5f5f5; padding:10px; overflow:auto; }
     </style>
 </head>
@@ -92,16 +55,23 @@ $streetViewUrl =
 <h2>Skyesoft Street View Test</h2>
 
 <p><strong>Address:</strong> <?= htmlspecialchars($address) ?></p>
-<p><strong>Street Number:</strong> <?= $streetNumber ?></p>
-<p><strong>Odd Address:</strong> <?= $isOdd ? 'YES' : 'NO' ?></p>
-<p><strong>Heading:</strong> <?= $heading ?></p>
 
-<img src="<?= htmlspecialchars($streetViewUrl) ?>" alt="Street View">
+<?php foreach ($headings as $heading): ?>
 
-<hr>
+    <h3>Heading: <?= $heading ?></h3>
+    <?php
+    $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
+        . '?size=900x500'
+        . '&location=' . $lat . ',' . $lng
+        . '&heading=' . $heading
+        . '&fov=90'
+        . '&pitch=0'
+        . '&key=' . urlencode($googleKey);
+    ?>
+    <img src="<?= htmlspecialchars($streetViewUrl) ?>" alt="Street View <?= $heading ?>">
+    <pre><?= htmlspecialchars($streetViewUrl) ?></pre>
 
-<h3>Generated URL</h3>
-<pre><?= htmlspecialchars($streetViewUrl) ?></pre>
+<?php endforeach; ?>
 
 </body>
 </html>
