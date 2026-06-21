@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Dynamic Panoid + Fallback
+// Satellite Fallback + Interactive Link
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -34,45 +34,16 @@ if (empty($googleKey)) {
 }
 
 // =====================================================
-// TRY TO GET PANOID
+// BUILD VISUAL
 // =====================================================
 
-$metadataUrl = 'https://maps.googleapis.com/maps/api/streetview/metadata?'
-    . 'location=' . $lat . ',' . $lng
+$staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
+    . 'center=' . $lat . ',' . $lng
+    . '&zoom=18&size=900x500&maptype=satellite'
+    . '&markers=color:red%7C' . $lat . ',' . $lng
     . '&key=' . urlencode($googleKey);
 
-$metadataJson = @file_get_contents($metadataUrl);
-$metadata = json_decode($metadataJson, true);
-
-$panoid = $metadata['pano'] ?? null;
-
-echo "<p><strong>Panoid Found:</strong> " . ($panoid ? $panoid : 'NO') . "</p>";
-
-// =====================================================
-// BUILD STREET VIEW URL
-// =====================================================
-
-$panoid = 'eTWSWopwFhk1iy9PgByh6A';  // Good one from your Google Maps link
-
-if ($panoid) {
-
-$streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
-    . '?size=900x500'
-    . '&pano=' . $panoid
-    . '&heading=0'
-    . '&fov=90'
-    . '&pitch=0'
-    . '&key=' . urlencode($googleKey);
-} else {
-    // Fallback to heading 270 (West) for this address
-    $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
-        . '?size=900x500'
-        . '&location=' . $lat . ',' . $lng
-        . '&heading=270'
-        . '&fov=90'
-        . '&pitch=0'
-        . '&key=' . urlencode($googleKey);
-}
+$interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192";
 
 ?>
 <!DOCTYPE html>
@@ -91,12 +62,19 @@ $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
 
 <p><strong>Address:</strong> <?= htmlspecialchars($address) ?></p>
 
-<img src="<?= htmlspecialchars($streetViewUrl) ?>" alt="Street View">
+<h3>Satellite View (Fallback)</h3>
+<img src="<?= htmlspecialchars($staticMapUrl) ?>" alt="Satellite View">
+
+<p style="text-align:center; margin-top:10px;">
+    <a href="<?= htmlspecialchars($interactiveUrl) ?>" target="_blank" style="color:#14377C; text-decoration:underline;">
+        Open Interactive Street View in Google Maps
+    </a>
+</p>
 
 <hr>
 
-<h3>Generated URL</h3>
-<pre><?= htmlspecialchars($streetViewUrl) ?></pre>
+<h3>Generated Satellite URL</h3>
+<pre><?= htmlspecialchars($staticMapUrl) ?></pre>
 
 </body>
 </html>
