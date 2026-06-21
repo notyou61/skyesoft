@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Independent Test Utility
+// Dynamic Panoid Test
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -17,6 +17,8 @@ skyesoftLoadEnv();
 // TEST ADDRESS
 // =====================================================
 
+$lat = 33.4720564;
+$lng = -111.9902556;
 $address = '2252 N 44th St Phoenix, AZ 85008';
 
 // =====================================================
@@ -32,18 +34,46 @@ if (empty($googleKey)) {
 }
 
 // =====================================================
-// STREET VIEW USING PANOID (Exact View)
+// GET PANOID FROM GOOGLE (Metadata API)
 // =====================================================
 
-$panoid = 'eTWSWopwFhk1iy9PgByh6A';  // From your Google Maps link
-
-$streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
-    . '?size=900x500'
-    . '&pano=' . $panoid
-    . '&heading=0'
-    . '&fov=45'
-    . '&pitch=0'
+$metadataUrl = 'https://maps.googleapis.com/maps/api/streetview/metadata?'
+    . 'location=' . $lat . ',' . $lng
     . '&key=' . urlencode($googleKey);
+
+$metadataJson = file_get_contents($metadataUrl);
+$metadata = json_decode($metadataJson, true);
+
+$panoid = $metadata['pano'] ?? null;
+
+if ($panoid) {
+    echo "<p><strong>Found Panoid:</strong> $panoid</p>";
+} else {
+    echo "<p><strong>No Panoid Found</strong> - Using fallback heading</p>";
+    $panoid = null;
+}
+
+// =====================================================
+// STREET VIEW URL
+// =====================================================
+
+if ($panoid) {
+    $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
+        . '?size=900x500'
+        . '&pano=' . $panoid
+        . '&heading=0'
+        . '&fov=90'
+        . '&pitch=0'
+        . '&key=' . urlencode($googleKey);
+} else {
+    $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
+        . '?size=900x500'
+        . '&location=' . $lat . ',' . $lng
+        . '&heading=270'
+        . '&fov=90'
+        . '&pitch=0'
+        . '&key=' . urlencode($googleKey);
+}
 
 ?>
 <!DOCTYPE html>
