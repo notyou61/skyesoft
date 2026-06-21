@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Dynamic Panoid Test
+// Dynamic Panoid + Fallback
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -34,27 +34,22 @@ if (empty($googleKey)) {
 }
 
 // =====================================================
-// GET PANOID FROM GOOGLE (Metadata API)
+// TRY TO GET PANOID
 // =====================================================
 
 $metadataUrl = 'https://maps.googleapis.com/maps/api/streetview/metadata?'
     . 'location=' . $lat . ',' . $lng
     . '&key=' . urlencode($googleKey);
 
-$metadataJson = file_get_contents($metadataUrl);
+$metadataJson = @file_get_contents($metadataUrl);
 $metadata = json_decode($metadataJson, true);
 
 $panoid = $metadata['pano'] ?? null;
 
-if ($panoid) {
-    echo "<p><strong>Found Panoid:</strong> $panoid</p>";
-} else {
-    echo "<p><strong>No Panoid Found</strong> - Using fallback heading</p>";
-    $panoid = null;
-}
+echo "<p><strong>Panoid Found:</strong> " . ($panoid ? $panoid : 'NO') . "</p>";
 
 // =====================================================
-// STREET VIEW URL
+// BUILD STREET VIEW URL
 // =====================================================
 
 if ($panoid) {
@@ -66,6 +61,7 @@ if ($panoid) {
         . '&pitch=0'
         . '&key=' . urlencode($googleKey);
 } else {
+    // Fallback to heading 270 (West) for this address
     $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
         . '?size=900x500'
         . '&location=' . $lat . ',' . $lng
