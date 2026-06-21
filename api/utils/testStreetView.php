@@ -52,14 +52,17 @@ echo "<p><strong>Panoid Found:</strong> " . ($panoid ? $panoid : 'NO') . "</p>";
 // BUILD STREET VIEW URL
 // =====================================================
 
+$panoid = 'eTWSWopwFhk1iy9PgByh6A';  // Good one from your Google Maps link
+
 if ($panoid) {
-    $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
-        . '?size=900x500'
-        . '&pano=' . $panoid
-        . '&heading=0'
-        . '&fov=90'
-        . '&pitch=0'
-        . '&key=' . urlencode($googleKey);
+
+$streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
+    . '?size=900x500'
+    . '&pano=' . $panoid
+    . '&heading=0'
+    . '&fov=90'
+    . '&pitch=0'
+    . '&key=' . urlencode($googleKey);
 } else {
     // Fallback to heading 270 (West) for this address
     $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
