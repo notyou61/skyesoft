@@ -80,7 +80,7 @@ function buildLocationReviewBody(array $data): string
 
     // 1. Location Review Summary
     $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
-    $html .= buildSectionHeader('Location Review Summary', 'information.png');
+    $html .= buildSectionHeader('Location Review Summary', 'pin.png');
     $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6;">';
     $summary = $data['summary'] ?? 'Location review completed.';
     $summary = str_replace(['<br>', '<br/>', '<br />'], ' ', $summary);
@@ -99,12 +99,17 @@ function buildLocationReviewBody(array $data): string
     $html .= buildGoogleMapSection($data);
     $html .= '</div>';
 
-    // 4. Additional Parcels
+    // 4. Street View (NEW)
+    $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
+    $html .= buildStreetViewSection($data);
+    $html .= '</div>';
+
+    // 5. Additional Parcels
     $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildCandidateParcelsSection($data);
     $html .= '</div>';
 
-    // 5. Governance
+    // 6. Governance
     $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildGovernanceSection($data);
     $html .= '</div>';
@@ -196,6 +201,53 @@ function buildGoogleMapSection(array $data): string
     $html .= '<div style="text-align:center; margin:12px 0; page-break-inside:avoid;">';
     $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" alt="Location Map">';
     $html .= '</div>';
+
+    return $html;
+}
+
+function buildStreetViewSection(array $data): string
+{
+    $google = $data['google'] ?? [];
+
+    $lat = $google['latitude'] ?? null;
+    $lng = $google['longitude'] ?? null;
+
+    if (!$lat || !$lng) {
+        return '';
+    }
+
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
+        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY');
+
+    if (!$googleKey) {
+        return '';
+    }
+
+    $address = trim((string)($data['inputAddress'] ?? ''));
+
+    // Simple heading logic
+    preg_match('/^\s*(\d+)/', $address, $matches);
+    $streetNumber = isset($matches[1]) ? (int)$matches[1] : 0;
+
+    $heading = ($streetNumber % 2 === 0) ? 90 : 270;   // Basic East/West logic
+
+    $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
+        . '?size=900x500'
+        . '&location=' . $lat . ',' . $lng
+        . '&heading=' . $heading
+        . '&fov=90'
+        . '&pitch=0'
+        . '&key=' . urlencode($googleKey);
+
+    $html = buildSectionHeader('Street View', 'camera.png');
+
+    $html .= '
+        <div style="text-align:center; margin:12px 0; page-break-inside:avoid;">
+            <img src="' . htmlspecialchars($streetViewUrl) . '" 
+                 style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
+                 alt="Street View">
+        </div>
+    ';
 
     return $html;
 }
