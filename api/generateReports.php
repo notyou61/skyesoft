@@ -243,7 +243,7 @@ try {
     // =====================================================
     if ($reportType === 'location_review' && $actionId > 0) {
 
-        $pdo = getPDO();   // ← Use the same pattern as your other files
+        $pdo = getPDO();
 
         $stmt = $pdo->prepare("
             SELECT actionResponseData
@@ -265,9 +265,41 @@ try {
             throw new Exception("Invalid actionResponseData for action {$actionId}");
         }
 
-        $input = array_merge($input, $payload);   // Merge into existing input
+        $input = array_merge($input, $payload);
 
         error_log("[generateReports] Loaded Location Review data from actionId {$actionId}");
+
+        // =====================================================
+        // PRE-GENERATE STREET VIEW IMAGE
+        // =====================================================
+        $lat = $input['google']['latitude'] ?? $input['latitude'] ?? null;
+        $lng = $input['google']['longitude'] ?? $input['longitude'] ?? null;
+        $address = $input['inputAddress'] ?? $input['locationAddress'] ?? '';
+
+        $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+            ?: '';
+
+        if ($lat && $lng && $googleKey) {
+            error_log("[IMAGES] Generating Street View for location review...");
+
+            $streetViewPath = generateStreetViewImage(
+                (string)$lat,
+                (string)$lng,
+                $googleKey,
+                $address
+            );
+
+            if ($streetViewPath) {
+                if (!isset($input['reportArtifacts'])) {
+                    $input['reportArtifacts'] = [];
+                }
+                $input['reportArtifacts']['streetview'] = $streetViewPath;
+                error_log("[IMAGES] ✅ Street View generated: " . $streetViewPath);
+            } else {
+                error_log("[IMAGES] ❌ Street View generation failed");
+            }
+        }
     }
 
     // Generate the report data

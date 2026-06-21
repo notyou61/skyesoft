@@ -207,47 +207,40 @@ function buildGoogleMapSection(array $data): string
 
 function buildStreetViewSection(array $data): string
 {
-    $google = $data['google'] ?? [];
+    $html = '<div class="section">';
 
-    $lat = $google['latitude'] ?? null;
-    $lng = $google['longitude'] ?? null;
+    $html .= buildSectionHeader('Street View Verification', 'camera.png');
 
-    if (!$lat || !$lng) {
-        return '';
+    $html .= '<div style="page-break-inside:avoid !important; break-inside:avoid !important;">';
+
+    $streetViewPath = $data['reportArtifacts']['streetview'] ?? null;
+
+    $lat = $data['google']['latitude'] ?? null;
+    $lng = $data['google']['longitude'] ?? null;
+
+    if ($streetViewPath && file_exists($streetViewPath)) {
+
+        // === IMAGE ===
+        $html .= '<div style="text-align:center; margin:4px 0 8px 0;">';
+        $html .= '<img src="' . htmlspecialchars($streetViewPath) . '" ';
+        $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
+        $html .= 'alt="Street View of Location">';
+        $html .= '</div>';
+
+        // === CAPTION ===
+        $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin:0 0 8px 0;">';
+        $html .= 'Google Street View • ' . htmlspecialchars($data['inputAddress'] ?? 'Unknown Address');
+        $html .= '</p>';
+
+    } else {
+        // Placeholder
+        $html .= '<div class="image-placeholder" style="min-height:260px; display:flex; align-items:center; justify-content:center;">';
+        $html .= '<span style="font-size:11pt; color:#555;">📍 Street View imagery unavailable at this time</span>';
+        $html .= '</div>';
     }
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
-        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY');
-
-    if (!$googleKey) {
-        return '';
-    }
-
-    $address = trim((string)($data['inputAddress'] ?? ''));
-
-    // Simple heading logic
-    preg_match('/^\s*(\d+)/', $address, $matches);
-    $streetNumber = isset($matches[1]) ? (int)$matches[1] : 0;
-
-    $heading = ($streetNumber % 2 === 0) ? 90 : 270;   // Basic East/West logic
-
-    $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
-        . '?size=900x500'
-        . '&location=' . $lat . ',' . $lng
-        . '&heading=' . $heading
-        . '&fov=90'
-        . '&pitch=0'
-        . '&key=' . urlencode($googleKey);
-
-    $html = buildSectionHeader('Street View', 'camera.png');
-
-    $html .= '
-        <div style="text-align:center; margin:12px 0; page-break-inside:avoid;">
-            <img src="' . htmlspecialchars($streetViewUrl) . '" 
-                 style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
-                 alt="Street View">
-        </div>
-    ';
+    $html .= '</div>'; // close inner wrapper
+    $html .= '</div>'; // close .section
 
     return $html;
 }
