@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Using Adjusted Lat/Lng
+// Street View + Satellite Fallback
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -14,7 +14,7 @@ require_once __DIR__ . '/../utils/envLoader.php';
 skyesoftLoadEnv();
 
 // =====================================================
-// TEST ADDRESS FROM PAYLOAD
+// TEST ADDRESS
 // =====================================================
 
 $lat = 33.4721;
@@ -36,71 +36,48 @@ if (empty($googleKey)) {
 }
 
 // =====================================================
-// STANDALONE generateStreetViewImage
+// TRY STREET VIEW
 // =====================================================
 
-function generateStreetViewImage(
-    string $lat,
-    string $lng,
-    string $googleKey,
-    string $address = ''
-): ?string
-{
-    if (empty($googleKey) || empty($lat) || empty($lng)) {
-        error_log("[STREETVIEW TEST] Missing lat, lng or API key");
-        return null;
-    }
+$streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview?size=900x500'
+    . '&location=' . $lat . ',' . $lng
+    . '&heading=0'
+    . '&fov=90'
+    . '&pitch=0'
+    . '&key=' . urlencode($googleKey);
 
-    $heading = 270; // West for this address
+$imageData = @file_get_contents($streetViewUrl);
 
-    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
-        . '&location=' . $lat . ',' . $lng
-        . '&heading=' . $heading
-        . '&pitch=5'
-        . '&fov=85'
-        . '&key=' . $googleKey;
+$isValidStreetView = $imageData && strlen($imageData) > 5000; // Real image check
 
-    error_log("[STREETVIEW TEST] Calling URL: " . $url);
+// =====================================================
+// SAVE OR FALLBACK
+// =====================================================
 
-    $imageData = @file_get_contents($url);
-
-    if ($imageData === false || strlen($imageData) < 1000) {
-        error_log("[STREETVIEW TEST] Google returned invalid/small image");
-        return null;
-    }
-
-    // Save the image
-    $ephemeralDir = __DIR__ . '/../../data/runtimeEphemeral/streetview/';
-    if (!is_dir($ephemeralDir)) {
-        mkdir($ephemeralDir, 0755, true);
-    }
-
-    $tempPath = $ephemeralDir . 'streetview-' . uniqid() . '.jpg';
-
-    if (file_put_contents($tempPath, $imageData) === false) {
-        error_log("[STREETVIEW TEST] Failed to write image to disk");
-        return null;
-    }
-
-    error_log("[STREETVIEW TEST] ✅ Saved: " . $tempPath);
-    return $tempPath;
+$ephemeralDir = __DIR__ . '/../../data/runtimeEphemeral/streetview/';
+if (!is_dir($ephemeralDir)) {
+    mkdir($ephemeralDir, 0755, true);
 }
 
-// =====================================================
-// CALL IT
-// =====================================================
+$filename = 'streetview-' . uniqid() . '.jpg';
+$fullPath = $ephemeralDir . $filename;
 
-$streetViewPath = generateStreetViewImage(
-    (string)$lat,
-    (string)$lng,
-    $googleKey,
-    $address
-);
-
-if ($streetViewPath) {
-    echo "<p><strong>Image saved:</strong> " . basename($streetViewPath) . "</p>";
+if ($isValidStreetView) {
+    file_put_contents($fullPath, $imageData);
+    echo "<p><strong>Street View saved:</strong> " . $filename . "</p>";
+    $imageSrc = "/skyesoft/data/runtimeEphemeral/streetview/" . $filename;
 } else {
-    echo "<p>generateStreetViewImage failed</p>";
+    // Satellite Fallback
+    $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
+        . 'center=' . $lat . ',' . $lng
+        . '&zoom=18&size=900x500&maptype=satellite'
+        . '&markers=color:red%7C' . $lat . ',' . $lng
+        . '&key=' . urlencode($googleKey);
+
+    $imageData = @file_get_contents($staticMapUrl);
+    file_put_contents($fullPath, $imageData);
+    echo "<p><strong>Satellite fallback saved:</strong> " . $filename . "</p>";
+    $imageSrc = "/skyesoft/data/runtimeEphemeral/streetview/" . $filename;
 }
 
 $interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192";
@@ -113,7 +90,6 @@ $interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/da
     <style>
         body { font-family:Arial, sans-serif; padding:20px; }
         img { max-width:100%; border:1px solid #bbb; border-radius:6px; }
-        pre { background:#f5f5f5; padding:10px; overflow:auto; }
     </style>
 </head>
 <body>
@@ -122,11 +98,7 @@ $interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/da
 
 <p><strong>Address:</strong> <?= htmlspecialchars($address) ?></p>
 
-<?php if ($streetViewPath && file_exists($streetViewPath)): ?>
-    <img src="/skyesoft/data/runtimeEphemeral/streetview/<?= basename($streetViewPath) ?>" alt="Street View">
-<?php else: ?>
-    <p>No image generated</p>
-<?php endif; ?>
+<img src="<?= htmlspecialchars($imageSrc) ?>" alt="Location View">
 
 <p style="text-align:center; margin-top:10px;">
     <a href="<?= htmlspecialchars($interactiveUrl) ?>" target="_blank" style="color:#14377C; text-decoration:underline;">
