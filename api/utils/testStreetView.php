@@ -9,25 +9,26 @@ declare(strict_types=1);
 ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
-require_once __DIR__ . '/../includes/config.php';
+// Load Skyesoft environment
+require_once __DIR__ . '/../utils/envLoader.php';
+skyesoftLoadEnv();
 
 // =====================================================
 // TEST ADDRESS
 // =====================================================
 
-$address = '3145 N 33rd Ave Phoenix, AZ 85017';
+$address = '2252 N 44th St Phoenix, AZ 85008';   // Change this to test different addresses
 
 // =====================================================
 // GOOGLE API KEY
 // =====================================================
 
-$googleKey =
-    skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+$googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
     ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
     ?: '';
 
 if (empty($googleKey)) {
-    die('Google API Key Missing');
+    die('Google API Key Missing - Check your .env file');
 }
 
 // =====================================================
@@ -44,8 +45,6 @@ $isOdd = ($streetNumber % 2) === 1;
 
 // =====================================================
 // HEADING TEST
-// Odd = East / South
-// Even = West / North
 // =====================================================
 
 $heading = 180;
@@ -57,19 +56,11 @@ if (
     stripos($address, 'ROAD') !== false
 ) {
 
-    // North/South roadway
-
-    $heading = $isOdd
-        ? 180     // South
-        : 0;      // North
+    $heading = $isOdd ? 180 : 0;
 
 } else {
 
-    // East/West roadway
-
-    $heading = $isOdd
-        ? 90      // East
-        : 270;    // West
+    $heading = $isOdd ? 90 : 270;
 }
 
 // =====================================================
@@ -90,58 +81,26 @@ $streetViewUrl =
 <html>
 <head>
     <title>Street View Test</title>
-
     <style>
-
-        body{
-            font-family:Arial, sans-serif;
-            padding:20px;
-        }
-
-        img{
-            max-width:100%;
-            border:1px solid #bbb;
-            border-radius:6px;
-        }
-
-        pre{
-            background:#f5f5f5;
-            padding:10px;
-            overflow:auto;
-        }
-
+        body { font-family:Arial, sans-serif; padding:20px; }
+        img { max-width:100%; border:1px solid #bbb; border-radius:6px; }
+        pre { background:#f5f5f5; padding:10px; overflow:auto; }
     </style>
 </head>
 <body>
 
 <h2>Skyesoft Street View Test</h2>
 
-<p>
-    <strong>Address:</strong>
-    <?= htmlspecialchars($address) ?>
-</p>
-
-<p>
-    <strong>Street Number:</strong>
-    <?= $streetNumber ?>
-</p>
-
-<p>
-    <strong>Odd Address:</strong>
-    <?= $isOdd ? 'YES' : 'NO' ?>
-</p>
-
-<p>
-    <strong>Heading:</strong>
-    <?= $heading ?>
-</p>
+<p><strong>Address:</strong> <?= htmlspecialchars($address) ?></p>
+<p><strong>Street Number:</strong> <?= $streetNumber ?></p>
+<p><strong>Odd Address:</strong> <?= $isOdd ? 'YES' : 'NO' ?></p>
+<p><strong>Heading:</strong> <?= $heading ?></p>
 
 <img src="<?= htmlspecialchars($streetViewUrl) ?>" alt="Street View">
 
 <hr>
 
 <h3>Generated URL</h3>
-
 <pre><?= htmlspecialchars($streetViewUrl) ?></pre>
 
 </body>
