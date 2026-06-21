@@ -41,7 +41,7 @@ $streetViewUrl = 'https://maps.googleapis.com/maps/api/streetview'
     . '?size=900x500'
     . '&pano=' . $panoid
     . '&heading=0'
-    . '&fov=90'
+    . '&fov=45'
     . '&pitch=0'
     . '&key=' . urlencode($googleKey);
 
