@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - Street View Test
-// Using the same function as contact proposal
+// Standalone version of generateStreetViewImage
 // =====================================================
 
 ini_set('display_errors', '1');
@@ -38,23 +38,59 @@ if (empty($googleKey)) {
 error_log("[STREETVIEW TEST] Google Key present: YES");
 
 // =====================================================
-// USE THE SAME FUNCTION AS CONTACT PROPOSAL
+// STANDALONE generateStreetViewImage (same as contact proposal)
 // =====================================================
 
-$reportPath = __DIR__ . '/../reports/contactProposalReport.php';
+function generateStreetViewImage(
+    string $lat,
+    string $lng,
+    string $googleKey,
+    string $address = ''
+): ?string
+{
+    if (empty($googleKey) || empty($lat) || empty($lng)) {
+        error_log("[STREETVIEW TEST] Missing lat, lng or API key");
+        return null;
+    }
 
-if (file_exists($reportPath)) {
-    require_once $reportPath;
-    error_log("[STREETVIEW TEST] Loaded contactProposalReport.php");
-} else {
-    die("Could not find contactProposalReport.php at: " . $reportPath);
+    $heading = 270; // West for this address
+
+    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
+        . '&location=' . $lat . ',' . $lng
+        . '&heading=' . $heading
+        . '&pitch=5'
+        . '&fov=85'
+        . '&key=' . $googleKey;
+
+    error_log("[STREETVIEW TEST] Calling URL: " . $url);
+
+    $imageData = @file_get_contents($url);
+
+    if ($imageData === false || strlen($imageData) < 1000) {
+        error_log("[STREETVIEW TEST] Google returned invalid/small image");
+        return null;
+    }
+
+    // Save the image
+    $ephemeralDir = __DIR__ . '/../../data/runtimeEphemeral/streetview/';
+    if (!is_dir($ephemeralDir)) {
+        mkdir($ephemeralDir, 0755, true);
+    }
+
+    $tempPath = $ephemeralDir . 'streetview-' . uniqid() . '.jpg';
+
+    if (file_put_contents($tempPath, $imageData) === false) {
+        error_log("[STREETVIEW TEST] Failed to write image to disk");
+        return null;
+    }
+
+    error_log("[STREETVIEW TEST] ✅ Saved: " . $tempPath);
+    return $tempPath;
 }
 
-if (!function_exists('generateStreetViewImage')) {
-    die("generateStreetViewImage function not found");
-}
-
-error_log("[STREETVIEW TEST] Calling generateStreetViewImage()");
+// =====================================================
+// CALL IT
+// =====================================================
 
 $streetViewPath = generateStreetViewImage(
     (string)$lat,
@@ -65,10 +101,8 @@ $streetViewPath = generateStreetViewImage(
 
 if ($streetViewPath) {
     echo "<p><strong>Image saved:</strong> " . basename($streetViewPath) . "</p>";
-    error_log("[STREETVIEW TEST] ✅ generateStreetViewImage succeeded: " . $streetViewPath);
 } else {
     echo "<p>generateStreetViewImage failed</p>";
-    error_log("[STREETVIEW TEST] ❌ generateStreetViewImage failed");
 }
 
 $interactiveUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192";
