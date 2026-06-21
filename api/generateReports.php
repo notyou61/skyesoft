@@ -267,6 +267,7 @@ try {
 
         $input = array_merge($input, $payload);
 
+        error_log("[DEBUG] Payload keys: " . json_encode(array_keys($input)));
         error_log("[generateReports] Loaded Location Review data from actionId {$actionId}");
 
         // =====================================================
