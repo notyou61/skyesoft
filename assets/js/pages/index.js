@@ -1069,23 +1069,6 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📇 Contact Creation (EOP + add) — Clean UX
-        // --------------------------------------------------
-        if (await this.isContactCreationIntent(text, normalized)) {
-            console.log('📇 Contact Intent Detected → Clean Workflow');
-
-            // Suppress BEFORE any further rendering
-            this.suppressRawContactEcho();
-
-            // Show processing state
-            this.renderContactProcessingState();
-
-            // Run AI pipeline
-            await this.executeAICommand(text, activitySessionId);
-            return;
-        }
-
-        // --------------------------------------------------
         // 📸 Street View Workflow (Highest priority for imagery requests)
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
@@ -1100,6 +1083,23 @@ window.SkyIndex = {
 
             // Run dedicated workflow
             await this.executeStreetViewWorkflow(text, activitySessionId, streetViewIntent.address);
+            return;
+        }
+
+        // --------------------------------------------------
+        // 📇 Contact Creation (EOP + add) — Clean UX
+        // --------------------------------------------------
+        if (await this.isContactCreationIntent(text, normalized)) {
+            console.log('📇 Contact Intent Detected → Clean Workflow');
+
+            // Suppress BEFORE any further rendering
+            this.suppressRawContactEcho();
+
+            // Show processing state
+            this.renderContactProcessingState();
+
+            // Run AI pipeline
+            await this.executeAICommand(text, activitySessionId);
             return;
         }
 
@@ -2136,37 +2136,33 @@ window.SkyIndex = {
     // Dedicated Street View Intent (High Priority, Independent of Parcel/Contact)
     // ───────────────────────────────────────────────
     async isStreetViewIntent(text) {
-        if (!text || typeof text !== 'string' || text.length < 10) return false;
+        if (!text || typeof text !== 'string' || text.length < 8) return false;
 
         const lower = text.toLowerCase().trim();
 
-        // Explicit triggers
-        const streetViewTriggers = [
-            'street view', 'streetview', 'street-view',
-            'show me a street view', 'show street view',
-            'location image', 'site image', 'satellite image',
-            'google street view'
-        ];
-
-        for (const trigger of streetViewTriggers) {
-            if (lower.includes(trigger)) {
-                // Extract address: everything after the trigger phrase
-                let address = text.trim();
-                for (const t of streetViewTriggers) {
+        if (
+            lower.includes('street view') ||
+            lower.includes('streetview') ||
+            lower.includes('street-view') ||
+            lower.includes('show me a street view') ||
+            lower.includes('location image') ||
+            lower.includes('site image')
+        ) {
+            let address = text.trim();
+            // Extract after trigger if possible
+            const triggers = ['street view', 'streetview', 'street-view', 'show me a street view', 'location image', 'site image'];
+            for (const t of triggers) {
+                if (lower.includes(t)) {
                     const idx = lower.indexOf(t);
-                    if (idx !== -1) {
-                        address = text.substring(idx + t.length).trim();
-                        break;
-                    }
+                    address = text.substring(idx + t.length).trim();
+                    break;
                 }
-                if (!address) address = text; // fallback
-
-                return {
-                    mode: 'street_view',
-                    confidence: 'high',
-                    address: address
-                };
             }
+            return {
+                mode: 'street_view',
+                confidence: 'high',
+                address: address || text
+            };
         }
 
         return false;
