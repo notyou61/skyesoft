@@ -105,7 +105,9 @@ error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
         throw new Exception('Failed to fetch imagery from Google');
     }
 
-    $interactiveUrl = "https://www.google.com/maps/search/?api=1&query=$encodedAddress";
+    $interactiveUrl = ($lat && $lng)
+    ? "https://www.google.com/maps/@{$lat},{$lng},3a,75y,180h,90t"
+    : "https://www.google.com/maps/search/?api=1&query=$encodedAddress";
 
     // ─────────────────────────────────────────
     // LOG TO tblActions (Consistent with askOpenAI)
@@ -121,14 +123,18 @@ error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
             'responseText'     => "Street View generated: " . $imageType,
             'intent'           => 'location.streetview',
             'intentConfidence' => 0.95,
-            'latitude'         => null,
-            'longitude'        => null,
+            'latitude'         => $lat,
+            'longitude'        => $lng,
             'activitySessionId'=> $activitySessionId,
             'origin'           => 1,
             'actionPayloadData'=> $input,
-            'actionResponseData'=> [
-                'imageType' => $imageType,
-                'imagePath' => $imagePath
+            'actionResponseData' => [
+                'imageType'      => $imageType,
+                'imagePath'      => $imagePath,
+                'address'        => $address,
+                'latitude'       => $lat,
+                'longitude'      => $lng,
+                'interactiveUrl' => $interactiveUrl
             ]
         ], getPDO());
     } catch (Throwable $e) {
