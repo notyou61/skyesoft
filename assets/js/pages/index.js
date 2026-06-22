@@ -1522,18 +1522,11 @@ window.SkyIndex = {
     },
 
     openInteractiveStreetView(address) {
-
-        console.log('[StreetView] Address:', address);
-
         const encoded = encodeURIComponent(address);
-
-        console.log('[StreetView] Encoded:', encoded);
         
-        // Use your proxy to get the embed URL
         fetch(`/skyesoft/api/getStreetViewEmbed.php?address=${encoded}&heading=105&pitch=8`)
             .then(r => r.text())
             .then(embedUrl => {
-                // Create inline modal with interactive Street View
                 const modal = document.createElement('div');
                 modal.style.cssText = `
                     position:fixed; top:0; left:0; width:100%; height:100%; 
@@ -1542,7 +1535,7 @@ window.SkyIndex = {
                 `;
                 
                 modal.innerHTML = `
-                    <div style="background:#fff; padding:15px; border-radius:8px; max-width:95%; max-height:92%; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                    <div style="background:#fff; padding:15px; border-radius:8px; max-width:96%; max-height:94%; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
                         <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
                             <strong>Interactive Street View — ${address}</strong>
                             <button onclick="this.closest('.modal-backdrop').remove()" 
@@ -1561,8 +1554,9 @@ window.SkyIndex = {
                 modal.className = 'modal-backdrop';
                 document.body.appendChild(modal);
             })
-            .catch(() => {
-                window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+            .catch(err => {
+                console.error(err);
+                alert("Could not load interactive view. Try the blue button instead.");
             });
     },
 
