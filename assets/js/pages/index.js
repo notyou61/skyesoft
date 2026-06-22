@@ -1502,8 +1502,7 @@ window.SkyIndex = {
                            style="flex:1; background:#007aff; color:white; padding:9px 12px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.92em; text-align:center;">
                             🗺 Open Full Interactive View
                         </a>
-                       
-                        <button onclick="SkyIndex.openInteractiveStreetView('${address.replace(/'/g, "\\'")}')" 
+                        <button onclick="SkyIndex.openInteractiveStreetView('${interactiveUrl}')" 
                                 style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
                             ✏️ Edit View (Interactive)
                         </button>
@@ -1521,44 +1520,15 @@ window.SkyIndex = {
         window.open(editUrl, '_blank');
     },
 
-    openInteractiveStreetView(address) {
-        const encoded = encodeURIComponent(address);
-        
-        fetch(`/skyesoft/api/getStreetViewEmbed.php?address=${encoded}&heading=105&pitch=8`)
-            .then(r => r.text())
-            .then(embedUrl => {
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-                    position:fixed; top:0; left:0; width:100%; height:100%; 
-                    background:rgba(0,0,0,0.92); z-index:99999; display:flex; 
-                    align-items:center; justify-content:center;
-                `;
-                
-                modal.innerHTML = `
-                    <div style="background:#fff; padding:15px; border-radius:8px; max-width:96%; max-height:94%; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
-                            <strong>Interactive Street View — ${address}</strong>
-                            <button onclick="this.closest('.modal-backdrop').remove()" 
-                                    style="background:none; border:none; font-size:28px; cursor:pointer; color:#666;">×</button>
-                        </div>
-                        <iframe 
-                            width="920" 
-                            height="520" 
-                            style="border:0; border-radius:6px;"
-                            src="${embedUrl}" 
-                            allowfullscreen
-                            allow="accelerometer *; gyroscope *; magnetometer *; fullscreen *; xr-spatial-tracking *; clipboard-write *">
-                        </iframe>
-                    </div>
-                `;
-                
-                modal.className = 'modal-backdrop';
-                document.body.appendChild(modal);
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Could not load interactive view. Try the blue button instead.");
-            });
+    openInteractiveStreetView(interactiveUrl) {
+        if (!interactiveUrl) {
+            console.error("No interactive URL provided.");
+            alert("Interactive view not available for this address.");
+            return;
+        }
+
+        // Open in new tab (most reliable)
+        window.open(interactiveUrl, '_blank', 'noopener,noreferrer');
     },
 
     // #endregion

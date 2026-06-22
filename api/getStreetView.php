@@ -61,7 +61,7 @@ try {
         $lng = (float)$geocode['results'][0]['geometry']['location']['lng'];
     }
 
-error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
+    error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
 
     // Street View Metadata
     $metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata?location=$encodedAddress&key=" . urlencode($googleKey);
@@ -105,9 +105,16 @@ error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
         throw new Exception('Failed to fetch imagery from Google');
     }
 
-    $interactiveUrl = ($lat && $lng)
-    ? "https://www.google.com/maps/@{$lat},{$lng},3a,75y,180h,90t"
-    : "https://www.google.com/maps/search/?api=1&query=$encodedAddress";
+    // ─────────────────────────────────────────
+    // OFFICIAL GOOGLE MAPS DEEP LINK
+    // ─────────────────────────────────────────
+    if ($lat !== null && $lng !== null) {
+        $interactiveUrl = "https://www.google.com/maps/@?api=1&map_action=pano"
+            . "&viewpoint={$lat},{$lng}"
+            . "&heading=105&pitch=8&fov=65";
+    } else {
+        $interactiveUrl = "https://www.google.com/maps/search/?api=1&query=" . urlencode($address);
+    }
 
     // ─────────────────────────────────────────
     // LOG TO tblActions (Consistent with askOpenAI)
@@ -142,12 +149,12 @@ error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
     }
 
     echo json_encode([
-        'success' => true,
-        'imageType' => $imageType,
-        'address' => $address,
-        'latitude' => $lat,           // ← Add this
-        'longitude' => $lng,          // ← Add this
-        'imagePath' => $imagePath,
+        'success'        => true,
+        'imageType'      => $imageType,
+        'address'        => $address,
+        'latitude'       => $lat,
+        'longitude'      => $lng,
+        'imagePath'      => $imagePath,
         'interactiveUrl' => $interactiveUrl
     ]);
 

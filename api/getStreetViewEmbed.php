@@ -1,5 +1,7 @@
 <?php
 // getStreetViewEmbed.php
+declare(strict_types=1);
+
 require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
@@ -23,13 +25,14 @@ if (empty($googleKey)) {
     exit;
 }
 
-// Use real coordinates for this address
-$lat = 33.4714399;
-$lng = -111.9869474;
-
-$embedUrl = "https://www.google.com/maps/@"
-    . $lat . "," . $lng 
-    . ",3a,75y," . $heading . "h," . $pitch . "t";
+// TODO: Replace with real geocoding from getStreetView.php later
+// For now, use a fallback address-based embed (less reliable)
+$embedUrl = "https://www.google.com/maps/embed/v1/streetview?"
+    . "key=" . urlencode($googleKey)
+    . "&location=" . urlencode($address)
+    . "&heading={$heading}"
+    . "&pitch={$pitch}"
+    . "&fov=65";
 
 echo $embedUrl;
 ?>
