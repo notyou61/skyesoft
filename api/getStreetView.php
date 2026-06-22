@@ -106,14 +106,21 @@ try {
     }
 
     // ─────────────────────────────────────────
-    // OFFICIAL GOOGLE MAPS DEEP LINK
+    // NEW: OFFICIAL EMBED-SAFE IFRAME URL
     // ─────────────────────────────────────────
-    if ($lat !== null && $lng !== null) {
-        $interactiveUrl = "https://www.google.com/maps/@?api=1&map_action=pano"
-            . "&viewpoint={$lat},{$lng}"
-            . "&heading=105&pitch=8&fov=65";
+    if ($lat && $lng) {
+        // Safe interactive Street View embed URL for iframes using coordinates
+        $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
+            . "?key=" . urlencode($googleKey)
+            . "&location={$lat},{$lng}"
+            . "&heading=105"
+            . "&pitch=8"
+            . "&fov=65";
     } else {
-        $interactiveUrl = "https://www.google.com/maps/search/?api=1&query=" . urlencode($address);
+        // Fallback to location search mode if geocoding wasn't available
+        $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
+            . "?key=" . urlencode($googleKey)
+            . "&q=" . urlencode($address);
     }
 
     // ─────────────────────────────────────────
