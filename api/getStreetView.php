@@ -55,10 +55,21 @@ try {
     $fullPath = $ephemeralDir . $filename;
 
     if ($hasStreetView) {
-        $imageUrl = "https://maps.googleapis.com/maps/api/streetview?size=900x500&location=$encodedAddress&heading=90&fov=80&pitch=5&key=" . urlencode($googleKey);
+        // Optimized for front-facing commercial building view (Phoenix area)
+        $imageUrl = "https://maps.googleapis.com/maps/api/streetview?"
+            . "size=900x500"
+            . "&location=$encodedAddress"
+            . "&heading=100"      // Adjusted toward typical building front
+            . "&fov=65"           // Tighter, more focused on building
+            . "&pitch=8"          // Slight upward tilt to capture facade
+            . "&key=" . urlencode($googleKey);
         $imageType = 'streetview';
     } else {
-        $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?center=$encodedAddress&zoom=19&size=900x500&maptype=satellite&markers=color:red%7C$encodedAddress&key=" . urlencode($googleKey);
+        $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?"
+            . "center=$encodedAddress"
+            . "&zoom=20&size=900x500&maptype=satellite"
+            . "&markers=color:red%7C$encodedAddress"
+            . "&key=" . urlencode($googleKey);
         $imageType = 'satellite';
     }
 
