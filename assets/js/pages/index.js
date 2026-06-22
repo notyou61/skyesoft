@@ -1417,12 +1417,22 @@ window.SkyIndex = {
 
         const finalAddress = (address || text)
             .replace(/street\s*view/ig, '')
-            .replace(/streetview/ig, '')
+            .replace(/\r?\n/g, ' ')
+            .replace(/\s+/g, ' ')
             .trim();
 
         console.log('[StreetView Final Address]', finalAddress);
 
         try {
+
+            if (!finalAddress) {
+                this.appendSystemLine(
+                    '❌ No address was detected.',
+                    'error'
+                );
+                this.setThinking(false);
+                return;
+            }
 
             const res = await fetch('/skyesoft/api/getStreetView.php', {
                 method: 'POST',
