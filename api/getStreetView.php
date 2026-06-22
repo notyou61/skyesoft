@@ -2,7 +2,8 @@
 declare(strict_types=1);
 
 // =====================================================
-// Skyesoft - getStreetView.php (Simplified - No Geocode)
+// Skyesoft - getStreetView.php
+// Improved: Better heading (East-facing), quality
 // =====================================================
 
 header('Content-Type: application/json');
@@ -29,16 +30,15 @@ try {
         throw new Exception('Google Maps API key not configured');
     }
 
-    // Use address directly for Street View / Static Map
     $encodedAddress = urlencode($address);
 
-    // Street View Metadata (using address)
+    // Street View Metadata
     $metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata?location=$encodedAddress&key=" . urlencode($googleKey);
     $metaJson = @file_get_contents($metadataUrl);
     $metadata = $metaJson ? json_decode($metaJson, true) : [];
     $hasStreetView = ($metadata['status'] ?? '') === 'OK';
 
-    // Image
+    // Image directory
     $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
     if (!is_dir($ephemeralDir)) {
         mkdir($ephemeralDir, 0755, true);
@@ -48,10 +48,22 @@ try {
     $fullPath = $ephemeralDir . $filename;
 
     if ($hasStreetView) {
-        $imageUrl = "https://maps.googleapis.com/maps/api/streetview?size=900x500&location=$encodedAddress&heading=0&fov=90&pitch=5&key=" . urlencode($googleKey);
+        // heading=90 → East (facing building from street)
+        // You can make this dynamic later if needed
+        $imageUrl = "https://maps.googleapis.com/maps/api/streetview?"
+            . "size=900x500"
+            . "&location=$encodedAddress"
+            . "&heading=90"      // East-facing
+            . "&fov=80"          // Slightly wider field of view
+            . "&pitch=5"         // Slight upward tilt
+            . "&key=" . urlencode($googleKey);
         $imageType = 'streetview';
     } else {
-        $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?center=$encodedAddress&zoom=19&size=900x500&maptype=satellite&markers=color:red|$encodedAddress&key=" . urlencode($googleKey);
+        $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?"
+            . "center=$encodedAddress"
+            . "&zoom=19&size=900x500&maptype=satellite"
+            . "&markers=color:red%7C$encodedAddress"
+            . "&key=" . urlencode($googleKey);
         $imageType = 'satellite';
     }
 
@@ -71,7 +83,8 @@ try {
         'imageType' => $imageType,
         'address' => $address,
         'imagePath' => $imagePath,
-        'interactiveUrl' => $interactiveUrl
+        'interactiveUrl' => $interactiveUrl,
+        'heading' => 90   // for future reference
     ]);
 
 } catch (Exception $e) {
