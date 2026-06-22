@@ -105,9 +105,9 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // FIXED: PRODUCTION INTERACTIVE EMBED API URL
+    // PRODUCTION INTERACTIVE GOOGLE MAPS EMBED API (PLACE MODE)
     // ─────────────────────────────────────────────────────────────
-    // This generates the authorized, cross-origin safe endpoint for the modal iframe
+    // Resolves the 403 authorization and CORS framing blocks immediately.
     if ($lat !== null && $lng !== null) {
         $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
             . "?key=" . urlencode($googleKey)
