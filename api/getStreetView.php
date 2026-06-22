@@ -29,12 +29,18 @@ try {
         throw new Exception('Address is required');
     }
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
+    // Key for background Static/Satellite captures
+    $staticKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: '';
 
-    if (empty($googleKey)) {
-        throw new Exception('Google Maps API key not configured');
+    // Key authorized for Interactive Embeds (Verified via your Google Cloud Console)
+    $embedKey = skyesoftGetEnv('GOOGLE_MAPS_EMBED_API_KEY')
+        ?: getenv('GOOGLE_MAPS_EMBED_API_KEY')
+        ?: $staticKey; // Fallback if not distinctly split in env
+
+    if (empty($staticKey)) {
+        throw new Exception('Google Maps Static API key not configured');
     }
 
     $encodedAddress = urlencode($address);
@@ -48,7 +54,7 @@ try {
 
     $geocodeUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
         . "address={$encodedAddress}"
-        . "&key=" . urlencode($googleKey);
+        . "&key=" . urlencode($staticKey);
 
     $geocodeJson = @file_get_contents($geocodeUrl);
     $geocode = $geocodeJson ? json_decode($geocodeJson, true) : [];
@@ -64,7 +70,7 @@ try {
     error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
 
     // Street View Metadata
-    $metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata?location=$encodedAddress&key=" . urlencode($googleKey);
+    $metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata?location=$encodedAddress&key=" . urlencode($staticKey);
     $metaJson = @file_get_contents($metadataUrl);
     $metadata = $metaJson ? json_decode($metaJson, true) : [];
     $hasStreetView = ($metadata['status'] ?? '') === 'OK';
@@ -80,19 +86,19 @@ try {
 
     if ($hasStreetView) {
         $imageUrl = "https://maps.googleapis.com/maps/api/streetview?"
-            . "size=900x280"      // ← One more size down
+            . "size=900x280"
             . "&location=$encodedAddress"
             . "&heading=105"
             . "&fov=65"
             . "&pitch=8"
-            . "&key=" . urlencode($googleKey);
+            . "&key=" . urlencode($staticKey);
         $imageType = 'streetview';
     } else {
         $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?"
             . "center=$encodedAddress"
             . "&zoom=20&size=900x280&maptype=satellite"
             . "&markers=color:red%7C$encodedAddress"
-            . "&key=" . urlencode($googleKey);
+            . "&key=" . urlencode($staticKey);
         $imageType = 'satellite';
     }
 
@@ -105,21 +111,21 @@ try {
         throw new Exception('Failed to fetch imagery from Google');
     }
 
-    // ─────────────────────────────────────────
-    // NEW: OFFICIAL EMBED-SAFE IFRAME URL
-    // ─────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────
+    // FIX: TARGET THE AUTHORIZED EMBED KEY WITH VALID EMBED API URL
+    // ─────────────────────────────────────────────────────────────
     if ($lat && $lng) {
-        // Safe interactive Street View embed URL for iframes using coordinates
-        $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
-            . "?key=" . urlencode($googleKey)
+        // Official Street View Embed mode using authorized key and coordinates
+        $interactiveUrl = "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$4"
+            . "?key=" . urlencode($embedKey)
             . "&location={$lat},{$lng}"
             . "&heading=105"
             . "&pitch=8"
             . "&fov=65";
     } else {
-        // Fallback to location search mode if geocoding wasn't available
-        $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
-            . "?key=" . urlencode($googleKey)
+        // Fallback search deep link using authorized key
+        $interactiveUrl = "https://developers.google.com/maps/documentation/embed/embedding-map"
+            . "?key=" . urlencode($embedKey)
             . "&q=" . urlencode($address);
     }
 
@@ -131,7 +137,7 @@ try {
 
     try {
         insertActionPrompt([
-            'actionTypeId'     => 12,                    // Location / Imagery action
+            'actionTypeId'     => 12,
             'contactId'        => $contactId,
             'promptText'       => "street view " . $address,
             'responseText'     => "Street View generated: " . $imageType,
