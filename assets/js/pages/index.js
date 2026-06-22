@@ -1456,21 +1456,31 @@ window.SkyIndex = {
                     <strong>📸 Location Imagery</strong><br>
                     <small style="color:#555;">${address}</small>
 
+                    <!-- Static Image -->
                     ${imageSrc ? `
                     <div style="margin:12px 0; text-align:center;">
                         <img src="${imageSrc}" alt="${imageType}" style="max-width:100%; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                     </div>
                     ` : ''}
 
-                    <div style="margin-top:8px; font-size:0.95em;">
-                        <strong>Image Type:</strong> <span style="color:${imageType === 'STREETVIEW' ? '#006400' : '#8B4513'};">${imageType}</span><br>
-                        ${data.latitude && data.longitude ? `<strong>Coords:</strong> ${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}` : ''}
+                    <!-- Interactive Street View Embed -->
+                    <div style="margin:12px 0;">
+                        <iframe 
+                            width="100%" 
+                            height="380" 
+                            style="border:0; border-radius:6px;"
+                            src="https://www.google.com/maps/embed/v1/streetview?key=YOUR_API_KEY&location=${encodeURIComponent(address)}&heading=105&pitch=8"
+                            allowfullscreen>
+                        </iframe>
                     </div>
 
-                    <div style="margin-top:14px;">
-                        <a href="${interactiveUrl}" target="_blank" 
-                           style="display:inline-block; background:#007aff; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:600;">
-                            🗺 Open Interactive Google Maps View
+                    <div style="margin-top:8px; font-size:0.95em;">
+                        <strong>Image Type:</strong> <span style="color:${imageType === 'STREETVIEW' ? '#006400' : '#8B4513'};">${imageType}</span>
+                    </div>
+
+                    <div style="margin-top:10px;">
+                        <a href="${interactiveUrl}" target="_blank" class="btn btn-primary btn-sm">
+                            🗺 Open Full Interactive View
                         </a>
                     </div>
                 </div>
