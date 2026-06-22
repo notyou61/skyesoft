@@ -1216,172 +1216,8 @@ window.SkyIndex = {
     },
     // #endregion   ← End of handleCommand
 
-    // #region 📍 Location Workflow Helpers (New)
+    // #region 📸 Street View Workflow Helpers
 
-    renderLocationProcessingState() {
-        const output = this.getOutputHost();
-        if (!output) return;
-
-        const processing = document.createElement('div');
-        processing.className = 'commandLine system processing';
-        processing.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">⏳</span>
-                <div>
-                    <strong>📍 Processing parcel review...</strong><br>
-                    <span style="font-size: 0.92em;">Address validation • Parcel lookup • Jurisdiction • Governance</span>
-                </div>
-            </div>
-        `;
-
-        output.appendChild(processing);
-        this.scrollOutputToBottom(output);
-
-        this._currentLocationProcessingEl = processing;
-    },
-
-    replaceLocationProcessingWithResult() {
-        if (this._currentLocationProcessingEl) {
-            this._currentLocationProcessingEl.remove();
-            this._currentLocationProcessingEl = null;
-        }
-    },
-
-    async executeLocationWorkflow(text, activitySessionId, mode = 'parcel_review') {
-
-        this.setThinking(true);
-
-        try {
-            if (!this.lastLocation || this.lastLocation.latitude === null) {
-                this.lastLocation = await this.getLocationSafe();
-            }
-
-            const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userQuery: text,
-                    latitude: this.lastLocation.latitude,
-                    longitude: this.lastLocation.longitude,
-                    activitySessionId: activitySessionId
-                })
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const data = await res.json();
-            this.replaceLocationProcessingWithResult();
-
-            // === KEY FIX ===
-            if (data.success && (mode === 'parcel_review' || data.parcel)) {
-                this.renderParcelReviewResult(data);
-            } else if (data.status === 'proposed' || mode === 'location_only') {
-                this.handleContactProposal(data);
-            } else if (data.error) {
-                this.appendSystemLine(`❌ ${data.error}`, 'error');
-            } else {
-                this.appendSystemLine(data.summary || data.response || 'Review completed.', 'system');
-            }
-
-        } catch (err) {
-            console.error('[Location Workflow Error]', err);
-            this.appendSystemLine('❌ Parcel review failed.', 'error');
-        } finally {
-            this.setThinking(false);
-        }
-    },
-
-    renderParcelReviewResult(data) {
-        const summary = data.summary || 'Review completed.';
-        const address = data.inputAddress || 'Address';
-
-        let html = `
-            <div class="commandLine system html">
-                <div class="parcel-review-card" style="background:#f8f9fa; padding:16px; border-radius:8px; border-left:5px solid #007aff; max-width:620px;">
-                    
-                    <strong>📍 Parcel Review</strong><br>
-                    <small style="color:#555;">${address}</small>
-
-                    <div style="margin-top:12px; font-size:0.95em; line-height:1.5; color:#333;">
-                        ${summary}
-                    </div>
-        `;
-
-        // Primary Parcel
-        if (data.parcel?.primaryParcel) {
-            const p = data.parcel.primaryParcel;
-            html += `
-                <div style="margin-top:14px; padding:12px; background:white; border-radius:6px; border:1px solid #ddd;">
-                    <div style="font-weight:600; color:#007aff; margin-bottom:6px;">Primary Parcel</div>
-                    <div style="font-size:0.92em; line-height:1.45;">
-                        <strong>APN:</strong> ${p.parcelNumber || '—'}<br>
-                        <strong>Owner:</strong> ${p.ownerName || '—'}<br>
-                        <strong>Address:</strong> ${p.siteAddress || '—'}<br>
-                        <strong>Jurisdiction:</strong> ${p.jurisdiction || '—'}
-                    </div>
-                </div>
-            `;
-        }
-
-        // Candidate Parcels
-        if (data.parcel?.candidateParcels && data.parcel.candidateParcels.length > 0) {
-            html += `
-                <div style="margin-top:14px;">
-                    <div style="font-weight:600; margin-bottom:6px; color:#555;">Additional Parcels at this Address</div>
-            `;
-
-            data.parcel.candidateParcels.forEach((c, index) => {
-                html += `
-                    <div style="margin-bottom:8px; padding:10px; background:white; border-radius:6px; border:1px solid #eee; font-size:0.9em;">
-                        <strong>${index + 1}. APN:</strong> ${c.parcelNumber || '—'}<br>
-                        <strong>Owner:</strong> ${c.ownerName || '—'}<br>
-                        <strong>Address:</strong> ${c.siteAddress || '—'}
-                    </div>
-                `;
-            });
-
-            html += `</div>`;
-        }
-
-        // Note from backend
-        if (data.parcel?.note) {
-            html += `
-                <div style="margin-top:14px; padding:10px; background:#e8f4fd; border-radius:6px; font-size:0.88em; color:#0d47a1;">
-                    <strong>Note:</strong> ${data.parcel.note}
-                </div>
-            `;
-        }
-        // Full Report Button
-        if (true) {
-            html += `
-                <div style="margin-top:14px;">
-                    <a
-                        href="api/generateReports.php?reportType=location_review&actionId=${data.actionId}"
-                        target="_blank"
-                        style="
-                            display:inline-block;
-                            background:#007aff;
-                            color:white;
-                            padding:8px 14px;
-                            border-radius:6px;
-                            text-decoration:none;
-                            font-size:0.9em;
-                            font-weight:600;
-                        "
-                    >
-                        View Full Report
-                    </a>
-                </div>
-            `;
-        }
-
-        html += `</div></div>`;
-
-        this.appendSystemHtml(html);
-    },
-
-        // #region 📸 Street View Workflow Helpers (New)
     renderStreetViewProcessingState() {
         const output = this.getOutputHost();
         if (!output) return;
@@ -1412,7 +1248,6 @@ window.SkyIndex = {
     },
 
     async executeStreetViewWorkflow(text, activitySessionId, address) {
-
         this.setThinking(true);
 
         const finalAddress = (address || text)
@@ -1421,19 +1256,7 @@ window.SkyIndex = {
             .replace(/\s+/g, ' ')
             .trim();
 
-        console.log('[StreetView Final Address]', finalAddress);
-
         try {
-
-            if (!finalAddress) {
-                this.appendSystemLine(
-                    '❌ No address was detected.',
-                    'error'
-                );
-                this.setThinking(false);
-                return;
-            }
-
             const res = await fetch('/skyesoft/api/getStreetView.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -1444,32 +1267,20 @@ window.SkyIndex = {
                 })
             });
 
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
-
             this.replaceStreetViewProcessingWithResult();
 
             if (data.success) {
                 this.renderStreetViewResult(data);
             } else {
-                this.appendSystemLine(
-                    `❌ ${data.message || 'Street View failed.'}`,
-                    'error'
-                );
+                this.appendSystemLine(`❌ ${data.message || 'Street View failed.'}`, 'error');
             }
 
         } catch (err) {
-
             console.error('[StreetView Workflow Error]', err);
-
-            this.appendSystemLine(
-                '❌ Street View request failed.',
-                'error'
-            );
-
+            this.appendSystemLine('❌ Street View request failed.', 'error');
         } finally {
             this.setThinking(false);
         }
@@ -1514,21 +1325,39 @@ window.SkyIndex = {
         this.appendSystemHtml(html);
     },
 
-    editStreetView(address) {
-        const encoded = encodeURIComponent(address);
-        const editUrl = `https://www.google.com/maps/search/?api=1&query=${encoded}&maptype=streetview`;
-        window.open(editUrl, '_blank');
-    },
-
     openInteractiveStreetView(interactiveUrl) {
         if (!interactiveUrl) {
-            console.error("No interactive URL provided.");
-            alert("Interactive view not available for this address.");
+            alert("Interactive view not available.");
             return;
         }
 
-        // Open in new tab (most reliable)
-        window.open(interactiveUrl, '_blank', 'noopener,noreferrer');
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position:fixed; top:0; left:0; width:100%; height:100%; 
+            background:rgba(0,0,0,0.92); z-index:99999; display:flex; 
+            align-items:center; justify-content:center;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background:#fff; padding:15px; border-radius:8px; max-width:96%; max-height:94%; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
+                    <strong>Interactive Street View</strong>
+                    <button onclick="this.closest('.modal-backdrop').remove()" 
+                            style="background:none; border:none; font-size:28px; cursor:pointer; color:#666;">×</button>
+                </div>
+                <iframe 
+                    width="920" 
+                    height="520" 
+                    style="border:0; border-radius:6px;"
+                    src="${interactiveUrl}" 
+                    allowfullscreen
+                    allow="accelerometer *; gyroscope *; magnetometer *; fullscreen *; xr-spatial-tracking *; clipboard-write *">
+                </iframe>
+            </div>
+        `;
+        
+        modal.className = 'modal-backdrop';
+        document.body.appendChild(modal);
     },
 
     // #endregion

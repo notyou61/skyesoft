@@ -149,12 +149,12 @@ try {
     }
 
     echo json_encode([
-        'success'        => true,
-        'imageType'      => $imageType,
-        'address'        => $address,
-        'latitude'       => $lat,
-        'longitude'      => $lng,
-        'imagePath'      => $imagePath,
+        'success' => true,
+        'imageType' => $imageType,
+        'address' => $address,
+        'latitude' => $lat,
+        'longitude' => $lng,
+        'imagePath' => $imagePath,
         'interactiveUrl' => $interactiveUrl
     ]);
 
