@@ -29,12 +29,20 @@ try {
         throw new Exception('Address is required');
     }
 
+    // Backend operations key (Geocoding / Static Images)
     $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: '';
 
+    // ─────────────────────────────────────────────────────────────
+    // READ EXPLICIT EMBED API KEY (Matches image_aab500.png)
+    // ─────────────────────────────────────────────────────────────
+    $embedKey = skyesoftGetEnv('GOOGLE_MAPS_EMBED_API_KEY')
+        ?: getenv('GOOGLE_MAPS_EMBED_API_KEY')
+        ?: $googleKey; // Fallback if not configured yet
+
     if (empty($googleKey)) {
-        throw new Exception('Google Maps API key not configured');
+        throw new Exception('Google Maps Static API key not configured');
     }
 
     $encodedAddress = urlencode($address);
@@ -68,7 +76,7 @@ try {
     $metadata = $metaJson ? json_decode($metaJson, true) : [];
     $hasStreetView = ($metadata['status'] ?? '') === 'OK';
 
-    // Image
+    // Image Snapshot Storage
     $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
     if (!is_dir($ephemeralDir)) {
         mkdir($ephemeralDir, 0755, true);
@@ -105,23 +113,23 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // PRODUCTION INTERACTIVE GOOGLE MAPS EMBED API (PLACE MODE)
+    // INTERACTIVE MODAL ENDPOINT (POWERED BY DEDICATED EMBED KEY)
     // ─────────────────────────────────────────────────────────────
-    // Resolves the 403 authorization and CORS framing blocks immediately.
+    // Uses $embedKey to fully pass API Console restrictions
     if ($lat !== null && $lng !== null) {
         $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
-            . "?key=" . urlencode($googleKey)
+            . "?key=" . urlencode($embedKey)
             . "&q={$lat},{$lng}"
             . "&zoom=18";
     } else {
         $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
-            . "?key=" . urlencode($googleKey)
+            . "?key=" . urlencode($embedKey)
             . "&q=" . urlencode($address)
             . "&zoom=18";
     }
 
     // ─────────────────────────────────────────
-    // LOG TO tblActions (Consistent with askOpenAI)
+    // LOG TO tblActions
     // ─────────────────────────────────────────
     $activitySessionId = $input['activitySessionId'] ?? ($_SESSION['activitySessionId'] ?? session_id());
     $contactId = $_SESSION['contactId'] ?? 0;
