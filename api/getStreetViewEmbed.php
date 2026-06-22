@@ -23,9 +23,14 @@ if (empty($googleKey)) {
     exit;
 }
 
+// For now, use a simple geocode or hardcoded fallback. 
+// Better: integrate with your existing geocoder in getStreetView.php
+$lat = 33.4720564;  // default for testing
+$lng = -111.9902556;
+
 $embedUrl = "https://www.google.com/maps/embed/v1/streetview?"
     . "key=" . urlencode($googleKey)
-    . "&location=" . urlencode($address)
+    . "&location=" . $lat . "," . $lng
     . "&heading=" . $heading
     . "&pitch=" . $pitch
     . "&fov=80";
