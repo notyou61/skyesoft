@@ -1455,7 +1455,7 @@ window.SkyIndex = {
                 <div class="streetview-card" style="background:#f8f9fa; padding:16px; border-radius:8px; border-left:5px solid #007aff; max-width:650px;">
                     <strong>📸 Location Imagery</strong><br>
                     <small style="color:#555;">${address}</small>
-
+                   
                     ${imageSrc ? `
                     <div style="margin:12px 0; text-align:center;">
                         <img src="${imageSrc}" alt="${imageType}" style="max-width:100%; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
@@ -1471,7 +1471,7 @@ window.SkyIndex = {
                            style="flex:1; background:#007aff; color:white; padding:9px 12px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.92em; text-align:center;">
                             🗺 Open Full Interactive View
                         </a>
-                        
+                       
                         <button onclick="SkyIndex.openInteractiveStreetView('${encodeURIComponent(address)}')" 
                                 style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
                             ✏️ Edit View (Interactive)
