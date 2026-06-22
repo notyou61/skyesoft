@@ -1492,12 +1492,9 @@ window.SkyIndex = {
 
     openInteractiveStreetView(address) {
         const encoded = encodeURIComponent(address);
-        fetch(`/skyesoft/api/getStreetViewEmbed.php?address=${encoded}`)
-            .then(r => r.text())
-            .then(embedUrl => {
-                // Open in modal or new tab
-                window.open(embedUrl, '_blank');
-            });
+        // Use full interactive Street View link (works with your current key)
+        const url = `https://www.google.com/maps/@?api=1&map_action=panorama&viewpoint=${encoded}&heading=105&pitch=8`;
+        window.open(url, '_blank');
     },
 
     // #endregion
