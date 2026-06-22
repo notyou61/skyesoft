@@ -29,18 +29,18 @@ try {
         throw new Exception('Address is required');
     }
 
-    // Key for background Static/Satellite captures
+    // Key for static snapshot capture
     $staticKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: '';
 
-    // Key authorized for Interactive Embeds (Verified via your Google Cloud Console)
+    // Dedicated key authorized for Interactive Embeds (from your Google Console)
     $embedKey = skyesoftGetEnv('GOOGLE_MAPS_EMBED_API_KEY')
         ?: getenv('GOOGLE_MAPS_EMBED_API_KEY')
-        ?: $staticKey; // Fallback if not distinctly split in env
+        ?: $staticKey; // Fallback if they share a single string definition
 
     if (empty($staticKey)) {
-        throw new Exception('Google Maps Static API key not configured');
+        throw new Exception('Google Maps API key not configured');
     }
 
     $encodedAddress = urlencode($address);
@@ -112,19 +112,19 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // FIX: TARGET THE AUTHORIZED EMBED KEY WITH VALID EMBED API URL
+    // PRODUCTION GOOGLE MAPS EMBED API (BYPASSES CONTENT POLICY)
     // ─────────────────────────────────────────────────────────────
-    if ($lat && $lng) {
-        // Official Street View Embed mode using authorized key and coordinates
-        $interactiveUrl = "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$4"
+    if ($lat !== null && $lng !== null) {
+        // Official production iframe source using coordinates
+        $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
             . "&location={$lat},{$lng}"
             . "&heading=105"
             . "&pitch=8"
             . "&fov=65";
     } else {
-        // Fallback search deep link using authorized key
-        $interactiveUrl = "https://developers.google.com/maps/documentation/embed/embedding-map"
+        // Fallback search mode embedding if coordinates fail
+        $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
             . "?key=" . urlencode($embedKey)
             . "&q=" . urlencode($address);
     }
@@ -162,12 +162,12 @@ try {
     }
 
     echo json_encode([
-        'success' => true,
-        'imageType' => $imageType,
-        'address' => $address,
-        'latitude' => $lat,
-        'longitude' => $lng,
-        'imagePath' => $imagePath,
+        'success'        => true,
+        'imageType'      => $imageType,
+        'address'        => $address,
+        'latitude'       => $lat,
+        'longitude'      => $lng,
+        'imagePath'      => $imagePath,
         'interactiveUrl' => $interactiveUrl
     ]);
 
