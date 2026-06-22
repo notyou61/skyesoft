@@ -1546,7 +1546,8 @@ window.SkyIndex = {
                             height="520" 
                             style="border:0; border-radius:6px;"
                             src="${embedUrl}" 
-                            allowfullscreen>
+                            allowfullscreen
+                            allow="accelerometer; gyroscope; magnetometer; fullscreen; xr-spatial-tracking">
                         </iframe>
                     </div>
                 `;
