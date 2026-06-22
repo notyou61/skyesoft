@@ -1084,6 +1084,24 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
+        // 📸 Street View Workflow (Highest priority for imagery requests)
+        // --------------------------------------------------
+        const streetViewIntent = await this.isStreetViewIntent(text);
+        if (streetViewIntent) {
+            console.log(`[STREETVIEW] Detected: ${streetViewIntent.mode} (${streetViewIntent.confidence}) for "${streetViewIntent.address}"`);
+
+            // Suppress raw echo if needed
+            this.suppressRawContactEcho(); // reuse for clean UX
+
+            // Show processing state
+            this.renderStreetViewProcessingState();
+
+            // Run dedicated workflow
+            await this.executeStreetViewWorkflow(text, activitySessionId, streetViewIntent.address);
+            return;
+        }
+
+        // --------------------------------------------------
         // 📍 Location Workflow (Parcel Review vs Location Only)
         // --------------------------------------------------
         const locationIntent = await this.isLocationWorkflowIntent(text, normalized);
@@ -1357,6 +1375,105 @@ window.SkyIndex = {
         }
 
         html += `</div></div>`;
+
+        this.appendSystemHtml(html);
+    },
+
+        // #region 📸 Street View Workflow Helpers (New)
+    renderStreetViewProcessingState() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const processing = document.createElement('div');
+        processing.className = 'commandLine system processing';
+        processing.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">📸</span>
+                <div>
+                    <strong>📍 Generating Street View...</strong><br>
+                    <span style="font-size: 0.92em;">Address validation • Metadata check • Street View / Satellite fallback • Artifact save</span>
+                </div>
+            </div>
+        `;
+
+        output.appendChild(processing);
+        this.scrollOutputToBottom(output);
+
+        this._currentStreetViewProcessingEl = processing;
+    },
+
+    replaceStreetViewProcessingWithResult() {
+        if (this._currentStreetViewProcessingEl) {
+            this._currentStreetViewProcessingEl.remove();
+            this._currentStreetViewProcessingEl = null;
+        }
+    },
+
+    async executeStreetViewWorkflow(text, activitySessionId, address) {
+        this.setThinking(true);
+
+        try {
+            const res = await fetch('/skyesoft/api/getStreetView.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    address: address || text,
+                    activitySessionId: activitySessionId
+                })
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const data = await res.json();
+            this.replaceStreetViewProcessingWithResult();
+
+            if (data.success) {
+                this.renderStreetViewResult(data);
+            } else {
+                this.appendSystemLine(`❌ ${data.message || 'Street View failed.'}`, 'error');
+            }
+
+        } catch (err) {
+            console.error('[StreetView Workflow Error]', err);
+            this.appendSystemLine('❌ Street View request failed.', 'error');
+        } finally {
+            this.setThinking(false);
+        }
+    },
+
+    renderStreetViewResult(data) {
+        const address = data.address || 'Location';
+        const imageType = (data.imageType || 'streetview').toUpperCase();
+        const imageSrc = data.imagePath || '';
+        const interactiveUrl = data.interactiveUrl || '#';
+
+        let html = `
+            <div class="commandLine system html">
+                <div class="streetview-card" style="background:#f8f9fa; padding:16px; border-radius:8px; border-left:5px solid #007aff; max-width:650px;">
+                    <strong>📸 Location Imagery</strong><br>
+                    <small style="color:#555;">${address}</small>
+
+                    ${imageSrc ? `
+                    <div style="margin:12px 0; text-align:center;">
+                        <img src="${imageSrc}" alt="${imageType}" style="max-width:100%; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                    </div>
+                    ` : ''}
+
+                    <div style="margin-top:8px; font-size:0.95em;">
+                        <strong>Image Type:</strong> <span style="color:${imageType === 'STREETVIEW' ? '#006400' : '#8B4513'};">${imageType}</span><br>
+                        ${data.latitude && data.longitude ? `<strong>Coords:</strong> ${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}` : ''}
+                    </div>
+
+                    <div style="margin-top:14px;">
+                        <a href="${interactiveUrl}" target="_blank" 
+                           style="display:inline-block; background:#007aff; color:white; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:600;">
+                            🗺 Open Interactive Google Maps View
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
 
         this.appendSystemHtml(html);
     },
@@ -2011,6 +2128,48 @@ window.SkyIndex = {
 
         return false;
     },
+
+    // #region 📍 Street View Intent Detection (New)
+    // ───────────────────────────────────────────────
+    // Dedicated Street View Intent (High Priority, Independent of Parcel/Contact)
+    // ───────────────────────────────────────────────
+    async isStreetViewIntent(text) {
+        if (!text || typeof text !== 'string' || text.length < 10) return false;
+
+        const lower = text.toLowerCase().trim();
+
+        // Explicit triggers
+        const streetViewTriggers = [
+            'street view', 'streetview', 'street-view',
+            'show me a street view', 'show street view',
+            'location image', 'site image', 'satellite image',
+            'google street view'
+        ];
+
+        for (const trigger of streetViewTriggers) {
+            if (lower.includes(trigger)) {
+                // Extract address: everything after the trigger phrase
+                let address = text.trim();
+                for (const t of streetViewTriggers) {
+                    const idx = lower.indexOf(t);
+                    if (idx !== -1) {
+                        address = text.substring(idx + t.length).trim();
+                        break;
+                    }
+                }
+                if (!address) address = text; // fallback
+
+                return {
+                    mode: 'street_view',
+                    confidence: 'high',
+                    address: address
+                };
+            }
+        }
+
+        return false;
+    },
+    // #endregion
 
     // --------------------------------------------------
     // Improved Signature Detection (Single-line + Multi-line)
