@@ -39,6 +39,30 @@ try {
 
     $encodedAddress = urlencode($address);
 
+    // =====================================================
+    // GEOCODE ADDRESS
+    // =====================================================
+
+    $lat = null;
+    $lng = null;
+
+    $geocodeUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
+        . "address={$encodedAddress}"
+        . "&key=" . urlencode($googleKey);
+
+    $geocodeJson = @file_get_contents($geocodeUrl);
+    $geocode = $geocodeJson ? json_decode($geocodeJson, true) : [];
+
+    if (
+        !empty($geocode['results'][0]['geometry']['location']['lat']) &&
+        !empty($geocode['results'][0]['geometry']['location']['lng'])
+    ) {
+        $lat = (float)$geocode['results'][0]['geometry']['location']['lat'];
+        $lng = (float)$geocode['results'][0]['geometry']['location']['lng'];
+    }
+
+error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
+
     // Street View Metadata
     $metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata?location=$encodedAddress&key=" . urlencode($googleKey);
     $metaJson = @file_get_contents($metadataUrl);
@@ -115,6 +139,8 @@ try {
         'success' => true,
         'imageType' => $imageType,
         'address' => $address,
+        'latitude' => $lat,           // ← Add this
+        'longitude' => $lng,          // ← Add this
         'imagePath' => $imagePath,
         'interactiveUrl' => $interactiveUrl
     ]);
