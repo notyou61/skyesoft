@@ -33,7 +33,7 @@ try {
         ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: '';
 
-    // Separate embed API key definition matching your Google Cloud Console configuration
+    // Target your specialized Embed API Key verified in your Google Cloud console
     $embedKey = skyesoftGetEnv('GOOGLE_MAPS_EMBED_API_KEY')
         ?: getenv('GOOGLE_MAPS_EMBED_API_KEY')
         ?: $googleKey;
@@ -111,10 +111,10 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // TARGET STREET VIEW MODE IN THE EMBED URL
+    // PRODUCTION GOOGLE MAPS EMBED API (STREETVIEW MODE)
     // ─────────────────────────────────────────────────────────────
     if ($lat !== null && $lng !== null) {
-        // Mode explicitly toggled to streetview with location and viewport optics
+        // Uses explicit coordinates to locate the panoramic viewpoint instantly
         $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
             . "&location={$lat},{$lng}"
@@ -122,7 +122,7 @@ try {
             . "&pitch=8"
             . "&fov=65";
     } else {
-        // Fallback fallback to streetview lookup via text address match
+        // Fallback string match to lookup text address panorama entry points
         $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
             . "&location=" . urlencode($address)
