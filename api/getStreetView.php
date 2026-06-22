@@ -29,17 +29,18 @@ try {
         throw new Exception('Address is required');
     }
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
+    // Default static layout authentication key
+    $staticKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: '';
 
-    // Target your specialized Embed API Key verified in your Google Cloud console
+    // Fetch the target interactive key verified in your Google Console
     $embedKey = skyesoftGetEnv('GOOGLE_MAPS_EMBED_API_KEY')
         ?: getenv('GOOGLE_MAPS_EMBED_API_KEY')
-        ?: $googleKey;
+        ?: $staticKey;
 
-    if (empty($googleKey)) {
-        throw new Exception('Google Maps API key not configured');
+    if (empty($staticKey)) {
+        throw new Exception('Google Maps Static API key not configured');
     }
 
     $encodedAddress = urlencode($address);
@@ -53,7 +54,7 @@ try {
 
     $geocodeUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
         . "address={$encodedAddress}"
-        . "&key=" . urlencode($googleKey);
+        . "&key=" . urlencode($staticKey);
 
     $geocodeJson = @file_get_contents($geocodeUrl);
     $geocode = $geocodeJson ? json_decode($geocodeJson, true) : [];
@@ -69,7 +70,7 @@ try {
     error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
 
     // Street View Metadata
-    $metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata?location=$encodedAddress&key=" . urlencode($googleKey);
+    $metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata?location=$encodedAddress&key=" . urlencode($staticKey);
     $metaJson = @file_get_contents($metadataUrl);
     $metadata = $metaJson ? json_decode($metaJson, true) : [];
     $hasStreetView = ($metadata['status'] ?? '') === 'OK';
@@ -90,14 +91,14 @@ try {
             . "&heading=105"
             . "&fov=65"
             . "&pitch=8"
-            . "&key=" . urlencode($googleKey);
+            . "&key=" . urlencode($staticKey);
         $imageType = 'streetview';
     } else {
         $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?"
             . "center=$encodedAddress"
             . "&zoom=20&size=900x280&maptype=satellite"
             . "&markers=color:red%7C$encodedAddress"
-            . "&key=" . urlencode($googleKey);
+            . "&key=" . urlencode($staticKey);
         $imageType = 'satellite';
     }
 
@@ -111,10 +112,10 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // PRODUCTION GOOGLE MAPS EMBED API (STREETVIEW MODE)
+    // CORRECTED COMPLIANT EMBED URL FORMAT
     // ─────────────────────────────────────────────────────────────
     if ($lat !== null && $lng !== null) {
-        // Uses explicit coordinates to locate the panoramic viewpoint instantly
+        // Production panorama routing using accurate geocoded variables
         $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
             . "&location={$lat},{$lng}"
@@ -122,7 +123,7 @@ try {
             . "&pitch=8"
             . "&fov=65";
     } else {
-        // Fallback string match to lookup text address panorama entry points
+        // Text-fallback utilizing standard search parameter formatting
         $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
             . "&location=" . urlencode($address)
