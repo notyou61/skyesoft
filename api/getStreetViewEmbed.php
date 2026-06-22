@@ -23,11 +23,13 @@ if (empty($googleKey)) {
     exit;
 }
 
-// Use real coordinates from Google Maps
+// Use real coordinates for this address
 $lat = 33.4714399;
 $lng = -111.9869474;
 
-$embedUrl = "https://www.google.com/maps/@${lat},${lng},3a,75y,${heading}h,${pitch}t";
+$embedUrl = "https://www.google.com/maps/@"
+    . $lat . "," . $lng 
+    . ",3a,75y," . $heading . "h," . $pitch . "t";
 
 echo $embedUrl;
 ?>
