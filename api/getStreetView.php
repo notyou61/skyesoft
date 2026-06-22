@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // =====================================================
 // Skyesoft - getStreetView.php
-// Improved: Better heading (East-facing), quality
+// Fast imagery + tblActions logging (consistent with askOpenAI)
 // =====================================================
 
 header('Content-Type: application/json');
@@ -14,6 +14,13 @@ try {
         require_once __DIR__ . '/utils/envLoader.php';
     }
     skyesoftLoadEnv();
+
+    // ─────────────────────────────────────────
+    // SESSION + DB BOOTSTRAP
+    // ─────────────────────────────────────────
+    require_once __DIR__ . '/sessionBootstrap.php';
+    require_once __DIR__ . '/dbConnect.php';
+    require_once __DIR__ . '/utils/actions.php';
 
     $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
     $address = trim($input['address'] ?? '');
@@ -38,7 +45,7 @@ try {
     $metadata = $metaJson ? json_decode($metaJson, true) : [];
     $hasStreetView = ($metadata['status'] ?? '') === 'OK';
 
-    // Image directory
+    // Image
     $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
     if (!is_dir($ephemeralDir)) {
         mkdir($ephemeralDir, 0755, true);
@@ -48,22 +55,10 @@ try {
     $fullPath = $ephemeralDir . $filename;
 
     if ($hasStreetView) {
-        // heading=90 → East (facing building from street)
-        // You can make this dynamic later if needed
-        $imageUrl = "https://maps.googleapis.com/maps/api/streetview?"
-            . "size=900x500"
-            . "&location=$encodedAddress"
-            . "&heading=90"      // East-facing
-            . "&fov=80"          // Slightly wider field of view
-            . "&pitch=5"         // Slight upward tilt
-            . "&key=" . urlencode($googleKey);
+        $imageUrl = "https://maps.googleapis.com/maps/api/streetview?size=900x500&location=$encodedAddress&heading=90&fov=80&pitch=5&key=" . urlencode($googleKey);
         $imageType = 'streetview';
     } else {
-        $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?"
-            . "center=$encodedAddress"
-            . "&zoom=19&size=900x500&maptype=satellite"
-            . "&markers=color:red%7C$encodedAddress"
-            . "&key=" . urlencode($googleKey);
+        $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?center=$encodedAddress&zoom=19&size=900x500&maptype=satellite&markers=color:red%7C$encodedAddress&key=" . urlencode($googleKey);
         $imageType = 'satellite';
     }
 
@@ -78,13 +73,40 @@ try {
 
     $interactiveUrl = "https://www.google.com/maps/search/?api=1&query=$encodedAddress";
 
+    // ─────────────────────────────────────────
+    // LOG TO tblActions (Consistent with askOpenAI)
+    // ─────────────────────────────────────────
+    $activitySessionId = $input['activitySessionId'] ?? ($_SESSION['activitySessionId'] ?? session_id());
+    $contactId = $_SESSION['contactId'] ?? 0;
+
+    try {
+        insertActionPrompt([
+            'actionTypeId'     => 12,                    // Location / Imagery action
+            'contactId'        => $contactId,
+            'promptText'       => "street view " . $address,
+            'responseText'     => "Street View generated: " . $imageType,
+            'intent'           => 'location.streetview',
+            'intentConfidence' => 0.95,
+            'latitude'         => null,
+            'longitude'        => null,
+            'activitySessionId'=> $activitySessionId,
+            'origin'           => 1,
+            'actionPayloadData'=> $input,
+            'actionResponseData'=> [
+                'imageType' => $imageType,
+                'imagePath' => $imagePath
+            ]
+        ], getPDO());
+    } catch (Throwable $e) {
+        error_log("[StreetView Logging] Failed: " . $e->getMessage());
+    }
+
     echo json_encode([
         'success' => true,
         'imageType' => $imageType,
         'address' => $address,
         'imagePath' => $imagePath,
-        'interactiveUrl' => $interactiveUrl,
-        'heading' => 90   // for future reference
+        'interactiveUrl' => $interactiveUrl
     ]);
 
 } catch (Exception $e) {
