@@ -1469,12 +1469,12 @@ window.SkyIndex = {
                     <div style="margin-top:14px; display:flex; gap:8px;">
                         <a href="${interactiveUrl}" target="_blank" 
                            style="flex:1; background:#007aff; color:white; padding:9px 12px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.92em; text-align:center;">
-                            🗺 Open Interactive View
+                            🗺 Open Full Interactive View
                         </a>
                         
-                        <button onclick="SkyIndex.editStreetView('${encodeURIComponent(address)}')" 
+                        <button onclick="SkyIndex.openInteractiveStreetView('${encodeURIComponent(address)}')" 
                                 style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
-                            ✏️ Edit View
+                            ✏️ Edit View (Interactive)
                         </button>
                     </div>
                 </div>
@@ -1483,10 +1483,21 @@ window.SkyIndex = {
 
         this.appendSystemHtml(html);
     },
+
     editStreetView(address) {
         const encoded = encodeURIComponent(address);
         const editUrl = `https://www.google.com/maps/search/?api=1&query=${encoded}&maptype=streetview`;
         window.open(editUrl, '_blank');
+    },
+
+    openInteractiveStreetView(address) {
+        const encoded = encodeURIComponent(address);
+        fetch(`/skyesoft/api/getStreetViewEmbed.php?address=${encoded}`)
+            .then(r => r.text())
+            .then(embedUrl => {
+                // Open in modal or new tab
+                window.open(embedUrl, '_blank');
+            });
     },
 
     // #endregion
