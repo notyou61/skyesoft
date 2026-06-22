@@ -23,11 +23,11 @@ if (empty($googleKey)) {
     exit;
 }
 
-// Use the simpler @ panorama format
-$embedUrl = "https://www.google.com/maps/@?api=1&map_action=panorama&viewpoint=" 
-    . urlencode($address) 
-    . "&heading=" . $heading 
-    . "&pitch=" . $pitch;
+// Use real coordinates from Google Maps
+$lat = 33.4714399;
+$lng = -111.9869474;
+
+$embedUrl = "https://www.google.com/maps/@${lat},${lng},3a,75y,${heading}h,${pitch}t";
 
 echo $embedUrl;
 ?>
