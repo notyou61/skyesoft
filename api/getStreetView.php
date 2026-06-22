@@ -55,19 +55,19 @@ try {
     $fullPath = $ephemeralDir . $filename;
 
     if ($hasStreetView) {
-        // Optimized for front-facing commercial building view (Phoenix area)
+        // Optimized for front-facing commercial building view
         $imageUrl = "https://maps.googleapis.com/maps/api/streetview?"
-            . "size=900x500"
+            . "size=900x420"      // Reduced height to fit better without scrolling
             . "&location=$encodedAddress"
-            . "&heading=100"      // Adjusted toward typical building front
-            . "&fov=65"           // Tighter, more focused on building
-            . "&pitch=8"          // Slight upward tilt to capture facade
+            . "&heading=105"      // Tuned for front-facing (adjust per area if needed)
+            . "&fov=60"           // Narrower, focused on building facade
+            . "&pitch=10"         // Slight upward tilt to capture sign/building front
             . "&key=" . urlencode($googleKey);
         $imageType = 'streetview';
     } else {
         $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?"
             . "center=$encodedAddress"
-            . "&zoom=20&size=900x500&maptype=satellite"
+            . "&zoom=20&size=900x420&maptype=satellite"
             . "&markers=color:red%7C$encodedAddress"
             . "&key=" . urlencode($googleKey);
         $imageType = 'satellite';
