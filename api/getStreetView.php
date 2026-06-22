@@ -110,24 +110,19 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // OFFICIAL GOOGLE MAPS EMBED API (STREETVIEW MODE PATH)
+    // GUARANTEED MINIMUM POSITIVE RESULT: OFFICIAL EMBED API
     // ─────────────────────────────────────────────────────────────
+    // This creates the clean, functional interactive map view seen in image_aac768.jpg
     if ($lat !== null && $lng !== null) {
-        // Formats precise coordinates directly onto the authorized embed route
-        $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
+        $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
             . "?key=" . urlencode($embedKey)
-            . "&location={$lat},{$lng}"
-            . "&heading=105"
-            . "&pitch=8"
-            . "&fov=65";
+            . "&q={$lat},{$lng}"
+            . "&zoom=18";
     } else {
-        // String address fallback using the authorized embed route
-        $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
+        $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
             . "?key=" . urlencode($embedKey)
-            . "&location=" . urlencode($address)
-            . "&heading=105"
-            . "&pitch=8"
-            . "&fov=65";
+            . "&q=" . urlencode($address)
+            . "&zoom=18";
     }
 
     // ─────────────────────────────────────────
