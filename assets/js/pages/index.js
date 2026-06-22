@@ -1412,33 +1412,54 @@ window.SkyIndex = {
     },
 
     async executeStreetViewWorkflow(text, activitySessionId, address) {
+
         this.setThinking(true);
 
+        const finalAddress = (address || text)
+            .replace(/street\s*view/ig, '')
+            .replace(/streetview/ig, '')
+            .trim();
+
+        console.log('[StreetView Final Address]', finalAddress);
+
         try {
+
             const res = await fetch('/skyesoft/api/getStreetView.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    address: address || text,
+                    address: finalAddress,
                     activitySessionId: activitySessionId
                 })
             });
 
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
 
             const data = await res.json();
+
             this.replaceStreetViewProcessingWithResult();
 
             if (data.success) {
                 this.renderStreetViewResult(data);
             } else {
-                this.appendSystemLine(`❌ ${data.message || 'Street View failed.'}`, 'error');
+                this.appendSystemLine(
+                    `❌ ${data.message || 'Street View failed.'}`,
+                    'error'
+                );
             }
 
         } catch (err) {
+
             console.error('[StreetView Workflow Error]', err);
-            this.appendSystemLine('❌ Street View request failed.', 'error');
+
+            this.appendSystemLine(
+                '❌ Street View request failed.',
+                'error'
+            );
+
         } finally {
             this.setThinking(false);
         }
@@ -1472,7 +1493,7 @@ window.SkyIndex = {
                             🗺 Open Full Interactive View
                         </a>
                        
-                        <button onclick="SkyIndex.openInteractiveStreetView('${encodeURIComponent(address)}')" 
+                        <button onclick="SkyIndex.openInteractiveStreetView('${address.replace(/'/g, "\\'")}')" 
                                 style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
                             ✏️ Edit View (Interactive)
                         </button>
@@ -1491,7 +1512,12 @@ window.SkyIndex = {
     },
 
     openInteractiveStreetView(address) {
+
+        console.log('[StreetView] Address:', address);
+
         const encoded = encodeURIComponent(address);
+
+        console.log('[StreetView] Encoded:', encoded);
         
         // Use your proxy to get the embed URL
         fetch(`/skyesoft/api/getStreetViewEmbed.php?address=${encoded}&heading=105&pitch=8`)
