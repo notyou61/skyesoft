@@ -1456,38 +1456,37 @@ window.SkyIndex = {
                     <strong>📸 Location Imagery</strong><br>
                     <small style="color:#555;">${address}</small>
 
-                    <!-- Static Image -->
                     ${imageSrc ? `
                     <div style="margin:12px 0; text-align:center;">
                         <img src="${imageSrc}" alt="${imageType}" style="max-width:100%; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                     </div>
                     ` : ''}
 
-                    <!-- Interactive Street View Embed -->
-                    <div style="margin:12px 0;">
-                        <iframe 
-                            width="100%" 
-                            height="380" 
-                            style="border:0; border-radius:6px;"
-                            src="https://www.google.com/maps/embed/v1/streetview?key=YOUR_API_KEY&location=${encodeURIComponent(address)}&heading=105&pitch=8"
-                            allowfullscreen>
-                        </iframe>
-                    </div>
-
                     <div style="margin-top:8px; font-size:0.95em;">
                         <strong>Image Type:</strong> <span style="color:${imageType === 'STREETVIEW' ? '#006400' : '#8B4513'};">${imageType}</span>
                     </div>
 
-                    <div style="margin-top:10px;">
-                        <a href="${interactiveUrl}" target="_blank" class="btn btn-primary btn-sm">
-                            🗺 Open Full Interactive View
+                    <div style="margin-top:14px; display:flex; gap:8px;">
+                        <a href="${interactiveUrl}" target="_blank" 
+                           style="flex:1; background:#007aff; color:white; padding:10px; border-radius:6px; text-decoration:none; font-weight:600; text-align:center;">
+                            🗺 Open Interactive Google Maps View
                         </a>
+                        
+                        <button onclick="SkyIndex.editStreetView('${encodeURIComponent(address)}')" 
+                                style="flex:1; background:#28a745; color:white; padding:10px; border:none; border-radius:6px; font-weight:600; cursor:pointer;">
+                            ✏️ Edit View
+                        </button>
                     </div>
                 </div>
             </div>
         `;
 
         this.appendSystemHtml(html);
+    },
+    editStreetView(address) {
+        const encoded = encodeURIComponent(address);
+        const editUrl = `https://www.google.com/maps/search/?api=1&query=${encoded}&maptype=streetview`;
+        window.open(editUrl, '_blank');
     },
 
     // #endregion
