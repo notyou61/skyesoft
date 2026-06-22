@@ -33,13 +33,8 @@ try {
         ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: '';
 
-    // Specialized Embed API Key confirmed valid in your Google Console (image_aab500.png)
-    $embedKey = skyesoftGetEnv('GOOGLE_MAPS_EMBED_API_KEY')
-        ?: getenv('GOOGLE_MAPS_EMBED_API_KEY')
-        ?: $googleKey;
-
     if (empty($googleKey)) {
-        throw new Exception('Google Maps Static API key not configured');
+        throw new Exception('Google Maps API key not configured');
     }
 
     $encodedAddress = urlencode($address);
@@ -73,7 +68,7 @@ try {
     $metadata = $metaJson ? json_decode($metaJson, true) : [];
     $hasStreetView = ($metadata['status'] ?? '') === 'OK';
 
-    // Image Snapshot
+    // Image
     $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
     if (!is_dir($ephemeralDir)) {
         mkdir($ephemeralDir, 0755, true);
@@ -84,7 +79,7 @@ try {
 
     if ($hasStreetView) {
         $imageUrl = "https://maps.googleapis.com/maps/api/streetview?"
-            . "size=900x280"
+            . "size=900x280"      
             . "&location=$encodedAddress"
             . "&heading=105"
             . "&fov=65"
@@ -110,30 +105,30 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // GUARANTEED MINIMUM POSITIVE RESULT: OFFICIAL EMBED API
+    // FIXED: PRODUCTION INTERACTIVE EMBED API URL
     // ─────────────────────────────────────────────────────────────
-    // This creates the clean, functional interactive map view seen in image_aac768.jpg
+    // This generates the authorized, cross-origin safe endpoint for the modal iframe
     if ($lat !== null && $lng !== null) {
         $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
-            . "?key=" . urlencode($embedKey)
+            . "?key=" . urlencode($googleKey)
             . "&q={$lat},{$lng}"
             . "&zoom=18";
     } else {
         $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
-            . "?key=" . urlencode($embedKey)
+            . "?key=" . urlencode($googleKey)
             . "&q=" . urlencode($address)
             . "&zoom=18";
     }
 
     // ─────────────────────────────────────────
-    // LOG TO tblActions
+    // LOG TO tblActions (Consistent with askOpenAI)
     // ─────────────────────────────────────────
     $activitySessionId = $input['activitySessionId'] ?? ($_SESSION['activitySessionId'] ?? session_id());
     $contactId = $_SESSION['contactId'] ?? 0;
 
     try {
         insertActionPrompt([
-            'actionTypeId'     => 12,
+            'actionTypeId'     => 12,                    
             'contactId'        => $contactId,
             'promptText'       => "street view " . $address,
             'responseText'     => "Street View generated: " . $imageType,
@@ -161,8 +156,8 @@ try {
         'success'        => true,
         'imageType'      => $imageType,
         'address'        => $address,
-        'latitude'       => $lat,
-        'longitude'      => $lng,
+        'latitude'       => $lat,           
+        'longitude'      => $lng,          
         'imagePath'      => $imagePath,
         'interactiveUrl' => $interactiveUrl
     ]);
