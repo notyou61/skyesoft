@@ -1,30 +1,21 @@
 <?php
 declare(strict_types=1);
 
-// Skyesoft Street View API - Robust Version
+// =====================================================
+// Skyesoft - getStreetView.php API
+// Robust Street View / Satellite fallback
+// =====================================================
+
 header('Content-Type: application/json');
 
 try {
-    // Load environment - Try multiple possible paths
-    $possiblePaths = [
-        __DIR__ . '/../../utils/envLoader.php',
-        __DIR__ . '/../utils/envLoader.php',
-        $_SERVER['DOCUMENT_ROOT'] . '/skyesoft/utils/envLoader.php'
-    ];
-
-    $loaded = false;
-    foreach ($possiblePaths as $path) {
-        if (file_exists($path)) {
-            require_once $path;
-            skyesoftLoadEnv();
-            $loaded = true;
-            break;
-        }
+    // ─────────────────────────────────────────
+    // 🌍 Load environment
+    // ─────────────────────────────────────────
+    if (!function_exists('skyesoftLoadEnv')) {
+        require_once __DIR__ . '/utils/envLoader.php';
     }
-
-    if (!$loaded) {
-        throw new Exception('Could not load envLoader.php');
-    }
+    skyesoftLoadEnv();
 
     $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
     $address = trim($input['address'] ?? '');
@@ -33,69 +24,76 @@ try {
         throw new Exception('Address is required');
     }
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
+        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
+        ?: '';
+
     if (empty($googleKey)) {
-        throw new Exception('Google API Key not configured');
+        throw new Exception('Google Maps API key not configured. Check .env');
     }
 
     // Geocode
-    $geocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($address) . '&key=' . urlencode($googleKey);
+    $geocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?address=' 
+        . urlencode($address) . '&key=' . urlencode($googleKey);
+    
     $geoJson = @file_get_contents($geocodeUrl);
     $geo = $geoJson ? json_decode($geoJson, true) : null;
 
     if (empty($geo['results'][0]['geometry']['location'])) {
-        throw new Exception('Geocoding failed for address');
+        throw new Exception('Could not geocode the address');
     }
 
     $loc = $geo['results'][0]['geometry']['location'];
     $lat = $loc['lat'];
     $lng = $loc['lng'];
-    $formatted = $geo['results'][0]['formatted_address'] ?? $address;
+    $formattedAddress = $geo['results'][0]['formatted_address'] ?? $address;
 
     // Street View Metadata
-    $metaUrl = "https://maps.googleapis.com/maps/api/streetview/metadata?location=$lat,$lng&key=" . urlencode($googleKey);
-    $meta = @json_decode(file_get_contents($metaUrl), true);
-    $hasSV = ($meta['status'] ?? '') === 'OK';
+    $metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata?location=$lat,$lng&key=" . urlencode($googleKey);
+    $metaJson = @file_get_contents($metadataUrl);
+    $metadata = $metaJson ? json_decode($metaJson, true) : [];
+    $hasStreetView = ($metadata['status'] ?? '') === 'OK';
 
-    // Save image
-    $dir = __DIR__ . '/../../data/runtimeEphemeral/streetview/';
-    if (!is_dir($dir)) mkdir($dir, 0755, true);
-
-    $filename = 'sv-' . uniqid() . '.jpg';
-    $fullPath = $dir . $filename;
-
-    if ($hasSV) {
-        $imgUrl = "https://maps.googleapis.com/maps/api/streetview?size=900x500&location=$lat,$lng&heading=0&fov=90&pitch=0&key=" . urlencode($googleKey);
-        $type = 'streetview';
-    } else {
-        $imgUrl = "https://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&zoom=19&size=900x500&maptype=satellite&markers=color:red|$lat,$lng&key=" . urlencode($googleKey);
-        $type = 'satellite';
+    // Ensure ephemeral dir
+    $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
+    if (!is_dir($ephemeralDir)) {
+        mkdir($ephemeralDir, 0755, true);
     }
 
-    $imgData = @file_get_contents($imgUrl);
-    $imagePath = '';
+    $filename = 'location-' . uniqid() . '.jpg';
+    $fullPath = $ephemeralDir . $filename;
 
-    if ($imgData) {
-        file_put_contents($fullPath, $imgData);
+    if ($hasStreetView) {
+        $imageUrl = "https://maps.googleapis.com/maps/api/streetview?size=900x500&location=$lat,$lng&heading=0&fov=90&pitch=5&key=" . urlencode($googleKey);
+        $imageType = 'streetview';
+    } else {
+        $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&zoom=19&size=900x500&maptype=satellite&markers=color:red%7C$lat,$lng&key=" . urlencode($googleKey);
+        $imageType = 'satellite';
+    }
+
+    $imageData = @file_get_contents($imageUrl);
+
+    if ($imageData) {
+        file_put_contents($fullPath, $imageData);
         $imagePath = "/skyesoft/data/runtimeEphemeral/streetview/" . $filename;
     } else {
-        throw new Exception('Failed to download image');
+        throw new Exception('Failed to fetch map image');
     }
 
-    $interactive = "https://www.google.com/maps/@$lat,$lng,3a,75y,200h,90t";
+    $interactiveUrl = "https://www.google.com/maps/@$lat,$lng,3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192";
 
     echo json_encode([
         'success' => true,
-        'imageType' => $type,
-        'address' => $formatted,
-        'latitude' => $lat,
-        'longitude' => $lng,
+        'imageType' => $imageType,
+        'address' => $formattedAddress,
+        'latitude' => round($lat, 6),
+        'longitude' => round($lng, 6),
         'imagePath' => $imagePath,
-        'interactiveUrl' => $interactive
+        'interactiveUrl' => $interactiveUrl
     ]);
 
 } catch (Exception $e) {
-    error_log("[STREETVIEW API ERROR] " . $e->getMessage());
+    error_log('[Skyesoft StreetView API Error] ' . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
