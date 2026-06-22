@@ -29,12 +29,11 @@ try {
         throw new Exception('Address is required');
     }
 
-    // Default static layout authentication key
     $staticKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
         ?: '';
 
-    // Fetch the target interactive key verified in your Google Console
+    // Specialized Embed API Key confirmed valid in your Google Console
     $embedKey = skyesoftGetEnv('GOOGLE_MAPS_EMBED_API_KEY')
         ?: getenv('GOOGLE_MAPS_EMBED_API_KEY')
         ?: $staticKey;
@@ -48,7 +47,6 @@ try {
     // =====================================================
     // GEOCODE ADDRESS
     // =====================================================
-
     $lat = null;
     $lng = null;
 
@@ -75,7 +73,7 @@ try {
     $metadata = $metaJson ? json_decode($metaJson, true) : [];
     $hasStreetView = ($metadata['status'] ?? '') === 'OK';
 
-    // Image
+    // Image Snapshot
     $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
     if (!is_dir($ephemeralDir)) {
         mkdir($ephemeralDir, 0755, true);
@@ -112,10 +110,10 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // CORRECTED COMPLIANT EMBED URL FORMAT
+    // FIXED: OFFICIAL PRODUCTION GOOGLE MAPS EMBED API (STREETVIEW MODE)
     // ─────────────────────────────────────────────────────────────
     if ($lat !== null && $lng !== null) {
-        // Production panorama routing using accurate geocoded variables
+        // Mode explicitly toggled to streetview using coordinates inside an iframe
         $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
             . "&location={$lat},{$lng}"
@@ -123,7 +121,7 @@ try {
             . "&pitch=8"
             . "&fov=65";
     } else {
-        // Text-fallback utilizing standard search parameter formatting
+        // Fallback streetview mode using the text address string lookup
         $interactiveUrl = "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
             . "&location=" . urlencode($address)
@@ -133,7 +131,7 @@ try {
     }
 
     // ─────────────────────────────────────────
-    // LOG TO tblActions (Consistent with askOpenAI)
+    // LOG TO tblActions
     // ─────────────────────────────────────────
     $activitySessionId = $input['activitySessionId'] ?? ($_SESSION['activitySessionId'] ?? session_id());
     $contactId = $_SESSION['contactId'] ?? 0;
