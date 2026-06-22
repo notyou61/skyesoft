@@ -223,9 +223,11 @@ window.SkyIndex = {
                 safeHtml.includes('gov-action') ||
                 safeHtml.includes('gov-panel') ||
                 safeHtml.includes('contact-card') ||
-                safeHtml.includes('parcel-review-card') ||      // ← ADD THIS
-                safeHtml.includes('Primary Parcel') ||          // ← ADD THIS (or use a class)
-                safeHtml.includes('Parcel Review');             // ← ADD THIS
+                safeHtml.includes('parcel-review-card') ||
+                safeHtml.includes('Primary Parcel') ||
+                safeHtml.includes('Parcel Review') ||
+                safeHtml.includes('streetview-card') ||     // ← NEW: Street View support
+                safeHtml.includes('📸 Location Imagery');   // ← NEW: Fallback keyword
 
             if (!isAllowedHtml) {
                 this.appendSystemLine('[Unsupported HTML content]');
