@@ -56,7 +56,7 @@ try {
 
     if ($hasStreetView) {
         $imageUrl = "https://maps.googleapis.com/maps/api/streetview?"
-            . "size=900x380"      // ← Smaller height (no scrolling)
+            . "size=900x320"      // ← Next smaller size
             . "&location=$encodedAddress"
             . "&heading=105"
             . "&fov=65"
@@ -66,7 +66,7 @@ try {
     } else {
         $imageUrl = "https://maps.googleapis.com/maps/api/staticmap?"
             . "center=$encodedAddress"
-            . "&zoom=20&size=900x380&maptype=satellite"  // ← Also smaller
+            . "&zoom=20&size=900x320&maptype=satellite"
             . "&markers=color:red%7C$encodedAddress"
             . "&key=" . urlencode($googleKey);
         $imageType = 'satellite';
