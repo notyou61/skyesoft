@@ -1492,9 +1492,42 @@ window.SkyIndex = {
 
     openInteractiveStreetView(address) {
         const encoded = encodeURIComponent(address);
-        // Use full interactive Street View link (works with your current key)
-        const url = `https://www.google.com/maps/@?api=1&map_action=panorama&viewpoint=${encoded}&heading=105&pitch=8`;
-        window.open(url, '_blank');
+        
+        // Use your proxy to get the embed URL
+        fetch(`/skyesoft/api/getStreetViewEmbed.php?address=${encoded}&heading=105&pitch=8`)
+            .then(r => r.text())
+            .then(embedUrl => {
+                // Create inline modal with interactive Street View
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position:fixed; top:0; left:0; width:100%; height:100%; 
+                    background:rgba(0,0,0,0.92); z-index:99999; display:flex; 
+                    align-items:center; justify-content:center;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="background:#fff; padding:15px; border-radius:8px; max-width:95%; max-height:92%; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
+                            <strong>Interactive Street View — ${address}</strong>
+                            <button onclick="this.closest('.modal-backdrop').remove()" 
+                                    style="background:none; border:none; font-size:28px; cursor:pointer; color:#666;">×</button>
+                        </div>
+                        <iframe 
+                            width="920" 
+                            height="520" 
+                            style="border:0; border-radius:6px;"
+                            src="${embedUrl}" 
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                `;
+                
+                modal.className = 'modal-backdrop';
+                document.body.appendChild(modal);
+            })
+            .catch(() => {
+                window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+            });
     },
 
     // #endregion
