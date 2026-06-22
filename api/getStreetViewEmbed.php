@@ -1,65 +1,34 @@
 <?php
-declare(strict_types=1);
-
-// =====================================================
-// Skyesoft - getStreetViewEmbed.php
-// Address → Geocode → Google Street View Embed URL
-// =====================================================
-
+// getStreetViewEmbed.php
 require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
-$address = trim((string)($_GET['address'] ?? ''));
-$heading = is_numeric($_GET['heading'] ?? null) ? (float)$_GET['heading'] : 105;
-$pitch   = is_numeric($_GET['pitch'] ?? null) ? (float)$_GET['pitch'] : 8;
+$address = $_GET['address'] ?? '';
+$heading = (int)($_GET['heading'] ?? 105);
+$pitch   = (int)($_GET['pitch'] ?? 8);
 
-if ($address === '') {
+if (empty($address)) {
     http_response_code(400);
-    echo 'Address required';
+    echo "Address required";
     exit;
 }
 
-$googleKey =
-    skyesoftGetEnv('GOOGLE_MAPS_API_KEY')
-    ?: skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-    ?: getenv('GOOGLE_MAPS_API_KEY')
-    ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+$googleKey = skyesoftGetEnv('GOOGLE_MAPS_EMBED_API_KEY')
+    ?: getenv('GOOGLE_MAPS_EMBED_API_KEY')
     ?: '';
 
-if ($googleKey === '') {
+if (empty($googleKey)) {
     http_response_code(500);
-    echo 'Google Maps API key missing';
+    echo "Embed API key not configured";
     exit;
 }
 
-// Normalize address spacing
-$address = preg_replace('/\s+/', ' ', $address);
-
-// Geocode address
-$geocodeUrl =
-    'https://maps.googleapis.com/maps/api/geocode/json'
-    . '?address=' . urlencode($address)
-    . '&key=' . urlencode($googleKey);
-
-$geocodeJson = @file_get_contents($geocodeUrl);
-$geocode = $geocodeJson ? json_decode($geocodeJson, true) : [];
-
-$lat = $geocode['results'][0]['geometry']['location']['lat'] ?? null;
-$lng = $geocode['results'][0]['geometry']['location']['lng'] ?? null;
-
-if (!$lat || !$lng) {
-    http_response_code(422);
-    echo 'Unable to geocode address';
-    exit;
-}
-
-// Build Street View embed URL using coordinates
-$embedUrl =
-    'https://www.google.com/maps/embed/v1/streetview'
-    . '?key=' . urlencode($googleKey)
-    . '&location=' . urlencode($lat . ',' . $lng)
-    . '&heading=' . urlencode((string)$heading)
-    . '&pitch=' . urlencode((string)$pitch)
-    . '&fov=80';
+$embedUrl = "https://www.google.com/maps/embed/v1/streetview?"
+    . "key=" . urlencode($googleKey)
+    . "&location=" . urlencode($address)
+    . "&heading=" . $heading
+    . "&pitch=" . $pitch
+    . "&fov=80";
 
 echo $embedUrl;
+?>
