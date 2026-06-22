@@ -1468,12 +1468,12 @@ window.SkyIndex = {
 
                     <div style="margin-top:14px; display:flex; gap:8px;">
                         <a href="${interactiveUrl}" target="_blank" 
-                           style="flex:1; background:#007aff; color:white; padding:10px; border-radius:6px; text-decoration:none; font-weight:600; text-align:center;">
-                            🗺 Open Interactive Google Maps View
+                           style="flex:1; background:#007aff; color:white; padding:9px 12px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.92em; text-align:center;">
+                            🗺 Open Interactive View
                         </a>
                         
                         <button onclick="SkyIndex.editStreetView('${encodeURIComponent(address)}')" 
-                                style="flex:1; background:#28a745; color:white; padding:10px; border:none; border-radius:6px; font-weight:600; cursor:pointer;">
+                                style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
                             ✏️ Edit View
                         </button>
                     </div>
