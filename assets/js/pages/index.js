@@ -1313,7 +1313,7 @@ window.SkyIndex = {
                            style="flex:1; background:#007aff; color:white; padding:9px 12px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.92em; text-align:center;">
                             🗺 Open Full Interactive View
                         </a>
-                        <button onclick="SkyIndex.openInteractiveStreetView('${interactiveUrl}')" 
+                        <button onclick="SkyIndex.openInteractiveStreetView(${JSON.stringify(data)})" 
                                 style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
                             ✏️ Edit View (Interactive)
                         </button>
