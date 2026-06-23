@@ -66,6 +66,12 @@ try {
     ) {
         $lat = (float)$geocode['results'][0]['geometry']['location']['lat'];
         $lng = (float)$geocode['results'][0]['geometry']['location']['lng'];
+        error_log("[StreetView] Successfully geocoded {$address} → {$lat}, {$lng}");
+    } else {
+        // Fallback coordinates for Phoenix area (safe default)
+        $lat = 33.4720564;
+        $lng = -111.9902556;
+        error_log("[StreetView] Geocoding failed for {$address} - using Phoenix fallback coordinates");
     }
 
     error_log("[StreetView] Geocoded {$address} → {$lat}, {$lng}");
