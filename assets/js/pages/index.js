@@ -2912,7 +2912,6 @@ window.SkyIndex = {
 };
 // #endregion
 
-
 // #region 🧾 Page Registration
 window.SkyeApp.registerPage('index', window.SkyIndex);
 // #endregion

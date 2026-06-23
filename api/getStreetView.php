@@ -115,17 +115,26 @@ try {
     // ─────────────────────────────────────────────────────────────
     // INTERACTIVE MODAL ENDPOINT (POWERED BY DEDICATED EMBED KEY)
     // ─────────────────────────────────────────────────────────────
-    // Uses $embedKey to fully pass API Console restrictions
+
     if ($lat !== null && $lng !== null) {
-        $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
+
+        $interactiveUrl =
+            "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
-            . "&q={$lat},{$lng}"
-            . "&zoom=18";
+            . "&location={$lat},{$lng}"
+            . "&heading=105"
+            . "&pitch=8"
+            . "&fov=65";
+
     } else {
-        $interactiveUrl = "https://www.google.com/maps/embed/v1/place"
+
+        $interactiveUrl =
+            "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
-            . "&q=" . urlencode($address)
-            . "&zoom=18";
+            . "&location=" . urlencode($address)
+            . "&heading=105"
+            . "&pitch=8"
+            . "&fov=65";
     }
 
     // ─────────────────────────────────────────
