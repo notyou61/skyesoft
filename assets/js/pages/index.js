@@ -1313,7 +1313,7 @@ window.SkyIndex = {
                            style="flex:1; background:#007aff; color:white; padding:9px 12px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.92em; text-align:center;">
                             🗺 Open Full Interactive View
                         </a>
-                        <button onclick="SkyIndex.openInteractiveStreetView(${JSON.stringify(data)})" 
+                        <button onclick="SkyIndex.openInteractiveStreetView('${interactiveUrl}')" 
                                 style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
                             ✏️ Edit View (Interactive)
                         </button>
@@ -1325,18 +1325,16 @@ window.SkyIndex = {
         this.appendSystemHtml(html);
     },
 
-    openInteractiveStreetView(data) {
-        const lat = data.latitude;
-        const lng = data.longitude;
-        const address = data.address || 'Location';
+    openInteractiveStreetView(interactiveUrl) {
 
-        if (!lat || !lng) {
-            alert("Coordinates not available for this address.");
+        console.log('[OPEN MODAL]', interactiveUrl);
+
+        if (!interactiveUrl) {
+            alert("Interactive view not available.");
             return;
         }
 
         const modal = document.createElement('div');
-        modal.id = 'streetViewModal';
         modal.style.cssText = `
             position:fixed; top:0; left:0; width:100%; height:100%; 
             background:rgba(0,0,0,0.9); z-index:99999; display:flex; 
@@ -1344,45 +1342,25 @@ window.SkyIndex = {
         `;
 
         modal.innerHTML = `
-            <div style="background:#fff; padding:20px; border-radius:8px; width:1000px; max-height:92%; overflow:auto;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                    <strong>Interactive Location Viewer — ${address}</strong>
-                    <button onclick="SkyIndex.closeStreetViewModal()" style="background:none;border:none;font-size:28px;cursor:pointer;">×</button>
+            <div style="background:#fff; padding:15px; border-radius:8px; max-width:96%; max-height:94%; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
+                    <strong>Interactive Street View</strong>
+                    <button onclick="this.closest('.modal-backdrop').remove()" 
+                            style="background:none; border:none; font-size:28px; cursor:pointer; color:#666;">×</button>
                 </div>
-                
-                <div style="display:flex; gap:10px;">
-                    <div style="flex:1;">
-                        <div style="margin-bottom:5px; font-weight:600;">📍 Satellite Map (Drag Pegman)</div>
-                        <div id="mapContainer" style="width:100%; height:420px; border:1px solid #ddd;"></div>
-                    </div>
-                    <div style="flex:1;">
-                        <div style="margin-bottom:5px; font-weight:600;">🛣️ Street View</div>
-                        <div id="panoContainer" style="width:100%; height:420px; border:1px solid #ddd;"></div>
-                    </div>
-                </div>
-
-                <div style="margin-top:15px; display:flex; gap:10px; justify-content:center;">
-                    <button onclick="SkyIndex.captureCurrentView()" style="background:#28a745; color:white; padding:12px 24px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">
-                        📸 Use This View
-                    </button>
-                    <button onclick="SkyIndex.closeStreetViewModal()" style="background:#dc3545; color:white; padding:12px 24px; border:none; border-radius:6px; cursor:pointer;">
-                        Close
-                    </button>
-                </div>
+                <iframe 
+                    width="920" 
+                    height="520" 
+                    style="border:0; border-radius:6px;"
+                    src="${interactiveUrl}" 
+                    allowfullscreen
+                    allow="accelerometer *; gyroscope *; magnetometer *; fullscreen *; xr-spatial-tracking *; clipboard-write *">
+                </iframe>
             </div>
         `;
 
+        modal.className = 'modal-backdrop';
         document.body.appendChild(modal);
-
-        // Load SDK via PHP proxy (key stays hidden)
-        fetch('/skyesoft/api/getMapsSDK.php')
-            .then(() => {
-                initializeDualView(lat, lng);
-            })
-            .catch(err => {
-                console.error('SDK load failed', err);
-                alert("Could not load map. Try the blue button.");
-            });
     },
 
     closeStreetViewModal() {
