@@ -6,6 +6,8 @@ declare(strict_types=1);
 // Fast imagery + tblActions logging (consistent with askOpenAI)
 // =====================================================
 
+error_log("=== STREETVIEW DEBUG: FILE EXECUTED ===");
+
 header('Content-Type: application/json');
 
 
