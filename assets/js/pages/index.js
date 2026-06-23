@@ -1353,13 +1353,13 @@ window.SkyIndex = {
                 <div style="display:flex; gap:10px;">
                     <!-- Satellite Map -->
                     <div style="flex:1;">
-                        <div style="margin-bottom:5px; font-weight:600;">Satellite Map (Drag Pegman)</div>
+                        <div style="margin-bottom:5px; font-weight:600;">📍 Satellite Map (Drag Pegman)</div>
                         <div id="mapContainer" style="width:100%; height:420px; border:1px solid #ddd;"></div>
                     </div>
                     
                     <!-- Street View -->
                     <div style="flex:1;">
-                        <div style="margin-bottom:5px; font-weight:600;">Street View</div>
+                        <div style="margin-bottom:5px; font-weight:600;">🛣️ Street View</div>
                         <div id="panoContainer" style="width:100%; height:420px; border:1px solid #ddd;"></div>
                     </div>
                 </div>
@@ -1377,8 +1377,8 @@ window.SkyIndex = {
 
         document.body.appendChild(modal);
 
-        // Load Google Maps SDK
-        if (typeof google === 'undefined') {
+        // Load Google Maps SDK if not loaded
+        if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
             const script = document.createElement('script');
             script.src = "https://maps.googleapis.com/maps/api/js?key=YOUR_EMBED_KEY&callback=initializeDualView";
             script.defer = true;
