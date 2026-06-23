@@ -10,7 +10,6 @@ error_log("=== STREETVIEW DEBUG: FILE EXECUTED ===");
 
 header('Content-Type: application/json');
 
-
 try {
     // Load environment
     if (!function_exists('skyesoftLoadEnv')) {
@@ -128,9 +127,7 @@ try {
     // ─────────────────────────────────────────────────────────────
     // INTERACTIVE MODAL ENDPOINT (POWERED BY DEDICATED EMBED KEY)
     // ─────────────────────────────────────────────────────────────
-
     if ($lat !== null && $lng !== null) {
-
         $interactiveUrl =
             "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
@@ -138,9 +135,7 @@ try {
             . "&heading=105"
             . "&pitch=8"
             . "&fov=65";
-
     } else {
-
         $interactiveUrl =
             "https://www.google.com/maps/embed/v1/streetview"
             . "?key=" . urlencode($embedKey)
@@ -182,6 +177,9 @@ try {
         error_log("[StreetView Logging] Failed: " . $e->getMessage());
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // RETURN DATA TO CLIENT (Now including verified apiKey)
+    // ─────────────────────────────────────────────────────────────
     echo json_encode([
         'success'        => true,
         'imageType'      => $imageType,
@@ -189,7 +187,8 @@ try {
         'latitude'       => $lat,           
         'longitude'      => $lng,          
         'imagePath'      => $imagePath,
-        'interactiveUrl' => $interactiveUrl
+        'interactiveUrl' => $interactiveUrl,
+        'apiKey'         => $embedKey // Sent down to securely initialize the client JS library
     ]);
 
 } catch (Exception $e) {

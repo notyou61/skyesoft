@@ -1218,159 +1218,296 @@ window.SkyIndex = {
 
     // #region 📸 Street View Workflow Helpers
 
-    renderStreetViewProcessingState() {
-        const output = this.getOutputHost();
-        if (!output) return;
+        // Global internal reference store to safely maintain runtime Map & Panorama instances across steps
+        _streetViewWorkspace: {
+            map: null,
+            panorama: null,
+            marker: null
+        },
 
-        const processing = document.createElement('div');
-        processing.className = 'commandLine system processing';
-        processing.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">📸</span>
-                <div>
-                    <strong>📍 Generating Street View...</strong><br>
-                    <span style="font-size: 0.92em;">Address validation • Metadata check • Street View / Satellite fallback • Artifact save</span>
+        renderStreetViewProcessingState() {
+            const output = this.getOutputHost();
+            if (!output) return;
+
+            const processing = document.createElement('div');
+            processing.className = 'commandLine system processing';
+            processing.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">📸</span>
+                    <div>
+                        <strong>📍 Initializing Selection Workspace...</strong><br>
+                        <span style="font-size: 0.92em;">Address validation • Checking parcel coordinates • Building map interface</span>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
 
-        output.appendChild(processing);
-        this.scrollOutputToBottom(output);
+            output.appendChild(processing);
+            this.scrollOutputToBottom(output);
 
-        this._currentStreetViewProcessingEl = processing;
-    },
+            this._currentStreetViewProcessingEl = processing;
+        },
 
-    replaceStreetViewProcessingWithResult() {
-        if (this._currentStreetViewProcessingEl) {
-            this._currentStreetViewProcessingEl.remove();
-            this._currentStreetViewProcessingEl = null;
-        }
-    },
+        replaceStreetViewProcessingWithResult() {
+            if (this._currentStreetViewProcessingEl) {
+                this._currentStreetViewProcessingEl.remove();
+                this._currentStreetViewProcessingEl = null;
+            }
+        },
 
-    async executeStreetViewWorkflow(text, activitySessionId, address) {
-        this.setThinking(true);
+        async executeStreetViewWorkflow(text, activitySessionId, address) {
+            this.renderStreetViewProcessingState();
+            this.setThinking(true);
 
-        const finalAddress = (address || text)
-            .replace(/street\s*view/ig, '')
-            .replace(/\r?\n/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
+            const finalAddress = (address || text)
+                .replace(/street\s*view/ig, '')
+                .replace(/\r?\n/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
 
-        try {
-            const res = await fetch('/skyesoft/api/getStreetView.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    address: finalAddress,
-                    activitySessionId: activitySessionId
-                })
-            });
+            try {
+                const res = await fetch('/skyesoft/api/getStreetView.php', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        address: finalAddress,
+                        activitySessionId: activitySessionId
+                    })
+                });
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-            const data = await res.json();
-            this.replaceStreetViewProcessingWithResult();
+                const data = await res.json();
+                this.replaceStreetViewProcessingWithResult();
 
-            if (data.success) {
-                this.renderStreetViewResult(data);
-            } else {
-                this.appendSystemLine(`❌ ${data.message || 'Street View failed.'}`, 'error');
+                if (data.success) {
+                    this.renderStreetViewResult(data);
+                } else {
+                    this.appendSystemLine(`❌ ${data.message || 'Street View failed.'}`, 'error');
+                }
+
+            } catch (err) {
+                console.error('[StreetView Workflow Error]', err);
+                this.replaceStreetViewProcessingWithResult();
+                this.appendSystemLine('❌ Street View request failed.', 'error');
+            } finally {
+                this.setThinking(false);
+            }
+        },
+
+        renderStreetViewResult(data) {
+            const address = data.address || 'Location';
+            const imageType = (data.imageType || 'streetview').toUpperCase();
+            const imageSrc = data.imagePath || '';
+            const interactiveUrl = data.interactiveUrl || '#';
+
+            // Escaping the payload safely into a data attribute so the inline onclick execution can parse it cleanly
+            const dataPayloadAttr = btoa(JSON.stringify(data));
+
+            let html = `
+                <div class="commandLine system html">
+                    <div class="streetview-card" style="background:#f8f9fa; padding:16px; border-radius:8px; border-left:5px solid #007aff; max-width:650px;">
+                        <strong>📸 Location Imagery</strong><br>
+                        <small style="color:#555;">${address}</small>
+                        
+                        ${imageSrc ? `
+                        <div style="margin:12px 0; text-align:center;">
+                            <img src="${imageSrc}" alt="${imageType}" style="max-width:100%; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                        </div>
+                        ` : ''}
+
+                        <div style="margin-top:8px; font-size:0.95em;">
+                            <strong>Image Type:</strong> <span style="color:${imageType === 'STREETVIEW' ? '#006400' : '#8B4513'};">${imageType}</span>
+                        </div>
+
+                        <div style="margin-top:14px; display:flex; gap:8px;">
+                            <a href="${interactiveUrl}" target="_blank" 
+                            style="flex:1; background:#007aff; color:white; padding:9px 12px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.92em; text-align:center;">
+                            🗺 Open Full Interactive View
+                            </a>
+                            <button onclick="SkyIndex.openInteractiveStreetView(JSON.parse(atob('${dataPayloadAttr}')))" 
+                                    style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
+                                ✏️ Edit View (Workspace)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            this.appendSystemHtml(html);
+        },
+
+        openInteractiveStreetView(data) {
+            console.log('[OPEN WORKSPACE MODAL]', data);
+
+            const lat = parseFloat(data.latitude);
+            const lng = parseFloat(data.longitude);
+            const apiKey = data.apiKey;
+
+            if (!lat || !lng || !apiKey) {
+                alert("Workspace load failed: Missing coordinate mappings or API restriction keys.");
+                return;
             }
 
-        } catch (err) {
-            console.error('[StreetView Workflow Error]', err);
-            this.appendSystemLine('❌ Street View request failed.', 'error');
-        } finally {
-            this.setThinking(false);
-        }
-    },
+            this.closeStreetViewModal();
 
-    renderStreetViewResult(data) {
-        const address = data.address || 'Location';
-        const imageType = (data.imageType || 'streetview').toUpperCase();
-        const imageSrc = data.imagePath || '';
-        const interactiveUrl = data.interactiveUrl || '#';
+            // 1. Setup layout canvas workspace instead of old static iframe container
+            const modal = document.createElement('div');
+            modal.id = 'streetViewModal';
+            modal.className = 'modal-backdrop';
+            modal.style.cssText = `
+                position:fixed; top:0; left:0; width:100%; height:100%; 
+                background:rgba(0,0,0,0.85); z-index:99999; display:flex; 
+                align-items:center; justify-content:center; font-family:sans-serif;
+            `;
 
-        let html = `
-            <div class="commandLine system html">
-                <div class="streetview-card" style="background:#f8f9fa; padding:16px; border-radius:8px; border-left:5px solid #007aff; max-width:650px;">
-                    <strong>📸 Location Imagery</strong><br>
-                    <small style="color:#555;">${address}</small>
-                   
-                    ${imageSrc ? `
-                    <div style="margin:12px 0; text-align:center;">
-                        <img src="${imageSrc}" alt="${imageType}" style="max-width:100%; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+            modal.innerHTML = `
+                <div style="background:#fff; padding:20px; border-radius:12px; width:95%; max-width:1150px; box-shadow:0 15px 45px rgba(0,0,0,0.6);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:center;">
+                        <div>
+                            <strong style="font-size:1.15em; color:#222; display:block; margin-bottom:2px;">Location Imagery Selection Workspace</strong>
+                            <small style="color:#666; font-size:0.9em; display:block;">📍 ${data.address || ''}</small>
+                        </div>
+                        <button onclick="SkyIndex.closeStreetViewModal()" 
+                                style="background:none; border:none; font-size:32px; cursor:pointer; color:#bbb; line-height:1;">&times;</button>
                     </div>
-                    ` : ''}
-
-                    <div style="margin-top:8px; font-size:0.95em;">
-                        <strong>Image Type:</strong> <span style="color:${imageType === 'STREETVIEW' ? '#006400' : '#8B4513'};">${imageType}</span>
+                    
+                    <div style="display:flex; gap:16px; height:500px; margin-bottom:16px;">
+                        <div id="workspaceMapCanvas" style="flex:1; background:#f0f0f0; border-radius:8px; border:1px solid #ddd;"></div>
+                        <div id="workspacePanCanvas" style="flex:1; background:#f0f0f0; border-radius:8px; border:1px solid #ddd;"></div>
                     </div>
 
-                    <div style="margin-top:14px; display:flex; gap:8px;">
-                        <a href="${interactiveUrl}" target="_blank" 
-                           style="flex:1; background:#007aff; color:white; padding:9px 12px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.92em; text-align:center;">
-                            🗺 Open Full Interactive View
-                        </a>
-                        <button onclick="SkyIndex.openInteractiveStreetView('${interactiveUrl}')" 
-                                style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
-                            ✏️ Edit View (Interactive)
+                    <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid #eee; padding-top:14px;">
+                        <button onclick="SkyIndex.closeStreetViewModal()" 
+                                style="background:#f1f3f5; color:#495057; border:none; padding:11px 20px; border-radius:6px; font-weight:600; cursor:pointer;">
+                            Cancel
+                        </button>
+                        <button onclick="SkyIndex.captureCurrentView()" 
+                                style="background:#28a745; color:white; border:none; padding:11px 26px; border-radius:6px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(40,167,69,0.3);">
+                            📸 Use This View
                         </button>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
 
-        this.appendSystemHtml(html);
-    },
+            document.body.appendChild(modal);
 
-    openInteractiveStreetView(interactiveUrl) {
+            // 2. Asynchronously load SDK library script and render elements map canvas inside workspace
+            this._loadGoogleMapsSdk(apiKey, () => {
+                this._initializeDualPaneWorkspace(lat, lng);
+            });
+        },
 
-        console.log('[OPEN MODAL]', interactiveUrl);
+        _loadGoogleMapsSdk(apiKey, callback) {
+            if (typeof google === 'object' && typeof google.maps === 'object') {
+                callback();
+                return;
+            }
 
-        if (!interactiveUrl) {
-            alert("Interactive view not available.");
-            return;
-        }
+            window._googleMapsSdkCallback = () => {
+                delete window._googleMapsSdkCallback;
+                callback();
+            };
 
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position:fixed; top:0; left:0; width:100%; height:100%; 
-            background:rgba(0,0,0,0.9); z-index:99999; display:flex; 
-            align-items:center; justify-content:center;
-        `;
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=_googleMapsSdkCallback`;
+            script.async = true;
+            script.defer = true;
+            script.onerror = () => alert("Failed to fetch Google Maps JS engine layout modules.");
+            document.head.appendChild(script);
+        },
 
-        modal.innerHTML = `
-            <div style="background:#fff; padding:15px; border-radius:8px; max-width:96%; max-height:94%; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
-                    <strong>Interactive Street View</strong>
-                    <button onclick="this.closest('.modal-backdrop').remove()" 
-                            style="background:none; border:none; font-size:28px; cursor:pointer; color:#666;">×</button>
-                </div>
-                <iframe 
-                    width="920" 
-                    height="520" 
-                    style="border:0; border-radius:6px;"
-                    src="${interactiveUrl}" 
-                    allowfullscreen
-                    allow="accelerometer *; gyroscope *; magnetometer *; fullscreen *; xr-spatial-tracking *; clipboard-write *">
-                </iframe>
-            </div>
-        `;
+        _initializeDualPaneWorkspace(lat, lng) {
+            const centerPoint = { lat: lat, lng: lng };
 
-        modal.className = 'modal-backdrop';
-        document.body.appendChild(modal);
-    },
+            // Initialize overhead map canvas context
+            this._streetViewWorkspace.map = new google.maps.Map(document.getElementById('workspaceMapCanvas'), {
+                center: centerPoint,
+                zoom: 19,
+                mapTypeId: 'satellite',
+                streetViewControl: false,
+                mapTypeControl: false,
+                tilt: 0
+            });
 
-    closeStreetViewModal() {
-        const modal = document.getElementById('streetViewModal');
-        if (modal) modal.remove();
-    },
+            // Initialize active panorama framework viewport
+            this._streetViewWorkspace.panorama = new google.maps.StreetViewPanorama(
+                document.getElementById('workspacePanCanvas'), {
+                    position: centerPoint,
+                    pov: { heading: 105, pitch: 8 },
+                    zoom: 1,
+                    visible: true
+                }
+            );
 
-    captureCurrentView() {
-        alert("Capture functionality coming soon! (We can save the current heading/pitch)");
-    },
+            this._streetViewWorkspace.map.setStreetView(this._streetViewWorkspace.panorama);
+
+            // Mount movable focal target pin marker
+            this._streetViewWorkspace.marker = new google.maps.Marker({
+                position: centerPoint,
+                map: this._streetViewWorkspace.map,
+                draggable: true,
+                title: "Selected Frame Perspective Centerpoint"
+            });
+
+            const mapObj = this._streetViewWorkspace.map;
+            const panObj = this._streetViewWorkspace.panorama;
+            const markerObj = this._streetViewWorkspace.marker;
+
+            // Interactive Hook A: Clicking on map shifts focal positioning layout immediately
+            mapObj.addListener('click', (event) => {
+                const point = event.latLng;
+                markerObj.setPosition(point);
+                panObj.setPosition(point);
+            });
+
+            // Interactive Hook B: Manual marker drag-drops update panorama viewpoints
+            markerObj.addListener('dragend', () => {
+                const point = markerObj.getPosition();
+                panObj.setPosition(point);
+            });
+
+            // Interactive Hook C: Navigating within Street View updates satellite map pins automatically
+            panObj.addListener('position_changed', () => {
+                const position = panObj.getPosition();
+                mapObj.setCenter(position);
+                markerObj.setPosition(position);
+            });
+        },
+
+        closeStreetViewModal() {
+            const modal = document.getElementById('streetViewModal');
+            if (modal) modal.remove();
+
+            // Flush reference pointers to avoid garbage collector block arrays leaks
+            this._streetViewWorkspace.map = null;
+            this._streetViewWorkspace.panorama = null;
+            this._streetViewWorkspace.marker = null;
+        },
+
+        captureCurrentView() {
+            const panInstance = this._streetViewWorkspace.panorama;
+            if (!panInstance) return;
+
+            const currentPos = panInstance.getPosition();
+            const currentPov = panInstance.getPov();
+
+            const selectionPayload = {
+                lat: currentPos.lat(),
+                lng: currentPos.lng(),
+                heading: currentPov.heading,
+                pitch: currentPov.pitch,
+                zoom: panInstance.getZoom()
+            };
+
+            console.log("🎯 Exact Proposal Workspace Coordinates Captured:", selectionPayload);
+            this.appendSystemLine(`📸 View Saved: Lat ${selectionPayload.lat.toFixed(5)}, Heading ${selectionPayload.heading.toFixed(0)}°`, 'success');
+            
+            // TODO: Pass 'selectionPayload' downstream to your proposal document generator.
+
+            this.closeStreetViewModal();
+        },
 
     // #endregion
 
