@@ -1380,7 +1380,7 @@ window.SkyIndex = {
         // Load Google Maps SDK if not loaded
         if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
             const script = document.createElement('script');
-            script.src = "https://maps.googleapis.com/maps/api/js?key=YOUR_EMBED_KEY&callback=initializeDualView";
+            script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyAcV7hYcUtoihKLKtwaQErG9FOMVFn8cq0&callback=initializeDualView";
             script.defer = true;
             document.head.appendChild(script);
         } else {
