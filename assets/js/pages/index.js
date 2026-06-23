@@ -1229,7 +1229,11 @@ window.SkyIndex = {
             const output = this.getOutputHost();
             if (!output) return;
 
+            // Always clear any existing processing element first
+            document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
+
             const processing = document.createElement('div');
+            processing.id = 'streetViewProcessing';
             processing.className = 'commandLine system processing';
             processing.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -1248,13 +1252,15 @@ window.SkyIndex = {
         },
 
         replaceStreetViewProcessingWithResult() {
-            if (this._currentStreetViewProcessingEl) {
-                this._currentStreetViewProcessingEl.remove();
-                this._currentStreetViewProcessingEl = null;
-            }
+            // Aggressive cleanup — removes all instances
+            document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
+            this._currentStreetViewProcessingEl = null;
         },
 
         async executeStreetViewWorkflow(text, activitySessionId, address) {
+            // Always clean any previous processing state first
+            this.replaceStreetViewProcessingWithResult();
+
             this.renderStreetViewProcessingState();
             this.setThinking(true);
 
@@ -1275,9 +1281,11 @@ window.SkyIndex = {
                     })
                 });
 
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
                 const data = await res.json();
+
+                // Clean processing state immediately after successful response
                 this.replaceStreetViewProcessingWithResult();
 
                 if (data.success) {
@@ -1338,6 +1346,10 @@ window.SkyIndex = {
         },
 
         openInteractiveStreetView(data) {
+
+            // Clean up any lingering processing indicator
+            this.replaceStreetViewProcessingWithResult();
+
             console.log('[OPEN WORKSPACE MODAL]', data);
 
             const lat = parseFloat(data.latitude);
