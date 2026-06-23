@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 header('Content-Type: application/json');
 
+
 try {
     // Load environment
     if (!function_exists('skyesoftLoadEnv')) {
@@ -44,6 +45,10 @@ try {
     if (empty($googleKey)) {
         throw new Exception('Google Maps Static API key not configured');
     }
+
+    error_log("=== STREETVIEW REQUEST STARTED ===");
+    error_log("Address: " . $address);
+    error_log("Google Key length: " . strlen($googleKey));
 
     $encodedAddress = urlencode($address);
 
