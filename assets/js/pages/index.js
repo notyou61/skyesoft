@@ -1325,39 +1325,76 @@ window.SkyIndex = {
         this.appendSystemHtml(html);
     },
 
-    openInteractiveStreetView(interactiveUrl) {
-        if (!interactiveUrl) {
-            alert("Interactive view not available.");
+    openInteractiveStreetView(data) {
+        const lat = data.latitude;
+        const lng = data.longitude;
+        const address = data.address || 'Location';
+
+        if (!lat || !lng) {
+            alert("Coordinates not available for this address.");
             return;
         }
 
         const modal = document.createElement('div');
+        modal.id = 'streetViewModal';
         modal.style.cssText = `
             position:fixed; top:0; left:0; width:100%; height:100%; 
-            background:rgba(0,0,0,0.92); z-index:99999; display:flex; 
+            background:rgba(0,0,0,0.9); z-index:99999; display:flex; 
             align-items:center; justify-content:center;
         `;
-        
+
         modal.innerHTML = `
-            <div style="background:#fff; padding:15px; border-radius:8px; max-width:96%; max-height:94%; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
-                    <strong>Interactive Street View</strong>
-                    <button onclick="this.closest('.modal-backdrop').remove()" 
-                            style="background:none; border:none; font-size:28px; cursor:pointer; color:#666;">×</button>
+            <div style="background:#fff; padding:20px; border-radius:8px; width:1000px; max-height:92%; overflow:auto;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                    <strong>Interactive Location Viewer — ${address}</strong>
+                    <button onclick="SkyIndex.closeStreetViewModal()" style="background:none;border:none;font-size:28px;cursor:pointer;">×</button>
                 </div>
-                <iframe 
-                    width="920" 
-                    height="520" 
-                    style="border:0; border-radius:6px;"
-                    src="${interactiveUrl}" 
-                    allowfullscreen
-                    allow="accelerometer *; gyroscope *; magnetometer *; fullscreen *; xr-spatial-tracking *; clipboard-write *">
-                </iframe>
+                
+                <div style="display:flex; gap:10px;">
+                    <!-- Satellite Map -->
+                    <div style="flex:1;">
+                        <div style="margin-bottom:5px; font-weight:600;">Satellite Map (Drag Pegman)</div>
+                        <div id="mapContainer" style="width:100%; height:420px; border:1px solid #ddd;"></div>
+                    </div>
+                    
+                    <!-- Street View -->
+                    <div style="flex:1;">
+                        <div style="margin-bottom:5px; font-weight:600;">Street View</div>
+                        <div id="panoContainer" style="width:100%; height:420px; border:1px solid #ddd;"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top:15px; display:flex; gap:10px; justify-content:center;">
+                    <button onclick="SkyIndex.captureCurrentView()" style="background:#28a745; color:white; padding:12px 24px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">
+                        📸 Use This View
+                    </button>
+                    <button onclick="SkyIndex.closeStreetViewModal()" style="background:#dc3545; color:white; padding:12px 24px; border:none; border-radius:6px; cursor:pointer;">
+                        Close
+                    </button>
+                </div>
             </div>
         `;
-        
-        modal.className = 'modal-backdrop';
+
         document.body.appendChild(modal);
+
+        // Load Google Maps SDK
+        if (typeof google === 'undefined') {
+            const script = document.createElement('script');
+            script.src = "https://maps.googleapis.com/maps/api/js?key=YOUR_EMBED_KEY&callback=initializeDualView";
+            script.defer = true;
+            document.head.appendChild(script);
+        } else {
+            initializeDualView(lat, lng);
+        }
+    },
+
+    closeStreetViewModal() {
+        const modal = document.getElementById('streetViewModal');
+        if (modal) modal.remove();
+    },
+
+    captureCurrentView() {
+        alert("Capture functionality coming soon! (We can save the current heading/pitch)");
     },
 
     // #endregion
@@ -2910,6 +2947,47 @@ window.SkyIndex = {
     // #endregion
 
 };
+// #endregion
+
+// #region 🗺️ Google Maps Dual View Initializer (Map + Street View)
+let map, panorama;
+
+function initializeDualView(lat, lng) {
+    const mapDiv = document.getElementById('mapContainer');
+    const panoDiv = document.getElementById('panoContainer');
+
+    if (!mapDiv || !panoDiv) {
+        console.error('[DualView] Container elements not found');
+        return;
+    }
+
+    // ─────────────────────────────────────────
+    // Satellite Map (Left Pane)
+    // ─────────────────────────────────────────
+    map = new google.maps.Map(mapDiv, {
+        center: { lat: lat, lng: lng },
+        zoom: 19,
+        mapTypeId: 'satellite'
+    });
+
+    // ─────────────────────────────────────────
+    // Street View Panorama (Right Pane)
+    // ─────────────────────────────────────────
+    panorama = new google.maps.StreetViewPanorama(panoDiv, {
+        position: { lat: lat, lng: lng },
+        pov: { heading: 105, pitch: 8 },
+        visible: true
+    });
+
+    // ─────────────────────────────────────────
+    // Click on Map → Update Street View
+    // ─────────────────────────────────────────
+    map.addListener('click', (e) => {
+        if (panorama) {
+            panorama.setPosition(e.latLng);
+        }
+    });
+}
 // #endregion
 
 // #region 🧾 Page Registration
