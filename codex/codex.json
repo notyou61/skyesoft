@@ -700,33 +700,97 @@
                     "Updates to prefixes require formal amendment and Archivist logging."
                 ]
             },
-            "repositoryStandard": {
+            "repositoryArtifactStandard": {
                 "title": {
                     "icon": 67,
-                    "text": "Repository Standard"
+                    "text": "Repository & Artifact Standard"
                 },
                 "tier": 2,
-                "hierarchyOrder": 3,
-                "type": "Structural Standard",
+                    "hierarchyOrder": 3,
+                    "type": "Structural Standard",
                 "preamble": {
                     "icon": 0,
-                    "text": "The Repository Standard defines the canonical structure of the Skyesoft system. All folders, files, and architectural groupings exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity prevents drift, enforces governance, and ensures long-term maintainability. No file or directory may exist outside this structure without explicit Codex authorization."
+                    "text": "The Repository & Artifact Standard defines the canonical filesystem structure, artifact governance model, retention classifications, and naming architecture of Skyesoft. All folders, files, generated artifacts, evidence records, reports, images, documents, and system outputs exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity prevents drift, eliminates ambiguity, enforces governance, and ensures long-term maintainability. No file, directory, or artifact may exist outside this standard without explicit Codex authorization."
                 },
                 "purpose": {
                     "icon": 6,
-                    "text": "Ensure a consistent, Codex-governed layout for all Skyesoft components; prevent architectural drift; define the mandatory placement of all files; and maintain long-term integrity."
+                    "text": "Provide a unified governance model for repository structure, artifact storage, retention classification, file naming, and long-term record management."
+                },
+                "artifactLifecycle": {
+                    "title": {
+                    "icon": 44,
+                    "text": "Artifact Lifecycle Classification"
+                },
+                "directive": "All artifacts must be classified according to lifecycle before creation.",
+                    "classifications": [
+                        {
+                        "code": "TMP",
+                        "name": "Temporary Artifact",
+                        "description": "Regeneratable artifacts that are not business records and may be purged."
+                        },
+                        {
+                        "code": "REC",
+                        "name": "Record Artifact",
+                        "description": "Permanent business records retained indefinitely and included in backups."
+                        },
+                        {
+                        "code": "SYS",
+                        "name": "System Artifact",
+                        "description": "System-generated support files used for platform operations and governance."
+                        }
+                    ]
+                },
+                "artifactRepository": {
+                    "title": {
+                    "icon": 28,
+                    "text": "Artifact Repository"
+                    },
+                    "directive": "Artifacts shall be stored in the canonical artifact repository.",
+                    "rules": [
+                        "Artifacts shall not be organized into project-specific directory trees.",
+                        "Artifact identity shall be determined by filename and metadata.",
+                        "The canonical artifact repository shall reside at /artifacts/.",
+                        "Artifact retrieval shall be performed through metadata, filename parsing, or registry lookup.",
+                        "Artifact filenames must be globally unique."
+                        ]
+                        },
+                        "artifactNaming": {
+                        "title": {
+                        "icon": 11,
+                        "text": "Universal Artifact Standard"
+                        },
+                        "directive": "All generated, uploaded, captured, or retained artifacts shall follow the Universal Artifact Standard.",
+                        "format": "CCC-MMM-PPP-OOOOOO-UUU-TTTTTTTTTT-SSS.ext",
+                        "segments": {
+                        "CCC": "Artifact Classification (TMP, REC, SYS)",
+                        "MMM": "Media Type (IMG, PDF, DOC, DAT, VID, AUD)",
+                        "PPP": "Artifact Purpose",
+                        "OOOOOO": "Six-digit Object Identifier (Work Order Number or 000000 when not assigned)",
+                        "UUU": "Three-digit User Identifier",
+                        "TTTTTTTTTT": "Ten-digit Unix Timestamp",
+                        "SSS": "Three-digit Sequence Number"
+                        },
+                        "rules": [
+                        "All filename segments shall use fixed-width formatting.",
+                        "Leading zeros shall be used when required.",
+                        "File extensions must remain lowercase.",
+                        "Unix timestamps are mandatory.",
+                        "Sequence numbers are mandatory.",
+                        "No artifact may be created outside the Universal Artifact Standard."
+                    ]
                 },
                 "namingRules": {
                     "title": {
                     "icon": 11,
-                    "text": "File Naming Enforcement"
-                    },
-                    "directive": "Filename conventions are governed exclusively by the Naming Convention Standard and enforced by semantic category.",
+                    "text": "Naming Governance"
+                },
+                "directive": "Artifact purpose codes and naming conventions are governed exclusively through Codex amendment.",
                     "rules": [
-                    "Filenames must follow the Naming Convention Standard for their semantic category.",
-                    "Repository Standard does not define naming styles directly.",
-                    "File extensions must remain lowercase.",
-                    "Any naming exception requires a Codex amendment."
+                        "All artifact purpose codes must be exactly three characters.",
+                        "All media codes must be exactly three characters.",
+                        "All classification codes must be exactly three characters.",
+                        "Purpose codes must remain globally unique.",
+                        "Any new purpose code requires Codex amendment."
                     ]
                 },
                 "directives": [
@@ -736,11 +800,150 @@
                     "Executable logic must reside only in api/, assets/js/, modules/, or scripts/.",
                     "Each directory must publish its allowed file categories in repositoryInventory.json.",
                     "All filesystem items must appear in repositoryInventory.json.",
-                    "No duplicate filenames within the same directory tree.",
+                    "Artifact filenames must be globally unique.",
                     "assets/data/errorRegistry.json and assets/data/repositoryAudit.json must always exist as SOT files.",
                     "scripts/auditor.php is the only constitutional execution script required under EGS v2.0.",
                     "MIS (Merkle Integrity Standard) must be used to validate Codex integrity; the canonical Merkle root is stored in /codex/meta/merkleRoot.txt and is updated only during explicit canonical state promotion."
                 ]
+            },
+            "artifactPurposeRegistry": {
+                "title": {
+                "icon": 31,
+                "text": "Artifact Purpose Registry"
+                },
+                "tier": 2,
+                "type": "Registry Standard",
+                "authority": "The Artifact Purpose Registry is the sole authoritative source for artifact purpose classification within Skyesoft. All artifact purpose codes derive their meaning, governance, validation requirements, and lifecycle interpretation from this registry.",
+                "purpose": {
+                "icon": 6,
+                "text": "Provide a permanent, immutable, and universally governed classification system for all business, evidence, imagery, document, and reporting artifacts generated or retained by Skyesoft."
+                },
+                "directive": "Every artifact shall be assigned exactly one purpose code from this registry. Purpose codes define business meaning and shall remain immutable once established.",
+                "governance": {
+                "rules": [
+                "Purpose codes must be exactly three uppercase alphabetic characters.",
+                "Purpose codes must remain globally unique.",
+                "Purpose codes shall never be repurposed.",
+                "Purpose definitions are permanent.",
+                "Purpose codes may not be deprecated without Codex amendment.",
+                "New purpose codes require explicit Codex amendment.",
+                "Purpose codes shall be interpreted identically across all modules and subsystems.",
+                "No artifact may be created using an undefined purpose code."
+                ]
+                },
+                "validation": {
+                    "rules": [
+                        "Artifact creation shall fail when an invalid purpose code is supplied.",
+                        "Purpose code validation must occur before artifact persistence.",
+                        "Purpose code validation shall be case-sensitive.",
+                        "Only registry-defined codes are valid."
+                    ]
+                },
+                "categories": {
+                    "generatedImagery": {
+                        "title": "Generated Imagery",
+                        "codes": {
+                            "STV": "Street View",
+                            "MAP": "Satellite Map",
+                            "CPV": "Composite View"
+                        }
+                    },
+                    "evidenceArtifacts": {
+                        "title": "Evidence Artifacts",
+                        "codes": {
+                            "PAR": "Parcel Evidence",
+                            "GIS": "GIS Evidence",
+                            "PMT": "Permit Snapshot",
+                            "UTL": "Utility Verification"
+                        }
+                    },
+                    "projectPhotography": {
+                        "title": "Project Photography",
+                        "codes": {
+                        "SVY": "Site Survey Photo",
+                        "WIP": "Work In Progress Photo",
+                        "COM": "Completion Photo",
+                        "PNC": "Punch List Photo",
+                        "INP": "Inspection Photo"
+                        }
+                    },
+                    "businessArtifacts": {
+                    "title": "Business Artifacts",
+                        "codes": {
+                        "ART": "Artwork",
+                        "APP": "Application",
+                        "RPT": "Report",
+                        "DOC": "Supporting Document",
+                        "EML": "Email Archive",
+                        "NOT": "Note Attachment"
+                }
+                }
+                },
+                "futureExpansion": {
+                    "directive": "Additional purpose categories and codes shall be added only through formal Codex amendment.",
+                    "requirements": [
+                        "New codes must not conflict with existing codes.",
+                        "New codes must belong to a defined category.",
+                        "New codes must include a permanent business definition.",
+                        "New codes must support deterministic artifact interpretation."
+                    ]
+                }
+            },
+            "mediaTypeRegistry": {
+                "title": {
+                "icon": 32,
+                "text": "Media Type Registry"
+                },
+                "tier": 2,
+                "type": "Registry Standard",
+                "authority": "The Media Type Registry is the sole authoritative source for media classification within Skyesoft. All artifacts, documents, reports, images, data files, audio files, video files, and future media assets derive their media identity from this registry.",
+                "purpose": {
+                "icon": 6,
+                "text": "Provide a permanent, immutable, and universally governed classification system for all media formats utilized by Skyesoft."
+                },
+                "directive": "Every artifact shall be assigned exactly one media type code from this registry.",
+                "governance": {
+                "rules": [
+                "Media type codes must be exactly three uppercase alphabetic characters.",
+                "Media type codes must remain globally unique.",
+                "Media type codes shall never be repurposed.",
+                "Media type definitions are permanent.",
+                "Media type codes may not be deprecated without Codex amendment.",
+                "New media type codes require explicit Codex amendment.",
+                "Media type codes shall be interpreted identically across all modules and subsystems.",
+                "No artifact may be created using an undefined media type code."
+                ]
+                },
+                "validation": {
+                "rules": [
+                "Artifact creation shall fail when an invalid media type code is supplied.",
+                "Media type validation must occur before artifact persistence.",
+                "Media type validation shall be case-sensitive.",
+                "Only registry-defined media type codes are valid."
+                ]
+                },
+                "codes": {
+                "IMG": "Image",
+                "PDF": "Portable Document Format",
+                "DOC": "Document",
+                "DAT": "Structured Data",
+                "VID": "Video",
+                "AUD": "Audio",
+                "HTM": "HTML Document",
+                "TXT": "Plain Text",
+                "LOG": "Log File",
+                "CFG": "Configuration File",
+                "ZIP": "Compressed Archive"
+                },
+                "futureExpansion": {
+                "directive": "Additional media type codes shall be added only through formal Codex amendment.",
+                "requirements": [
+                "New codes must not conflict with existing codes.",
+                "New codes must include a permanent definition.",
+                "New codes must support deterministic media interpretation.",
+                "New codes must be exactly three characters."
+                ]
+                }
             },
             "inventoryClassification": {
                 "title": {
