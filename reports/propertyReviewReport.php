@@ -69,10 +69,10 @@ function buildPropertyReviewBody(array $data): string
 {
     $html = '';
 
-    // 1. Property Review Summary
+    // 1. Property Review Summary (Narrative)
     $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildSectionHeader('Property Review Summary', 'pin.png');
-    $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6;">';
+    $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6; font-size:11pt;">';
     $summary = $data['summary'] ?? 'Property review completed.';
     $summary = str_replace(['<br>', '<br/>', '<br />'], ' ', $summary);
     $summary = preg_replace('/\s+/', ' ', $summary);
@@ -80,19 +80,19 @@ function buildPropertyReviewBody(array $data): string
     $html .= '</div>';
     $html .= '</div>';
 
-    // 2. Primary Parcel
-    $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
-    $html .= buildPrimaryParcelSection($data);
-    $html .= '</div>';
-
-    // 3. Google Map (Satellite)
+    // 2. Location Map (Satellite)
     $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildGoogleMapSection($data);
     $html .= '</div>';
 
-    // 4. Street View
+    // 3. Street View
     $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildStreetViewSection($data);
+    $html .= '</div>';
+
+    // 4. Parcel Details
+    $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
+    $html .= buildPrimaryParcelSection($data);
     $html .= '</div>';
 
     // 5. Governance
