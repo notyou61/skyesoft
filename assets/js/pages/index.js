@@ -1104,21 +1104,21 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 🏠 PROPERTY WORKFLOW (Plain Address → Property/Parcel Review)
+        // 🏠 PROPERTY WORKFLOW (Plain Address → Property Review)
         // Highest priority after Street View
         // --------------------------------------------------
         const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
         if (propertyIntent) {
-            console.log(`[PROPERTY] Detected: ${propertyIntent.mode} (${propertyIntent.confidence})`);
+            console.log(`[PROPERTY] ${propertyIntent.workflow} (${propertyIntent.confidence})`);
 
             // Suppress BEFORE any further rendering
-            this.suppressRawContactEcho();
+            this.suppressRawIntentEcho();
 
             // Show processing state
             this.renderPropertyProcessingState();
 
             // Run dedicated Property pipeline
-            await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.mode);
+            await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.workflow);
             return;
         }
 
@@ -1127,16 +1127,16 @@ window.SkyIndex = {
         // --------------------------------------------------
         const locationIntent = await this.isLocationWorkflowIntent(text, normalized);
         if (locationIntent) {
-            console.log(`[LOCATION] Detected mode: ${locationIntent.mode} (${locationIntent.confidence})`);
+            console.log(`[LOCATION] ${locationIntent.workflow || locationIntent.mode} (${locationIntent.confidence})`);
 
             // Suppress BEFORE any further rendering
-            this.suppressRawContactEcho();
+            this.suppressRawIntentEcho();
 
             // Show processing state
             this.renderLocationProcessingState();
 
             // Run specialized Location pipeline
-            await this.executeLocationWorkflow(text, activitySessionId, locationIntent.mode);
+            await this.executeLocationWorkflow(text, activitySessionId, locationIntent.workflow || locationIntent.mode);
             return;
         }
 
