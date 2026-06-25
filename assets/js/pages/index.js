@@ -1111,13 +1111,9 @@ window.SkyIndex = {
         if (propertyIntent) {
             console.log(`[PROPERTY] ${propertyIntent.workflow} (${propertyIntent.confidence})`);
 
-            // Suppress BEFORE any further rendering
             this.suppressRawIntentEcho();
-
-            // Show processing state
             this.renderPropertyProcessingState();
 
-            // Run dedicated Property pipeline
             await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.workflow);
             return;
         }
@@ -1129,13 +1125,9 @@ window.SkyIndex = {
         if (locationIntent) {
             console.log(`[LOCATION] ${locationIntent.workflow || locationIntent.mode} (${locationIntent.confidence})`);
 
-            // Suppress BEFORE any further rendering
             this.suppressRawIntentEcho();
-
-            // Show processing state
             this.renderLocationProcessingState();
 
-            // Run specialized Location pipeline
             await this.executeLocationWorkflow(text, activitySessionId, locationIntent.workflow || locationIntent.mode);
             return;
         }
@@ -2228,6 +2220,127 @@ window.SkyIndex = {
         return false;
     },
     // #endregion
+
+    // ───────────────────────────────────────────────
+    // PROPERTY WORKFLOW INTENT (Plain Address Only)
+    // ───────────────────────────────────────────────
+    async isPropertyWorkflowIntent(text, normalized) {
+        if (!text || typeof text !== 'string' || text.length < 8) return false;
+
+        const lower = text.toLowerCase().trim();
+
+        // Explicit triggers
+        if (lower.includes('property review') || 
+            lower.includes('review property') ||
+            lower.includes('parcel review') || 
+            lower.includes('review parcel') ||
+            lower.includes('zoning at') || 
+            lower.includes('sign code for') || 
+            lower.includes('ordinance for') ||
+            lower.includes('parcel for')) {
+            return { 
+                object: "property", 
+                workflow: "property_review", 
+                confidence: "high" 
+            };
+        }
+
+        // Plain address pattern (no entity name prefix, not a contact)
+        const looksLikePlainAddress = 
+            /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central)\b/i.test(text) &&
+            !/\b(The |A |At |[A-Z][a-z]+ [A-Z][a-z]+)\b.*\d{1,5}/.test(text) &&
+            !this.isQuickSignatureHint(text);
+
+        if (looksLikePlainAddress) {
+            return { 
+                object: "property", 
+                workflow: "property_review", 
+                confidence: "medium" 
+            };
+        }
+
+        return false;
+    },
+
+    // Generic suppression for any workflow (Property / Location / Contact)
+    suppressRawIntentEcho() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const userLines = Array.from(output.querySelectorAll('.commandLine.user'));
+        const lastUser = userLines[userLines.length - 1];
+
+        if (!lastUser) return;
+
+        const content = (lastUser.textContent || '').trim();
+
+        if (content.length > 50 && 
+            (/\d{3}[-.\s]?\d{3}/.test(content) || 
+             /@\S+\.\S+/.test(content) || 
+             /\b\d{1,5}\s+[A-Za-z]/.test(content))) {
+            
+            lastUser.style.display = 'none';
+            lastUser.dataset.suppressed = 'true';
+            console.log('[UX] Suppressed raw workflow input echo');
+        }
+    },
+
+    // Property Processing State
+    renderPropertyProcessingState() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const processing = document.createElement('div');
+        processing.className = 'commandLine system processing';
+        processing.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">🏠</span>
+                <div>
+                    <strong>Resolving Property...</strong><br>
+                    <span style="font-size: 0.92em;">Address validation • Parcel resolution • Jurisdiction lookup • Preparing property review</span>
+                </div>
+            </div>
+        `;
+
+        output.appendChild(processing);
+        this.scrollOutputToBottom(output);
+        this._currentPropertyProcessingEl = processing;
+    },
+
+    // Execute Property Workflow → askOpenAI.php → resolveParcelReview.php
+    async executePropertyWorkflow(text, activitySessionId, workflow) {
+        if (this._currentPropertyProcessingEl) {
+            this._currentPropertyProcessingEl.remove();
+            this._currentPropertyProcessingEl = null;
+        }
+
+        this.setThinking(true);
+
+        try {
+            const res = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userQuery: text,
+                    activitySessionId: activitySessionId
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success && data.response) {
+                this.appendSystemHtml(data.response);
+            } else {
+                this.appendSystemLine(`❌ Property review failed: ${data?.error || 'Unknown error'}`, 'error');
+            }
+        } catch (err) {
+            console.error('[Property Workflow Error]', err);
+            this.appendSystemLine('❌ Property review request failed.', 'error');
+        } finally {
+            this.setThinking(false);
+        }
+    },
 
     // --------------------------------------------------
     // Improved Signature Detection (Single-line + Multi-line)
