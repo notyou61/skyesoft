@@ -1357,6 +1357,52 @@ window.SkyIndex = {
             this.appendSystemHtml(html);
         },
 
+        renderParcelReviewResult(data) {
+            const addr = data.inputAddress || 'Address';
+            const summary = data.summary || '';
+            const parcel = data.parcel?.primaryParcel || {};
+            const gov = data.governance || {};
+            const jurisdiction = data.jurisdiction?.governingJurisdiction || parcel.jurisdiction || 'Unknown';
+            const actionId = data.actionId || '';
+
+            const html = `
+                <div class="commandLine system html">
+                    <div class="parcel-review-card" style="background:#f8f9fa; padding:20px; border-radius:8px; border-left:6px solid #007aff; max-width:720px;">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+                            <span style="font-size:2.2em;">🏠</span>
+                            <div>
+                                <strong style="font-size:1.15em;">Property Review</strong><br>
+                                <small style="color:#555;">${addr}</small>
+                            </div>
+                        </div>
+
+                        <div style="background:white; padding:16px; border-radius:6px; margin-bottom:16px; line-height:1.5;">
+                            ${summary}
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: auto 1fr; gap:8px 16px; font-size:0.95em; margin-bottom:16px;">
+                            ${parcel.parcelNumber ? `<div><strong>Parcel</strong></div><div>${parcel.parcelNumber}</div>` : ''}
+                            <div><strong>Jurisdiction</strong></div>
+                            <div>${jurisdiction}</div>
+                            <div><strong>Governance</strong></div>
+                            <div>${gov.rsCode || 'RS-0'} — ${gov.parcelStatus || 'Single Parcel Found'}</div>
+                        </div>
+
+                        ${actionId ? `
+                        <div style="text-align:right; margin-top:12px;">
+                            <a href="/skyesoft/api/generateReports.php?type=property&actionId=${actionId}" 
+                            target="_blank" 
+                            style="color:#007aff; text-decoration:underline; font-weight:500;">
+                                📄 Generate Full Property Report
+                            </a>
+                        </div>` : ''}
+                    </div>
+                </div>
+            `;
+
+            this.appendSystemHtml(html);
+        },
+
         openInteractiveStreetView(data) {
 
             // Clean up any lingering processing indicator
@@ -2293,7 +2339,6 @@ window.SkyIndex = {
         this.scrollOutputToBottom(output);
         this._currentPropertyProcessingEl = processing;
     },
-    
         renderLocationProcessingState() {
         const output = this.getOutputHost();
         if (!output) return;
@@ -2331,7 +2376,6 @@ window.SkyIndex = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userQuery: text,
-                    // Explicit hint to help backend intent detection
                     intent: "parcel_review",
                     activitySessionId: activitySessionId
                 })
@@ -2340,13 +2384,12 @@ window.SkyIndex = {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
+            console.log('[Property Response]', data); // ← Debug
 
-            if (data.success && data.response) {
-                this.appendSystemHtml(data.response);
-            } else if (data.error) {
-                this.appendSystemLine(`❌ ${data.error}`, 'error');
+            if (data.success === true) {
+                this.renderParcelReviewResult(data);
             } else {
-                this.appendSystemLine('❌ No response from property review.', 'error');
+                this.appendSystemLine(`❌ ${data.error || 'Property review failed'}`, 'error');
             }
         } catch (err) {
             console.error('[Property Workflow Error]', err);
