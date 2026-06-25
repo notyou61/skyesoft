@@ -4,13 +4,13 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — propertyReviewReport.php
 //  Property / Parcel Review Report Generator
-//  Version: 1.0.1
-//  Created: 2026-06-25
+//  Version: 1.0.2
+//  Updated: 2026-06-25
 // =============================================
 
 #region SECTION 00 - Main Report Generator
 
-require_once __DIR__ . '/helpers/reportHelpers.php';   // ← ADD THIS LINE
+require_once __DIR__ . '/reportHelpers.php';
 
 function generatePropertyReviewReport(array $input): array
 {
@@ -105,7 +105,7 @@ function buildPropertyReviewBody(array $data): string
 
 #endregion
 
-#region SECTION 03 - Section Builders (Reused from location review)
+#region SECTION 03 - Section Builders
 
 function buildPrimaryParcelSection(array $data): string
 {
@@ -132,8 +132,5 @@ function buildGovernanceSection(array $data): string
     $html .= '</table>';
     return $html;
 }
-
-// Reuse the map and street view helpers from locationReviewReport.php if available
-// (You can copy buildGoogleMapSection and buildStreetViewSection from locationReviewReport.php here if needed)
 
 #endregion
