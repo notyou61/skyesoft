@@ -1207,9 +1207,11 @@ PROMPT;
 // Clean integration with resolveParcelReview.php
 // =====================================================
 
-error_log("[DEBUG] Intent received: " . ($intent ?? 'NULL') . 
-          " | Query: " . substr($query, 0, 100) . 
-          " | Input intent: " . ($input['intent'] ?? 'NULL'));
+error_log("[PARCEL_REVIEW DEBUG] === START ===");
+error_log("[PARCEL_REVIEW DEBUG] Intent var: " . ($intent ?? 'NULL'));
+error_log("[PARCEL_REVIEW DEBUG] Input intent: " . ($input['intent'] ?? 'NULL'));
+error_log("[PARCEL_REVIEW DEBUG] Query: " . substr($query, 0, 200));
+error_log("[PARCEL_REVIEW DEBUG] Raw input keys: " . json_encode(array_keys($input ?? [])));
 
 if ($intent === "parcel_review" || 
     (isset($input['intent']) && $input['intent'] === 'parcel_review') || 
@@ -1217,22 +1219,25 @@ if ($intent === "parcel_review" ||
     str_contains(strtolower($query), "property review") || 
     preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query)) {
 
-    error_log("[parcel_review] Handler triggered for query: " . substr($query, 0, 150));
+    error_log("[parcel_review] HANDLER TRIGGERED SUCCESSFULLY");
 
     $addressToReview = trim($query);
+    error_log("[parcel_review] Address to review: " . $addressToReview);
 
     if (empty($addressToReview)) {
-        echo json_encode([
-            'success' => false,
-            'error' => 'No address provided for review'
-        ]);
+        error_log("[parcel_review] ERROR: Empty address");
+        echo json_encode(['success' => false, 'error' => 'No address provided for review']);
         exit;
     }
 
     require_once __DIR__ . '/resolveParcelReview.php';
+    error_log("[parcel_review] resolveParcelReview.php loaded");
+
     $resolutionData = resolveParcelReview($addressToReview);
+    error_log("[parcel_review] resolveParcelReview success: " . ($resolutionData['success'] ? 'YES' : 'NO'));
 
     if (!$resolutionData['success']) {
+        error_log("[parcel_review] resolveParcelReview failed");
         echo json_encode($resolutionData);
         exit;
     }
@@ -1241,49 +1246,40 @@ if ($intent === "parcel_review" ||
         $resolutionData['summary'] = "Skyesoft completed parcel review for " . htmlspecialchars($addressToReview) . ".";
     }
 
-    // =====================================================
-    // LOG LOCATION REVIEW + CAPTURE ACTION ID
-    // =====================================================
+    // Logging block (unchanged)
     error_log("[DEBUG] Attempting to log location review. Has \$db? " . (isset($db) ? 'YES' : 'NO'));
 
     if (isset($db) && $db instanceof PDO) {
-
         require_once __DIR__ . '/utils/actions.php';
-
         error_log("[DEBUG] Calling insertActionPrompt with actionTypeId=12");
 
         $actionId = insertActionPrompt([
             'actionTypeId'      => 12,
             'contactId'         => $_SESSION['contactId'] ?? 0,
-
             'promptText'        => $addressToReview,
             'responseText'      => $resolutionData['summary'] ?? null,
-
             'actionPayloadData' => $input,
             'actionResponseData'=> $resolutionData,
-
             'intent'            => 'location.review',
             'intentConfidence'  => 0.90,
-
             'latitude'          => $resolutionData['google']['latitude'] ?? null,
             'longitude'         => $resolutionData['google']['longitude'] ?? null,
-
             'origin'            => 1,
             'createdUnixTime'   => time(),
         ], $db);
 
-        error_log("[DEBUG] insertActionPrompt call completed | actionId=$actionId");
-
-        // Inject actionId into response for PDF report generation
+        error_log("[DEBUG] insertActionPrompt completed | actionId=$actionId");
         $resolutionData['actionId'] = $actionId;
-
     } else {
-        error_log('[parcel_review] Logging SKIPPED - $db is not available or not a PDO instance');
+        error_log('[parcel_review] Logging SKIPPED - $db not available');
     }
 
+    error_log("[PARCEL_REVIEW DEBUG] === END - Sending response ===");
     echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
     exit;
 
+} else {
+    error_log("[PARCEL_REVIEW DEBUG] Condition NOT met - falling through");
 }
 
 #endregion
