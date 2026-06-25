@@ -1105,7 +1105,6 @@ window.SkyIndex = {
 
         // --------------------------------------------------
         // 🏠 PROPERTY WORKFLOW (Plain Address → Property Review)
-        // Highest priority after Street View
         // --------------------------------------------------
         const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
         if (propertyIntent) {
@@ -1126,7 +1125,7 @@ window.SkyIndex = {
             console.log(`[LOCATION] ${locationIntent.workflow || locationIntent.mode} (${locationIntent.confidence})`);
 
             this.suppressRawIntentEcho();
-            this.renderLocationProcessingState();
+            this.renderLocationProcessingState();   // keep for now
 
             await this.executeLocationWorkflow(text, activitySessionId, locationIntent.workflow || locationIntent.mode);
             return;
@@ -2305,6 +2304,27 @@ window.SkyIndex = {
         output.appendChild(processing);
         this.scrollOutputToBottom(output);
         this._currentPropertyProcessingEl = processing;
+    },
+    
+        renderLocationProcessingState() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const processing = document.createElement('div');
+        processing.className = 'commandLine system processing';
+        processing.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">📍</span>
+                <div>
+                    <strong>Processing Location...</strong><br>
+                    <span style="font-size: 0.92em;">Entity + Address review</span>
+                </div>
+            </div>
+        `;
+
+        output.appendChild(processing);
+        this.scrollOutputToBottom(output);
+        this._currentLocationProcessingEl = processing;
     },
 
     // Execute Property Workflow → askOpenAI.php → resolveParcelReview.php
