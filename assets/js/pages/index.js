@@ -1104,19 +1104,38 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📍 Location Workflow (Parcel Review vs Location Only)
+        // 🏠 PROPERTY WORKFLOW (Plain Address → Property/Parcel Review)
+        // Highest priority after Street View
+        // --------------------------------------------------
+        const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
+        if (propertyIntent) {
+            console.log(`[PROPERTY] Detected: ${propertyIntent.mode} (${propertyIntent.confidence})`);
+
+            // Suppress BEFORE any further rendering
+            this.suppressRawContactEcho();
+
+            // Show processing state
+            this.renderPropertyProcessingState();
+
+            // Run dedicated Property pipeline
+            await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.mode);
+            return;
+        }
+
+        // --------------------------------------------------
+        // 📍 LOCATION WORKFLOW (Entity + Address)
         // --------------------------------------------------
         const locationIntent = await this.isLocationWorkflowIntent(text, normalized);
         if (locationIntent) {
             console.log(`[LOCATION] Detected mode: ${locationIntent.mode} (${locationIntent.confidence})`);
 
             // Suppress BEFORE any further rendering
-            this.suppressRawContactEcho();   // reuse for now, or create suppressRawLocationEcho later
+            this.suppressRawContactEcho();
 
             // Show processing state
-            this.renderLocationProcessingState();   // you'll need to add this method
+            this.renderLocationProcessingState();
 
-            // Run specialized Location pipeline with mode
+            // Run specialized Location pipeline
             await this.executeLocationWorkflow(text, activitySessionId, locationIntent.mode);
             return;
         }
