@@ -1125,9 +1125,11 @@ window.SkyIndex = {
             console.log(`[LOCATION] ${locationIntent.workflow || locationIntent.mode} (${locationIntent.confidence})`);
 
             this.suppressRawIntentEcho();
-            this.renderLocationProcessingState();   // keep for now
+            this.renderLocationProcessingState();
 
-            await this.executeLocationWorkflow(text, activitySessionId, locationIntent.workflow || locationIntent.mode);
+            // TODO: Implement executeLocationWorkflow if needed
+            this.appendSystemLine('Location workflow not fully implemented yet.', 'warning');
+            // await this.executeLocationWorkflow(...) 
             return;
         }
 
@@ -2229,33 +2231,19 @@ window.SkyIndex = {
         const lower = text.toLowerCase().trim();
 
         // Explicit triggers
-        if (lower.includes('property review') || 
-            lower.includes('review property') ||
-            lower.includes('parcel review') || 
-            lower.includes('review parcel') ||
-            lower.includes('zoning at') || 
-            lower.includes('sign code for') || 
-            lower.includes('ordinance for') ||
-            lower.includes('parcel for')) {
-            return { 
-                object: "property", 
-                workflow: "property_review", 
-                confidence: "high" 
-            };
+        if (lower.includes('property review') || lower.includes('review property') ||
+            lower.includes('parcel review') || lower.includes('review parcel') ||
+            lower.includes('zoning at') || lower.includes('sign code for') || 
+            lower.includes('ordinance for') || lower.includes('parcel for')) {
+            return { object: "property", workflow: "property_review", confidence: "high" };
         }
 
-        // Plain address pattern (no entity name prefix, not a contact)
-        const looksLikePlainAddress = 
-            /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central)\b/i.test(text) &&
-            !/\b(The |A |At |[A-Z][a-z]+ [A-Z][a-z]+)\b.*\d{1,5}/.test(text) &&
-            !this.isQuickSignatureHint(text);
+        // Strong plain address detection
+        const hasAddressPattern = /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central)\b/i.test(text);
+        const hasCityState = /Phoenix|Glendale|Chandler|Scottsdale|Tempe|Buckeye|Green Valley|AZ\b/i.test(text);
 
-        if (looksLikePlainAddress) {
-            return { 
-                object: "property", 
-                workflow: "property_review", 
-                confidence: "medium" 
-            };
+        if (hasAddressPattern && hasCityState && !this.isQuickSignatureHint(text)) {
+            return { object: "property", workflow: "property_review", confidence: "high" };
         }
 
         return false;
