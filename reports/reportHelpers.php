@@ -31,20 +31,42 @@ function buildGoogleMapSection(array $data): string
     $lat = $google['latitude'] ?? null;
     $lng = $google['longitude'] ?? null;
 
+    $html = '<div class="section">';
+    $html .= buildSectionHeader('Location Map', 'pin.png');
+
     if (!$lat || !$lng) {
-        return '<p style="color:#888;">Map unavailable</p>';
+
+        $html .= '<div class="image-placeholder" style="min-height:260px; display:flex; align-items:center; justify-content:center;">';
+        $html .= '<span style="font-size:11pt; color:#555;">🗺️ Map unavailable at this time</span>';
+        $html .= '</div>';
+
+        $html .= '</div>';
+        return $html;
     }
 
-    $html = buildSectionHeader('Location Map', 'pin.png');
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?: '';
 
-    $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?' .
-        'center=' . $lat . ',' . $lng .
-        '&zoom=17&size=900x500&maptype=satellite' .
-        '&markers=color:red%7C' . $lat . ',' . $lng .
-        '&key=' . (skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: '');
+    $staticMapUrl =
+        'https://maps.googleapis.com/maps/api/staticmap'
+        . '?center=' . $lat . ',' . $lng
+        . '&zoom=17'
+        . '&size=900x500'
+        . '&maptype=satellite'
+        . '&markers=color:red%7C' . $lat . ',' . $lng
+        . '&key=' . urlencode($googleKey);
 
     $html .= '<div style="text-align:center; margin:12px 0; page-break-inside:avoid;">';
-    $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" alt="Location Map">';
+    $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
+    $html .= 'style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
+    $html .= 'alt="Location Map">';
+    $html .= '</div>';
+
+    $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin:0 0 8px 0;">';
+    $html .= 'Google Satellite Imagery • ' . htmlspecialchars($data['inputAddress'] ?? 'Unknown Address');
+    $html .= '</p>';
+
     $html .= '</div>';
 
     return $html;
