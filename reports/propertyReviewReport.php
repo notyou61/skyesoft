@@ -4,11 +4,13 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — propertyReviewReport.php
 //  Property / Parcel Review Report Generator
-//  Version: 1.0.0
+//  Version: 1.0.1
 //  Created: 2026-06-25
 // =============================================
 
 #region SECTION 00 - Main Report Generator
+
+require_once __DIR__ . '/helpers/reportHelpers.php';   // ← ADD THIS LINE
 
 function generatePropertyReviewReport(array $input): array
 {
