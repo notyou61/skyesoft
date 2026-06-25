@@ -1390,7 +1390,7 @@ window.SkyIndex = {
 
                         ${actionId ? `
                         <div style="text-align:right; margin-top:12px;">
-                            <a href="/skyesoft/api/generateReports.php?type=property&actionId=${actionId}" 
+                            <a href="/skyesoft/api/generateReports.php?reportType=property&actionId=${actionId}" 
                             target="_blank" 
                             style="color:#007aff; text-decoration:underline; font-weight:500;">
                                 📄 Generate Full Property Report

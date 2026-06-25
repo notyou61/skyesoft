@@ -31,6 +31,12 @@ function getReportHandler(string $reportType): ?array
             'file'        => __DIR__ . '/locationReviewReport.php',   // We'll create this next
             'generator'   => 'generateLocationReviewReport',
             'description' => 'Location Review Report'
+        ],
+
+        'property' => [
+            'file'        => __DIR__ . '/propertyReviewReport.php',
+            'generator'   => 'generatePropertyReviewReport',
+            'description' => 'Property Review Report'
         ]
     ];
 
