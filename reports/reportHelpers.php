@@ -52,6 +52,7 @@ function buildGoogleMapSection(array $data): string
 
 /**
  * Build Street View Section (reusable)
+ * Prefers user-selected artifact over live Google generation.
  */
 function buildStreetViewSection(array $data): string
 {
@@ -61,13 +62,18 @@ function buildStreetViewSection(array $data): string
 
     $html .= '<div style="page-break-inside:avoid !important; break-inside:avoid !important;">';
 
-    $streetViewPath = $data['reportArtifacts']['streetview'] ?? null;
+    // Future-proof artifact lookup
+    $streetViewPath =
+        $data['reportArtifacts']['streetview']
+        ?? $data['reportArtifacts']['STV']
+        ?? null;
 
     $lat = $data['google']['latitude'] ?? null;
     $lng = $data['google']['longitude'] ?? null;
 
-    if ($streetViewPath && file_exists($streetViewPath)) {
+    if (!empty($streetViewPath)) {
 
+        // === Use Saved / Selected Artifact (Preferred) ===
         $html .= '<div style="text-align:center; margin:4px 0 8px 0;">';
         $html .= '<img src="' . htmlspecialchars($streetViewPath) . '" ';
         $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
@@ -78,8 +84,9 @@ function buildStreetViewSection(array $data): string
         $html .= 'Google Street View • ' . htmlspecialchars($data['inputAddress'] ?? 'Unknown Address');
         $html .= '</p>';
 
-    } else if ($lat && $lng) {
+    } elseif ($lat && $lng) {
 
+        // === Generate Live Google Street View (Fallback) ===
         $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
             ?: getenv('GOOGLE_MAPS_STATIC_API_KEY');
 
@@ -116,6 +123,7 @@ function buildStreetViewSection(array $data): string
 
     } else {
         placeholder:
+        // === Placeholder ===
         $html .= '<div class="image-placeholder" style="min-height:260px; display:flex; align-items:center; justify-content:center;">';
         $html .= '<span style="font-size:11pt; color:#555;">📍 Street View imagery unavailable at this time</span>';
         $html .= '</div>';

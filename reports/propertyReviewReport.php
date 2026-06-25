@@ -46,18 +46,75 @@ function generatePropertyReviewReport(array $input): array
 
 function normalizePropertyReviewData(array $input): array
 {
-    $payload = $input['actionResponseData'] ?? $input['data'] ?? $input['parcel'] ?? $input;
+    // Source payload.
+    $payload = $input['actionResponseData']
+        ?? $input['data']
+        ?? $input;
+
+    // Decode tblActions JSON if needed.
+    if (is_string($payload)) {
+        $decodedPayload = json_decode($payload, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decodedPayload)) {
+            $payload = $decodedPayload;
+        }
+    }
+
+    // Unwrap nested response if present.
+    if (!empty($payload['actionResponseData'])) {
+        $nestedPayload = $payload['actionResponseData'];
+
+        if (is_string($nestedPayload)) {
+            $nestedPayload = json_decode($nestedPayload, true);
+        }
+
+        if (is_array($nestedPayload)) {
+            $payload = $nestedPayload;
+        }
+    }
+
+    // Clean address.
+    $inputAddress = $payload['inputAddress']
+        ?? $payload['address']
+        ?? $input['inputAddress']
+        ?? 'Unknown Address';
+
+    $inputAddress = preg_replace('/^\s*(parcel review|property review)\s+/i', '', $inputAddress);
+
+    // Resolve coordinates.
+    $google = $payload['google'] ?? [];
+
+    if (empty($google['latitude']) && !empty($payload['latitude'])) {
+        $google['latitude'] = $payload['latitude'];
+    }
+
+    if (empty($google['longitude']) && !empty($payload['longitude'])) {
+        $google['longitude'] = $payload['longitude'];
+    }
+
+    if (empty($google['latitude']) && !empty($payload['census']['normalized']['lat'])) {
+        $google['latitude'] = $payload['census']['normalized']['lat'];
+    }
+
+    if (empty($google['longitude']) && !empty($payload['census']['normalized']['lng'])) {
+        $google['longitude'] = $payload['census']['normalized']['lng'];
+    }
+
+    // Resolve parcel.
+    $primaryParcel = $payload['parcel']['primaryParcel']
+        ?? $payload['primaryParcel']
+        ?? null;
 
     return [
-        'inputAddress'     => $payload['inputAddress'] ?? 'Unknown Address',
+        'inputAddress'     => trim((string)$inputAddress),
         'summary'          => $payload['summary'] ?? '',
-        'primaryParcel'    => $payload['parcel']['primaryParcel'] ?? $payload['primaryParcel'] ?? null,
+        'primaryParcel'    => $primaryParcel,
         'candidateParcels' => $payload['parcel']['candidateParcels'] ?? [],
         'jurisdiction'     => $payload['jurisdiction'] ?? [],
         'governance'       => $payload['governance'] ?? [],
-        'google'           => $payload['google'] ?? [],
+        'google'           => $google,
         'census'           => $payload['census'] ?? [],
-        'reportArtifacts'  => $payload['reportArtifacts'] ?? []
+        'reportArtifacts'  => $payload['reportArtifacts'] ?? [],
+        'artifactManifest' => $payload['artifactManifest'] ?? []
     ];
 }
 
@@ -109,16 +166,35 @@ function buildPropertyReviewBody(array $data): string
 
 function buildPrimaryParcelSection(array $data): string
 {
-    $p = $data['primaryParcel'];
-    if (!$p) return '';
+    $p = $data['primaryParcel'] ?? [];
 
-    $html = buildSectionHeader('Primary Parcel', 'compass.png');
+    $html = '<div class="section">';
+    $html .= buildSectionHeader('Primary Parcel', 'compass.png');
+
     $html .= '<table class="dataTable">';
-    $html .= '<tr><th>APN</th><td>' . htmlspecialchars($p['parcelNumber'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th>Owner</th><td>' . htmlspecialchars($p['ownerName'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th>Address</th><td>' . htmlspecialchars($p['siteAddress'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($p['jurisdiction'] ?? '—') . '</td></tr>';
+    $html .= '<tr>';
+    $html .= '<th>APN</th>';
+    $html .= '<td>' . htmlspecialchars($p['parcelNumber'] ?? '—') . '</td>';
+    $html .= '</tr>';
+
+    $html .= '<tr>';
+    $html .= '<th>Owner</th>';
+    $html .= '<td>' . htmlspecialchars($p['ownerName'] ?? '—') . '</td>';
+    $html .= '</tr>';
+
+    $html .= '<tr>';
+    $html .= '<th>Property Address</th>';
+    $html .= '<td>' . htmlspecialchars($p['siteAddress'] ?? '—') . '</td>';
+    $html .= '</tr>';
+
+    $html .= '<tr>';
+    $html .= '<th>Jurisdiction</th>';
+    $html .= '<td>' . htmlspecialchars($p['jurisdiction'] ?? '—') . '</td>';
+    $html .= '</tr>';
+
     $html .= '</table>';
+    $html .= '</div>';
+
     return $html;
 }
 
