@@ -2323,16 +2323,22 @@ window.SkyIndex = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userQuery: text,
+                    // Explicit hint to help backend intent detection
+                    intent: "parcel_review",
                     activitySessionId: activitySessionId
                 })
             });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
 
             if (data.success && data.response) {
                 this.appendSystemHtml(data.response);
+            } else if (data.error) {
+                this.appendSystemLine(`❌ ${data.error}`, 'error');
             } else {
-                this.appendSystemLine(`❌ Property review failed: ${data?.error || 'Unknown error'}`, 'error');
+                this.appendSystemLine('❌ No response from property review.', 'error');
             }
         } catch (err) {
             console.error('[Property Workflow Error]', err);

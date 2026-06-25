@@ -1207,10 +1207,14 @@ PROMPT;
 // Clean integration with resolveParcelReview.php
 // =====================================================
 
-error_log("[DEBUG] Intent received: " . ($intent ?? 'NULL') . " | Query: " . substr($query, 0, 100));
+error_log("[DEBUG] Intent received: " . ($intent ?? 'NULL') . 
+          " | Query: " . substr($query, 0, 100) . 
+          " | Input intent: " . ($input['intent'] ?? 'NULL'));
 
 if ($intent === "parcel_review" || 
+    (isset($input['intent']) && $input['intent'] === 'parcel_review') || 
     str_contains(strtolower($query), "parcel review") || 
+    str_contains(strtolower($query), "property review") || 
     preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query)) {
 
     error_log("[parcel_review] Handler triggered for query: " . substr($query, 0, 150));
@@ -1255,8 +1259,8 @@ if ($intent === "parcel_review" ||
             'promptText'        => $addressToReview,
             'responseText'      => $resolutionData['summary'] ?? null,
 
-            'actionPayloadData' => $input,                    // Original request payload
-            'actionResponseData'=> $resolutionData,           // Full response JSON
+            'actionPayloadData' => $input,
+            'actionResponseData'=> $resolutionData,
 
             'intent'            => 'location.review',
             'intentConfidence'  => 0.90,
@@ -1280,7 +1284,7 @@ if ($intent === "parcel_review" ||
     echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
     exit;
 
-    }
+}
 
 #endregion
 
