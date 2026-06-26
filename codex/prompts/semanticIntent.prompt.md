@@ -62,19 +62,19 @@ When unsure whether a domain is application-rendered, **default to non-presentat
 Rules (in priority order):
 
 1. If the input contains "location only", "add location only", or a clear creation request → intent = "location_only_proposal"
-2. If the input contains "parcel review", "review parcel", "zoning", "sign code", or "ordinance" → intent = "parcel_review"
-3. **Default for any plain address** (street + city) → intent = "parcel_review" (read-only analysis)
+2. If the input contains "property review", "parcel review", "review parcel", "zoning", "sign code", or "ordinance" → intent = "property_review"
+3. **Default for any plain address** (street + city) → intent = "property_review" (read-only analysis)
 
 Examples:
-- "3145 N 33rd Ave Phoenix AZ 85017" → "parcel_review"
+- "3145 N 33rd Ave Phoenix AZ 85017" → "property_review"
 - "The Henry, 123 N Central Ave" → "location_only_proposal"
-- "Parcel review of 2252 N 44th St" → "parcel_review"
-- "225 N 1st Street, Buckeye, AZ 85326" → "parcel_review"
+- "Property review of 2252 N 44th St" → "property_review"
+- "225 N 1st Street, Buckeye, AZ 85326" → "property_review"
 
 Do **not** treat plain addresses as general queries. Always use one of the two location intents above.
 
 Return exactly:
-- "parcel_review"
+- "property_review"
 - "location_only_proposal"
 
 ---
@@ -271,12 +271,7 @@ Return **valid JSON only**. No prose, markdown, explanations, or wrappers outsid
 ### Standard (Single Dominant Intent)
 ```json
 {
-  "intent": "parcel_review",
+  "intent": "property_review",
   "confidence": 0.85,
   "reasoning": "User provided a plain address with no creation keywords or named location."
 }
-
-### Codex Alignment
-
-This intent supports the system principle:
-"All create operations originate as proposed actions before execution."

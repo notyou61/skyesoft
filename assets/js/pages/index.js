@@ -2186,47 +2186,58 @@ window.SkyIndex = {
     },
 
     // ───────────────────────────────────────────────
-    // IS Location Workflow Intent (New Dedicated Method for Cleaner Detection + Routing)
+    // IS Location Workflow Intent
+    // Detects Entity + Address and Location Only workflows
+    // Property Review detection is handled separately.
     // ───────────────────────────────────────────────
     async isLocationWorkflowIntent(text, normalized) {
-        if (!text || typeof text !== 'string' || text.length < 8) return false;
+
+        if (!text || typeof text !== 'string' || text.length < 8) {
+            return false;
+        }
 
         const lower = text.toLowerCase().trim();
 
-        // 1. Explicit Location Only triggers (highest priority)
-        if (lower.includes('location only') || 
-            lower.includes('add location only') || 
+        // --------------------------------------------------
+        // Explicit Location Only Commands
+        // --------------------------------------------------
+        if (
+            lower.includes('location only') ||
+            lower.includes('add location only') ||
             lower.includes('create location only') ||
-            lower.includes('new location only')) {
-            return { mode: 'location_only', confidence: 'high' };
+            lower.includes('new location only')
+        ) {
+            return {
+                mode: 'location_only',
+                confidence: 'high'
+            };
         }
 
-        // 2. Explicit Parcel Review triggers
-        if (lower.includes('parcel review') || 
-            lower.includes('review parcel') || 
-            lower.includes('zoning at') || 
-            lower.includes('sign code for') || 
-            lower.includes('ordinance for') ||
-            lower.includes('parcel for')) {
-            return { mode: 'parcel_review', confidence: 'high' };
-        }
-
-        // 3. Detect Location Name + Address pattern (e.g. "The Henry" example)
-        const hasLocationName = /\b(The |A |At |[A-Z][a-z]+ [A-Z][a-z]+)\b/.test(text) && 
-                            (/\d{1,5}\s+[A-Za-z]/.test(text) || /Phoenix|Glendale|Chandler|Scottsdale|Buckeye|AZ\b/.test(text));
+        // --------------------------------------------------
+        // Entity / Location Name + Address
+        // Examples:
+        //   "The Henry 4455 E Camelback Rd"
+        //   "Circle K 123 Main St Phoenix AZ"
+        // --------------------------------------------------
+        const hasLocationName =
+            /\b(The |A |At |[A-Z][a-z]+ [A-Z][a-z]+)\b/.test(text) &&
+            (
+                /\d{1,5}\s+[A-Za-z]/.test(text) ||
+                /Phoenix|Glendale|Chandler|Scottsdale|Tempe|Buckeye|Mesa|Gilbert|Queen Creek|AZ\b/i.test(text)
+            );
 
         if (hasLocationName) {
-            return { mode: 'location_only', confidence: 'medium' };
+            return {
+                mode: 'location_only',
+                confidence: 'medium'
+            };
         }
 
-        // 4. Plain address fallback → Parcel Review (default)
-        const looksLikeAddress = /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central|Central Ave)\b/i.test(text) ||
-                                /\bPhoenix|Glendale|Chandler|Scottsdale|Tempe|Buckeye|AZ\b.*\d{5}/.test(text);
-
-        if (looksLikeAddress) {
-            return { mode: 'parcel_review', confidence: 'medium' };
-        }
-
+        // --------------------------------------------------
+        // Not a Location workflow
+        // Property Review detection is handled by
+        // isPropertyWorkflowIntent()
+        // --------------------------------------------------
         return false;
     },
 
@@ -2376,7 +2387,7 @@ window.SkyIndex = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userQuery: text,
-                    intent: "parcel_review",
+                    intent: "property_review",
                     activitySessionId: activitySessionId
                 })
             });

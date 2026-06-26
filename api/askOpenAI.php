@@ -1203,51 +1203,56 @@ PROMPT;
 }
 
 // =====================================================
-// PARCEL REVIEW HANDLER
+// PROPERTY REVIEW HANDLER (Compatibility Bridge)
 // Clean integration with resolveParcelReview.php
 // =====================================================
 
-error_log("[PARCEL_REVIEW DEBUG] === START ===");
-error_log("[PARCEL_REVIEW DEBUG] Intent var: " . ($intent ?? 'NULL'));
-error_log("[PARCEL_REVIEW DEBUG] Input intent: " . ($input['intent'] ?? 'NULL'));
-error_log("[PARCEL_REVIEW DEBUG] Query: " . substr($query, 0, 200));
-error_log("[PARCEL_REVIEW DEBUG] Raw input keys: " . json_encode(array_keys($input ?? [])));
+error_log("[PROPERTY_REVIEW DEBUG] === START ===");
+error_log("[PROPERTY_REVIEW DEBUG] Intent var: " . ($intent ?? 'NULL'));
+error_log("[PROPERTY_REVIEW DEBUG] Input intent: " . ($input['intent'] ?? 'NULL'));
+error_log("[PROPERTY_REVIEW DEBUG] Query: " . substr($query, 0, 200));
+error_log("[PROPERTY_REVIEW DEBUG] Raw input keys: " . json_encode(array_keys($input ?? [])));
 
-if ($intent === "parcel_review" || 
-    (isset($input['intent']) && $input['intent'] === 'parcel_review') || 
-    str_contains(strtolower($query), "parcel review") || 
+if (
+    $intent === "property_review" ||
+    (isset($input['intent']) && 
+        in_array($input['intent'], ['property_review'], true)
+    ) || 
     str_contains(strtolower($query), "property review") || 
-    preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query)) {
+    str_contains(strtolower($query), "parcel review") || 
+    preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query)
+) {
 
-    error_log("[parcel_review] HANDLER TRIGGERED SUCCESSFULLY");
+    error_log("[property_review] HANDLER TRIGGERED SUCCESSFULLY (compatibility bridge)");
 
     $addressToReview = trim($query);
-    error_log("[parcel_review] Address to review: " . $addressToReview);
+    error_log("[property_review] Address to review: " . $addressToReview);
 
     if (empty($addressToReview)) {
-        error_log("[parcel_review] ERROR: Empty address");
+        error_log("[property_review] ERROR: Empty address");
         echo json_encode(['success' => false, 'error' => 'No address provided for review']);
         exit;
     }
 
     require_once __DIR__ . '/resolveParcelReview.php';
-    error_log("[parcel_review] resolveParcelReview.php loaded");
+    error_log("[property_review] resolveParcelReview.php loaded");
 
     $resolutionData = resolveParcelReview($addressToReview);
-    error_log("[parcel_review] resolveParcelReview success: " . ($resolutionData['success'] ? 'YES' : 'NO'));
+    error_log("[property_review] resolveParcelReview success: " . ($resolutionData['success'] ? 'YES' : 'NO'));
 
     if (!$resolutionData['success']) {
-        error_log("[parcel_review] resolveParcelReview failed");
+        error_log("[property_review] resolveParcelReview failed");
         echo json_encode($resolutionData);
         exit;
     }
 
+    // Ensure user-facing summary uses current terminology
     if (empty($resolutionData['summary'])) {
-        $resolutionData['summary'] = "Skyesoft completed parcel review for " . htmlspecialchars($addressToReview) . ".";
+        $resolutionData['summary'] = "Skyesoft completed property review for " . htmlspecialchars($addressToReview) . ".";
     }
 
-    // Logging block (unchanged)
-    error_log("[DEBUG] Attempting to log location review. Has \$db? " . (isset($db) ? 'YES' : 'NO'));
+    // Logging block
+    error_log("[DEBUG] Attempting to log property review. Has \$db? " . (isset($db) ? 'YES' : 'NO'));
 
     if (isset($db) && $db instanceof PDO) {
         require_once __DIR__ . '/utils/actions.php';
@@ -1260,7 +1265,7 @@ if ($intent === "parcel_review" ||
             'responseText'      => $resolutionData['summary'] ?? null,
             'actionPayloadData' => $input,
             'actionResponseData'=> $resolutionData,
-            'intent'            => 'location.review',
+            'intent'            => 'property.review',           // Preferred new intent
             'intentConfidence'  => 0.90,
             'latitude'          => $resolutionData['google']['latitude'] ?? null,
             'longitude'         => $resolutionData['google']['longitude'] ?? null,
@@ -1271,18 +1276,16 @@ if ($intent === "parcel_review" ||
         error_log("[DEBUG] insertActionPrompt completed | actionId=$actionId");
         $resolutionData['actionId'] = $actionId;
     } else {
-        error_log('[parcel_review] Logging SKIPPED - $db not available');
+        error_log('[property_review] Logging SKIPPED - $db not available');
     }
 
-    error_log("[PARCEL_REVIEW DEBUG] === END - Sending response ===");
+    error_log("[PROPERTY_REVIEW DEBUG] === END - Sending response ===");
     echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
     exit;
 
 } else {
-    error_log("[PARCEL_REVIEW DEBUG] Condition NOT met - falling through");
+    error_log("[PROPERTY_REVIEW DEBUG] Condition NOT met - falling through");
 }
-
-#endregion
 
 #region SECTION 9 — Skyebot (Authority-Aware, Deterministic)
 
