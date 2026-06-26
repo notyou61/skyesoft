@@ -500,14 +500,15 @@ body[data-page="index"] .cardFooter .ellipsis::after{
 .result-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
+    gap: 6px;              /* Tightened from 12px for closer icon-to-title layout */
+    padding: 10px 18px;    /* Shaved vertical padding from 14px to 10px */
     background: #fff;
     border-bottom: 1px solid #eee;
 }
 
 .result-icon {
-    font-size: 1.6em;
+    font-size: 1.4em;      /* Slightly reduced from 1.6em so it scales better with line-height */
+    line-height: 1;
 }
 
 .result-title {
@@ -517,9 +518,9 @@ body[data-page="index"] .cardFooter .ellipsis::after{
 }
 
 .result-body {
-    padding: 16px 18px;
+    padding: 12px 18px;    /* Compacted from 16px to 12px to improve density */
     font-size: 0.95em;
-    line-height: 1.45;
+    line-height: 1.4;
     color: #333;
 }
 
