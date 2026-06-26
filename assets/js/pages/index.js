@@ -1319,7 +1319,8 @@ window.SkyIndex = {
 
         renderStreetViewResult(data) {
             const address = data.address || 'Location';
-            // Title case formatting
+            
+            // Proper title case formatting (e.g. streetview -> Streetview, streetView -> Street View)
             const imageType = (data.imageType || 'streetview')
                 .replace(/([A-Z])/g, ' $1')
                 .replace(/^./, str => str.toUpperCase())
@@ -1328,21 +1329,19 @@ window.SkyIndex = {
             const imageSrc = data.imagePath || '';
             const dataPayloadAttr = btoa(JSON.stringify(data));
 
-            // Flattening template spaces prevents accidental layout padding/margins in the DOM
+            // CRITICAL: Keep template contents inline without hard line-breaks or indentations 
+            // inside the tags to destroy unwanted text-node whitespace spacing.
             const html = `
                 <div class="commandLine system html">
                     <div class="result-card">
-                        <div class="result-header">
-                            <span class="result-icon">📸</span>
-                            <strong class="result-title">Location Imagery</strong>
+                        <div class="result-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <span class="result-icon" style="line-height: 1;">📸</span>
+                            <strong class="result-title">${this.escapeHtml("Location Imagery")}</strong>
                         </div>
                         <div class="result-body" style="padding:10px 18px 8px;">
-                            <small style="color:#555; display:block; margin-bottom:0;">${this.escapeHtml(address)}</small>
-                            ${imageSrc ? `
-                            <div style="margin:6px 0 6px; text-align:center;">
-                                <img src="${imageSrc}" alt="${imageType}" style="max-width:100%; max-height:200px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
-                            </div>` : '<br>'}
-                            <div style="font-size:0.93em; margin-top:0; line-height:1.2;">
+                            <small style="color:#555; display:block; margin-bottom:0;">${this.escapeHtml(address)}</small>` +
+                            (imageSrc ? `<div style="margin:6px 0 6px; text-align:center;"><img src="${imageSrc}" alt="${imageType}" style="max-width:100%; max-height:200px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);"></div>` : `<br>`) +
+                            `<div style="font-size:0.93em; margin-top:0; line-height:1.2;">
                                 <strong>Image Type:</strong> <span style="color:#006400;">${imageType}</span>
                             </div>
                         </div>
