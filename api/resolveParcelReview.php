@@ -1,7 +1,7 @@
 <?php
 // =====================================================
 // resolveParcelReview.php
-// Reusable Parcel Review Resolver for Skyesoft
+// Reusable Property Review Resolver for Skyesoft
 // =====================================================
 
 declare(strict_types=1);
@@ -13,7 +13,14 @@ if (!function_exists('resolveParcelReview')) {
         $rawAddress = trim($rawAddress);
         if (empty($rawAddress)) {
             return [
-                'success' => false,
+                'success' => true,
+                'workflowState' => 'invalid_address',
+                'inputAddress' => $rawAddress,
+                'summary' => 'Address is required.',
+                'governance' => [
+                    'rsCode' => 'RS-8',
+                    'parcelStatus' => 'Invalid Address'
+                ],
                 'error' => 'Address is required'
             ];
         }
@@ -33,27 +40,45 @@ if (!function_exists('resolveParcelReview')) {
         $parcelResult = [];
 
         $placeId = $latitude = $longitude = '';
-        $jurisdictionName = $jurisdictionType = $postalCity = '';
+        $jurisdictionName = $jurisdictionType = '';
         $rsCode = 'RS-UNKNOWN';
         $parcelStatus = 'Unknown';
         $aiSummary = '';
 
-        // 1. Census
-        if (function_exists('validateAddressCensus')) {
-            $censusResult = validateAddressCensus($rawAddress);
-        }
-
-        // 2. Google Geocode
+        // 1. Google Geocode (Primary Validation Gate)
         $googleResult = getGooglePlaceData($rawAddress);
         $placeId   = $googleResult['placeId'] ?? '';
         $latitude  = $googleResult['latitude'] ?? '';
         $longitude = $googleResult['longitude'] ?? '';
 
-        // 3. Parcel
+        // === VALIDATION GATE ===
+        if (empty($googleResult['validated']) || empty($latitude) || empty($longitude)) {
+            return [
+                'success' => true,
+                'workflowState' => 'invalid_address',
+                'inputAddress' => $rawAddress,
+                'summary' => 'The supplied address could not be validated.',
+                'google' => $googleResult,
+                'governance' => [
+                    'rsCode' => 'RS-8',
+                    'parcelStatus' => 'Invalid Address'
+                ]
+            ];
+        }
+
+        // Valid address → continue
+        $workflowState = 'property_valid';
+
+        // 2. Census
+        if (function_exists('validateAddressCensus')) {
+            $censusResult = validateAddressCensus($rawAddress);
+        }
+
+        // 3. Parcel Resolution
         if (function_exists('resolveParcel')) {
             $parcelResult = resolveParcel(
-                $latitude ?: null,
-                $longitude ?: null,
+                $latitude,
+                $longitude,
                 $censusResult['county'] ?? null,
                 $censusResult['countyFips'] ?? null,
                 $rawAddress
@@ -95,9 +120,8 @@ if (!function_exists('resolveParcelReview')) {
             $jurisdictionType = $jurisdictionResult['jurisdictionType'] ?? 'County';
         }
 
-        // AI-style Summary
+        // Summary (facts only)
         $summaryLines = [];
-        $summaryLines[] = "Skyesoft resolved the details for " . htmlspecialchars($rawAddress) . ".";
         if (($censusResult['valid'] ?? false)) {
             $summaryLines[] = "Census confirmed " . ucwords(strtolower($censusResult['county'] ?? 'Maricopa')) . " County.";
         }
@@ -118,6 +142,7 @@ if (!function_exists('resolveParcelReview')) {
         // Final structured output
         return [
             'success' => true,
+            'workflowState' => $workflowState,   // 'property_valid'
             'inputAddress' => $rawAddress,
             'summary' => $aiSummary,
             'google' => $googleResult,
@@ -130,6 +155,12 @@ if (!function_exists('resolveParcelReview')) {
             'governance' => [
                 'rsCode' => $rsCode,
                 'parcelStatus' => $parcelStatus
+            ],
+            'streetView' => [
+                'available' => null,
+                'status' => null,
+                'artifactCode' => null,
+                'manualSelectionRequired' => false
             ]
         ];
     }

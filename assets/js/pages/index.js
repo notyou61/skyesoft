@@ -2158,14 +2158,14 @@ window.SkyIndex = {
     // #region 📇 Contact Proposal Pipeline (Client)
 
     // ───────────────────────────────────────────────
-    // Hybrid Intent Detection — EOP Primary (Robust)
+    // INTENT DETECTION LAYER
     // ───────────────────────────────────────────────
+
     async isContactCreationIntent(text, normalized) {
         if (!text || typeof text !== 'string') return false;
 
         const lower = text.toLowerCase().trim();
 
-        // 1. Explicit command triggers (highest confidence)
         if (
             lower.startsWith('add ') ||
             lower.startsWith('create ') ||
@@ -2177,7 +2177,6 @@ window.SkyIndex = {
             return true;
         }
 
-        // 2. Signature / paste detection (now works on single-line pastes too)
         if (this.isQuickSignatureHint(text)) {
             return true;
         }
@@ -2185,66 +2184,30 @@ window.SkyIndex = {
         return false;
     },
 
-    // ───────────────────────────────────────────────
-    // IS Location Workflow Intent
-    // Detects Entity + Address and Location Only workflows
-    // Property Review detection is handled separately.
-    // ───────────────────────────────────────────────
     async isLocationWorkflowIntent(text, normalized) {
-
-        if (!text || typeof text !== 'string' || text.length < 8) {
-            return false;
-        }
+        if (!text || typeof text !== 'string' || text.length < 8) return false;
 
         const lower = text.toLowerCase().trim();
 
-        // --------------------------------------------------
-        // Explicit Location Only Commands
-        // --------------------------------------------------
         if (
             lower.includes('location only') ||
             lower.includes('add location only') ||
             lower.includes('create location only') ||
             lower.includes('new location only')
         ) {
-            return {
-                mode: 'location_only',
-                confidence: 'high'
-            };
+            return { mode: 'location_only', confidence: 'high' };
         }
 
-        // --------------------------------------------------
-        // Entity / Location Name + Address
-        // Examples:
-        //   "The Henry 4455 E Camelback Rd"
-        //   "Circle K 123 Main St Phoenix AZ"
-        // --------------------------------------------------
-        const hasLocationName =
-            /\b(The |A |At |[A-Z][a-z]+ [A-Z][a-z]+)\b/.test(text) &&
-            (
-                /\d{1,5}\s+[A-Za-z]/.test(text) ||
-                /Phoenix|Glendale|Chandler|Scottsdale|Tempe|Buckeye|Mesa|Gilbert|Queen Creek|AZ\b/i.test(text)
-            );
+        const hasLocationName = /\b(The |A |At |[A-Z][a-z]+ [A-Z][a-z]+)\b/.test(text) &&
+            (/\d{1,5}\s+[A-Za-z]/.test(text) || /Phoenix|Glendale|Chandler|Scottsdale|Tempe|Buckeye|Mesa|Gilbert|Queen Creek|AZ\b/i.test(text));
 
         if (hasLocationName) {
-            return {
-                mode: 'location_only',
-                confidence: 'medium'
-            };
+            return { mode: 'location_only', confidence: 'medium' };
         }
 
-        // --------------------------------------------------
-        // Not a Location workflow
-        // Property Review detection is handled by
-        // isPropertyWorkflowIntent()
-        // --------------------------------------------------
         return false;
     },
 
-    // #region 📍 Street View Intent Detection (New)
-    // ───────────────────────────────────────────────
-    // Dedicated Street View Intent (High Priority, Independent of Parcel/Contact)
-    // ───────────────────────────────────────────────
     async isStreetViewIntent(text) {
         if (!text || typeof text !== 'string' || text.length < 8) return false;
 
@@ -2259,7 +2222,6 @@ window.SkyIndex = {
             lower.includes('site image')
         ) {
             let address = text.trim();
-            // Extract after trigger if possible
             const triggers = ['street view', 'streetview', 'street-view', 'show me a street view', 'location image', 'site image'];
             for (const t of triggers) {
                 if (lower.includes(t)) {
@@ -2268,26 +2230,17 @@ window.SkyIndex = {
                     break;
                 }
             }
-            return {
-                mode: 'street_view',
-                confidence: 'high',
-                address: address || text
-            };
+            return { mode: 'street_view', confidence: 'high', address: address || text };
         }
 
         return false;
     },
-    // #endregion
 
-    // ───────────────────────────────────────────────
-    // PROPERTY WORKFLOW INTENT (Plain Address Only)
-    // ───────────────────────────────────────────────
     async isPropertyWorkflowIntent(text, normalized) {
         if (!text || typeof text !== 'string' || text.length < 8) return false;
 
         const lower = text.toLowerCase().trim();
 
-        // Explicit triggers
         if (lower.includes('property review') || lower.includes('review property') ||
             lower.includes('parcel review') || lower.includes('review parcel') ||
             lower.includes('zoning at') || lower.includes('sign code for') || 
@@ -2295,7 +2248,6 @@ window.SkyIndex = {
             return { object: "property", workflow: "property_review", confidence: "high" };
         }
 
-        // Strong plain address detection
         const hasAddressPattern = /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central)\b/i.test(text);
         const hasCityState = /Phoenix|Glendale|Chandler|Scottsdale|Tempe|Buckeye|Green Valley|AZ\b/i.test(text);
 
@@ -2306,7 +2258,173 @@ window.SkyIndex = {
         return false;
     },
 
-    // Generic suppression for any workflow (Property / Location / Contact)
+    // ───────────────────────────────────────────────
+    // PROCESSING UI STATES
+    // ───────────────────────────────────────────────
+
+    renderPropertyProcessingState() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const processing = document.createElement('div');
+        processing.className = 'commandLine system processing';
+        processing.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">🏠</span>
+                <div>
+                    <strong>Resolving Property...</strong><br>
+                    <span style="font-size: 0.92em;">Address validation • Parcel resolution • Jurisdiction lookup • Preparing property review</span>
+                </div>
+            </div>
+        `;
+
+        output.appendChild(processing);
+        this.scrollOutputToBottom(output);
+        this._currentPropertyProcessingEl = processing;
+    },
+
+    renderLocationProcessingState() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        const processing = document.createElement('div');
+        processing.className = 'commandLine system processing';
+        processing.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">📍</span>
+                <div>
+                    <strong>Processing Location...</strong><br>
+                    <span style="font-size: 0.92em;">Entity + Address review</span>
+                </div>
+            </div>
+        `;
+
+        output.appendChild(processing);
+        this.scrollOutputToBottom(output);
+        this._currentLocationProcessingEl = processing;
+    },
+
+    // ───────────────────────────────────────────────
+    // WORKFLOW EXECUTION
+    // ───────────────────────────────────────────────
+
+    async executePropertyWorkflow(text, activitySessionId) {
+        if (this._currentPropertyProcessingEl) {
+            this._currentPropertyProcessingEl.remove();
+            this._currentPropertyProcessingEl = null;
+        }
+
+        this.setThinking(true);
+
+        try {
+            this.renderPropertyProcessingState();
+
+            const res = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userQuery: text,
+                    intent: "property_review",
+                    activitySessionId: activitySessionId
+                })
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const data = await res.json();
+            console.log('[Property Response]', data);
+
+            this.dispatchWorkflowResponse(data);
+
+        } catch (err) {
+            console.error('[Property Workflow Error]', err);
+            this.appendSystemLine('❌ Property review request failed.', 'error');
+        } finally {
+            this.setThinking(false);
+        }
+    },
+
+    // ───────────────────────────────────────────────
+    // WORKFLOW DISPATCHER (Single Source of Truth)
+    // ───────────────────────────────────────────────
+
+    dispatchWorkflowResponse(data) {
+        // Only handle transport/API failures here
+        if (!data || typeof data !== 'object') {
+            this.appendSystemLine('❌ Invalid response from server.', 'error');
+            return;
+        }
+
+        const workflowState = data.workflowState;
+
+        if (!workflowState) {
+            this.appendSystemLine('❌ Missing workflowState in server response.', 'error');
+            return;
+        }
+
+        switch (workflowState) {
+            case 'property_valid':
+                this.renderPropertyReviewResult(data);
+                break;
+
+            case 'invalid_address':
+                this.renderInvalidPropertyResult(data);
+                break;
+
+            // Future states:
+            // case 'streetview_required': this.renderStreetViewSelection(data); break;
+            // case 'multiple_parcels': this.renderParcelSelection(data); break;
+            // case 'report_ready': this.renderPropertyReport(data); break;
+
+            default:
+                this.appendSystemLine(`❌ Unknown workflow state: ${workflowState}`, 'error');
+                break;
+        }
+    },
+
+    // ───────────────────────────────────────────────
+    // RENDERERS
+    // ───────────────────────────────────────────────
+
+    renderPropertyReviewResult(data) {
+        // Your existing implementation (renamed from renderParcelReviewResult)
+        // ... keep current logic here ...
+    },
+
+    renderInvalidPropertyResult(data) {
+        const rsCode = data.governance?.rsCode || 'RS-8';
+        const status = data.governance?.parcelStatus || 'Invalid Address';
+
+        const html = `
+            <div class="property-review-card invalid">
+                <div class="review-header">
+                    <span class="status-icon">❌</span>
+                    <strong>Property Review</strong>
+                </div>
+                
+                <div class="review-content">
+                    <p><strong>${this.escapeHtml(data.summary || 'The supplied address could not be validated.')}</strong></p>
+                    
+                    <div class="address-block">
+                        <strong>Address:</strong><br>
+                        ${data.inputAddress ? this.escapeHtml(data.inputAddress) : '—'}
+                    </div>
+
+                    <div class="governance-info">
+                        <strong>Governance:</strong> ${rsCode} — ${status}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.appendSystemHtml(html);
+    },
+
+    // ───────────────────────────────────────────────
+    // WORKFLOW UTILITIES
+    // ───────────────────────────────────────────────
+
     suppressRawIntentEcho() {
         const output = this.getOutputHost();
         if (!output) return;
@@ -2329,89 +2447,8 @@ window.SkyIndex = {
         }
     },
 
-    // Property Processing State
-    renderPropertyProcessingState() {
-        const output = this.getOutputHost();
-        if (!output) return;
-
-        const processing = document.createElement('div');
-        processing.className = 'commandLine system processing';
-        processing.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">🏠</span>
-                <div>
-                    <strong>Resolving Property...</strong><br>
-                    <span style="font-size: 0.92em;">Address validation • Parcel resolution • Jurisdiction lookup • Preparing property review</span>
-                </div>
-            </div>
-        `;
-
-        output.appendChild(processing);
-        this.scrollOutputToBottom(output);
-        this._currentPropertyProcessingEl = processing;
-    },
-        renderLocationProcessingState() {
-        const output = this.getOutputHost();
-        if (!output) return;
-
-        const processing = document.createElement('div');
-        processing.className = 'commandLine system processing';
-        processing.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">📍</span>
-                <div>
-                    <strong>Processing Location...</strong><br>
-                    <span style="font-size: 0.92em;">Entity + Address review</span>
-                </div>
-            </div>
-        `;
-
-        output.appendChild(processing);
-        this.scrollOutputToBottom(output);
-        this._currentLocationProcessingEl = processing;
-    },
-
-    // Execute Property Workflow → askOpenAI.php → resolveParcelReview.php
-    async executePropertyWorkflow(text, activitySessionId, workflow) {
-        if (this._currentPropertyProcessingEl) {
-            this._currentPropertyProcessingEl.remove();
-            this._currentPropertyProcessingEl = null;
-        }
-
-        this.setThinking(true);
-
-        try {
-            const res = await fetch('/skyesoft/api/askOpenAI.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userQuery: text,
-                    intent: "property_review",
-                    activitySessionId: activitySessionId
-                })
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const data = await res.json();
-            console.log('[Property Response]', data); // ← Debug
-
-            if (data.success === true) {
-                this.renderParcelReviewResult(data);
-            } else {
-                this.appendSystemLine(`❌ ${data.error || 'Property review failed'}`, 'error');
-            }
-        } catch (err) {
-            console.error('[Property Workflow Error]', err);
-            this.appendSystemLine('❌ Property review request failed.', 'error');
-        } finally {
-            this.setThinking(false);
-        }
-    },
-
     // --------------------------------------------------
-    // Improved Signature Detection (Single-line + Multi-line)
+    // Signature Detection
     // --------------------------------------------------
     isQuickSignatureHint(text) {
         if (!text || typeof text !== 'string' || text.length < 40) return false;
@@ -2423,7 +2460,6 @@ window.SkyIndex = {
         const hasTitle   = /\b(Director|Manager|President|CEO|Operations|Owner|VP)\b/i.test(text);
         const hasiPhone  = /Sent from my iPhone/i.test(text);
 
-        // Score-based detection (more forgiving)
         let score = 0;
         if (hasPhone) score += 2;
         if (hasEmail) score += 2;
@@ -2432,17 +2468,13 @@ window.SkyIndex = {
         if (hasTitle) score++;
         if (hasiPhone) score++;
 
-        return score >= 2;   // At least 2 strong signals = treat as contact
+        return score >= 2;
     },
 
-    // ───────────────────────────────────────────────
-    // Proposal Handler (UI ONLY — no backend calls)
-    // ───────────────────────────────────────────────
+    // Contact Proposal Handler (kept independent)
     handleContactProposal(data) {
+        this.replaceProcessingWithProposal();
 
-        this.replaceProcessingWithProposal();   // ← ADD THIS LINE
-
-        // Optional: Only remove suppressed raw signature lines
         const output = this.getOutputHost();
         if (output) {
             const suppressedLines = output.querySelectorAll('.commandLine.user[data-suppressed="true"]');
@@ -2451,44 +2483,22 @@ window.SkyIndex = {
 
         this.currentProposal = data;
 
-        console.log('📇 Contact Proposal Received:', {
-            status: data.status,
-            hasParcel: !!data.parcelDetails,
-            hasPlaceId: !!data.data?.location?.locationPlaceId,
-            issues: data.issues || []
-        });
-
-        // --------------------------------------------------
-        // Error
-        // --------------------------------------------------
         if (data.status === 'error') {
             this.appendSystemLine(`❌ ${data.message || 'Processing error'}`, 'error');
             return;
         }
 
-        // --------------------------------------------------
-        // Reject
-        // --------------------------------------------------
         if (data.status === 'reject') {
             this.appendSystemLine(`⚠️ ${data.message || 'Not recognized as contact data.'}`, 'warning');
             return;
         }
 
-        // --------------------------------------------------
-        // Proposed / Partial
-        // --------------------------------------------------
         if (data.status === 'proposed' || data.status === 'partial') {
             this.renderProposedContact(data);
             return;
         }
 
-        // --------------------------------------------------
-        // Fallback
-        // --------------------------------------------------
-        this.appendSystemLine(
-            data.message || 'Could not process contact information.',
-            'warning'
-        );
+        this.appendSystemLine(data.message || 'Could not process contact information.', 'warning');
     },
 
     // #endregion
