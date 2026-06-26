@@ -1319,7 +1319,12 @@ window.SkyIndex = {
 
         renderStreetViewResult(data) {
             const address = data.address || 'Location';
-            const imageType = (data.imageType || 'streetview').toUpperCase();
+            // Convert to Title Case instead of Uppercase
+            const imageType = (data.imageType || 'streetview')
+                .replace(/([A-Z])/g, ' $1') // Add space before capitals if camelCased
+                .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+                .trim();
+                
             const imageSrc = data.imagePath || '';
 
             const dataPayloadAttr = btoa(JSON.stringify(data));
@@ -1333,15 +1338,15 @@ window.SkyIndex = {
                         </div>
 
                         <div class="result-body" style="padding:10px 18px 8px;">
-                            <small style="color:#555; display:block; margin-bottom:4px;">${this.escapeHtml(address)}</small>
+                            <small style="color:#555; display:block; margin-bottom:0;">${this.escapeHtml(address)}</small>
 
                             ${imageSrc ? `
                             <div style="margin:6px 0 10px; text-align:center;">
                                 <img src="${imageSrc}" alt="${imageType}" 
                                     style="max-width:100%; max-height:200px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
-                            </div>` : ''}
+                            </div>` : '<br>'}
 
-                            <div style="font-size:0.93em; margin-top:4px;">
+                            <div style="font-size:0.93em; margin-top:0;">
                                 <strong>Image Type:</strong> <span style="color:#006400;">${imageType}</span>
                             </div>
                         </div>
