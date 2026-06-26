@@ -218,17 +218,18 @@ window.SkyIndex = {
                 ? ''
                 : String(html);
 
+            // Universal allowed patterns
             const isAllowedHtml =
-                safeHtml.includes('property-review-card') ||   // ← Add this
+                safeHtml.includes('result-card') ||           // ← New unified class
+                safeHtml.includes('property-review-card') ||
+                safeHtml.includes('streetview-card') ||
+                safeHtml.includes('contact-card') ||
+                safeHtml.includes('parcel-review-card') ||
                 safeHtml.includes('gov-box') ||
                 safeHtml.includes('gov-action') ||
                 safeHtml.includes('gov-panel') ||
-                safeHtml.includes('contact-card') ||
-                safeHtml.includes('property-review-card') ||   // ← ADD THIS
-                safeHtml.includes('parcel-review-card') ||
                 safeHtml.includes('Primary Parcel') ||
                 safeHtml.includes('Parcel Review') ||
-                safeHtml.includes('streetview-card') ||
                 safeHtml.includes('📸 Location Imagery');
 
             if (!isAllowedHtml) {
@@ -1317,8 +1318,6 @@ window.SkyIndex = {
         },
 
         renderStreetViewResult(data) {
-            this.replaceStreetViewProcessingWithResult();   // if still using processing
-
             const address = data.address || 'Location';
             const imageType = (data.imageType || 'streetview').toUpperCase();
             const imageSrc = data.imagePath || '';
@@ -2402,8 +2401,10 @@ window.SkyIndex = {
 
         let summaryHtml = '';
         if (data.summary) {
+            // First escape, then convert <br> variants to real HTML breaks
             summaryHtml = this.escapeHtml(data.summary)
-                .replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+                .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+                .replace(/&lt;br\/&gt;/gi, '<br>');
         }
 
         const html = `
@@ -2415,7 +2416,7 @@ window.SkyIndex = {
                     </div>
 
                     <div class="result-body">
-                        ${summaryHtml ? `<p style="margin-bottom:12px;">${summaryHtml}</p>` : ''}
+                        ${summaryHtml ? `<p>${summaryHtml}</p>` : ''}
 
                         <div class="result-grid">
                             <div><strong>Address</strong></div>
