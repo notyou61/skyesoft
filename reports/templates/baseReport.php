@@ -348,13 +348,41 @@ function getEmbeddedImageHtml(string $imagePath, string $alt = 'Image'): string
         return '<div class="image-placeholder">📍 ' . htmlspecialchars($alt) . ' image not available yet</div>';
     }
 
-    $mime = mime_content_type($imagePath) ?: 'image/jpeg';
+    // =====================================================
+    // Determine MIME type from file extension.
+    // Avoid dependency on PHP Fileinfo (mime_content_type())
+    // which is not available on all hosting providers.
+    // =====================================================
+
+    $extension = strtolower(pathinfo($imagePath, PATHINFO_EXTENSION));
+
+    switch ($extension) {
+
+        case 'png':
+            $mime = 'image/png';
+            break;
+
+        case 'gif':
+            $mime = 'image/gif';
+            break;
+
+        case 'webp':
+            $mime = 'image/webp';
+            break;
+
+        case 'jpg':
+        case 'jpeg':
+        default:
+            $mime = 'image/jpeg';
+            break;
+    }
+
     $data = base64_encode(file_get_contents($imagePath));
     $src = 'data:' . $mime . ';base64,' . $data;
 
     return '<div style="text-align:center; margin:12px 0;">
-                <img src="' . $src . '" 
-                     style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
+                <img src="' . $src . '"
+                     style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;"
                      alt="' . htmlspecialchars($alt) . '">
             </div>';
 }
