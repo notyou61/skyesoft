@@ -1057,7 +1057,7 @@ window.SkyIndex = {
 
     // #endregion
 
-    // #region 🧠 Command Router
+// #region 🧠 Command Router
     async handleCommand(text) {
 
         const activitySessionId = this.getActivitySessionId();
@@ -1082,7 +1082,7 @@ window.SkyIndex = {
                 if (lowerPrompt.startsWith(token + ' ')) {
                     const payload = displayPrompt.substring(token.length).trim();
                     matchedDisplay = payload 
-                        ? `${mapping.label} for <span style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em;">${this.escapeHtml(payload)}</span>` 
+                        ? `${mapping.label} for <span style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(payload)}</span>` 
                         : mapping.label;
                     break;
                 }
@@ -1091,7 +1091,7 @@ window.SkyIndex = {
                 if (lowerPrompt.endsWith(' ' + token)) {
                     const payload = displayPrompt.substring(0, displayPrompt.length - token.length).trim();
                     matchedDisplay = payload 
-                        ? `${mapping.label} for <span style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em;">${this.escapeHtml(payload)}</span>` 
+                        ? `${mapping.label} for <span style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(payload)}</span>` 
                         : mapping.label;
                     break;
                 }
@@ -1099,7 +1099,7 @@ window.SkyIndex = {
             if (matchedDisplay) break;
         }
 
-        // Fallback: Default to title case for unique queries
+        // Fallback: Default to title case for custom queries
         if (!matchedDisplay && displayPrompt) {
             matchedDisplay = displayPrompt.charAt(0).toUpperCase() + displayPrompt.slice(1);
         }
