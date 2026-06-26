@@ -1065,33 +1065,46 @@ window.SkyIndex = {
 
         // --- 📸 Dynamic Intent Formatting Registry Map ---
         const displayMappings = [
-            { prefixes: ['street view ', 'streetview '], label: 'Street View' },
-            { prefixes: ['property review ', 'propertyreview '], label: 'Property Review' },
-            { prefixes: ['invalid property '], label: 'Invalid Property Review' }
+            { tokens: ['street view', 'streetview'], label: 'Street View' },
+            { tokens: ['property review', 'propertyreview'], label: 'Property Review' },
+            { tokens: ['invalid property'], label: 'Invalid Property Review' }
         ];
 
         let displayPrompt = (text || '').toString().trim();
         let matchedDisplay = null;
 
-        // Programmatically match prefixes to avoid brittle conditional branch chains
+        // 🛠️ Bidirectional parsing: check both front and back of string safely
         for (const mapping of displayMappings) {
-            const matchedPrefix = mapping.prefixes.find(p => 
-                displayPrompt.toLowerCase().startsWith(p)
-            );
-            
-            if (matchedPrefix) {
-                const parameterPayload = displayPrompt.substring(matchedPrefix.length).trim();
-                matchedDisplay = parameterPayload ? `${mapping.label} for ${parameterPayload}` : mapping.label;
-                break;
+            for (const token of mapping.tokens) {
+                const lowerPrompt = displayPrompt.toLowerCase();
+                
+                // Case 1: Trigger is at the beginning (e.g., "street view [address]")
+                if (lowerPrompt.startsWith(token + ' ')) {
+                    const payload = displayPrompt.substring(token.length).trim();
+                    matchedDisplay = payload 
+                        ? `${mapping.label} for <span style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em;">${this.escapeHtml(payload)}</span>` 
+                        : mapping.label;
+                    break;
+                }
+                
+                // Case 2: Trigger is at the end (e.g., "[address] street view")
+                if (lowerPrompt.endsWith(' ' + token)) {
+                    const payload = displayPrompt.substring(0, displayPrompt.length - token.length).trim();
+                    matchedDisplay = payload 
+                        ? `${mapping.label} for <span style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em;">${this.escapeHtml(payload)}</span>` 
+                        : mapping.label;
+                    break;
+                }
             }
+            if (matchedDisplay) break;
         }
 
-        // Fallback: If it's a completely loose or custom query, title case the first character
+        // Fallback: Default to title case for unique queries
         if (!matchedDisplay && displayPrompt) {
             matchedDisplay = displayPrompt.charAt(0).toUpperCase() + displayPrompt.slice(1);
         }
 
-        // 🧵 Echo the clean, beautifully structured message instead of raw text data
+        // 🧵 Echo the clean, beautifully structured message with badge container markup
         this.appendSystemLine(matchedDisplay || displayPrompt, 'user');
 
         const normalized = (text || '').toString().trim().toLowerCase();
