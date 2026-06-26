@@ -4,8 +4,8 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — propertyReviewReport.php
 //  Property / Parcel Review Report Generator
-//  Version: 1.0.2
-//  Updated: 2026-06-25
+//  Version: 1.1.0 (Universal Prep Refactor)
+//  Updated: 2026-06-26
 // =============================================
 
 #region SECTION 00 - Main Report Generator
@@ -24,10 +24,9 @@ function generatePropertyReviewReport(array $input): array
     return [
         'reportType'      => 'property',
         'reportTitle'     => 'Property Review Report',
-
         'reportFilename'  => $reportFilename,
 
-        'reportSummary'   => '',
+        'reportSummary'   => $data['summary'] ?? 'Property review completed.',
 
         'reportBodyHtml'  => $bodyHtml,
 
@@ -42,73 +41,46 @@ function generatePropertyReviewReport(array $input): array
 
 #endregion
 
-#region SECTION 01 - Data Normalizer
+#region SECTION 01 - Data Normalizer (Simplified)
 
 function normalizePropertyReviewData(array $input): array
 {
-    // Source payload.
-    $payload = $input['actionResponseData']
-        ?? $input['data']
-        ?? $input;
+    // $input is already prepared by generateReports.php (action data merged + artifacts ready)
+    $payload = $input;
 
-    // Decode tblActions JSON if needed.
-    if (is_string($payload)) {
-        $decodedPayload = json_decode($payload, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decodedPayload)) {
-            $payload = $decodedPayload;
-        }
-    }
-
-    // Unwrap nested response if present.
-    if (!empty($payload['actionResponseData'])) {
-        $nestedPayload = $payload['actionResponseData'];
-
-        if (is_string($nestedPayload)) {
-            $nestedPayload = json_decode($nestedPayload, true);
-        }
-
-        if (is_array($nestedPayload)) {
-            $payload = $nestedPayload;
-        }
-    }
-
-    // Clean address.
+    // Light address cleanup
     $inputAddress = $payload['inputAddress']
         ?? $payload['address']
+        ?? $payload['property']['address']
         ?? $input['inputAddress']
         ?? 'Unknown Address';
 
     $inputAddress = preg_replace('/^\s*(parcel review|property review)\s+/i', '', $inputAddress);
 
-    // Resolve coordinates.
+    // Resolve coordinates (broad fallbacks)
     $google = $payload['google'] ?? [];
-
     if (empty($google['latitude']) && !empty($payload['latitude'])) {
         $google['latitude'] = $payload['latitude'];
     }
-
     if (empty($google['longitude']) && !empty($payload['longitude'])) {
         $google['longitude'] = $payload['longitude'];
     }
-
-    if (empty($google['latitude']) && !empty($payload['census']['normalized']['lat'])) {
+    if (empty($google['latitude']) && !empty($payload['census']['normalized']['lat'] ?? null)) {
         $google['latitude'] = $payload['census']['normalized']['lat'];
     }
-
-    if (empty($google['longitude']) && !empty($payload['census']['normalized']['lng'])) {
+    if (empty($google['longitude']) && !empty($payload['census']['normalized']['lng'] ?? null)) {
         $google['longitude'] = $payload['census']['normalized']['lng'];
     }
 
-    // Resolve parcel.
-    $primaryParcel = $payload['parcel']['primaryParcel']
-        ?? $payload['primaryParcel']
-        ?? null;
-
     return [
         'inputAddress'     => trim((string)$inputAddress),
-        'summary'          => $payload['summary'] ?? '',
-        'primaryParcel'    => $primaryParcel,
-        'candidateParcels' => $payload['parcel']['candidateParcels'] ?? [],
+        'summary'          => $payload['summary'] ?? $payload['property']['summary'] ?? '',
+        'primaryParcel'    => $payload['primaryParcel']
+                           ?? $payload['parcel']['primaryParcel']
+                           ?? [],
+        'candidateParcels' => $payload['candidateParcels']
+                           ?? $payload['parcel']['candidateParcels']
+                           ?? [],
         'jurisdiction'     => $payload['jurisdiction'] ?? [],
         'governance'       => $payload['governance'] ?? [],
         'google'           => $google,
@@ -172,26 +144,10 @@ function buildPrimaryParcelSection(array $data): string
     $html .= buildSectionHeader('Primary Parcel', 'compass.png');
 
     $html .= '<table class="dataTable">';
-    $html .= '<tr>';
-    $html .= '<th>APN</th>';
-    $html .= '<td>' . htmlspecialchars($p['parcelNumber'] ?? '—') . '</td>';
-    $html .= '</tr>';
-
-    $html .= '<tr>';
-    $html .= '<th>Owner</th>';
-    $html .= '<td>' . htmlspecialchars($p['ownerName'] ?? '—') . '</td>';
-    $html .= '</tr>';
-
-    $html .= '<tr>';
-    $html .= '<th>Property Address</th>';
-    $html .= '<td>' . htmlspecialchars($p['siteAddress'] ?? '—') . '</td>';
-    $html .= '</tr>';
-
-    $html .= '<tr>';
-    $html .= '<th>Jurisdiction</th>';
-    $html .= '<td>' . htmlspecialchars($p['jurisdiction'] ?? '—') . '</td>';
-    $html .= '</tr>';
-
+    $html .= '<tr><th>APN</th><td>' . htmlspecialchars($p['parcelNumber'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Owner</th><td>' . htmlspecialchars($p['ownerName'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Property Address</th><td>' . htmlspecialchars($p['siteAddress'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($p['jurisdiction'] ?? '—') . '</td></tr>';
     $html .= '</table>';
     $html .= '</div>';
 

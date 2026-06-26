@@ -103,147 +103,16 @@ if (!$reportHandler) {
 
 #endregion
 
-#region SECTION 04 - Report Generation
+#region SECTION 04 - Report Preparation & Generation (Universal)
 
 try {
-    // Load the specific report generator
-    require_once $reportHandler['file'];
-
-    $generator = $reportHandler['generator'] ?? null;
-    if (!$generator || !function_exists($generator)) {
-        throw new Exception('Generator function not found: ' . $generator);
-    }
-
     // =====================================================
-    // EPHEMERAL IMAGES (Street View + Parcel Maps)
+    // UNIVERSAL DATA LOADING FROM tblActions (Core of Refactor)
     // =====================================================
-    if ($reportType === 'contact_proposal') {
+    $pdo = getPDO(); // Ensure PDO is available (already required via dbConnect.php)
 
-        error_log("[IMAGES] Starting image generation for contact_proposal");
-
-        // =====================================================
-        // 1. EXTRACT LOCATION DATA
-        // =====================================================
-        $lat = $input['latitude']
-            ?? $input['data']['location']['latitude']
-            ?? $input['proposal']['data']['location']['latitude']
-            ?? $input['parsed']['location']['latitude']
-            ?? $input['location']['latitude']
-            ?? null;
-
-        $lng = $input['longitude']
-            ?? $input['data']['location']['longitude']
-            ?? $input['proposal']['data']['location']['longitude']
-            ?? $input['parsed']['location']['longitude']
-            ?? $input['location']['longitude']
-            ?? null;
-
-        $streetAddress = $input['locationAddress']
-            ?? $input['data']['location']['locationAddress']
-            ?? $input['proposal']['data']['location']['locationAddress']
-            ?? $input['parsed']['location']['locationAddress']
-            ?? $input['location']['locationAddress']
-            ?? '';
-
-        $parcelDetails = $input['parcelDetails']
-            ?? $input['data']['location']['parcelDetails']
-            ?? $input['proposal']['data']['location']['parcelDetails']
-            ?? $input['parsed']['location']['parcelDetails']
-            ?? [];
-
-        $googleKey = skyesoftGetEnv('GOOGLE_MAPS_PLACE_ID_API_KEY')
-            ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
-            ?: skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-            ?: '';
-
-        error_log("[IMAGES] lat = " . ($lat ?? 'MISSING'));
-        error_log("[IMAGES] lng = " . ($lng ?? 'MISSING'));
-        error_log("[IMAGES] address = " . ($streetAddress ?: 'MISSING'));
-        error_log("[IMAGES] parcelCount = " . count($parcelDetails));
-        error_log("[IMAGES] API Key = " . (!empty($googleKey) ? 'PRESENT' : 'MISSING'));
-
-        if (!$lat || !$lng || !$googleKey) {
-            error_log("[IMAGES] Skipping image generation - missing lat/lng or API key");
-        } else {
-
-            // =====================================================
-            // 2. STREET VIEW IMAGE
-            // =====================================================
-            if (!function_exists('generateStreetViewImage')) {
-                require_once __DIR__ . '/../reports/contactProposalReport.php';
-            }
-
-            error_log("[IMAGES] Generating Street View image...");
-            $streetViewPath = generateStreetViewImage(
-                (string)$lat,
-                (string)$lng,
-                $googleKey,
-                $streetAddress
-            );
-
-            if ($streetViewPath) {
-                if (!isset($input['reportArtifacts'])) {
-                    $input['reportArtifacts'] = [];
-                }
-                $input['reportArtifacts']['streetview'] = $streetViewPath;
-                error_log("[IMAGES] ✅ Street View generated: " . $streetViewPath);
-            } else {
-                error_log("[IMAGES] ❌ Street View generation failed");
-            }
-
-            // =====================================================
-            // 3. PARCEL MAP IMAGES (NEW - Dynamic Generation)
-            // =====================================================
-            if (!empty($parcelDetails) && is_array($parcelDetails)) {
-
-                if (!function_exists('generateParcelMapImage')) {
-                    require_once __DIR__ . '/../reports/contactProposalReport.php';
-                }
-
-                $generatedParcelMaps = [];
-
-                foreach ($parcelDetails as $index => $parcel) {
-                    $parcelLat = $parcel['latitude'] ?? $lat;
-                    $parcelLng = $parcel['longitude'] ?? $lng;
-                    $apn       = $parcel['apnRaw'] ?? $parcel['apnDisplay'] ?? 'unknown';
-
-                    error_log("[IMAGES] Generating parcel map for APN: $apn");
-
-                    $parcelMapPath = generateParcelMapImage(
-                        (string)$parcelLat,
-                        (string)$parcelLng,
-                        $apn,
-                        $googleKey
-                    );
-
-                    if ($parcelMapPath) {
-                        $generatedParcelMaps[] = $parcelMapPath;
-                        // Optionally attach path back to the parcel
-                        $parcelDetails[$index]['parcelMapImage'] = $parcelMapPath;
-                        error_log("[IMAGES] ✅ Parcel map generated for $apn: $parcelMapPath");
-                    } else {
-                        error_log("[IMAGES] ❌ Failed to generate parcel map for $apn");
-                    }
-                }
-
-                if (!empty($generatedParcelMaps)) {
-                    if (!isset($input['reportArtifacts'])) {
-                        $input['reportArtifacts'] = [];
-                    }
-                    $input['reportArtifacts']['parcel_maps'] = $generatedParcelMaps;
-                    error_log("[IMAGES] ✅ Total parcel maps generated: " . count($generatedParcelMaps));
-                }
-            }
-        }
-    }
-
-    // =====================================================
-    // LOCATION REVIEW REPORT LOADER
-    // =====================================================
-    if ($reportType === 'location_review' && $actionId > 0) {
-
-        $pdo = getPDO();
+    if ($actionId > 0) {
+        error_log("[PREP] Loading actionResponseData for actionId: {$actionId} (universal prep)");
 
         $stmt = $pdo->prepare("
             SELECT actionResponseData
@@ -255,75 +124,167 @@ try {
         $stmt->execute([$actionId]);
         $action = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$action || empty($action['actionResponseData'])) {
-            throw new Exception("Location review action {$actionId} not found or has no data.");
+        if ($action && !empty($action['actionResponseData'])) {
+            $payload = json_decode($action['actionResponseData'], true);
+
+            if (is_array($payload)) {
+                $input = array_merge($input, $payload); // Deep merge if needed in future
+                error_log("[PREP] ✅ Successfully merged actionResponseData. New keys: " . json_encode(array_keys($input)));
+            } else {
+                error_log("[PREP] ⚠️ Invalid JSON in actionResponseData for actionId {$actionId}");
+            }
+        } else {
+            error_log("[PREP] ⚠️ No actionResponseData found for actionId {$actionId}");
+        }
+    } else {
+        error_log("[PREP] No actionId provided — using direct input only");
+    }
+
+    // =====================================================
+    // UNIVERSAL IMAGE & ARTIFACT PREPARATION
+    // =====================================================
+    error_log("[IMAGES] Starting universal artifact preparation for reportType: {$reportType}");
+
+    // Extract location data with broad fallback paths (supports contact_proposal, location_review, property_review, etc.)
+    $lat = $input['latitude']
+        ?? $input['google']['latitude']
+        ?? $input['data']['location']['latitude']
+        ?? $input['proposal']['data']['location']['latitude']
+        ?? $input['parsed']['location']['latitude']
+        ?? $input['location']['latitude']
+        ?? $input['property']['latitude']
+        ?? null;
+
+    $lng = $input['longitude']
+        ?? $input['google']['longitude']
+        ?? $input['data']['location']['longitude']
+        ?? $input['proposal']['data']['location']['longitude']
+        ?? $input['parsed']['location']['longitude']
+        ?? $input['location']['longitude']
+        ?? $input['property']['longitude']
+        ?? null;
+
+    $streetAddress = $input['locationAddress']
+        ?? $input['inputAddress']
+        ?? $input['data']['location']['locationAddress']
+        ?? $input['proposal']['data']['location']['locationAddress']
+        ?? $input['parsed']['location']['locationAddress']
+        ?? $input['location']['locationAddress']
+        ?? $input['property']['address']
+        ?? '';
+
+    $parcelDetails = $input['parcelDetails']
+        ?? $input['data']['location']['parcelDetails']
+        ?? $input['proposal']['data']['location']['parcelDetails']
+        ?? $input['parsed']['location']['parcelDetails']
+        ?? $input['location']['parcelDetails']
+        ?? $input['property']['parcelDetails']
+        ?? [];
+
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_PLACE_ID_API_KEY')
+        ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
+        ?: skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?: '';
+
+    error_log("[IMAGES] lat = " . ($lat ?? 'MISSING'));
+    error_log("[IMAGES] lng = " . ($lng ?? 'MISSING'));
+    error_log("[IMAGES] address = " . ($streetAddress ?: 'MISSING'));
+    error_log("[IMAGES] parcelCount = " . count($parcelDetails));
+    error_log("[IMAGES] API Key = " . (!empty($googleKey) ? 'PRESENT' : 'MISSING'));
+
+    if ($lat && $lng && $googleKey) {
+        // Ensure image helper functions are loaded
+        if (!function_exists('generateStreetViewImage')) {
+            require_once __DIR__ . '/../reports/contactProposalReport.php'; // Contains shared helpers
         }
 
-        $payload = json_decode($action['actionResponseData'], true);
+        // 1. STREET VIEW (universal)
+        error_log("[IMAGES] Generating Street View image...");
+        $streetViewPath = generateStreetViewImage(
+            (string)$lat,
+            (string)$lng,
+            $googleKey,
+            $streetAddress
+        );
 
-        if (!is_array($payload)) {
-            throw new Exception("Invalid actionResponseData for action {$actionId}");
+        if ($streetViewPath) {
+            if (!isset($input['reportArtifacts'])) {
+                $input['reportArtifacts'] = [];
+            }
+            $input['reportArtifacts']['streetview'] = $streetViewPath;
+            error_log("[IMAGES] ✅ Street View generated: " . $streetViewPath);
+        } else {
+            error_log("[IMAGES] ❌ Street View generation failed");
         }
 
-        $input = array_merge($input, $payload);
-
-        error_log("[DEBUG] Payload keys: " . json_encode(array_keys($input)));
-        error_log("[generateReports] Loaded Location Review data from actionId {$actionId}");
-
-        // =====================================================
-        // EPHEMERAL IMAGES FOR LOCATION REVIEW
-        // =====================================================
-        error_log("[IMAGES] Starting image generation for location_review");
-
-        $lat = $input['google']['latitude'] ?? $input['latitude'] ?? null;
-        $lng = $input['google']['longitude'] ?? $input['longitude'] ?? null;
-        $streetAddress = $input['inputAddress'] ?? $input['locationAddress'] ?? '';
-
-        $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-            ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-            ?: '';
-
-        error_log("[IMAGES] lat = " . ($lat ?? 'MISSING'));
-        error_log("[IMAGES] lng = " . ($lng ?? 'MISSING'));
-        error_log("[IMAGES] address = " . ($streetAddress ?: 'MISSING'));
-        error_log("[IMAGES] API Key = " . (!empty($googleKey) ? 'PRESENT' : 'MISSING'));
-
-        if ($lat && $lng && $googleKey) {
-
-            if (!function_exists('generateStreetViewImage')) {
+        // 2. PARCEL MAPS (if applicable)
+        if (!empty($parcelDetails) && is_array($parcelDetails)) {
+            if (!function_exists('generateParcelMapImage')) {
                 require_once __DIR__ . '/../reports/contactProposalReport.php';
             }
 
-            error_log("[IMAGES] Generating Street View image...");
-            $streetViewPath = generateStreetViewImage(
-                (string)$lat,
-                (string)$lng,
-                $googleKey,
-                $streetAddress
-            );
+            $generatedParcelMaps = [];
 
-            if ($streetViewPath) {
+            foreach ($parcelDetails as $index => $parcel) {
+                $parcelLat = $parcel['latitude'] ?? $lat;
+                $parcelLng = $parcel['longitude'] ?? $lng;
+                $apn       = $parcel['apnRaw'] ?? $parcel['apnDisplay'] ?? 'unknown';
+
+                error_log("[IMAGES] Generating parcel map for APN: $apn");
+
+                $parcelMapPath = generateParcelMapImage(
+                    (string)$parcelLat,
+                    (string)$parcelLng,
+                    $apn,
+                    $googleKey
+                );
+
+                if ($parcelMapPath) {
+                    $generatedParcelMaps[] = $parcelMapPath;
+                    $parcelDetails[$index]['parcelMapImage'] = $parcelMapPath; // Mutate for downstream use
+                    error_log("[IMAGES] ✅ Parcel map generated for $apn: $parcelMapPath");
+                } else {
+                    error_log("[IMAGES] ❌ Failed to generate parcel map for $apn");
+                }
+            }
+
+            if (!empty($generatedParcelMaps)) {
                 if (!isset($input['reportArtifacts'])) {
                     $input['reportArtifacts'] = [];
                 }
-                $input['reportArtifacts']['streetview'] = $streetViewPath;
-                error_log("[IMAGES] ✅ Street View generated: " . $streetViewPath);
-            } else {
-                error_log("[IMAGES] ❌ Street View generation failed");
+                $input['reportArtifacts']['parcel_maps'] = $generatedParcelMaps;
+                error_log("[IMAGES] ✅ Total parcel maps generated: " . count($generatedParcelMaps));
             }
-        } else {
-            error_log("[IMAGES] Skipping image generation - missing lat/lng or key");
         }
+
+        // TODO: Future extensions (Satellite, etc.) go here with similar pattern
+
+    } else {
+        error_log("[IMAGES] Skipping artifact generation - missing lat/lng or API key");
     }
 
-    // Generate the report data
+    // =====================================================
+    // LOAD & EXECUTE SPECIFIC REPORT GENERATOR
+    // =====================================================
+    require_once $reportHandler['file'];
+
+    $generator = $reportHandler['generator'] ?? null;
+    if (!$generator || !function_exists($generator)) {
+        throw new Exception('Generator function not found: ' . ($generator ?? 'null'));
+    }
+
+    // Generators now receive fully prepared $input (data + artifacts)
+    error_log("[PREP] Calling generator: {$generator} with prepared input");
     $report = call_user_func($generator, $input);
 
     if (empty($report) || !is_array($report)) {
         throw new Exception('Report generator returned invalid data');
     }
 
-    // Load universal renderer
+    // =====================================================
+    // UNIVERSAL RENDERING
+    // =====================================================
     require_once __DIR__ . '/../reports/templates/baseReport.php';
 
     $pdfContent = renderReport($report);
@@ -335,15 +296,15 @@ try {
     // === DYNAMIC FILENAME ===
     $filename = $report['reportFilename']
              ?? $report['reportTitle']
-             ?? 'Proposed Contact Report';
+             ?? ucwords(str_replace('_', ' ', $reportType)) . ' Report';
 
     // Clean filename
     $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
     if (empty($filename)) {
-        $filename = 'Proposed_Contact_Report';
+        $filename = 'Report';
     }
 
-    // === DIRECT PDF DELIVERY (Clean & Reliable) ===
+    // === DIRECT PDF DELIVERY ===
     header('Content-Type: application/pdf');
     header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
     header('Content-Length: ' . strlen($pdfContent));
@@ -354,7 +315,6 @@ try {
     exit;
 
 } catch (Throwable $e) {
-    // Log the error for debugging
     error_log("[generateReports] ERROR: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
 
     http_response_code(500);
