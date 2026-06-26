@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — propertyReviewReport.php
 //  Property / Parcel Review Report Generator
-//  Version: 1.1.0 (Universal Prep Refactor)
+//  Version: 1.2.0 (Summary Section Refactor)
 //  Updated: 2026-06-26
 // =============================================
 
@@ -100,13 +100,7 @@ function buildPropertyReviewBody(array $data): string
 
     // 1. Property Review Summary (Narrative)
     $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
-    $html .= buildSectionHeader('Property Review Summary', 'pin.png');
-    $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6; font-size:11pt;">';
-    $summary = $data['summary'] ?? 'Property review completed.';
-    $summary = str_replace(['<br>', '<br/>', '<br />'], ' ', $summary);
-    $summary = preg_replace('/\s+/', ' ', $summary);
-    $html .= htmlspecialchars(trim($summary));
-    $html .= '</div>';
+    $html .= buildPropertySummarySection($data);
     $html .= '</div>';
 
     // 2. Location Map (Satellite)
@@ -135,6 +129,20 @@ function buildPropertyReviewBody(array $data): string
 #endregion
 
 #region SECTION 03 - Section Builders
+
+function buildPropertySummarySection(array $data): string
+{
+    $html = buildSectionHeader('Property Review Summary', 'clipboard.png');
+
+    $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6; font-size:11pt;">';
+    $summary = $data['summary'] ?? 'Property review completed.';
+    $summary = str_replace(['<br>', '<br/>', '<br />'], ' ', $summary);
+    $summary = preg_replace('/\s+/', ' ', $summary);
+    $html .= htmlspecialchars(trim($summary));
+    $html .= '</div>';
+
+    return $html;
+}
 
 function buildPrimaryParcelSection(array $data): string
 {
