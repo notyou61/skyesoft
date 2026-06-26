@@ -1044,6 +1044,17 @@ window.SkyIndex = {
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
     },
+
+    // Define clean display names for user commands
+    commandDisplayMap: {
+        'street view': 'Street View',
+        'streetview': 'Street View',
+        'property review': 'Property Review',
+        'propertyreview': 'Property Review',
+        'invalid property': 'Invalid Property Review',
+        // Add future workflows here easily!
+    },
+
     // #endregion
 
     // #region 🧠 Command Router
@@ -1052,8 +1063,36 @@ window.SkyIndex = {
         const activitySessionId = this.getActivitySessionId();
         console.log('[COMMAND]', text, '| session:', activitySessionId);
 
-        // 🧵 Echo user message
-        this.appendSystemLine(text, 'user');
+        // --- 📸 Dynamic Intent Formatting Registry Map ---
+        const displayMappings = [
+            { prefixes: ['street view ', 'streetview '], label: 'Street View' },
+            { prefixes: ['property review ', 'propertyreview '], label: 'Property Review' },
+            { prefixes: ['invalid property '], label: 'Invalid Property Review' }
+        ];
+
+        let displayPrompt = (text || '').toString().trim();
+        let matchedDisplay = null;
+
+        // Programmatically match prefixes to avoid brittle conditional branch chains
+        for (const mapping of displayMappings) {
+            const matchedPrefix = mapping.prefixes.find(p => 
+                displayPrompt.toLowerCase().startsWith(p)
+            );
+            
+            if (matchedPrefix) {
+                const parameterPayload = displayPrompt.substring(matchedPrefix.length).trim();
+                matchedDisplay = parameterPayload ? `${mapping.label} for ${parameterPayload}` : mapping.label;
+                break;
+            }
+        }
+
+        // Fallback: If it's a completely loose or custom query, title case the first character
+        if (!matchedDisplay && displayPrompt) {
+            matchedDisplay = displayPrompt.charAt(0).toUpperCase() + displayPrompt.slice(1);
+        }
+
+        // 🧵 Echo the clean, beautifully structured message instead of raw text data
+        this.appendSystemLine(matchedDisplay || displayPrompt, 'user');
 
         const normalized = (text || '').toString().trim().toLowerCase();
 
@@ -1228,7 +1267,7 @@ window.SkyIndex = {
         // --------------------------------------------------
         await this.executeAICommand(text, activitySessionId);
     },
-    // #endregion   ← End of handleCommand
+    // #endregion
 
     // #region 📸 Street View Workflow Helpers
 
