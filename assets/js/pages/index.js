@@ -1115,18 +1115,24 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📸 Street View Workflow (Highest priority for imagery requests)
+        // 📸 Street View Workflow (Highest priority)
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
         if (streetViewIntent) {
-            console.log(`[STREETVIEW] Detected: ${streetViewIntent.mode} (${streetViewIntent.confidence}) for "${streetViewIntent.address}"`);
+            console.log(`[STREETVIEW] Detected: ${streetViewIntent.mode} for "${streetViewIntent.address}"`);
 
-            this.suppressRawContactEcho(); 
+            const cleanAddress = streetViewIntent.address || text.trim();
+
+            // Clean echo using parsed address
+            this.appendSystemLine(`Street View for <span style="background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(cleanAddress)}</span>`, 'user');
+
+            this.suppressRawContactEcho();
             this.renderStreetViewProcessingState();
 
-            await this.executeStreetViewWorkflow(text, activitySessionId, streetViewIntent.address);
+            await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
             return;
         }
+
 
         // --------------------------------------------------
         // 📇 Contact Creation (EOP + add) — Clean UX
@@ -1142,11 +1148,15 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 🏠 PROPERTY WORKFLOW (Plain Address → Property Review)
+        // 🏠 PROPERTY WORKFLOW
         // --------------------------------------------------
         const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
         if (propertyIntent) {
-            console.log(`[PROPERTY] ${propertyIntent.workflow} (${propertyIntent.confidence})`);
+            console.log(`[PROPERTY] ${propertyIntent.workflow}`);
+
+            const cleanAddress = propertyIntent.address || text.trim();
+
+            this.appendSystemLine(`Property Review for <span style="background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(cleanAddress)}</span>`, 'user');
 
             this.suppressRawIntentEcho();
             this.renderPropertyProcessingState();
