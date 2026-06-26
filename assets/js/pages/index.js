@@ -1319,16 +1319,16 @@ window.SkyIndex = {
 
         renderStreetViewResult(data) {
             const address = data.address || 'Location';
-            // Convert to Title Case instead of Uppercase
+            // Title case formatting
             const imageType = (data.imageType || 'streetview')
-                .replace(/([A-Z])/g, ' $1') // Add space before capitals if camelCased
-                .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase())
                 .trim();
                 
             const imageSrc = data.imagePath || '';
-
             const dataPayloadAttr = btoa(JSON.stringify(data));
 
+            // Flattening template spaces prevents accidental layout padding/margins in the DOM
             const html = `
                 <div class="commandLine system html">
                     <div class="result-card">
@@ -1336,24 +1336,18 @@ window.SkyIndex = {
                             <span class="result-icon">📸</span>
                             <strong class="result-title">Location Imagery</strong>
                         </div>
-
                         <div class="result-body" style="padding:10px 18px 8px;">
                             <small style="color:#555; display:block; margin-bottom:0;">${this.escapeHtml(address)}</small>
-
                             ${imageSrc ? `
-                            <div style="margin:6px 0 10px; text-align:center;">
-                                <img src="${imageSrc}" alt="${imageType}" 
-                                    style="max-width:100%; max-height:200px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                            <div style="margin:6px 0 6px; text-align:center;">
+                                <img src="${imageSrc}" alt="${imageType}" style="max-width:100%; max-height:200px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
                             </div>` : '<br>'}
-
-                            <div style="font-size:0.93em; margin-top:0;">
+                            <div style="font-size:0.93em; margin-top:0; line-height:1.2;">
                                 <strong>Image Type:</strong> <span style="color:#006400;">${imageType}</span>
                             </div>
                         </div>
-
                         <div class="result-actions">
-                            <button onclick="SkyIndex.openInteractiveStreetView(JSON.parse(atob('${dataPayloadAttr}')))" 
-                                    class="btn btn-success" style="flex:1;">
+                            <button onclick="SkyIndex.openInteractiveStreetView(JSON.parse(atob('${dataPayloadAttr}')))" class="btn btn-success" style="flex:1;">
                                 ✏️ Edit View (Workspace)
                             </button>
                         </div>
