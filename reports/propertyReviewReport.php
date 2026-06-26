@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — propertyReviewReport.php
 //  Property / Parcel Review Report Generator
-//  Version: 1.2.0 (Summary Section Refactor)
+//  Version: 1.3.0 (Summary as Bullets)
 //  Updated: 2026-06-26
 // =============================================
 
@@ -26,7 +26,7 @@ function generatePropertyReviewReport(array $input): array
         'reportTitle'     => 'Property Review Report',
         'reportFilename'  => $reportFilename,
 
-        'reportSummary'   => $data['summary'] ?? 'Property review completed.',
+        'reportSummary'   => '',   // No longer duplicated in header
 
         'reportBodyHtml'  => $bodyHtml,
 
@@ -98,7 +98,7 @@ function buildPropertyReviewBody(array $data): string
 {
     $html = '';
 
-    // 1. Property Review Summary (Narrative)
+    // 1. Property Review Summary (Bullet Items)
     $html .= '<div style="page-break-inside:avoid; break-inside:avoid;">';
     $html .= buildPropertySummarySection($data);
     $html .= '</div>';
@@ -135,10 +135,35 @@ function buildPropertySummarySection(array $data): string
     $html = buildSectionHeader('Property Review Summary', 'clipboard.png');
 
     $html .= '<div class="summaryBlock" style="margin-bottom:20px; line-height:1.6; font-size:11pt;">';
-    $summary = $data['summary'] ?? 'Property review completed.';
-    $summary = str_replace(['<br>', '<br/>', '<br />'], ' ', $summary);
-    $summary = preg_replace('/\s+/', ' ', $summary);
-    $html .= htmlspecialchars(trim($summary));
+
+    $summary = $data['summary'] ?? '';
+
+    if (!empty($summary)) {
+        // Split on <br> tags and turn into bullets
+        $items = preg_split('/<br\s*\/?>/i', $summary);
+        $cleanItems = [];
+
+        foreach ($items as $item) {
+            $item = trim(strip_tags($item));
+            if ($item !== '' && !str_contains(strtolower($item), 'skyesoft resolved')) {
+                $cleanItems[] = $item;
+            }
+        }
+
+        if (!empty($cleanItems)) {
+            $html .= '<ul style="margin: 0; padding-left: 20px;">';
+            foreach ($cleanItems as $item) {
+                $html .= '<li style="margin-bottom: 8px;">' . htmlspecialchars($item) . '</li>';
+            }
+            $html .= '</ul>';
+        } else {
+            // Fallback
+            $html .= '<p>' . htmlspecialchars(trim($summary)) . '</p>';
+        }
+    } else {
+        $html .= '<p>Property review completed.</p>';
+    }
+
     $html .= '</div>';
 
     return $html;
