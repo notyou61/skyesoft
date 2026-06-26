@@ -1329,24 +1329,26 @@ window.SkyIndex = {
             const imageSrc = data.imagePath || '';
             const dataPayloadAttr = btoa(JSON.stringify(data));
 
-            // CRITICAL: Keep template contents strictly inline without hard line-breaks or 
-            // indentation gaps inside the tags to destroy unwanted text-node whitespace.
+            // CRITICAL: Content strings are kept strictly inline without layout-breaking 
+            // IDE formatting tabs to prevent rogue browser whitespace text-nodes.
             const html = `
                 <div class="commandLine system html">
                     <div class="result-card">
-                        <div class="result-header">
+                        <div class="result-header" style="align-items: flex-start;">
                             <span class="result-icon">📸</span>
-                            <strong class="result-title">${this.escapeHtml("Location Imagery")}</strong>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <strong class="result-title">${this.escapeHtml("Location Imagery")}</strong>
+                                <small style="color: #555; font-size: 0.82em; font-weight: normal; line-height: 1.2;">${this.escapeHtml(address)}</small>
+                            </div>
                         </div>
-                        <div class="result-body" style="padding:10px 18px 8px;">
-                            <small style="color:#555; display:block; margin-bottom:0;">${this.escapeHtml(address)}</small>` +
-                            (imageSrc ? `<div style="margin:6px 0 6px; text-align:center;"><img src="${imageSrc}" alt="${imageType}" style="max-width:100%; max-height:200px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);"></div>` : `<br>`) +
-                            `<div style="font-size:0.93em; margin-top:0; line-height:1.2;">
-                                <strong>Image Type:</strong> <span style="color:#006400;">${imageType}</span>
+                        <div class="result-body" style="padding: 12px 18px 8px;">` +
+                            (imageSrc ? `<div style="margin: 0 0 8px; text-align: center;"><img src="${imageSrc}" alt="${imageType}" style="max-width: 100%; max-height: 200px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);"></div>` : '') +
+                            `<div style="font-size: 0.93em; margin-top: 0; line-height: 1.2;">
+                                <strong>Image Type:</strong> <span style="color: #006400;">${imageType}</span>
                             </div>
                         </div>
                         <div class="result-actions">
-                            <button onclick="SkyIndex.openInteractiveStreetView(JSON.parse(atob('${dataPayloadAttr}')))" class="btn btn-success" style="flex:1;">
+                            <button onclick="SkyIndex.openInteractiveStreetView(JSON.parse(atob('${dataPayloadAttr}')))" class="btn btn-success" style="flex: 1;">
                                 ✏️ Edit View (Workspace)
                             </button>
                         </div>
