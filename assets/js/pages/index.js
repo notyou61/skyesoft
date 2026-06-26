@@ -1333,24 +1333,21 @@ window.SkyIndex = {
                             <strong class="result-title">Location Imagery</strong>
                         </div>
 
-                        <div class="result-body">
-                            <small style="color:#555; display:block; margin-bottom:8px;">${this.escapeHtml(address)}</small>
+                        <div class="result-body" style="padding:12px 18px 8px;">
+                            <small style="color:#555; display:block; margin-bottom:6px;">${this.escapeHtml(address)}</small>
 
                             ${imageSrc ? `
-                            <div style="margin:8px 0; text-align:center;">
+                            <div style="margin:4px 0 10px; text-align:center;">
                                 <img src="${imageSrc}" alt="${imageType}" 
-                                    style="max-width:100%; max-height:220px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                                    style="max-width:100%; max-height:210px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
                             </div>` : ''}
 
-                            <div><strong>Image Type:</strong> <span style="color:#006400;">${imageType}</span></div>
+                            <div style="font-size:0.92em;"><strong>Image Type:</strong> <span style="color:#006400;">${imageType}</span></div>
                         </div>
 
                         <div class="result-actions">
-                            <a href="${interactiveUrl}" target="_blank" class="btn btn-primary">
-                                🗺 Open Interactive View
-                            </a>
                             <button onclick="SkyIndex.openInteractiveStreetView(JSON.parse(atob('${dataPayloadAttr}')))" 
-                                    class="btn btn-success">
+                                    class="btn btn-success" style="flex:1;">
                                 ✏️ Edit View (Workspace)
                             </button>
                         </div>
