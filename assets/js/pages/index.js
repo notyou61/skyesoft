@@ -1089,7 +1089,7 @@ window.SkyIndex = {
         if (propertyIntent) {
             const cleanAddress = propertyIntent.address || text.trim();
 
-            this.appendSystemLine(`Property Review for <span style="background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(cleanAddress)}</span>`, 'user');
+            this.appendSystemLine(`Property Review for [ ${cleanAddress} ]`, 'user');
 
             this.suppressRawIntentEcho();
             this.renderPropertyProcessingState();
