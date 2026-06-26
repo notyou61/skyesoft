@@ -1057,55 +1057,47 @@ window.SkyIndex = {
 
     // #endregion
 
-// #region 🧠 Command Router
+    // #region 🧠 Command Router
     async handleCommand(text) {
 
         const activitySessionId = this.getActivitySessionId();
         console.log('[COMMAND]', text, '| session:', activitySessionId);
 
-        // --- 📸 Dynamic Intent Formatting Registry Map ---
-        const displayMappings = [
-            { tokens: ['street view', 'streetview'], label: 'Street View' },
-            { tokens: ['property review', 'propertyreview'], label: 'Property Review' },
-            { tokens: ['invalid property'], label: 'Invalid Property Review' }
-        ];
+        // --- 📸 Zero-Delay Pure JavaScript Format Parser ---
+        let rawPrompt = (text || '').toString().trim();
+        let displayPrompt = rawPrompt;
 
-        let displayPrompt = (text || '').toString().trim();
-        let matchedDisplay = null;
+        // Clean up punctuation/casing for matching rules, but preserve raw address casing
+        const lowerPrompt = rawPrompt.toLowerCase();
+        
+        // Define known intent signatures
+        const streetViewTriggers = ['street view', 'streetview'];
+        const propertyTriggers   = ['property review', 'propertyreview', 'invalid property'];
 
-        // 🛠️ Bidirectional parsing: check both front and back of string safely
-        for (const mapping of displayMappings) {
-            for (const token of mapping.tokens) {
-                const lowerPrompt = displayPrompt.toLowerCase();
-                
-                // Case 1: Trigger is at the beginning (e.g., "street view [address]")
-                if (lowerPrompt.startsWith(token + ' ')) {
-                    const payload = displayPrompt.substring(token.length).trim();
-                    matchedDisplay = payload 
-                        ? `${mapping.label} for <span style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(payload)}</span>` 
-                        : mapping.label;
-                    break;
-                }
-                
-                // Case 2: Trigger is at the end (e.g., "[address] street view")
-                if (lowerPrompt.endsWith(' ' + token)) {
-                    const payload = displayPrompt.substring(0, displayPrompt.length - token.length).trim();
-                    matchedDisplay = payload 
-                        ? `${mapping.label} for <span style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(payload)}</span>` 
-                        : mapping.label;
-                    break;
-                }
+        // 1. Check if it's a Street View Request (Front or Back matching)
+        const matchedSv = streetViewTriggers.find(t => lowerPrompt.startsWith(t + ' ') || lowerPrompt.endsWith(' ' + t));
+        if (matchedSv) {
+            // Drop the keyword cleanly wherever it lives
+            const regex = new RegExp(`(^${matchedSv}\\s+|\\s+${matchedSv}$)`, 'i');
+            const addressPayload = rawPrompt.replace(regex, '').trim();
+            displayPrompt = `Street View for <span style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(addressPayload)}</span>`;
+        } 
+        // 2. Check if it's a Property Review Request
+        else {
+            const matchedPr = propertyTriggers.find(t => lowerPrompt.startsWith(t + ' ') || lowerPrompt.endsWith(' ' + t));
+            if (matchedPr) {
+                const regex = new RegExp(`(^${matchedPr}\\s+|\\s+${matchedPr}$)`, 'i');
+                const addressPayload = rawPrompt.replace(regex, '').trim();
+                displayPrompt = `Property Review for <span style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(addressPayload)}</span>`;
             }
-            if (matchedDisplay) break;
+            // 3. Fallback title case for unstructured queries
+            else if (rawPrompt) {
+                displayPrompt = rawPrompt.charAt(0).toUpperCase() + rawPrompt.slice(1);
+            }
         }
 
-        // Fallback: Default to title case for custom queries
-        if (!matchedDisplay && displayPrompt) {
-            matchedDisplay = displayPrompt.charAt(0).toUpperCase() + displayPrompt.slice(1);
-        }
-
-        // 🧵 Echo the clean, beautifully structured message with badge container markup
-        this.appendSystemLine(matchedDisplay || displayPrompt, 'user');
+        // 🧵 Echo the clean structured message instantly onto the user panel surface!
+        this.appendSystemLine(displayPrompt, 'user');
 
         const normalized = (text || '').toString().trim().toLowerCase();
 
@@ -1129,13 +1121,9 @@ window.SkyIndex = {
         if (streetViewIntent) {
             console.log(`[STREETVIEW] Detected: ${streetViewIntent.mode} (${streetViewIntent.confidence}) for "${streetViewIntent.address}"`);
 
-            // Suppress raw echo if needed
-            this.suppressRawContactEcho(); // reuse for clean UX
-
-            // Show processing state
+            this.suppressRawContactEcho(); 
             this.renderStreetViewProcessingState();
 
-            // Run dedicated workflow
             await this.executeStreetViewWorkflow(text, activitySessionId, streetViewIntent.address);
             return;
         }
@@ -1146,13 +1134,9 @@ window.SkyIndex = {
         if (await this.isContactCreationIntent(text, normalized)) {
             console.log('📇 Contact Intent Detected → Clean Workflow');
 
-            // Suppress BEFORE any further rendering
             this.suppressRawContactEcho();
-
-            // Show processing state
             this.renderContactProcessingState();
 
-            // Run AI pipeline
             await this.executeAICommand(text, activitySessionId);
             return;
         }
@@ -1181,9 +1165,7 @@ window.SkyIndex = {
             this.suppressRawIntentEcho();
             this.renderLocationProcessingState();
 
-            // TODO: Implement executeLocationWorkflow if needed
             this.appendSystemLine('Location workflow not fully implemented yet.', 'warning');
-            // await this.executeLocationWorkflow(...) 
             return;
         }
 
@@ -1226,7 +1208,6 @@ window.SkyIndex = {
                     })
                 });
 
-                // 🔥 Safe JSON parsing
                 let data;
                 const raw = await res.text();
                 try {
