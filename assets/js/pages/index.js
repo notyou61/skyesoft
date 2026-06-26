@@ -2395,15 +2395,13 @@ window.SkyIndex = {
     // ───────────────────────────────────────────────
 
     renderPropertyReviewResult(data) {
-        // Remove temporary processing card
         this.cleanupPropertyProcessing();
 
-        const addr = data.inputAddress || 'Address not provided';
-        const summary = data.summary || 'Property review completed.';
-        const parcel = data.parcel?.primaryParcel || data.parcel || {};
-        const gov = data.governance || {};
-        const jurisdiction = data.jurisdiction?.governingJurisdiction || parcel.jurisdiction || 'Unknown';
-        const actionId = data.actionId || '';
+        let summaryHtml = '';
+        if (data.summary) {
+            summaryHtml = this.escapeHtml(data.summary)
+                .replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+        }
 
         const html = `
             <div class="commandLine system html">
@@ -2412,28 +2410,27 @@ window.SkyIndex = {
                         <span class="status-icon">✅</span>
                         <strong>Property Review Complete</strong>
                     </div>
-                    
                     <div class="review-content">
-                        <p><strong>${this.escapeHtml(summary)}</strong></p>
-
+                        ${summaryHtml ? `<p>${summaryHtml}</p>` : ''}
+                        
                         <div class="review-grid">
                             <div><strong>Address</strong></div>
-                            <div>${this.escapeHtml(addr)}</div>
+                            <div>${this.escapeHtml(data.inputAddress || '—')}</div>
 
-                            ${parcel.parcelNumber ? `
+                            ${data.parcel?.primaryParcel?.parcelNumber ? `
                             <div><strong>Parcel</strong></div>
-                            <div>${this.escapeHtml(parcel.parcelNumber)}</div>` : ''}
+                            <div>${this.escapeHtml(data.parcel.primaryParcel.parcelNumber)}</div>` : ''}
 
                             <div><strong>Jurisdiction</strong></div>
-                            <div>${this.escapeHtml(jurisdiction)}</div>
+                            <div>${this.escapeHtml(data.jurisdiction?.governingJurisdiction || '—')}</div>
 
                             <div><strong>Governance</strong></div>
-                            <div>${gov.rsCode || 'RS-0'} — ${gov.parcelStatus || 'Single Parcel Found'}</div>
+                            <div>${this.escapeHtml(data.governance?.rsCode || 'RS-0')} — ${this.escapeHtml(data.governance?.parcelStatus || 'Single Parcel Found')}</div>
                         </div>
 
-                        ${actionId ? `
+                        ${data.actionId ? `
                         <div class="review-actions">
-                            <a href="/skyesoft/api/generateReports.php?reportType=property&actionId=${actionId}" 
+                            <a href="/skyesoft/api/generateReports.php?reportType=property&actionId=${data.actionId}" 
                                target="_blank" class="btn btn-sm">
                                 📄 Generate Full PDF Report
                             </a>
