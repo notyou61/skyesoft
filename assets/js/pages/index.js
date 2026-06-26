@@ -219,15 +219,17 @@ window.SkyIndex = {
                 : String(html);
 
             const isAllowedHtml =
+                safeHtml.includes('property-review-card') ||   // ← Add this
                 safeHtml.includes('gov-box') ||
                 safeHtml.includes('gov-action') ||
                 safeHtml.includes('gov-panel') ||
                 safeHtml.includes('contact-card') ||
+                safeHtml.includes('property-review-card') ||   // ← ADD THIS
                 safeHtml.includes('parcel-review-card') ||
                 safeHtml.includes('Primary Parcel') ||
                 safeHtml.includes('Parcel Review') ||
-                safeHtml.includes('streetview-card') ||     // ← NEW: Street View support
-                safeHtml.includes('📸 Location Imagery');   // ← NEW: Fallback keyword
+                safeHtml.includes('streetview-card') ||
+                safeHtml.includes('📸 Location Imagery');
 
             if (!isAllowedHtml) {
                 this.appendSystemLine('[Unsupported HTML content]');
@@ -2396,7 +2398,13 @@ window.SkyIndex = {
         // Remove temporary processing card
         this.cleanupPropertyProcessing();
 
-        // Full card wrapped for appendSystemHtml()
+        const addr = data.inputAddress || 'Address not provided';
+        const summary = data.summary || 'Property review completed.';
+        const parcel = data.parcel?.primaryParcel || data.parcel || {};
+        const gov = data.governance || {};
+        const jurisdiction = data.jurisdiction?.governingJurisdiction || parcel.jurisdiction || 'Unknown';
+        const actionId = data.actionId || '';
+
         const html = `
             <div class="commandLine system html">
                 <div class="property-review-card">
@@ -2404,9 +2412,32 @@ window.SkyIndex = {
                         <span class="status-icon">✅</span>
                         <strong>Property Review Complete</strong>
                     </div>
+                    
                     <div class="review-content">
-                        ${data.summary ? `<p>${this.escapeHtml(data.summary)}</p>` : ''}
-                        <!-- Add full detailed content here (parcel table, governance, maps, etc.) -->
+                        <p><strong>${this.escapeHtml(summary)}</strong></p>
+
+                        <div class="review-grid">
+                            <div><strong>Address</strong></div>
+                            <div>${this.escapeHtml(addr)}</div>
+
+                            ${parcel.parcelNumber ? `
+                            <div><strong>Parcel</strong></div>
+                            <div>${this.escapeHtml(parcel.parcelNumber)}</div>` : ''}
+
+                            <div><strong>Jurisdiction</strong></div>
+                            <div>${this.escapeHtml(jurisdiction)}</div>
+
+                            <div><strong>Governance</strong></div>
+                            <div>${gov.rsCode || 'RS-0'} — ${gov.parcelStatus || 'Single Parcel Found'}</div>
+                        </div>
+
+                        ${actionId ? `
+                        <div class="review-actions">
+                            <a href="/skyesoft/api/generateReports.php?reportType=property&actionId=${actionId}" 
+                               target="_blank" class="btn btn-sm">
+                                📄 Generate Full PDF Report
+                            </a>
+                        </div>` : ''}
                     </div>
                 </div>
             </div>
