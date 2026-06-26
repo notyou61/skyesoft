@@ -2396,16 +2396,18 @@ window.SkyIndex = {
         // Remove temporary processing card
         this.cleanupPropertyProcessing();
 
-        // Build completed Property Review card
+        // Full card wrapped for appendSystemHtml()
         const html = `
-            <div class="property-review-card">
-                <div class="review-header">
-                    <span class="status-icon">✅</span>
-                    <strong>Property Review Complete</strong>
-                </div>
-                <div class="review-content">
-                    ${data.summary ? `<p>${this.escapeHtml(data.summary)}</p>` : ''}
-                    <!-- Add full property review card content here (parcel, governance, maps, etc.) -->
+            <div class="commandLine system html">
+                <div class="property-review-card">
+                    <div class="review-header">
+                        <span class="status-icon">✅</span>
+                        <strong>Property Review Complete</strong>
+                    </div>
+                    <div class="review-content">
+                        ${data.summary ? `<p>${this.escapeHtml(data.summary)}</p>` : ''}
+                        <!-- Add full detailed content here (parcel table, governance, maps, etc.) -->
+                    </div>
                 </div>
             </div>
         `;
@@ -2414,28 +2416,29 @@ window.SkyIndex = {
     },
 
     renderInvalidPropertyResult(data) {
-        // Remove temporary processing card
         this.cleanupPropertyProcessing();
 
         const rsCode = data.governance?.rsCode || 'RS-8';
         const status = data.governance?.parcelStatus || 'Invalid Address';
 
         const html = `
-            <div class="property-review-card invalid">
-                <div class="review-header">
-                    <span class="status-icon">❌</span>
-                    <strong>Property Review</strong>
-                </div>
-                <div class="review-content">
-                    <p><strong>${this.escapeHtml(data.summary || 'The supplied address could not be validated.')}</strong></p>
-                    
-                    <div class="address-block">
-                        <strong>Address:</strong><br>
-                        ${data.inputAddress ? this.escapeHtml(data.inputAddress) : '—'}
+            <div class="commandLine system html">
+                <div class="property-review-card invalid">
+                    <div class="review-header">
+                        <span class="status-icon">❌</span>
+                        <strong>Property Review</strong>
                     </div>
+                    <div class="review-content">
+                        <p><strong>${this.escapeHtml(data.summary || 'The supplied address could not be validated.')}</strong></p>
+                        
+                        <div class="address-block">
+                            <strong>Address:</strong><br>
+                            ${data.inputAddress ? this.escapeHtml(data.inputAddress) : '—'}
+                        </div>
 
-                    <div class="governance-info">
-                        <strong>Governance:</strong> ${rsCode} — ${status}
+                        <div class="governance-info">
+                            <strong>Governance:</strong> ${rsCode} — ${status}
+                        </div>
                     </div>
                 </div>
             </div>
