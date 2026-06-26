@@ -288,7 +288,6 @@ window.SkyIndex = {
             output.scrollTop = output.scrollHeight;
         },
         
-
         // #endregion
 
     // #region 📦 Registry Loaders
@@ -1318,37 +1317,41 @@ window.SkyIndex = {
         },
 
         renderStreetViewResult(data) {
+            this.replaceStreetViewProcessingWithResult();   // if still using processing
+
             const address = data.address || 'Location';
             const imageType = (data.imageType || 'streetview').toUpperCase();
             const imageSrc = data.imagePath || '';
             const interactiveUrl = data.interactiveUrl || '#';
 
-            // Escaping the payload safely into a data attribute so the inline onclick execution can parse it cleanly
             const dataPayloadAttr = btoa(JSON.stringify(data));
 
-            let html = `
+            const html = `
                 <div class="commandLine system html">
-                    <div class="streetview-card" style="background:#f8f9fa; padding:16px; border-radius:8px; border-left:5px solid #007aff; max-width:650px;">
-                        <strong>📸 Location Imagery</strong><br>
-                        <small style="color:#555;">${address}</small>
-                        
-                        ${imageSrc ? `
-                        <div style="margin:12px 0; text-align:center;">
-                            <img src="${imageSrc}" alt="${imageType}" style="max-width:100%; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-                        </div>
-                        ` : ''}
-
-                        <div style="margin-top:8px; font-size:0.95em;">
-                            <strong>Image Type:</strong> <span style="color:${imageType === 'STREETVIEW' ? '#006400' : '#8B4513'};">${imageType}</span>
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-icon">📸</span>
+                            <strong class="result-title">Location Imagery</strong>
                         </div>
 
-                        <div style="margin-top:14px; display:flex; gap:8px;">
-                            <a href="${interactiveUrl}" target="_blank" 
-                            style="flex:1; background:#007aff; color:white; padding:9px 12px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.92em; text-align:center;">
-                            🗺 Open Full Interactive View
+                        <div class="result-body">
+                            <small style="color:#555; display:block; margin-bottom:8px;">${this.escapeHtml(address)}</small>
+
+                            ${imageSrc ? `
+                            <div style="margin:8px 0; text-align:center;">
+                                <img src="${imageSrc}" alt="${imageType}" 
+                                    style="max-width:100%; max-height:220px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                            </div>` : ''}
+
+                            <div><strong>Image Type:</strong> <span style="color:#006400;">${imageType}</span></div>
+                        </div>
+
+                        <div class="result-actions">
+                            <a href="${interactiveUrl}" target="_blank" class="btn btn-primary">
+                                🗺 Open Interactive View
                             </a>
                             <button onclick="SkyIndex.openInteractiveStreetView(JSON.parse(atob('${dataPayloadAttr}')))" 
-                                    style="flex:1; background:#28a745; color:white; padding:9px 12px; border:none; border-radius:6px; font-weight:600; font-size:0.92em; cursor:pointer;">
+                                    class="btn btn-success">
                                 ✏️ Edit View (Workspace)
                             </button>
                         </div>
@@ -2405,15 +2408,16 @@ window.SkyIndex = {
 
         const html = `
             <div class="commandLine system html">
-                <div class="property-review-card">
-                    <div class="review-header">
-                        <span class="status-icon">✅</span>
-                        <strong>Property Review Complete</strong>
+                <div class="result-card">
+                    <div class="result-header">
+                        <span class="result-icon">✅</span>
+                        <strong class="result-title">Property Review Complete</strong>
                     </div>
-                    <div class="review-content">
-                        ${summaryHtml ? `<p>${summaryHtml}</p>` : ''}
-                        
-                        <div class="review-grid">
+
+                    <div class="result-body">
+                        ${summaryHtml ? `<p style="margin-bottom:12px;">${summaryHtml}</p>` : ''}
+
+                        <div class="result-grid">
                             <div><strong>Address</strong></div>
                             <div>${this.escapeHtml(data.inputAddress || '—')}</div>
 
@@ -2427,15 +2431,15 @@ window.SkyIndex = {
                             <div><strong>Governance</strong></div>
                             <div>${this.escapeHtml(data.governance?.rsCode || 'RS-0')} — ${this.escapeHtml(data.governance?.parcelStatus || 'Single Parcel Found')}</div>
                         </div>
-
-                        ${data.actionId ? `
-                        <div class="review-actions">
-                            <a href="/skyesoft/api/generateReports.php?reportType=property&actionId=${data.actionId}" 
-                               target="_blank" class="btn btn-sm">
-                                📄 Generate Full PDF Report
-                            </a>
-                        </div>` : ''}
                     </div>
+
+                    ${data.actionId ? `
+                    <div class="result-actions">
+                        <a href="/skyesoft/api/generateReports.php?reportType=property&actionId=${data.actionId}" 
+                           target="_blank" class="btn btn-primary">
+                            📄 Generate Full PDF Report
+                        </a>
+                    </div>` : ''}
                 </div>
             </div>
         `;
@@ -2451,21 +2455,21 @@ window.SkyIndex = {
 
         const html = `
             <div class="commandLine system html">
-                <div class="property-review-card invalid">
-                    <div class="review-header">
-                        <span class="status-icon">❌</span>
-                        <strong>Property Review</strong>
+                <div class="result-card">
+                    <div class="result-header">
+                        <span class="result-icon">❌</span>
+                        <strong class="result-title">Property Review</strong>
                     </div>
-                    <div class="review-content">
+
+                    <div class="result-body">
                         <p><strong>${this.escapeHtml(data.summary || 'The supplied address could not be validated.')}</strong></p>
                         
-                        <div class="address-block">
-                            <strong>Address:</strong><br>
-                            ${data.inputAddress ? this.escapeHtml(data.inputAddress) : '—'}
-                        </div>
+                        <div class="result-grid">
+                            <div><strong>Address</strong></div>
+                            <div>${this.escapeHtml(data.inputAddress || '—')}</div>
 
-                        <div class="governance-info">
-                            <strong>Governance:</strong> ${rsCode} — ${status}
+                            <div><strong>Governance</strong></div>
+                            <div>${rsCode} — ${status}</div>
                         </div>
                     </div>
                 </div>
