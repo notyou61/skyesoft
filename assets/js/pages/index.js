@@ -2309,15 +2309,13 @@ window.SkyIndex = {
     // ───────────────────────────────────────────────
 
     async executePropertyWorkflow(text, activitySessionId) {
-        if (this._currentPropertyProcessingEl) {
-            this._currentPropertyProcessingEl.remove();
-            this._currentPropertyProcessingEl = null;
-        }
+        this.cleanupPropertyProcessing();
 
         this.setThinking(true);
 
         try {
-            this.renderPropertyProcessingState();
+            // Note: renderPropertyProcessingState() is called by the intent router
+            // before entering this method. We only clean up here.
 
             const res = await fetch('/skyesoft/api/askOpenAI.php', {
                 method: 'POST',
@@ -2335,7 +2333,7 @@ window.SkyIndex = {
             const data = await res.json();
             console.log('[Property Response]', data);
 
-            this.dispatchWorkflowResponse(data);
+            this.dispatchPropertyWorkflowResponse(data);
 
         } catch (err) {
             console.error('[Property Workflow Error]', err);
@@ -2346,13 +2344,23 @@ window.SkyIndex = {
     },
 
     // ───────────────────────────────────────────────
-    // WORKFLOW DISPATCHER (Single Source of Truth)
+    // WORKFLOW DISPATCHER (Property-specific)
     // ───────────────────────────────────────────────
 
-    dispatchWorkflowResponse(data) {
-        // Only handle transport/API failures here
+    /**
+     * Supported workflowState values:
+     * - property_valid
+     * - invalid_address
+     * 
+     * Future states:
+     * - multiple_parcels
+     * - streetview_required
+     * - report_ready
+     */
+    dispatchPropertyWorkflowResponse(data) {
         if (!data || typeof data !== 'object') {
             this.appendSystemLine('❌ Invalid response from server.', 'error');
+            this.cleanupPropertyProcessing();
             return;
         }
 
@@ -2360,6 +2368,7 @@ window.SkyIndex = {
 
         if (!workflowState) {
             this.appendSystemLine('❌ Missing workflowState in server response.', 'error');
+            this.cleanupPropertyProcessing();
             return;
         }
 
@@ -2372,13 +2381,9 @@ window.SkyIndex = {
                 this.renderInvalidPropertyResult(data);
                 break;
 
-            // Future states:
-            // case 'streetview_required': this.renderStreetViewSelection(data); break;
-            // case 'multiple_parcels': this.renderParcelSelection(data); break;
-            // case 'report_ready': this.renderPropertyReport(data); break;
-
             default:
                 this.appendSystemLine(`❌ Unknown workflow state: ${workflowState}`, 'error');
+                this.cleanupPropertyProcessing();
                 break;
         }
     },
@@ -2388,11 +2393,30 @@ window.SkyIndex = {
     // ───────────────────────────────────────────────
 
     renderPropertyReviewResult(data) {
-        // Your existing implementation (renamed from renderParcelReviewResult)
-        // ... keep current logic here ...
+        // Remove temporary processing card
+        this.cleanupPropertyProcessing();
+
+        // Build completed Property Review card
+        const html = `
+            <div class="property-review-card">
+                <div class="review-header">
+                    <span class="status-icon">✅</span>
+                    <strong>Property Review Complete</strong>
+                </div>
+                <div class="review-content">
+                    ${data.summary ? `<p>${this.escapeHtml(data.summary)}</p>` : ''}
+                    <!-- Add full property review card content here (parcel, governance, maps, etc.) -->
+                </div>
+            </div>
+        `;
+
+        this.appendSystemHtml(html);
     },
 
     renderInvalidPropertyResult(data) {
+        // Remove temporary processing card
+        this.cleanupPropertyProcessing();
+
         const rsCode = data.governance?.rsCode || 'RS-8';
         const status = data.governance?.parcelStatus || 'Invalid Address';
 
@@ -2402,7 +2426,6 @@ window.SkyIndex = {
                     <span class="status-icon">❌</span>
                     <strong>Property Review</strong>
                 </div>
-                
                 <div class="review-content">
                     <p><strong>${this.escapeHtml(data.summary || 'The supplied address could not be validated.')}</strong></p>
                     
@@ -2424,6 +2447,13 @@ window.SkyIndex = {
     // ───────────────────────────────────────────────
     // WORKFLOW UTILITIES
     // ───────────────────────────────────────────────
+
+    cleanupPropertyProcessing() {
+        if (this._currentPropertyProcessingEl) {
+            this._currentPropertyProcessingEl.remove();
+            this._currentPropertyProcessingEl = null;
+        }
+    },
 
     suppressRawIntentEcho() {
         const output = this.getOutputHost();
