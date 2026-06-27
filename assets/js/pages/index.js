@@ -1046,13 +1046,32 @@ window.SkyIndex = {
     },
 
     // Define clean display names for user commands
-    commandDisplayMap: {
-        'street view': 'Street View',
-        'streetview': 'Street View',
-        'property review': 'Property Review',
-        'propertyreview': 'Property Review',
-        'invalid property': 'Invalid Property Review',
-        // Add future workflows here easily!
+    intentRegistry: {
+
+        property_review: {
+            display: 'Property Review',
+            icon: '🏠',
+            processing: 'Resolving Property...'
+        },
+
+        street_view: {
+            display: 'Google Street View',
+            icon: '📸',
+            processing: 'Loading Street View...'
+        },
+
+        location_review: {
+            display: 'Location Review',
+            icon: '📍',
+            processing: 'Resolving Location...'
+        },
+
+        contact_proposal: {
+            display: 'Proposed Contact',
+            icon: '👤',
+            processing: 'Analyzing Contact...'
+        }
+
     },
 
     // #endregion
@@ -1070,10 +1089,21 @@ window.SkyIndex = {
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
         if (streetViewIntent) {
+
             const cleanAddress = streetViewIntent.address || text.trim();
 
+            const intent = this.intentRegistry.street_view;
+
+            this.appendSystemLine(
+                `${intent.display} - ${cleanAddress}`,
+                'user'
+            );
+
             // Clean user echo
-            this.appendSystemLine(`Street View for ${cleanAddress}`, 'user');
+            this.appendSystemLine(
+                `${intent.display} for ${cleanAddress}`,
+                'user'
+            );
 
             // Suppress the raw command echo
             this.suppressRawIntentEcho();
