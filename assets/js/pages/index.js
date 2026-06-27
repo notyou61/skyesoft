@@ -1085,7 +1085,19 @@ window.SkyIndex = {
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
         if (streetViewIntent) {
-            const cleanAddress = streetViewIntent.address;
+            // Always use AI parser for clean extraction
+            const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: "parseIntent",
+                    userQuery: text
+                })
+            });
+
+            const parsed = await parseRes.json();
+            const cleanAddress = parsed.cleanAddress || text.trim();
 
             this.appendSystemLine(`Street View for ${this.escapeHtml(cleanAddress)}`, 'user');
 
@@ -1128,7 +1140,6 @@ window.SkyIndex = {
         // --------------------------------------------------
         const contactIntent = await this.isContactCreationIntent(text, normalized);
         if (contactIntent) {
-            // REMADE: Standardized structural logic matching the intentRegistry
             const normalizedName = contactIntent.entities?.contact?.normalized || 'New Contact';
             const intent = this.intentRegistry.contact_proposal;
 
@@ -1191,7 +1202,6 @@ window.SkyIndex = {
         // --------------------------------------------------
         // 🤖 AI Fallback
         // --------------------------------------------------
-        // Raw prompt is explicitly preserved ONLY for unhandled/conversational dialogue.
         this.appendSystemLine(text, 'user');   
         await this.executeAICommand(text, activitySessionId);
     },
