@@ -178,17 +178,20 @@ try {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // RETURN DATA TO CLIENT (Now including verified apiKey)
+    // RETURN DATA TO CLIENT (Full Address + Verified Keys)
     // ─────────────────────────────────────────────────────────────
+    $fullAddress = $geocode['results'][0]['formatted_address'] ?? $address;
+
     echo json_encode([
         'success'        => true,
         'imageType'      => $imageType,
-        'address'        => $address,
+        'address'        => $address,           // raw input
+        'fullAddress'    => $fullAddress,       // ← NEW: Full normalized address
         'latitude'       => $lat,           
         'longitude'      => $lng,          
         'imagePath'      => $imagePath,
         'interactiveUrl' => $interactiveUrl,
-        'apiKey'         => $embedKey // Sent down to securely initialize the client JS library
+        'apiKey'         => $embedKey
     ]);
 
 } catch (Exception $e) {

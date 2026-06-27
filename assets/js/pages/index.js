@@ -1331,37 +1331,38 @@ window.SkyIndex = {
         },
 
         renderStreetViewResult(data) {
-            const address = data.address || 'Location';
-            
-            // Proper title case formatting (e.g. streetview -> Streetview)
-            const imageType = (data.imageType || 'streetview')
-                .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, str => str.toUpperCase())
-                .trim();
-                
+            const fullAddress = data.fullAddress 
+                            || data.address 
+                            || 'Location';
+
+            const imageType = (data.imageType || 'streetview').toUpperCase();
             const imageSrc = data.imagePath || '';
+
             const dataPayloadAttr = btoa(JSON.stringify(data));
 
-            // CRITICAL: Content strings are kept strictly inline without layout-breaking 
-            // IDE formatting tabs to prevent rogue browser whitespace text-nodes.
             const html = `
                 <div class="commandLine system html">
                     <div class="result-card">
-                        <div class="result-header" style="align-items: flex-start;">
+                        <div class="result-header">
                             <span class="result-icon">📸</span>
-                            <div style="display: flex; flex-direction: column; gap: 2px;">
-                                <strong class="result-title">${this.escapeHtml("Location Imagery")}</strong>
-                                <small style="color: #555; font-size: 0.82em; font-weight: normal; line-height: 1.2;">${this.escapeHtml(address)}</small>
-                            </div>
+                            <strong class="result-title">Location Imagery</strong>
                         </div>
-                        <div class="result-body" style="padding: 12px 18px 8px;">` +
-                            (imageSrc ? `<div style="margin: 0 0 8px; text-align: center;"><img src="${imageSrc}" alt="${imageType}" style="max-width: 100%; max-height: 200px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);"></div>` : '') +
-                            `<div style="font-size: 0.93em; margin-top: 0; line-height: 1.2;">
-                                <strong>Image Type:</strong> <span style="color: #006400;">${imageType}</span>
-                            </div>
+
+                        <div class="result-body" style="padding:10px 18px 8px;">
+                            <small style="color:#555; display:block; margin-bottom:6px; font-size:0.95em;">${this.escapeHtml(fullAddress)}</small>
+
+                            ${imageSrc ? `
+                            <div style="margin:6px 0 10px; text-align:center;">
+                                <img src="${imageSrc}" alt="${imageType}" 
+                                    style="max-width:100%; max-height:200px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+                            </div>` : ''}
+
+                            <div style="font-size:0.93em;"><strong>Image Type:</strong> <span style="color:#006400;">${imageType}</span></div>
                         </div>
+
                         <div class="result-actions">
-                            <button onclick="SkyIndex.openInteractiveStreetView(JSON.parse(atob('${dataPayloadAttr}')))" class="btn btn-success" style="flex: 1;">
+                            <button onclick="SkyIndex.openInteractiveStreetView(JSON.parse(atob('${dataPayloadAttr}')))" 
+                                    class="btn btn-success" style="flex:1;">
                                 ✏️ Edit View (Workspace)
                             </button>
                         </div>
