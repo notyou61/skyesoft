@@ -1084,19 +1084,41 @@ window.SkyIndex = {
         // 📸 Street View Workflow (Highest priority)
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
+
         if (streetViewIntent) {
-            const normalizedAddress = streetViewIntent.entities?.address?.normalized;
+            // 1. Extract the clean, normalized address from entities
+            let normalizedAddress = streetViewIntent.entities?.address?.normalized;
+
+            // FALLBACK FIX: If the parser missed it, guarantee a clean extraction here
             if (!normalizedAddress) {
                 console.error("Street View intent detected, but no normalized address was found.");
+                normalizedAddress = text
+                    .replace(/^(street\s*view|streetview)/i, '')
+                    .replace(/^[\s\-\:]+/, '')
+                    .trim();
             }
 
             const intent = this.intentRegistry.street_view;
 
-            this.appendSystemLine(`${intent.display} - ${normalizedAddress}`, 'user');
+            // 2. Consistent presentation layer built entirely from structured data
+            this.appendSystemLine(
+                `${intent.display} - ${normalizedAddress}`,
+                'user'
+            );
+
+            // Suppress the messy raw command echo
             this.suppressRawIntentEcho();
+
+            // Show processing state ("Loading Street View...")
             this.renderStreetViewProcessingState();
 
-            await this.executeStreetViewWorkflow(text, activitySessionId, normalizedAddress);
+            // 3. Execute workflow using the clean normalized data downstream
+            await this.executeStreetViewWorkflow(
+                text, 
+                activitySessionId,
+                normalizedAddress // Safely passing the isolated clean address
+            );
+
             return;
         }
 
@@ -1285,8 +1307,10 @@ window.SkyIndex = {
             this.renderStreetViewProcessingState();
             this.setThinking(true);
 
+            // CORRECTED: Strips "streetview", then strips any leading hyphens, colons, or spaces
             const finalAddress = (address || text)
                 .replace(/street\s*view/ig, '')
+                .replace(/^[\s\-\:]+/, '') // Removes leading spaces, hyphens, and colons
                 .replace(/\r?\n/g, ' ')
                 .replace(/\s+/g, ' ')
                 .trim();
@@ -1310,6 +1334,12 @@ window.SkyIndex = {
                 this.replaceStreetViewProcessingWithResult();
 
                 if (data.success) {
+                    // CORRECTED: Ensure the UI card display address is overridden 
+                    // with our clean address if the backend returned a dirty string
+                    if (!data.address || data.address.includes('-')) {
+                        data.address = finalAddress;
+                    }
+                    
                     this.renderStreetViewResult(data);
                 } else {
                     this.appendSystemLine(`❌ ${data.message || 'Street View failed.'}`, 'error');
@@ -2218,31 +2248,34 @@ window.SkyIndex = {
     },
 
     async isStreetViewIntent(text) {
-        if (!text || typeof text !== 'string' || text.length < 8) return false;
+        if (!text || typeof text !== 'string') return null;
+        
+        const clean = text.trim();
+        const lower = clean.toLowerCase();
 
-        const lower = text.toLowerCase().trim();
+        // Detect if this is a Street View command context
+        if (lower.startsWith('streetview') || lower.startsWith('street view') || lower.includes('streetview')) {
+            
+            // Clean away the action prefixes, text hyphens, or colons left by the user
+            let addressPart = clean
+                .replace(/^(street\s*view|streetview)/i, '') // Strips "Streetview" or "Street view"
+                .replace(/^[\s\-\:]+/, '')                  // Strips leading hyphens, colons, or spaces
+                .trim();
 
-        if (
-            lower.includes('street view') ||
-            lower.includes('streetview') ||
-            lower.includes('street-view') ||
-            lower.includes('show me a street view') ||
-            lower.includes('location image') ||
-            lower.includes('site image')
-        ) {
-            let address = text.trim();
-            const triggers = ['street view', 'streetview', 'street-view', 'show me a street view', 'location image', 'site image'];
-            for (const t of triggers) {
-                if (lower.includes(t)) {
-                    const idx = lower.indexOf(t);
-                    address = text.substring(idx + t.length).trim();
-                    break;
+            if (!addressPart) return null;
+
+            // Return the definitive, structural entity shape expected by the router
+            return {
+                workflow: 'street_view',
+                entities: {
+                    address: {
+                        raw: text,
+                        normalized: addressPart // The clean address string
+                    }
                 }
-            }
-            return { mode: 'street_view', confidence: 'high', address: address || text };
+            };
         }
-
-        return false;
+        return null;
     },
 
     async isPropertyWorkflowIntent(text, normalized) {
