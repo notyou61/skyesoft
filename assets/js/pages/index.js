@@ -1072,13 +1072,22 @@ window.SkyIndex = {
         if (streetViewIntent) {
             const cleanAddress = streetViewIntent.address || text.trim();
 
-            // Single clean formatted echo
-            this.appendSystemLine(`Street View for <span style="background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.95em; color: #fff;">${this.escapeHtml(cleanAddress)}</span>`, 'user');
+            // Clean user echo
+            this.appendSystemLine(`Street View for ${cleanAddress}`, 'user');
 
-            this.suppressRawContactEcho();
+            // Suppress the raw command echo
+            this.suppressRawIntentEcho();
+
+            // Show processing state
             this.renderStreetViewProcessingState();
 
-            await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
+            // Execute workflow
+            await this.executeStreetViewWorkflow(
+                text,
+                activitySessionId,
+                cleanAddress
+            );
+
             return;
         }
 
