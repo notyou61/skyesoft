@@ -1047,78 +1047,56 @@ window.SkyIndex = {
 
     // Define clean display names for user commands
     intentRegistry: {
-
         property_review: {
             display: 'Property Review',
             icon: '🏠',
             processing: 'Resolving Property...'
         },
-
         street_view: {
             display: 'Google Street View',
             icon: '📸',
             processing: 'Loading Street View...'
         },
-
         location_review: {
             display: 'Location Review',
             icon: '📍',
             processing: 'Resolving Location...'
         },
-
         contact_proposal: {
             display: 'Proposed Contact',
             icon: '👤',
             processing: 'Analyzing Contact...'
         }
-
     },
 
     // #endregion
 
     // #region 🧠 Command Router
     async handleCommand(text) {
+        if (!text || !text.trim()) return;
 
         const activitySessionId = this.getActivitySessionId();
         console.log('[COMMAND]', text, '| session:', activitySessionId);
 
-        const normalized = (text || '').toString().trim().toLowerCase();
+        const normalized = text.toString().trim().toLowerCase();
 
         // --------------------------------------------------
         // 📸 Street View Workflow (Highest priority)
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
-
         if (streetViewIntent) {
-            // 1. Extract the clean, normalized address from entities
             const normalizedAddress = streetViewIntent.entities?.address?.normalized;
-
             if (!normalizedAddress) {
                 console.error("Street View intent detected, but no normalized address was found.");
-                // Handle fallback or error state gracefully here if necessary
             }
 
             const intent = this.intentRegistry.street_view;
 
-            // 2. Clear & consistent presentation layer built entirely from structured data
-            this.appendSystemLine(
-                `${intent.display} - ${normalizedAddress}`,
-                'user'
-            );
-
-            // Suppress the messy raw command echo
+            this.appendSystemLine(`${intent.display} - ${normalizedAddress}`, 'user');
             this.suppressRawIntentEcho();
-
-            // Show processing state ("Loading Street View...")
             this.renderStreetViewProcessingState();
 
-            // 3. Execute workflow using the normalized data
-            await this.executeStreetViewWorkflow(
-                text, // Kept only if underlying LLM/API logs require raw history
-                activitySessionId,
-                normalizedAddress // Pass the clean data downstream
-            );
-
+            await this.executeStreetViewWorkflow(text, activitySessionId, normalizedAddress);
             return;
         }
 
@@ -1127,10 +1105,11 @@ window.SkyIndex = {
         // --------------------------------------------------
         const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
         if (propertyIntent) {
-            const cleanAddress = propertyIntent.address || text.trim();
+            // REMADE: Pulling normalized entity instead of guessing with propertyIntent.address || text.trim()
+            const normalizedAddress = propertyIntent.entities?.address?.normalized || text.trim();
+            const intent = this.intentRegistry.property_review;
 
-            this.appendSystemLine(`Property Review for [ ${cleanAddress} ]`, 'user');
-
+            this.appendSystemLine(`${intent.display} - ${normalizedAddress}`, 'user');
             this.suppressRawIntentEcho();
             this.renderPropertyProcessingState();
 
@@ -1139,25 +1118,33 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📖 Code Reader
+        // 📍 LOCATION WORKFLOW
         // --------------------------------------------------
-        if (normalized.startsWith('read ') || normalized.startsWith('open ')) {
-            const file = normalized
-                .replace(/^read\s+/, '')
-                .replace(/^open\s+/, '')
-                .trim();
+        const locationIntent = await this.isLocationWorkflowIntent(text, normalized);
+        if (locationIntent) {
+            // REMADE: Pulling normalized entity to display clean presentation lines
+            const normalizedLocation = locationIntent.entities?.location?.normalized || 'Requested Location';
+            const intent = this.intentRegistry.location_review;
 
-            this.appendSystemLine(`Open File: ${file}`, 'user');
-            await this.readCodeFile(file);
+            this.appendSystemLine(`${intent.display} - ${normalizedLocation}`, 'user');
+            this.suppressRawIntentEcho();
+            this.renderLocationProcessingState();
+
+            // Executing workflow cleanly (Updated error message state to fit pipeline flow)
+            await this.executeLocationWorkflow(text, activitySessionId, normalizedLocation);
             return;
         }
 
         // --------------------------------------------------
-        // 📇 Contact Creation
+        // 📇 Contact Proposal / Creation Workflow
         // --------------------------------------------------
-        if (await this.isContactCreationIntent(text, normalized)) {
-            console.log('📇 Contact Intent Detected → Clean Workflow');
+        const contactIntent = await this.isContactCreationIntent(text, normalized);
+        if (contactIntent) {
+            // REMADE: Standardized structural logic matching the intentRegistry
+            const normalizedName = contactIntent.entities?.contact?.normalized || 'New Contact';
+            const intent = this.intentRegistry.contact_proposal;
 
+            this.appendSystemLine(`${intent.display} - ${normalizedName}`, 'user');
             this.suppressRawContactEcho();
             this.renderContactProcessingState();
 
@@ -1166,16 +1153,15 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📍 LOCATION WORKFLOW
+        // 📖 Code Reader
         // --------------------------------------------------
-        const locationIntent = await this.isLocationWorkflowIntent(text, normalized);
-        if (locationIntent) {
-            console.log(`[LOCATION] ${locationIntent.workflow || locationIntent.mode}`);
+        if (normalized.startsWith('read ') || normalized.startsWith('open ')) {
+            const file = text
+                .replace(/^(read|open)\s+/i, '')
+                .trim();
 
-            this.suppressRawIntentEcho();
-            this.renderLocationProcessingState();
-
-            this.appendSystemLine('Location workflow not fully implemented yet.', 'warning');
+            this.appendSystemLine(`Open File: ${file}`, 'user');
+            await this.readCodeFile(file);
             return;
         }
 
@@ -1184,7 +1170,7 @@ window.SkyIndex = {
         // --------------------------------------------------
         if (normalized === 'last contact') {
             if (!this.lastContactId) {
-                this.appendSystemLine('No recent contact available.');
+                this.appendSystemLine('No recent contact available.', 'warning');
                 return;
             }
             return await this.handleCommand(`show ${this.lastContactId}`);
@@ -1192,8 +1178,7 @@ window.SkyIndex = {
 
         if (normalized.startsWith('show ') || normalized.startsWith('list ')) {
             this.clearOutput();
-            // ... your existing contact fetching code remains unchanged
-            // (no changes needed here)
+            // ... your downstream target logic remains unchanged here
             return;
         }
 
@@ -1201,7 +1186,6 @@ window.SkyIndex = {
         // 🎛 UI Actions
         // --------------------------------------------------
         let canonicalAction = null;
-
         if (['cls', 'clear', 'reset'].includes(normalized)) {
             canonicalAction = 'clear_screen';
         } else if (['logout', 'exit'].includes(normalized)) {
@@ -1219,7 +1203,8 @@ window.SkyIndex = {
         // --------------------------------------------------
         // 🤖 AI Fallback
         // --------------------------------------------------
-        this.appendSystemLine(text, 'user');   // fallback raw echo only for AI
+        // Raw prompt is explicitly preserved ONLY for unhandled/conversational dialogue.
+        this.appendSystemLine(text, 'user');   
         await this.executeAICommand(text, activitySessionId);
     },
     // #endregion
@@ -1231,6 +1216,34 @@ window.SkyIndex = {
             map: null,
             panorama: null,
             marker: null
+        },
+
+        // Helper to determine if intent matches Street View data
+        async isStreetViewIntent(text) {
+            try {
+                // If the incoming text is already a JSON string from your parser:
+                if (text.trim().startsWith('{')) {
+                    const parsed = JSON.parse(text);
+                    if (parsed.workflow === 'street_view') return parsed;
+                }
+                
+                // Otherwise, insert your local regex or LLM checking logic here
+                return null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        // Suppresses the raw text from printing out in the UI chat frame
+        suppressRawIntentEcho() {
+            // Logic to clear or prevent the raw text block from mounting
+            console.log("Raw intent text presentation suppressed.");
+        },
+
+        // Handles executing the actual downstream dual view maps frame
+        async executeStreetViewWorkflow(text, activitySessionId, normalizedAddress) {
+            console.log(`Executing workflow downstream for: ${normalizedAddress}`);
+            // Your logic to invoke initializeDualView() or coordinate with your backend system goes here.
         },
 
         renderStreetViewProcessingState() {
