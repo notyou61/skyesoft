@@ -1088,34 +1088,35 @@ window.SkyIndex = {
         // 📸 Street View Workflow (Highest priority)
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
-        if (streetViewIntent) {
 
-            const cleanAddress = streetViewIntent.address || text.trim();
+        if (streetViewIntent) {
+            // 1. Extract the clean, normalized address from entities
+            const normalizedAddress = streetViewIntent.entities?.address?.normalized;
+
+            if (!normalizedAddress) {
+                console.error("Street View intent detected, but no normalized address was found.");
+                // Handle fallback or error state gracefully here if necessary
+            }
 
             const intent = this.intentRegistry.street_view;
 
+            // 2. Clear & consistent presentation layer built entirely from structured data
             this.appendSystemLine(
-                `${intent.display} - ${cleanAddress}`,
+                `${intent.display} - ${normalizedAddress}`,
                 'user'
             );
 
-            // Clean user echo
-            this.appendSystemLine(
-                `${intent.display} for ${cleanAddress}`,
-                'user'
-            );
-
-            // Suppress the raw command echo
+            // Suppress the messy raw command echo
             this.suppressRawIntentEcho();
 
-            // Show processing state
+            // Show processing state ("Loading Street View...")
             this.renderStreetViewProcessingState();
 
-            // Execute workflow
+            // 3. Execute workflow using the normalized data
             await this.executeStreetViewWorkflow(
-                text,
+                text, // Kept only if underlying LLM/API logs require raw history
                 activitySessionId,
-                cleanAddress
+                normalizedAddress // Pass the clean data downstream
             );
 
             return;
