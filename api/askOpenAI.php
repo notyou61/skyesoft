@@ -1023,6 +1023,73 @@ if ($isStructured) {
     exit;   // ← Critical: Do NOT go to skyebot wrapper
 }
 
+// =====================================================
+// STRUCTURED INTENT + ADDRESS PARSER (NEW)
+// =====================================================
+
+if ($type === "parseIntent") {
+
+    $rawQuery = trim($input['userQuery'] ?? $query ?? '');
+
+    if (empty($rawQuery)) {
+        echo json_encode([
+            'success' => false,
+            'error'   => 'userQuery required'
+        ]);
+        exit;
+    }
+
+    $parsePrompt = <<<PROMPT
+Extract clean intent and address from the following user input.
+
+Return ONLY valid JSON in this exact schema:
+
+{
+  "workflow": "street_view" | "property_review" | "contact" | "unknown",
+  "cleanAddress": "normalized address string or null",
+  "confidence": 0.0-1.0,
+  "reasoning": "short explanation"
+}
+
+User Input:
+{$rawQuery}
+PROMPT;
+
+    $response = callOpenAI(
+        injectStandingOrders($parsePrompt),
+        $apiKey,
+        "gpt-4o-mini",
+        [
+            "type" => "json_schema",
+            "json_schema" => [
+                "name" => "intent_parser",
+                "schema" => [
+                    "type" => "object",
+                    "additionalProperties" => false,
+                    "required" => ["workflow", "cleanAddress", "confidence", "reasoning"],
+                    "properties" => [
+                        "workflow" => ["type" => "string", "enum" => ["street_view", "property_review", "contact", "unknown"]],
+                        "cleanAddress" => ["type" => ["string", "null"]],
+                        "confidence" => ["type" => "number"],
+                        "reasoning" => ["type" => "string"]
+                    ]
+                ]
+            ]
+        ]
+    );
+
+    if (!$response) {
+        echo json_encode([
+            'success' => false,
+            'error'   => 'AI parser failed'
+        ]);
+        exit;
+    }
+
+    echo $response;   // return clean JSON
+    exit;
+}
+
 #endregion
 
 #region SECTION 8 — Narrative Generation
@@ -1286,6 +1353,8 @@ if (
 } else {
     error_log("[PROPERTY_REVIEW DEBUG] Condition NOT met - falling through");
 }
+
+#endregion
 
 #region SECTION 9 — Skyebot (Authority-Aware, Deterministic)
 

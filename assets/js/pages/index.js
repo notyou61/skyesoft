@@ -1081,44 +1081,18 @@ window.SkyIndex = {
         const normalized = text.toString().trim().toLowerCase();
 
         // --------------------------------------------------
-        // 📸 Street View Workflow (Highest priority)
+        // 📸 Street View Workflow
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
-
         if (streetViewIntent) {
-            // 1. Extract the clean, normalized address from entities
-            let normalizedAddress = streetViewIntent.entities?.address?.normalized;
+            const cleanAddress = streetViewIntent.address;
 
-            // FALLBACK FIX: If the parser missed it, guarantee a clean extraction here
-            if (!normalizedAddress) {
-                console.error("Street View intent detected, but no normalized address was found.");
-                normalizedAddress = text
-                    .replace(/^(street\s*view|streetview)/i, '')
-                    .replace(/^[\s\-\:]+/, '')
-                    .trim();
-            }
+            this.appendSystemLine(`Street View for ${this.escapeHtml(cleanAddress)}`, 'user');
 
-            const intent = this.intentRegistry.street_view;
-
-            // 2. Consistent presentation layer built entirely from structured data
-            this.appendSystemLine(
-                `${intent.display} - ${normalizedAddress}`,
-                'user'
-            );
-
-            // Suppress the messy raw command echo
-            this.suppressRawIntentEcho();
-
-            // Show processing state ("Loading Street View...")
+            this.suppressRawContactEcho();
             this.renderStreetViewProcessingState();
 
-            // 3. Execute workflow using the clean normalized data downstream
-            await this.executeStreetViewWorkflow(
-                text, 
-                activitySessionId,
-                normalizedAddress // Safely passing the isolated clean address
-            );
-
+            await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
             return;
         }
 
@@ -1127,33 +1101,25 @@ window.SkyIndex = {
         // --------------------------------------------------
         const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
         if (propertyIntent) {
-            // REMADE: Pulling normalized entity instead of guessing with propertyIntent.address || text.trim()
-            const normalizedAddress = propertyIntent.entities?.address?.normalized || text.trim();
-            const intent = this.intentRegistry.property_review;
+            const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: "parseIntent",
+                    userQuery: text
+                })
+            });
 
-            this.appendSystemLine(`${intent.display} - ${normalizedAddress}`, 'user');
+            const parsed = await parseRes.json();
+            const cleanAddress = parsed.cleanAddress || text.trim();
+
+            this.appendSystemLine(`Property Review for ${this.escapeHtml(cleanAddress)}`, 'user');
+
             this.suppressRawIntentEcho();
             this.renderPropertyProcessingState();
 
             await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.workflow);
-            return;
-        }
-
-        // --------------------------------------------------
-        // 📍 LOCATION WORKFLOW
-        // --------------------------------------------------
-        const locationIntent = await this.isLocationWorkflowIntent(text, normalized);
-        if (locationIntent) {
-            // REMADE: Pulling normalized entity to display clean presentation lines
-            const normalizedLocation = locationIntent.entities?.location?.normalized || 'Requested Location';
-            const intent = this.intentRegistry.location_review;
-
-            this.appendSystemLine(`${intent.display} - ${normalizedLocation}`, 'user');
-            this.suppressRawIntentEcho();
-            this.renderLocationProcessingState();
-
-            // Executing workflow cleanly (Updated error message state to fit pipeline flow)
-            await this.executeLocationWorkflow(text, activitySessionId, normalizedLocation);
             return;
         }
 
@@ -2253,28 +2219,24 @@ window.SkyIndex = {
         const clean = text.trim();
         const lower = clean.toLowerCase();
 
-        // Detect if this is a Street View command context
-        if (lower.startsWith('streetview') || lower.startsWith('street view') || lower.includes('streetview')) {
+        // Detect Street View intent
+        if (lower.includes('streetview') || lower.includes('street view')) {
             
-            // Clean away the action prefixes, text hyphens, or colons left by the user
+            // Clean the address by removing common prefixes and junk
             let addressPart = clean
-                .replace(/^(street\s*view|streetview)/i, '') // Strips "Streetview" or "Street view"
-                .replace(/^[\s\-\:]+/, '')                  // Strips leading hyphens, colons, or spaces
+                .replace(/^(street\s*view|streetview)[\s\-\:]+/i, '')   // Remove leading "street view" + separators
+                .replace(/[\s\-\:]+$/, '')                               // Remove trailing separators
                 .trim();
 
             if (!addressPart) return null;
 
-            // Return the definitive, structural entity shape expected by the router
             return {
                 workflow: 'street_view',
-                entities: {
-                    address: {
-                        raw: text,
-                        normalized: addressPart // The clean address string
-                    }
-                }
+                address: addressPart,           // clean address for echo + workflow
+                confidence: 0.95
             };
         }
+
         return null;
     },
 
