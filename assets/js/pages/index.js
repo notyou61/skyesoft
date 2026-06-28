@@ -1085,47 +1085,26 @@ window.SkyIndex = {
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
         if (streetViewIntent) {
+            // Always use AI parser for clean extraction
+            const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: "parseIntent",
+                    userQuery: text
+                })
+            });
 
-            // Immediate user echo
-            const userLine = this.appendSystemLine(text.trim(), 'user');
+            const parsed = await parseRes.json();
+            const cleanAddress = parsed.cleanAddress || text.trim();
 
-            // Show processing immediately
-            this.suppressRawIntentEcho();
+            this.appendSystemLine(`Street View for ${this.escapeHtml(cleanAddress)}`, 'user');
+
+            this.suppressRawContactEcho();
             this.renderStreetViewProcessingState();
 
-            let cleanAddress = text.trim();
-
-            try {
-                const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        type: "parseIntent",
-                        userQuery: text
-                    })
-                });
-
-                const parsed = await parseRes.json();
-
-                if (parsed?.workflow === 'street_view' && parsed?.cleanAddress) {
-                    cleanAddress = parsed.cleanAddress;
-                }
-
-                if (userLine) {
-                    userLine.textContent = `Google Street View - ${cleanAddress}`;
-                }
-
-            } catch (err) {
-                console.warn('[StreetView Parse Failed]', err);
-            }
-
-            await this.executeStreetViewWorkflow(
-                text,
-                activitySessionId,
-                cleanAddress
-            );
-
+            await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
             return;
         }
 
