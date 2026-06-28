@@ -1529,7 +1529,7 @@ if (!isset($response) || trim((string)$response) === '') {
 }
 
 // ───────────────────────────────────────────────
-// 📇 CONTACT PROPOSAL ROUTING BRIDGE (MAX FORCE)
+// 📇 CONTACT PROPOSAL ROUTING BRIDGE (MAX FORCE - No Deprecations)
 // ───────────────────────────────────────────────
 $lowerQuery = strtolower(trim($query ?? ''));
 
@@ -1538,11 +1538,9 @@ $hasPhone = preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '');
 $hasName = preg_match('/[A-Z][a-z]+ [A-Z][a-z]+/', $query ?? '');
 $lineCount = substr_count($query ?? '', "\n") + 1;
 
-error_log(`[askOpenAI] Signature Debug - Email:${hasEmail} Phone:${hasPhone} Name:${hasName} Lines:${lineCount} QueryLength:` . strlen($query ?? ''));
+error_log("[askOpenAI] Signature Debug - Email:" . ($hasEmail ? '1' : '0') . " Phone:" . ($hasPhone ? '1' : '0') . " Name:" . ($hasName ? '1' : '0') . " Lines:" . $lineCount . " Length:" . strlen($query ?? ''));
 
-if (
-    $hasEmail && $hasPhone && $hasName && $lineCount >= 2
-) {
+if ($hasEmail && $hasPhone && $hasName && $lineCount >= 2) {
 
     error_log("[askOpenAI] MAX FORCE CONTACT_PROPOSAL triggered");
 
@@ -1589,7 +1587,7 @@ if (
     curl_close($ch);
 
     if ($proposalResponse === false || $httpCode !== 200) {
-        error_log(`[askOpenAI] Proposal processor failed. HTTP ${$httpCode}`);
+        error_log("[askOpenAI] Proposal processor failed. HTTP " . $httpCode);
         echo json_encode(['status' => 'error', 'message' => 'Proposal processing failed']);
         exit;
     }
