@@ -1837,6 +1837,91 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 📇 Incomplete Proposal Renderer (Formal Card Style)
+    renderIncompleteProposal(data) {
+        const comp = data.completeness || {};
+        const preview = data.data || {};
+        const entity = preview.entity || {};
+        const contact = preview.contact || {};
+        const location = preview.location || {};
+
+        const html = `
+            <div class="commandLine system html">
+                <div class="result-card incomplete">
+                    <div class="result-header bg-warning">
+                        <span class="result-icon">⚠️</span>
+                        <strong class="result-title">Proposal Incomplete</strong>
+                    </div>
+
+                    <div class="result-body p-3">
+                        <div class="completeness-check mb-3">
+                            <h5>Completeness Review</h5>
+                            <div class="check-item">Entity: ${comp.entity?.name || '—'}</div>
+                            <div class="check-item">Contact Names: ${comp.contact?.names || '—'}</div>
+                            <div class="check-item">Communication: ${comp.contact?.comms || '—'}</div>
+                            <div class="check-item">Street: ${comp.location?.street || '—'}</div>
+                            <div class="check-item">City: ${comp.location?.city || '—'}</div>
+                            <div class="check-item">State: ${comp.location?.state || '—'}</div>
+                            <div class="check-item">ZIP: ${comp.location?.zip || '—'}</div>
+                        </div>
+
+                        <div class="alert alert-warning small mb-3">
+                            ${data.message || 'Please supply missing required fields before continuing.'}
+                        </div>
+
+                        <!-- Editable Fields -->
+                        <div class="edit-form">
+                            <div class="form-row mb-2">
+                                <label>Entity Name</label>
+                                <input type="text" class="form-control form-control-sm" id="editEntity" value="${this.escapeHtml(entity.name || '')}">
+                            </div>
+                            <div class="form-row mb-2">
+                                <label>Contact First Name</label>
+                                <input type="text" class="form-control form-control-sm" id="editFirst" value="${this.escapeHtml(contact.firstName || '')}">
+                            </div>
+                            <div class="form-row mb-2">
+                                <label>Contact Last Name</label>
+                                <input type="text" class="form-control form-control-sm" id="editLast" value="${this.escapeHtml(contact.lastName || '')}">
+                            </div>
+                            <div class="form-row mb-2">
+                                <label>Phone</label>
+                                <input type="tel" class="form-control form-control-sm" id="editPhone" value="${this.escapeHtml(contact.primaryPhone || '')}">
+                            </div>
+                            <div class="form-row mb-2">
+                                <label>Email</label>
+                                <input type="email" class="form-control form-control-sm" id="editEmail" value="${this.escapeHtml(contact.email || '')}">
+                            </div>
+                            <div class="form-row mb-2">
+                                <label>Street Address</label>
+                                <input type="text" class="form-control form-control-sm" id="editAddress" value="${this.escapeHtml(location.address || '')}">
+                            </div>
+                            <div class="form-row mb-2">
+                                <label>City</label>
+                                <input type="text" class="form-control form-control-sm" id="editCity" value="${this.escapeHtml(location.city || '')}">
+                            </div>
+                            <div class="form-row mb-2">
+                                <label>State</label>
+                                <input type="text" class="form-control form-control-sm" id="editState" value="${this.escapeHtml(location.state || '')}">
+                            </div>
+                            <div class="form-row mb-2">
+                                <label>ZIP (Optional)</label>
+                                <input type="text" class="form-control form-control-sm" id="editZip" value="${this.escapeHtml(location.zip || '')}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-actions">
+                        <button onclick="SkyIndex.retryProposal()" class="btn btn-secondary">Try Again</button>
+                        <button onclick="SkyIndex.submitEditedProposal()" class="btn btn-success">Submit Updated Proposal</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.appendSystemHtml(html);
+    },
+    // #endregion
+
     // #region 📇 View Contact Report — PDF Generation
     viewContactReport() {
         const prop = this.currentProposal || this.lastProposal || {};
@@ -2590,6 +2675,39 @@ window.SkyIndex = {
         }
 
         this.appendSystemLine(data.message || 'Could not process contact information.', 'warning');
+    },
+
+    retryProposal() {
+        this.clearOutput();
+        this.appendSystemLine('🔄 Ready for new input.', 'system');
+    },
+
+    async submitEditedProposal() {
+        // Collect edited values and re-submit to processProposedContact.php
+        const payload = {
+            input: [
+                document.getElementById('editEntity')?.value || '',
+                document.getElementById('editFirst')?.value || '',
+                document.getElementById('editLast')?.value || '',
+                document.getElementById('editPhone')?.value || '',
+                document.getElementById('editEmail')?.value || '',
+                document.getElementById('editAddress')?.value || '',
+                document.getElementById('editCity')?.value || '',
+                document.getElementById('editState')?.value || '',
+                document.getElementById('editZip')?.value || ''
+            ].join('\n')
+        };
+
+        // Re-run through the processor
+        const res = await fetch('/skyesoft/api/processProposedContact.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        this.handleContactProposal(result);
     },
 
     // #endregion
