@@ -1837,7 +1837,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Incomplete Proposal Renderer (Formal Card Style)
+    // #region 📇 Incomplete Proposal Renderer (Street View Style)
     renderIncompleteProposal(data) {
         const comp = data.completeness || {};
         const preview = data.data || {};
@@ -1847,64 +1847,65 @@ window.SkyIndex = {
 
         const html = `
             <div class="commandLine system html">
-                <div class="result-card incomplete">
+                <div class="result-card">
                     <div class="result-header bg-warning">
                         <span class="result-icon">⚠️</span>
                         <strong class="result-title">Proposal Incomplete</strong>
                     </div>
 
-                    <div class="result-body p-3">
-                        <div class="completeness-check mb-3">
-                            <h5>Completeness Review</h5>
-                            <div class="check-item">Entity: ${comp.entity?.name || '—'}</div>
-                            <div class="check-item">Contact Names: ${comp.contact?.names || '—'}</div>
-                            <div class="check-item">Communication: ${comp.contact?.comms || '—'}</div>
-                            <div class="check-item">Street: ${comp.location?.street || '—'}</div>
-                            <div class="check-item">City: ${comp.location?.city || '—'}</div>
-                            <div class="check-item">State: ${comp.location?.state || '—'}</div>
-                            <div class="check-item">ZIP: ${comp.location?.zip || '—'}</div>
+                    <div class="result-body" style="padding:12px 18px;">
+                        <small style="color:#555; display:block; margin-bottom:8px;">Completeness Review</small>
+
+                        <div class="check-list" style="font-size:0.95em; line-height:1.5;">
+                            <div>Entity: ${comp.entity?.name || '—'}</div>
+                            <div>Contact Names: ${comp.contact?.names || '—'}</div>
+                            <div>Communication: ${comp.contact?.comms || '—'}</div>
+                            <div>Street: ${comp.location?.street || '—'}</div>
+                            <div>City: ${comp.location?.city || '—'}</div>
+                            <div>State: ${comp.location?.state || '—'}</div>
+                            <div>ZIP: ${comp.location?.zip || '—'}</div>
                         </div>
 
-                        <div class="alert alert-warning small mb-3">
+                        <div class="alert alert-warning small mt-3 mb-3">
                             ${data.message || 'Please supply missing required fields before continuing.'}
                         </div>
 
                         <!-- Editable Fields -->
-                        <div class="edit-form">
+                        <div class="edit-section mt-3">
                             <div class="form-row mb-2">
-                                <label>Entity Name</label>
+                                <label class="small text-muted">Entity</label>
                                 <input type="text" class="form-control form-control-sm" id="editEntity" value="${this.escapeHtml(entity.name || '')}">
                             </div>
                             <div class="form-row mb-2">
-                                <label>Contact First Name</label>
+                                <label class="small text-muted">First Name</label>
                                 <input type="text" class="form-control form-control-sm" id="editFirst" value="${this.escapeHtml(contact.firstName || '')}">
                             </div>
                             <div class="form-row mb-2">
-                                <label>Contact Last Name</label>
+                                <label class="small text-muted">Last Name</label>
                                 <input type="text" class="form-control form-control-sm" id="editLast" value="${this.escapeHtml(contact.lastName || '')}">
                             </div>
                             <div class="form-row mb-2">
-                                <label>Phone</label>
+                                <label class="small text-muted">Phone</label>
                                 <input type="tel" class="form-control form-control-sm" id="editPhone" value="${this.escapeHtml(contact.primaryPhone || '')}">
                             </div>
                             <div class="form-row mb-2">
-                                <label>Email</label>
+                                <label class="small text-muted">Email</label>
                                 <input type="email" class="form-control form-control-sm" id="editEmail" value="${this.escapeHtml(contact.email || '')}">
                             </div>
                             <div class="form-row mb-2">
-                                <label>Street Address</label>
+                                <label class="small text-muted">Street Address</label>
                                 <input type="text" class="form-control form-control-sm" id="editAddress" value="${this.escapeHtml(location.address || '')}">
                             </div>
                             <div class="form-row mb-2">
-                                <label>City</label>
+                                <label class="small text-muted">City</label>
                                 <input type="text" class="form-control form-control-sm" id="editCity" value="${this.escapeHtml(location.city || '')}">
                             </div>
                             <div class="form-row mb-2">
-                                <label>State</label>
+                                <label class="small text-muted">State</label>
                                 <input type="text" class="form-control form-control-sm" id="editState" value="${this.escapeHtml(location.state || '')}">
                             </div>
-                            <div class="form-row mb-2">
-                                <label>ZIP (Optional)</label>
+                            <div class="form-row mb-3">
+                                <label class="small text-muted">ZIP (Optional)</label>
                                 <input type="text" class="form-control form-control-sm" id="editZip" value="${this.escapeHtml(location.zip || '')}">
                             </div>
                         </div>
