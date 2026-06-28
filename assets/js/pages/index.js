@@ -1083,53 +1083,36 @@ window.SkyIndex = {
 
         const normalized = text.toString().trim().toLowerCase();
 
-// --------------------------------------------------
+        // --------------------------------------------------
         // 📸 Street View Workflow
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
         if (streetViewIntent) {
-            
-            // 1. Immediate Feedback: Show raw command right away so there is zero layout delay
             const userLineNode = this.appendSystemLine(text, 'user');
-            
-            // 2. Immediate Feedback: Instantly show the initialization/loading state 
-            this.suppressRawIntentEcho(); // Using the generic echo suppressor block
+            this.suppressRawIntentEcho();
             this.renderStreetViewProcessingState();
 
-            // 3. Background Async Process: Run the parsing pipeline safely without delaying the surface mount
             (async () => {
                 let cleanAddress = text.trim();
-                
                 try {
                     const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            type: "parseIntent",
-                            userQuery: text
-                        })
+                        body: JSON.stringify({ type: "parseIntent", userQuery: text })
                     });
 
                     if (parseRes.ok) {
                         const parsed = await parseRes.json();
-                        if (parsed.cleanAddress) {
-                            cleanAddress = parsed.cleanAddress;
-                        }
+                        if (parsed.cleanAddress) cleanAddress = parsed.cleanAddress;
                     }
-                } catch (parseError) {
-                    console.error('[Background Intent Parse Error]:', parseError);
-                }
+                } catch (e) { console.error('[Intent Parse Error]', e); }
 
-                // 4. Update the Raw Line: Overwrite the inner raw text with the structured "Intent - Data" schema
                 if (userLineNode) {
                     const textSpan = userLineNode.querySelector('.commandText');
-                    if (textSpan) {
-                        textSpan.textContent = `Google Street View - ${cleanAddress}`;
-                    }
+                    if (textSpan) textSpan.textContent = `Google Street View - ${cleanAddress}`;
                 }
 
-                // 5. Downstream Execution: Forward the isolated entity data directly into the renderer
                 await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
             })();
 
@@ -1137,34 +1120,7 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 🏠 PROPERTY WORKFLOW
-        // --------------------------------------------------
-        const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
-        if (propertyIntent) {
-            const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: "parseIntent",
-                    userQuery: text
-                })
-            });
-
-            const parsed = await parseRes.json();
-            const cleanAddress = parsed.cleanAddress || text.trim();
-
-            this.appendSystemLine(`Property Review for ${this.escapeHtml(cleanAddress)}`, 'user');
-
-            this.suppressRawIntentEcho();
-            this.renderPropertyProcessingState();
-
-            await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.workflow);
-            return;
-        }
-
-        // --------------------------------------------------
-        // 📇 Contact Proposal / Creation Workflow
+        // 📇 Contact Proposal — HIGHEST PRIORITY (after Street View)
         // --------------------------------------------------
         const contactIntent = await this.isContactCreationIntent(text, normalized);
         if (contactIntent) {
@@ -1175,7 +1131,30 @@ window.SkyIndex = {
             this.suppressRawContactEcho();
             this.renderContactProcessingState();
 
-            await this.executeAICommand(text, activitySessionId);
+            await this.executeAICommand(text, activitySessionId);   // → askOpenAI → processProposedContact
+            return;
+        }
+
+        // --------------------------------------------------
+        // 🏠 Property Review Workflow (only if not a contact)
+        // --------------------------------------------------
+        const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
+        if (propertyIntent) {
+            const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: "parseIntent", userQuery: text })
+            });
+
+            const parsed = await parseRes.json();
+            const cleanAddress = parsed.cleanAddress || text.trim();
+
+            this.appendSystemLine(`Property Review for ${this.escapeHtml(cleanAddress)}`, 'user');
+            this.suppressRawIntentEcho();
+            this.renderPropertyProcessingState();
+
+            await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.workflow);
             return;
         }
 
@@ -1183,10 +1162,7 @@ window.SkyIndex = {
         // 📖 Code Reader
         // --------------------------------------------------
         if (normalized.startsWith('read ') || normalized.startsWith('open ')) {
-            const file = text
-                .replace(/^(read|open)\s+/i, '')
-                .trim();
-
+            const file = text.replace(/^(read|open)\s+/i, '').trim();
             this.appendSystemLine(`Open File: ${file}`, 'user');
             await this.readCodeFile(file);
             return;
@@ -1205,7 +1181,7 @@ window.SkyIndex = {
 
         if (normalized.startsWith('show ') || normalized.startsWith('list ')) {
             this.clearOutput();
-            // ... your downstream target logic remains unchanged here
+            // ... your existing logic
             return;
         }
 
@@ -2209,18 +2185,41 @@ window.SkyIndex = {
         if (!text || typeof text !== 'string') return false;
 
         const lower = text.toLowerCase().trim();
+        const original = text.trim();
 
+        // 1. Explicit keywords
         if (
             lower.startsWith('add ') ||
             lower.startsWith('create ') ||
             lower.includes('new contact') ||
             lower.includes('add contact') ||
             lower.includes('here is a contact') ||
-            lower.includes('location only for')
+            lower.includes('location only for') ||
+            lower.includes('contact signature') ||
+            lower.includes('proposed contact')
         ) {
             return true;
         }
 
+        // 2. Strong signature patterns (this is the key improvement)
+        const hasSignaturePatterns = 
+            // Job titles
+            /\b(Manager|Director|CEO|Owner|President|Operations|Account|Sales|Coordinator|Supervisor|Engineer|Consultant)\b/i.test(original) ||
+            // Phone number
+            /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(original) ||
+            // Email
+            /@\S+\.\S{2,}/.test(original) ||
+            // Company indicators
+            /\b(LLC|Inc|Corp|Corporation|Group|Company|LLP)\b/i.test(original) ||
+            // Multiple lines with name-like structure
+            (original.split('\n').length >= 3 && 
+            /[A-Z][a-z]+ [A-Z][a-z]+/.test(original));  // Likely full name
+
+        if (hasSignaturePatterns) {
+            return true;
+        }
+
+        // 3. Quick signature helper (keep your existing one)
         if (this.isQuickSignatureHint(text)) {
             return true;
         }
