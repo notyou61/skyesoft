@@ -2789,20 +2789,16 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
-            // Use passed ID or fetch fresh
             const activitySessionId = incomingActivitySessionId || this.getActivitySessionId();
 
             console.log('🤖 AI using activitySessionId:', activitySessionId);
 
-            // 🌍 Resolve Location (cached + non-blocking)
             let location = this.lastLocation || { latitude: null, longitude: null };
 
             if (!location || location.latitude === null || location.longitude === null) {
                 location = await Promise.race([
                     this.getLocationSafe(),
-                    new Promise(resolve =>
-                        setTimeout(() => resolve({ latitude: null, longitude: null }), 1500)
-                    )
+                    new Promise(resolve => setTimeout(() => resolve({ latitude: null, longitude: null }), 1500))
                 ]);
 
                 this.lastLocation = location;
@@ -2827,17 +2823,22 @@ window.SkyIndex = {
             const data = await res.json();
 
             // --------------------------------------------------
-            // 📇 CONTACT PROPOSAL (FINAL OBJECT)
+            // 📇 CONTACT PROPOSAL HANDLING
             // --------------------------------------------------
-            if (data?.status === 'proposed' || data?.status === 'partial') {
-                console.log('📇 Contact proposal received from backend');
+            if (data?.status === 'incomplete') {
+                console.log('📇 Incomplete proposal received');
+                this.handleContactProposal(data);   // ← This will call renderIncompleteProposal
+                return;
+            }
 
+            if (data?.status === 'proposed' || data?.status === 'partial') {
+                console.log('📇 Complete proposal received');
                 this.handleContactProposal(data);
                 return;
             }
 
             // --------------------------------------------------
-            // 📇 CONTACT PROPOSAL (BRIDGE → CALL PIPELINE)
+            // 📇 Bridge fallback
             // --------------------------------------------------
             if (data?.type === 'contact_proposal' && data?.input) {
                 console.log('📇 Bridge detected → calling proposal engine');
@@ -2854,30 +2855,23 @@ window.SkyIndex = {
                 });
 
                 const proposal = await res2.json();
-
                 this.handleContactProposal(proposal);
                 return;
             }
 
             // ───────────────────────────────────────────────
-            // UI Action (authoritative)
+            // UI Action / Domain Intent / Normal Response
             // ───────────────────────────────────────────────
             if (data?.type === 'ui_action') {
-                // ... existing UI action logic unchanged ...
+                // ... existing UI action logic
                 return;
             }
 
-            // ───────────────────────────────────────────────
-            // Domain Intent
-            // ───────────────────────────────────────────────
             if (data?.type === 'domain_intent') {
-                // ... existing domain intent logic unchanged ...
+                // ... existing domain intent logic
                 return;
             }
 
-            // ───────────────────────────────────────────────
-            // Text / HTML Response (normal skyebot conversation)
-            // ───────────────────────────────────────────────
             if (typeof data?.response === 'string' && data.response.trim()) {
                 const looksLikeHtml = data.response.includes('<div') ||
                                     data.response.includes('<a ') ||
