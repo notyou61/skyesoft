@@ -179,7 +179,7 @@ window.SkyIndex = {
         appendSystemLine(text, role = 'system') {
 
             const output = this.getOutputHost();
-            if (!output) return;
+            if (!output) return null; // Ensure we handle missing hosts gracefully
 
             const safeText = (text === null || text === undefined)
                 ? ''
@@ -206,6 +206,9 @@ window.SkyIndex = {
 
             output.appendChild(line);
             this.scrollOutputToBottom(output);
+
+            // RETURN FIX: Return the node instance so we can modify its text later
+            return line;
         },
 
         // Appends system HTML (with safety checks)
@@ -1080,31 +1083,56 @@ window.SkyIndex = {
 
         const normalized = text.toString().trim().toLowerCase();
 
-        // --------------------------------------------------
+// --------------------------------------------------
         // 📸 Street View Workflow
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
         if (streetViewIntent) {
-            // Always use AI parser for clean extraction
-            const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: "parseIntent",
-                    userQuery: text
-                })
-            });
-
-            const parsed = await parseRes.json();
-            const cleanAddress = parsed.cleanAddress || text.trim();
-
-            this.appendSystemLine(`Street View for ${this.escapeHtml(cleanAddress)}`, 'user');
-
-            this.suppressRawContactEcho();
+            
+            // 1. Immediate Feedback: Show raw command right away so there is zero layout delay
+            const userLineNode = this.appendSystemLine(text, 'user');
+            
+            // 2. Immediate Feedback: Instantly show the initialization/loading state 
+            this.suppressRawIntentEcho(); // Using the generic echo suppressor block
             this.renderStreetViewProcessingState();
 
-            await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
+            // 3. Background Async Process: Run the parsing pipeline safely without delaying the surface mount
+            (async () => {
+                let cleanAddress = text.trim();
+                
+                try {
+                    const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: "parseIntent",
+                            userQuery: text
+                        })
+                    });
+
+                    if (parseRes.ok) {
+                        const parsed = await parseRes.json();
+                        if (parsed.cleanAddress) {
+                            cleanAddress = parsed.cleanAddress;
+                        }
+                    }
+                } catch (parseError) {
+                    console.error('[Background Intent Parse Error]:', parseError);
+                }
+
+                // 4. Update the Raw Line: Overwrite the inner raw text with the structured "Intent - Data" schema
+                if (userLineNode) {
+                    const textSpan = userLineNode.querySelector('.commandText');
+                    if (textSpan) {
+                        textSpan.textContent = `Google Street View - ${cleanAddress}`;
+                    }
+                }
+
+                // 5. Downstream Execution: Forward the isolated entity data directly into the renderer
+                await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
+            })();
+
             return;
         }
 
