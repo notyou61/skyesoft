@@ -1528,215 +1528,80 @@ if (!isset($response) || trim((string)$response) === '') {
     $response = "I'm here and ready — try asking that again. (Check php-error.log for details)";
 }
 
-    // ───────────────────────────────────────────────
-    // 📇 CONTACT PROPOSAL ROUTING BRIDGE
-    //    AI-detected contact signature → processProposedContact.php
-    // ───────────────────────────────────────────────
-    $detectedIntent = strtolower(trim($intent ?? ''));
+// ───────────────────────────────────────────────
+// 📇 CONTACT PROPOSAL ROUTING BRIDGE (Aggressive + Fixed)
+// ───────────────────────────────────────────────
+$lowerQuery = strtolower(trim($query ?? ''));
+
+$hasEmail = preg_match('/@\S+\.\S{2,}/', $query ?? '');
+$hasPhone = preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '');
+$hasNameTitle = preg_match('/[A-Z][a-z]+ [A-Z][a-z]+.*(Manager|Director|CEO|Owner|President|Operations)/i', $query ?? '');
 
 if (
-
-    in_array(
-        $detectedIntent,
-        [
-            'contact_proposal',
-            'contact_propose'
-        ],
-        true
-    )
-
-    &&
-
-    ($confidence ?? 0) >= 0.70
-
-    &&
-
-    !empty($query)
-
+    str_contains($lowerQuery, 'contact') ||
+    ($hasEmail && $hasPhone) ||                    // email + phone = strong signature
+    $hasNameTitle ||                               // name + title
+    ($hasEmail && strlen($query ?? '') > 100) ||   // long input with email
+    ($confidence ?? 0) >= 0.70 && in_array(strtolower(trim($intent ?? '')), ['contact_proposal', 'contact_propose'], true)
 ) {
 
-    // --------------------------------------------------
-    // 📇 Internal Contact Proposal Execution
-    // --------------------------------------------------
-
-    error_log(
-        "[askOpenAI] CONTACT_PROPOSAL detected "
-        . "(confidence: {$confidence})"
-    );
+    error_log("[askOpenAI] CONTACT_PROPOSAL triggered by heuristics (query length: " . strlen($query ?? '') . ")");
 
     // --------------------------------------------------
-    // 📌 Audit Logging
+    // Audit Logging
     // --------------------------------------------------
-
-    $sessionContactId =
-        $_SESSION["contactId"] ?? null;
+    $sessionContactId = $_SESSION["contactId"] ?? null;
 
     try {
-
         insertActionPrompt([
-
-            'contactId' =>
-                $sessionContactId,
-
-            'promptText' =>
-                $query,
-
-            'responseText' =>
-                'contact_propose_execute',
-
-            'intent' =>
-                $intent,
-
-            'intentConfidence' =>
-                $confidence,
-
-            'latitude' =>
-                $latitude,
-
-            'longitude' =>
-                $longitude,
-
-            'activitySessionId' =>
-                $activitySessionId
-                ?? ($_SESSION['activitySessionId'] ?? session_id()),
-
-            'actionTypeId' =>
-                3,
-
-            'origin' =>
-                ACTION_ORIGIN_USER
-
+            'contactId'        => $sessionContactId,
+            'promptText'       => $query,
+            'responseText'     => 'contact_propose_execute',
+            'intent'           => $intent ?? 'contact_proposal',
+            'intentConfidence' => $confidence ?? 0.85,
+            'latitude'         => $latitude,
+            'longitude'        => $longitude,
+            'activitySessionId'=> $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
+            'actionTypeId'     => 3,
+            'origin'           => ACTION_ORIGIN_USER
         ], $db);
-
     } catch (Throwable $e) {
-
-        error_log(
-            '[actions] contact proposal execution logging: '
-            . $e->getMessage()
-        );
+        error_log('[actions] contact logging failed: ' . $e->getMessage());
     }
 
     // --------------------------------------------------
-    // 🚀 Execute Proposal Processor
+    // Execute Proposal Processor
     // --------------------------------------------------
-
     session_write_close();
 
     $postData = [
-
-        'input' =>
-            $query,
-
-        'activitySessionId' =>
-            $activitySessionId
-            ?? ($_SESSION['activitySessionId'] ?? session_id()),
-
-        'mode' =>
-            'propose'
-
+        'input' => $query,
+        'activitySessionId' => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
+        'mode' => 'propose'
     ];
 
-    $processorUrl =
-        'https://skyelighting.com/skyesoft/api/processProposedContact.php';
+    $processorUrl = 'https://skyelighting.com/skyesoft/api/processProposedContact.php';
 
-    $ch =
-        curl_init($processorUrl);
-
+    $ch = curl_init($processorUrl);
     curl_setopt_array($ch, [
-
         CURLOPT_POST => true,
-
         CURLOPT_RETURNTRANSFER => true,
-
         CURLOPT_TIMEOUT => 45,
-
-        CURLOPT_CONNECTTIMEOUT => 10,
-
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json'
-        ],
-
-        CURLOPT_POSTFIELDS =>
-            json_encode(
-                $postData,
-                JSON_UNESCAPED_SLASHES
-            )
-
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => json_encode($postData, JSON_UNESCAPED_SLASHES)
     ]);
 
-    error_log(
-        "[askOpenAI] Calling processor: "
-        . $processorUrl
-    );
+    $proposalResponse = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-    $proposalResponse =
-        curl_exec($ch);
-
-    if ($proposalResponse === false) {
-
-        $curlError =
-            curl_error($ch);
-
-        $ch = null;
-
-        error_log(
-            "[askOpenAI] Proposal processor curl failed: "
-            . $curlError
-        );
-
-        echo json_encode([
-
-            'status' =>
-                'error',
-
-            'message' =>
-                'Failed to execute proposal processor.'
-
-        ]);
-
+    if ($proposalResponse === false || $httpCode !== 200) {
+        error_log("[askOpenAI] Proposal processor failed. HTTP $httpCode");
+        echo json_encode(['status' => 'error', 'message' => 'Proposal processing failed']);
         exit;
     }
-
-    error_log(
-        "[askOpenAI] Processor response length: "
-        . strlen((string)$proposalResponse)
-    );
-
-    $httpCode =
-        curl_getinfo(
-            $ch,
-            CURLINFO_HTTP_CODE
-        );
-
-    // PHP 8.5+ automatic cleanup
-    $ch = null;
-
-    if ($httpCode !== 200) {
-
-        error_log(
-            "[askOpenAI] Proposal processor returned HTTP {$httpCode}"
-        );
-
-        error_log(
-            "[askOpenAI] Proposal processor body: "
-            . substr((string)$proposalResponse, 0, 5000)
-        );
-
-        echo json_encode([
-            'status'       => 'error',
-            'httpCode'     => $httpCode,
-            'rawResponse'  => $proposalResponse
-        ]);
-
-        exit;
-    }
-
-    // --------------------------------------------------
-    // Return Proposal Response Directly
-    // --------------------------------------------------
 
     echo $proposalResponse;
-
     exit;
 }
 
