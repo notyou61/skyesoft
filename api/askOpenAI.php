@@ -1100,38 +1100,26 @@ $reportPath         = null;
 $role               = "askOpenAI";
 
 if ($type === "narrative") {
-
     // 🧾 Resolve task input
     $task = $_GET["task"] ?? ($argv[3] ?? null);
     if (!$task) {
         aiFail("task required for narrative generation.");
     }
-
     $reportPath = "$root/reports/automation/{$task}.json";
-
     if (!file_exists($reportPath)) {
         aiFail("Report not found: {$reportPath}");
     }
-
     // 📥 Load report
     $report = json_decode(file_get_contents($reportPath), true);
     if (!is_array($report)) {
         aiFail("Invalid report JSON.");
     }
-
     // 🧠 Build audit facts
-    $auditFacts = $report["auditFacts"]
-        ?? buildAuditFacts($report);
-
-    $auditFactsJson = json_encode(
-        $auditFacts,
-        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-    );
-
+    $auditFacts = $report["auditFacts"] ?? buildAuditFacts($report);
+    $auditFactsJson = json_encode($auditFacts, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     // 🗓 Metadata
     $date   = date("Y-m-d", $report["timestamp"] ?? time());
     $codexV = getCodexVersion();
-
     // 🤖 Prompt Construction
     $basePrompt = <<<PROMPT
 This is a pre-System Initialization Standard (SIS) audit narrative.
@@ -1154,68 +1142,41 @@ Date: {$date}. Codex v{$codexV}.
 Audit Facts (JSON):
 {$auditFactsJson}
 PROMPT;
-
     // 🚀 AI Execution
-    $response = callOpenAI(
-        injectStandingOrders($basePrompt),
-        $apiKey
-    );
-
+    $response = callOpenAI(injectStandingOrders($basePrompt), $apiKey);
     // 💾 Persist Narrative
-
     if ($response) {
-
         $report["narrative"] = trim($response);
-
-        file_put_contents(
-            $reportPath,
-            json_encode(
-                $report,
-                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-            )
-        );
-
+        file_put_contents($reportPath, json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         $narrativeGenerated = true;
     }
-
 }
 
 // =====================================================
 // PROPOSED CONTACT REPORT SUMMARY NARRATIVE
 // =====================================================
-
-if ($type === "proposalNarrative") {
-
+if ($type === "proposalNarrative" || $type === "contact_proposal") {
     error_log("[proposalNarrative] TYPE DETECTED - Starting processing");
-
     // 📥 Resolve proposal payload
     $proposalData = $input["proposalData"] ?? null;
-
     if (!$proposalData || !is_array($proposalData)) {
         aiFail("proposalData required for proposalNarrative.");
     }
-
     // 📥 Resolve prompt file
     $promptFile = $input["promptFile"] ?? "proposedContactReportSummary.prompt";
     $promptPath = "$root/codex/prompts/{$promptFile}";
-
     error_log("[proposalNarrative] Prompt Path: " . $promptPath);
-
     if (!file_exists($promptPath)) {
         aiFail("Prompt file not found: {$promptPath}");
     }
-
     // 📄 Load prompt template
     $basePrompt = file_get_contents($promptPath);
     error_log("[proposalNarrative] Prompt Length: " . strlen($basePrompt));
-
     if (!$basePrompt) {
         aiFail("Failed to load prompt file.");
     }
-
     // 📦 Proposal JSON
     $proposalJson = json_encode($proposalData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
     // 🧠 Final Prompt Construction
     $finalPrompt = <<<PROMPT
 {$basePrompt}
@@ -1240,32 +1201,18 @@ Do NOT:
 
 Professional operational tone only.
 PROMPT;
-
     error_log("[proposalNarrative] Generating narrative...");
-
     // 🚀 AI Execution
-    $response = callOpenAI(
-        injectStandingOrders($finalPrompt),
-        $apiKey
-    );
-
+    $response = callOpenAI(injectStandingOrders($finalPrompt), $apiKey);
     error_log("[proposalNarrative] RAW RESPONSE: " . print_r($response, true));
-
     // ✅ Validate & Normalize Response
     if (!$response || trim($response) === '') {
         aiFail("AI narrative generation failed - empty response from OpenAI");
     }
-
     $cleanNarrative = trim($response);
-
     error_log("[proposalNarrative] SUCCESS - Narrative length: " . strlen($cleanNarrative));
-
     // 📤 Return JSON
-    echo json_encode([
-        "success" => true,
-        "summaryNarrative" => $cleanNarrative
-    ], JSON_UNESCAPED_SLASHES);
-
+    echo json_encode(["success" => true, "summaryNarrative" => $cleanNarrative], JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -1273,58 +1220,42 @@ PROMPT;
 // PROPERTY REVIEW HANDLER (Compatibility Bridge)
 // Clean integration with resolveParcelReview.php
 // =====================================================
-
 error_log("[PROPERTY_REVIEW DEBUG] === START ===");
 error_log("[PROPERTY_REVIEW DEBUG] Intent var: " . ($intent ?? 'NULL'));
 error_log("[PROPERTY_REVIEW DEBUG] Input intent: " . ($input['intent'] ?? 'NULL'));
 error_log("[PROPERTY_REVIEW DEBUG] Query: " . substr($query, 0, 200));
 error_log("[PROPERTY_REVIEW DEBUG] Raw input keys: " . json_encode(array_keys($input ?? [])));
 
-if (
-    $intent === "property_review" ||
-    (isset($input['intent']) && 
-        in_array($input['intent'], ['property_review'], true)
-    ) || 
-    str_contains(strtolower($query), "property review") || 
-    str_contains(strtolower($query), "parcel review") || 
-    preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query)
-) {
+// Heuristic validation checks to distinguish blocks from property reviews
+$isContactStructure = (str_contains($query, "@") || preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query)) && (count(explode("\n", $query)) >= 2);
 
+if (!$isContactStructure && ($type !== "contact_proposal" && $type !== "proposalNarrative") && ($intent === "property_review" || (isset($input['intent']) && in_array($input['intent'], ['property_review'], true)) || str_contains(strtolower($query), "property review") || str_contains(strtolower($query), "parcel review") || preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query))) {
     error_log("[property_review] HANDLER TRIGGERED SUCCESSFULLY (compatibility bridge)");
-
     $addressToReview = trim($query);
     error_log("[property_review] Address to review: " . $addressToReview);
-
     if (empty($addressToReview)) {
         error_log("[property_review] ERROR: Empty address");
         echo json_encode(['success' => false, 'error' => 'No address provided for review']);
         exit;
     }
-
     require_once __DIR__ . '/resolveParcelReview.php';
     error_log("[property_review] resolveParcelReview.php loaded");
-
     $resolutionData = resolveParcelReview($addressToReview);
     error_log("[property_review] resolveParcelReview success: " . ($resolutionData['success'] ? 'YES' : 'NO'));
-
     if (!$resolutionData['success']) {
         error_log("[property_review] resolveParcelReview failed");
         echo json_encode($resolutionData);
         exit;
     }
-
     // Ensure user-facing summary uses current terminology
     if (empty($resolutionData['summary'])) {
         $resolutionData['summary'] = "Skyesoft completed property review for " . htmlspecialchars($addressToReview) . ".";
     }
-
     // Logging block
     error_log("[DEBUG] Attempting to log property review. Has \$db? " . (isset($db) ? 'YES' : 'NO'));
-
     if (isset($db) && $db instanceof PDO) {
         require_once __DIR__ . '/utils/actions.php';
         error_log("[DEBUG] Calling insertActionPrompt with actionTypeId=12");
-
         $actionId = insertActionPrompt([
             'actionTypeId'      => 12,
             'contactId'         => $_SESSION['contactId'] ?? 0,
@@ -1332,24 +1263,21 @@ if (
             'responseText'      => $resolutionData['summary'] ?? null,
             'actionPayloadData' => $input,
             'actionResponseData'=> $resolutionData,
-            'intent'            => 'property.review',           // Preferred new intent
+            'intent'            => 'property.review',
             'intentConfidence'  => 0.90,
             'latitude'          => $resolutionData['google']['latitude'] ?? null,
             'longitude'         => $resolutionData['google']['longitude'] ?? null,
             'origin'            => 1,
             'createdUnixTime'   => time(),
         ], $db);
-
         error_log("[DEBUG] insertActionPrompt completed | actionId=$actionId");
         $resolutionData['actionId'] = $actionId;
     } else {
         error_log('[property_review] Logging SKIPPED - $db not available');
     }
-
     error_log("[PROPERTY_REVIEW DEBUG] === END - Sending response ===");
     echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
     exit;
-
 } else {
     error_log("[PROPERTY_REVIEW DEBUG] Condition NOT met - falling through");
 }
@@ -1511,16 +1439,12 @@ PROMPT;
 if (!isset($response) || trim((string)$response) === '') {
     error_log('[askOpenAI] EMPTY AI RESPONSE — forcing fallback');
 
-    // TEMPORARY DEBUG - REMOVE AFTER FIX
     $debugInfo = [
-        "reason"          => "callOpenAI returned null or empty",
-        "intent"          => $intent ?? 'null',
-        "confidence"      => $confidence ?? 'null',
-        "query"           => substr($query ?? '', 0, 100),
-        "sse_available"   => isset($sseSnapshot) ? ($sseSnapshot !== null) : false,
-        "responsePrompt"  => isset($responsePrompt) ? !empty($responsePrompt) : false,
-        "systemContext"   => isset($systemContext) ? !empty($systemContext) : false,
-        "type"            => $type ?? 'unknown'
+        "reason"     => "callOpenAI returned null or empty",
+        "intent"     => $intent ?? 'null',
+        "confidence" => $confidence ?? 'null',
+        "query"      => substr($query ?? '', 0, 100),
+        "type"       => $type ?? 'unknown'
     ];
 
     error_log('[askOpenAI] DEBUG INFO: ' . json_encode($debugInfo, JSON_UNESCAPED_SLASHES));
@@ -1529,78 +1453,9 @@ if (!isset($response) || trim((string)$response) === '') {
 }
 
 // ───────────────────────────────────────────────
-// 📇 CONTACT PROPOSAL ROUTING BRIDGE (MAX FORCE - No Deprecations)
-// ───────────────────────────────────────────────
-$lowerQuery = strtolower(trim($query ?? ''));
-
-$hasEmail = preg_match('/@\S+\.\S{2,}/', $query ?? '');
-$hasPhone = preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '');
-$hasName = preg_match('/[A-Z][a-z]+ [A-Z][a-z]+/', $query ?? '');
-$lineCount = substr_count($query ?? '', "\n") + 1;
-
-error_log("[askOpenAI] Signature Debug - Email:" . ($hasEmail ? '1' : '0') . " Phone:" . ($hasPhone ? '1' : '0') . " Name:" . ($hasName ? '1' : '0') . " Lines:" . $lineCount . " Length:" . strlen($query ?? ''));
-
-if ($hasEmail && $hasPhone && $hasName && $lineCount >= 2) {
-
-    error_log("[askOpenAI] MAX FORCE CONTACT_PROPOSAL triggered");
-
-    // Audit Logging
-    $sessionContactId = $_SESSION["contactId"] ?? null;
-
-    try {
-        insertActionPrompt([
-            'contactId' => $sessionContactId,
-            'promptText' => $query,
-            'responseText' => 'contact_propose_execute',
-            'intent' => 'contact_proposal',
-            'intentConfidence' => 0.95,
-            'latitude' => $latitude,
-            'longitude' => $longitude,
-            'activitySessionId' => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
-            'actionTypeId' => 3,
-            'origin' => ACTION_ORIGIN_USER
-        ], $db);
-    } catch (Throwable $e) {
-        error_log('[actions] contact logging failed: ' . $e->getMessage());
-    }
-
-    // Execute Proposal Processor
-    session_write_close();
-
-    $postData = [
-        'input' => $query,
-        'activitySessionId' => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
-        'mode' => 'propose'
-    ];
-
-    $ch = curl_init('https://skyelighting.com/skyesoft/api/processProposedContact.php');
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 45,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS => json_encode($postData, JSON_UNESCAPED_SLASHES)
-    ]);
-
-    $proposalResponse = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($proposalResponse === false || $httpCode !== 200) {
-        error_log("[askOpenAI] Proposal processor failed. HTTP " . $httpCode);
-        echo json_encode(['status' => 'error', 'message' => 'Proposal processing failed']);
-        exit;
-    }
-
-    echo $proposalResponse;
-    exit;
-}
-
-// ───────────────────────────────────────────────
 // Normal Output Path (Everything Else)
 // ───────────────────────────────────────────────
 
-// Safe preview logging
 $preview = function_exists('mb_substr')
     ? mb_substr((string)$response, 0, 300)
     : substr((string)$response, 0, 300);
