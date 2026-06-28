@@ -1102,7 +1102,7 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📇 Aggressive Hardcoded Signature Check (Bypasses Asynchronous Fallthrough)
+        // 📇 Contact Proposal — Hardcoded Signature Intercept
         // --------------------------------------------------
         const hasEmail = /@\S+\.\S{2,}/.test(text);
         const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
@@ -1110,6 +1110,7 @@ window.SkyIndex = {
 
         if ((hasEmail || hasPhone) && hasSignatureLines) {
             console.log('[Intent Intercept] Contact signature payload matched structurally');
+
             const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
             const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
             const intent = this.intentRegistry.contact_proposal;
@@ -1118,7 +1119,11 @@ window.SkyIndex = {
             this.suppressRawContactEcho();
             this.renderContactProcessingState();
 
-            await this.executeAICommand(text, activitySessionId);
+            console.log('[Contact] Calling executeAICommand...');
+
+            const result = await this.executeAICommand(text, activitySessionId);
+            console.log('[Contact] executeAICommand finished with result:', result);
+
             return;
         }
 
