@@ -1092,13 +1092,16 @@ PROMPT;
 
 #endregion
 
-#region SECTION 8 — Narrative Generation
+#region SECTION 8 — Workflow Handlers
 
-$response           = null;
+$response = null;
 $narrativeGenerated = false;
-$reportPath         = null;
-$role               = "askOpenAI";
+$reportPath = null;
+$role = "askOpenAI";
 
+// =====================================================
+// 1. Narrative Generation (Audit / Report Summaries)
+// =====================================================
 if ($type === "narrative") {
     // 🧾 Resolve task input
     $task = $_GET["task"] ?? ($argv[3] ?? null);
@@ -1153,7 +1156,7 @@ PROMPT;
 }
 
 // =====================================================
-// PROPOSED CONTACT REPORT SUMMARY NARRATIVE
+// 2. Proposed Contact Report Summary Narrative
 // =====================================================
 if ($type === "proposalNarrative" || $type === "contact_proposal") {
     error_log("[proposalNarrative] TYPE DETECTED - Starting processing");
@@ -1217,33 +1220,39 @@ PROMPT;
 }
 
 // =====================================================
-// PROPERTY REVIEW HANDLER (Compatibility Bridge)
-// Clean integration with resolveParcelReview.php
+// 3. Property Review Handler (Compatibility Bridge)
 // =====================================================
 error_log("[PROPERTY_REVIEW DEBUG] === START ===");
 error_log("[PROPERTY_REVIEW DEBUG] Intent var: " . ($intent ?? 'NULL'));
 error_log("[PROPERTY_REVIEW DEBUG] Input intent: " . ($input['intent'] ?? 'NULL'));
-error_log("[PROPERTY_REVIEW DEBUG] Query: " . substr($query, 0, 200));
-error_log("[PROPERTY_REVIEW DEBUG] Raw input keys: " . json_encode(array_keys($input ?? [])));
+error_log("[PROPERTY_REVIEW DEBUG] Query length: " . strlen($query ?? ''));
 
-// Heuristic validation checks to distinguish blocks from property reviews
-$isContactStructure = (str_contains($query, "@") || preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query)) && (count(explode("\n", $query)) >= 2);
+// Heuristic to avoid treating contact signatures as property reviews
+$isContactStructure = (
+    preg_match('/@\S+\.\S{2,}/', $query ?? '') || 
+    preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '') 
+) && (substr_count($query ?? '', "\n") >= 1);
 
-if (!$isContactStructure && ($type !== "contact_proposal" && $type !== "proposalNarrative") && ($intent === "property_review" || (isset($input['intent']) && in_array($input['intent'], ['property_review'], true)) || str_contains(strtolower($query), "property review") || str_contains(strtolower($query), "parcel review") || preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query))) {
-    error_log("[property_review] HANDLER TRIGGERED SUCCESSFULLY (compatibility bridge)");
-    $addressToReview = trim($query);
-    error_log("[property_review] Address to review: " . $addressToReview);
+if (!$isContactStructure && 
+    ($type === "property_review" || 
+     (isset($input['intent']) && $input['intent'] === 'property_review') || 
+     str_contains(strtolower($query ?? ''), "property review") || 
+     str_contains(strtolower($query ?? ''), "parcel review") || 
+     preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query ?? ''))) {
+
+    error_log("[property_review] HANDLER TRIGGERED SUCCESSFULLY");
+
+    $addressToReview = trim($query ?? '');
+
     if (empty($addressToReview)) {
-        error_log("[property_review] ERROR: Empty address");
         echo json_encode(['success' => false, 'error' => 'No address provided for review']);
         exit;
     }
+
     require_once __DIR__ . '/resolveParcelReview.php';
-    error_log("[property_review] resolveParcelReview.php loaded");
     $resolutionData = resolveParcelReview($addressToReview);
-    error_log("[property_review] resolveParcelReview success: " . ($resolutionData['success'] ? 'YES' : 'NO'));
+
     if (!$resolutionData['success']) {
-        error_log("[property_review] resolveParcelReview failed");
         echo json_encode($resolutionData);
         exit;
     }
@@ -1275,7 +1284,6 @@ if (!$isContactStructure && ($type !== "contact_proposal" && $type !== "proposal
     } else {
         error_log('[property_review] Logging SKIPPED - $db not available');
     }
-    error_log("[PROPERTY_REVIEW DEBUG] === END - Sending response ===");
     echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
     exit;
 } else {
