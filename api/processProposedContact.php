@@ -465,15 +465,18 @@ $completeness['location']['state']  = !empty(trim($parsed['location']['state'] ?
 $completeness['location']['zip']    = !empty(trim($parsed['location']['zip'] ?? '')) 
     ? '✔ ZIP' : '✖ ZIP Missing (Required)';
 
-// Overall Decision (ZIP required)
+// Overall Decision (Robust Check)
+$entityOk   = strpos($completeness['entity']['name'], '✔') !== false;
+$namesOk    = strpos($completeness['contact']['names'], '✔') !== false;
+$commsOk    = strpos($completeness['contact']['comms'], '✔') !== false;
+$streetOk   = strpos($completeness['location']['street'], '✔') !== false;
+$cityOk     = strpos($completeness['location']['city'], '✔') !== false;
+$stateOk    = strpos($completeness['location']['state'], '✔') !== false;
+$zipOk      = strpos($completeness['location']['zip'], '✔') !== false;
+
 $completeness['overall'] = (
-    $completeness['entity']['name'][0] === '✔' &&
-    $completeness['contact']['names'][0] === '✔' &&
-    $completeness['contact']['comms'][0] === '✔' &&
-    $completeness['location']['street'][0] === '✔' &&
-    $completeness['location']['city'][0] === '✔' &&
-    $completeness['location']['state'][0] === '✔' &&
-    $completeness['location']['zip'][0] === '✔'
+    $entityOk && $namesOk && $commsOk && 
+    $streetOk && $cityOk && $stateOk && $zipOk
 ) ? 'PASS' : 'FAIL';
 
 error_log('[PPC][PHASE-3] Completeness Result: ' . $completeness['overall']);
