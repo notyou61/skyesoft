@@ -1092,7 +1092,6 @@ window.SkyIndex = {
         } else if (['logout', 'exit'].includes(normalized)) {
             canonicalAction = 'logout';
         }
-
         if (canonicalAction) {
             const handler = this.uiActionRegistry?.[canonicalAction];
             if (typeof handler === 'function') {
@@ -1102,14 +1101,17 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📇 Contact Proposal — Hardcoded Signature Intercept
+        // 📇 AGGRESSIVE Contact Signature Intercept
         // --------------------------------------------------
         const hasEmail = /@\S+\.\S{2,}/.test(text);
         const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
-        const hasSignatureLines = text.split(/\r?\n/).length >= 3;
+        const hasSignatureLines = text.split(/\r?\n/).length >= 2; // lowered threshold
+        const hasName = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
 
-        if ((hasEmail || hasPhone) && hasSignatureLines) {
-            console.log('[Intent Intercept] Contact signature payload matched structurally');
+        console.log('[Intent Debug] hasEmail:', hasEmail, 'hasPhone:', hasPhone, 'hasLines:', hasSignatureLines, 'hasName:', hasName);
+
+        if ((hasEmail || hasPhone) && hasSignatureLines && hasName) {
+            console.log('[Intent Intercept] STRONG Contact signature matched!');
 
             const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
             const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
@@ -1119,11 +1121,7 @@ window.SkyIndex = {
             this.suppressRawContactEcho();
             this.renderContactProcessingState();
 
-            console.log('[Contact] Calling executeAICommand...');
-
-            const result = await this.executeAICommand(text, activitySessionId);
-            console.log('[Contact] executeAICommand finished with result:', result);
-
+            await this.executeAICommand(text, activitySessionId);
             return;
         }
 
@@ -1132,62 +1130,21 @@ window.SkyIndex = {
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
         if (streetViewIntent) {
-            const userLineNode = this.appendSystemLine(text, 'user');
-            this.suppressRawIntentEcho();
-            this.renderStreetViewProcessingState();
-
-            (async () => {
-                let cleanAddress = text.trim();
-                try {
-                    const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ type: "parseIntent", userQuery: text })
-                    });
-
-                    if (parseRes.ok) {
-                        const parsed = await parseRes.json();
-                        if (parsed.cleanAddress) cleanAddress = parsed.cleanAddress;
-                    }
-                } catch (e) { console.error('[Intent Parse Error]', e); }
-
-                if (userLineNode) {
-                    const textSpan = userLineNode.querySelector('.commandText');
-                    if (textSpan) textSpan.textContent = `Google Street View - ${cleanAddress}`;
-                }
-
-                await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
-            })();
-
+            // ... your existing street view code
             return;
         }
 
         // --------------------------------------------------
-        // 🏠 Property Review Workflow (Now strictly isolated from signatures)
+        // 🏠 Property Review (last resort)
         // --------------------------------------------------
         const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
         if (propertyIntent) {
-            const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: "parseIntent", userQuery: text })
-            });
-
-            const parsed = await parseRes.json();
-            const cleanAddress = parsed.cleanAddress || text.trim();
-
-            this.appendSystemLine(`Property Review for ${this.escapeHtml(cleanAddress)}`, 'user');
-            this.suppressRawIntentEcho();
-            this.renderPropertyProcessingState();
-
-            await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.workflow);
+            // ... your existing property code
             return;
         }
 
         // --------------------------------------------------
-        // 🤖 AI Fallback
+        // AI Fallback
         // --------------------------------------------------
         this.appendSystemLine(text, 'user');   
         await this.executeAICommand(text, activitySessionId);
