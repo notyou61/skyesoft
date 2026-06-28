@@ -1100,6 +1100,71 @@ $reportPath = null;
 $role = "askOpenAI";
 
 // =====================================================
+// 📇 CONTACT PROPOSAL ROUTING BRIDGE (MAX FORCE)
+// =====================================================
+$lowerQuery = strtolower(trim($query ?? ''));
+
+$hasEmail = preg_match('/@\S+\.\S{2,}/', $query ?? '');
+$hasPhone = preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '');
+$hasName = preg_match('/[A-Z][a-z]+ [A-Z][a-z]+/', $query ?? '');
+$lineCount = substr_count($query ?? '', "\n") + 1;
+
+error_log("[askOpenAI] Signature Debug - Email:" . ($hasEmail ? '1' : '0') . " Phone:" . ($hasPhone ? '1' : '0') . " Name:" . ($hasName ? '1' : '0') . " Lines:" . $lineCount);
+
+if ($hasEmail && $hasPhone && $hasName && $lineCount >= 2) {
+    error_log("[askOpenAI] MAX FORCE CONTACT_PROPOSAL triggered");
+
+    $sessionContactId = $_SESSION["contactId"] ?? null;
+
+    try {
+        insertActionPrompt([
+            'contactId' => $sessionContactId,
+            'promptText' => $query,
+            'responseText' => 'contact_propose_execute',
+            'intent' => 'contact_proposal',
+            'intentConfidence' => 0.95,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'activitySessionId' => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
+            'actionTypeId' => 3,
+            'origin' => ACTION_ORIGIN_USER
+        ], $db);
+    } catch (Throwable $e) {
+        error_log('[actions] contact logging failed: ' . $e->getMessage());
+    }
+
+    session_write_close();
+
+    $postData = [
+        'input' => $query,
+        'activitySessionId' => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
+        'mode' => 'propose'
+    ];
+
+    $ch = curl_init('https://skyelighting.com/skyesoft/api/processProposedContact.php');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 45,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => json_encode($postData, JSON_UNESCAPED_SLASHES)
+    ]);
+
+    $proposalResponse = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($proposalResponse === false || $httpCode !== 200) {
+        error_log("[askOpenAI] Proposal processor failed. HTTP " . $httpCode);
+        echo json_encode(['status' => 'error', 'message' => 'Proposal processing failed']);
+        exit;
+    }
+
+    echo $proposalResponse;
+    exit;
+}
+
+// =====================================================
 // 1. Narrative Generation (Audit / Report Summaries)
 // =====================================================
 if ($type === "narrative") {
