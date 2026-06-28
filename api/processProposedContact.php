@@ -463,16 +463,17 @@ $completeness['location']['city']   = !empty(trim($parsed['location']['city'] ??
 $completeness['location']['state']  = !empty(trim($parsed['location']['state'] ?? '')) 
     ? '✔ State' : '✖ State Missing';
 $completeness['location']['zip']    = !empty(trim($parsed['location']['zip'] ?? '')) 
-    ? '✔ ZIP' : '⚠ ZIP Missing (Allowed)';
+    ? '✔ ZIP' : '✖ ZIP Missing (Required)';
 
-// Overall
+// Overall Decision (ZIP required)
 $completeness['overall'] = (
     $completeness['entity']['name'][0] === '✔' &&
     $completeness['contact']['names'][0] === '✔' &&
     $completeness['contact']['comms'][0] === '✔' &&
     $completeness['location']['street'][0] === '✔' &&
     $completeness['location']['city'][0] === '✔' &&
-    $completeness['location']['state'][0] === '✔'
+    $completeness['location']['state'][0] === '✔' &&
+    $completeness['location']['zip'][0] === '✔'
 ) ? 'PASS' : 'FAIL';
 
 error_log('[PPC][PHASE-3] Completeness Result: ' . $completeness['overall']);
@@ -489,8 +490,8 @@ if ($completeness['overall'] !== 'PASS') {
             'resolution_status' => 'RS-3',
             'reason'            => 'Incomplete Proposal'
         ],
-        'message' => 'Proposal is incomplete. Please supply missing required fields before continuing.',
-        'data' => [   // Light preview for frontend
+        'message' => 'Proposal is incomplete. Please supply missing required fields (including ZIP) before continuing.',
+        'data' => [   
             'entity'   => $parsed['entity'] ?? [],
             'contact'  => $parsed['contact'] ?? [],
             'location' => $parsed['location'] ?? []
