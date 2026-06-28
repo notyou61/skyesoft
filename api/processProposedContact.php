@@ -427,6 +427,82 @@ error_log(
     '[PPC][SECTION-05] Data normalization complete'
 );
 
+// =====================================================
+// COMPLETENESS CHECK (Hard Gate per Governance Notes)
+// =====================================================
+
+error_log('[PPC][PHASE-3] Running Completeness Check');
+
+$completeness = [
+    'entity' => [],
+    'contact' => [],
+    'location' => [],
+    'overall' => 'FAIL'
+];
+
+// Entity
+$completeness['entity']['name'] = !empty(trim($parsed['entity']['name'] ?? '')) 
+    ? '✔ Complete' : '✖ Missing Entity Name';
+
+// Contact
+$hasFirst = !empty(trim($parsed['contact']['firstName'] ?? ''));
+$hasLast  = !empty(trim($parsed['contact']['lastName'] ?? ''));
+$hasComms = !empty(trim($parsed['contact']['primaryPhone'] ?? '')) 
+         || !empty(trim($parsed['contact']['email'] ?? ''));
+
+$completeness['contact']['names'] = ($hasFirst && $hasLast) 
+    ? '✔ First + Last Name' : '✖ First/Last Name Missing';
+$completeness['contact']['comms'] = $hasComms 
+    ? '✔ Phone or Email' : '✖ At least one communication method required';
+
+// Location
+$completeness['location']['street'] = !empty(trim($parsed['location']['address'] ?? '')) 
+    ? '✔ Street Address' : '✖ Street Address Missing';
+$completeness['location']['city']   = !empty(trim($parsed['location']['city'] ?? '')) 
+    ? '✔ City' : '✖ City Missing';
+$completeness['location']['state']  = !empty(trim($parsed['location']['state'] ?? '')) 
+    ? '✔ State' : '✖ State Missing';
+$completeness['location']['zip']    = !empty(trim($parsed['location']['zip'] ?? '')) 
+    ? '✔ ZIP' : '⚠ ZIP Missing (Allowed)';
+
+// Overall
+$completeness['overall'] = (
+    $completeness['entity']['name'][0] === '✔' &&
+    $completeness['contact']['names'][0] === '✔' &&
+    $completeness['contact']['comms'][0] === '✔' &&
+    $completeness['location']['street'][0] === '✔' &&
+    $completeness['location']['city'][0] === '✔' &&
+    $completeness['location']['state'][0] === '✔'
+) ? 'PASS' : 'FAIL';
+
+error_log('[PPC][PHASE-3] Completeness Result: ' . $completeness['overall']);
+
+// HARD GATE — Early Exit
+if ($completeness['overall'] !== 'PASS') {
+    error_log('[PPC][PHASE-3] INCOMPLETE — Early Exit with RS-3');
+
+    echo json_encode([
+        'success'      => true,
+        'status'       => 'incomplete',
+        'completeness' => $completeness,
+        'governance'   => [
+            'resolution_status' => 'RS-3',
+            'reason'            => 'Incomplete Proposal'
+        ],
+        'message' => 'Proposal is incomplete. Please supply missing required fields before continuing.',
+        'data' => [   // Light preview for frontend
+            'entity'   => $parsed['entity'] ?? [],
+            'contact'  => $parsed['contact'] ?? [],
+            'location' => $parsed['location'] ?? []
+        ]
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+    exit;
+}
+
+// Continue only on PASS
+error_log('[PPC][PHASE-3] PASS — Proceeding to validation');
+
 #endregion
 
 #region SECTION 06 — Address Resolution
@@ -762,7 +838,7 @@ if ($pdo) {
 $isExplicitLocationOnlyIntent = $isExplicitLocationOnlyIntent ?? false;
 
 // =====================================================
-// PASS 1 — PC Classification
+// PASS 1 — PC Classification (Database-Driven)
 // =====================================================
 
 $entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
@@ -786,91 +862,18 @@ if ($isExplicitLocationOnlyIntent === true) {
 }
 
 // =====================================================
-// GOVERNANCE — Required Fields + RS Rules
+// GOVERNANCE — RS Rules (Completeness already handled early)
 // =====================================================
 
-$missingRequired = [];
 $governanceIssues = [];
-
-// Entity
-if (empty(trim($data['entity']['entityName'] ?? ''))) {
-    $missingRequired[] = 'entity.name';
-}
-
-// === Contact Name Validation (Fixed) ===
-$contactFirstName = trim($data['contact']['contactFirstName'] ?? '');
-$contactLastName  = trim($data['contact']['contactLastName'] ?? '');
-
-if (empty($contactFirstName)) {
-    $missingRequired[] = 'contact.firstName';
-    $governanceIssues[] = [
-        'code' => 'RS-3',
-        'message' => 'Contact first name is required',
-        'fields' => ['contact.firstName']
-    ];
-}
-if (empty($contactLastName)) {
-    $missingRequired[] = 'contact.lastName';
-    $governanceIssues[] = [
-        'code' => 'RS-3',
-        'message' => 'Contact last name is required',
-        'fields' => ['contact.lastName']
-    ];
-}
-
-// Contact name == Entity name protection (kept from your version)
-$contactFullName = trim($contactFirstName . ' ' . $contactLastName);
-$entityName = trim($data['entity']['entityName'] ?? '');
-if (empty($contactFullName) || strcasecmp($contactFullName, $entityName) === 0) {
-    $missingRequired[] = 'contact.name';
-    $governanceIssues[] = [
-        'code' => 'RS-3',
-        'message' => 'Contact name is missing or identical to entity name',
-        'fields' => ['contact.firstName', 'contact.lastName']
-    ];
-}
-
-// Location basics
-if (empty(trim($data['location']['locationAddress'] ?? ''))) $missingRequired[] = 'location.address';
-if (empty(trim($data['location']['locationCity'] ?? ''))) $missingRequired[] = 'location.city';
-if (empty(trim($data['location']['locationState'] ?? ''))) $missingRequired[] = 'location.state';
-if (empty(trim($data['location']['locationZip'] ?? ''))) $missingRequired[] = 'location.zip';
-
-// Contact fields for PC-1/2/3
-if (in_array($pcm['pc'], ['PC-1', 'PC-2', 'PC-3'])) {
-    if (empty(trim($data['contact']['contactEmail'] ?? ''))) $missingRequired[] = 'contact.email';
-    if (empty(trim($data['contact']['contactPrimaryPhone'] ?? ''))) $missingRequired[] = 'contact.primaryPhone';
-}
-
-// Validation + Parcel
-if (empty($data['location']['locationValidated'] ?? false)) $missingRequired[] = 'location.validation';
-if (empty($data['location']['locationCensusValidated'] ?? false)) $missingRequired[] = 'location.census';
-
-// RS-3 — Incomplete Proposal
-if (!empty($missingRequired)) {
-    if (!in_array('RS-3', $pcm['rs'] ?? [])) {
-        $pcm['rs'][] = 'RS-3';
-        $pcm['rsStatuses'][] = 'incomplete_proposal';
-    }
-    // Only add generic issue if no specific ones were added
-    if (empty($governanceIssues)) {
-        $governanceIssues[] = [
-            'code' => 'RS-3',
-            'message' => 'Incomplete proposal - required fields are missing',
-            'fields' => $missingRequired
-        ];
-    }
-}
 
 // RS-5 Duplicate Contact
 if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
-    $pcm['rs'][] = 'RS-5';
     $governanceIssues[] = ['code' => 'RS-5', 'message' => 'Duplicate contact detected'];
 }
 
 // RS-6 Multiple Parcels
 if (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1) {
-    $pcm['rs'][] = 'RS-6';
     $governanceIssues[] = [
         'code' => 'RS-6',
         'message' => 'Multiple parcels found for this address - selection required',
@@ -881,19 +884,18 @@ if (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['pa
 // RS-7 Unresolved Parcel
 if (strtolower($data['location']['locationCounty'] ?? '') === 'maricopa' && 
     ($data['location']['parcelCount'] ?? 0) === 0) {
-    $pcm['rs'][] = 'RS-7';
     $governanceIssues[] = ['code' => 'RS-7', 'message' => 'Parcel could not be resolved'];
 }
 
 // RS-8 Invalid Location
 if (empty($data['location']['locationPlaceId'] ?? null)) {
-    $pcm['rs'][] = 'RS-8';
     $governanceIssues[] = ['code' => 'RS-8', 'message' => 'Invalid location'];
 }
 
-// Default RS-0
+// Default RS-0 if nothing else
+$pcm['rs'] = $pcm['rs'] ?? [];
 if (empty($pcm['rs'])) {
-    $pcm['rs'] = ['RS-0'];
+    $pcm['rs'][] = 'RS-0';
 }
 
 // =====================================================
@@ -910,7 +912,7 @@ $governance = ['blockingIssues' => $governanceIssues];
 
 // Simplify PCM for output
 $pcm = [
-    'pc' => $pcm['pc'],
+    'pc' => $pcm['pc'] ?? 'PC-1',
     'rs' => $pcm['rs']
 ];
 
