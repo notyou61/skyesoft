@@ -1074,47 +1074,123 @@ window.SkyIndex = {
 
     // #endregion
 
-// #region 🧠 Command Router (Minimal - Contact Only for Testing)
-async handleCommand(text) {
-    if (!text || !text.trim()) return;
+    // #region 🧠 Command Router
+    async handleCommand(text) {
+        if (!text || !text.trim()) return;
 
-    const activitySessionId = this.getActivitySessionId();
-    console.log('[COMMAND]', text, '| session:', activitySessionId);
+        const activitySessionId = this.getActivitySessionId();
+        console.log('[COMMAND]', text, '| session:', activitySessionId);
 
-    // --------------------------------------------------
-    // 🎛 Fast UI Actions
-    // --------------------------------------------------
-    const normalized = text.toString().trim().toLowerCase();
-    let canonicalAction = null;
-    if (['cls', 'clear', 'reset'].includes(normalized)) {
-        canonicalAction = 'clear_screen';
-    } else if (['logout', 'exit'].includes(normalized)) {
-        canonicalAction = 'logout';
-    }
-    if (canonicalAction) {
-        const handler = this.uiActionRegistry?.[canonicalAction];
-        if (typeof handler === 'function') {
-            await handler.call(this);
+        const normalized = text.toString().trim().toLowerCase();
+
+        // --------------------------------------------------
+        // 🎛 Fast UI Actions Interceptor
+        // --------------------------------------------------
+        let canonicalAction = null;
+        if (['cls', 'clear', 'reset'].includes(normalized)) {
+            canonicalAction = 'clear_screen';
+        } else if (['logout', 'exit'].includes(normalized)) {
+            canonicalAction = 'logout';
+        }
+        if (canonicalAction) {
+            const handler = this.uiActionRegistry?.[canonicalAction];
+            if (typeof handler === 'function') {
+                await handler.call(this);
+                return;
+            }
+        }
+
+        // --------------------------------------------------
+        // 📇 AGGRESSIVE Contact Signature Intercept (Highest Priority)
+        // --------------------------------------------------
+        const hasEmail = /@\S+\.\S{2,}/.test(text);
+        const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
+        const hasSignatureLines = text.split(/\r?\n/).length >= 2;
+        const hasName = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
+
+        console.log('[Intent Debug] hasEmail:', hasEmail, 'hasPhone:', hasPhone, 'hasLines:', hasSignatureLines, 'hasName:', hasName);
+
+        if ((hasEmail || hasPhone) && hasSignatureLines && hasName) {
+            console.log('[Intent Intercept] STRONG Contact signature matched!');
+
+            const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
+            const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
+            const intent = this.intentRegistry.contact_proposal;
+
+            this.appendSystemLine(`${intent.display} - ${normalizedName}`, 'user');
+            this.suppressRawContactEcho();
+            this.renderContactProcessingState();
+
+            await this.executeAICommand(text, activitySessionId);
             return;
         }
-    }
 
-    // --------------------------------------------------
-    // 📇 CONTACT ONLY — Everything else disabled for testing
-    // --------------------------------------------------
-    console.log('[TEST MODE] Forcing Contact Proposal path');
+        // --------------------------------------------------
+        // 📸 Street View Workflow
+        // --------------------------------------------------
+        const streetViewIntent = await this.isStreetViewIntent(text);
+        if (streetViewIntent) {
+            const userLineNode = this.appendSystemLine(text, 'user');
+            this.suppressRawIntentEcho();
+            this.renderStreetViewProcessingState();
 
-    const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
-    const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
+            (async () => {
+                let cleanAddress = text.trim();
+                try {
+                    const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: "parseIntent", userQuery: text })
+                    });
 
-    this.appendSystemLine(`Proposed Contact - ${normalizedName}`, 'user');
-    this.suppressRawContactEcho();
-    this.renderContactProcessingState();
+                    if (parseRes.ok) {
+                        const parsed = await parseRes.json();
+                        if (parsed.cleanAddress) cleanAddress = parsed.cleanAddress;
+                    }
+                } catch (e) { console.error('[Intent Parse Error]', e); }
 
-    await this.executeAICommand(text, activitySessionId);
-    return;
-},
-// #endregion
+                if (userLineNode) {
+                    const textSpan = userLineNode.querySelector('.commandText');
+                    if (textSpan) textSpan.textContent = `Google Street View - ${cleanAddress}`;
+                }
+
+                await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
+            })();
+
+            return;
+        }
+
+        // --------------------------------------------------
+        // 🏠 Property Review Workflow — TEMPORARILY DISABLED
+        // --------------------------------------------------
+        // const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
+        // if (propertyIntent) {
+        //     const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
+        //         method: 'POST',
+        //         credentials: 'include',
+        //         headers: { 'Content-Type': 'application/json' },
+        //         body: JSON.stringify({ type: "parseIntent", userQuery: text })
+        //     });
+
+        //     const parsed = await parseRes.json();
+        //     const cleanAddress = parsed.cleanAddress || text.trim();
+
+        //     this.appendSystemLine(`Property Review for ${this.escapeHtml(cleanAddress)}`, 'user');
+        //     this.suppressRawIntentEcho();
+        //     this.renderPropertyProcessingState();
+
+        //     await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.workflow);
+        //     return;
+        // }
+
+        // --------------------------------------------------
+        // AI Fallback
+        // --------------------------------------------------
+        this.appendSystemLine(text, 'user');   
+        await this.executeAICommand(text, activitySessionId);
+    },
+    // #endregion
 
     // #region 📸 Street View Workflow Helpers
 
