@@ -2713,48 +2713,6 @@ window.SkyIndex = {
 
     // #endregion
 
-    // #region 📇 Incomplete Proposal Renderer
-    renderIncompleteProposal(data) {
-        const comp = data.completeness || {};
-        const preview = data.data || {};
-
-        let checklistHTML = `
-            <div class="contact-card incomplete">
-                <div class="card-header bg-warning py-2 px-3 border-bottom">
-                    <strong>⚠️ Proposal Incomplete</strong>
-                    <small class="text-muted ms-2">Please supply missing information</small>
-                </div>
-                <div class="card-body p-3">
-                    <div class="completeness-check mb-3">
-                        <h5>Completeness Review</h5>
-                        <div class="check-item">Entity: ${comp.entity?.name || '—'}</div>
-                        <div class="check-item">Contact Names: ${comp.contact?.names || '—'}</div>
-                        <div class="check-item">Communication: ${comp.contact?.comms || '—'}</div>
-                        <div class="check-item">Street: ${comp.location?.street || '—'}</div>
-                        <div class="check-item">City: ${comp.location?.city || '—'}</div>
-                        <div class="check-item">State: ${comp.location?.state || '—'}</div>
-                        <div class="check-item">ZIP: ${comp.location?.zip || '—'}</div>
-                    </div>
-                    
-                    <div class="alert alert-warning small">
-                        ${data.message || 'Please provide the missing required fields.'}
-                    </div>
-
-                    <div class="small text-muted">
-                        Current data preview:
-                        <pre style="font-size:0.85em; background:#f8f9fa; padding:8px; border-radius:4px;">${JSON.stringify(preview, null, 2)}</pre>
-                    </div>
-                </div>
-                <div class="card-footer bg-light py-2 px-3">
-                    <button onclick="SkyIndex.clearOutput()" class="btn btn-secondary btn-sm">Try Again</button>
-                </div>
-            </div>
-        `;
-
-        this.appendSystemHtml(checklistHTML);
-    },
-    // #endregion
-
     // #region 📇 Contact Result Renderer
     renderContactResult(data) {
 
