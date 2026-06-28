@@ -1529,49 +1529,44 @@ if (!isset($response) || trim((string)$response) === '') {
 }
 
 // ───────────────────────────────────────────────
-// 📇 CONTACT PROPOSAL ROUTING BRIDGE (Aggressive + Fixed)
+// 📇 CONTACT PROPOSAL ROUTING BRIDGE (MAX FORCE)
 // ───────────────────────────────────────────────
 $lowerQuery = strtolower(trim($query ?? ''));
 
 $hasEmail = preg_match('/@\S+\.\S{2,}/', $query ?? '');
 $hasPhone = preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '');
-$hasNameTitle = preg_match('/[A-Z][a-z]+ [A-Z][a-z]+.*(Manager|Director|CEO|Owner|President|Operations)/i', $query ?? '');
+$hasName = preg_match('/[A-Z][a-z]+ [A-Z][a-z]+/', $query ?? '');
+$lineCount = substr_count($query ?? '', "\n") + 1;
+
+error_log(`[askOpenAI] Signature Debug - Email:${hasEmail} Phone:${hasPhone} Name:${hasName} Lines:${lineCount} QueryLength:` . strlen($query ?? ''));
 
 if (
-    str_contains($lowerQuery, 'contact') ||
-    ($hasEmail && $hasPhone) ||                    // email + phone = strong signature
-    $hasNameTitle ||                               // name + title
-    ($hasEmail && strlen($query ?? '') > 100) ||   // long input with email
-    ($confidence ?? 0) >= 0.70 && in_array(strtolower(trim($intent ?? '')), ['contact_proposal', 'contact_propose'], true)
+    $hasEmail && $hasPhone && $hasName && $lineCount >= 2
 ) {
 
-    error_log("[askOpenAI] CONTACT_PROPOSAL triggered by heuristics (query length: " . strlen($query ?? '') . ")");
+    error_log("[askOpenAI] MAX FORCE CONTACT_PROPOSAL triggered");
 
-    // --------------------------------------------------
     // Audit Logging
-    // --------------------------------------------------
     $sessionContactId = $_SESSION["contactId"] ?? null;
 
     try {
         insertActionPrompt([
-            'contactId'        => $sessionContactId,
-            'promptText'       => $query,
-            'responseText'     => 'contact_propose_execute',
-            'intent'           => $intent ?? 'contact_proposal',
-            'intentConfidence' => $confidence ?? 0.85,
-            'latitude'         => $latitude,
-            'longitude'        => $longitude,
-            'activitySessionId'=> $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
-            'actionTypeId'     => 3,
-            'origin'           => ACTION_ORIGIN_USER
+            'contactId' => $sessionContactId,
+            'promptText' => $query,
+            'responseText' => 'contact_propose_execute',
+            'intent' => 'contact_proposal',
+            'intentConfidence' => 0.95,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'activitySessionId' => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
+            'actionTypeId' => 3,
+            'origin' => ACTION_ORIGIN_USER
         ], $db);
     } catch (Throwable $e) {
         error_log('[actions] contact logging failed: ' . $e->getMessage());
     }
 
-    // --------------------------------------------------
     // Execute Proposal Processor
-    // --------------------------------------------------
     session_write_close();
 
     $postData = [
@@ -1580,9 +1575,7 @@ if (
         'mode' => 'propose'
     ];
 
-    $processorUrl = 'https://skyelighting.com/skyesoft/api/processProposedContact.php';
-
-    $ch = curl_init($processorUrl);
+    $ch = curl_init('https://skyelighting.com/skyesoft/api/processProposedContact.php');
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
@@ -1596,7 +1589,7 @@ if (
     curl_close($ch);
 
     if ($proposalResponse === false || $httpCode !== 200) {
-        error_log("[askOpenAI] Proposal processor failed. HTTP $httpCode");
+        error_log(`[askOpenAI] Proposal processor failed. HTTP ${$httpCode}`);
         echo json_encode(['status' => 'error', 'message' => 'Proposal processing failed']);
         exit;
     }
