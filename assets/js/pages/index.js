@@ -1837,10 +1837,13 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Incomplete Proposal Renderer (Compact Card with Link)
+    // #region 📇 Incomplete Proposal Renderer (Clean Card + Edit Form)
     renderIncompleteProposal(data) {
         const comp = data.completeness || {};
         const preview = data.data || {};
+        const entity = preview.entity || {};
+        const contact = preview.contact || {};
+        const location = preview.location || {};
 
         const html = `
             <div class="commandLine system html">
@@ -1867,16 +1870,73 @@ window.SkyIndex = {
                             ${data.message || 'Please supply missing required fields before continuing.'}
                         </div>
 
-                        <div class="text-center mt-3">
-                            <button onclick="SkyIndex.openEditProposalForm()" 
-                                    class="btn btn-primary">
+                        <div class="text-center mt-2">
+                            <button onclick="SkyIndex.showEditForm()" class="btn btn-primary">
                                 ✏️ Edit & Resubmit Proposal
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
 
+            <!-- Hidden Edit Form (revealed on button click) -->
+            <div id="editProposalForm" class="commandLine system html" style="display:none;">
+                <div class="result-card">
+                    <div class="result-header">
+                        <span class="result-icon">✏️</span>
+                        <strong class="result-title">Edit Proposal</strong>
+                    </div>
+                    <div class="result-body p-3">
+                        <div class="compact-form">
+                            <div class="row g-2">
+                                <div class="col-8">
+                                    <label class="small text-muted">Entity</label>
+                                    <input type="text" class="form-control form-control-sm" id="editEntity" value="${this.escapeHtml(entity.name || '')}">
+                                </div>
+                                <div class="col-4">
+                                    <label class="small text-muted">ZIP</label>
+                                    <input type="text" class="form-control form-control-sm" id="editZip" value="${this.escapeHtml(location.zip || '')}">
+                                </div>
+                            </div>
+                            <div class="row g-2 mt-2">
+                                <div class="col-6">
+                                    <label class="small text-muted">First Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="editFirst" value="${this.escapeHtml(contact.firstName || '')}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="small text-muted">Last Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="editLast" value="${this.escapeHtml(contact.lastName || '')}">
+                                </div>
+                            </div>
+                            <div class="row g-2 mt-2">
+                                <div class="col-6">
+                                    <label class="small text-muted">Phone</label>
+                                    <input type="tel" class="form-control form-control-sm" id="editPhone" value="${this.escapeHtml(contact.primaryPhone || '')}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="small text-muted">Email</label>
+                                    <input type="email" class="form-control form-control-sm" id="editEmail" value="${this.escapeHtml(contact.email || '')}">
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <label class="small text-muted">Street Address</label>
+                                <input type="text" class="form-control form-control-sm" id="editAddress" value="${this.escapeHtml(location.address || '')}">
+                            </div>
+                            <div class="row g-2 mt-2">
+                                <div class="col-6">
+                                    <label class="small text-muted">City</label>
+                                    <input type="text" class="form-control form-control-sm" id="editCity" value="${this.escapeHtml(location.city || '')}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="small text-muted">State</label>
+                                    <input type="text" class="form-control form-control-sm" id="editState" value="${this.escapeHtml(location.state || '')}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="result-actions">
-                        <button onclick="SkyIndex.retryProposal()" class="btn btn-secondary">Try New Signature</button>
+                        <button onclick="SkyIndex.submitEditedProposal()" class="btn btn-success">Submit Updated Proposal</button>
+                        <button onclick="SkyIndex.hideEditForm()" class="btn btn-secondary">Cancel</button>
                     </div>
                 </div>
             </div>
