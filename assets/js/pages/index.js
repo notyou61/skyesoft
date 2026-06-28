@@ -1085,7 +1085,17 @@ window.SkyIndex = {
         // --------------------------------------------------
         const streetViewIntent = await this.isStreetViewIntent(text);
         if (streetViewIntent) {
-            // Always use AI parser for clean extraction
+
+            // Immediately acknowledge the command
+            const systemLine = this.appendSystemLine(
+                this.escapeHtml(text.trim()),
+                'user'
+            );
+
+            this.suppressRawContactEcho();
+            this.renderStreetViewProcessingState();
+
+            // Now ask AI to normalize it
             const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -1097,14 +1107,19 @@ window.SkyIndex = {
             });
 
             const parsed = await parseRes.json();
+
             const cleanAddress = parsed.cleanAddress || text.trim();
 
-            this.appendSystemLine(`Street View for ${this.escapeHtml(cleanAddress)}`, 'user');
+            // Replace the placeholder with the polished version
+            systemLine.innerHTML =
+                `Google Street View - ${this.escapeHtml(cleanAddress)}`;
 
-            this.suppressRawContactEcho();
-            this.renderStreetViewProcessingState();
+            await this.executeStreetViewWorkflow(
+                text,
+                activitySessionId,
+                cleanAddress
+            );
 
-            await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
             return;
         }
 
