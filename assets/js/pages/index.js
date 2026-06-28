@@ -1135,13 +1135,27 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 🏠 Property Review (last resort)
+        // 🏠 Property Review Workflow — TEMPORARILY DISABLED
         // --------------------------------------------------
-        const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
-        if (propertyIntent) {
-            // ... your existing property code
-            return;
-        }
+        // const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
+        // if (propertyIntent) {
+        //     const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
+        //         method: 'POST',
+        //         credentials: 'include',
+        //         headers: { 'Content-Type': 'application/json' },
+        //         body: JSON.stringify({ type: "parseIntent", userQuery: text })
+        //     });
+
+        //     const parsed = await parseRes.json();
+        //     const cleanAddress = parsed.cleanAddress || text.trim();
+
+        //     this.appendSystemLine(`Property Review for ${this.escapeHtml(cleanAddress)}`, 'user');
+        //     this.suppressRawIntentEcho();
+        //     this.renderPropertyProcessingState();
+
+        //     await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.workflow);
+        //     return;
+        // }
 
         // --------------------------------------------------
         // AI Fallback
