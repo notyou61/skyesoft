@@ -1850,7 +1850,6 @@ window.SkyIndex = {
 
     // #region 📇 Incomplete Proposal Renderer (Consistent Look)
     renderIncompleteProposal(data) {
-        // 🛡️ Bulletproof Shield: If 'data' is null, empty, or stringified, prevent execution crash
         let cleanPayload = {};
         if (data && typeof data === 'object') {
             cleanPayload = data;
@@ -1858,21 +1857,16 @@ window.SkyIndex = {
             try { cleanPayload = JSON.parse(data); } catch(e) { cleanPayload = {}; }
         }
 
-        // Setup fallback safe defaults if the network response was completely broken
         const comp = cleanPayload.completeness || {};
         const preview = cleanPayload.data || {};
         const entity = preview.entity || {};
         const contact = preview.contact || {};
         const location = preview.location || {};
 
-        // 🗺️ Grab available geolocation metrics safely from any level of the fallback payload
         const lat = cleanPayload.latitude || preview.location?.latitude || null;
         const lon = cleanPayload.longitude || preview.location?.longitude || null;
-
-        // Force a valid session ID context string to prevent downstream API drop-outs
         const activeSessionId = cleanPayload.activitySessionId || (typeof this.getActivitySessionId === 'function' ? this.getActivitySessionId() : 'no_session');
         
-        // Re-assemble the baseline payload for form resubmission mapping
         const unifiedData = {
             ...cleanPayload,
             activitySessionId: activeSessionId,
@@ -1881,124 +1875,128 @@ window.SkyIndex = {
             data: { entity, contact, location }
         };
 
-        // Encode full payload state parameters safely into base64 to preserve coordinates
         const dataPayloadAttr = btoa(unescape(encodeURIComponent(JSON.stringify(unifiedData))));
 
-        // CRITICAL: Precise inline rules matching the successful custom layout framework
+        // Perfectly cloned design layout from the 'Proposed Contact' standard card components
         const html = `
-            <div id="incompleteReviewCard" class="commandLine system html">
-                <div class="result-card" style="border-left: 4px solid #ffc107; background: #fff; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 18px; background: #fafafa; border-bottom: 1px solid #eee;">
+            <div id="incompleteReviewCard" class="commandLine system html" style="margin-bottom: 15px; width: 100%; max-width: 580px;">
+                <div class="result-card" style="border: 1px solid #e0e0e0; border-left: 4px solid #ffb300; background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; overflow: hidden;">
+                    
+                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #fafafa; border-bottom: 1px solid #eaeaea;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="result-icon" style="font-size: 1.2em;">⚠️</span>
+                            <span class="result-icon" style="font-size: 1.15em; filter: grayscale(0.2);">📋</span>
                             <div style="display: flex; flex-direction: column;">
-                                <strong class="result-title" style="color: #222; font-size: 1em; font-weight: 600;">Proposal Incomplete</strong>
-                                <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Missing required workflow data fields</small>
+                                <strong class="result-title" style="color: #333; font-size: 0.95em; font-weight: 700; letter-spacing: -0.01em;">Proposed Contact</strong>
+                                <span style="color: #666; font-size: 0.78em; line-height: 1.2;">Link existing Entity + Location • Insert new Contact</span>
                             </div>
                         </div>
-                        <span style="background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">
+                        <span style="background: #fff8e1; color: #b78103; border: 1px solid #ffe082; padding: 1px 5px; border-radius: 3px; font-family: -apple-system, monospace; font-size: 0.76em; font-weight: 700;">
                             ${this.escapeHtml(unifiedData.governance?.resolution_status || 'RS-3')}
                         </span>
                     </div>
 
-                    <div class="result-body" style="padding: 14px 18px;">
-                        <div class="result-grid" style="display: grid; grid-template-columns: minmax(130px, auto) 1fr; row-gap: 6px; column-gap: 14px; font-size: 0.9em; line-height: 1.4;">
-                            <span style="color: #666; font-weight: 600;">Entity:</span> 
-                            <span style="color: #222;">${this.escapeHtml(entity.name || '—')} <small style="color: #2b7a43; font-weight: 500; margin-left: 4px;">${this.escapeHtml(comp.entity?.name || '')}</small></span>
-                            
-                            <span style="color: #666; font-weight: 600;">Contact Names:</span> 
-                            <span style="color: #222;">${this.escapeHtml(contact.firstName || '')} ${this.escapeHtml(contact.lastName || '')} <small style="color: #2b7a43; font-weight: 500; margin-left: 4px;">${this.escapeHtml(comp.contact?.names || '')}</small></span>
-                            
-                            <span style="color: #666; font-weight: 600;">Communication:</span> 
-                            <span style="color: #222;"><small style="color: #2b7a43; font-weight: 500;">${this.escapeHtml(comp.contact?.comms || '—')}</small></span>
-                            
-                            <span style="color: #666; font-weight: 600;">Street:</span> 
-                            <span style="color: #222;">${this.escapeHtml(location.address || '—')} <small style="color: #2b7a43; font-weight: 500; margin-left: 4px;">${this.escapeHtml(comp.location?.street || '')}</small></span>
-                            
-                            <span style="color: #666; font-weight: 600;">City:</span> 
-                            <span style="color: #222;">${this.escapeHtml(location.city || '—')} <small style="color: #2b7a43; font-weight: 500; margin-left: 4px;">${this.escapeHtml(comp.location?.city || '')}</small></span>
-                            
-                            <span style="color: #666; font-weight: 600;">State:</span> 
-                            <span style="color: #222;">${this.escapeHtml(location.state || '—')} <small style="color: #2b7a43; font-weight: 500; margin-left: 4px;">${this.escapeHtml(comp.location?.state || '')}</small></span>
-                            
-                            <span style="color: #666; font-weight: 600;">ZIP:</span> 
-                            <span style="color: #222;">${this.escapeHtml(location.zip || '—')} <span style="margin-left: 4px; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; background: rgba(220,53,69,0.08); color: #dc3545; font-weight: bold; border: 1px solid rgba(220,53,69,0.15);">${this.escapeHtml(comp.location?.zip || '✖ ZIP Missing (Required)')}</span></span>
+                    <div class="result-body" style="padding: 12px 14px; background: #fff; font-size: 0.88em; line-height: 1.45;">
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+                            <tr style="vertical-align: top;">
+                                <td style="width: 85px; color: #222; font-weight: 700; padding: 3px 0;">Entity:</td>
+                                <td style="color: #444; padding: 3px 0;">${this.escapeHtml(entity.name || '—')} <span style="color: #2e7d32; font-size: 0.9em; margin-left: 2px;">${this.escapeHtml(comp.entity?.name || '')}</span></td>
+                            </tr>
+                            <tr style="vertical-align: top;">
+                                <td style="color: #222; font-weight: 700; padding: 3px 0;">Contact:</td>
+                                <td style="color: #444; padding: 3px 0;">${this.escapeHtml(contact.firstName || '')} ${this.escapeHtml(contact.lastName || '')} — <span style="color: #555;">${this.escapeHtml(contact.title || 'Accounting')}</span> <span style="color: #2e7d32; font-size: 0.9em; margin-left: 2px;">${this.escapeHtml(comp.contact?.names || '')}</span></td>
+                            </tr>
+                            <tr style="vertical-align: top;">
+                                <td style="color: #222; font-weight: 700; padding: 3px 0;">Phone:</td>
+                                <td style="color: #444; padding: 3px 0;">${this.escapeHtml(contact.primaryPhone || '—')} <span style="color: #2e7d32; font-size: 0.9em; margin-left: 2px;">${this.escapeHtml(comp.contact?.comms || '')}</span></td>
+                            </tr>
+                            <tr style="vertical-align: top;">
+                                <td style="color: #222; font-weight: 700; padding: 3px 0;">Email:</td>
+                                <td style="color: #444; padding: 3px 0; word-break: break-all;">${this.escapeHtml(contact.email || '—')}</td>
+                            </tr>
+                            <tr style="vertical-align: top;">
+                                <td style="color: #222; font-weight: 700; padding: 3px 0;">Address:</td>
+                                <td style="color: #444; padding: 3px 0;">${this.escapeHtml(location.address || '—')}, ${this.escapeHtml(location.city || '')}, ${this.escapeHtml(location.state || '')}, <span style="padding: 1px 4px; border-radius: 2px; background: #ffebee; color: #c62828; font-weight: 700; font-size: 0.9em; border: 1px solid #ffcdd2;">${this.escapeHtml(comp.location?.zip || '✖ ZIP Missing')}</span></td>
+                            </tr>
+                        </table>
+
+                        <div style="border-top: 1px dashed #e0e0e0; margin: 10px 0 6px;"></div>
+                        
+                        <div style="font-size: 0.95em; font-weight: 700; color: #333; margin-bottom: 2px;">📋 Proposal Summary</div>
+                        <div style="color: #555; line-height: 1.4;">
+                            ${this.escapeHtml(unifiedData.message || 'Proposal is incomplete. Please supply missing required fields (including ZIP) before continuing.')}
                         </div>
                     </div>
 
-                    <div style="padding: 10px 18px; background: rgba(255, 193, 7, 0.04); border-top: 1px dashed rgba(255, 193, 7, 0.25); font-size: 0.85em; line-height: 1.4; color: #665c00;">
-                        <strong style="color: #4a4300; font-size: 0.95em; display: block; margin-bottom: 2px;">Validation Status</strong>
-                        ${this.escapeHtml(unifiedData.message || 'Proposal data incomplete. Please supply fields below to fix manually.')}
-                    </div>
-
-                    <div style="padding: 10px 18px; border-top: 1px solid #eee; background: #fff;">
-                        <div class="result-actions" style="padding: 0; background: none; border: none; display: flex; gap: 6px;">
-                            <button class="btn btn-warning" style="flex: 2; padding: 8px 14px; font-size: 0.88em; background: #ffc107; color: #212529; border: 1px solid #e0a800; border-radius: 4px; font-weight: 600; cursor: pointer;" onclick="document.getElementById('incompleteReviewCard').style.display='none'; document.getElementById('editProposalForm').style.display='block';">✏️ Edit &amp; Resubmit Proposal</button>
-                            <button class="btn btn-secondary" style="flex: 1; padding: 8px 14px; font-size: 0.88em; background: #f8f9fa; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
-                            <button class="btn btn-secondary" style="flex: 1; padding: 8px 14px; font-size: 0.88em; background: #fff; color: #dc3545; border: 1px solid #dc3545; border-radius: 4px; cursor: pointer;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                    <div style="padding: 10px 14px; background: #fafafa; border-top: 1px solid #eaeaea; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 10px; font-size: 0.85em;">
+                            <a href="#" style="color: #1565c0; text-decoration: underline;" onclick="return false;">👤 Contact Details</a>
+                            <a href="#" style="color: #1565c0; text-decoration: underline;" onclick="return false;">📍 Location &amp; Parcel</a>
+                        </div>
+                        <div class="result-actions" style="display: flex; gap: 5px; margin: 0; padding: 0; border: none; background: none;">
+                            <button class="btn" style="padding: 5px 12px; font-size: 0.82em; background: #ffb300; color: #fff; border: 1px solid #ff8f00; border-radius: 3px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 3px;" onclick="document.getElementById('incompleteReviewCard').style.display='none'; document.getElementById('editProposalForm').style.display='block';">✏️ Edit &amp; Resubmit</button>
+                            <button class="btn" style="padding: 5px 12px; font-size: 0.82em; background: #f5f5f5; color: #424242; border: 1px solid #cccccc; border-radius: 3px; cursor: pointer;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                            <button class="btn" style="padding: 5px 12px; font-size: 0.82em; background: #fff; color: #c62828; border: 1px solid #c62828; border-radius: 3px; cursor: pointer;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="editProposalForm" class="commandLine system html" style="display:none; margin-top: 0px;">
-                <div class="result-card" style="border-left: 4px solid #28a745; background: #fff; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                    <div class="result-header" style="display: flex; align-items: center; gap: 8px; padding: 12px 18px; background: #fafafa; border-bottom: 1px solid #eee;">
-                        <span class="result-icon" style="font-size: 1.2em;">✏️</span>
+            <div id="editProposalForm" class="commandLine system html" style="display:none; margin-top: 0px; width: 100%; max-width: 580px;">
+                <div class="result-card" style="border: 1px solid #e0e0e0; border-left: 4px solid #2e7d32; background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; overflow: hidden;">
+                    <div class="result-header" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fafafa; border-bottom: 1px solid #eaeaea;">
+                        <span class="result-icon" style="font-size: 1.15em;">✏️</span>
                         <div style="display: flex; flex-direction: column;">
-                            <strong class="result-title" style="color: #222; font-size: 1em; font-weight: 600;">Update Workspace Information</strong>
-                            <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Provide missing data parameters to sync seamlessly into tblAction records</small>
+                            <strong class="result-title" style="color: #333; font-size: 0.95em; font-weight: 700;">Update Workspace Information</strong>
+                            <small style="color: #666; font-size: 0.78em;">Provide missing data parameters to sync seamlessly into records</small>
                         </div>
                     </div>
                     
-                    <div class="result-body" style="padding: 16px 18px; background: #fdfdfd;">
-                        <div class="compact-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.88em;">
-                            <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #555; font-weight: 600;">Entity Name</label>
-                                <input type="text" id="edit_entity_name" value="${this.escapeHtml(entity.name || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222;">
+                    <div class="result-body" style="padding: 14px; background: #fdfdfd;">
+                        <div class="compact-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85em;">
+                            <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #444; font-weight: 700;">Entity Name</label>
+                                <input type="text" id="edit_entity_name" value="${this.escapeHtml(entity.name || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 1.05em; box-sizing: border-box; color: #333;">
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #555; font-weight: 600;">Contact First Name</label>
-                                <input type="text" id="edit_contact_first" value="${this.escapeHtml(contact.firstName || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222;">
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #444; font-weight: 700;">Contact First Name</label>
+                                <input type="text" id="edit_contact_first" value="${this.escapeHtml(contact.firstName || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 1.05em; box-sizing: border-box; color: #333;">
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #555; font-weight: 600;">Contact Last Name</label>
-                                <input type="text" id="edit_contact_last" value="${this.escapeHtml(contact.lastName || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222;">
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #444; font-weight: 700;">Contact Last Name</label>
+                                <input type="text" id="edit_contact_last" value="${this.escapeHtml(contact.lastName || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 1.05em; box-sizing: border-box; color: #333;">
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #555; font-weight: 600;">Phone Number</label>
-                                <input type="text" id="edit_contact_phone" value="${this.escapeHtml(contact.primaryPhone || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222;">
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #444; font-weight: 700;">Phone Number</label>
+                                <input type="text" id="edit_contact_phone" value="${this.escapeHtml(contact.primaryPhone || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 1.05em; box-sizing: border-box; color: #333;">
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #555; font-weight: 600;">Email Address</label>
-                                <input type="text" id="edit_contact_email" value="${this.escapeHtml(contact.email || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222;">
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #444; font-weight: 700;">Email Address</label>
+                                <input type="text" id="edit_contact_email" value="${this.escapeHtml(contact.email || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 1.05em; box-sizing: border-box; color: #333;">
                             </div>
-                            <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #555; font-weight: 600;">Street Address</label>
-                                <input type="text" id="edit_location_address" value="${this.escapeHtml(location.address || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222;">
+                            <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #444; font-weight: 700;">Street Address</label>
+                                <input type="text" id="edit_location_address" value="${this.escapeHtml(location.address || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 1.05em; box-sizing: border-box; color: #333;">
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #555; font-weight: 600;">City</label>
-                                <input type="text" id="edit_location_city" value="${this.escapeHtml(location.city || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222;">
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #444; font-weight: 700;">City</label>
+                                <input type="text" id="edit_location_city" value="${this.escapeHtml(location.city || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 1.05em; box-sizing: border-box; color: #333;">
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px;">
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <label style="color: #555; font-weight: 600;">State</label>
-                                    <input type="text" id="edit_location_state" value="${this.escapeHtml(location.state || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222;">
+                                <div style="display: flex; flex-direction: column; gap: 3px;">
+                                    <label style="color: #444; font-weight: 700;">State</label>
+                                    <input type="text" id="edit_location_state" value="${this.escapeHtml(location.state || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 3px; font-size: 1.05em; box-sizing: border-box; color: #333;">
                                 </div>
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <label style="color: #dc3545; font-weight: 600;">ZIP Code (Required) *</label>
-                                    <input type="text" id="edit_location_zip" value="${this.escapeHtml(location.zip || '')}" placeholder="e.g. 85016" style="width: 100%; padding: 6px 10px; border: 1px solid #dc3545; background: rgba(220,53,69,0.01); border-radius: 4px; font-size: 1em; font-weight: bold; box-sizing: border-box; color: #222;">
+                                <div style="display: flex; flex-direction: column; gap: 3px;">
+                                    <label style="color: #c62828; font-weight: 700;">ZIP Code *</label>
+                                    <input type="text" id="edit_location_zip" value="${this.escapeHtml(location.zip || '')}" placeholder="e.g. 85016" style="width: 100%; padding: 5px 8px; border: 1px solid #c62828; background: #fff8f8; border-radius: 3px; font-size: 1.05em; font-weight: bold; box-sizing: border-box; color: #333;">
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div style="padding: 10px 18px; border-top: 1px solid #eee; background: #fff;">
-                        <div class="result-actions" style="padding: 0; background: none; border: none; display: flex; gap: 6px;">
-                            <button onclick="SkyIndex.submitEditedProposal(JSON.parse(decodeURIComponent(escape(atob('${dataPayloadAttr}')))))" class="btn btn-success" style="flex: 2; padding: 8px 14px; font-size: 0.88em; background: #28a745; color: #fff; border: 1px solid #218838; border-radius: 4px; cursor: pointer; font-weight: 600;">Submit Updated Proposal</button>
-                            <button onclick="document.getElementById('editProposalForm').style.display='none'; document.getElementById('incompleteReviewCard').style.display='block';" class="btn btn-secondary" style="flex: 1; padding: 8px 14px; font-size: 0.88em; background: #f8f9fa; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Cancel</button>
-                        </div>
+                    <div style="padding: 10px 14px; border-top: 1px solid #eaeaea; background: #fafafa; display: flex; justify-content: flex-end; gap: 6px;">
+                        <button onclick="document.getElementById('editProposalForm').style.display='none'; document.getElementById('incompleteReviewCard').style.display='block';" class="btn" style="padding: 6px 14px; font-size: 0.85em; background: #fff; color: #555; border: 1px solid #ccc; border-radius: 3px; cursor: pointer;">Cancel</button>
+                        <button onclick="SkyIndex.submitEditedProposal(JSON.parse(decodeURIComponent(escape(atob('${dataPayloadAttr}')))))" class="btn" style="padding: 6px 16px; font-size: 0.85em; background: #2e7d32; color: #fff; border: 1px solid #1b5e20; border-radius: 3px; cursor: pointer; font-weight: 600;">Submit Updated Proposal</button>
                     </div>
                 </div>
             </div>
