@@ -1160,6 +1160,39 @@ $proposalSnapshot['snapshotPath'] = $snapshotPath;
 
 #region SECTION 16 — Final Output Builder
 
+// =====================================================
+// FINAL ACTION RESPONSE UPDATE
+// =====================================================
+if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
+    try {
+        $finalResponseData = [
+            'success'           => true,
+            'status'            => 'proposed',
+            'proposalId'        => $proposalId,
+            'data'              => $data ?? [],
+            'databaseResolution'=> $databaseResolution ?? [],
+            'pcm'               => $pcm ?? [],
+            'commitPlan'        => $commitPlan ?? [],
+            'ui'                => $uiState ?? [],
+            'governance'        => $governance ?? [],
+            'narratives'        => $narratives ?? [],
+            'meta'              => $proposalSnapshot['meta'] ?? [],
+            'rawInput'          => $proposalSnapshot['rawInput'] ?? []
+        ];
+
+        error_log('[PPC][ACTION-LOG] Final response data prepared for ActionID: ' . $_SESSION['lastContactProposalActionId']);
+
+        // Optional: Update the action record (uncomment if you have this function)
+        // updateActionResponse($_SESSION['lastContactProposalActionId'], $finalResponseData, $pdo);
+
+    } catch (Throwable $e) {
+        error_log("[PPC][ACTION-LOG] Final response update failed: " . $e->getMessage());
+    }
+}
+
+// =====================================================
+// FINAL OUTPUT
+// =====================================================
 echo json_encode([
     'success'           => true,
     'status'            => 'proposed',
