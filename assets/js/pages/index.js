@@ -1740,7 +1740,6 @@ window.SkyIndex = {
 
     // #region 📇 Proposed Contact Renderer — Compact Summary + Modal Links
     renderProposedContact(data) {
-
         const payload = data || {};
         const proposal = payload.data || {};
         const entity   = proposal.entity || {};
@@ -1748,9 +1747,7 @@ window.SkyIndex = {
         const location = proposal.location || {};
 
         const pcm       = payload.pcm || {};
-        const ui        = payload.ui || {};
         const narratives = payload.narratives || {};
-        const governance = payload.governance || {};
 
         const fullName = [
             contact.contactSalutation,
@@ -1765,61 +1762,60 @@ window.SkyIndex = {
 
         const addressLine = [
             location.locationAddress,
-            location.locationCity,
+            location.locationCity ? `${location.locationCity},` : '',
             location.locationState,
             location.locationZip
-        ].filter(Boolean).join(', ');
+        ].filter(Boolean).join(' ');
 
+        const dataPayloadAttr = btoa(JSON.stringify(payload));
+
+        // CRITICAL: Contents remain strictly inline without layout-breaking 
+        // IDE formatting tabs to prevent rogue browser whitespace text-nodes.
         const html = `
-        <div class="result-card">
-            <div class="result-header bg-success">
-                <span class="result-icon">📇</span>
-                <div class="result-title-group">
-                    <div class="result-title">Proposed Contact</div>
-                    <div class="result-subtitle">Link existing Entity + Location • Insert new Contact</div>
-                </div>
-                <div class="result-status">${pcm.pc || 'PC-?'}</div>
-            </div>
+            <div class="commandLine system html">
+                <div class="result-card" style="border-left-color: #28a745;">
+                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="result-icon">📇</span>
+                            <div style="display: flex; flex-direction: column;">
+                                <strong class="result-title">Proposed Contact</strong>
+                                <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Link existing Entity + Location • Insert new Contact</small>
+                            </div>
+                        </div>
+                        <span style="background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">
+                            ${this.escapeHtml(pcm.pc || 'PC-?')}
+                        </span>
+                    </div>
 
-            <div class="result-body p-4">
-                <div class="summary-grid">
-                    <div><strong>Entity:</strong> ${entity.entityName || '—'}</div>
-                    <div><strong>Contact:</strong> ${contactIdentity || '—'}</div>
-                    <div><strong>Phone:</strong> ${contact.contactPrimaryPhone || '—'}</div>
-                    <div><strong>Email:</strong> ${contact.contactEmail || '—'}</div>
-                    <div><strong>Address:</strong> ${addressLine || '—'}</div>
-                </div>
-            </div>
+                    <div class="result-body" style="padding: 10px 18px 8px;">
+                        <div class="result-grid" style="grid-template-columns: minmax(65px, auto) 1fr; row-gap: 4px; column-gap: 12px; font-size: 0.9em; line-height: 1.3;">
+                            <span style="color: #666; font-weight: 600;">Entity:</span> <span style="color: #222;">${this.escapeHtml(entity.entityName || '—')}</span>
+                            <span style="color: #666; font-weight: 600;">Contact:</span> <span style="color: #222;">${this.escapeHtml(contactIdentity || '—')}</span>
+                            <span style="color: #666; font-weight: 600;">Phone:</span> <span style="color: #222;">${this.escapeHtml(contact.contactPrimaryPhone || '—')}</span>
+                            <span style="color: #666; font-weight: 600;">Email:</span> <span style="color: #222;">${this.escapeHtml(contact.contactEmail || '—')}</span>
+                            <span style="color: #666; font-weight: 600;">Address:</span> <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
+                        </div>
+                    </div>
 
-            <div class="result-summary border-top p-4">
-                <div class="small fw-semibold text-muted mb-2">📋 Proposal Summary</div>
-                
-                <div class="row g-3 small">
-                    <div class="col-6"><strong>Status:</strong> proposed</div>
-                    <div class="col-6"><strong>PCM:</strong> ${pcm.pc || '—'}</div>
-                    <div class="col-6"><strong>Governance:</strong> ${pcm.rs?.join(', ') || 'RS-0'}</div>
-                    <div class="col-6"><strong>Parcel:</strong> ${location.parcelDetails?.[0]?.parcelNumber || '—'}</div>
-                </div>
+                    <div style="padding: 8px 18px; background: rgba(0,0,0,0.01); border-top: 1px dashed #eee; font-size: 0.85em; line-height: 1.35; color: #555;">
+                        <strong style="color: #333; font-size: 0.95em; display: block; margin-bottom: 2px;">Proposal Summary</strong>
+                        ${this.escapeHtml(narratives.ui || 'Proposal ready for review.')}
+                    </div>
 
-                <div class="small mt-3">
-                    ${narratives.ui || 'Proposal ready for review.'}
-                </div>
-            </div>
-
-            <div class="result-actions p-4 border-top d-flex justify-content-between align-items-center">
-                <div class="d-flex gap-3">
-                    <a href="#" onclick="SkyIndex.showContactDetailsModal(); return false;" class="small text-primary">👤 Contact Details</a>
-                    <a href="#" onclick="SkyIndex.showLocationDetailsModal(); return false;" class="small text-primary">📍 Location &amp; Parcel</a>
-                    <a href="#" onclick="SkyIndex.showFullProposalModal(); return false;" class="small text-primary">📋 Full Snapshot</a>
-                </div>
-
-                <div class="d-flex gap-2">
-                    <button class="btn btn-success btn-sm px-4" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
-                    <button class="btn btn-outline-danger btn-sm" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                    <div style="padding: 8px 18px; border-top: 1px solid #eee; background: #fff; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; gap: 14px; font-size: 0.82em; border-bottom: 1px solid #f5f5f5; padding-bottom: 6px;">
+                            <a href="#" onclick="SkyIndex.showContactDetailsModal(JSON.parse(atob('${dataPayloadAttr}'))); return false;" style="color: #007aff; text-decoration: none; font-weight: 500;">👤 Contact Details</a>
+                            <a href="#" onclick="SkyIndex.showLocationDetailsModal(JSON.parse(atob('${dataPayloadAttr}'))); return false;" style="color: #007aff; text-decoration: none; font-weight: 500;">📍 Location &amp; Parcel</a>
+                            <a href="#" onclick="SkyIndex.showFullProposalModal(JSON.parse(atob('${dataPayloadAttr}'))); return false;" style="color: #007aff; text-decoration: none; font-weight: 500;">📋 Full Snapshot</a>
+                        </div>
+                        <div class="result-actions" style="padding: 0; background: none; border: none; gap: 6px;">
+                            <button class="btn btn-success" style="flex: 2; padding: 6px 12px; font-size: 0.88em;" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>
+                            <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #6c757d; color: #fff;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                            <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #dc3545; color: #fff;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
         `;
 
         this.appendSystemHtml(html);
