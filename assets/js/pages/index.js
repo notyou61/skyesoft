@@ -2501,7 +2501,7 @@ window.SkyIndex = {
         }
 
         // 3. Fallback to your quick hint
-        if (this.isQuickSignatureHint(text)) {
+        if (this.isObviousContactSignature(text)) {
             return true;
         }
 
@@ -2574,7 +2574,7 @@ window.SkyIndex = {
         const hasAddressPattern = /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central)\b/i.test(text);
         const hasCityState = /Phoenix|Glendale|Chandler|Scottsdale|Tempe|Buckeye|Green Valley|AZ\b/i.test(text);
 
-        if (hasAddressPattern && hasCityState && !this.isQuickSignatureHint(text)) {
+        if (hasAddressPattern && hasCityState && !this.isObviousContactSignature(text)) {
             return { object: "property", workflow: "property_review", confidence: "high" };
         }
 
@@ -2835,25 +2835,39 @@ window.SkyIndex = {
     // --------------------------------------------------
     // Signature Detection
     // --------------------------------------------------
-    isQuickSignatureHint(text) {
-        if (!text || typeof text !== 'string' || text.length < 40) return false;
+    isObviousContactSignature(query) {
+        const text = (query || '').trim();
+        if (!text) {
+            return false;
+        }
+        // Check for standard digital communication patterns
+        const hasEmail = /@\S+\.\S{2,}/.test(text);
+        const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
+        // Fallback block detection: checks lines and structure if common delimiters are present
+        const lineCount = text.split('\n').filter(l => l.trim().length > 0).length;
+        const hasCommaSeparator = text.includes(',') && lineCount >= 3;
+        // Fast-path evaluation route
+        if ((hasEmail && hasPhone) || (hasEmail && lineCount >= 3) || (hasPhone && hasCommaSeparator)) {
+            return true;
+        }
+        return false;
+    },
 
-        const hasPhone   = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
-        const hasEmail   = /\S+@\S+\.\S{2,}/.test(text);
-        const hasAddress = /\b\d{1,5}\s+[A-Za-z0-9#.,\s-]+(?:Ave|St|Rd|Blvd|Ln|Dr|Way|Central)\b.*?(AZ|TX|CA|FL|NY|AZ)\b.*?\d{5}/.test(text);
-        const hasCompany = /\b(LLC|Inc|Corp|Group|Division|Corporation)\b/i.test(text);
-        const hasTitle   = /\b(Director|Manager|President|CEO|Operations|Owner|VP)\b/i.test(text);
-        const hasiPhone  = /Sent from my iPhone/i.test(text);
-
-        let score = 0;
-        if (hasPhone) score += 2;
-        if (hasEmail) score += 2;
-        if (hasAddress) score += 2;
-        if (hasCompany) score++;
-        if (hasTitle) score++;
-        if (hasiPhone) score++;
-
-        return score >= 2;
+    // Global query router tracking application intent workflow execution
+    handleInputRouting(query) {
+        error_log("[ROUTER] Processing input dispatch pipeline");
+        // Intercept and bypass AI routing tokens if an obvious contact structure is detected
+        if (this.isObviousContactSignature(query)) {
+            error_log("[ROUTER] Fast-path routing triggered: contact_proposal engine");
+            return this.executeWorkflow("contact_proposal", { query: query });
+        }
+        // Fall back to semantic classification when payload structure is ambiguous
+        error_log("[ROUTER] Ambiguous payload structural signature: dispatching to Semantic Responder");
+        return this.callSemanticResponder(query).then(response => {
+            const intent = response?.intent || "general_chat";
+            error_log("[ROUTER] Semantic Responder determined classification intent: " + intent);
+            return this.executeWorkflow(intent, response?.payload || { query: query });
+        });
     },
 
     // Contact Proposal Handler
