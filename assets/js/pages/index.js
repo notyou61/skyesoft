@@ -1850,21 +1850,41 @@ window.SkyIndex = {
 
     // #region 📇 Incomplete Proposal Renderer (Consistent Look)
     renderIncompleteProposal(data) {
-        const payload = data || {};
-        const comp = payload.completeness || {};
-        const preview = payload.data || {};
+        // 🛡️ Bulletproof Shield: If 'data' is null, empty, or stringified, prevent execution crash
+        let cleanPayload = {};
+        if (data && typeof data === 'object') {
+            cleanPayload = data;
+        } else if (typeof data === 'string') {
+            try { cleanPayload = JSON.parse(data); } catch(e) { cleanPayload = {}; }
+        }
+
+        // Setup fallback safe defaults if the network response was completely broken
+        const comp = cleanPayload.completeness || {};
+        const preview = cleanPayload.data || {};
         const entity = preview.entity || {};
         const contact = preview.contact || {};
         const location = preview.location || {};
 
-        // 🛡️ Safe Extraction of Activity Session (Fallback handles 'no_session' edge cases safely)
-        const activeSessionId = payload.activitySessionId || (typeof this.getActivitySessionId === 'function' ? this.getActivitySessionId() : 'no_session');
-        payload.activitySessionId = activeSessionId;
+        // 🗺️ Grab available geolocation metrics safely from any level of the fallback payload
+        const lat = cleanPayload.latitude || preview.location?.latitude || null;
+        const lon = cleanPayload.longitude || preview.location?.longitude || null;
 
-        // Serialize original payload state context cleanly to maintain data continuity
-        const dataPayloadAttr = btoa(JSON.stringify(payload));
+        // Force a valid session ID context string to prevent downstream API drop-outs
+        const activeSessionId = cleanPayload.activitySessionId || (typeof this.getActivitySessionId === 'function' ? this.getActivitySessionId() : 'no_session');
+        
+        // Re-assemble the baseline payload for form resubmission mapping
+        const unifiedData = {
+            ...cleanPayload,
+            activitySessionId: activeSessionId,
+            latitude: lat,
+            longitude: lon,
+            data: { entity, contact, location }
+        };
 
-        // CRITICAL: Content remains strictly inline with precise layouts to prevent design shifting.
+        // Encode full payload state parameters safely into base64 to preserve coordinates
+        const dataPayloadAttr = btoa(unescape(encodeURIComponent(JSON.stringify(unifiedData))));
+
+        // CRITICAL: Precise inline rules matching the successful custom layout framework
         const html = `
             <div id="incompleteReviewCard" class="commandLine system html">
                 <div class="result-card" style="border-left: 4px solid #ffc107; background: #fff; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
@@ -1873,11 +1893,11 @@ window.SkyIndex = {
                             <span class="result-icon" style="font-size: 1.2em;">⚠️</span>
                             <div style="display: flex; flex-direction: column;">
                                 <strong class="result-title" style="color: #222; font-size: 1em; font-weight: 600;">Proposal Incomplete</strong>
-                                <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Missing required data fields</small>
+                                <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Missing required workflow data fields</small>
                             </div>
                         </div>
                         <span style="background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">
-                            ${this.escapeHtml(payload.governance?.resolution_status || 'RS-3')}
+                            ${this.escapeHtml(unifiedData.governance?.resolution_status || 'RS-3')}
                         </span>
                     </div>
 
@@ -1902,13 +1922,13 @@ window.SkyIndex = {
                             <span style="color: #222;">${this.escapeHtml(location.state || '—')} <small style="color: #2b7a43; font-weight: 500; margin-left: 4px;">${this.escapeHtml(comp.location?.state || '')}</small></span>
                             
                             <span style="color: #666; font-weight: 600;">ZIP:</span> 
-                            <span style="color: #222;">${this.escapeHtml(location.zip || '—')} <span style="margin-left: 4px; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; background: rgba(220,53,69,0.08); color: #dc3545; font-weight: bold; border: 1px solid rgba(220,53,69,0.15);">${this.escapeHtml(comp.location?.zip || '')}</span></span>
+                            <span style="color: #222;">${this.escapeHtml(location.zip || '—')} <span style="margin-left: 4px; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; background: rgba(220,53,69,0.08); color: #dc3545; font-weight: bold; border: 1px solid rgba(220,53,69,0.15);">${this.escapeHtml(comp.location?.zip || '✖ ZIP Missing (Required)')}</span></span>
                         </div>
                     </div>
 
                     <div style="padding: 10px 18px; background: rgba(255, 193, 7, 0.04); border-top: 1px dashed rgba(255, 193, 7, 0.25); font-size: 0.85em; line-height: 1.4; color: #665c00;">
                         <strong style="color: #4a4300; font-size: 0.95em; display: block; margin-bottom: 2px;">Validation Status</strong>
-                        ${this.escapeHtml(payload.message || 'Please supply missing required fields before continuing.')}
+                        ${this.escapeHtml(unifiedData.message || 'Proposal data incomplete. Please supply fields below to fix manually.')}
                     </div>
 
                     <div style="padding: 10px 18px; border-top: 1px solid #eee; background: #fff;">
@@ -1927,7 +1947,7 @@ window.SkyIndex = {
                         <span class="result-icon" style="font-size: 1.2em;">✏️</span>
                         <div style="display: flex; flex-direction: column;">
                             <strong class="result-title" style="color: #222; font-size: 1em; font-weight: 600;">Update Workspace Information</strong>
-                            <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Provide missing data points below to sync with tblAction records</small>
+                            <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Provide missing data parameters to sync seamlessly into tblAction records</small>
                         </div>
                     </div>
                     
@@ -1967,8 +1987,8 @@ window.SkyIndex = {
                                     <input type="text" id="edit_location_state" value="${this.escapeHtml(location.state || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222;">
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <label style="color: #dc3545; font-weight: 600;">ZIP (Required) *</label>
-                                    <input type="text" id="edit_location_zip" value="${this.escapeHtml(location.zip || '')}" placeholder="e.g. 85022" style="width: 100%; padding: 6px 10px; border: 1px solid #dc3545; background: rgba(220,53,69,0.01); border-radius: 4px; font-size: 1em; font-weight: bold; box-sizing: border-box; color: #222;">
+                                    <label style="color: #dc3545; font-weight: 600;">ZIP Code (Required) *</label>
+                                    <input type="text" id="edit_location_zip" value="${this.escapeHtml(location.zip || '')}" placeholder="e.g. 85016" style="width: 100%; padding: 6px 10px; border: 1px solid #dc3545; background: rgba(220,53,69,0.01); border-radius: 4px; font-size: 1em; font-weight: bold; box-sizing: border-box; color: #222;">
                                 </div>
                             </div>
                         </div>
@@ -1976,7 +1996,7 @@ window.SkyIndex = {
 
                     <div style="padding: 10px 18px; border-top: 1px solid #eee; background: #fff;">
                         <div class="result-actions" style="padding: 0; background: none; border: none; display: flex; gap: 6px;">
-                            <button onclick="SkyIndex.submitEditedProposal(JSON.parse(atob('${dataPayloadAttr}')))" class="btn btn-success" style="flex: 2; padding: 8px 14px; font-size: 0.88em; background: #28a745; color: #fff; border: 1px solid #218838; border-radius: 4px; cursor: pointer; font-weight: 600;">Submit Updated Proposal</button>
+                            <button onclick="SkyIndex.submitEditedProposal(JSON.parse(decodeURIComponent(escape(atob('${dataPayloadAttr}')))))" class="btn btn-success" style="flex: 2; padding: 8px 14px; font-size: 0.88em; background: #28a745; color: #fff; border: 1px solid #218838; border-radius: 4px; cursor: pointer; font-weight: 600;">Submit Updated Proposal</button>
                             <button onclick="document.getElementById('editProposalForm').style.display='none'; document.getElementById('incompleteReviewCard').style.display='block';" class="btn btn-secondary" style="flex: 1; padding: 8px 14px; font-size: 0.88em; background: #f8f9fa; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">Cancel</button>
                         </div>
                     </div>
