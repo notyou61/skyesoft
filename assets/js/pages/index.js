@@ -2245,20 +2245,16 @@ window.SkyIndex = {
     // #endregion
 
     // #region 📇 Contact Intake UX — Clean Workflow States
+
     suppressRawContactEcho() {
         const output = this.getOutputHost();
         if (!output) return;
-
         const userLines = Array.from(output.querySelectorAll('.commandLine.user'));
         const lastUser = userLines[userLines.length - 1];
-
         if (!lastUser) return;
-
         const content = (lastUser.textContent || '').trim();
-
-        if (content.length > 60 && 
-            (/\d{3}[-.\s]?\d{3}/.test(content) || /@\S+\.\S+/.test(content))) {
-            
+        // Use the exact same fast-path validation rules to ensure consistent UI tracking behavior
+        if (typeof this.isObviousContactSignature === 'function' && this.isObviousContactSignature(content)) {
             lastUser.style.display = 'none';
             lastUser.dataset.suppressed = 'true';
             console.log('[UX] Suppressed raw signature');
@@ -2268,7 +2264,6 @@ window.SkyIndex = {
     renderContactProcessingState() {
         const output = this.getOutputHost();
         if (!output) return;
-
         const processing = document.createElement('div');
         processing.className = 'commandLine system processing';
         processing.innerHTML = `
@@ -2280,10 +2275,8 @@ window.SkyIndex = {
                 </div>
             </div>
         `;
-
         output.appendChild(processing);
         this.scrollOutputToBottom(output);
-
         this._currentContactProcessingEl = processing;
     },
 
@@ -2293,6 +2286,7 @@ window.SkyIndex = {
             this._currentContactProcessingEl = null;
         }
     },
+
     // #endregion
 
     // #region 📇 Proposal Action Handler + Accept Flow
@@ -2876,8 +2870,8 @@ window.SkyIndex = {
 
         const output = this.getOutputHost();
         if (output) {
-            const suppressedLines = output.querySelectorAll('.commandLine.user[data-suppressed="true"]');
-            suppressedLines.forEach(el => el.remove());
+            output.querySelectorAll('.commandLine.user[data-suppressed="true"]')
+                .forEach(el => el.remove());
         }
 
         this.currentProposal = data;
@@ -2888,7 +2882,6 @@ window.SkyIndex = {
         }
 
         if (data.status === 'incomplete') {
-            // NEW: Handle completeness failure
             this.renderIncompleteProposal(data);
             return;
         }
@@ -2898,7 +2891,11 @@ window.SkyIndex = {
             return;
         }
 
-        if (data.status === 'proposed' || data.status === 'partial') {
+        if (
+            data.status === 'proposed' ||
+            data.status === 'partial' ||
+            data.ui?.proposalStatus === 'proposed'
+        ) {
             this.renderProposedContact(data);
             return;
         }
@@ -2911,23 +2908,37 @@ window.SkyIndex = {
         this.appendSystemLine('🔄 Ready for new input.', 'system');
     },
 
-    async submitEditedProposal() {
-        // Collect edited values and re-submit to processProposedContact.php
+    async revalidateProposal() {
+        const contactIdentity = document.getElementById('contactIdentity')?.value || '';
+        const entityName = document.getElementById('entityName')?.value || '';
+        const street = document.getElementById('locationAddress')?.value || '';
+        const city = document.getElementById('locationCity')?.value || '';
+        const state = document.getElementById('locationState')?.value || '';
+        const zip = document.getElementById('locationZip')?.value || '';
+        const phone = document.getElementById('primaryPhone')?.value || '';
+        const email = document.getElementById('email')?.value || '';
+
+        const cityStateZip = [city, state, zip]
+            .filter(Boolean)
+            .join(', ');
+
+        const rawLines = [
+            contactIdentity,
+            entityName,
+            street,
+            cityStateZip,
+            phone,
+            email
+        ];
+
         const payload = {
-            input: [
-                document.getElementById('editEntity')?.value || '',
-                document.getElementById('editFirst')?.value || '',
-                document.getElementById('editLast')?.value || '',
-                document.getElementById('editPhone')?.value || '',
-                document.getElementById('editEmail')?.value || '',
-                document.getElementById('editAddress')?.value || '',
-                document.getElementById('editCity')?.value || '',
-                document.getElementById('editState')?.value || '',
-                document.getElementById('editZip')?.value || ''
-            ].join('\n')
+            input: rawLines.filter(Boolean).join('\n'),
+            activitySessionId: this.getActivitySessionId(),
+            mode: 'propose'
         };
 
-        // Re-run through the processor
+        this.renderContactProcessingState();
+
         const res = await fetch('/skyesoft/api/processProposedContact.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2938,7 +2949,6 @@ window.SkyIndex = {
         const result = await res.json();
         this.handleContactProposal(result);
     },
-
     // #endregion
 
     // #region 📇 Contact Result Renderer
