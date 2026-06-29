@@ -1848,7 +1848,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Incomplete Proposal Renderer (Data Visible)
+    // #region 📇 Incomplete Proposal Renderer (Consistent Look)
     renderIncompleteProposal(data) {
         const comp = data.completeness || {};
         const preview = data.data || {};
@@ -1857,59 +1857,38 @@ window.SkyIndex = {
         const location = preview.location || {};
 
         const html = `
-            <div class="commandLine system html">
-                <div class="result-card">
-                    <div class="result-header bg-warning">
-                        <span class="result-icon">⚠️</span>
-                        <strong class="result-title">Proposal Incomplete</strong>
-                    </div>
+        <div class="result-card">
+            <div class="result-header bg-warning text-dark">
+                <span class="result-icon">⚠️</span>
+                <div class="result-title-group">
+                    <div class="result-title">Proposal Incomplete</div>
+                    <div class="result-subtitle">Missing required fields</div>
+                </div>
+                <div class="result-status">RS-3</div>
+            </div>
 
-                    <div class="result-body p-3">
-                        <div class="small text-muted mb-2">Completeness Review</div>
-                        
-                        <div class="check-list" style="font-size:0.93em; line-height:1.5;">
-                            <div><strong>Entity:</strong> ${this.escapeHtml(entity.name || '—')} ${comp.entity?.name || ''}</div>
-                            <div><strong>Contact Names:</strong> ${this.escapeHtml(contact.firstName || '')} ${this.escapeHtml(contact.lastName || '')} ${comp.contact?.names || ''}</div>
-                            <div><strong>Communication:</strong> ${comp.contact?.comms || '—'}</div>
-                            <div><strong>Street:</strong> ${this.escapeHtml(location.address || '—')} ${comp.location?.street || ''}</div>
-                            <div><strong>City:</strong> ${this.escapeHtml(location.city || '—')} ${comp.location?.city || ''}</div>
-                            <div><strong>State:</strong> ${this.escapeHtml(location.state || '—')} ${comp.location?.state || ''}</div>
-                            <div><strong>ZIP:</strong> ${this.escapeHtml(location.zip || '—')} ${comp.location?.zip || ''}</div>
-                        </div>
+            <div class="result-body">
+                <div class="check-list">
+                    <div><strong>Entity:</strong> ${this.escapeHtml(entity.name || '—')} ${comp.entity?.name || ''}</div>
+                    <div><strong>Contact Names:</strong> ${this.escapeHtml(contact.firstName || '')} ${this.escapeHtml(contact.lastName || '')} ${comp.contact?.names || ''}</div>
+                    <div><strong>Communication:</strong> ${comp.contact?.comms || '—'}</div>
+                    <div><strong>Street:</strong> ${this.escapeHtml(location.address || '—')} ${comp.location?.street || ''}</div>
+                    <div><strong>City:</strong> ${this.escapeHtml(location.city || '—')} ${comp.location?.city || ''}</div>
+                    <div><strong>State:</strong> ${this.escapeHtml(location.state || '—')} ${comp.location?.state || ''}</div>
+                    <div><strong>ZIP:</strong> ${this.escapeHtml(location.zip || '—')} ${comp.location?.zip || ''}</div>
+                </div>
 
-                        <div class="alert alert-warning small mt-3 mb-3">
-                            ${data.message || 'Please supply missing required fields before continuing.'}
-                        </div>
-
-                        <div class="text-center mt-2">
-                            <button onclick="SkyIndex.showEditForm()" class="btn btn-primary">
-                                ✏️ Edit & Resubmit Proposal
-                            </button>
-                        </div>
-                    </div>
+                <div class="alert alert-warning small mt-3">
+                    ${data.message || 'Please supply missing required fields before continuing.'}
                 </div>
             </div>
 
-            <!-- Hidden Edit Form -->
-            <div id="editProposalForm" class="commandLine system html" style="display:none;">
-                <!-- Same compact form as before -->
-                <div class="result-card">
-                    <div class="result-header">
-                        <span class="result-icon">✏️</span>
-                        <strong class="result-title">Edit Proposal</strong>
-                    </div>
-                    <div class="result-body p-3">
-                        <!-- form fields here (same as previous) -->
-                        <div class="compact-form">
-                            <!-- ... your form fields ... -->
-                        </div>
-                    </div>
-                    <div class="result-actions">
-                        <button onclick="SkyIndex.submitEditedProposal()" class="btn btn-success">Submit Updated Proposal</button>
-                        <button onclick="SkyIndex.hideEditForm()" class="btn btn-secondary">Cancel</button>
-                    </div>
-                </div>
+            <div class="result-actions">
+                <button onclick="SkyIndex.showEditForm()" class="btn btn-primary">✏️ Edit & Resubmit Proposal</button>
+                <button onclick="SkyIndex.revalidateProposal()" class="btn btn-outline-secondary">↻ Revalidate</button>
+                <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-danger">✕ Decline</button>
             </div>
+        </div>
         `;
 
         this.appendSystemHtml(html);
