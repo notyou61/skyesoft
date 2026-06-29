@@ -120,17 +120,15 @@ try {
         'responseText'      => 'contact_proposal_processed',
         'intent'            => 'contact_proposal',
         'intentConfidence'  => 0.97,
-        'actionTypeId'      => $inputData['actionTypeId'] ?? 3,   // Prefer passed value, default to Contact Proposal
+        'actionTypeId'      => $inputData['actionTypeId'] ?? 13,   // 13 = Contact Proposal (adjust if needed)
         'origin'            => ACTION_ORIGIN_USER,
         'activitySessionId' => $context['activitySessionId'],
         
-        // Improved lat/lon capture (use input first, then enriched data)
+        // Improved lat/lon
         'latitude'          => $inputData['latitude'] 
-                            ?? $data['location']['locationLatitude'] 
-                            ?? null,
+                            ?? ($data['location']['locationLatitude'] ?? null),
         'longitude'         => $inputData['longitude'] 
-                            ?? $data['location']['locationLongitude'] 
-                            ?? null,
+                            ?? ($data['location']['locationLongitude'] ?? null),
 
         'actionPayloadData' => $actionPayload,
         'actionResponseData'=> null
@@ -1186,10 +1184,19 @@ if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
             'rawInput'          => $proposalSnapshot['rawInput'] ?? []
         ];
 
-        error_log('[PPC][ACTION-LOG] Final response data prepared for ActionID: ' . $_SESSION['lastContactProposalActionId']);
+        // Update the existing action record
+        $updateStmt = $pdo->prepare("
+            UPDATE tblActions 
+            SET actionResponseData = ? 
+            WHERE actionId = ?
+        ");
+        
+        $updateStmt->execute([
+            json_encode($finalResponseData, JSON_UNESCAPED_SLASHES),
+            $_SESSION['lastContactProposalActionId']
+        ]);
 
-        // Optional: Update the action record (uncomment if you have this function)
-        // updateActionResponse($_SESSION['lastContactProposalActionId'], $finalResponseData, $pdo);
+        error_log('[PPC][ACTION-LOG] ✅ actionResponseData updated for ActionID: ' . $_SESSION['lastContactProposalActionId']);
 
     } catch (Throwable $e) {
         error_log("[PPC][ACTION-LOG] Final response update failed: " . $e->getMessage());
