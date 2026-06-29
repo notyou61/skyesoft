@@ -1738,25 +1738,19 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Final Production Compact
+    // #region 📇 Proposed Contact Renderer — Compact Summary + Modal Links
     renderProposedContact(data) {
 
         const payload = data || {};
-
-        const proposal = payload.data || payload.parsed || {};
-        const entity = proposal.entity || {};
-        const contact = proposal.contact || {};
+        const proposal = payload.data || {};
+        const entity   = proposal.entity || {};
+        const contact  = proposal.contact || {};
         const location = proposal.location || {};
 
-        const commitPlan = payload.commitPlan || {};
-        const database = payload.databaseResolution || {};
-        const pcm = payload.pcm || {};
-        const ui = payload.ui || {};
+        const pcm       = payload.pcm || {};
+        const ui        = payload.ui || {};
         const narratives = payload.narratives || {};
-
-        // -------------------------------------
-        // Display Helpers
-        // -------------------------------------
+        const governance = payload.governance || {};
 
         const fullName = [
             contact.contactSalutation,
@@ -1769,44 +1763,12 @@ window.SkyIndex = {
             contact.contactTitle
         ].filter(Boolean).join(' — ');
 
-        const decisionNote =
-            narratives.ui ||
-            "This proposal represents a new entity, location, and contact.";
-
-        const commitReady = ui.canCommit === true;
-
-        const governanceCode = pcm.rs?.[0] || '—';
-
-        const parcelNumber =
-            database.location?.locationParcelNumberRaw ||
-            location.parcelDetails?.[0]?.parcelNumber ||
-            '—';
-
-        // -------------------------------------
-        // Header Color
-        // -------------------------------------
-
-        let statusBgClass = 'bg-success';
-
-        switch (governanceCode) {
-
-            case 'RS-3':
-            case 'RS-6':
-                statusBgClass = 'bg-warning text-dark';
-                break;
-
-            case 'RS-7':
-            case 'RS-8':
-                statusBgClass = 'bg-danger text-white';
-                break;
-
-            default:
-                statusBgClass = 'bg-success';
-        }
-
-        // -------------------------------------
-        // Build HTML
-        // -------------------------------------
+        const addressLine = [
+            location.locationAddress,
+            location.locationCity,
+            location.locationState,
+            location.locationZip
+        ].filter(Boolean).join(', ');
 
         const html = `
         <div class="result-card">
@@ -1816,16 +1778,16 @@ window.SkyIndex = {
                     <div class="result-title">Proposed Contact</div>
                     <div class="result-subtitle">Link existing Entity + Location • Insert new Contact</div>
                 </div>
-                <div class="result-status">[[pcm.pc]]</div>
+                <div class="result-status">${pcm.pc || 'PC-?'}</div>
             </div>
 
             <div class="result-body p-4">
                 <div class="summary-grid">
-                    <div><strong>Entity:</strong> [[data.entity.entityName]]</div>
-                    <div><strong>Contact:</strong> [[data.contact.contactSalutation]] [[data.contact.contactFirstName]] [[data.contact.contactLastName]] — [[data.contact.contactTitle]]</div>
-                    <div><strong>Phone:</strong> [[data.contact.contactPrimaryPhone]]</div>
-                    <div><strong>Email:</strong> [[data.contact.contactEmail]]</div>
-                    <div><strong>Address:</strong> [[data.location.locationAddress]], [[data.location.locationCity]], [[data.location.locationState]] [[data.location.locationZip]]</div>
+                    <div><strong>Entity:</strong> ${entity.entityName || '—'}</div>
+                    <div><strong>Contact:</strong> ${contactIdentity || '—'}</div>
+                    <div><strong>Phone:</strong> ${contact.contactPrimaryPhone || '—'}</div>
+                    <div><strong>Email:</strong> ${contact.contactEmail || '—'}</div>
+                    <div><strong>Address:</strong> ${addressLine || '—'}</div>
                 </div>
             </div>
 
@@ -1834,13 +1796,13 @@ window.SkyIndex = {
                 
                 <div class="row g-3 small">
                     <div class="col-6"><strong>Status:</strong> proposed</div>
-                    <div class="col-6"><strong>PCM:</strong> [[pcm.pc]]</div>
-                    <div class="col-6"><strong>Governance:</strong> [[pcm.rs?.join(', ') || 'RS-0']]</div>
-                    <div class="col-6"><strong>Parcel:</strong> [[data.location.parcelDetails?.[0]?.parcelNumber || 'N/A']]</div>
+                    <div class="col-6"><strong>PCM:</strong> ${pcm.pc || '—'}</div>
+                    <div class="col-6"><strong>Governance:</strong> ${pcm.rs?.join(', ') || 'RS-0'}</div>
+                    <div class="col-6"><strong>Parcel:</strong> ${location.parcelDetails?.[0]?.parcelNumber || '—'}</div>
                 </div>
 
                 <div class="small mt-3">
-                    [[narratives.ui]]
+                    ${narratives.ui || 'Proposal ready for review.'}
                 </div>
             </div>
 
@@ -1858,10 +1820,9 @@ window.SkyIndex = {
                 </div>
             </div>
         </div>
-    `;
+        `;
 
         this.appendSystemHtml(html);
-
     },
     // #endregion
 
