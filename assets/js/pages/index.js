@@ -1175,6 +1175,39 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 📇 Contact Proposal Workflow
+    async executeContactProposalWorkflow(input, activitySessionId) {
+        try {
+            console.log('🚀 Executing dedicated contact proposal workflow');
+
+            const res = await fetch('/skyesoft/api/processProposedContact.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    input: input,
+                    activitySessionId: activitySessionId,
+                    mode: 'propose'
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
+            const proposal = await res.json();
+            this.handleContactProposal(proposal);
+
+        } catch (err) {
+            console.error('❌ Contact proposal workflow failed:', err);
+            this.appendSystemLine('❌ Failed to process contact proposal. Falling back to AI...');
+
+            // Safe fallback
+            await this.executeAICommand(input, activitySessionId);
+        }
+    },
+    // #endregion
+
     // #region 📸 Street View Workflow Helpers
 
         // Global internal reference store to safely maintain runtime Map & Panorama instances across steps
