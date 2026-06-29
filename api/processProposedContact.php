@@ -124,19 +124,17 @@ try {
         'origin'            => ACTION_ORIGIN_USER,
         'activitySessionId' => $context['activitySessionId'],
         
-        // Final lat/lon capture — use enriched data if available
-        'latitude'          => $inputData['latitude'] 
-                            ?? $data['location']['locationLatitude'] 
-                            ?? null,
-        'longitude'         => $inputData['longitude'] 
-                            ?? $data['location']['locationLongitude'] 
-                            ?? null,
+        // Pull from enriched data (Google + Census)
+        'latitude'          => $data['location']['locationLatitude'] ?? null,
+        'longitude'         => $data['location']['locationLongitude'] ?? null,
 
         'actionPayloadData' => $actionPayload,
         'actionResponseData'=> null
     ], $pdo);
 
-    error_log("[PPC][ACTION-LOG] ✅ Success - ActionID: " . ($actionId ?? 'NULL'));
+    error_log("[PPC][ACTION-LOG] ✅ Success - ActionID: " . ($actionId ?? 'NULL') .
+              " | Lat: " . ($data['location']['locationLatitude'] ?? 'NULL') .
+              " | Lon: " . ($data['location']['locationLongitude'] ?? 'NULL'));
 
     $_SESSION['lastContactProposalActionId'] = $actionId;
 
