@@ -1725,14 +1725,25 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Final Compact
+    // #region 📇 Proposed Contact Renderer — Final Production Compact
     renderProposedContact(data) {
-        const proposal = data?.data || data?.parsed || {};
+
+        const payload = data || {};
+
+        const proposal = payload.data || payload.parsed || {};
         const entity = proposal.entity || {};
         const contact = proposal.contact || {};
         const location = proposal.location || {};
-        const resolution = data?.resolution || {};
-        const narratives = resolution.narratives || {};
+
+        const commitPlan = payload.commitPlan || {};
+        const database = payload.databaseResolution || {};
+        const pcm = payload.pcm || {};
+        const ui = payload.ui || {};
+        const narratives = payload.narratives || {};
+
+        // -------------------------------------
+        // Display Helpers
+        // -------------------------------------
 
         const fullName = [
             contact.contactSalutation,
@@ -1740,100 +1751,321 @@ window.SkyIndex = {
             contact.contactLastName
         ].filter(Boolean).join(' ');
 
-        const contactIdentity = [fullName, contact.contactTitle]
-            .filter(Boolean).join(' — ');
+        const contactIdentity = [
+            fullName,
+            contact.contactTitle
+        ].filter(Boolean).join(' — ');
 
-        const fullAddress = [
-            location.locationAddress || location.address || '',
-            location.locationAddressSuite || location.suite ? `Suite ${location.locationAddressSuite || location.suite}` : '',
-            [location.locationCity || location.city, location.locationState || location.state, location.locationZip || location.zip]
-                .filter(Boolean).join(', ')
-        ].filter(Boolean).join('\n');
+        const decisionNote =
+            narratives.ui ||
+            "This proposal represents a new entity, location, and contact.";
 
-        const decisionNote = narratives.decision?.[0] || "This proposal represents a new entity, location, and contact.";
-        const governanceNote = narratives.informational?.[0] || "No governance issues were detected.";
-        const commitReady = resolution.decision?.readyForCommit === true;
+        const commitReady = ui.canCommit === true;
+
+        const governanceCode = pcm.rs?.[0] || '—';
+
+        const parcelNumber =
+            database.location?.locationParcelNumberRaw ||
+            location.parcelDetails?.[0]?.parcelNumber ||
+            '—';
+
+        // -------------------------------------
+        // Header Color
+        // -------------------------------------
+
+        let statusBgClass = 'bg-success';
+
+        switch (governanceCode) {
+
+            case 'RS-3':
+            case 'RS-6':
+                statusBgClass = 'bg-warning text-dark';
+                break;
+
+            case 'RS-7':
+            case 'RS-8':
+                statusBgClass = 'bg-danger text-white';
+                break;
+
+            default:
+                statusBgClass = 'bg-success';
+        }
+
+        // -------------------------------------
+        // Build HTML
+        // -------------------------------------
 
         const html = `
-            <div class="contact-card proposed compact">
 
-                <div class="card-header bg-light py-2 px-3 border-bottom">
-                    <strong>📇 Proposed Contact</strong>
-                    <small class="text-muted ms-2">Review & confirm before saving</small>
+    <div class="result-card">
+
+        <div class="result-header ${statusBgClass}">
+
+            <span class="result-icon">📇</span>
+
+            <div class="result-title-group">
+
+                <div class="result-title">
+                    Proposed Contact
                 </div>
 
-                <div class="card-body p-3">
-                    <form id="proposalForm">
-
-                        <div class="form-row mb-2">
-                            <label class="col-form-label">Company / Entity</label>
-                            <div class="form-field">
-                                <input type="text" class="form-control form-control-sm" id="entityName" value="${entity.entityName || entity.name || ''}">
-                            </div>
-                        </div>
-
-                        <div class="form-row mb-2">
-                            <label class="col-form-label">Contact Identity</label>
-                            <div class="form-field">
-                                <input type="text" class="form-control form-control-sm" id="contactIdentity" value="${contactIdentity}">
-                            </div>
-                        </div>
-
-                        <div class="form-row mb-2">
-                            <label class="col-form-label">Phone</label>
-                            <div class="form-field">
-                                <input type="tel" class="form-control form-control-sm" id="primaryPhone" value="${contact.contactPrimaryPhone || ''}">
-                            </div>
-                        </div>
-
-                        <div class="form-row mb-2">
-                            <label class="col-form-label">Email</label>
-                            <div class="form-field">
-                                <input type="email" class="form-control form-control-sm" id="email" value="${contact.contactEmail || ''}">
-                            </div>
-                        </div>
-
-                        <!-- Address -->
-                        <div class="form-row address-row align-items-start mb-3">
-                            <label class="col-form-label">Address</label>
-                            <div class="form-field">
-                                <textarea class="form-control form-control-sm" id="fullAddress" rows="2" style="resize: vertical;">${fullAddress}</textarea>
-                            </div>
-                        </div>
-
-                        <!-- GOVERNANCE NOTES -->
-                        <div class="governance-notes mt-3 pt-3 border-top">
-                            <div class="small fw-semibold text-muted mb-1">📋 Proposed Contact Notes</div>
-                            <div class="small">${decisionNote}</div>
-                            <div class="small text-muted mt-1">${governanceNote}</div>
-                            ${commitReady ? 
-                                `<div class="small text-success mt-2">✔ Ready for Commit — All records can be created.</div>` : 
-                                `<div class="small text-warning mt-2">⚠ Review recommended before committing.</div>`
-                            }
-                        </div>
-
-                        <a href="#" onclick="SkyIndex.viewContactReport(); return false;" 
-                           class="small text-primary d-block text-end mt-3">
-                            📄 View Full Report (PDF)
-                        </a>
-
-                    </form>
-                </div>
-
-                <hr class="my-0">
-                <div class="card-footer bg-light py-2 px-3 d-flex gap-2">
-                    <button onclick="SkyIndex.acceptEditedProposal()" class="btn btn-success btn-sm flex-fill">
-                        ✔ Accept & Save
-                    </button>
-                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-secondary btn-sm flex-fill">
-                        ✕ Decline
-                    </button>
+                <div class="result-subtitle">
+                    ${this.escapeHtml(commitPlan.summary || '—')}
                 </div>
 
             </div>
-        `;
+
+            <div class="result-status">
+                ${this.escapeHtml(pcm.pc || '—')}
+            </div>
+
+        </div>
+
+        <div class="result-body p-3">
+
+            <form id="proposalForm">
+
+                <div class="form-row mb-2">
+                    <label class="col-form-label">Company / Entity</label>
+
+                    <div class="form-field">
+
+                        <input
+                            type="text"
+                            id="entityName"
+                            class="form-control form-control-sm"
+                            value="${this.escapeHtml(entity.entityName || entity.name || '')}">
+
+                    </div>
+                </div>
+
+                <div class="form-row mb-2">
+                    <label class="col-form-label">Contact Identity</label>
+
+                    <div class="form-field">
+
+                        <input
+                            type="text"
+                            id="contactIdentity"
+                            class="form-control form-control-sm"
+                            value="${this.escapeHtml(contactIdentity)}">
+
+                    </div>
+                </div>
+
+                <div class="form-row mb-2">
+                    <label class="col-form-label">Phone</label>
+
+                    <div class="form-field">
+
+                        <input
+                            type="tel"
+                            id="primaryPhone"
+                            class="form-control form-control-sm"
+                            value="${this.escapeHtml(contact.contactPrimaryPhone || '')}">
+
+                    </div>
+                </div>
+
+                <div class="form-row mb-2">
+                    <label class="col-form-label">Email</label>
+
+                    <div class="form-field">
+
+                        <input
+                            type="email"
+                            id="email"
+                            class="form-control form-control-sm"
+                            value="${this.escapeHtml(contact.contactEmail || '')}">
+
+                    </div>
+                </div>
+
+                <div class="form-row mb-2">
+                    <label class="col-form-label">Street</label>
+
+                    <div class="form-field">
+
+                        <input
+                            type="text"
+                            id="locationAddress"
+                            class="form-control form-control-sm"
+                            value="${this.escapeHtml(location.locationAddress || location.address || '')}">
+
+                    </div>
+                </div>
+
+                <div class="form-row mb-2">
+
+                    <label class="col-form-label">City</label>
+
+                    <div class="form-field">
+
+                        <input
+                            type="text"
+                            id="locationCity"
+                            class="form-control form-control-sm"
+                            value="${this.escapeHtml(location.locationCity || location.city || '')}">
+
+                    </div>
+
+                </div>
+
+                <div class="form-row mb-2">
+
+                    <label class="col-form-label">State</label>
+
+                    <div class="form-field">
+
+                        <input
+                            type="text"
+                            id="locationState"
+                            class="form-control form-control-sm"
+                            value="${this.escapeHtml(location.locationState || location.state || '')}">
+
+                    </div>
+
+                </div>
+
+                <div class="form-row mb-2">
+
+                    <label class="col-form-label">ZIP</label>
+
+                    <div class="form-field">
+
+                        <input
+                            type="text"
+                            id="locationZip"
+                            class="form-control form-control-sm"
+                            value="${this.escapeHtml(location.locationZip || location.zip || '')}">
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
+        <div class="result-summary border-top pt-3 px-3">
+
+            <div class="small fw-semibold text-muted mb-2">
+                📋 Proposal Summary
+            </div>
+
+            <div class="row g-2 small mb-3">
+
+                <div class="col-6">
+                    <strong>Status:</strong>
+                    ${this.escapeHtml(ui.proposalStatus || '—')}
+                </div>
+
+                <div class="col-6">
+                    <strong>PCM:</strong>
+                    ${this.escapeHtml(pcm.pc || '—')}
+                </div>
+
+                <div class="col-12">
+                    <strong>Governance:</strong>
+                    ${this.escapeHtml(pcm.rs?.join(', ') || '—')}
+                </div>
+
+                <div class="col-6">
+                    <strong>Entity:</strong>
+                    ${this.escapeHtml(database.entity?.status || '—')}
+                </div>
+
+                <div class="col-6">
+                    <strong>Location:</strong>
+                    ${this.escapeHtml(database.location?.status || '—')}
+                </div>
+
+                <div class="col-6">
+                    <strong>Contact:</strong>
+                    ${this.escapeHtml(database.contact?.status || '—')}
+                </div>
+
+                <div class="col-6">
+                    <strong>Commit:</strong>
+                    ${commitReady ? 'Ready' : 'Review'}
+                </div>
+
+                <div class="col-6">
+                    <strong>Parcel:</strong>
+                    ${this.escapeHtml(parcelNumber)}
+                </div>
+
+                <div class="col-6">
+                    <strong>Jurisdiction:</strong>
+                    ${this.escapeHtml(location.jurisdictionName || '—')}
+                </div>
+
+            </div>
+
+            <div class="small mb-1">
+                ${this.escapeHtml(decisionNote)}
+            </div>
+
+            ${commitReady
+
+                ? `<div class="small text-success fw-semibold mt-2">
+                        ✔ Ready for Commit — All records can be created.
+                </div>`
+
+                : `<div class="small text-warning fw-semibold mt-2">
+                        ⚠ Review recommended before committing.
+                </div>`
+
+            }
+
+        </div>
+
+        <div class="result-actions p-3 d-flex gap-2 justify-content-between align-items-center border-top mt-2">
+
+            <a
+                href="#"
+                class="small text-primary"
+                onclick="SkyIndex.viewContactReport(); return false;">
+
+                📄 View Full Report
+
+            </a>
+
+            <div class="d-flex gap-2">
+
+                <button
+                    class="btn btn-success btn-sm"
+                    onclick="SkyIndex.acceptEditedProposal()">
+
+                    ✔ Accept & Save
+
+                </button>
+
+                <button
+                    class="btn btn-outline-secondary btn-sm"
+                    onclick="SkyIndex.revalidateProposal()">
+
+                    ↻ Revalidate
+
+                </button>
+
+                <button
+                    class="btn btn-outline-danger btn-sm"
+                    onclick="SkyIndex.handleProposalAction('decline')">
+
+                    ✕ Decline
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+    `;
 
         this.appendSystemHtml(html);
+
     },
     // #endregion
 
