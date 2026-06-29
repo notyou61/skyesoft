@@ -120,15 +120,17 @@ try {
         'responseText'      => 'contact_proposal_processed',
         'intent'            => 'contact_proposal',
         'intentConfidence'  => 0.97,
-        'actionTypeId'      => $inputData['actionTypeId'] ?? 13,   // 13 = Contact Proposal (adjust if needed)
+        'actionTypeId'      => $inputData['actionTypeId'] ?? 13,
         'origin'            => ACTION_ORIGIN_USER,
         'activitySessionId' => $context['activitySessionId'],
         
-        // Improved lat/lon
+        // Final lat/lon capture — use enriched data if available
         'latitude'          => $inputData['latitude'] 
-                            ?? ($data['location']['locationLatitude'] ?? null),
+                            ?? $data['location']['locationLatitude'] 
+                            ?? null,
         'longitude'         => $inputData['longitude'] 
-                            ?? ($data['location']['locationLongitude'] ?? null),
+                            ?? $data['location']['locationLongitude'] 
+                            ?? null,
 
         'actionPayloadData' => $actionPayload,
         'actionResponseData'=> null
