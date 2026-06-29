@@ -120,11 +120,17 @@ try {
         'responseText'      => 'contact_proposal_processed',
         'intent'            => 'contact_proposal',
         'intentConfidence'  => 0.97,
-        'actionTypeId'      => 3,
+        'actionTypeId'      => $inputData['actionTypeId'] ?? 3,   // Prefer passed value, default to Contact Proposal
         'origin'            => ACTION_ORIGIN_USER,
         'activitySessionId' => $context['activitySessionId'],
-        'latitude'          => $inputData['latitude'] ?? null,
-        'longitude'         => $inputData['longitude'] ?? null,
+        
+        // Improved lat/lon capture (use input first, then enriched data)
+        'latitude'          => $inputData['latitude'] 
+                            ?? $data['location']['locationLatitude'] 
+                            ?? null,
+        'longitude'         => $inputData['longitude'] 
+                            ?? $data['location']['locationLongitude'] 
+                            ?? null,
 
         'actionPayloadData' => $actionPayload,
         'actionResponseData'=> null
