@@ -99,48 +99,6 @@ $pdo = getPDO() ?? null;
 
 error_log('[PPC] Runtime services loaded');
 
-// =====================================================
-// 📊 ACTION LOGGING (Mirror Street View Pattern)
-// =====================================================
-error_log('[PPC][ACTION-LOG] Starting action insert');
-
-try {
-    $actionPayload = [
-        'input'              => $rawInputOriginal,
-        'rawInput'           => $rawInput,
-        'activitySessionId'  => $context['activitySessionId'],
-        'mode'               => $inputData['mode'] ?? 'propose',
-        'requestId'          => $context['requestId'],
-        'source'             => 'processProposedContact'
-    ];
-
-    $actionId = insertActionPrompt([
-        'contactId'         => $_SESSION['contactId'] ?? null,
-        'promptText'        => $rawInputOriginal,
-        'responseText'      => 'contact_proposal_processed',
-        'intent'            => 'contact_proposal',
-        'intentConfidence'  => 0.97,
-        'actionTypeId'      => $inputData['actionTypeId'] ?? 13,
-        'origin'            => ACTION_ORIGIN_USER,
-        'activitySessionId' => $context['activitySessionId'],
-        
-        // Pull from enriched data (Google + Census)
-        'latitude'          => $data['location']['locationLatitude'] ?? null,
-        'longitude'         => $data['location']['locationLongitude'] ?? null,
-
-        'actionPayloadData' => $actionPayload,
-        'actionResponseData'=> null
-    ], $pdo);
-
-    error_log("[PPC][ACTION-LOG] ✅ Success - ActionID: " . ($actionId ?? 'NULL') .
-              " | Lat: " . ($data['location']['locationLatitude'] ?? 'NULL') .
-              " | Lon: " . ($data['location']['locationLongitude'] ?? 'NULL'));
-
-    $_SESSION['lastContactProposalActionId'] = $actionId;
-
-} catch (Throwable $e) {
-    error_log("[PPC][ACTION-LOG] ❌ Failed: " . $e->getMessage());
-}
 
 #endregion
 
@@ -682,6 +640,48 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
 } else {
     error_log('[PPC][SECTION-07] Skipping Google geocode (missing address or API key)');
     $data['location']['locationValidated'] = false;
+}
+
+// =====================================================
+// 📊 ACTION LOGGING (After Google Enrichment)
+// =====================================================
+error_log('[PPC][ACTION-LOG] Starting action insert (post-enrichment)');
+
+try {
+    $actionPayload = [
+        'input'              => $rawInputOriginal,
+        'rawInput'           => $rawInput,
+        'activitySessionId'  => $context['activitySessionId'],
+        'mode'               => $inputData['mode'] ?? 'propose',
+        'requestId'          => $context['requestId'],
+        'source'             => 'processProposedContact'
+    ];
+
+    $actionId = insertActionPrompt([
+        'contactId'         => $_SESSION['contactId'] ?? null,
+        'promptText'        => $rawInputOriginal,
+        'responseText'      => 'contact_proposal_processed',
+        'intent'            => 'contact_proposal',
+        'intentConfidence'  => 0.97,
+        'actionTypeId'      => $inputData['actionTypeId'] ?? 13,
+        'origin'            => ACTION_ORIGIN_USER,
+        'activitySessionId' => $context['activitySessionId'],
+        
+        'latitude'          => $data['location']['locationLatitude'] ?? null,
+        'longitude'         => $data['location']['locationLongitude'] ?? null,
+
+        'actionPayloadData' => $actionPayload,
+        'actionResponseData'=> null
+    ], $pdo);
+
+    error_log("[PPC][ACTION-LOG] ✅ Success - ActionID: " . ($actionId ?? 'NULL') .
+              " | Lat: " . ($data['location']['locationLatitude'] ?? 'NULL') .
+              " | Lon: " . ($data['location']['locationLongitude'] ?? 'NULL'));
+
+    $_SESSION['lastContactProposalActionId'] = $actionId;
+
+} catch (Throwable $e) {
+    error_log("[PPC][ACTION-LOG] ❌ Failed: " . $e->getMessage());
 }
 
 #endregion
