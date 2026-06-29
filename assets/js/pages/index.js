@@ -1850,45 +1850,72 @@ window.SkyIndex = {
 
     // #region 📇 Incomplete Proposal Renderer (Consistent Look)
     renderIncompleteProposal(data) {
-        const comp = data.completeness || {};
-        const preview = data.data || {};
+        const payload = data || {};
+        const comp = payload.completeness || {};
+        const preview = payload.data || {};
         const entity = preview.entity || {};
         const contact = preview.contact || {};
         const location = preview.location || {};
 
+        const dataPayloadAttr = btoa(JSON.stringify(payload));
+
+        // CRITICAL: Contents remain strictly inline without layout-breaking 
+        // IDE formatting tabs to prevent rogue browser whitespace text-nodes.
         const html = `
-        <div class="result-card">
-            <div class="result-header bg-warning text-dark">
-                <span class="result-icon">⚠️</span>
-                <div class="result-title-group">
-                    <div class="result-title">Proposal Incomplete</div>
-                    <div class="result-subtitle">Missing required fields</div>
-                </div>
-                <div class="result-status">RS-3</div>
-            </div>
+            <div class="commandLine system html">
+                <div class="result-card" style="border-left-color: #ffc107;">
+                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="result-icon">⚠️</span>
+                            <div style="display: flex; flex-direction: column;">
+                                <strong class="result-title">Proposal Incomplete</strong>
+                                <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Missing required workflow fields</small>
+                            </div>
+                        </div>
+                        <span style="background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">
+                            RS-3
+                        </span>
+                    </div>
 
-            <div class="result-body">
-                <div class="check-list">
-                    <div><strong>Entity:</strong> ${this.escapeHtml(entity.name || '—')} ${comp.entity?.name || ''}</div>
-                    <div><strong>Contact Names:</strong> ${this.escapeHtml(contact.firstName || '')} ${this.escapeHtml(contact.lastName || '')} ${comp.contact?.names || ''}</div>
-                    <div><strong>Communication:</strong> ${comp.contact?.comms || '—'}</div>
-                    <div><strong>Street:</strong> ${this.escapeHtml(location.address || '—')} ${comp.location?.street || ''}</div>
-                    <div><strong>City:</strong> ${this.escapeHtml(location.city || '—')} ${comp.location?.city || ''}</div>
-                    <div><strong>State:</strong> ${this.escapeHtml(location.state || '—')} ${comp.location?.state || ''}</div>
-                    <div><strong>ZIP:</strong> ${this.escapeHtml(location.zip || '—')} ${comp.location?.zip || ''}</div>
-                </div>
+                    <div class="result-body" style="padding: 10px 18px 8px;">
+                        <div class="result-grid" style="grid-template-columns: minmax(115px, auto) 1fr; row-gap: 4px; column-gap: 12px; font-size: 0.9em; line-height: 1.3;">
+                            <span style="color: #666; font-weight: 600;">Entity:</span> 
+                            <span style="color: #222;">${this.escapeHtml(entity.name || '—')} ${this.escapeHtml(comp.entity?.name || '')}</span>
+                            
+                            <span style="color: #666; font-weight: 600;">Contact Names:</span> 
+                            <span style="color: #222;">${this.escapeHtml(contact.firstName || '')} ${this.escapeHtml(contact.lastName || '')} ${this.escapeHtml(comp.contact?.names || '')}</span>
+                            
+                            <span style="color: #666; font-weight: 600;">Communication:</span> 
+                            <span style="color: #222;">${this.escapeHtml(comp.contact?.comms || '—')}</span>
+                            
+                            <span style="color: #666; font-weight: 600;">Street:</span> 
+                            <span style="color: #222;">${this.escapeHtml(location.address || '—')} ${this.escapeHtml(comp.location?.street || '')}</span>
+                            
+                            <span style="color: #666; font-weight: 600;">City:</span> 
+                            <span style="color: #222;">${this.escapeHtml(location.city || '—')} ${this.escapeHtml(comp.location?.city || '')}</span>
+                            
+                            <span style="color: #666; font-weight: 600;">State:</span> 
+                            <span style="color: #222;">${this.escapeHtml(location.state || '—')} ${this.escapeHtml(comp.location?.state || '')}</span>
+                            
+                            <span style="color: #666; font-weight: 600;">ZIP:</span> 
+                            <span style="color: #222;">${this.escapeHtml(location.zip || '—')} ${this.escapeHtml(comp.location?.zip || '')}</span>
+                        </div>
+                    </div>
 
-                <div class="alert alert-warning small mt-3">
-                    ${data.message || 'Please supply missing required fields before continuing.'}
+                    <div style="padding: 8px 18px; background: rgba(255, 193, 7, 0.04); border-top: 1px dashed rgba(255, 193, 7, 0.25); font-size: 0.85em; line-height: 1.35; color: #665c00;">
+                        <strong style="color: #4a4300; font-size: 0.95em; display: block; margin-bottom: 2px;">Validation System Message</strong>
+                        ${this.escapeHtml(payload.message || 'Please supply missing required fields before continuing.')}
+                    </div>
+
+                    <div style="padding: 8px 18px; border-top: 1px solid #eee; background: #fff;">
+                        <div class="result-actions" style="padding: 0; background: none; border: none; gap: 6px;">
+                            <button class="btn btn-warning" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #ffc107; color: #212529; border: 1px solid #e0a800;" onclick="SkyIndex.showEditForm(JSON.parse(atob('${dataPayloadAttr}')))">✏️ Edit &amp; Resubmit Proposal</button>
+                            <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #6c757d; color: #fff;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                            <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #dc3545; color: #fff;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <div class="result-actions">
-                <button onclick="SkyIndex.showEditForm()" class="btn btn-primary">✏️ Edit & Resubmit Proposal</button>
-                <button onclick="SkyIndex.revalidateProposal()" class="btn btn-outline-secondary">↻ Revalidate</button>
-                <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-danger">✕ Decline</button>
-            </div>
-        </div>
         `;
 
         this.appendSystemHtml(html);
