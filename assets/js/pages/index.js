@@ -1738,7 +1738,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Compact Summary + Modal Links
+    // #region 📇 Proposed Contact Renderer — Compact + PC-Aware
     renderProposedContact(data) {
         const payload = data || {};
         const proposal = payload.data || {};
@@ -1748,6 +1748,9 @@ window.SkyIndex = {
 
         const pcm       = payload.pcm || {};
         const narratives = payload.narratives || {};
+
+        const pc = pcm.pc || 'PC-?';
+        const rs = pcm.rs || [];
 
         const fullName = [
             contact.contactSalutation,
@@ -1762,10 +1765,28 @@ window.SkyIndex = {
 
         const addressLine = [
             location.locationAddress,
-            location.locationCity ? `${location.locationCity},` : '',
+            location.locationCity,
             location.locationState,
             location.locationZip
-        ].filter(Boolean).join(' ');
+        ].filter(Boolean).join(', ');
+
+        const isIncomplete = rs.includes('RS-3');
+        const isExactMatch = pc === 'PC-0';
+
+        // Canonical dynamic style states mapping
+        let borderLeftColor = '#28a745'; // Success Green (Default)
+        let badgeStyle = 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);';
+        let subtitle = 'Link existing Entity + Location • Insert new Contact';
+
+        if (isIncomplete) {
+            borderLeftColor = '#ffc107'; // Warning Yellow
+            badgeStyle = 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);';
+            subtitle = 'Incomplete — Missing required fields';
+        } else if (isExactMatch) {
+            borderLeftColor = '#17a2b8'; // Info Blue
+            badgeStyle = 'background: rgba(23, 162, 184, 0.15); color: #117a8b; border: 1px solid rgba(23, 162, 184, 0.3);';
+            subtitle = 'All records already exist — No action required';
+        }
 
         const dataPayloadAttr = btoa(JSON.stringify(payload));
 
@@ -1773,17 +1794,17 @@ window.SkyIndex = {
         // IDE formatting tabs to prevent rogue browser whitespace text-nodes.
         const html = `
             <div class="commandLine system html">
-                <div class="result-card" style="border-left-color: #28a745;">
+                <div class="result-card" style="border-left-color: ${borderLeftColor};">
                     <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span class="result-icon">📇</span>
                             <div style="display: flex; flex-direction: column;">
                                 <strong class="result-title">Proposed Contact</strong>
-                                <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Link existing Entity + Location • Insert new Contact</small>
+                                <small style="color: #666; font-size: 0.78em; line-height: 1.2;">${this.escapeHtml(subtitle)}</small>
                             </div>
                         </div>
-                        <span style="background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">
-                            ${this.escapeHtml(pcm.pc || 'PC-?')}
+                        <span style="${badgeStyle} padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">
+                            ${this.escapeHtml(pc)}
                         </span>
                     </div>
 
@@ -1809,7 +1830,12 @@ window.SkyIndex = {
                             <a href="#" onclick="SkyIndex.showFullProposalModal(JSON.parse(atob('${dataPayloadAttr}'))); return false;" style="color: #007aff; text-decoration: none; font-weight: 500;">📋 Full Snapshot</a>
                         </div>
                         <div class="result-actions" style="padding: 0; background: none; border: none; gap: 6px;">
-                            <button class="btn btn-success" style="flex: 2; padding: 6px 12px; font-size: 0.88em;" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>
+                            ${isExactMatch ? 
+                                `<button class="btn btn-secondary" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;" disabled>✓ Already Exists</button>` :
+                                isIncomplete ?
+                                `<button class="btn btn-warning" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #ffc107; color: #212529;" onclick="SkyIndex.revalidateProposal()">🔄 Fix Missing Fields</button>` :
+                                `<button class="btn btn-success" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #28a745; color: #fff;" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>`
+                            }
                             <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #6c757d; color: #fff;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
                             <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #dc3545; color: #fff;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                         </div>
