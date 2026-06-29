@@ -1849,96 +1849,139 @@ window.SkyIndex = {
     // #endregion
 
     // #region 📇 Incomplete Proposal Renderer (Consistent Look)
-
     renderIncompleteProposal(data) {
-
-        const comp = data.completeness || {};
-
-        const preview = data.data || {};
-
+        const payload = data || {};
+        const comp = payload.completeness || {};
+        const preview = payload.data || {};
         const entity = preview.entity || {};
-
         const contact = preview.contact || {};
-
         const location = preview.location || {};
 
+        // 🛡️ Encode payload context so submitEditedProposal can extract coordinates & map to tblAction
+        const dataPayloadAttr = btoa(JSON.stringify(payload));
 
-
+        // CRITICAL: Contents remain strictly inline without layout-breaking 
+        // IDE formatting tabs to prevent rogue browser whitespace text-nodes.
         const html = `
+            <div id="incompleteReviewCard" class="commandLine system html">
+                <div class="result-card" style="border-left-color: #ffc107;">
+                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="result-icon">⚠️</span>
+                            <div style="display: flex; flex-direction: column;">
+                                <strong class="result-title">Proposal Incomplete</strong>
+                                <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Missing required workflow fields</small>
+                            </div>
+                        </div>
+                        <span style="background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">
+                            ${this.escapeHtml(payload.governance?.resolution_status || 'RS-3')}
+                        </span>
+                    </div>
 
-        <div class="result-card">
+                    <div class="result-body" style="padding: 10px 18px 8px;">
+                        <div class="result-grid" style="display: grid; grid-template-columns: minmax(115px, auto) 1fr; row-gap: 4px; column-gap: 12px; font-size: 0.9em; line-height: 1.3;">
+                            <span style="color: #666; font-weight: 600;">Entity:</span> 
+                            <span style="color: #222;">${this.escapeHtml(entity.name || '—')} <small style="color: #666; font-family: monospace; margin-left: 4px;">(${this.escapeHtml(comp.entity?.name || '')})</small></span>
+                            
+                            <span style="color: #666; font-weight: 600;">Contact Names:</span> 
+                            <span style="color: #222;">${this.escapeHtml(contact.firstName || '')} ${this.escapeHtml(contact.lastName || '')} <small style="color: #666; font-family: monospace; margin-left: 4px;">(${this.escapeHtml(comp.contact?.names || '')})</small></span>
+                            
+                            <span style="color: #666; font-weight: 600;">Communication:</span> 
+                            <span style="color: #222;"><small style="color: #222; font-family: monospace;">${this.escapeHtml(comp.contact?.comms || '—')}</small></span>
+                            
+                            <span style="color: #666; font-weight: 600;">Street:</span> 
+                            <span style="color: #222;">${this.escapeHtml(location.address || '—')} <small style="color: #666; font-family: monospace; margin-left: 4px;">(${this.escapeHtml(comp.location?.street || '')})</small></span>
+                            
+                            <span style="color: #666; font-weight: 600;">City:</span> 
+                            <span style="color: #222;">${this.escapeHtml(location.city || '—')} <small style="color: #666; font-family: monospace; margin-left: 4px;">(${this.escapeHtml(comp.location?.city || '')})</small></span>
+                            
+                            <span style="color: #666; font-weight: 600;">State:</span> 
+                            <span style="color: #222;">${this.escapeHtml(location.state || '—')} <small style="color: #666; font-family: monospace; margin-left: 4px;">(${this.escapeHtml(comp.location?.state || '')})</small></span>
+                            
+                            <span style="color: #666; font-weight: 600;">ZIP:</span> 
+                            <span style="color: #222;">${this.escapeHtml(location.zip || '—')} <span style="font-family: monospace; margin-left: 4px; padding: 1px 4px; border-radius: 3px; font-size: 0.9em; background: rgba(220,53,69,0.08); color: #dc3545; font-weight: bold;">${this.escapeHtml(comp.location?.zip || '')}</span></span>
+                        </div>
+                    </div>
 
-            <div class="result-header bg-warning text-dark">
+                    <div style="padding: 8px 18px; background: rgba(255, 193, 7, 0.04); border-top: 1px dashed rgba(255, 193, 7, 0.25); font-size: 0.85em; line-height: 1.35; color: #665c00;">
+                        <strong style="color: #4a4300; font-size: 0.95em; display: block; margin-bottom: 2px;">Validation System Message</strong>
+                        ${this.escapeHtml(payload.message || 'Please supply missing required fields before continuing.')}
+                    </div>
 
-                <span class="result-icon">⚠️</span>
-
-                <div class="result-title-group">
-
-                    <div class="result-title">Proposal Incomplete</div>
-
-                    <div class="result-subtitle">Missing required fields</div>
-
+                    <div style="padding: 8px 18px; border-top: 1px solid #eee; background: #fff;">
+                        <div class="result-actions" style="padding: 0; background: none; border: none; display: flex; gap: 6px;">
+                            <button class="btn btn-warning" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #ffc107; color: #212529; border: 1px solid #e0a800; border-radius: 4px; font-weight: 500; cursor: pointer;" onclick="document.getElementById('incompleteReviewCard').style.display='none'; document.getElementById('editProposalForm').style.display='block';">✏️ Edit &amp; Resubmit Proposal</button>
+                            <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #6c757d; color: #fff; border: 1px solid #5a6268; border-radius: 4px; cursor: pointer;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                            <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #dc3545; color: #fff; border: 1px solid #bd2130; border-radius: 4px; cursor: pointer;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="result-status">RS-3</div>
-
             </div>
 
-
-
-            <div class="result-body">
-
-                <div class="check-list">
-
-                    <div><strong>Entity:</strong> ${this.escapeHtml(entity.name || '—')} ${comp.entity?.name || ''}</div>
-
-                    <div><strong>Contact Names:</strong> ${this.escapeHtml(contact.firstName || '')} ${this.escapeHtml(contact.lastName || '')} ${comp.contact?.names || ''}</div>
-
-                    <div><strong>Communication:</strong> ${comp.contact?.comms || '—'}</div>
-
-                    <div><strong>Street:</strong> ${this.escapeHtml(location.address || '—')} ${comp.location?.street || ''}</div>
-
-                    <div><strong>City:</strong> ${this.escapeHtml(location.city || '—')} ${comp.location?.city || ''}</div>
-
-                    <div><strong>State:</strong> ${this.escapeHtml(location.state || '—')} ${comp.location?.state || ''}</div>
-
-                    <div><strong>ZIP:</strong> ${this.escapeHtml(location.zip || '—')} ${comp.location?.zip || ''}</div>
-
+            <div id="editProposalForm" class="commandLine system html" style="display:none; margin-top: 0px;">
+                <div class="result-card" style="border-left-color: #007aff;">
+                    <div class="result-header" style="display: flex; align-items: center; gap: 6px;">
+                        <span class="result-icon">✏️</span>
+                        <div style="display: flex; flex-direction: column;">
+                            <strong class="result-title">Edit Proposal Fields</strong>
+                            <small style="color: #666; font-size: 0.78em; line-height: 1.2;">Update values directly for dynamic tblAction synchronization</small>
+                        </div>
+                    </div>
+                    <div class="result-body" style="padding: 12px 18px; background: #fafafa;">
+                        <div class="compact-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.88em;">
+                            <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #555; font-weight: 600;">Entity Name</label>
+                                <input type="text" id="edit_entity_name" value="${this.escapeHtml(entity.name || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #555; font-weight: 600;">Contact First Name</label>
+                                <input type="text" id="edit_contact_first" value="${this.escapeHtml(contact.firstName || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #555; font-weight: 600;">Contact Last Name</label>
+                                <input type="text" id="edit_contact_last" value="${this.escapeHtml(contact.lastName || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #555; font-weight: 600;">Phone</label>
+                                <input type="text" id="edit_contact_phone" value="${this.escapeHtml(contact.primaryPhone || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #555; font-weight: 600;">Email</label>
+                                <input type="text" id="edit_contact_email" value="${this.escapeHtml(contact.email || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                            </div>
+                            <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #555; font-weight: 600;">Street Address</label>
+                                <input type="text" id="edit_location_address" value="${this.escapeHtml(location.address || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                <label style="color: #555; font-weight: 600;">City</label>
+                                <input type="text" id="edit_location_city" value="${this.escapeHtml(location.city || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px;">
+                                <div style="display: flex; flex-direction: column; gap: 3px;">
+                                    <label style="color: #555; font-weight: 600;">State</label>
+                                    <input type="text" id="edit_location_state" value="${this.escapeHtml(location.state || '')}" style="width: 100%; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 3px;">
+                                    <label style="color: #dc3545; font-weight: 600;">ZIP (Required) *</label>
+                                    <input type="text" id="edit_location_zip" value="${this.escapeHtml(location.zip || '')}" placeholder="e.g. 85016" style="width: 100%; padding: 5px 8px; border: 1px solid #dc3545; background: rgba(220,53,69,0.02); border-radius: 4px; font-size: 1em; font-weight: bold; box-sizing: border-box;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding: 8px 18px; border-top: 1px solid #eee; background: #fff;">
+                        <div class="result-actions" style="padding: 0; background: none; border: none; display: flex; gap: 6px;">
+                            <button onclick="SkyIndex.submitEditedProposal(JSON.parse(atob('${dataPayloadAttr}')))" class="btn btn-success" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #28a745; color: #fff; border: 1px solid #218838; border-radius: 4px; cursor: pointer; font-weight: 500;">Submit Updated Proposal</button>
+                            <button onclick="document.getElementById('editProposalForm').style.display='none'; document.getElementById('incompleteReviewCard').style.display='block';" class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #6c757d; color: #fff; border: 1px solid #5a6268; border-radius: 4px; cursor: pointer;">Cancel</button>
+                        </div>
+                    </div>
                 </div>
-
-
-
-                <div class="alert alert-warning small mt-3">
-
-                    ${data.message || 'Please supply missing required fields before continuing.'}
-
-                </div>
-
             </div>
-
-
-
-            <div class="result-actions">
-
-                <button onclick="SkyIndex.showEditForm()" class="btn btn-primary">✏️ Edit & Resubmit Proposal</button>
-
-                <button onclick="SkyIndex.revalidateProposal()" class="btn btn-outline-secondary">↻ Revalidate</button>
-
-                <button onclick="SkyIndex.handleProposalAction('decline')" class="btn btn-outline-danger">✕ Decline</button>
-
-            </div>
-
-        </div>
-
         `;
 
-
-
         this.appendSystemHtml(html);
-
     },
-
-    // #endregion 
+    // #endregion
 
     // #region 📇 View Contact Report — PDF Generation
     viewContactReport() {
