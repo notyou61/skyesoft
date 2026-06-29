@@ -1103,31 +1103,44 @@ $role = "askOpenAI";
 // 📇 CONTACT PROPOSAL ROUTING BRIDGE (MAX FORCE)
 // =====================================================
 $lowerQuery = strtolower(trim($query ?? ''));
+$hasEmail   = preg_match('/@\S+\.\S{2,}/', $query ?? '');
+$hasPhone   = preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '');
+$hasName    = preg_match('/[A-Z][a-z]+ [A-Z][a-z]+/', $query ?? '');
+$lineCount  = substr_count($query ?? '', "\n") + 1;
 
-$hasEmail = preg_match('/@\S+\.\S{2,}/', $query ?? '');
-$hasPhone = preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '');
-$hasName = preg_match('/[A-Z][a-z]+ [A-Z][a-z]+/', $query ?? '');
-$lineCount = substr_count($query ?? '', "\n") + 1;
-
-error_log("[askOpenAI] Signature Debug - Email:" . ($hasEmail ? '1' : '0') . " Phone:" . ($hasPhone ? '1' : '0') . " Name:" . ($hasName ? '1' : '0') . " Lines:" . $lineCount);
+error_log("[askOpenAI] Signature Debug - Email:" . ($hasEmail ? '1' : '0') . 
+          " Phone:" . ($hasPhone ? '1' : '0') . 
+          " Name:" . ($hasName ? '1' : '0') . 
+          " Lines:" . $lineCount);
 
 if ($hasEmail && $hasPhone && $hasName && $lineCount >= 2) {
     error_log("[askOpenAI] MAX FORCE CONTACT_PROPOSAL triggered");
 
     $sessionContactId = $_SESSION["contactId"] ?? null;
+    $activitySessionId = $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id());
+
+    // Prepare payload for logging + forwarding
+    $payload = [
+        'input'              => $query,
+        'activitySessionId'  => $activitySessionId,
+        'mode'               => 'propose',
+        'source'             => 'askOpenAI_bridge'
+    ];
 
     try {
         insertActionPrompt([
-            'contactId' => $sessionContactId,
-            'promptText' => $query,
-            'responseText' => 'contact_propose_execute',
-            'intent' => 'contact_proposal',
-            'intentConfidence' => 0.95,
-            'latitude' => $latitude,
-            'longitude' => $longitude,
-            'activitySessionId' => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
-            'actionTypeId' => 3,
-            'origin' => ACTION_ORIGIN_USER
+            'contactId'         => $sessionContactId,
+            'promptText'        => $query,
+            'responseText'      => 'contact_propose_execute',   // placeholder
+            'intent'            => 'contact_proposal',
+            'intentConfidence'  => 0.95,
+            'latitude'          => $latitude ?? null,
+            'longitude'         => $longitude ?? null,
+            'activitySessionId' => $activitySessionId,
+            'actionTypeId'      => 3,
+            'origin'            => ACTION_ORIGIN_USER,
+            'actionPayloadData' => $payload,                    // ← FULL PAYLOAD
+            'actionResponseData'=> null                         // will be updated after call
         ], $db);
     } catch (Throwable $e) {
         error_log('[actions] contact logging failed: ' . $e->getMessage());
@@ -1135,19 +1148,14 @@ if ($hasEmail && $hasPhone && $hasName && $lineCount >= 2) {
 
     session_write_close();
 
-    $postData = [
-        'input' => $query,
-        'activitySessionId' => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
-        'mode' => 'propose'
-    ];
-
+    // Forward to dedicated processor
     $ch = curl_init('https://skyelighting.com/skyesoft/api/processProposedContact.php');
     curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 45,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS => json_encode($postData, JSON_UNESCAPED_SLASHES)
+        CURLOPT_POST            => true,
+        CURLOPT_RETURNTRANSFER  => true,
+        CURLOPT_TIMEOUT         => 45,
+        CURLOPT_HTTPHEADER      => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS      => json_encode($payload, JSON_UNESCAPED_SLASHES)
     ]);
 
     $proposalResponse = curl_exec($ch);
@@ -1158,6 +1166,18 @@ if ($hasEmail && $hasPhone && $hasName && $lineCount >= 2) {
         error_log("[askOpenAI] Proposal processor failed. HTTP " . $httpCode);
         echo json_encode(['status' => 'error', 'message' => 'Proposal processing failed']);
         exit;
+    }
+
+    // Update action log with real response data
+    try {
+        $responseData = json_decode($proposalResponse, true) ?? ['raw' => $proposalResponse];
+        
+        // Re-open session briefly to update the last action if needed
+        // (or you can skip this if you prefer not to update)
+        // session_start();
+        // ... update logic if you have lastActionId stored ...
+    } catch (Throwable $e) {
+        error_log("[askOpenAI] Failed to decode proposal response for logging: " . $e->getMessage());
     }
 
     echo $proposalResponse;
