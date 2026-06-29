@@ -1115,13 +1115,13 @@ window.SkyIndex = {
 
             const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
             const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
-            const intent = this.intentRegistry.contact_proposal;
 
-            this.appendSystemLine(`${intent.display} - ${normalizedName}`, 'user');
+            this.appendSystemLine(`Proposed Contact - ${normalizedName}`, 'user');
             this.suppressRawContactEcho();
             this.renderContactProcessingState();
 
-            await this.executeAICommand(text, activitySessionId);
+            // ← THIS WAS THE BUG — now fixed
+            await this.executeContactProposalWorkflow(text, activitySessionId);
             return;
         }
 
@@ -1165,24 +1165,7 @@ window.SkyIndex = {
         // 🏠 Property Review Workflow — TEMPORARILY DISABLED
         // --------------------------------------------------
         // const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
-        // if (propertyIntent) {
-        //     const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
-        //         method: 'POST',
-        //         credentials: 'include',
-        //         headers: { 'Content-Type': 'application/json' },
-        //         body: JSON.stringify({ type: "parseIntent", userQuery: text })
-        //     });
-
-        //     const parsed = await parseRes.json();
-        //     const cleanAddress = parsed.cleanAddress || text.trim();
-
-        //     this.appendSystemLine(`Property Review for ${this.escapeHtml(cleanAddress)}`, 'user');
-        //     this.suppressRawIntentEcho();
-        //     this.renderPropertyProcessingState();
-
-        //     await this.executePropertyWorkflow(text, activitySessionId, propertyIntent.workflow);
-        //     return;
-        // }
+        // if (propertyIntent) { ... }
 
         // --------------------------------------------------
         // AI Fallback
