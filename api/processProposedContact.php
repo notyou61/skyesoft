@@ -23,7 +23,7 @@ error_log('[PPC] ====================================================');
 // =====================================================
 
 if (!headers_sent()) {
-header('Content-Type: application/json');
+    header('Content-Type: application/json');
 }
 
 ini_set('display_errors', 0);
@@ -45,10 +45,10 @@ error_log('[PPC][SECTION-00] Bootstrap complete');
 // =====================================================
 
 $context = [
-'requestId'        => uniqid('ppc_', true),
-'startedAt'        => microtime(true),
-'activitySessionId'=> '',
-'version'          => '2.0.0'
+    'requestId'        => uniqid('ppc_', true),
+    'startedAt'        => microtime(true),
+    'activitySessionId'=> '',
+    'version'          => '2.0.0'
 ];
 
 // =====================================================
@@ -60,20 +60,17 @@ $rawJson = file_get_contents('php://input');
 $inputData = json_decode($rawJson, true);
 
 if (!is_array($inputData)) {
-$inputData = [];
+    $inputData = [];
 }
 
 $rawInput = trim(
-$inputData['input']
-?? ''
+    $inputData['input']
+    ?? ''
 );
 
-$rawInputOriginal =
-    $inputData['input']
-    ?? '';
+$rawInputOriginal = $inputData['input'] ?? '';
 
-$context['activitySessionId'] =
-trim($inputData['activitySessionId'] ?? '');
+$context['activitySessionId'] = trim($inputData['activitySessionId'] ?? '');
 
 // =====================================================
 // DIAGNOSTIC LOGGING
@@ -83,14 +80,11 @@ error_log('[PPC] Request ID: ' . $context['requestId']);
 error_log('[PPC] Input Length: ' . strlen($rawInput));
 
 if (!empty($inputData)) {
-error_log(
-'[PPC] Input Keys: ' .
-implode(', ', array_keys($inputData))
-);
+    error_log(
+        '[PPC] Input Keys: ' .
+        implode(', ', array_keys($inputData))
+    );
 }
-
-// Allow longer execution for parcel resolution (multiple parcels can be slow)
-set_time_limit(45);   // Max 45 seconds total for the whole proposal
 
 #endregion
 
@@ -104,6 +98,45 @@ skyesoftLoadEnv();
 $pdo = getPDO() ?? null;
 
 error_log('[PPC] Runtime services loaded');
+
+// =====================================================
+// 📊 ACTION LOGGING (Mirror Street View Pattern)
+// =====================================================
+error_log('[PPC][ACTION-LOG] Starting action insert');
+
+try {
+    $actionPayload = [
+        'input'              => $rawInputOriginal,
+        'rawInput'           => $rawInput,
+        'activitySessionId'  => $context['activitySessionId'],
+        'mode'               => $inputData['mode'] ?? 'propose',
+        'requestId'          => $context['requestId'],
+        'source'             => 'processProposedContact'
+    ];
+
+    $actionId = insertActionPrompt([
+        'contactId'         => $_SESSION['contactId'] ?? null,
+        'promptText'        => $rawInputOriginal,
+        'responseText'      => 'contact_proposal_processed',
+        'intent'            => 'contact_proposal',
+        'intentConfidence'  => 0.97,
+        'actionTypeId'      => 3,
+        'origin'            => ACTION_ORIGIN_USER,
+        'activitySessionId' => $context['activitySessionId'],
+        'latitude'          => $inputData['latitude'] ?? null,
+        'longitude'         => $inputData['longitude'] ?? null,
+
+        'actionPayloadData' => $actionPayload,
+        'actionResponseData'=> null
+    ], $pdo);
+
+    error_log("[PPC][ACTION-LOG] ✅ Success - ActionID: " . ($actionId ?? 'NULL'));
+
+    $_SESSION['lastContactProposalActionId'] = $actionId;
+
+} catch (Throwable $e) {
+    error_log("[PPC][ACTION-LOG] ❌ Failed: " . $e->getMessage());
+}
 
 #endregion
 

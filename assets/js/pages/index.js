@@ -1101,14 +1101,12 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📇 AGGRESSIVE Contact Signature Intercept (Highest Priority)
+        // 📇 AGGRESSIVE Contact Signature Intercept
         // --------------------------------------------------
         const hasEmail = /@\S+\.\S{2,}/.test(text);
         const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
         const hasSignatureLines = text.split(/\r?\n/).length >= 2;
         const hasName = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
-
-        console.log('[Intent Debug] hasEmail:', hasEmail, 'hasPhone:', hasPhone, 'hasLines:', hasSignatureLines, 'hasName:', hasName);
 
         if ((hasEmail || hasPhone) && hasSignatureLines && hasName) {
             console.log('[Intent Intercept] STRONG Contact signature matched!');
@@ -1120,7 +1118,6 @@ window.SkyIndex = {
             this.suppressRawContactEcho();
             this.renderContactProcessingState();
 
-            // ← THIS WAS THE BUG — now fixed
             await this.executeContactProposalWorkflow(text, activitySessionId);
             return;
         }
