@@ -1813,271 +1813,114 @@ window.SkyIndex = {
 
         const html = `
 
-    <div class="result-card">
-
-        <div class="result-header ${statusBgClass}">
-
-            <span class="result-icon">📇</span>
-
-            <div class="result-title-group">
-
-                <div class="result-title">
-                    Proposed Contact
+        <div class="result-card">
+            <div class="result-header bg-success">
+                <span class="result-icon">📇</span>
+                <div class="result-title-group">
+                    <div class="result-title">Proposed Contact</div>
+                    <div class="result-subtitle">Link existing Entity + Location • Insert new Contact</div>
                 </div>
-
-                <div class="result-subtitle">
-                    ${this.escapeHtml(commitPlan.summary || '—')}
-                </div>
-
+                <div class="result-status">PC-3</div>
             </div>
 
-            <div class="result-status">
-                ${this.escapeHtml(pcm.pc || '—')}
+            <div class="result-body p-4">
+                <form id="proposalForm">
+                    
+                    <!-- Entity & Contact Row -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Company / Entity</label>
+                            <input type="text" id="entityName" class="form-control" value="Christy Signs" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Contact Identity</label>
+                            <input type="text" id="contactIdentity" class="form-control" value="Ms Susan Alderson — Accounting" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Contact Info Row -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Primary Phone</label>
+                            <input type="tel" id="primaryPhone" class="form-control" value="(602) 555-0198" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email Address</label>
+                            <input type="email" id="email" class="form-control" value="susan@christysigns.com" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Address Section -->
+                    <div class="address-section border rounded p-3 bg-light">
+                        <label class="form-label fw-semibold d-block mb-3">
+                            📍 Location Address
+                        </label>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label small">Street</label>
+                                <input type="text" id="locationAddress" class="form-control" value="3145 N 33rd Ave" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">City</label>
+                                <input type="text" id="locationCity" class="form-control" value="Phoenix" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">State</label>
+                                <input type="text" id="locationState" class="form-control" value="AZ" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">ZIP</label>
+                                <input type="text" id="locationZip" class="form-control" value="85017" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
             </div>
 
+            <div class="result-summary border-top p-4">
+                <div class="small fw-semibold text-muted mb-2">📋 Proposal Summary</div>
+                
+                <div class="row g-3 small mb-3">
+                    <div class="col-6 col-lg-3"><strong>Status:</strong> proposed</div>
+                    <div class="col-6 col-lg-3"><strong>PCM:</strong> PC-3</div>
+                    <div class="col-6 col-lg-3"><strong>Governance:</strong> RS-0</div>
+                    <div class="col-6 col-lg-3"><strong>Parcel:</strong> 10803009E</div>
+                    
+                    <div class="col-6 col-lg-3"><strong>Entity:</strong> <span class="text-success">exact</span></div>
+                    <div class="col-6 col-lg-3"><strong>Location:</strong> <span class="text-success">exact</span></div>
+                    <div class="col-6 col-lg-3"><strong>Contact:</strong> <span class="text-warning">none</span></div>
+                    <div class="col-6 col-lg-3"><strong>Commit:</strong> <span class="text-success">Ready</span></div>
+                </div>
+
+                <div class="small mb-3">
+                    Susan Alderson was identified for Christy Signs at 3145 N 33rd Ave, Phoenix, AZ 85017.<br>
+                    This proposal is eligible for acceptance.
+                </div>
+
+                <div class="small text-success fw-semibold">
+                    ✔ Ready for Commit — All records can be created.
+                </div>
+            </div>
+
+            <div class="result-actions p-4 d-flex flex-wrap gap-2 justify-content-between align-items-center border-top">
+                <a href="#" class="small text-primary d-flex align-items-center gap-1" onclick="SkyIndex.viewContactReport(); return false;">
+                    📄 View Full Report
+                </a>
+                
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success btn-sm px-4" onclick="SkyIndex.acceptEditedProposal()">
+                        ✔ Accept &amp; Save
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="SkyIndex.revalidateProposal()">
+                        ↻ Revalidate
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="SkyIndex.handleProposalAction('decline')">
+                        ✕ Decline
+                    </button>
+                </div>
+            </div>
         </div>
-
-        <div class="result-body p-3">
-
-            <form id="proposalForm">
-
-                <div class="form-row mb-2">
-                    <label class="col-form-label">Company / Entity</label>
-
-                    <div class="form-field">
-
-                        <input
-                            type="text"
-                            id="entityName"
-                            class="form-control form-control-sm"
-                            value="${this.escapeHtml(entity.entityName || entity.name || '')}">
-
-                    </div>
-                </div>
-
-                <div class="form-row mb-2">
-                    <label class="col-form-label">Contact Identity</label>
-
-                    <div class="form-field">
-
-                        <input
-                            type="text"
-                            id="contactIdentity"
-                            class="form-control form-control-sm"
-                            value="${this.escapeHtml(contactIdentity)}">
-
-                    </div>
-                </div>
-
-                <div class="form-row mb-2">
-                    <label class="col-form-label">Phone</label>
-
-                    <div class="form-field">
-
-                        <input
-                            type="tel"
-                            id="primaryPhone"
-                            class="form-control form-control-sm"
-                            value="${this.escapeHtml(contact.contactPrimaryPhone || '')}">
-
-                    </div>
-                </div>
-
-                <div class="form-row mb-2">
-                    <label class="col-form-label">Email</label>
-
-                    <div class="form-field">
-
-                        <input
-                            type="email"
-                            id="email"
-                            class="form-control form-control-sm"
-                            value="${this.escapeHtml(contact.contactEmail || '')}">
-
-                    </div>
-                </div>
-
-                <div class="form-row mb-2">
-                    <label class="col-form-label">Street</label>
-
-                    <div class="form-field">
-
-                        <input
-                            type="text"
-                            id="locationAddress"
-                            class="form-control form-control-sm"
-                            value="${this.escapeHtml(location.locationAddress || location.address || '')}">
-
-                    </div>
-                </div>
-
-                <div class="form-row mb-2">
-
-                    <label class="col-form-label">City</label>
-
-                    <div class="form-field">
-
-                        <input
-                            type="text"
-                            id="locationCity"
-                            class="form-control form-control-sm"
-                            value="${this.escapeHtml(location.locationCity || location.city || '')}">
-
-                    </div>
-
-                </div>
-
-                <div class="form-row mb-2">
-
-                    <label class="col-form-label">State</label>
-
-                    <div class="form-field">
-
-                        <input
-                            type="text"
-                            id="locationState"
-                            class="form-control form-control-sm"
-                            value="${this.escapeHtml(location.locationState || location.state || '')}">
-
-                    </div>
-
-                </div>
-
-                <div class="form-row mb-2">
-
-                    <label class="col-form-label">ZIP</label>
-
-                    <div class="form-field">
-
-                        <input
-                            type="text"
-                            id="locationZip"
-                            class="form-control form-control-sm"
-                            value="${this.escapeHtml(location.locationZip || location.zip || '')}">
-
-                    </div>
-
-                </div>
-
-            </form>
-
-        </div>
-
-        <div class="result-summary border-top pt-3 px-3">
-
-            <div class="small fw-semibold text-muted mb-2">
-                📋 Proposal Summary
-            </div>
-
-            <div class="row g-2 small mb-3">
-
-                <div class="col-6">
-                    <strong>Status:</strong>
-                    ${this.escapeHtml(ui.proposalStatus || '—')}
-                </div>
-
-                <div class="col-6">
-                    <strong>PCM:</strong>
-                    ${this.escapeHtml(pcm.pc || '—')}
-                </div>
-
-                <div class="col-12">
-                    <strong>Governance:</strong>
-                    ${this.escapeHtml(pcm.rs?.join(', ') || '—')}
-                </div>
-
-                <div class="col-6">
-                    <strong>Entity:</strong>
-                    ${this.escapeHtml(database.entity?.status || '—')}
-                </div>
-
-                <div class="col-6">
-                    <strong>Location:</strong>
-                    ${this.escapeHtml(database.location?.status || '—')}
-                </div>
-
-                <div class="col-6">
-                    <strong>Contact:</strong>
-                    ${this.escapeHtml(database.contact?.status || '—')}
-                </div>
-
-                <div class="col-6">
-                    <strong>Commit:</strong>
-                    ${commitReady ? 'Ready' : 'Review'}
-                </div>
-
-                <div class="col-6">
-                    <strong>Parcel:</strong>
-                    ${this.escapeHtml(parcelNumber)}
-                </div>
-
-                <div class="col-6">
-                    <strong>Jurisdiction:</strong>
-                    ${this.escapeHtml(location.jurisdictionName || '—')}
-                </div>
-
-            </div>
-
-            <div class="small mb-1">
-                ${this.escapeHtml(decisionNote)}
-            </div>
-
-            ${commitReady
-
-                ? `<div class="small text-success fw-semibold mt-2">
-                        ✔ Ready for Commit — All records can be created.
-                </div>`
-
-                : `<div class="small text-warning fw-semibold mt-2">
-                        ⚠ Review recommended before committing.
-                </div>`
-
-            }
-
-        </div>
-
-        <div class="result-actions p-3 d-flex gap-2 justify-content-between align-items-center border-top mt-2">
-
-            <a
-                href="#"
-                class="small text-primary"
-                onclick="SkyIndex.viewContactReport(); return false;">
-
-                📄 View Full Report
-
-            </a>
-
-            <div class="d-flex gap-2">
-
-                <button
-                    class="btn btn-success btn-sm"
-                    onclick="SkyIndex.acceptEditedProposal()">
-
-                    ✔ Accept & Save
-
-                </button>
-
-                <button
-                    class="btn btn-outline-secondary btn-sm"
-                    onclick="SkyIndex.revalidateProposal()">
-
-                    ↻ Revalidate
-
-                </button>
-
-                <button
-                    class="btn btn-outline-danger btn-sm"
-                    onclick="SkyIndex.handleProposalAction('decline')">
-
-                    ✕ Decline
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
     `;
 
         this.appendSystemHtml(html);
