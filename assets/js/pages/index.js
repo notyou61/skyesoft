@@ -1809,7 +1809,6 @@ window.SkyIndex = {
         // -------------------------------------
 
         const html = `
-
         <div class="result-card">
             <div class="result-header bg-success">
                 <span class="result-icon">📇</span>
@@ -1817,104 +1816,45 @@ window.SkyIndex = {
                     <div class="result-title">Proposed Contact</div>
                     <div class="result-subtitle">Link existing Entity + Location • Insert new Contact</div>
                 </div>
-                <div class="result-status">PC-3</div>
+                <div class="result-status">[[pcm.pc]]</div>
             </div>
 
             <div class="result-body p-4">
-                <form id="proposalForm">
-                    
-                    <!-- Entity & Contact Row -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Company / Entity</label>
-                            <input type="text" id="entityName" class="form-control" value="Christy Signs" readonly>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Contact Identity</label>
-                            <input type="text" id="contactIdentity" class="form-control" value="Ms Susan Alderson — Accounting" readonly>
-                        </div>
-                    </div>
-
-                    <!-- Contact Info Row -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Primary Phone</label>
-                            <input type="tel" id="primaryPhone" class="form-control" value="(602) 555-0198" readonly>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Email Address</label>
-                            <input type="email" id="email" class="form-control" value="susan@christysigns.com" readonly>
-                        </div>
-                    </div>
-
-                    <!-- Address Section -->
-                    <div class="address-section border rounded p-3 bg-light">
-                        <label class="form-label fw-semibold d-block mb-3">
-                            📍 Location Address
-                        </label>
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label small">Street</label>
-                                <input type="text" id="locationAddress" class="form-control" value="3145 N 33rd Ave" readonly>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">City</label>
-                                <input type="text" id="locationCity" class="form-control" value="Phoenix" readonly>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small">State</label>
-                                <input type="text" id="locationState" class="form-control" value="AZ" readonly>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small">ZIP</label>
-                                <input type="text" id="locationZip" class="form-control" value="85017" readonly>
-                            </div>
-                        </div>
-                    </div>
-
-                </form>
+                <div class="summary-grid">
+                    <div><strong>Entity:</strong> [[data.entity.entityName]]</div>
+                    <div><strong>Contact:</strong> [[data.contact.contactSalutation]] [[data.contact.contactFirstName]] [[data.contact.contactLastName]] — [[data.contact.contactTitle]]</div>
+                    <div><strong>Phone:</strong> [[data.contact.contactPrimaryPhone]]</div>
+                    <div><strong>Email:</strong> [[data.contact.contactEmail]]</div>
+                    <div><strong>Address:</strong> [[data.location.locationAddress]], [[data.location.locationCity]], [[data.location.locationState]] [[data.location.locationZip]]</div>
+                </div>
             </div>
 
             <div class="result-summary border-top p-4">
                 <div class="small fw-semibold text-muted mb-2">📋 Proposal Summary</div>
                 
-                <div class="row g-3 small mb-3">
-                    <div class="col-6 col-lg-3"><strong>Status:</strong> proposed</div>
-                    <div class="col-6 col-lg-3"><strong>PCM:</strong> PC-3</div>
-                    <div class="col-6 col-lg-3"><strong>Governance:</strong> RS-0</div>
-                    <div class="col-6 col-lg-3"><strong>Parcel:</strong> 10803009E</div>
-                    
-                    <div class="col-6 col-lg-3"><strong>Entity:</strong> <span class="text-success">exact</span></div>
-                    <div class="col-6 col-lg-3"><strong>Location:</strong> <span class="text-success">exact</span></div>
-                    <div class="col-6 col-lg-3"><strong>Contact:</strong> <span class="text-warning">none</span></div>
-                    <div class="col-6 col-lg-3"><strong>Commit:</strong> <span class="text-success">Ready</span></div>
+                <div class="row g-3 small">
+                    <div class="col-6"><strong>Status:</strong> proposed</div>
+                    <div class="col-6"><strong>PCM:</strong> [[pcm.pc]]</div>
+                    <div class="col-6"><strong>Governance:</strong> [[pcm.rs?.join(', ') || 'RS-0']]</div>
+                    <div class="col-6"><strong>Parcel:</strong> [[data.location.parcelDetails?.[0]?.parcelNumber || 'N/A']]</div>
                 </div>
 
-                <div class="small mb-3">
-                    Susan Alderson was identified for Christy Signs at 3145 N 33rd Ave, Phoenix, AZ 85017.<br>
-                    This proposal is eligible for acceptance.
-                </div>
-
-                <div class="small text-success fw-semibold">
-                    ✔ Ready for Commit — All records can be created.
+                <div class="small mt-3">
+                    [[narratives.ui]]
                 </div>
             </div>
 
-            <div class="result-actions p-4 d-flex flex-wrap gap-2 justify-content-between align-items-center border-top">
-                <a href="#" class="small text-primary d-flex align-items-center gap-1" onclick="SkyIndex.viewContactReport(); return false;">
-                    📄 View Full Report
-                </a>
-                
+            <div class="result-actions p-4 border-top d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-3">
+                    <a href="#" onclick="SkyIndex.showContactDetailsModal(); return false;" class="small text-primary">👤 Contact Details</a>
+                    <a href="#" onclick="SkyIndex.showLocationDetailsModal(); return false;" class="small text-primary">📍 Location &amp; Parcel</a>
+                    <a href="#" onclick="SkyIndex.showFullProposalModal(); return false;" class="small text-primary">📋 Full Snapshot</a>
+                </div>
+
                 <div class="d-flex gap-2">
-                    <button class="btn btn-success btn-sm px-4" onclick="SkyIndex.acceptEditedProposal()">
-                        ✔ Accept &amp; Save
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="SkyIndex.revalidateProposal()">
-                        ↻ Revalidate
-                    </button>
-                    <button class="btn btn-outline-danger btn-sm" onclick="SkyIndex.handleProposalAction('decline')">
-                        ✕ Decline
-                    </button>
+                    <button class="btn btn-success btn-sm px-4" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                 </div>
             </div>
         </div>
