@@ -1099,6 +1099,14 @@ $narrativeGenerated = false;
 $reportPath = null;
 $role = "askOpenAI";
 
+// Early parameter normalization ensures downstream heuristics evaluate reliably
+$query = $query 
+    ?? $input["userQuery"] 
+    ?? $input["query"] 
+    ?? $_POST["userQuery"] 
+    ?? $_GET["userQuery"] 
+    ?? ($argv[3] ?? null);
+
 // =====================================================
 // 📇 CONTACT PROPOSAL ROUTING BRIDGE (MAX FORCE)
 // =====================================================
@@ -1113,7 +1121,8 @@ error_log("[askOpenAI] Signature Debug - Email:" . ($hasEmail ? '1' : '0') .
           " Name:" . ($hasName ? '1' : '0') . 
           " Lines:" . $lineCount);
 
-if ($hasEmail && $hasPhone && $hasName && $lineCount >= 2) {
+// Trigger on implicit structural signature matching OR explicit frontend intent
+if (($type === "contact_proposal") || ($hasEmail && $hasPhone && $hasName && $lineCount >= 2)) {
     error_log("[askOpenAI] MAX FORCE CONTACT_PROPOSAL triggered");
 
     $sessionContactId = $_SESSION["contactId"] ?? null;
@@ -1171,11 +1180,6 @@ if ($hasEmail && $hasPhone && $hasName && $lineCount >= 2) {
     // Update action log with real response data
     try {
         $responseData = json_decode($proposalResponse, true) ?? ['raw' => $proposalResponse];
-        
-        // Re-open session briefly to update the last action if needed
-        // (or you can skip this if you prefer not to update)
-        // session_start();
-        // ... update logic if you have lastActionId stored ...
     } catch (Throwable $e) {
         error_log("[askOpenAI] Failed to decode proposal response for logging: " . $e->getMessage());
     }
@@ -1243,7 +1247,7 @@ PROMPT;
 // =====================================================
 // 2. Proposed Contact Report Summary Narrative
 // =====================================================
-if ($type === "proposalNarrative" || $type === "contact_proposal") {
+if ($type === "proposalNarrative") {
     error_log("[proposalNarrative] TYPE DETECTED - Starting processing");
     // 📥 Resolve proposal payload
     $proposalData = $input["proposalData"] ?? null;
