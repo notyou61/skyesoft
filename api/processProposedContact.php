@@ -474,13 +474,16 @@ $completeness['entity']['name'] = !empty(trim($parsed['entity']['name'] ?? ''))
 // Contact
 $hasFirst = !empty(trim($parsed['contact']['firstName'] ?? ''));
 $hasLast  = !empty(trim($parsed['contact']['lastName'] ?? ''));
-$hasComms = !empty(trim($parsed['contact']['primaryPhone'] ?? '')) 
-         || !empty(trim($parsed['contact']['email'] ?? ''));
+
+// FIX: Make email explicitly mandatory instead of "Phone OR Email"
+$hasEmail = !empty(trim($parsed['contact']['email'] ?? ''));
 
 $completeness['contact']['names'] = ($hasFirst && $hasLast) 
     ? '✔ First + Last Name' : '✖ First/Last Name Missing';
-$completeness['contact']['comms'] = $hasComms 
-    ? '✔ Phone or Email' : '✖ At least one communication method required';
+
+// FIX: Update validation message to explicitly call out email
+$completeness['contact']['comms'] = $hasEmail 
+    ? '✔ Email Provided' : '✖ Email address is required';
 
 // Location
 $completeness['location']['street'] = !empty(trim($parsed['location']['address'] ?? '')) 
@@ -495,7 +498,7 @@ $completeness['location']['zip']    = !empty(trim($parsed['location']['zip'] ?? 
 // Overall Decision (Robust Check)
 $entityOk   = strpos($completeness['entity']['name'], '✔') !== false;
 $namesOk    = strpos($completeness['contact']['names'], '✔') !== false;
-$commsOk    = strpos($completeness['contact']['comms'], '✔') !== false;
+$commsOk    = strpos($completeness['contact']['comms'], '✔') !== false; // Will now evaluate email rule
 $streetOk   = strpos($completeness['location']['street'], '✔') !== false;
 $cityOk     = strpos($completeness['location']['city'], '✔') !== false;
 $stateOk    = strpos($completeness['location']['state'], '✔') !== false;
