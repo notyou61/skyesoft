@@ -1113,16 +1113,19 @@ $query = $query
 $lowerQuery = strtolower(trim($query ?? ''));
 $hasEmail   = preg_match('/@\S+\.\S{2,}/', $query ?? '');
 $hasPhone   = preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '');
-$hasName    = preg_match('/[A-Z][a-z]+ [A-Z][a-z]+/', $query ?? '');
 $lineCount  = substr_count($query ?? '', "\n") + 1;
 
-error_log("[askOpenAI] Signature Debug - Email:" . ($hasEmail ? '1' : '0') . 
-          " Phone:" . ($hasPhone ? '1' : '0') . 
-          " Name:" . ($hasName ? '1' : '0') . 
-          " Lines:" . $lineCount);
+// Light structural signature check: needs an email, a phone, and a block of text
+$isContactSignature = $hasEmail && $hasPhone && $lineCount >= 3;
 
-// Trigger on implicit structural signature matching OR explicit frontend intent
-if (($type === "contact_proposal") || ($hasEmail && $hasPhone && $hasName && $lineCount >= 2)) {
+error_log("[CONTACT BRIDGE] Evaluation Signature:");
+error_log("  -> Email Found: " . ($hasEmail ? 'YES' : 'NO'));
+error_log("  -> Phone Found: " . ($hasPhone ? 'YES' : 'NO'));
+error_log("  -> Line Count:  " . $lineCount);
+error_log("  -> Is Signature Block: " . ($isContactSignature ? 'YES' : 'NO'));
+
+// Route explicitly via frontend type OR implicitly via structural match
+if (($type === "contact_proposal") || $isContactSignature) {
     error_log("[askOpenAI] MAX FORCE CONTACT_PROPOSAL triggered");
 
     $sessionContactId = $_SESSION["contactId"] ?? null;
