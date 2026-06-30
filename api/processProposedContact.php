@@ -105,16 +105,48 @@ error_log('[PPC] Runtime services loaded');
 #region SECTION 02 — Input Validation
 
 if ($rawInput === '') {
-
     echo json_encode([
         'success' => false,
         'status'  => 'missing_input'
     ]);
-
     exit;
 }
 
-error_log('[PPC] Input validated');
+// Normalize line endings and drop redundant carriage returns
+$normalizedInput = str_replace("\r\n", "\n", trim($rawInput));
+
+// Split safely into non-empty lines without stripping valid string data
+$lines = array_values(array_filter(explode("\n", $normalizedInput), function($line) {
+    return trim($line) !== '';
+}));
+
+$fallbackFirstName = '';
+$fallbackLastName  = '';
+$fallbackTitle     = '';
+
+if (!empty($lines[0])) {
+    $line1 = trim($lines[0]);
+
+    // Isolate title appended via comma or dash
+    if (preg_match('/^(.*?)\s*[,\-]\s*(.+)$/', $line1, $matches)) {
+        $namePart      = trim($matches[1]);
+        $fallbackTitle = trim($matches[2]);
+    } else {
+        $namePart = $line1;
+    }
+
+    // Split names reliably on any spacing variant
+    $namePieces = preg_split('/\s+/', $namePart);
+
+    if (count($namePieces) >= 2) {
+        $fallbackFirstName = array_shift($namePieces);
+        $fallbackLastName  = implode(' ', $namePieces);
+    } elseif (count($namePieces) === 1) {
+        $fallbackFirstName = $namePieces[0];
+    }
+}
+
+error_log("[PPC] Fallback Parser → Name: '{$fallbackFirstName} {$fallbackLastName}' | Title: '{$fallbackTitle}'");
 
 #endregion
 
