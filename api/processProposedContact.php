@@ -756,6 +756,87 @@ if ($data['location']['locationCensusValidated']) {
     );
 }
 
+// GEOGRAPHIC GOVERNANCE GATE (Maricopa County Parcel Protection)
+// =====================================================================
+$resolvedCounty          = strtolower($data['location']['locationCounty'] ?? '');
+$locationValidated       = $data['location']['locationValidated'] ?? false;
+$locationCensusValidated = $data['location']['locationCensusValidated'] ?? false;
+
+if ($resolvedCounty === 'maricopa' && $locationValidated && !$locationCensusValidated) {
+    error_log('[PPC][GOVERNANCE] CRITICAL: Maricopa County property address could not be validated by Census. Threat of unrelated parcel assignment detected. Early exiting with RS-8.');
+
+    $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
+    
+    echo json_encode([
+        'success'           => true,
+        'status'            => 'incomplete',
+        'proposalId'        => $proposalId,
+        'activitySessionId' => $context['activitySessionId'] ?? '',
+        'data' => [
+            'entity'   => $parsed['entity'] ?? [],
+            'contact'  => $parsed['contact'] ?? [],
+            'location' => $data['location'] ?? []
+        ],
+        'databaseResolution' => [
+            'entity'   => null,
+            'location' => null,
+            'contact'  => null
+        ],
+        'pcm' => [
+            'pc' => 'PC-2', 
+            'rs' => ['RS-8']
+        ],
+        'commitPlan' => [
+            'canCommit' => false,
+            'entity'    => [],
+            'location'  => [],
+            'contact'   => [],
+            'actions'   => [],
+            'summary'   => 'Location validation failed.'
+        ],
+        'ui' => [
+            'proposalStatus' => 'incomplete',
+            'canAccept'      => false,
+            'canReject'      => true,
+            'canEdit'        => true,
+            'canCommit'      => false
+        ],
+        'governance' => [
+            'blockingIssues' => [
+                [
+                    'code'    => 'RS-8',
+                    'message' => 'Maricopa County location could not be validated by Census.',
+                    'details' => [
+                        'county' => 'maricopa',
+                        'googleValidated' => true,
+                        'censusValidated' => false
+                    ]
+                ]
+            ],
+            'resolution_status' => 'RS-8',
+            'reason'            => 'Maricopa County location could not be validated by Census.'
+        ],
+        'narratives' => [
+            'ui'     => "Locations within Maricopa County require explicit validation by federal census records to prevent inaccurate parcel mapping. Please provide a verified address.",
+            'report' => "Maricopa County address failed federal Census validation."
+        ],
+        'meta' => [
+            'hasMultipleParcels' => false,
+            'parcelCount'        => 0,
+            'censusValidated'    => false,
+            'googleValidated'    => true,
+            'searchAddress'      => $searchAddress ?? ''
+        ],
+        'rawInput' => [
+            'original' => $rawInputOriginal ?? '',
+            'type'     => 'signature',
+            'source'   => 'skyebot_prompt'
+        ]
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+    exit;
+}
+
 #endregion
 
 #region SECTION 10 — Parcel Resolution + Enrichment
