@@ -945,8 +945,8 @@ if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
     $governanceIssues[] = ['code' => 'RS-5', 'message' => 'Duplicate contact detected'];
 }
 
-// RS-6 Multiple Parcels
-if (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1) {
+// RS-6 Multiple Parcels (Only block if we don't already have an exact location match)
+if ($locationStatus !== 'exact' && (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1)) {
     $governanceIssues[] = [
         'code' => 'RS-6',
         'message' => 'Multiple parcels found for this address - selection required',
@@ -972,14 +972,58 @@ if (empty($pcm['rs'])) {
 }
 
 // =====================================================
+// GOVERNANCE — RS Rules (Completeness already handled early)
+// =====================================================
+
+$governanceIssues = [];
+
+// RS-5 Duplicate Contact
+if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
+    $governanceIssues[] = ['code' => 'RS-5', 'message' => 'Duplicate contact detected'];
+}
+
+// RS-6 Multiple Parcels (FIX: Skip if location is an exact database match)
+if ($locationStatus !== 'exact' && (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1)) {
+    $governanceIssues[] = [
+        'code' => 'RS-6',
+        'message' => 'Multiple parcels found for this address - selection required',
+        'details' => ['parcelCount' => $data['location']['parcelCount'] ?? 0]
+    ];
+}
+
+// RS-7 Unresolved Parcel
+if (strtolower($data['location']['locationCounty'] ?? '') === 'maricopa' && 
+    ($data['location']['parcelCount'] ?? 0) === 0) {
+    $governanceIssues[] = ['code' => 'RS-7', 'message' => 'Parcel could not be resolved'];
+}
+
+// RS-8 Invalid Location
+if (empty($data['location']['locationPlaceId'] ?? null)) {
+    $governanceIssues[] = ['code' => 'RS-8', 'message' => 'Invalid location'];
+}
+
+// Sync governance issues back into PCM RS array so classification reflects reality
+$pcm['rs'] = $pcm['rs'] ?? [];
+if (!empty($governanceIssues)) {
+    foreach ($governanceIssues as $issue) {
+        $pcm['rs'][] = $issue['code'];
+    }
+}
+
+// Default RS-0 if nothing else blocked it
+if (empty($pcm['rs'])) {
+    $pcm['rs'][] = 'RS-0';
+}
+
+// =====================================================
 // FINAL GOVERNANCE STATE
 // =====================================================
 
-$blocksCommit = in_array('RS-3', $pcm['rs']) || 
-                in_array('RS-5', $pcm['rs']) || 
-                in_array('RS-6', $pcm['rs']) || 
-                in_array('RS-7', $pcm['rs']) || 
-                in_array('RS-8', $pcm['rs']);
+// FIX: Clean up duplicates and properly check if any active blocking issue codes exist
+$pcm['rs'] = array_values(array_unique($pcm['rs']));
+
+$blockingCodes = ['RS-3', 'RS-5', 'RS-6', 'RS-7', 'RS-8'];
+$blocksCommit = !empty(array_intersect($pcm['rs'], $blockingCodes));
 
 $governance = ['blockingIssues' => $governanceIssues];
 
