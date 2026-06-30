@@ -460,70 +460,80 @@ error_log(
 
 error_log('[PPC][PHASE-3] Running Completeness Check');
 
-$completeness = [
-    'entity' => [],
-    'contact' => [],
-    'location' => [],
-    'overall' => 'FAIL'
+// Define exactly what fields are strictly required and their human-readable labels
+$requiredFields = [
+    'entity.name'       => 'Entity Name',
+    'contact.firstName' => 'Contact First Name',
+    'contact.lastName'  => 'Contact Last Name',
+    'contact.email'     => 'Email Address',
+    'location.address'  => 'Street Address',
+    'location.city'     => 'City',
+    'location.state'    => 'State',
+    'location.zip'      => 'ZIP Code'
 ];
 
-// Entity
-$completeness['entity']['name'] = !empty(trim($parsed['entity']['name'] ?? '')) 
-    ? '✔ Complete' : '✖ Missing Entity Name';
+$missingFields = [];
 
-// Contact
+// Evaluate requirements dynamically
+foreach ($requiredFields as $dotPath => $label) {
+    list($category, $field) = explode('.', $dotPath);
+    $value = trim($parsed[$category][$field] ?? '');
+    
+    if (empty($value)) {
+        $missingFields[] = [
+            'path'  => $dotPath,
+            'label' => $label
+        ];
+    }
+}
+
+// Build the self-documenting completeness object for the UI
 $hasFirst = !empty(trim($parsed['contact']['firstName'] ?? ''));
 $hasLast  = !empty(trim($parsed['contact']['lastName'] ?? ''));
-
-// FIX: Make email explicitly mandatory instead of "Phone OR Email"
 $hasEmail = !empty(trim($parsed['contact']['email'] ?? ''));
 
-$completeness['contact']['names'] = ($hasFirst && $hasLast) 
-    ? '✔ First + Last Name' : '✖ First/Last Name Missing';
-
-// FIX: Update validation message to explicitly call out email
-$completeness['contact']['comms'] = $hasEmail 
-    ? '✔ Email Provided' : '✖ Email address is required';
-
-// Location
-$completeness['location']['street'] = !empty(trim($parsed['location']['address'] ?? '')) 
-    ? '✔ Street Address' : '✖ Street Address Missing';
-$completeness['location']['city']   = !empty(trim($parsed['location']['city'] ?? '')) 
-    ? '✔ City' : '✖ City Missing';
-$completeness['location']['state']  = !empty(trim($parsed['location']['state'] ?? '')) 
-    ? '✔ State' : '✖ State Missing';
-$completeness['location']['zip']    = !empty(trim($parsed['location']['zip'] ?? '')) 
-    ? '✔ ZIP' : '✖ ZIP Missing (Required)';
-
-// Overall Decision (Robust Check)
-$entityOk   = strpos($completeness['entity']['name'], '✔') !== false;
-$namesOk    = strpos($completeness['contact']['names'], '✔') !== false;
-$commsOk    = strpos($completeness['contact']['comms'], '✔') !== false; // Will now evaluate email rule
-$streetOk   = strpos($completeness['location']['street'], '✔') !== false;
-$cityOk     = strpos($completeness['location']['city'], '✔') !== false;
-$stateOk    = strpos($completeness['location']['state'], '✔') !== false;
-$zipOk      = strpos($completeness['location']['zip'], '✔') !== false;
-
-$completeness['overall'] = (
-    $entityOk && $namesOk && $commsOk && 
-    $streetOk && $cityOk && $stateOk && $zipOk
-) ? 'PASS' : 'FAIL';
+$completeness = [
+    'entity' => [
+        'name' => !empty(trim($parsed['entity']['name'] ?? '')) ? '✔ Complete' : '✖ Missing Entity Name'
+    ],
+    'contact' => [
+        'names' => ($hasFirst && $hasLast) ? '✔ First + Last Name' : '✖ First/Last Name Missing',
+        'email' => $hasEmail ? '✔ Email Provided' : '✖ Email Address Required' // FIXED: Renamed from comms to email
+    ],
+    'location' => [
+        'street' => !empty(trim($parsed['location']['address'] ?? '')) ? '✔ Street Address' : '✖ Street Address Missing',
+        'city'   => !empty(trim($parsed['location']['city'] ?? '')) ? '✔ City' : '✖ City Missing',
+        'state'  => !empty(trim($parsed['location']['state'] ?? '')) ? '✔ State' : '✖ State Missing',
+        'zip'    => !empty(trim($parsed['location']['zip'] ?? '')) ? '✔ ZIP' : '✖ ZIP Missing (Required)'
+    ],
+    'overall' => empty($missingFields) ? 'PASS' : 'FAIL'
+];
 
 error_log('[PPC][PHASE-3] Completeness Result: ' . $completeness['overall']);
 
-// HARD GATE — Early Exit
+// HARD GATE — Early Exit with Dynamic Error Messages
 if ($completeness['overall'] !== 'PASS') {
     error_log('[PPC][PHASE-3] INCOMPLETE — Early Exit with RS-3');
+
+    // Extract paths and labels for formatting the message and JSON response
+    $pathsOnly  = array_column($missingFields, 'path');
+    $labelsOnly = array_column($missingFields, 'label');
+    
+    // Build a dynamic bulleted list string for the user message
+    $bulletList = "• " . implode("\n• ", $labelsOnly);
+    $uiMessage  = "Proposal is incomplete.\n\nMissing required field(s):\n{$bulletList}\n\nPlease provide the missing information before continuing.";
 
     echo json_encode([
         'success'      => true,
         'status'       => 'incomplete',
+        'proposalId'   => $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6),
         'completeness' => $completeness,
         'governance'   => [
             'resolution_status' => 'RS-3',
-            'reason'            => 'Incomplete Proposal'
+            'reason'            => 'Incomplete Proposal',
+            'missingFields'     => $pathsOnly // FIXED: Array of structured string targets (e.g. ["contact.email"])
         ],
-        'message' => 'Proposal is incomplete. Please supply missing required fields (including ZIP) before continuing.',
+        'message' => $uiMessage,
         'data' => [   
             'entity'   => $parsed['entity'] ?? [],
             'contact'  => $parsed['contact'] ?? [],
