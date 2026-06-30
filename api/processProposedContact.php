@@ -675,7 +675,18 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
         $data['location']['locationLongitude'] = $result['geometry']['location']['lng'] ?? null;
         $data['location']['locationValidated'] = true;
 
-        error_log('[PPC][SECTION-07] Google validation successful');
+        // Extract county directly from Google components as a reliable pre-Census baseline
+        if (!empty($result['address_components'])) {
+            foreach ($result['address_components'] as $component) {
+                if (in_array('administrative_area_level_2', $component['types'])) {
+                    // Strips out " County" suffix to store clean "Maricopa"
+                    $data['location']['locationCounty'] = str_replace(' County', '', $component['long_name']);
+                    break;
+                }
+            }
+        }
+
+        error_log('[PPC][SECTION-07] Google validation successful. Extracted County: ' . ($data['location']['locationCounty'] ?? 'None'));
 
     } else {
         error_log('[PPC][SECTION-07] Google returned no results');
@@ -737,10 +748,12 @@ require_once __DIR__ . '/utils/validateAddressCensus.php';
 
 $censusResult = validateAddressCensus($searchAddress);
 
-$data['location']['locationCensusValidated'] = $censusResult['valid']     ?? false;
-$data['location']['locationCounty']          = $censusResult['county']     ?? null;
-$data['location']['locationCountyFips']      = $censusResult['countyFips'] ?? null;
-$data['location']['locationCountyGeoId']     = $censusResult['countyGeoId'] ?? null;
+$data['location']['locationCensusValidated'] = $censusResult['valid'] ?? false;
+
+// Explicitly preserve Google's extracted county if Census resolution returns null/fails
+$data['location']['locationCounty']      = $censusResult['county']     ?? ($data['location']['locationCounty'] ?? null);
+$data['location']['locationCountyFips']  = $censusResult['countyFips'] ?? null;
+$data['location']['locationCountyGeoId'] = $censusResult['countyGeoId'] ?? null;
 
 if ($data['location']['locationCensusValidated']) {
     error_log(
@@ -752,10 +765,12 @@ if ($data['location']['locationCensusValidated']) {
 } else {
     error_log(
         '[PPC][SECTION-08] ❌ Census validation failed: ' . 
-        ($censusResult['reason'] ?? 'Unknown reason')
+        ($censusResult['reason'] ?? 'Unknown reason') .
+        ' | Retaining Baseline County: ' . ($data['location']['locationCounty'] ?? 'None')
     );
 }
 
+// =====================================================================
 // GEOGRAPHIC GOVERNANCE GATE (Maricopa County Parcel Protection)
 // =====================================================================
 $resolvedCounty          = strtolower($data['location']['locationCounty'] ?? '');
