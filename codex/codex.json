@@ -4922,6 +4922,158 @@
                     "text": "Skyesoft records user intent as a sequence of immutable actions. CRUD defines the meaning of those user actions, not internal system behavior or database operations."
                 }
             },
+            "proposalClassificationMatrix": {
+                "PC-0": {
+                    "name": "Existing Contact",
+                    "description": "Existing Entity, Existing Location, Existing Contact",
+                    "entity": "existing",
+                    "location": "existing",
+                    "contact": "existing",
+                    "actions": []
+                },
+                "PC-1": {
+                    "name": "New Entity",
+                    "description": "New Entity, New Location, New Contact",
+                    "entity": "new",
+                    "location": "new",
+                    "contact": "new",
+                        "actions": [
+                            "insert_entity",
+                            "insert_location",
+                            "insert_contact",
+                            "link_elc"
+                        ]
+                },
+                "PC-2": {
+                    "name": "New Location",
+                    "description": "Existing Entity, New Location, New Contact",
+                    "entity": "existing",
+                    "location": "new",
+                    "contact": "new",
+                    "actions": [
+                        "insert_location",
+                        "insert_contact",
+                        "link_elc"
+                    ]
+                },
+                "PC-3": {
+                    "name": "New Contact",
+                    "description": "Existing Entity, Existing Location, New Contact",
+                    "entity": "existing",
+                    "location": "existing",
+                    "contact": "new",
+                    "actions": [
+                        "insert_contact",
+                        "link_elc"
+                    ]
+                },
+                "PC-4": {
+                    "name": "Update Existing Contact",
+                    "description": "Existing Entity, Existing Location, Existing Contact with modified data",
+                    "entity": "existing",
+                    "location": "existing",
+                    "contact": "existing",
+                    "actions": [
+                        "update_contact"
+                    ]
+                },
+                "PC-5": {
+                    "name": "Relocate Contact",
+                    "description": "Existing Contact assigned to another Location",
+                    "entity": "existing",
+                    "location": "existing_or_new",
+                    "contact": "existing",
+                    "actions": [
+                        "update_elc"
+                    ]
+                },
+                "PC-6": {
+                    "name": "Reassign Contact",
+                    "description": "Existing Contact assigned to another Entity",
+                    "entity": "existing_or_new",
+                    "location": "existing_or_new",
+                    "contact": "existing",
+                    "actions": [
+                        "update_elc"
+                    ]
+                }
+            },
+            "resolutionStatusMatrix": {
+                "RS-0": {
+                "name": "Acceptable",
+                "severity": "success",
+                "blocksCommit": false,
+                "description": "Proposal satisfies all governance requirements."
+                },
+                "RS-1": {
+                "name": "Information",
+                "severity": "info",
+                "blocksCommit": false,
+                "description": "Informational message only."
+                },
+                "RS-2": {
+                "name": "Review Recommended",
+                "severity": "review",
+                "blocksCommit": false,
+                "description": "Proposal should be reviewed before acceptance."
+                },
+                "RS-3": {
+                "name": "Incomplete Proposal",
+                "severity": "warning",
+                "blocksCommit": true,
+                "description": "Required information is missing."
+                },
+                "RS-4": {
+                "name": "Validation Failed",
+                "severity": "error",
+                "blocksCommit": true,
+                "description": "Submitted data failed validation."
+                },
+                "RS-5": {
+                "name": "Duplicate Contact",
+                "severity": "error",
+                "blocksCommit": true,
+                "description": "Matching contact already exists."
+                },
+                "RS-6": {
+                "name": "Parcel Selection Required",
+                "severity": "warning",
+                "blocksCommit": true,
+                "description": "Multiple candidate parcels require user selection."
+                },
+                "RS-7": {
+                "name": "Parcel Unresolved",
+                "severity": "error",
+                "blocksCommit": true,
+                "description": "Parcel could not be resolved."
+                },
+                "RS-8": {
+                "name": "Invalid Location",
+                "severity": "error",
+                "blocksCommit": true,
+                "description": "Location could not be validated."
+                },
+                "RS-9": {
+                "name": "Database Conflict",
+                "severity": "error",
+                "blocksCommit": true,
+                "description": "Database integrity conflict detected."
+                },
+                "RS-10": {
+                "name": "Internal Processing Error",
+                "severity": "critical",
+                "blocksCommit": true,
+                "description": "Unexpected processing failure."
+                }
+            },
+            "uiStatusColors": {
+                "success": "#28a745",
+                "info": "#17a2b8",
+                "review": "#6f42c1",
+                "warning": "#ffc107",
+                "error": "#dc3545",
+                "critical": "#343a40"
+            },
             "contactCreationELC": {
                 "title": {
                     "icon": 15,
