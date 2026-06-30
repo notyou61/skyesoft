@@ -1877,6 +1877,32 @@ window.SkyIndex = {
 
         const dataPayloadAttr = btoa(unescape(encodeURIComponent(JSON.stringify(unifiedData))));
 
+        // Extract backend missing fields array
+        const missingFields = unifiedData.governance?.missingFields || [];
+
+        // Dynamic Address / ZIP Row Badge Styling
+        const isZipMissing = missingFields.includes('location.zip');
+        const zipBadgeHtml = isZipMissing 
+            ? `<span style="margin-left: 4px; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; background: #ffebee; color: #c62828; font-weight: 700; border: 1px solid #ffcdd2;">✖ ZIP Missing</span>`
+            : `<span style="margin-left: 4px; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; background: #e8f5e9; color: #2e7d32; font-weight: 700; border: 1px solid #c8e6c9;">✔ ZIP</span>`;
+
+        // Dynamic Email Row Badge Styling
+        const isEmailMissing = missingFields.includes('contact.email');
+        const emailBadgeHtml = isEmailMissing
+            ? `<span style="margin-left: 4px; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; background: #ffebee; color: #c62828; font-weight: 700; border: 1px solid #ffcdd2;">✖ Required</span>`
+            : ``;
+
+        // Dynamic Input Form Variable Field Highlight Stylings
+        const inputEmailStyle = isEmailMissing
+            ? `border: 1px solid #c62828; background: #fffdfd; font-weight: bold;`
+            : `border: 1px solid #cccccc; background: #ffffff;`;
+        const labelEmailColor = isEmailMissing ? `#c62828` : `#444444`;
+
+        const inputZipStyle = isZipMissing
+            ? `border: 1px solid #c62828; background: #fffdfd; font-weight: bold;`
+            : `border: 1px solid #cccccc; background: #ffffff;`;
+        const labelZipColor = isZipMissing ? `#c62828` : `#444444`;
+
         // Cloned from Susan Alderson blueprint using expanded layout dimensions and pill capsule actions
         const html = `
             <div id="incompleteReviewCard" class="commandLine system html" style="margin-bottom: 16px; width: 100%; max-width: 680px;">
@@ -1911,12 +1937,14 @@ window.SkyIndex = {
                             </tr>
                             <tr style="vertical-align: top;">
                                 <td style="color: #555555; padding: 3px 0;">Email:</td>
-                                <td style="color: #1565c0; padding: 3px 0; font-weight: 500; text-decoration: underline; word-break: break-all;">${this.escapeHtml(contact.email || '—')}</td>
+                                <td style="color: #1565c0; padding: 3px 0; font-weight: 500; text-decoration: underline; word-break: break-all;">
+                                    ${this.escapeHtml(contact.email || '—')} ${emailBadgeHtml}
+                                </td>
                             </tr>
                             <tr style="vertical-align: top;">
                                 <td style="color: #555555; padding: 3px 0;">Address:</td>
                                 <td style="color: #111111; padding: 3px 0; font-weight: 500;">
-                                    ${this.escapeHtml(location.address || '—')}, ${this.escapeHtml(location.city || '')}, ${this.escapeHtml(location.state || '')} <span style="margin-left: 4px; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; background: #ffebee; color: #c62828; font-weight: 700; border: 1px solid #ffcdd2;">✖ ZIP Missing</span>
+                                    ${this.escapeHtml(location.address || '—')}, ${this.escapeHtml(location.city || '')}, ${this.escapeHtml(location.state || '')} ${zipBadgeHtml}
                                 </td>
                             </tr>
                         </table>
@@ -1924,9 +1952,7 @@ window.SkyIndex = {
                         <div style="border-top: 1px solid #f0f0f0; margin: 14px 0 12px;"></div>
                         
                         <div style="font-size: 0.9em; font-weight: 700; color: #222222; display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">📋 Proposal Summary</div>
-                        <div style="color: #555555; line-height: 1.45; font-size: 0.88em;">
-                            ${this.escapeHtml(unifiedData.message || 'Proposal is incomplete. Please supply missing required fields (including ZIP) before continuing.')}
-                        </div>
+                        <div style="color: #555555; line-height: 1.45; font-size: 0.88em; white-space: pre-wrap;">${this.escapeHtml(unifiedData.message || 'Proposal is incomplete.')}</div>
                     </div>
 
                     <div style="padding: 12px 16px; background: #ffffff; border-top: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
@@ -1973,8 +1999,8 @@ window.SkyIndex = {
                                 <input type="text" id="edit_contact_phone" value="${this.escapeHtml(contact.primaryPhone || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #444444; font-weight: 700;">Email Address</label>
-                                <input type="text" id="edit_contact_email" value="${this.escapeHtml(contact.email || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
+                                <label style="color: ${labelEmailColor}; font-weight: 700;">Email Address ${isEmailMissing ? '*' : ''}</label>
+                                <input type="text" id="edit_contact_email" value="${this.escapeHtml(contact.email || '')}" placeholder="e.g. name@domain.com" style="width: 100%; padding: 6px 10px; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222; ${inputEmailStyle}">
                             </div>
                             <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px;">
                                 <label style="color: #444444; font-weight: 700;">Street Address</label>
@@ -1990,8 +2016,8 @@ window.SkyIndex = {
                                     <input type="text" id="edit_location_state" value="${this.escapeHtml(location.state || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <label style="color: #c62828; font-weight: 700;">ZIP Code *</label>
-                                    <input type="text" id="edit_location_zip" value="${this.escapeHtml(location.zip || '')}" placeholder="e.g. 85016" style="width: 100%; padding: 6px 10px; border: 1px solid #c62828; background: #fffdfd; border-radius: 4px; font-size: 1em; font-weight: bold; box-sizing: border-box; color: #222222;">
+                                    <label style="color: ${labelZipColor}; font-weight: 700;">ZIP Code ${isZipMissing ? '*' : ''}</label>
+                                    <input type="text" id="edit_location_zip" value="${this.escapeHtml(location.zip || '')}" placeholder="e.g. 85016" style="width: 100%; padding: 6px 10px; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222; ${inputZipStyle}">
                                 </div>
                             </div>
                         </div>
