@@ -63,6 +63,9 @@ if (!is_array($inputData)) {
     $inputData = [];
 }
 
+// 🔥 MTCO: Detect explicit location-only intent globally from the incoming payload type
+$isExplicitLocationOnlyIntent = (isset($inputData['type']) && $inputData['type'] === 'PC-4');
+
 $rawInput = trim(
     $inputData['input']
     ?? ''
@@ -378,6 +381,36 @@ error_log('[PPC][SECTION-04] Schema enforcement complete');
 #region SECTION 05 — Data Normalization
 
 // =====================================================
+// 🔥 MTCO: SAFE FALLBACK MAPPING FOR PC-4 INTENTS
+// =====================================================
+if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
+    error_log('[PPC][SECTION-05] Running safe alignment fallback checks...');
+    
+    $clientLoc    = $inputData['inputData']['location'] ?? [];
+    $clientEntity = $inputData['inputData']['entity'] ?? [];
+
+    // Only assign if Section 03 returned an empty string, preventing extraction loss
+    if (empty(trim($parsed['location']['locationName'] ?? ''))) {
+        $parsed['location']['locationName'] = $clientLoc['locationName'] ?? '';
+    }
+    if (empty(trim($parsed['location']['address'] ?? ''))) {
+        $parsed['location']['address'] = $clientLoc['locationAddress'] ?? '';
+    }
+    if (empty(trim($parsed['location']['city'] ?? ''))) {
+        $parsed['location']['city'] = $clientLoc['locationCity'] ?? '';
+    }
+    if (empty(trim($parsed['location']['state'] ?? ''))) {
+        $parsed['location']['state'] = $clientLoc['locationState'] ?? '';
+    }
+    if (empty(trim($parsed['location']['zip'] ?? ''))) {
+        $parsed['location']['zip'] = $clientLoc['locationZip'] ?? '';
+    }
+    if (empty(trim($parsed['entity']['name'] ?? ''))) {
+        $parsed['entity']['name'] = $clientEntity['entityName'] ?? '';
+    }
+}
+
+// =====================================================
 // ENTITY
 // =====================================================
 
@@ -404,7 +437,7 @@ $parsed['contact']['email'] =
     strtolower(
         trim($parsed['contact']['email'])
     );
-
+    
 // =====================================================
 // PHONE NORMALIZATION (Preserve formatting from Section 03)
 // =====================================================
@@ -460,17 +493,28 @@ error_log(
 
 error_log('[PPC][PHASE-3] Running Completeness Check');
 
-// Define exactly what fields are strictly required and their human-readable labels
-$requiredFields = [
-    'entity.name'       => 'Entity Name',
-    'contact.firstName' => 'Contact First Name',
-    'contact.lastName'  => 'Contact Last Name',
-    'contact.email'     => 'Email Address',
-    'location.address'  => 'Street Address',
-    'location.city'     => 'City',
-    'location.state'    => 'State',
-    'location.zip'      => 'ZIP Code'
-];
+// 🔥 MTCO: Dynamically split requirements based on layout intent context
+if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
+    // Requirements for Location-Only Workflow
+    $requiredFields = [
+        'location.address'  => 'Street Address',
+        'location.city'     => 'City',
+        'location.state'    => 'State',
+        'location.zip'      => 'ZIP Code'
+    ];
+} else {
+    // Full Standard Contact Record Requirements
+    $requiredFields = [
+        'entity.name'       => 'Entity Name',
+        'contact.firstName' => 'Contact First Name',
+        'contact.lastName'  => 'Contact Last Name',
+        'contact.email'     => 'Email Address',
+        'location.address'  => 'Street Address',
+        'location.city'     => 'City',
+        'location.state'    => 'State',
+        'location.zip'      => 'ZIP Code'
+    ];
+}
 
 $missingFields = [];
 
@@ -494,11 +538,11 @@ $hasEmail = !empty(trim($parsed['contact']['email'] ?? ''));
 
 $completeness = [
     'entity' => [
-        'name' => !empty(trim($parsed['entity']['name'] ?? '')) ? '✔ Complete' : '✖ Missing Entity Name'
+        'name' => !empty(trim($parsed['entity']['name'] ?? '')) ? '✔ Complete' : ($isExplicitLocationOnlyIntent ? '✔ N/A' : '✖ Missing Entity Name')
     ],
     'contact' => [
-        'names' => ($hasFirst && $hasLast) ? '✔ First + Last Name' : '✖ First/Last Name Missing',
-        'email' => $hasEmail ? '✔ Email Provided' : '✖ Email Address Required' // FIXED: Renamed from comms to email
+        'names' => ($hasFirst && $hasLast) ? '✔ First + Last Name' : ($isExplicitLocationOnlyIntent ? '✔ N/A' : '✖ First/Last Name Missing'),
+        'email' => $hasEmail ? '✔ Email Provided' : ($isExplicitLocationOnlyIntent ? '✔ N/A' : '✖ Email Address Required')
     ],
     'location' => [
         'street' => !empty(trim($parsed['location']['address'] ?? '')) ? '✔ Street Address' : '✖ Street Address Missing',
