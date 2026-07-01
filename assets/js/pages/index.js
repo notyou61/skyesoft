@@ -1647,8 +1647,7 @@ window.SkyIndex = {
         const locationName = parsedLines[1];
 
         try {
-            // Dispatch to the Location processing endpoint
-            // 🔄 CHANGE THIS LINE FROM processProposedLocation.php TO processProposedContact.php
+            // Dispatch to the unified processing endpoint
             const response = await fetch('/skyesoft/api/processProposedContact.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -1657,8 +1656,23 @@ window.SkyIndex = {
                     type: "PC-4", 
                     rawText: text, 
                     activitySessionId,
-                    entity: entity,
-                    locationName: locationName
+                    inputData: {
+                        mode: "propose",
+                        actionTypeId: 13,
+                        entity: {
+                            entityName: entity || ''
+                        },
+                        contact: {
+                            contactName: '' // Stubbed out for location-only entries
+                        },
+                        location: {
+                            locationName: locationName || '',
+                            locationAddress: parsedLines[2] || '',
+                            locationCity: parsedLines[3]?.split(',')[0]?.trim() || '',
+                            locationState: parsedLines[3]?.split(',')[1]?.trim()?.split(' ')[0] || '',
+                            locationZip: parsedLines[3]?.trim()?.split(/\s+/).pop() || ''
+                        }
+                    }
                 })
             });
             
@@ -1669,29 +1683,30 @@ window.SkyIndex = {
             // --------------------------------------------------
             // 🎨 Render the Result Card to UI Chat Frame
             // --------------------------------------------------
-            // Clean up any lingering processing layout states/spinners first
             document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
             
-            if (result.success && result.workflowState === 'property_valid') {
-                // Synthesize original input text block back into the payload for presentation headers
+            // Fixed Gating: Aligned to match the 'proposed' status returned by SECTION 16
+            if (result.success && result.status === 'proposed') {
                 result.inputAddress = text; 
                 
-                // Invoke your structured rendering card component
                 this.renderParcelReviewResult(result);
 
                 // --------------------------------------------------
                 // 🔐 Secure Workspace Auto-Chaining Chain
                 // --------------------------------------------------
-                const hasCoordinates = result.google?.latitude && result.google?.longitude;
-                const serverApiKey = result.google?.apiKey || result.apiKey; // Secured by server via .env split
+                // Fixed Coordinate Contract: Read from structured location payload fields
+                const lat = result.data?.location?.locationLatitude;
+                const lng = result.data?.location?.locationLongitude;
+                const hasCoordinates = lat && lng;
+                const serverApiKey = result.google?.apiKey; 
 
-                // If no static imagery asset artifact was matched, force open selection tools automatically
+                // Check if we need to auto-load mapping/satellite interface frames
                 if (!result.streetView?.artifactCode && hasCoordinates && serverApiKey) {
                     console.log('[Location Engine] Chaining into imagery workspace context using secure configuration keys...');
                     
                     this.openInteractiveStreetView({
-                        latitude: result.google.latitude,
-                        longitude: result.google.longitude,
+                        latitude: lat,
+                        longitude: lng,
                         address: text,
                         apiKey: serverApiKey
                     });
@@ -1705,7 +1720,6 @@ window.SkyIndex = {
 
         } catch (e) {
             console.error('[Location Engine Error]', e);
-            // Safety cleaning of active visual loader frames on explicit throw exceptions
             document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
             this.appendSystemLine(`Failed to process location proposal. Please try again.`, 'system-error');
         }
