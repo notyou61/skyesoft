@@ -653,7 +653,10 @@ error_log('[PPC][SECTION-07] Search Address: ' . $searchAddress);
 // =====================================================
 
 $googleApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') 
-    ?: getenv('GOOGLE_MAPS_BACKEND_API_KEY');
+    ?: getenv('GOOGLE_MAPS_BACKEND_API_KEY')
+    ?: getenv('GOOGLE_MAPS_API_KEY')
+    ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
+    ?: '';
 
 if (!empty($searchAddress) && !empty($googleApiKey)) {
 
@@ -1350,6 +1353,13 @@ $proposalSnapshot['snapshotPath'] = $snapshotPath;
 #region SECTION 16 — Final Output Builder
 
 // =====================================================
+// 🔐 SECURE KEY PROJECTION FOR WORKSPACE AUTO-CHAINING
+// =====================================================
+$clientWorkspaceKey = getenv('GOOGLE_MAPS_API_KEY')
+    ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
+    ?: '';
+
+// =====================================================
 // FINAL ACTION RESPONSE UPDATE
 // =====================================================
 if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
@@ -1368,6 +1378,9 @@ if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
             'meta'              => $proposalSnapshot['meta'] ?? [],
             'rawInput'          => $proposalSnapshot['rawInput'] ?? []
         ];
+
+        // Ensure key is appended to internal historical tracking logs
+        $finalResponseData['google']['apiKey'] = $clientWorkspaceKey;
 
         // Update the existing action record
         $updateStmt = $pdo->prepare("
@@ -1396,6 +1409,11 @@ echo json_encode([
     'status'            => 'proposed',
     'proposalId'        => $proposalId,
     'activitySessionId' => $context['activitySessionId'] ?? '',
+
+    // Inject secure key parameters for frontend SDK bootstrap chaining
+    'google' => [
+        'apiKey' => $clientWorkspaceKey
+    ],
 
     // Core Structured Data
     'data' => [
