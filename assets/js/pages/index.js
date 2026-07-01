@@ -1101,25 +1101,53 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📇 AGGRESSIVE Contact Signature Intercept
+        // 📇 Unified Proposal Router (PC-1 through PC-5)
         // --------------------------------------------------
-        const hasEmail = /@\S+\.\S{2,}/.test(text);
-        const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
-        const hasSignatureLines = text.split(/\r?\n/).length >= 2;
-        const hasName = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        
+        if (lines.length >= 2) {
+            const hasEmail         = /@\S+\.\S{2,}/.test(text);
+            const hasPhone         = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
+            const hasName          = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
+            const hasZip           = /\b\d{5}(-\d{4})?\b/.test(text); 
+            const hasStreetAddress = /\b\d{1,6}\s+\S+/.test(text);
 
-        if ((hasEmail || hasPhone) && hasSignatureLines && hasName) {
-            console.log('[Intent Intercept] STRONG Contact signature matched!');
+            // Classification Heuristics
+            const looksLikeContactProposal = (hasEmail || hasPhone) && hasName;
+            const looksLikeLocationProposal = hasStreetAddress && hasZip && !hasEmail && !hasPhone;
 
-            const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
-            const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
+            // --- Existing Functionality (Preserved exactly) ---
+            if (looksLikeContactProposal) {
+                console.log('[Proposal Router] Routing to CONTACT workflow');
+                
+                const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
+                const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
 
-            this.appendSystemLine(`Proposed Contact - ${normalizedName}`, 'user');
-            this.suppressRawContactEcho();
-            this.renderContactProcessingState();
+                this.appendSystemLine(`Proposed Contact - ${normalizedName}`, 'user');
+                this.suppressRawContactEcho();
+                this.renderContactProcessingState();
 
-            await this.executeContactProposalWorkflow(text, activitySessionId);
-            return;
+                await this.executeContactProposalWorkflow(text, activitySessionId);
+                return;
+            }
+
+            // --- New functionality (Slipped in cleanly) ---
+            if (looksLikeLocationProposal) {
+                console.log('[Proposal Router] Routing to LOCATION workflow');
+                
+                const entityName = lines[0] || 'Proposed Location';
+                this.appendSystemLine(`Processing Location Proposal — ${entityName}`, 'user');
+                this.suppressRawContactEcho();
+                
+                if (typeof this.renderLocationProcessingState === 'function') {
+                    this.renderLocationProcessingState();
+                } else {
+                    this.renderContactProcessingState();
+                }
+
+                await this.executeLocationProposalWorkflow(text, activitySessionId, lines);
+                return;
+            }
         }
 
         // --------------------------------------------------
@@ -1592,6 +1620,74 @@ window.SkyIndex = {
 
             this.closeStreetViewModal();
         },
+
+    // #endregion
+
+    // #region 📍 Location Proposal Workflow
+
+    async executeLocationProposalWorkflow(text, activitySessionId, parsedLines) {
+        // Business Rule Validation
+        if (parsedLines.length < 4) {
+            const entityName = parsedLines[0] || 'Unknown Entity';
+            if (typeof this.renderCustomSystemWarning === 'function') {
+                this.renderCustomSystemWarning(
+                    `A location proposal requires a **Location Name** line below the entity.\n\n` +
+                    `*Expected Format:*\n` +
+                    `${entityName}\n` +
+                    `**[Location Name]**\n` +
+                    `Street Address\n` +
+                    `City, State Zip`
+                );
+            } else {
+                this.appendSystemLine(`Error: A location proposal requires a Location Name line.`, 'system-error');
+            }
+            return; 
+        }
+
+        const entity = parsedLines[0];
+        const locationName = parsedLines[1];
+
+        try {
+            // NOTE: Ensure this URL matches your active processing endpoint 
+            // If your backend routes via askOpenAI, update this destination string accordingly!
+            const response = await fetch('/skyesoft/api/processProposedLocation.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    type: "PC-4", 
+                    rawText: text, 
+                    activitySessionId,
+                    entity: entity,
+                    locationName: locationName
+                })
+            });
+            
+            if (!response.ok) throw new Error(`Server returned status ${response.status}`);
+            const result = await response.json();
+            console.log('[Location Engine Success]', result);
+
+            // --------------------------------------------------
+            // 🎨 Render the Result Card to UI Chat Frame
+            // --------------------------------------------------
+            // Clean up any loading states/spinners first
+            document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
+            
+            if (result.success && result.workflowState === 'property_valid') {
+                // Synthesize/inject the original input block layout text back into the payload for the card header
+                result.inputAddress = text; 
+                
+                // Invoke your structural template injector method 
+                this.renderParcelReviewResult(result);
+            } else {
+                this.appendSystemLine(`❌ Location system update: ${result.summary || 'Failed to analyze location details.'}`, 'error');
+            }
+
+        } catch (e) {
+            console.error('[Location Engine Error]', e);
+            this.appendSystemLine(`Failed to process location proposal. Please try again.`, 'system-error');
+        }
+    },
 
     // #endregion
 
