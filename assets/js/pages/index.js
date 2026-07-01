@@ -1150,7 +1150,26 @@ window.SkyIndex = {
                     this.renderContactProcessingState();
                 }
 
-                await this.executeLocationProposalWorkflow(text, activitySessionId, lines);
+                // Execute workflow and capture the structured API response payload
+                const response = await this.executeLocationProposalWorkflow(text, activitySessionId, lines);
+                
+                // ──────────────────────────────────────────
+                // 🎯 STATE FIX: Explicitly bind the resolved jurisdiction & layout context
+                // ──────────────────────────────────────────
+                if (response && response.success && response.data?.location) {
+                    const loc = response.data.location;
+                    
+                    // Force-bind the jurisdiction text to prevent the "Unknown" fallback
+                    if (this.currentProposalCard) {
+                        this.currentProposalCard.jurisdiction = loc.jurisdictionName || loc.parcelDetails?.[0]?.jurisdiction || 'Unknown';
+                        this.currentProposalCard.governanceCode = response.pcm?.rs?.[0] || 'RS-0';
+                        
+                        // Request a UI synchronization update
+                        if (typeof this.currentProposalCard.requestUpdate === 'function') {
+                            this.currentProposalCard.requestUpdate();
+                        }
+                    }
+                }
                 return;
             }
         }
