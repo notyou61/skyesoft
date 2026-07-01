@@ -1655,33 +1655,17 @@ window.SkyIndex = {
         const zip = cityLine.trim().split(/\s+/).pop() || '';
 
         try {
-            // Dispatch to the unified processing endpoint
+           // Dispatch to the unified processing endpoint
             const response = await fetch('/skyesoft/api/processProposedContact.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    // 1. Root Level Parameters (Satisfies root-level validation gates)
-                    type: "PC-4", 
-                    mode: "propose",
-                    actionTypeId: 13,
-                    rawText: text, 
-                    rawInput: text,
-                    activitySessionId: activitySessionId,
+                    // 1. Root Level Parameters (Satisfies Section 00 bootstrap variables)
+                    input: text, // 🔥 Maps straight to $rawInput on the backend
+                    activitySessionId: activitySessionId, // Maps straight to $context['activitySessionId']
                     
-                    // Contact stubs to bypass backend "missing contact details" checks
-                    contactName: 'Location Proposal System',
-                    contactEmail: '',
-                    contactPhone: '',
-                    
-                    // Location root blocks
-                    locationName: locationName,
-                    locationAddress: rawAddress,
-                    locationCity: city,
-                    locationState: state,
-                    locationZip: zip,
-
-                    // 2. Structured Array Parameter (Satisfies $inputData array validations)
+                    // 2. Structured Array Parameter (Satisfies internal validation payload checks)
                     inputData: {
                         mode: "propose",
                         actionTypeId: 13,
@@ -1689,9 +1673,7 @@ window.SkyIndex = {
                             entityName: entity || ''
                         },
                         contact: {
-                            contactName: 'Location Proposal System',
-                            contactEmail: '',
-                            contactPhone: ''
+                            contactName: '' // Safely empty; Section 03 AI will parse text or leave blank
                         },
                         location: {
                             locationName: locationName || '',
