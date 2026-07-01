@@ -1100,13 +1100,14 @@ window.SkyIndex = {
             }
         }
 
-        // --------------------------------------------------
-        // 📇 Unified Proposal Router (PC-1 through PC-5)
-        // --------------------------------------------------
+        // =====================================================================
+        // 📇 Unified Proposal Router (PC-1 through PC-5) — CALIBRATED
+        // =====================================================================
         const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-        
+
         if (lines.length >= 2) {
-            const hasEmail         = /@\S+\.\S{2,}/.test(text);
+            // CALIBRATION: Relaxed check to catch raw string signatures before full validation
+            const hasEmail         = /@\S+/.test(text); 
             const hasPhone         = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
             const hasName          = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
             const hasZip           = /\b\d{5}(-\d{4})?\b/.test(text); 
@@ -1114,6 +1115,8 @@ window.SkyIndex = {
 
             // Classification Heuristics
             const looksLikeContactProposal = (hasEmail || hasPhone) && hasName;
+            
+            // SAFETY GATE: Location layout must yield if an explicit profile delimiter (@) is present
             const looksLikeLocationProposal = hasStreetAddress && hasZip && !hasEmail && !hasPhone;
 
             // --- Existing Functionality (Preserved exactly) ---
