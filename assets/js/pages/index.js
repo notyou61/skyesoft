@@ -1648,7 +1648,8 @@ window.SkyIndex = {
 
         try {
             // Dispatch to the Location processing endpoint
-            const response = await fetch('/skyesoft/api/processProposedLocation.php', {
+            // 🔄 CHANGE THIS LINE FROM processProposedLocation.php TO processProposedContact.php
+            const response = await fetch('/skyesoft/api/processProposedContact.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
