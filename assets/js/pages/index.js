@@ -1140,7 +1140,21 @@ window.SkyIndex = {
             if (looksLikeLocationProposal) {
                 console.log('[Proposal Router] Routing to LOCATION workflow');
                 
-                const entityName = lines[0] || 'Proposed Location';
+                // ──────────────────────────────────────────
+                // 🔄 STRUCTURAL FIX: Self-heal compressed address lines
+                // ──────────────────────────────────────────
+                let calibratedLines = [...lines];
+                if (calibratedLines.length === 3) {
+                    const lastLine = calibratedLines[2];
+                    const zipMatch = lastLine.match(/(.*?\b(?:Rd|St|Ave|Blvd|Dr|Lane|Way|Plaza|Pkwy|Rd\.)?)\s*([A-Za-z\s]+,\s*[A-Z]{2}\s+\d{5}.*)/i);
+                    
+                    if (zipMatch) {
+                        calibratedLines[2] = zipMatch[1].trim(); // Street Line
+                        calibratedLines.push(zipMatch[2].trim()); // City, State ZIP Line
+                    }
+                }
+
+                const entityName = calibratedLines[0] || 'Proposed Location';
                 this.appendSystemLine(`Processing Location Proposal — ${entityName}`, 'user');
                 this.suppressRawContactEcho();
                 
@@ -1150,21 +1164,16 @@ window.SkyIndex = {
                     this.renderContactProcessingState();
                 }
 
-                // Execute workflow and capture the structured API response payload
-                const response = await this.executeLocationProposalWorkflow(text, activitySessionId, lines);
+                // Execute workflow using the normalized 4-line array matrix
+                const response = await this.executeLocationProposalWorkflow(text, activitySessionId, calibratedLines);
                 
-                // ──────────────────────────────────────────
-                // 🎯 STATE FIX: Explicitly bind the resolved jurisdiction & layout context
-                // ──────────────────────────────────────────
                 if (response && response.success && response.data?.location) {
                     const loc = response.data.location;
                     
-                    // Force-bind the jurisdiction text to prevent the "Unknown" fallback
                     if (this.currentProposalCard) {
                         this.currentProposalCard.jurisdiction = loc.jurisdictionName || loc.parcelDetails?.[0]?.jurisdiction || 'Unknown';
                         this.currentProposalCard.governanceCode = response.pcm?.rs?.[0] || 'RS-0';
                         
-                        // Request a UI synchronization update
                         if (typeof this.currentProposalCard.requestUpdate === 'function') {
                             this.currentProposalCard.requestUpdate();
                         }
