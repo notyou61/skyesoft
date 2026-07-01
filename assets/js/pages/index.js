@@ -1662,8 +1662,9 @@ window.SkyIndex = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     // 1. Root Level Parameters (Satisfies Section 00 bootstrap variables)
-                    input: text, // 🔥 Maps straight to $rawInput on the backend
-                    activitySessionId: activitySessionId, // Maps straight to $context['activitySessionId']
+                    input: text,                  // Maps straight to $rawInput
+                    type: "PC-4",                 // 🔥 FIX: This triggers $isExplicitLocationOnlyIntent on the backend!
+                    activitySessionId: activitySessionId, 
                     
                     // 2. Structured Array Parameter (Satisfies internal validation payload checks)
                     inputData: {
@@ -1673,7 +1674,7 @@ window.SkyIndex = {
                             entityName: entity || ''
                         },
                         contact: {
-                            contactName: '' // Safely empty; Section 03 AI will parse text or leave blank
+                            contactName: '' 
                         },
                         location: {
                             locationName: locationName || '',
