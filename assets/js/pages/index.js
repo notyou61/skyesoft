@@ -1100,13 +1100,13 @@ window.SkyIndex = {
             }
         }
 
-        // =====================================================================
-        // 📇 Unified Proposal Router (PC-1 through PC-5) — CALIBRATED
-        // =====================================================================
+        // --------------------------------------------------
+        // 📇 Unified Proposal Router (PC-1 through PC-5)
+        // --------------------------------------------------
         const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
         if (lines.length >= 2) {
-            // CALIBRATION: Relaxed check to catch raw string signatures before full validation
+            // Calibrated component indicators - relaxed email regex to catch raw domains
             const hasEmail         = /@\S+/.test(text); 
             const hasPhone         = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
             const hasName          = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
@@ -1116,10 +1116,10 @@ window.SkyIndex = {
             // Classification Heuristics
             const looksLikeContactProposal = (hasEmail || hasPhone) && hasName;
             
-            // SAFETY GATE: Location layout must yield if an explicit profile delimiter (@) is present
+            // SAFETY GATE: Ensure location workflow yields completely if any signature token is present
             const looksLikeLocationProposal = hasStreetAddress && hasZip && !hasEmail && !hasPhone;
 
-            // --- Existing Functionality (Preserved exactly) ---
+            // --- Existing Functionality (Preserved & Protected) ---
             if (looksLikeContactProposal) {
                 console.log('[Proposal Router] Routing to CONTACT workflow');
                 
@@ -1134,7 +1134,7 @@ window.SkyIndex = {
                 return;
             }
 
-            // --- New functionality (Slipped in cleanly) ---
+            // --- Location Functionality (Isolated & Calibrated) ---
             if (looksLikeLocationProposal) {
                 console.log('[Proposal Router] Routing to LOCATION workflow');
                 
