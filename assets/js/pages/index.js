@@ -1624,9 +1624,8 @@ window.SkyIndex = {
     // #endregion
 
     // #region 📍 Location Proposal Workflow
-
     async executeLocationProposalWorkflow(text, activitySessionId, parsedLines) {
-        // Business Rule Validation
+        // Business Rule Validation: Expecting at least 4 lines for an Entity + Location Name + Address layout
         if (parsedLines.length < 4) {
             const entityName = parsedLines[0] || 'Unknown Entity';
             if (typeof this.renderCustomSystemWarning === 'function') {
@@ -1648,8 +1647,7 @@ window.SkyIndex = {
         const locationName = parsedLines[1];
 
         try {
-            // NOTE: Ensure this URL matches your active processing endpoint 
-            // If your backend routes via askOpenAI, update this destination string accordingly!
+            // Dispatch to the Location processing endpoint
             const response = await fetch('/skyesoft/api/processProposedLocation.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -1670,25 +1668,47 @@ window.SkyIndex = {
             // --------------------------------------------------
             // 🎨 Render the Result Card to UI Chat Frame
             // --------------------------------------------------
-            // Clean up any loading states/spinners first
+            // Clean up any lingering processing layout states/spinners first
             document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
             
             if (result.success && result.workflowState === 'property_valid') {
-                // Synthesize/inject the original input block layout text back into the payload for the card header
+                // Synthesize original input text block back into the payload for presentation headers
                 result.inputAddress = text; 
                 
-                // Invoke your structural template injector method 
+                // Invoke your structured rendering card component
                 this.renderParcelReviewResult(result);
+
+                // --------------------------------------------------
+                // 🔐 Secure Workspace Auto-Chaining Chain
+                // --------------------------------------------------
+                const hasCoordinates = result.google?.latitude && result.google?.longitude;
+                const serverApiKey = result.google?.apiKey || result.apiKey; // Secured by server via .env split
+
+                // If no static imagery asset artifact was matched, force open selection tools automatically
+                if (!result.streetView?.artifactCode && hasCoordinates && serverApiKey) {
+                    console.log('[Location Engine] Chaining into imagery workspace context using secure configuration keys...');
+                    
+                    this.openInteractiveStreetView({
+                        latitude: result.google.latitude,
+                        longitude: result.google.longitude,
+                        address: text,
+                        apiKey: serverApiKey
+                    });
+                } else if (!serverApiKey && !result.streetView?.artifactCode) {
+                    console.warn('[Location Engine] Auto-workspace load skipped: Key not appended to server response object context.');
+                }
+
             } else {
                 this.appendSystemLine(`❌ Location system update: ${result.summary || 'Failed to analyze location details.'}`, 'error');
             }
 
         } catch (e) {
             console.error('[Location Engine Error]', e);
+            // Safety cleaning of active visual loader frames on explicit throw exceptions
+            document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
             this.appendSystemLine(`Failed to process location proposal. Please try again.`, 'system-error');
         }
     },
-
     // #endregion
 
     // #region 🧠 Command Interface Card
