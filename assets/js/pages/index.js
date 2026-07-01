@@ -1106,15 +1106,17 @@ window.SkyIndex = {
         const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
         if (lines.length >= 2) {
-            // Calibrated component indicators - relaxed email regex to catch raw domains
-            const hasEmail         = /@\S+/.test(text); 
+            // Calibrated component indicators
+            const hasEmail         = /@\S+/.test(text); // Relaxed email regex to catch raw domains
+            const hasStrictEmail   = /@\S+\.\S{2,}/.test(text); // Strict check to confirm complete contact fields
             const hasPhone         = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
             const hasName          = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
             const hasZip           = /\b\d{5}(-\d{4})?\b/.test(text); 
             const hasStreetAddress = /\b\d{1,6}\s+\S+/.test(text);
 
             // Classification Heuristics
-            const looksLikeContactProposal = (hasEmail || hasPhone) && hasName;
+            // Stricter check prevents business entity names from misrouting into the contact logic
+            const looksLikeContactProposal = (hasStrictEmail || hasPhone) && hasName;
             
             // SAFETY GATE: Ensure location workflow yields completely if any signature token is present
             const looksLikeLocationProposal = hasStreetAddress && hasZip && !hasEmail && !hasPhone;
