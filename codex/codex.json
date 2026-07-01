@@ -4924,7 +4924,7 @@
             },
             "proposalClassificationMatrix": {
                 "PC-0": {
-                    "name": "Existing Contact",
+                    "name": "Existing ELC",
                     "description": "Existing Entity, Existing Location, Existing Contact",
                     "entity": "existing",
                     "location": "existing",
@@ -4937,12 +4937,12 @@
                     "entity": "new",
                     "location": "new",
                     "contact": "new",
-                        "actions": [
-                            "insert_entity",
-                            "insert_location",
-                            "insert_contact",
-                            "link_elc"
-                        ]
+                    "actions": [
+                        "insert_entity",
+                        "insert_location",
+                        "insert_contact",
+                        "link_elc"
+                    ]
                 },
                 "PC-2": {
                     "name": "New Location",
@@ -4968,102 +4968,94 @@
                     ]
                 },
                 "PC-4": {
-                    "name": "Update Existing Contact",
-                    "description": "Existing Entity, Existing Location, Existing Contact with modified data",
+                    "name": "Location Only",
+                    "description": "Existing Entity, New Location, No Contact",
                     "entity": "existing",
-                    "location": "existing",
-                    "contact": "existing",
+                    "location": "new",
+                    "contact": "none",
                     "actions": [
-                        "update_contact"
+                        "insert_location",
+                        "link_entity"
                     ]
                 },
                 "PC-5": {
-                    "name": "Relocate Contact",
-                    "description": "Existing Contact assigned to another Location",
-                    "entity": "existing",
-                    "location": "existing_or_new",
-                    "contact": "existing",
+                    "name": "New Entity + Location",
+                    "description": "New Entity, New Location, No Contact",
+                    "entity": "new",
+                    "location": "new",
+                    "contact": "none",
                     "actions": [
-                        "update_elc"
-                    ]
-                },
-                "PC-6": {
-                    "name": "Reassign Contact",
-                    "description": "Existing Contact assigned to another Entity",
-                    "entity": "existing_or_new",
-                    "location": "existing_or_new",
-                    "contact": "existing",
-                    "actions": [
-                        "update_elc"
+                        "insert_entity",
+                        "insert_location"
                     ]
                 }
             },
             "resolutionStatusMatrix": {
                 "RS-0": {
-                "name": "Acceptable",
-                "severity": "success",
-                "blocksCommit": false,
-                "description": "Proposal satisfies all governance requirements."
+                    "name": "Acceptable",
+                    "severity": "success",
+                    "blocksCommit": false,
+                    "description": "Proposal satisfies all governance requirements and is eligible for commit."
                 },
                 "RS-1": {
-                "name": "Information",
-                "severity": "info",
-                "blocksCommit": false,
-                "description": "Informational message only."
+                    "name": "Information",
+                    "severity": "info",
+                    "blocksCommit": false,
+                    "description": "Non-blocking informational message."
                 },
                 "RS-2": {
-                "name": "Review Recommended",
-                "severity": "review",
-                "blocksCommit": false,
-                "description": "Proposal should be reviewed before acceptance."
+                    "name": "Review Recommended",
+                    "severity": "review",
+                    "blocksCommit": false,
+                    "description": "Proposal should be reviewed before acceptance."
                 },
                 "RS-3": {
-                "name": "Incomplete Proposal",
-                "severity": "warning",
-                "blocksCommit": true,
-                "description": "Required information is missing."
+                    "name": "Incomplete Proposal",
+                    "severity": "warning",
+                    "blocksCommit": true,
+                    "description": "One or more required proposal fields are missing."
                 },
                 "RS-4": {
-                "name": "Validation Failed",
-                "severity": "error",
-                "blocksCommit": true,
-                "description": "Submitted data failed validation."
+                    "name": "Validation Failed",
+                    "severity": "error",
+                    "blocksCommit": true,
+                    "description": "Submitted data failed one or more validation rules."
                 },
                 "RS-5": {
-                "name": "Duplicate Contact",
-                "severity": "error",
-                "blocksCommit": true,
-                "description": "Matching contact already exists."
+                    "name": "Duplicate Contact",
+                    "severity": "error",
+                    "blocksCommit": true,
+                    "description": "A matching contact already exists for the entity."
                 },
                 "RS-6": {
-                "name": "Parcel Selection Required",
-                "severity": "warning",
-                "blocksCommit": true,
-                "description": "Multiple candidate parcels require user selection."
+                    "name": "Parcel Selection Required",
+                    "severity": "warning",
+                    "blocksCommit": true,
+                    "description": "Multiple parcels were found for a Maricopa County location and user selection is required."
                 },
                 "RS-7": {
-                "name": "Parcel Unresolved",
-                "severity": "error",
-                "blocksCommit": true,
-                "description": "Parcel could not be resolved."
+                    "name": "Parcel Unresolved",
+                    "severity": "error",
+                    "blocksCommit": true,
+                    "description": "A Maricopa County location could not be resolved to a parcel."
                 },
                 "RS-8": {
-                "name": "Invalid Location",
-                "severity": "error",
-                "blocksCommit": true,
-                "description": "Location could not be validated."
+                    "name": "Invalid Location",
+                    "severity": "error",
+                    "blocksCommit": true,
+                    "description": "The location could not be validated by Google and/or Census."
                 },
                 "RS-9": {
-                "name": "Database Conflict",
-                "severity": "error",
-                "blocksCommit": true,
-                "description": "Database integrity conflict detected."
+                    "name": "Database Conflict",
+                    "severity": "error",
+                    "blocksCommit": true,
+                    "description": "A database integrity conflict was detected during commit."
                 },
                 "RS-10": {
-                "name": "Internal Processing Error",
-                "severity": "critical",
-                "blocksCommit": true,
-                "description": "Unexpected processing failure."
+                    "name": "Internal Processing Error",
+                    "severity": "critical",
+                    "blocksCommit": true,
+                    "description": "An unexpected internal processing error occurred."
                 }
             },
             "uiStatusColors": {
@@ -5072,7 +5064,8 @@
                 "review": "#6f42c1",
                 "warning": "#ffc107",
                 "error": "#dc3545",
-                "critical": "#343a40"
+                "critical": "#dc3545",
+                "advisory": "#6c757d"     
             },
             "contactCreationELC": {
                 "title": {
