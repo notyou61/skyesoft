@@ -1683,32 +1683,36 @@ window.SkyIndex = {
         const rawAddress = parsedLines[2] || '';
         const cityLine = parsedLines[3] || '';
         const city = cityLine.split(',')[0]?.trim() || '';
-        const stateZipPart = cityLine.split(',')[1]?.trim() || '';
-        const state = stateZipPart.split(' ')[0]?.trim() || '';
-        const zip = cityLine.trim().split(/\s+/).pop() || '';
+        const stateZipPart = cityLine.split(',').slice(1).join(',').trim(); // More robust
+        const state = stateZipPart.split(/\s+/)[0] || '';
+        const zip = stateZipPart.split(/\s+/).pop() || '';
+
+        // Debug payload (excellent for troubleshooting)
+        console.log('[Location Proposal Payload]', {
+            proposalType: 'location',
+            entity,
+            locationName,
+            rawAddress,
+            city,
+            state,
+            zip
+        });
 
         try {
-           // Dispatch to the unified processing endpoint
+            // Dispatch to the unified processing endpoint with clean semantic contract
             const response = await fetch('/skyesoft/api/processProposedContact.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    // 1. Root Level Parameters (Satisfies Section 00 bootstrap variables)
-                    input: text,                  // Maps straight to $rawInput
-                    type: "PC-4",                 // 🔥 FIX: This triggers $isExplicitLocationOnlyIntent on the backend!
+                    input: text,
+                    proposalType: "location",           // Semantic intent
                     activitySessionId: activitySessionId, 
                     
-                    // 2. Structured Array Parameter (Satisfies internal validation payload checks)
                     inputData: {
                         mode: "propose",
                         actionTypeId: 13,
-                        entity: {
-                            entityName: entity || ''
-                        },
-                        contact: {
-                            contactName: '' 
-                        },
+                        entity: { entityName: entity || '' },
                         location: {
                             locationName: locationName || '',
                             locationAddress: rawAddress,
@@ -1716,6 +1720,7 @@ window.SkyIndex = {
                             locationState: state,
                             locationZip: zip
                         }
+                        // contact intentionally omitted for pure location proposals
                     }
                 })
             });
@@ -1724,39 +1729,45 @@ window.SkyIndex = {
             const result = await response.json();
             console.log('[Location Engine Success]', result);
 
-            // --------------------------------------------------
-            // 🎨 Render the Result Card to UI Chat Frame
-            // --------------------------------------------------
+            // Clean up processing UI
             document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
             
-            if (result.success && result.status === 'proposed') {
+            if (result.success) {   // ← Refined condition (more flexible)
                 result.inputAddress = text; 
                 
-                this.renderParcelReviewResult(result);
+                // Defensive renderer selection
+                if (
+                    result.proposalKind === 'location' &&
+                    typeof this.renderLocationProposalResult === 'function'
+                ) {
+                    this.renderLocationProposalResult(result);
+                } else {
+                    this.renderParcelReviewResult(result);
+                }
 
                 // --------------------------------------------------
-                // 🔐 Secure Workspace Auto-Chaining Chain
+                // 🔐 Secure Workspace Auto-Chaining
                 // --------------------------------------------------
-                const lat = result.data?.location?.locationLatitude;
-                const lng = result.data?.location?.locationLongitude;
+                const loc = result.data?.location || {};
+                const lat = loc.locationLatitude ?? loc.latitude;
+                const lng = loc.locationLongitude ?? loc.longitude;
                 const hasCoordinates = lat && lng;
-                const serverApiKey = result.google?.apiKey; 
+                const serverApiKey = result.google?.apiKey ?? result.streetView?.apiKey;
 
-                if (!result.streetView?.artifactCode && hasCoordinates && serverApiKey) {
-                    console.log('[Location Engine] Chaining into imagery workspace context using secure configuration keys...');
-                    
+                if (hasCoordinates && serverApiKey) {
+                    console.log('[Location Engine] Chaining into imagery workspace...');
                     this.openInteractiveStreetView({
                         latitude: lat,
                         longitude: lng,
                         address: text,
                         apiKey: serverApiKey
                     });
-                } else if (!serverApiKey && !result.streetView?.artifactCode) {
-                    console.warn('[Location Engine] Auto-workspace load skipped: Key not appended to server response object context.');
+                } else if (!serverApiKey) {
+                    console.warn('[Location Engine] Auto-workspace skipped: No API key in response.');
                 }
 
             } else {
-                this.appendSystemLine(`❌ Location system update: ${result.summary || 'Failed to analyze location details.'}`, 'error');
+                this.appendSystemLine(`❌ ${result.message || result.summary || 'Failed to process location proposal.'}`, 'error');
             }
 
         } catch (e) {

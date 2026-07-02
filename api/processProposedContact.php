@@ -4,8 +4,8 @@ declare(strict_types=1);
 /**
  * Skyesoft — processProposedContact.php
  * Main Orchestration + Proposal Report Generation
- * Version: 1.6.1
- * Last Updated: 2026-06-28
+ * Version: 1.6.2
+ * Last Updated: 2026-07-02
  */
 
 #region SECTION 00 — Bootstrap & Request Initialization
@@ -48,7 +48,7 @@ $context = [
     'requestId'        => uniqid('ppc_', true),
     'startedAt'        => microtime(true),
     'activitySessionId'=> '',
-    'version'          => '2.0.0'
+    'version'          => '2.1.0'   // bumped for parser dispatch
 ];
 
 // =====================================================
@@ -63,8 +63,18 @@ if (!is_array($inputData)) {
     $inputData = [];
 }
 
-// 🔥 MTCO: Detect explicit location-only intent globally from the incoming payload type
-$isExplicitLocationOnlyIntent = (isset($inputData['type']) && $inputData['type'] === 'PC-4');
+// =====================================================
+// PROPOSAL TYPE DETECTION (Semantic + Legacy Support)
+// =====================================================
+
+$proposalTypeInput = trim($inputData['proposalType'] ?? '');
+$legacyType        = trim($inputData['type'] ?? '');
+
+$proposalType = $proposalTypeInput !== '' 
+    ? $proposalTypeInput 
+    : (($legacyType === 'PC-4') ? 'location' : 'contact');
+
+$isExplicitLocationOnlyIntent = ($proposalType === 'location');
 
 $rawInput = trim(
     $inputData['input']
@@ -80,6 +90,7 @@ $context['activitySessionId'] = trim($inputData['activitySessionId'] ?? '');
 // =====================================================
 
 error_log('[PPC] Request ID: ' . $context['requestId']);
+error_log('[PPC] Proposal Type: ' . $proposalType . ' (input=' . $proposalTypeInput . ', legacy=' . $legacyType . ')');
 error_log('[PPC] Input Length: ' . strlen($rawInput));
 
 if (!empty($inputData)) {
