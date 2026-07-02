@@ -2965,7 +2965,7 @@ window.SkyIndex = {
         }
 
         if (data.status === 'reject') {
-            this.appendSystemLine(`⚠️ ${data.message || 'Not recognized as contact data.'}`, 'warning');
+            this.appendSystemLine(`⚠️ ${data.message || 'Not recognized as proposal data.'}`, 'warning');
             return;
         }
 
@@ -2974,11 +2974,15 @@ window.SkyIndex = {
             data.status === 'partial' ||
             data.ui?.proposalStatus === 'proposed'
         ) {
+            // Unified renderer (Contact + Location)
             this.renderProposedContact(data);
             return;
         }
 
-        this.appendSystemLine(data.message || 'Could not process contact information.', 'warning');
+        this.appendSystemLine(
+            data.message || 'Could not process proposal information.',
+            'warning'
+        );
     },
 
     retryProposal() {
