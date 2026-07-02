@@ -1695,12 +1695,13 @@ window.SkyIndex = {
             if (result.success) {
                 result.inputAddress = text; 
 
-                // ← THIS IS THE KEY CHANGE
                 this.handleContactProposal(result);
 
                 // --------------------------------------------------
-                // 🔐 Secure Workspace Auto-Chaining
+                // 🔐 Secure Workspace Auto-Chaining — DISABLED FOR NOW
                 // --------------------------------------------------
+                // We can add a manual button in the card instead
+                /*
                 const loc = result.data?.location || {};
                 const lat = loc.locationLatitude ?? loc.latitude;
                 const lng = loc.locationLongitude ?? loc.longitude;
@@ -1715,9 +1716,8 @@ window.SkyIndex = {
                         address: text,
                         apiKey: serverApiKey
                     });
-                } else if (!serverApiKey) {
-                    console.warn('[Location Engine] Auto-workspace skipped: No API key in response.');
                 }
+                */
 
             } else {
                 this.appendSystemLine(`❌ ${result.message || result.summary || 'Failed to process location proposal.'}`, 'error');
