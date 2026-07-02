@@ -1083,6 +1083,10 @@ window.SkyIndex = {
 
         const normalized = text.toString().trim().toLowerCase();
 
+        // Parse lines once (shared by all routers)
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        const firstLine = lines[0]?.toLowerCase() || '';
+
         // --------------------------------------------------
         // 🎛 Fast UI Actions Interceptor
         // --------------------------------------------------
@@ -1101,30 +1105,67 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
+        // 📸 Explicit Workflows (Higher Priority)
+        // --------------------------------------------------
+        const isExplicitCommand = 
+            firstLine.startsWith('street view') ||
+            firstLine.startsWith('property review') ||
+            firstLine.startsWith('parcel review') ||
+            firstLine.startsWith('recorder') ||
+            firstLine.startsWith('treasurer') ||
+            firstLine.startsWith('tax');
+
+        if (isExplicitCommand) {
+            const streetViewIntent = await this.isStreetViewIntent(text);
+            if (streetViewIntent) {
+                const userLineNode = this.appendSystemLine(text, 'user');
+                this.suppressRawIntentEcho();
+                this.renderStreetViewProcessingState();
+
+                (async () => {
+                    let cleanAddress = text.trim();
+                    try {
+                        const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: "parseIntent", userQuery: text })
+                        });
+
+                        if (parseRes.ok) {
+                            const parsed = await parseRes.json();
+                            if (parsed.cleanAddress) cleanAddress = parsed.cleanAddress;
+                        }
+                    } catch (e) { console.error('[Intent Parse Error]', e); }
+
+                    if (userLineNode) {
+                        const textSpan = userLineNode.querySelector('.commandText');
+                        if (textSpan) textSpan.textContent = `Google Street View - ${cleanAddress}`;
+                    }
+
+                    await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
+                })();
+
+                return;
+            }
+        }
+
+        // --------------------------------------------------
         // 📇 Unified Proposal Router (PC-1 through PC-5)
         // --------------------------------------------------
-        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
         if (lines.length >= 2) {
-            // Calibrated component indicators
-            const hasEmail         = /@\S+/.test(text); // Relaxed email regex to catch raw domains
-            const hasStrictEmail   = /@\S+\.\S{2,}/.test(text); // Strict check to confirm complete contact fields
+            const hasEmail         = /@\S+/.test(text);
+            const hasStrictEmail   = /@\S+\.\S{2,}/.test(text);
             const hasPhone         = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
             const hasName          = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
             const hasZip           = /\b\d{5}(-\d{4})?\b/.test(text); 
             const hasStreetAddress = /\b\d{1,6}\s+\S+/.test(text);
 
-            // Classification Heuristics
-            // Stricter check prevents business entity names from misrouting into the contact logic
             const looksLikeContactProposal = (hasStrictEmail || hasPhone) && hasName;
-            
-            // SAFETY GATE: Ensure location workflow yields completely if any signature token is present
             const looksLikeLocationProposal = hasStreetAddress && hasZip && !hasEmail && !hasPhone;
 
-            // --- Existing Functionality (Preserved & Protected) ---
             if (looksLikeContactProposal) {
                 console.log('[Proposal Router] Routing to CONTACT workflow');
-                
                 const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
                 const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
 
@@ -1136,21 +1177,16 @@ window.SkyIndex = {
                 return;
             }
 
-            // --- Location Functionality (Isolated & Calibrated) ---
             if (looksLikeLocationProposal) {
                 console.log('[Proposal Router] Routing to LOCATION workflow');
-                
-                // ──────────────────────────────────────────
-                // 🔄 STRUCTURAL FIX: Self-heal compressed address lines
-                // ──────────────────────────────────────────
+
                 let calibratedLines = [...lines];
                 if (calibratedLines.length === 3) {
                     const lastLine = calibratedLines[2];
                     const zipMatch = lastLine.match(/(.*?\b(?:Rd|St|Ave|Blvd|Dr|Lane|Way|Plaza|Pkwy|Rd\.)?)\s*([A-Za-z\s]+,\s*[A-Z]{2}\s+\d{5}.*)/i);
-                    
                     if (zipMatch) {
-                        calibratedLines[2] = zipMatch[1].trim(); // Street Line
-                        calibratedLines.push(zipMatch[2].trim()); // City, State ZIP Line
+                        calibratedLines[2] = zipMatch[1].trim();
+                        calibratedLines.push(zipMatch[2].trim());
                     }
                 }
 
@@ -1164,66 +1200,10 @@ window.SkyIndex = {
                     this.renderContactProcessingState();
                 }
 
-                // Execute workflow using the normalized 4-line array matrix
-                const response = await this.executeLocationProposalWorkflow(text, activitySessionId, calibratedLines);
-                
-                if (response && response.success && response.data?.location) {
-                    const loc = response.data.location;
-                    
-                    if (this.currentProposalCard) {
-                        this.currentProposalCard.jurisdiction = loc.jurisdictionName || loc.parcelDetails?.[0]?.jurisdiction || 'Unknown';
-                        this.currentProposalCard.governanceCode = response.pcm?.rs?.[0] || 'RS-0';
-                        
-                        if (typeof this.currentProposalCard.requestUpdate === 'function') {
-                            this.currentProposalCard.requestUpdate();
-                        }
-                    }
-                }
+                await this.executeLocationProposalWorkflow(text, activitySessionId, calibratedLines);
                 return;
             }
         }
-
-        // --------------------------------------------------
-        // 📸 Street View Workflow
-        // --------------------------------------------------
-        const streetViewIntent = await this.isStreetViewIntent(text);
-        if (streetViewIntent) {
-            const userLineNode = this.appendSystemLine(text, 'user');
-            this.suppressRawIntentEcho();
-            this.renderStreetViewProcessingState();
-
-            (async () => {
-                let cleanAddress = text.trim();
-                try {
-                    const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ type: "parseIntent", userQuery: text })
-                    });
-
-                    if (parseRes.ok) {
-                        const parsed = await parseRes.json();
-                        if (parsed.cleanAddress) cleanAddress = parsed.cleanAddress;
-                    }
-                } catch (e) { console.error('[Intent Parse Error]', e); }
-
-                if (userLineNode) {
-                    const textSpan = userLineNode.querySelector('.commandText');
-                    if (textSpan) textSpan.textContent = `Google Street View - ${cleanAddress}`;
-                }
-
-                await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
-            })();
-
-            return;
-        }
-
-        // --------------------------------------------------
-        // 🏠 Property Review Workflow — TEMPORARILY DISABLED
-        // --------------------------------------------------
-        // const propertyIntent = await this.isPropertyWorkflowIntent(text, normalized);
-        // if (propertyIntent) { ... }
 
         // --------------------------------------------------
         // AI Fallback
