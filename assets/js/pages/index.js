@@ -2339,10 +2339,29 @@ window.SkyIndex = {
     },
 
     replaceProcessingWithProposal() {
+
+        // --------------------------------------------------
+        // 📇 Contact Proposal Processing
+        // --------------------------------------------------
         if (this._currentContactProcessingEl) {
             this._currentContactProcessingEl.remove();
             this._currentContactProcessingEl = null;
         }
+
+        // --------------------------------------------------
+        // 📍 Location Proposal Processing
+        // --------------------------------------------------
+        if (this._currentLocationProcessingEl) {
+            this._currentLocationProcessingEl.remove();
+            this._currentLocationProcessingEl = null;
+        }
+
+        // --------------------------------------------------
+        // 🧹 Safety Cleanup
+        // --------------------------------------------------
+        document
+            .querySelectorAll('#streetViewProcessing')
+            .forEach(el => el.remove());
     },
 
     // #endregion
