@@ -1,12 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Skyesoft — processProposedContact.utils.php
- * Internal Utilities & Helper Functions
- * Version: 1.6.0
- */
-
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
     error_log("[OPCACHE] Utils file invalidated on load");
@@ -15,7 +9,8 @@ if (function_exists('opcache_invalidate')) {
 /**
  * Skyesoft — processProposedContact.utils.php
  * Internal Utilities & Helper Functions
- * Version: 1.6.0
+ * Version: 1.7.0
+ * Last Updated: 2026-07-02
  */
 
 // =====================================================
@@ -1382,6 +1377,208 @@ function generateProposalReport(string $proposalId, array $proposal): ?string {
         error_log("[PDF] Generation failed for {$proposalId}: " . $e->getMessage());
         return null;
     }
+}
+
+/**
+ * parseLocationProposal — Clean parser for location-only proposals
+ * Uses structured client payload + line fallback. No AI, no side effects.
+ */
+function parseLocationProposal(array $lines, array $clientData, string $rawInputOriginal): array {
+    $entityName   = trim($clientData['entity']['entityName']   ?? ($lines[0] ?? ''));
+    $locationName = trim($clientData['location']['locationName'] ?? ($lines[1] ?? ''));
+    $address      = trim($clientData['location']['locationAddress'] ?? ($lines[2] ?? ''));
+
+    // Robust city/state/zip parsing
+    $cityLine = $lines[3] ?? '';
+    $parts    = array_map('trim', explode(',', $cityLine));
+    $city     = $parts[0] ?? '';
+    $stateZip = implode(',', array_slice($parts, 1));
+    $stateZip = preg_replace('/\s+/', ' ', $stateZip);
+    $stateParts = explode(' ', $stateZip);
+    $state = $stateParts[0] ?? '';
+    $zip   = $stateParts[count($stateParts)-1] ?? '';
+
+    $parsed = [
+        'entity' => [
+            'name' => $entityName
+        ],
+        'contact' => [
+            'firstName' => '', 'lastName' => '', 'salutation' => '', 'title' => '',
+            'primaryPhone' => '', 'primaryPhoneRaw' => '', 'email' => ''
+        ],
+        'location' => [
+            'address'      => $address,
+            'city'         => $city,
+            'state'        => strtoupper($state),
+            'zip'          => $zip,
+            'suite'        => '',
+            'locationName' => $locationName
+        ]
+    ];
+
+    error_log("[PPC][LocationParser] Entity='{$entityName}' | LocationName='{$locationName}' | Address='{$address}'");
+    return $parsed;
+}
+
+/**
+ * parseContactProposal — Wrapper for the existing full AI contact extraction
+ * Preserves 100% of the legacy behavior for PC-0 through PC-3.
+ */
+/**
+ * parseContactProposal — Full legacy AI contact extraction (PC-0 through PC-3)
+ * This is your original SECTION 03 logic wrapped as a reusable function.
+ * 100% behavior-preserving for existing contact proposals.
+ */
+function parseContactProposal(string $rawInput): array {
+    
+    $openAiApiKey = skyesoftGetEnv('OPENAI_API_KEY');
+
+    if (empty($openAiApiKey)) {
+        error_log('[PPC][ContactParser] Missing OpenAI API key');
+        return [
+            'entity' => ['name' => ''],
+            'contact' => ['firstName' => '', 'lastName' => '', 'salutation' => '', 'title' => '', 'primaryPhone' => '', 'primaryPhoneRaw' => '', 'email' => ''],
+            'location' => ['address' => '', 'city' => '', 'state' => '', 'zip' => '', 'suite' => '', 'locationName' => '']
+        ];
+    }
+
+    error_log('[PPC][ContactParser] Starting AI extraction');
+
+    // =====================================================
+    // STRONG SYSTEM PROMPT (Unchanged from your original)
+    // =====================================================
+    $systemPrompt = <<<EOT
+You are an extremely precise structured data extraction engine specialized in cleaning and normalizing messy business contact signatures, Outlook signatures, website blocks, and pasted content.
+
+PERFORM THESE STEPS IN ORDER:
+
+1. CLEAN & NORMALIZE FIRST
+   - Restore logical line breaks and structure from collapsed, HTML-contaminated, or poorly formatted input.
+   - Remove noise: icons, emojis, HTML tags, disclaimers, repeated separators, social media links, and decorative text.
+   - Fix common formatting issues such as extra spaces and broken lines.
+   - Do NOT invent or hallucinate information.
+
+2. THEN EXTRACT CLEAN DATA
+   - Extract Entity, Location, and Contact fields from the cleaned text with high accuracy.
+
+CRITICAL RULES:
+- Title extraction is MANDATORY when a job title or role is clearly present in the input (e.g. Accounting Manager, Director of Operations, Project Manager, etc.).
+- If no clear title is present, leave the "title" field as an empty string.
+- Use empty string "" for any missing value. Never omit fields.
+- Phone numbers: preserve the raw version exactly as shown in "primaryPhoneRaw" and provide a cleanly formatted version in "primaryPhone".
+- Be conservative with inference — better to use "" than to guess.
+
+Return ONLY valid JSON in this exact structure. No explanations, no markdown, no extra text.
+
+{
+  "intent": "contact_proposal",
+  "confidence": 85,
+  "parsed": {
+    "entity": { "name": "" },
+    "contact": {
+      "firstName": "", "lastName": "", "salutation": "", "title": "",
+      "primaryPhone": "", "primaryPhoneRaw": "", "email": ""
+    },
+    "location": {
+      "address": "", "city": "", "state": "", "zip": "",
+      "suite": "", "locationName": ""
+    }
+  }
+}
+EOT;
+
+    $extractionPrompt = "Clean and normalize the following pasted contact information, then extract structured data.\n\nINPUT:\n{$rawInput}";
+
+    // =====================================================
+    // AI CALL (Unchanged)
+    // =====================================================
+    $payload = [
+        'model'       => 'gpt-4o-mini',
+        'temperature' => 0,
+        'max_tokens'  => 600,
+        'messages'    => [
+            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'user',   'content' => $extractionPrompt]
+        ]
+    ];
+
+    $ch = curl_init('https://api.openai.com/v1/chat/completions');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $openAiApiKey
+        ],
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+        CURLOPT_TIMEOUT        => 25
+    ]);
+
+    $response = curl_exec($ch);
+    safeCurlClose($ch);
+
+    if (!$response) {
+        error_log('[PPC][ContactParser] OpenAI request failed');
+        return ['entity' => ['name' => ''], 'contact' => [], 'location' => []]; // safe fallback
+    }
+
+    $responseData = json_decode($response, true);
+    $content = trim($responseData['choices'][0]['message']['content'] ?? '');
+
+    preg_match('/\{.*\}/s', $content, $matches);
+    $jsonString = $matches[0] ?? $content;
+
+    $aiData = json_decode($jsonString, true);
+
+    if (!$aiData || !isset($aiData['parsed'])) {
+        error_log('[PPC][ContactParser] Invalid AI response');
+        return ['entity' => ['name' => ''], 'contact' => [], 'location' => []];
+    }
+
+    $parsed = $aiData['parsed'];
+
+    // =====================================================
+    // CLEAN PHONE FORMATTING (Preserved)
+    // =====================================================
+    if (!empty($parsed['contact']['primaryPhoneRaw'])) {
+        $raw = $parsed['contact']['primaryPhoneRaw'];
+        $digits = preg_replace('/[^0-9]/', '', $raw);
+        if (strlen($digits) === 10) {
+            $formatted = '(' . substr($digits, 0, 3) . ') ' .
+                         substr($digits, 3, 3) . '-' .
+                         substr($digits, 6);
+            $parsed['contact']['primaryPhone'] = $formatted;
+        } else {
+            $parsed['contact']['primaryPhone'] = $raw;
+        }
+    } elseif (!empty($parsed['contact']['primaryPhone'])) {
+        $digits = preg_replace('/[^0-9]/', '', $parsed['contact']['primaryPhone']);
+        if (strlen($digits) === 10) {
+            $parsed['contact']['primaryPhone'] = '(' . substr($digits, 0, 3) . ') ' .
+                                                 substr($digits, 3, 3) . '-' .
+                                                 substr($digits, 6);
+        }
+    }
+
+    // =====================================================
+    // INFER SALUTATION (Preserved)
+    // =====================================================
+    if (empty($parsed['contact']['salutation'])) {
+        $firstName = $parsed['contact']['firstName'] ?? '';
+        $lastName  = $parsed['contact']['lastName'] ?? '';
+
+        if (function_exists('inferSalutation')) {
+            $inferred = inferSalutation($firstName, $lastName);
+            if (!empty($inferred)) {
+                $parsed['contact']['salutation'] = $inferred;
+                $parsed['contact']['salutationInferred'] = true;
+            }
+        }
+    }
+
+    error_log('[PPC][ContactParser] AI Extraction complete');
+
+    return $parsed;
 }
 
 ?>

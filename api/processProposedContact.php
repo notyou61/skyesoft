@@ -164,179 +164,36 @@ error_log("[PPC] Fallback Parser → Name: '{$fallbackFirstName} {$fallbackLastN
 
 #endregion
 
-#region SECTION 03 — 🧠 Unified AI Prompt Construction & Execution
+#region SECTION 02.5 — Proposal Parser Dispatch (Architectural Branch Point)
 
-$openAiApiKey = skyesoftGetEnv('OPENAI_API_KEY') ?: getenv('OPENAI_API_KEY');
+$proposalType = $proposalType ?? 'contact';   // Set in Section 00
 
-if (empty($openAiApiKey)) {
-    echo json_encode(['success' => false, 'status' => 'missing_openai_key']);
-    exit;
-}
+error_log("[PPC][SECTION-02.5] Proposal Type detected: {$proposalType}");
 
-error_log('[PPC][SECTION-03] Starting AI extraction');
-
-// =====================================================
-// STRONG SYSTEM PROMPT (Improved Title Extraction)
-// =====================================================
-$systemPrompt = <<<EOT
-You are an extremely precise structured data extraction engine specialized in cleaning and normalizing messy business contact signatures, Outlook signatures, website blocks, and pasted content.
-
-PERFORM THESE STEPS IN ORDER:
-
-1. CLEAN & NORMALIZE FIRST
-   - Restore logical line breaks and structure from collapsed, HTML-contaminated, or poorly formatted input.
-   - Remove noise: icons, emojis, HTML tags, disclaimers, repeated separators, social media links, and decorative text.
-   - Fix common formatting issues such as extra spaces and broken lines.
-   - Do NOT invent or hallucinate information.
-
-2. THEN EXTRACT CLEAN DATA
-   - Extract Entity, Location, and Contact fields from the cleaned text with high accuracy.
-
-CRITICAL RULES:
-- Title extraction is MANDATORY when a job title or role is clearly present in the input (e.g. Accounting Manager, Director of Operations, Project Manager, etc.).
-- If no clear title is present, leave the "title" field as an empty string.
-- Use empty string "" for any missing value. Never omit fields.
-- Phone numbers: preserve the raw version exactly as shown in "primaryPhoneRaw" and provide a cleanly formatted version in "primaryPhone".
-- Be conservative with inference — better to use "" than to guess.
-
-Return ONLY valid JSON in this exact structure. No explanations, no markdown, no extra text.
-
-{
-  "intent": "contact_proposal",
-  "confidence": 85,
-  "parsed": {
-    "entity": {
-      "name": ""
-    },
-    "contact": {
-      "firstName": "",
-      "lastName": "",
-      "salutation": "",
-      "title": "",
-      "primaryPhone": "",
-      "primaryPhoneRaw": "",
-      "email": ""
-    },
-    "location": {
-      "address": "",
-      "city": "",
-      "state": "",
-      "zip": "",
-      "suite": "",
-      "locationName": ""
-    }
-  }
-}
-EOT;
-
-// =====================================================
-// USER PROMPT
-// =====================================================
-$extractionPrompt = "Clean and normalize the following pasted contact information, then extract structured data.\n\nINPUT:\n{$rawInput}";
-
-// =====================================================
-// AI CALL
-// =====================================================
-$payload = [
-    'model'       => 'gpt-4o-mini',
-    'temperature' => 0,
-    'max_tokens'  => 600,
-    'messages'    => [
-        ['role' => 'system', 'content' => $systemPrompt],
-        ['role' => 'user',   'content' => $extractionPrompt]
+$parsed = [
+    'entity'   => ['name' => ''],
+    'contact'  => [
+        'firstName' => '', 'lastName' => '', 'salutation' => '', 'title' => '',
+        'primaryPhone' => '', 'primaryPhoneRaw' => '', 'email' => ''
+    ],
+    'location' => [
+        'address' => '', 'city' => '', 'state' => '', 'zip' => '',
+        'suite' => '', 'locationName' => ''
     ]
 ];
 
-$ch = curl_init('https://api.openai.com/v1/chat/completions');
-curl_setopt_array($ch, [
-    CURLOPT_POST           => true,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $openAiApiKey
-    ],
-    CURLOPT_POSTFIELDS     => json_encode($payload),
-    CURLOPT_TIMEOUT        => 25
-]);
-
-$response = curl_exec($ch);
-safeCurlClose($ch);
-
-if (!$response) {
-    echo json_encode(['success' => false, 'status' => 'openai_request_failed']);
-    exit;
-}
-
-$responseData = json_decode($response, true);
-$content = trim($responseData['choices'][0]['message']['content'] ?? '');
-
-// Extract JSON
-preg_match('/\{.*\}/s', $content, $matches);
-$jsonString = $matches[0] ?? $content;
-
-$aiData = json_decode($jsonString, true);
-
-if (!$aiData || !isset($aiData['parsed'])) {
-    echo json_encode(['success' => false, 'status' => 'invalid_ai_response', 'content' => $content]);
-    exit;
-}
-
-$parsed = $aiData['parsed'];
-
 // =====================================================
-// CLEAN PHONE FORMATTING
+// DISPATCH TO APPROPRIATE PARSER
 // =====================================================
-if (!empty($parsed['contact']['primaryPhoneRaw'])) {
-    $raw = $parsed['contact']['primaryPhoneRaw'];
-    $digits = preg_replace('/[^0-9]/', '', $raw);
-    
-    if (strlen($digits) === 10) {
-        $formatted = '(' . substr($digits, 0, 3) . ') ' .
-                     substr($digits, 3, 3) . '-' .
-                     substr($digits, 6);
-        $parsed['contact']['primaryPhone'] = $formatted;
-    } else {
-        $parsed['contact']['primaryPhone'] = $raw;
-    }
-} elseif (!empty($parsed['contact']['primaryPhone'])) {
-    $digits = preg_replace('/[^0-9]/', '', $parsed['contact']['primaryPhone']);
-    if (strlen($digits) === 10) {
-        $parsed['contact']['primaryPhone'] = '(' . substr($digits, 0, 3) . ') ' .
-                                             substr($digits, 3, 3) . '-' .
-                                             substr($digits, 6);
-    }
+if ($proposalType === 'location') {
+    // New clean path for location-only proposals
+    $parsed = parseLocationProposal($lines, $inputData['inputData'] ?? [], $rawInputOriginal);
+    error_log('[PPC][SECTION-02.5] → Location Parser dispatched');
+} else {
+    // Legacy contact path — full AI extraction (unchanged behavior for PC-0..PC-3)
+    $parsed = parseContactProposal($rawInput);
+    error_log('[PPC][SECTION-02.5] → Contact Parser dispatched (legacy AI path)');
 }
-
-// =====================================================
-// INFER SALUTATION using askOpenAI.php function
-// =====================================================
-if (empty($parsed['contact']['salutation'])) {
-
-    $firstName = $parsed['contact']['firstName'] ?? '';
-    $lastName  = $parsed['contact']['lastName'] ?? '';
-
-    if (function_exists('inferSalutation')) {
-
-        error_log("[PPC][SECTION-03] Calling inferSalutation for: {$firstName} {$lastName}");
-
-        $inferred = inferSalutation($firstName, $lastName);
-
-        error_log("[PPC][SECTION-03] inferSalutation returned: " . var_export($inferred, true));
-
-        if (!empty($inferred)) {
-            $parsed['contact']['salutation'] = $inferred;
-            $parsed['contact']['salutationInferred'] = true;
-        }
-
-    } else {
-        error_log('[PPC][SECTION-03] WARNING: inferSalutation() function not found');
-    }
-}
-
-error_log('[PPC][SECTION-03] Extraction complete - Title: ' . 
-    (!empty($parsed['contact']['title']) ? $parsed['contact']['title'] : 'MISSING') .
-    ' | Salutation: ' . (!empty($parsed['contact']['salutation']) ? $parsed['contact']['salutation'] : 'MISSING') .
-    ' | Phone: ' . (!empty($parsed['contact']['primaryPhone']) ? $parsed['contact']['primaryPhone'] : 'MISSING'));
 
 #endregion
 
@@ -392,15 +249,15 @@ error_log('[PPC][SECTION-04] Schema enforcement complete');
 #region SECTION 05 — Data Normalization
 
 // =====================================================
-// 🔥 MTCO: SAFE FALLBACK MAPPING FOR PC-4 INTENTS
+// MINIMAL FALLBACK (Temporary safety net during transition)
 // =====================================================
-if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
-    error_log('[PPC][SECTION-05] Running safe alignment fallback checks...');
-    
+if ($isExplicitLocationOnlyIntent) {
+    error_log('[PPC][SECTION-05] Minimal location fallback (parser should handle most data)');
+
     $clientLoc    = $inputData['inputData']['location'] ?? [];
     $clientEntity = $inputData['inputData']['entity'] ?? [];
 
-    // Only assign if Section 03 returned an empty string, preventing extraction loss
+    // Only fill true gaps — the dedicated parser should provide most values
     if (empty(trim($parsed['location']['locationName'] ?? ''))) {
         $parsed['location']['locationName'] = $clientLoc['locationName'] ?? '';
     }
@@ -424,97 +281,63 @@ if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
 // =====================================================
 // ENTITY
 // =====================================================
-
-$parsed['entity']['name'] =
-    trim($parsed['entity']['name']);
+$parsed['entity']['name'] = trim($parsed['entity']['name'] ?? '');
 
 // =====================================================
 // CONTACT
 // =====================================================
+$parsed['contact']['firstName']   = trim($parsed['contact']['firstName'] ?? '');
+$parsed['contact']['lastName']    = trim($parsed['contact']['lastName'] ?? '');
+$parsed['contact']['salutation']  = trim($parsed['contact']['salutation'] ?? '');
+$parsed['contact']['title']       = trim($parsed['contact']['title'] ?? '');
+$parsed['contact']['email']       = strtolower(trim($parsed['contact']['email'] ?? ''));
 
-$parsed['contact']['firstName'] =
-    trim($parsed['contact']['firstName']);
-
-$parsed['contact']['lastName'] =
-    trim($parsed['contact']['lastName']);
-
-$parsed['contact']['salutation'] =
-    trim($parsed['contact']['salutation']);
-
-$parsed['contact']['title'] =
-    trim($parsed['contact']['title']);
-
-$parsed['contact']['email'] =
-    strtolower(
-        trim($parsed['contact']['email'])
-    );
-    
 // =====================================================
-// PHONE NORMALIZATION (Preserve formatting from Section 03)
+// PHONE NORMALIZATION (Preserve formatting from parser)
 // =====================================================
-
 $phoneValue = $parsed['contact']['primaryPhone'] ?? '';
-
 if (!empty($phoneValue)) {
-    // Always store a clean digits-only version for matching
     $parsed['contact']['primaryPhoneDigits'] = preg_replace('/[^0-9]/', '', $phoneValue);
 
-    // Only re-format if it's still raw digits (no formatting yet)
     $digitsOnly = preg_replace('/[^0-9]/', '', $phoneValue);
     if (strlen($digitsOnly) === 10 && strpos($phoneValue, '(') === false) {
-        $parsed['contact']['primaryPhone'] =
-            '(' . substr($digitsOnly, 0, 3) . ') ' .
-            substr($digitsOnly, 3, 3) . '-' .
-            substr($digitsOnly, 6);
+        $parsed['contact']['primaryPhone'] = '(' . substr($digitsOnly, 0, 3) . ') ' .
+                                             substr($digitsOnly, 3, 3) . '-' .
+                                             substr($digitsOnly, 6);
     }
-    // Otherwise keep the already-formatted value from Section 03
 }
 
 // =====================================================
 // LOCATION
 // =====================================================
+$parsed['location']['address']      = trim($parsed['location']['address'] ?? '');
+$parsed['location']['city']         = trim($parsed['location']['city'] ?? '');
+$parsed['location']['state']        = strtoupper(trim($parsed['location']['state'] ?? ''));
+$parsed['location']['zip']          = trim($parsed['location']['zip'] ?? '');
+$parsed['location']['suite']        = trim($parsed['location']['suite'] ?? '');
+$parsed['location']['locationName'] = trim($parsed['location']['locationName'] ?? '');
 
-$parsed['location']['address'] =
-    trim($parsed['location']['address']);
-
-$parsed['location']['city'] =
-    trim($parsed['location']['city']);
-
-$parsed['location']['state'] =
-    strtoupper(
-        trim($parsed['location']['state'])
-    );
-
-$parsed['location']['zip'] =
-    trim($parsed['location']['zip']);
-
-$parsed['location']['suite'] =
-    trim($parsed['location']['suite']);
-
-$parsed['location']['locationName'] =
-    trim($parsed['location']['locationName']);
-
-error_log(
-    '[PPC][SECTION-05] Data normalization complete'
-);
+error_log('[PPC][SECTION-05] Data normalization complete');
 
 // =====================================================
-// COMPLETENESS CHECK (Hard Gate per Governance Notes)
+// COMPLETENESS CHECK (Updated with locationName requirement)
 // =====================================================
 
 error_log('[PPC][PHASE-3] Running Completeness Check');
 
 // 🔥 MTCO: Dynamically split requirements based on layout intent context
 if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
-    // Requirements for Location-Only Workflow
+    // Requirements for Location-Only Workflow (now includes locationName)
     $requiredFields = [
-        'location.address'  => 'Street Address',
-        'location.city'     => 'City',
-        'location.state'    => 'State',
-        'location.zip'      => 'ZIP Code'
+        'entity.name'           => 'Entity Name',           // Needed for PC-5
+        'location.locationName' => 'Location Name',
+        'location.address'      => 'Street Address',
+        'location.city'         => 'City',
+        'location.state'        => 'State',
+        'location.zip'          => 'ZIP Code'
     ];
 } else {
-    // Full Standard Contact Record Requirements
+    // Full Standard Contact Record Requirements (unchanged)
     $requiredFields = [
         'entity.name'       => 'Entity Name',
         'contact.firstName' => 'Contact First Name',
@@ -533,7 +356,7 @@ $missingFields = [];
 foreach ($requiredFields as $dotPath => $label) {
     list($category, $field) = explode('.', $dotPath);
     $value = trim($parsed[$category][$field] ?? '');
-    
+
     if (empty($value)) {
         $missingFields[] = [
             'path'  => $dotPath,
@@ -549,15 +372,16 @@ $hasEmail = !empty(trim($parsed['contact']['email'] ?? ''));
 
 $completeness = [
     'entity' => [
-        // Forces a clean pass if it is an explicit location proposal OR if it contains a name string
-        'name' => ($isExplicitLocationOnlyIntent || !empty(trim($parsed['entity']['name'] ?? ''))) ? '✔ Complete' : '✖ Missing Entity Name'
+        'name' => !empty(trim($parsed['entity']['name'] ?? ''))
+            ? '✔ Complete'
+            : '✖ Missing Entity Name'
     ],
     'contact' => [
-        // Bypasses name requirement for location proposals cleanly
-        'names' => ($isExplicitLocationOnlyIntent || ($hasFirst && $hasLast)) ? '✔ N/A' : '✖ First/Last Name Missing',
-        'email' => ($isExplicitLocationOnlyIntent || $hasEmail) ? '✔ N/A' : '✖ Email Address Required'
+        'names' => ($isExplicitLocationOnlyIntent || ($hasFirst && $hasLast)) ? '✔ Not Required' : '✖ First/Last Name Missing',
+        'email' => ($isExplicitLocationOnlyIntent || $hasEmail) ? '✔ Not Required' : '✖ Email Address Required'
     ],
     'location' => [
+        'name'   => !empty(trim($parsed['location']['locationName'] ?? '')) ? '✔ Location Name' : '✖ Location Name Missing',
         'street' => !empty(trim($parsed['location']['address'] ?? '')) ? '✔ Street Address' : '✖ Street Address Missing',
         'city'   => !empty(trim($parsed['location']['city'] ?? '')) ? '✔ City' : '✖ City Missing',
         'state'  => !empty(trim($parsed['location']['state'] ?? '')) ? '✔ State' : '✖ State Missing',
@@ -572,11 +396,9 @@ error_log('[PPC][PHASE-3] Completeness Result: ' . $completeness['overall']);
 if ($completeness['overall'] !== 'PASS') {
     error_log('[PPC][PHASE-3] INCOMPLETE — Early Exit with RS-3');
 
-    // Extract paths and labels for formatting the message and JSON response
     $pathsOnly  = array_column($missingFields, 'path');
     $labelsOnly = array_column($missingFields, 'label');
-    
-    // Build a dynamic bulleted list string for the user message
+
     $bulletList = "• " . implode("\n• ", $labelsOnly);
     $uiMessage  = "Proposal is incomplete.\n\nMissing required field(s):\n{$bulletList}\n\nPlease provide the missing information before continuing.";
 
@@ -588,10 +410,10 @@ if ($completeness['overall'] !== 'PASS') {
         'governance'   => [
             'resolution_status' => 'RS-3',
             'reason'            => 'Incomplete Proposal',
-            'missingFields'     => $pathsOnly // FIXED: Array of structured string targets (e.g. ["contact.email"])
+            'missingFields'     => $pathsOnly
         ],
         'message' => $uiMessage,
-        'data' => [   
+        'data' => [
             'entity'   => $parsed['entity'] ?? [],
             'contact'  => $parsed['contact'] ?? [],
             'location' => $parsed['location'] ?? []
@@ -1090,21 +912,25 @@ $contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
 error_log("[PPC][SECTION-12] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus");
 
 if ($isExplicitLocationOnlyIntent === true) {
-    $pcm['pc'] = 'PC-4';
-} elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
-    $pcm['pc'] = 'PC-0';
-} elseif ($contactStatus === 'exact') {
-    $pcm['pc'] = 'PC-3';
-} elseif ($locationStatus === 'exact') {
-    $pcm['pc'] = 'PC-3';
-} elseif ($entityStatus === 'exact') {
-    $pcm['pc'] = 'PC-2';
+    // NEW: Location-only proposals
+    $pcm['pc'] = ($entityStatus === 'exact') ? 'PC-4' : 'PC-5';
 } else {
-    $pcm['pc'] = 'PC-1';
+    // EXISTING contact classification logic (unchanged — preserves PC-0 through PC-3)
+    if ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
+        $pcm['pc'] = 'PC-0';
+    } elseif ($contactStatus === 'exact') {
+        $pcm['pc'] = 'PC-3';
+    } elseif ($locationStatus === 'exact') {
+        $pcm['pc'] = 'PC-3';
+    } elseif ($entityStatus === 'exact') {
+        $pcm['pc'] = 'PC-2';
+    } else {
+        $pcm['pc'] = 'PC-1';
+    }
 }
 
 // =====================================================
-// GOVERNANCE — RS Rules (Completeness already handled early)
+// GOVERNANCE — RS Rules
 // =====================================================
 
 $governanceIssues = [];
@@ -1114,7 +940,7 @@ if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
     $governanceIssues[] = ['code' => 'RS-5', 'message' => 'Duplicate contact detected'];
 }
 
-// RS-6 Multiple Parcels (Only block if we don't already have an exact location match)
+// RS-6 Multiple Parcels
 if ($locationStatus !== 'exact' && (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1)) {
     $governanceIssues[] = [
         'code' => 'RS-6',
@@ -1134,61 +960,19 @@ if (empty($data['location']['locationPlaceId'] ?? null)) {
     $governanceIssues[] = ['code' => 'RS-8', 'message' => 'Invalid location'];
 }
 
-// Default RS-0 if nothing else
+// Default RS-0 only if no other issues
 $pcm['rs'] = $pcm['rs'] ?? [];
-if (empty($pcm['rs'])) {
+if (empty($governanceIssues) && empty($pcm['rs'])) {
     $pcm['rs'][] = 'RS-0';
 }
 
-// =====================================================
-// GOVERNANCE — RS Rules (Completeness already handled early)
-// =====================================================
-
-$governanceIssues = [];
-
-// RS-5 Duplicate Contact
-if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
-    $governanceIssues[] = ['code' => 'RS-5', 'message' => 'Duplicate contact detected'];
-}
-
-// RS-6 Multiple Parcels (FIX: Skip if location is an exact database match)
-if ($locationStatus !== 'exact' && (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1)) {
-    $governanceIssues[] = [
-        'code' => 'RS-6',
-        'message' => 'Multiple parcels found for this address - selection required',
-        'details' => ['parcelCount' => $data['location']['parcelCount'] ?? 0]
-    ];
-}
-
-// RS-7 Unresolved Parcel
-if (strtolower($data['location']['locationCounty'] ?? '') === 'maricopa' && 
-    ($data['location']['parcelCount'] ?? 0) === 0) {
-    $governanceIssues[] = ['code' => 'RS-7', 'message' => 'Parcel could not be resolved'];
-}
-
-// RS-8 Invalid Location
-if (empty($data['location']['locationPlaceId'] ?? null)) {
-    $governanceIssues[] = ['code' => 'RS-8', 'message' => 'Invalid location'];
-}
-
-// Sync governance issues back into PCM RS array so classification reflects reality
-$pcm['rs'] = $pcm['rs'] ?? [];
+// Sync governance issues
 if (!empty($governanceIssues)) {
     foreach ($governanceIssues as $issue) {
         $pcm['rs'][] = $issue['code'];
     }
 }
 
-// Default RS-0 if nothing else blocked it
-if (empty($pcm['rs'])) {
-    $pcm['rs'][] = 'RS-0';
-}
-
-// =====================================================
-// FINAL GOVERNANCE STATE
-// =====================================================
-
-// FIX: Clean up duplicates and properly check if any active blocking issue codes exist
 $pcm['rs'] = array_values(array_unique($pcm['rs']));
 
 $blockingCodes = ['RS-3', 'RS-5', 'RS-6', 'RS-7', 'RS-8'];
@@ -1253,10 +1037,16 @@ switch ($pc) {
         $commitPlan['summary'] = 'Link existing Entity + Location, Insert new Contact';
         break;
 
-    case 'PC-4':
+    case 'PC-4':  // Existing Entity + New Location (no contact)
         $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['insert_location'];
-        $commitPlan['summary'] = 'Insert new Location only';
+        $commitPlan['actions'] = ['link_entity', 'insert_location'];
+        $commitPlan['summary'] = 'Link existing Entity, Insert new Location only';
+        break;
+
+    case 'PC-5':  // New Entity + New Location (no contact)
+        $commitPlan['canCommit'] = $canCommit;
+        $commitPlan['actions'] = ['insert_entity', 'insert_location', 'link_elc'];
+        $commitPlan['summary'] = 'Insert new Entity + new Location (no contact)';
         break;
 
     default:
@@ -1330,6 +1120,12 @@ if (in_array('RS-3', $rsList)) {
 } elseif ($pc === 'PC-0') {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nAll records already exist. No action required.";
     $narratives['report'] = "Existing record match for {$contactName} at {$entityName}.";
+} elseif ($pc === 'PC-4') {
+    $narratives['ui'] = "Location proposal for {$entityName} at {$loc}.\n\nExisting entity match found. Ready to add new location.";
+    $narratives['report'] = "Location-only proposal for existing entity {$entityName}.";
+} elseif ($pc === 'PC-5') {
+    $narratives['ui'] = "New location proposal for {$entityName} at {$loc}.\n\nNew entity + location will be created.";
+    $narratives['report'] = "New entity + location proposal for {$entityName}.";
 } else {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.";
     $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}.";
@@ -1425,6 +1221,8 @@ if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
             'success'           => true,
             'status'            => 'proposed',
             'proposalId'        => $proposalId,
+            'proposalKind'      => $proposalType ?? 'contact',        // NEW
+            'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'), // NEW
             'data'              => $data ?? [],
             'databaseResolution'=> $databaseResolution ?? [],
             'pcm'               => $pcm ?? [],
@@ -1465,6 +1263,8 @@ echo json_encode([
     'success'           => true,
     'status'            => 'proposed',
     'proposalId'        => $proposalId,
+    'proposalKind'      => $proposalType ?? 'contact',           // NEW
+    'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'), // NEW
     'activitySessionId' => $context['activitySessionId'] ?? '',
 
     // Inject secure key parameters for frontend SDK bootstrap chaining
