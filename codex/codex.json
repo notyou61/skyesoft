@@ -2072,6 +2072,123 @@
                     "text": "Record every version increment and maintain historical lineage logs."
                 }
             },
+            "canonicalDomainModel": {
+                "version": "1.0",
+                "title": "Skyesoft Canonical Domain Model",
+                "description": "Canonical definitions for the core business objects and workflow types used throughout the Skyesoft platform.",
+                "workflowTypes": {
+                    "proposedContact": {
+                        "name": "Proposed Contact",
+                        "description": "A proposal to add or modify a Contact associated with an existing or proposed Entity and Location.",
+                        "createsDatabaseRecords": true
+                    },
+                    "proposedLocation": {
+                        "name": "Proposed Location",
+                        "description": "A proposal to add a named Location associated with an existing or proposed Entity. A Proposed Location does not include Contact information.",
+                        "createsDatabaseRecords": true
+                    },
+                    "propertyReview": {
+                        "name": "Property Review",
+                        "description": "Analyze a physical Property using an Address to obtain validation, Google Place information, jurisdiction, parcel information (when available), geographic coordinates, and related property details.",
+                        "createsDatabaseRecords": false
+                    },
+                    "streetView": {
+                        "name": "Street View",
+                        "description": "Display Google Street View imagery for a specified Address.",
+                        "createsDatabaseRecords": false
+                    }
+                },
+                "businessObjects": {
+                    "address": {
+                        "name": "Address",
+                        "description": "A physical mailing or street address.",
+                        "notes": [
+                            "An Address identifies a physical place.",
+                            "An Address does not imply ownership, occupancy, or business activity."
+                        ]
+                    },
+                    "property": {
+                        "name": "Property",
+                        "description": "A physical site represented by an Address.",
+                        "attributes": [
+                            "Google Place ID",
+                            "Latitude",
+                            "Longitude",
+                            "Census Validation",
+                            "County",
+                            "Jurisdiction",
+                            "Parcel Information (when available)"
+                        ],
+                        "notes": [
+                            "A Property exists independently of any Entity.",
+                            "A Property may or may not have an associated business."
+                        ]
+                    },
+                    "entity": {
+                        "name": "Entity",
+                        "description": "A business, organization, government agency, or legal organization.",
+                        "notes": [
+                            "An Entity may operate one or many Locations."
+                        ]
+                    },
+                    "location": {
+                        "name": "Location",
+                        "description": "A named business location that associates an Entity with a physical Property (Address).",
+                        "components": [
+                            "Entity",
+                            "Location Name",
+                            "Address"
+                        ],
+                        "notes": [
+                            "A Location represents an Entity's presence at a Property.",
+                            "Multiple Entities may occupy the same Property.",
+                            "One Entity may operate multiple Locations."
+                        ]
+                    },
+                    "contact": {
+                        "name": "Contact",
+                        "description": "A person associated with a specific Entity and Location.",
+                        "notes": [
+                            "Contacts belong to an Entity-Location relationship.",
+                            "Contacts are managed through the ELC relationship."
+                        ]
+                    }
+                },
+                "relationshipModel": {
+                    "hierarchy": [
+                        "Property",
+                        "Address",
+                        "Location",
+                        "Entity",
+                        "Contact"
+                    ],
+                    "relationships": [
+                        {
+                            "parent": "Property",
+                            "child": "Location",
+                            "description": "A Location exists at a Property."
+                        },
+                        {
+                            "parent": "Entity",
+                            "child": "Location",
+                            "description": "An Entity operates one or more Locations."
+                        },
+                        {
+                            "parent": "Location",
+                            "child": "Contact",
+                            "description": "A Contact is associated with a specific Location."
+                        }
+                    ]
+                },
+                "designPrinciples": [
+                    "A Property exists independently of any Entity.",
+                    "A Location represents an Entity's presence at a Property.",
+                    "A Contact belongs to an Entity-Location relationship.",
+                    "Property workflows analyze physical places.",
+                    "Proposal workflows create or modify business objects.",
+                    "All proposal workflows follow the Proposal Classification (PC) and Resolution Status (RS) governance model."
+                ]
+            },
             "documentConstitution": {
                 "title": {
                 "icon": 20,
