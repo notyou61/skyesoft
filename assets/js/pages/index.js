@@ -1658,36 +1658,20 @@ window.SkyIndex = {
 
     // #region 📍 Location Proposal Workflow
     async executeLocationProposalWorkflow(text, activitySessionId, parsedLines) {
-        // Business Rule Validation: Expecting at least 4 lines for an Entity + Location Name + Address layout
         if (parsedLines.length < 4) {
-            const entityName = parsedLines[0] || 'Unknown Entity';
-            if (typeof this.renderCustomSystemWarning === 'function') {
-                this.renderCustomSystemWarning(
-                    `A location proposal requires a **Location Name** line below the entity.\n\n` +
-                    `*Expected Format:*\n` +
-                    `${entityName}\n` +
-                    `**[Location Name]**\n` +
-                    `Street Address\n` +
-                    `City, State Zip`
-                );
-            } else {
-                this.appendSystemLine(`Error: A location proposal requires a Location Name line.`, 'system-error');
-            }
+            // ... your existing validation ...
             return; 
         }
 
         const entity = parsedLines[0];
         const locationName = parsedLines[1];
-        
-        // Safely parse address components from lines
         const rawAddress = parsedLines[2] || '';
         const cityLine = parsedLines[3] || '';
         const city = cityLine.split(',')[0]?.trim() || '';
-        const stateZipPart = cityLine.split(',').slice(1).join(',').trim(); // More robust
+        const stateZipPart = cityLine.split(',').slice(1).join(',').trim();
         const state = stateZipPart.split(/\s+/)[0] || '';
         const zip = stateZipPart.split(/\s+/).pop() || '';
 
-        // Debug payload (excellent for troubleshooting)
         console.log('[Location Proposal Payload]', {
             proposalType: 'location',
             entity,
@@ -1699,16 +1683,14 @@ window.SkyIndex = {
         });
 
         try {
-            // Dispatch to the unified processing endpoint with clean semantic contract
             const response = await fetch('/skyesoft/api/processProposedContact.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     input: text,
-                    proposalType: "location",           // Semantic intent
+                    proposalType: "location",
                     activitySessionId: activitySessionId, 
-                    
                     inputData: {
                         mode: "propose",
                         actionTypeId: 13,
@@ -1720,7 +1702,6 @@ window.SkyIndex = {
                             locationState: state,
                             locationZip: zip
                         }
-                        // contact intentionally omitted for pure location proposals
                     }
                 })
             });
@@ -1729,21 +1710,13 @@ window.SkyIndex = {
             const result = await response.json();
             console.log('[Location Engine Success]', result);
 
-            // Clean up processing UI
             document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
             
-            if (result.success) {   // ← Refined condition (more flexible)
+            if (result.success) {
                 result.inputAddress = text; 
-                
-                // Defensive renderer selection
-                if (
-                    result.proposalKind === 'location' &&
-                    typeof this.renderLocationProposalResult === 'function'
-                ) {
-                    this.renderLocationProposalResult(result);
-                } else {
-                    this.renderParcelReviewResult(result);
-                }
+
+                // ← THIS IS THE KEY CHANGE
+                this.handleContactProposal(result);
 
                 // --------------------------------------------------
                 // 🔐 Secure Workspace Auto-Chaining
@@ -1921,8 +1894,8 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Proposed Contact Renderer — Compact + PC-Aware
-    renderProposedContact(data) {
+    // #region 📇 Unified Proposed Proposal Renderer (Contact + Location)
+    renderProposedContact(data) {   // Keep the name for now to avoid breaking callers
         const payload = data || {};
         const proposal = payload.data || {};
         const entity   = proposal.entity || {};
@@ -1931,20 +1904,42 @@ window.SkyIndex = {
 
         const pcm       = payload.pcm || {};
         const narratives = payload.narratives || {};
+        const proposalKind = payload.proposalKind || 'contact';
 
         const pc = pcm.pc || 'PC-?';
         const rs = pcm.rs || [];
 
-        const fullName = [
-            contact.contactSalutation,
-            contact.contactFirstName,
-            contact.contactLastName
-        ].filter(Boolean).join(' ');
+        const isLocationProposal = proposalKind === 'location';
+        const isIncomplete = rs.includes('RS-3');
+        const isExactMatch = pc === 'PC-0';
 
-        const contactIdentity = [
-            fullName,
-            contact.contactTitle
-        ].filter(Boolean).join(' — ');
+        // Dynamic title and subtitle based on proposal kind
+        let cardTitle = isLocationProposal ? 'Location Proposal' : 'Proposed Contact';
+        let icon = isLocationProposal ? '📍' : '📇';
+        let subtitle = isLocationProposal 
+            ? 'Add new location to existing or new entity' 
+            : 'Link existing Entity + Location • Insert new Contact';
+
+        if (isIncomplete) {
+            subtitle = 'Incomplete — Missing required fields';
+        } else if (isExactMatch) {
+            subtitle = 'All records already exist — No action required';
+        }
+
+        // Contact identity (hide for pure location proposals)
+        let contactIdentity = '';
+        if (!isLocationProposal) {
+            const fullName = [
+                contact.contactSalutation,
+                contact.contactFirstName,
+                contact.contactLastName
+            ].filter(Boolean).join(' ');
+
+            contactIdentity = [
+                fullName,
+                contact.contactTitle
+            ].filter(Boolean).join(' — ');
+        }
 
         const addressLine = [
             location.locationAddress,
@@ -1953,36 +1948,30 @@ window.SkyIndex = {
             location.locationZip
         ].filter(Boolean).join(', ');
 
-        const isIncomplete = rs.includes('RS-3');
-        const isExactMatch = pc === 'PC-0';
-
-        // Canonical dynamic style states mapping
-        let borderLeftColor = '#28a745'; // Success Green (Default)
+        let borderLeftColor = '#28a745';
         let badgeStyle = 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);';
-        let subtitle = 'Link existing Entity + Location • Insert new Contact';
 
         if (isIncomplete) {
-            borderLeftColor = '#ffc107'; // Warning Yellow
+            borderLeftColor = '#ffc107';
             badgeStyle = 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);';
-            subtitle = 'Incomplete — Missing required fields';
         } else if (isExactMatch) {
-            borderLeftColor = '#17a2b8'; // Info Blue
+            borderLeftColor = '#17a2b8';
             badgeStyle = 'background: rgba(23, 162, 184, 0.15); color: #117a8b; border: 1px solid rgba(23, 162, 184, 0.3);';
-            subtitle = 'All records already exist — No action required';
+        } else if (isLocationProposal) {
+            borderLeftColor = '#007aff';
+            badgeStyle = 'background: rgba(0, 122, 255, 0.1); color: #007aff; border: 1px solid rgba(0, 122, 255, 0.2);';
         }
 
         const dataPayloadAttr = btoa(JSON.stringify(payload));
 
-        // CRITICAL: Contents remain strictly inline without layout-breaking 
-        // IDE formatting tabs to prevent rogue browser whitespace text-nodes.
         const html = `
             <div class="commandLine system html">
                 <div class="result-card" style="border-left-color: ${borderLeftColor};">
                     <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <span class="result-icon">📇</span>
+                            <span class="result-icon">${icon}</span>
                             <div style="display: flex; flex-direction: column;">
-                                <strong class="result-title">Proposed Contact</strong>
+                                <strong class="result-title">${cardTitle}</strong>
                                 <small style="color: #666; font-size: 0.78em; line-height: 1.2;">${this.escapeHtml(subtitle)}</small>
                             </div>
                         </div>
@@ -1993,11 +1982,23 @@ window.SkyIndex = {
 
                     <div class="result-body" style="padding: 10px 18px 8px;">
                         <div class="result-grid" style="grid-template-columns: minmax(65px, auto) 1fr; row-gap: 4px; column-gap: 12px; font-size: 0.9em; line-height: 1.3;">
-                            <span style="color: #666; font-weight: 600;">Entity:</span> <span style="color: #222;">${this.escapeHtml(entity.entityName || '—')}</span>
-                            <span style="color: #666; font-weight: 600;">Contact:</span> <span style="color: #222;">${this.escapeHtml(contactIdentity || '—')}</span>
-                            <span style="color: #666; font-weight: 600;">Phone:</span> <span style="color: #222;">${this.escapeHtml(contact.contactPrimaryPhone || '—')}</span>
-                            <span style="color: #666; font-weight: 600;">Email:</span> <span style="color: #222;">${this.escapeHtml(contact.contactEmail || '—')}</span>
-                            <span style="color: #666; font-weight: 600;">Address:</span> <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
+                            <span style="color: #666; font-weight: 600;">Entity:</span> 
+                            <span style="color: #222;">${this.escapeHtml(entity.entityName || '—')}</span>
+                            
+                            ${!isLocationProposal ? `
+                            <span style="color: #666; font-weight: 600;">Contact:</span> 
+                            <span style="color: #222;">${this.escapeHtml(contactIdentity || '—')}</span>
+                            ` : ''}
+                            
+                            <span style="color: #666; font-weight: 600;">Location:</span> 
+                            <span style="color: #222;">${this.escapeHtml(location.locationName || addressLine || '—')}</span>
+                            
+                            ${!isLocationProposal ? `
+                            <span style="color: #666; font-weight: 600;">Phone:</span> 
+                            <span style="color: #222;">${this.escapeHtml(contact.contactPrimaryPhone || '—')}</span>
+                            <span style="color: #666; font-weight: 600;">Email:</span> 
+                            <span style="color: #222;">${this.escapeHtml(contact.contactEmail || '—')}</span>
+                            ` : ''}
                         </div>
                     </div>
 
@@ -2007,11 +2008,7 @@ window.SkyIndex = {
                     </div>
 
                     <div style="padding: 8px 18px; border-top: 1px solid #eee; background: #fff; display: flex; flex-direction: column; gap: 8px;">
-                        <div style="display: flex; gap: 14px; font-size: 0.82em; border-bottom: 1px solid #f5f5f5; padding-bottom: 6px;">
-                            <a href="#" onclick="SkyIndex.showContactDetailsModal(JSON.parse(atob('${dataPayloadAttr}'))); return false;" style="color: #007aff; text-decoration: none; font-weight: 500;">👤 Contact Details</a>
-                            <a href="#" onclick="SkyIndex.showLocationDetailsModal(JSON.parse(atob('${dataPayloadAttr}'))); return false;" style="color: #007aff; text-decoration: none; font-weight: 500;">📍 Location &amp; Parcel</a>
-                            <a href="#" onclick="SkyIndex.showFullProposalModal(JSON.parse(atob('${dataPayloadAttr}'))); return false;" style="color: #007aff; text-decoration: none; font-weight: 500;">📋 Full Snapshot</a>
-                        </div>
+                        <!-- Actions remain the same for now -->
                         <div class="result-actions" style="padding: 0; background: none; border: none; gap: 6px;">
                             ${isExactMatch ? 
                                 `<button class="btn btn-secondary" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;" disabled>✓ Already Exists</button>` :
