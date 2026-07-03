@@ -568,35 +568,44 @@ function extractPhones(string $input): array {
     return $phones;
 }
 
-// 📍 inferLocationName — derive location display name
+// 📍 inferLocationName — derive location display name (Updated for PC-5+)
 function inferLocationName(array $parsed): array {
+    // 1. Respect explicit locationName from parser (highest priority)
     if (!empty($parsed['location']['locationName'])) {
         $parsed['location']['locationNameConfirmed'] = true;
-        $parsed['location']['locationNameInferred'] = false;
+        $parsed['location']['locationNameInferred']  = false;
+        $parsed['location']['locationNameSource']    = 'explicit_parser'; // NEW: for debugging/audit
         return $parsed;
     }
 
-    $entity  = trim($parsed['entity']['name'] ?? '');
-    $address = trim($parsed['location']['address'] ?? '');
-    $city    = trim($parsed['location']['city'] ?? '');
+    // 2. Entity-based fallback (e.g. "Skyesoft Testing LLC - Phoenix")
+    $entity  = trim($parsed['entity']['name'] ?? $parsed['entity']['entityName'] ?? '');
+    $city    = trim($parsed['location']['city'] ?? $parsed['location']['locationCity'] ?? '');
 
     if (!empty($entity) && !empty($city)) {
         $parsed['location']['locationName'] = $entity . ' - ' . $city;
         $parsed['location']['locationNameInferred'] = true;
         $parsed['location']['locationNameConfirmed'] = false;
+        $parsed['location']['locationNameSource'] = 'entity_city_fallback';
         return $parsed;
     }
+
+    // 3. Address-based fallback
+    $address = trim($parsed['location']['address'] ?? $parsed['location']['locationAddress'] ?? '');
 
     if (!empty($address) && !empty($city)) {
         $parsed['location']['locationName'] = $address . ' - ' . $city;
         $parsed['location']['locationNameInferred'] = true;
         $parsed['location']['locationNameConfirmed'] = false;
+        $parsed['location']['locationNameSource'] = 'address_city_fallback';
         return $parsed;
     }
 
+    // 4. Final safe default
     $parsed['location']['locationName'] = '';
     $parsed['location']['locationNameInferred'] = false;
     $parsed['location']['locationNameConfirmed'] = false;
+    $parsed['location']['locationNameSource'] = 'none';
 
     return $parsed;
 }
@@ -1380,31 +1389,71 @@ function generateProposalReport(string $proposalId, array $proposal): ?string {
 }
 
 /**
- * parseLocationProposal — Clean parser for location-only proposals
- * Uses structured client payload + line fallback. No AI, no side effects.
+ * parseLocationProposal — Clean parser for location-only proposals (PC-5+)
+ * Robust line-based extraction with smart name detection. No AI, deterministic.
  */
 function parseLocationProposal(array $lines, array $clientData, string $rawInputOriginal): array {
-    $entityName   = trim($clientData['entity']['entityName']   ?? ($lines[0] ?? ''));
-    $locationName = trim($clientData['location']['locationName'] ?? ($lines[1] ?? ''));
-    $address      = trim($clientData['location']['locationAddress'] ?? ($lines[2] ?? ''));
+    // Clean and filter lines
+    $lines = array_values(array_filter(array_map('trim', $lines), fn($l) => $l !== ''));
 
-    // Robust city/state/zip parsing
-    $cityLine = $lines[3] ?? '';
+    $entityName   = trim($clientData['entity']['entityName'] ?? ($lines[0] ?? ''));
+    $locationName = trim($clientData['location']['locationName'] ?? '');
+
+    // Smart location name extraction from raw lines if not in clientData
+    if (empty($locationName) && count($lines) >= 2) {
+        $potentialName = $lines[1];
+
+        // Heuristic: Line 2 is likely a location name if it doesn't look like a street address
+        // (doesn't start with number or typical address pattern)
+        if (!preg_match('/^\d+\s+[A-Za-z]/', $potentialName) && 
+            !preg_match('/^\d{5}/', $potentialName) &&
+            strlen($potentialName) > 3) {
+            
+            $locationName = $potentialName;
+        }
+    }
+
+    // Address extraction (start after entity + possible location name)
+    $addressStartIndex = empty($locationName) ? 1 : 2;
+    $addressRaw = implode("\n", array_slice($lines, $addressStartIndex));
+
+    // Try to pull address from clientData first (more reliable)
+    $address = trim($clientData['location']['locationAddress'] ?? 
+                    $clientData['location']['address'] ?? 
+                    $addressRaw);
+
+    // Robust city/state/zip parsing from remaining lines or clientData
+    $cityLine = $clientData['location']['locationCityStateZip'] ?? 
+                ($lines[count($lines) - 1] ?? '');
+
     $parts    = array_map('trim', explode(',', $cityLine));
     $city     = $parts[0] ?? '';
     $stateZip = implode(',', array_slice($parts, 1));
     $stateZip = preg_replace('/\s+/', ' ', $stateZip);
     $stateParts = explode(' ', $stateZip);
     $state = $stateParts[0] ?? '';
-    $zip   = $stateParts[count($stateParts)-1] ?? '';
+    $zip   = $stateParts[count($stateParts) - 1] ?? '';
+
+    // Fallbacks from clientData
+    if (empty($city))  $city  = $clientData['location']['locationCity'] ?? '';
+    if (empty($state)) $state = $clientData['location']['locationState'] ?? '';
+    if (empty($zip))   $zip   = $clientData['location']['locationZip'] ?? '';
 
     $parsed = [
         'entity' => [
-            'name' => $entityName
+            'name' => $entityName,
+            'nameInferred' => false,
+            'nameConfirmed' => true,
+            'nameSource' => 'location_proposal_parser'
         ],
         'contact' => [
-            'firstName' => '', 'lastName' => '', 'salutation' => '', 'title' => '',
-            'primaryPhone' => '', 'primaryPhoneRaw' => '', 'email' => ''
+            'firstName' => '', 
+            'lastName' => '', 
+            'salutation' => '', 
+            'title' => '',
+            'primaryPhone' => '', 
+            'primaryPhoneRaw' => '', 
+            'email' => ''
         ],
         'location' => [
             'address'      => $address,
@@ -1412,18 +1461,16 @@ function parseLocationProposal(array $lines, array $clientData, string $rawInput
             'state'        => strtoupper($state),
             'zip'          => $zip,
             'suite'        => '',
-            'locationName' => $locationName
+            'locationName' => $locationName,           // ← Now reliably populated
+            'locationNameConfirmed' => !empty($locationName),
+            'locationNameInferred'  => empty($locationName)
         ]
     ];
 
-    error_log("[PPC][LocationParser] Entity='{$entityName}' | LocationName='{$locationName}' | Address='{$address}'");
+    error_log("[PPC][LocationParser] SUCCESS - Entity='{$entityName}' | LocationName='{$locationName}' | Address='{$address}'");
+
     return $parsed;
 }
-
-/**
- * parseContactProposal — Wrapper for the existing full AI contact extraction
- * Preserves 100% of the legacy behavior for PC-0 through PC-3.
- */
 /**
  * parseContactProposal — Full legacy AI contact extraction (PC-0 through PC-3)
  * This is your original SECTION 03 logic wrapped as a reusable function.
