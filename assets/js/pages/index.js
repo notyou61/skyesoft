@@ -1893,107 +1893,113 @@ window.SkyIndex = {
         let cardTitle = isLocationProposal ? 'Location Proposal' : 'Proposed Contact';
         let icon = isLocationProposal ? '📍' : '📇';
         
-        // D: Fallback to real governance status or engine narrative instead of a generic string
         let subtitle = payload.narratives?.ui || payload.governance?.parcelStatus || 'Proposal ready for review.';
 
         if (isExactMatch) {
             subtitle = 'All records already exist — No action required';
         }
 
-        // Contact identity (hide for pure location proposals)
+        // Contact identity
         let contactIdentity = '';
         if (!isLocationProposal) {
             const fullName = [
-                contact.contactSalutation,
-                contact.contactFirstName,
-                contact.contactLastName
+                contact.contactFirstName || contact.firstName,
+                contact.contactLastName || contact.lastName
             ].filter(Boolean).join(' ');
 
-            contactIdentity = [
-                fullName,
-                contact.contactTitle
-            ].filter(Boolean).join(' — ');
+            const titleStr = contact.contactTitle || contact.title || '';
+
+            contactIdentity = [fullName, titleStr].filter(Boolean).join(' — ');
         }
 
         const addressLine = [
-            location.locationAddress,
-            location.locationCity,
-            location.locationState,
-            location.locationZip
+            location.locationAddress || location.address,
+            location.locationCity || location.city,
+            location.locationState || location.state,
+            location.locationZip || location.zip
         ].filter(Boolean).join(', ');
 
-        // C: All body cards remain clean grey/white layouts, color context shifts to left accent bars
+        // Setup contextual palette accents
         let borderLeftColor = '#28a745';
         let badgeStyle = 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);';
+        let summaryBg = 'rgba(40, 167, 69, 0.03)';
+        let summaryBorder = 'rgba(40, 167, 69, 0.2)';
+        let summaryTextColor = '#1e7e34';
 
         if (isIncomplete) {
-            borderLeftColor = '#ffc107'; // Yellow/Amber RS indicator striping
+            borderLeftColor = '#ffc107';
             badgeStyle = 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);';
+            summaryBg = '#fffdf6';
+            summaryBorder = '#ffeaa7';
+            summaryTextColor = '#d35400';
         } else if (isExactMatch) {
             borderLeftColor = '#17a2b8';
             badgeStyle = 'background: rgba(23, 162, 184, 0.15); color: #117a8b; border: 1px solid rgba(23, 162, 184, 0.3);';
+            summaryBg = 'rgba(23, 162, 184, 0.03)';
+            summaryBorder = 'rgba(23, 162, 184, 0.2)';
+            summaryTextColor = '#117a8b';
         } else if (isLocationProposal) {
             borderLeftColor = '#007aff';
             badgeStyle = 'background: rgba(0, 122, 255, 0.1); color: #007aff; border: 1px solid rgba(0, 122, 255, 0.2);';
+            summaryBg = 'rgba(0, 122, 255, 0.03)';
+            summaryBorder = 'rgba(0, 122, 255, 0.2)';
+            summaryTextColor = '#007aff';
         }
 
         const dataPayloadAttr = safeBase64Encode(JSON.stringify(payload));
 
         const html = `
             <div class="commandLine system html">
-                <div class="result-card" style="border-left: 5px solid ${borderLeftColor}; background: #fff;">
-                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 6px;">
+                <div class="result-card" style="border-left: 5px solid ${borderLeftColor}; background: #fff; width: 100%; max-width: 100%;">
+                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
                             <span class="result-icon">${icon}</span>
                             <div style="display: flex; flex-direction: column;">
                                 <strong class="result-title">${cardTitle}</strong>
-                                <small style="color: #666; font-size: 0.78em; line-height: 1.2;">${this.escapeHtml(subtitle)}</small>
+                                <small style="color: #666; font-size: 0.78em; line-height: 1.2; display: block; margin-top: 1px;">${this.escapeHtml(subtitle)}</small>
                             </div>
                         </div>
-                        <span style="${badgeStyle} padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">
+                        <span style="${badgeStyle} padding: 3px 8px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold; white-space: nowrap; display: inline-block;">
                             ${this.escapeHtml(pc)}
                         </span>
                     </div>
 
-                    <div class="result-body" style="padding: 10px 18px 8px;">
-                        <div class="result-grid" style="grid-template-columns: minmax(65px, auto) 1fr; row-gap: 4px; column-gap: 12px; font-size: 0.9em; line-height: 1.3;">
-                            <span style="color: #666; font-weight: 600;">Entity:</span> 
-                            <span style="color: #222;">${this.escapeHtml(entity.entityName || '—')}</span>
+                    <div class="result-body" style="padding: 16px;">
+                        <div class="result-grid" style="display: grid; grid-template-columns: minmax(70px, auto) 1fr; row-gap: 6px; column-gap: 16px; font-size: 0.92em; line-height: 1.3;">
+                            <span style="color: #555; font-weight: 600;">Entity:</span> 
+                            <span style="color: #222;">${this.escapeHtml(entity.entityName || entity.name || '—')}</span>
                             
                             ${!isLocationProposal ? `
-                            <span style="color: #666; font-weight: 600;">Contact:</span> 
+                            <span style="color: #555; font-weight: 600;">Contact:</span> 
                             <span style="color: #222;">${this.escapeHtml(contactIdentity || '—')}</span>
                             ` : ''}
                             
-                            <span style="color: #666; font-weight: 600;">Location:</span> 
+                            <span style="color: #555; font-weight: 600;">Location:</span> 
                             <span style="color: #222;">${this.escapeHtml(location.locationName || addressLine || '—')}</span>
                             
                             ${!isLocationProposal ? `
-                            <span style="color: #666; font-weight: 600;">Phone:</span> 
-                            <span style="color: #222;">${this.escapeHtml(contact.contactPrimaryPhone || '—')}</span>
-                            <span style="color: #666; font-weight: 600;">Email:</span> 
-                            <span style="color: #222;">${this.escapeHtml(contact.contactEmail || '—')}</span>
+                            <span style="color: #555; font-weight: 600;">Phone:</span> 
+                            <span style="color: #222;">${this.escapeHtml(contact.contactPrimaryPhone || contact.primaryPhone || '—')}</span>
+                            <span style="color: #555; font-weight: 600;">Email:</span> 
+                            <span style="color: #222;">${this.escapeHtml(contact.contactEmail || contact.email || '—')}</span>
                             ` : ''}
                         </div>
                     </div>
 
-                    <div style="padding: 8px 18px; background: rgba(0,0,0,0.01); border-top: 1px dashed #eee; font-size: 0.85em; line-height: 1.35; color: #555;">
-                        <strong style="color: #333; font-size: 0.95em; display: block; margin-bottom: 2px;">Proposal Summary</strong>
+                    <div style="padding: 12px 16px; background: ${summaryBg}; border-top: 1px dashed ${summaryBorder}; font-size: 0.9em; line-height: 1.35; color: ${summaryTextColor};">
+                        <strong style="font-size: 0.95em; display: block; margin-bottom: 2px;">Proposal Summary</strong>
                         ${this.escapeHtml(narratives.ui || 'Proposal ready for review.')}
                     </div>
 
-                    <div style="padding: 8px 18px; border-top: 1px solid #eee; background: #fff; display: flex; flex-direction: column; gap: 8px;">
-                        <!-- B: Refactored with thin buttons to protect layout surface density -->
-                        <div class="result-actions" style="padding: 0; background: none; border: none; gap: 6px;">
-                            ${isExactMatch ? 
-                                `<button class="btn btn-secondary" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;" disabled>✓ Already Exists</button>` :
-                                isIncomplete ?
-                                `<button class="btn btn-warning" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #ffc107; color: #212529; border: 1px solid #d39e00;" onclick="SkyIndex.revalidateProposal()">🔄 Fix Missing Fields</button>` :
-                                `<button class="btn btn-success" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #28a745; color: #fff;" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>`
-                            }
-                            <button class="btn btn-secondary" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #6c757d; color: #fff;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
-                            <button class="btn btn-secondary" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
-                        </div>
+                    <div class="result-actions" style="padding: 12px 16px; border-top: 1px solid #eee; background: #fff; display: flex; gap: 8px;">
+                        ${isExactMatch ? 
+                            `<button class="btn btn-secondary" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;" disabled>✓ Already Exists</button>` :
+                            isIncomplete ?
+                            `<button class="btn btn-warning" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #ffc107; color: #212529; border: 1px solid #d39e00;" onclick="SkyIndex.revalidateProposal()">🔄 Fix Missing Fields</button>` :
+                            `<button class="btn btn-success" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #28a745; color: #fff; border: 1px solid #218838;" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>`
+                        }
+                        <button class="btn btn-secondary" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #6c757d; color: #fff; border: 1px solid #545b62;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                        <button class="btn btn-danger" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff; border: 1px solid #bd2130;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                     </div>
                 </div>
             </div>
@@ -2012,8 +2018,17 @@ window.SkyIndex = {
         const location = proposal.location || {};
 
         const governance = payload.governance || {};
-        const blocking = governance.blockingIssues?.[0] || {};
-        const missingFields = governance.missingFields || [];
+        const pcm = payload.pcm || {};
+        const rsLabel = pcm.rs?.[0] || 'RS-8';
+
+        // B: Unified logic identity strings parsing exactly matching structural layouts
+        const fullName = [
+            contact.contactFirstName || contact.firstName,
+            contact.contactLastName || contact.lastName
+        ].filter(Boolean).join(' ');
+
+        const titleStr = contact.contactTitle || contact.title || '';
+        const contactIdentity = [fullName, titleStr].filter(Boolean).join(' — ');
 
         const addressLine = [
             location.locationAddress || location.address,
@@ -2022,52 +2037,52 @@ window.SkyIndex = {
             location.locationZip || location.zip
         ].filter(Boolean).join(', ');
 
-        // D: Direct presentation of payload logic message instead of the generic text flag string
         const errorReason = payload.narratives?.ui || governance.reason || 'Address parcel validation failure.';
 
         const html = `
             <div class="commandLine system html">
-                <div class="result-card" style="border-left: 5px solid #ffc107; background: #fff;">
+                <div class="result-card" style="border-left: 5px solid #ffc107; background: #fff; width: 100%; max-width: 100%;">
                     <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span class="result-icon" style="color:#e67e22;">⚠️</span>
-                            <div>
+                            <div style="display: flex; flex-direction: column;">
                                 <strong class="result-title" style="color:#e67e22;">Proposed Contact</strong>
                                 <small style="color:#666; font-size: 0.78em; line-height: 1.2; display: block; margin-top: 1px;">Validation Exception Notice</small>
                             </div>
                         </div>
-                        <span style="background:#ffeaa7; color:#e67e22; padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">RS-8</span>
+                        <span style="background:#ffeaa7; color:#e67e22; padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold; border: 1px solid rgba(230,126,34,0.3); white-space: nowrap; display: inline-block;">
+                            ${this.escapeHtml(rsLabel)}
+                        </span>
                     </div>
 
                     <div class="result-body" style="padding:16px;">
-                        <div class="result-grid" style="grid-template-columns:minmax(70px,auto) 1fr; row-gap:6px; column-gap:16px; font-size:0.92em;">
-                            <span style="color:#555;font-weight:600;">Entity:</span>
+                        <div class="result-grid" style="display: grid; grid-template-columns: minmax(70px, auto) 1fr; row-gap: 6px; column-gap: 16px; font-size: 0.92em; line-height: 1.3;">
+                            <span style="color:#555; font-weight:600;">Entity:</span>
                             <span style="color:#222;">${this.escapeHtml(entity.entityName || entity.name || '—')}</span>
 
-                            <span style="color:#555;font-weight:600;">Contact:</span>
-                            <span style="color:#222;">${this.escapeHtml(contact.contactFirstName || contact.firstName || '')} ${this.escapeHtml(contact.contactLastName || contact.lastName || '')} — ${this.escapeHtml(contact.contactTitle || contact.title || '—')}</span>
+                            <span style="color:#555; font-weight:600;">Contact:</span>
+                            <span style="color:#222;">${this.escapeHtml(contactIdentity || '—')}</span>
 
-                            <span style="color:#555;font-weight:600;">Location:</span>
-                            <span style="color:#222;">${this.escapeHtml(addressLine || '—')}</span>
+                            <span style="color:#555; font-weight:600;">Location:</span>
+                            <span style="color:#222;">${this.escapeHtml(location.locationName || addressLine || '—')}</span>
 
-                            <span style="color:#555;font-weight:600;">Phone:</span>
+                            <span style="color:#555; font-weight:600;">Phone:</span>
                             <span style="color:#222;">${this.escapeHtml(contact.contactPrimaryPhone || contact.primaryPhone || '—')}</span>
 
-                            <span style="color:#555;font-weight:600;">Email:</span>
+                            <span style="color:#555; font-weight:600;">Email:</span>
                             <span style="color:#222;">${this.escapeHtml(contact.contactEmail || contact.email || '—')}</span>
                         </div>
                     </div>
 
-                    <div style="padding:12px 16px; background:#fffdf6; border-top:1px dashed #ffeaa7; font-size:0.9em; color:#d35400;">
-                        <strong>Proposal Summary</strong><br>
+                    <div style="padding:12px 16px; background:#fffdf6; border-top:1px dashed #ffeaa7; font-size:0.9em; line-height: 1.35; color:#d35400;">
+                        <strong style="font-size: 0.95em; display: block; margin-bottom: 2px;">Proposal Summary</strong>
                         ${this.escapeHtml(errorReason)}
                     </div>
 
-                    <!-- A & B: Prime buttons tinted with card style yellow/orange parameters using space saving layout padding -->
-                    <div class="result-actions" style="padding:12px 16px; display:flex; gap:8px;">
-                        <button class="btn btn-warning" style="flex:1; padding: 4px 10px; font-size: 0.85em; background: #ffc107; color: #212529; border: 1px solid #d39e00;" onclick="SkyIndex.revalidateProposal()">✏️ Edit & Resubmit</button>
-                        <button class="btn btn-secondary" style="flex:1; padding: 4px 10px; font-size: 0.85em;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
-                        <button class="btn btn-danger" style="flex:1; padding: 4px 10px; font-size: 0.85em;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                    <div class="result-actions" style="padding:12px 16px; border-top: 1px solid #eee; background: #fff; display:flex; gap:8px;">
+                        <button class="btn btn-warning" style="flex:2; padding: 4px 10px; font-size: 0.85em; background: #ffc107; color: #212529; border: 1px solid #d39e00;" onclick="SkyIndex.revalidateProposal()">✏️ Edit & Resubmit</button>
+                        <button class="btn btn-secondary" style="flex:1; padding: 4px 10px; font-size: 0.85em; background: #6c757d; color: #fff; border: 1px solid #545b62;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                        <button class="btn btn-danger" style="flex:1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff; border: 1px solid #bd2130;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                     </div>
                 </div>
             </div>
