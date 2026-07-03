@@ -1659,7 +1659,7 @@ window.SkyIndex = {
         const state = stateParts[0] || 'AZ';
         const zip = stateParts[stateParts.length - 1] || '';
 
-        console.log('[Location Proposal Payload]', { entity, locationName, rawAddress, city, state, zip });
+        //console.log('[Location Proposal Payload]', { entity, locationName, rawAddress, city, state, zip });
 
         // Prevent duplicate processing UI
         this.renderLocationProcessingState();
@@ -1683,7 +1683,7 @@ window.SkyIndex = {
                 }
             };
 
-            console.log('[Location] Full payload being sent:', payload);
+           // console.log('[Location] Full payload being sent:', payload);
 
             const response = await fetch('/skyesoft/api/processProposedContact.php', {
                 method: 'POST',
@@ -1693,7 +1693,7 @@ window.SkyIndex = {
             });
 
             const responseText = await response.text();
-            console.log('[Location] Raw response text:', responseText);
+            //console.log('[Location] Raw response text:', responseText);
 
             let result;
             try {
@@ -1702,7 +1702,7 @@ window.SkyIndex = {
                 throw new Error(`Invalid JSON response: ${responseText.substring(0, 300)}`);
             }
 
-            console.log('[Location] Parsed result:', result);
+            //console.log('[Location] Parsed result:', result);
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${result.message || 'Unknown server error'}`);
@@ -2725,7 +2725,7 @@ window.SkyIndex = {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
-            console.log('[Property Response]', data);
+            //console.log('[Property Response]', data);
 
             this.dispatchPropertyWorkflowResponse(data);
 
@@ -3035,7 +3035,7 @@ window.SkyIndex = {
     // #region 📇 Contact Result Renderer
     renderContactResult(data) {
 
-        console.log('[CONTACT RESULT]', data);
+        //console.log('[CONTACT RESULT]', data);
 
         if (!data || typeof data !== 'object') {
             this.appendSystemLine('⚠ Invalid contact response.');
@@ -3353,7 +3353,7 @@ window.SkyIndex = {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
-            console.log('[AUTH] Response:', data);
+            //console.log('[AUTH] Response:', data);
 
             if (!data.success) {
                 error.textContent = data.message || 'Login failed.';
