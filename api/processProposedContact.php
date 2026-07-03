@@ -246,7 +246,7 @@ error_log('[PPC][SECTION-04] Schema enforcement complete');
 
 #endregion
 
-#region SECTION 05 — Data Normalization & Completeness Validation
+#region SECTION 05 — Data Normalization & Completeness Check
 
 // =====================================================
 // MINIMAL FALLBACK (Temporary safety net during transition)
@@ -258,82 +258,113 @@ if ($isExplicitLocationOnlyIntent) {
     $clientEntity = $inputData['inputData']['entity'] ?? [];
 
     // Only fill true gaps — the dedicated parser should provide most values
-    if (empty(trim($parsed['location']['locationName'] ?? $parsed['location']['name'] ?? ''))) {
+    if (empty(trim($parsed['location']['locationName'] ?? ''))) {
         $parsed['location']['locationName'] = $clientLoc['locationName'] ?? '';
     }
-    if (empty(trim($parsed['location']['address'] ?? $parsed['location']['locationAddress'] ?? ''))) {
+    if (empty(trim($parsed['location']['address'] ?? ''))) {
         $parsed['location']['address'] = $clientLoc['locationAddress'] ?? '';
     }
-    if (empty(trim($parsed['location']['city'] ?? $parsed['location']['locationCity'] ?? ''))) {
+    if (empty(trim($parsed['location']['city'] ?? ''))) {
         $parsed['location']['city'] = $clientLoc['locationCity'] ?? '';
     }
-    if (empty(trim($parsed['location']['state'] ?? $parsed['location']['locationState'] ?? ''))) {
+    if (empty(trim($parsed['location']['state'] ?? ''))) {
         $parsed['location']['state'] = $clientLoc['locationState'] ?? '';
     }
-    if (empty(trim($parsed['location']['zip'] ?? $parsed['location']['locationZip'] ?? ''))) {
+    if (empty(trim($parsed['location']['zip'] ?? ''))) {
         $parsed['location']['zip'] = $clientLoc['locationZip'] ?? '';
     }
-    if (empty(trim($parsed['entity']['name'] ?? $parsed['entity']['entityName'] ?? ''))) {
+    if (empty(trim($parsed['entity']['name'] ?? ''))) {
         $parsed['entity']['name'] = $clientEntity['entityName'] ?? '';
     }
 }
 
 // =====================================================
-// ENTITY ALIGNMENT & NORMALIZATION
+// KEY ALIGNMENT & BRIDGING (Fixes parser prefix drifting)
 // =====================================================
-$parsed['entity']['name'] = trim($parsed['entity']['entityName'] ?? $parsed['entity']['name'] ?? '');
+// Extract values from prefixed keys if naked keys are unpopulated
+if (empty($parsed['entity']['name']) && !empty($parsed['entity']['entityName'])) {
+    $parsed['entity']['name'] = $parsed['entity']['entityName'];
+}
+
+$contactFieldMap = [
+    'firstName'    => 'contactFirstName',
+    'lastName'     => 'contactLastName',
+    'salutation'   => 'contactSalutation',
+    'title'        => 'contactTitle',
+    'primaryPhone' => 'contactPrimaryPhone',
+    'email'        => 'contactEmail'
+];
+foreach ($contactFieldMap as $naked => $prefixed) {
+    if (empty($parsed['contact'][$naked]) && !empty($parsed['contact'][$prefixed])) {
+        $parsed['contact'][$naked] = $parsed['contact'][$prefixed];
+    }
+}
+
+$locationFieldMap = [
+    'address' => 'locationAddress',
+    'city'    => 'locationCity',
+    'state'   => 'locationState',
+    'zip'     => 'locationZip',
+    'suite'   => 'locationSuite'
+];
+foreach ($locationFieldMap as $naked => $prefixed) {
+    if (empty($parsed['location'][$naked]) && !empty($parsed['location'][$prefixed])) {
+        $parsed['location'][$naked] = $parsed['location'][$prefixed];
+    }
+}
 
 // =====================================================
-// CONTACT ALIGNMENT & NORMALIZATION
+// ENTITY NORMALIZATION
 // =====================================================
-$parsed['contact']['firstName']  = trim($parsed['contact']['contactFirstName'] ?? $parsed['contact']['firstName'] ?? '');
-$parsed['contact']['lastName']   = trim($parsed['contact']['contactLastName']  ?? $parsed['contact']['lastName'] ?? '');
-$parsed['contact']['salutation'] = trim($parsed['contact']['contactSalutation'] ?? $parsed['contact']['salutation'] ?? '');
-$parsed['contact']['title']      = trim($parsed['contact']['contactTitle']      ?? $parsed['contact']['title'] ?? '');
-$parsed['contact']['email']      = strtolower(trim($parsed['contact']['contactEmail'] ?? $parsed['contact']['email'] ?? ''));
+$parsed['entity']['name'] = trim($parsed['entity']['name'] ?? '');
 
-// Map back unified structural mappings to ensure parser compatibility downstream
-$parsed['contact']['contactFirstName'] = $parsed['contact']['firstName'];
-$parsed['contact']['contactLastName']  = $parsed['contact']['lastName'];
-$parsed['contact']['contactEmail']     = $parsed['contact']['email'];
+// =====================================================
+// CONTACT NORMALIZATION
+// =====================================================
+$parsed['contact']['firstName']   = trim($parsed['contact']['firstName'] ?? '');
+$parsed['contact']['lastName']    = trim($parsed['contact']['lastName'] ?? '');
+$parsed['contact']['salutation']  = trim($parsed['contact']['salutation'] ?? '');
+$parsed['contact']['title']       = trim($parsed['contact']['title'] ?? '');
+$parsed['contact']['email']       = strtolower(trim($parsed['contact']['email'] ?? ''));
 
 // =====================================================
 // PHONE NORMALIZATION (Preserve formatting from parser)
 // =====================================================
-$phoneValue = trim($parsed['contact']['contactPrimaryPhone'] ?? $parsed['contact']['primaryPhone'] ?? '');
+$phoneValue = $parsed['contact']['primaryPhone'] ?? '';
 if (!empty($phoneValue)) {
     $parsed['contact']['primaryPhoneDigits'] = preg_replace('/[^0-9]/', '', $phoneValue);
 
     $digitsOnly = preg_replace('/[^0-9]/', '', $phoneValue);
     if (strlen($digitsOnly) === 10 && strpos($phoneValue, '(') === false) {
-        $phoneValue = '(' . substr($digitsOnly, 0, 3) . ') ' .
-                            substr($digitsOnly, 3, 3) . '-' .
-                            substr($digitsOnly, 6);
+        $parsed['contact']['primaryPhone'] = '(' . substr($digitsOnly, 0, 3) . ') ' .
+                                             substr($digitsOnly, 3, 3) . '-' .
+                                             substr($digitsOnly, 6);
     }
 }
-$parsed['contact']['contactPrimaryPhone'] = $phoneValue;
-$parsed['contact']['primaryPhone']        = $phoneValue;
 
 // =====================================================
-// LOCATION ALIGNMENT & NORMALIZATION
+// LOCATION NORMALIZATION
 // =====================================================
-$parsed['location']['address']      = trim($parsed['location']['locationAddress'] ?? $parsed['location']['address'] ?? '');
-$parsed['location']['city']         = trim($parsed['location']['locationCity']    ?? $parsed['location']['city'] ?? '');
-$parsed['location']['state']        = strtoupper(trim($parsed['location']['locationState']   ?? $parsed['location']['state'] ?? ''));
-$parsed['location']['zip']          = trim($parsed['location']['locationZip']     ?? $parsed['location']['zip'] ?? '');
-$parsed['location']['suite']        = trim($parsed['location']['locationSuite']   ?? $parsed['location']['suite'] ?? '');
-$parsed['location']['locationName'] = trim($parsed['location']['locationName']   ?? '');
+$parsed['location']['address']      = trim($parsed['location']['address'] ?? '');
+$parsed['location']['city']         = trim($parsed['location']['city'] ?? '');
+$parsed['location']['state']        = strtoupper(trim($parsed['location']['state'] ?? ''));
+$parsed['location']['zip']          = trim($parsed['location']['zip'] ?? '');
+$parsed['location']['suite']        = trim($parsed['location']['suite'] ?? '');
+$parsed['location']['locationName'] = trim($parsed['location']['locationName'] ?? '');
 
-// Map back synchronized layout variations for downstream integration safety
-$parsed['location']['locationAddress'] = $parsed['location']['address'];
-$parsed['location']['locationCity']    = $parsed['location']['city'];
-$parsed['location']['locationState']   = $parsed['location']['state'];
-$parsed['location']['locationZip']     = $parsed['location']['zip'];
+// Map values back to prefixed variations for downstream synchronization safety
+$parsed['entity']['entityName'] = $parsed['entity']['name'];
+foreach ($contactFieldMap as $naked => $prefixed) {
+    $parsed['contact'][$prefixed] = $parsed['contact'][$naked];
+}
+foreach ($locationFieldMap as $naked => $prefixed) {
+    $parsed['location'][$prefixed] = $parsed['location'][$naked];
+}
 
 error_log('[PPC][SECTION-05] Data normalization complete');
 
 // =====================================================
-// COMPLETENESS CHECK (Updated with dynamic structural fallbacks)
+// COMPLETENESS CHECK (Updated with locationName requirement)
 // =====================================================
 
 error_log('[PPC][PHASE-3] Running Completeness Check');
@@ -378,27 +409,27 @@ foreach ($requiredFields as $dotPath => $label) {
     }
 }
 
-// Build granular verification matrices for safe structural tracking
-$hasFirst = !empty($parsed['contact']['firstName']);
-$hasLast  = !empty($parsed['contact']['lastName']);
-$hasEmail = !empty($parsed['contact']['email']);
-
 // Build the self-documenting completeness object for the UI
+$hasFirst = !empty(trim($parsed['contact']['firstName'] ?? ''));
+$hasLast  = !empty(trim($parsed['contact']['lastName'] ?? ''));
+$hasEmail = !empty(trim($parsed['contact']['email'] ?? ''));
+
 $completeness = [
     'entity' => [
-        'name' => !empty($parsed['entity']['name']) ? '✔ Complete' : '✖ Missing Entity Name'
+        'name' => !empty(trim($parsed['entity']['name'] ?? ''))
+            ? '✔ Complete'
+            : '✖ Missing Entity Name'
     ],
     'contact' => [
-        'firstName' => $isExplicitLocationOnlyIntent ? '✔ Not Required' : ($hasFirst ? '✔ Complete' : '✖ First Name Missing (Required)'),
-        'lastName'  => $isExplicitLocationOnlyIntent ? '✔ Not Required' : ($hasLast  ? '✔ Complete' : '✖ Last Name Missing (Required)'),
-        'email'     => $isExplicitLocationOnlyIntent ? '✔ Not Required' : ($hasEmail ? '✔ Complete' : '✖ Email Address Required')
+        'names' => ($isExplicitLocationOnlyIntent || ($hasFirst && $hasLast)) ? '✔ Not Required' : '✖ First/Last Name Missing',
+        'email' => ($isExplicitLocationOnlyIntent || $hasEmail) ? '✔ Not Required' : '✖ Email Address Required'
     ],
     'location' => [
-        'name'   => !empty($parsed['location']['locationName']) ? '✔ Location Name' : ($isExplicitLocationOnlyIntent ? '✖ Location Name Missing' : '✔ Not Required'),
-        'street' => !empty($parsed['location']['address'])      ? '✔ Street Address' : '✖ Street Address Missing',
-        'city'   => !empty($parsed['location']['city'])         ? '✔ City'           : '✖ City Missing',
-        'state'  => !empty($parsed['location']['state'])        ? '✔ State'          : '✖ State Missing',
-        'zip'    => !empty($parsed['location']['zip'])          ? '✔ ZIP'            : '✖ ZIP Missing (Required)'
+        'name'   => !empty(trim($parsed['location']['locationName'] ?? '')) ? '✔ Location Name' : '✖ Location Name Missing',
+        'street' => !empty(trim($parsed['location']['address'] ?? '')) ? '✔ Street Address' : '✖ Street Address Missing',
+        'city'   => !empty(trim($parsed['location']['city'] ?? '')) ? '✔ City' : '✖ City Missing',
+        'state'  => !empty(trim($parsed['location']['state'] ?? '')) ? '✔ State' : '✖ State Missing',
+        'zip'    => !empty(trim($parsed['location']['zip'] ?? '')) ? '✔ ZIP' : '✖ ZIP Missing (Required)'
     ],
     'overall' => empty($missingFields) ? 'PASS' : 'FAIL'
 ];
