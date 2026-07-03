@@ -1006,7 +1006,12 @@ $governanceIssues = [];
 
 // RS-5 Duplicate Contact
 if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
-    $governanceIssues[] = ['code' => 'RS-5', 'message' => 'Duplicate contact detected'];
+    $governanceIssues[] = [
+        'code' => 'RS-5', 
+        'message' => 'Duplicate contact detected',
+        // 🔥 Overrides standard UI text rows for action labels
+        'action_text' => 'Action: Contact is currently in the database' 
+    ];
 }
 
 // RS-6 Multiple Parcels
@@ -1048,6 +1053,13 @@ $blockingCodes = ['RS-3', 'RS-5', 'RS-6', 'RS-7', 'RS-8'];
 $blocksCommit = !empty(array_intersect($pcm['rs'], $blockingCodes));
 
 $governance = ['blockingIssues' => $governanceIssues];
+
+// Attach a canonical reason and resolution action layout text directly onto governance parent
+if (in_array('RS-5', $pcm['rs'])) {
+    $governance['resolution_status'] = 'RS-5';
+    $governance['reason'] = 'Duplicate Contact Detected';
+    $governance['action_text'] = 'Action: Contact is currently in the database';
+}
 
 // Simplify PCM for output
 $pcm = [
@@ -1131,6 +1143,14 @@ if (!empty($databaseResolution['location']['locationId'])) {
     $commitPlan['location']['locationId'] = $databaseResolution['location']['locationId'];
     $commitPlan['location']['locationParcelNumberRaw'] = $databaseResolution['location']['locationParcelNumberRaw'] ?? null;
 }
+
+// 🔥 Hard override if caught in an RS-5 validation trap to prevent UI component mismatch
+if (in_array('RS-5', $rsList)) {
+    $commitPlan['actions'] = []; // Clears standard insert arrays out of the snapshot loop
+    $commitPlan['summary'] = 'Action: Contact is currently in the database';
+}
+
+error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
 
 error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
 
