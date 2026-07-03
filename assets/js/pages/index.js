@@ -2004,7 +2004,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Incomplete Proposal Renderer (Susan Alderson Blueprint Template Cloned)
+    // #region 📇 Incomplete Proposal Renderer (RS-8) — Matches PC-2 Style
     renderIncompleteProposal(data) {
         let cleanPayload = {};
         if (data && typeof data === 'object') {
@@ -2019,169 +2019,59 @@ window.SkyIndex = {
         const contact = preview.contact || {};
         const location = preview.location || {};
 
-        const lat = cleanPayload.latitude || preview.location?.latitude || null;
-        const lon = cleanPayload.longitude || preview.location?.longitude || null;
-        const activeSessionId = cleanPayload.activitySessionId || (typeof this.getActivitySessionId === 'function' ? this.getActivitySessionId() : 'no_session');
-        
-        const unifiedData = {
-            ...cleanPayload,
-            activitySessionId: activeSessionId,
-            latitude: lat,
-            longitude: lon,
-            data: { entity, contact, location }
-        };
-
-        const dataPayloadAttr = safeBase64Encode(unescape(encodeURIComponent(JSON.stringify(unifiedData))));
-
-        // Extract backend missing fields array
-        const missingFields = unifiedData.governance?.missingFields || [];
-
-        // Dynamic Address / ZIP Row Badge Styling
+        const missingFields = cleanPayload.governance?.missingFields || [];
         const isZipMissing = missingFields.includes('location.zip');
-        const zipBadgeHtml = isZipMissing 
-            ? `<span style="margin-left: 4px; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; background: #ffebee; color: #c62828; font-weight: 700; border: 1px solid #ffcdd2;">✖ ZIP Missing</span>`
-            : `<span style="margin-left: 4px; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; background: #e8f5e9; color: #2e7d32; font-weight: 700; border: 1px solid #c8e6c9;">✔ ZIP</span>`;
-
-        // Dynamic Email Row Badge Styling
         const isEmailMissing = missingFields.includes('contact.email');
-        const emailBadgeHtml = isEmailMissing
-            ? `<span style="margin-left: 4px; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; background: #ffebee; color: #c62828; font-weight: 700; border: 1px solid #ffcdd2;">✖ Required</span>`
-            : ``;
 
-        // Dynamic Input Form Variable Field Highlight Stylings
-        const inputEmailStyle = isEmailMissing
-            ? `border: 1px solid #c62828; background: #fffdfd; font-weight: bold;`
-            : `border: 1px solid #cccccc; background: #ffffff;`;
-        const labelEmailColor = isEmailMissing ? `#c62828` : `#444444`;
+        const addressLine = [
+            location.address || location.locationAddress,
+            location.city || location.locationCity,
+            location.state || location.locationState,
+            location.zip || location.locationZip
+        ].filter(Boolean).join(', ');
 
-        const inputZipStyle = isZipMissing
-            ? `border: 1px solid #c62828; background: #fffdfd; font-weight: bold;`
-            : `border: 1px solid #cccccc; background: #ffffff;`;
-        const labelZipColor = isZipMissing ? `#c62828` : `#444444`;
-
-        // Cloned from Susan Alderson blueprint using expanded layout dimensions and pill capsule actions
         const html = `
-            <div id="incompleteReviewCard" class="commandLine system html" style="margin-bottom: 16px; width: 100%; max-width: 680px;">
-                <div class="result-card" style="border: 1px solid #c8e6c9; border-left: 5px solid #2e7d32; background: #ffffff; border-radius: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden;">
-                    
-                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #ffffff; border-bottom: 1px solid #f0f0f0;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span class="result-icon" style="font-size: 1.25em;">🏢</span>
-                            <div style="display: flex; flex-direction: column;">
-                                <strong class="result-title" style="color: #111111; font-size: 0.98em; font-weight: 700;">Proposed Contact</strong>
-                                <span style="color: #666666; font-size: 0.8em; line-height: 1.2;">Link existing Entity + Location • Insert new Contact</span>
+            <div class="commandLine system html">
+                <div class="result-card" style="border-left: 5px solid #ffc107; background: #fffaf0;">
+                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #ffeaa7;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="result-icon">⚠️</span>
+                            <div>
+                                <strong class="result-title" style="color: #e67e22;">Proposed Contact</strong>
+                                <small style="color: #d35400; font-size: 0.8em;">Incomplete — Missing required fields</small>
                             </div>
                         </div>
-                        <span style="background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; padding: 2px 6px; border-radius: 4px; font-family: sans-serif; font-size: 0.78em; font-weight: 700;">
-                            ${this.escapeHtml(unifiedData.governance?.resolution_status || 'RS-3')}
-                        </span>
+                        <span style="background: #ffeaa7; color: #e67e22; padding: 3px 8px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">RS-8</span>
                     </div>
 
-                    <div class="result-body" style="padding: 16px; background: #ffffff; font-size: 0.88em; line-height: 1.5;">
-                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
-                            <tr style="vertical-align: top;">
-                                <td style="width: 90px; color: #555555; padding: 3px 0;">Entity:</td>
-                                <td style="color: #111111; padding: 3px 0; font-weight: 500;">${this.escapeHtml(entity.name || '—')}</td>
-                            </tr>
-                            <tr style="vertical-align: top;">
-                                <td style="color: #555555; padding: 3px 0;">Contact:</td>
-                                <td style="color: #111111; padding: 3px 0; font-weight: 500;">${this.escapeHtml(contact.firstName || '')} ${this.escapeHtml(contact.lastName || '')} — <span style="color: #555555; font-weight: normal;">${this.escapeHtml(contact.title || 'Marketing Director')}</span></td>
-                            </tr>
-                            <tr style="vertical-align: top;">
-                                <td style="color: #555555; padding: 3px 0;">Phone:</td>
-                                <td style="color: #111111; padding: 3px 0; font-weight: 500;">${this.escapeHtml(contact.primaryPhone || '—')}</td>
-                            </tr>
-                            <tr style="vertical-align: top;">
-                                <td style="color: #555555; padding: 3px 0;">Email:</td>
-                                <td style="color: #1565c0; padding: 3px 0; font-weight: 500; text-decoration: underline; word-break: break-all;">
-                                    ${this.escapeHtml(contact.email || '—')} ${emailBadgeHtml}
-                                </td>
-                            </tr>
-                            <tr style="vertical-align: top;">
-                                <td style="color: #555555; padding: 3px 0;">Address:</td>
-                                <td style="color: #111111; padding: 3px 0; font-weight: 500;">
-                                    ${this.escapeHtml(location.address || '—')}, ${this.escapeHtml(location.city || '')}, ${this.escapeHtml(location.state || '')} ${zipBadgeHtml}
-                                </td>
-                            </tr>
-                        </table>
+                    <div class="result-body" style="padding: 16px;">
+                        <div class="result-grid" style="grid-template-columns: minmax(70px, auto) 1fr; row-gap: 6px; column-gap: 16px; font-size: 0.92em;">
+                            <span style="color: #555; font-weight: 600;">Entity:</span>
+                            <span style="color: #222;">${this.escapeHtml(entity.entityName || entity.name || '—')}</span>
 
-                        <div style="border-top: 1px solid #f0f0f0; margin: 14px 0 12px;"></div>
-                        
-                        <div style="font-size: 0.9em; font-weight: 700; color: #222222; display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">📋 Proposal Summary</div>
-                        <div style="color: #555555; line-height: 1.45; font-size: 0.88em; white-space: pre-wrap;">${this.escapeHtml(unifiedData.message || 'Proposal is incomplete.')}</div>
-                    </div>
+                            <span style="color: #555; font-weight: 600;">Contact:</span>
+                            <span style="color: #222;">${this.escapeHtml(contact.contactFirstName || contact.firstName || '')} ${this.escapeHtml(contact.contactLastName || contact.lastName || '')} — ${this.escapeHtml(contact.contactTitle || contact.title || '—')}</span>
 
-                    <div style="padding: 12px 16px; background: #ffffff; border-top: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-                        <div style="display: flex; gap: 14px; font-size: 0.86em; font-weight: 500;">
-                            <a href="#" style="color: #1565c0; text-decoration: none; display: flex; align-items: center; gap: 3px;" onclick="return false;">👤 Contact Details</a>
-                            <a href="#" style="color: #1565c0; text-decoration: none; display: flex; align-items: center; gap: 3px;" onclick="return false;">📍 Location &amp; Parcel</a>
-                            <a href="#" style="color: #1565c0; text-decoration: none; display: flex; align-items: center; gap: 3px;" onclick="return false;">📄 Full Snapshot</a>
-                        </div>
-                        <div class="result-actions" style="display: flex; gap: 8px; margin: 0; padding: 0; border: none; background: none;">
-                            <button class="btn" style="width: 140px; height: 34px; padding: 0; font-size: 0.85em; background: #ffb300; color: #ffffff; border: none; border-radius: 20px; font-weight: 600; cursor: pointer; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onclick="document.getElementById('incompleteReviewCard').style.display='none'; document.getElementById('editProposalForm').style.display='block';">✏️ Edit &amp; Resubmit</button>
-                            <button class="btn" style="width: 140px; height: 34px; padding: 0; font-size: 0.85em; background: #546e7a; color: #ffffff; border: none; border-radius: 20px; font-weight: 600; cursor: pointer; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
-                            <button class="btn" style="width: 140px; height: 34px; padding: 0; font-size: 0.85em; background: #e53935; color: #ffffff; border: none; border-radius: 20px; font-weight: 600; cursor: pointer; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                            <span style="color: #555; font-weight: 600;">Location:</span>
+                            <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
 
-            <div id="editProposalForm" class="commandLine system html" style="display:none; margin-top: 0px; width: 100%; max-width: 680px;">
-                <div class="result-card" style="border: 1px solid #c8e6c9; border-left: 5px solid #2e7d32; background: #ffffff; border-radius: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden;">
-                    <div class="result-header" style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #ffffff; border-bottom: 1px solid #f0f0f0;">
-                        <span class="result-icon" style="font-size: 1.2em;">✏️</span>
-                        <div style="display: flex; flex-direction: column;">
-                            <strong class="result-title" style="color: #111111; font-size: 0.98em; font-weight: 700;">Update Workspace Information</strong>
-                            <small style="color: #666666; font-size: 0.8em;">Provide missing data parameters to sync seamlessly into records</small>
-                        </div>
-                    </div>
-                    
-                    <div class="result-body" style="padding: 16px; background: #fafafa;">
-                        <div class="compact-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.86em;">
-                            <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #444444; font-weight: 700;">Entity Name</label>
-                                <input type="text" id="edit_entity_name" value="${this.escapeHtml(entity.name || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #444444; font-weight: 700;">Contact First Name</label>
-                                <input type="text" id="edit_contact_first" value="${this.escapeHtml(contact.firstName || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #444444; font-weight: 700;">Contact Last Name</label>
-                                <input type="text" id="edit_contact_last" value="${this.escapeHtml(contact.lastName || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #444444; font-weight: 700;">Phone Number</label>
-                                <input type="text" id="edit_contact_phone" value="${this.escapeHtml(contact.primaryPhone || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: ${labelEmailColor}; font-weight: 700;">Email Address ${isEmailMissing ? '*' : ''}</label>
-                                <input type="text" id="edit_contact_email" value="${this.escapeHtml(contact.email || '')}" placeholder="e.g. name@domain.com" style="width: 100%; padding: 6px 10px; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222; ${inputEmailStyle}">
-                            </div>
-                            <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #444444; font-weight: 700;">Street Address</label>
-                                <input type="text" id="edit_location_address" value="${this.escapeHtml(location.address || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="color: #444444; font-weight: 700;">City</label>
-                                <input type="text" id="edit_location_city" value="${this.escapeHtml(location.city || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px;">
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <label style="color: #444444; font-weight: 700;">State</label>
-                                    <input type="text" id="edit_location_state" value="${this.escapeHtml(location.state || '')}" style="width: 100%; padding: 6px 10px; border: 1px solid #cccccc; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222;">
-                                </div>
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <label style="color: ${labelZipColor}; font-weight: 700;">ZIP Code ${isZipMissing ? '*' : ''}</label>
-                                    <input type="text" id="edit_location_zip" value="${this.escapeHtml(location.zip || '')}" placeholder="e.g. 85016" style="width: 100%; padding: 6px 10px; border-radius: 4px; font-size: 1em; box-sizing: border-box; color: #222222; ${inputZipStyle}">
-                                </div>
-                            </div>
+                            <span style="color: #555; font-weight: 600;">Phone:</span>
+                            <span style="color: #222;">${this.escapeHtml(contact.contactPrimaryPhone || contact.primaryPhone || '—')}</span>
+
+                            <span style="color: #555; font-weight: 600;">Email:</span>
+                            <span style="color: #222;">${this.escapeHtml(contact.contactEmail || contact.email || '—')}</span>
                         </div>
                     </div>
 
-                    <div style="padding: 12px 16px; border-top: 1px solid #f0f0f0; background: #ffffff; display: flex; justify-content: flex-end; gap: 8px;">
-                        <button onclick="document.getElementById('editProposalForm').style.display='none'; document.getElementById('incompleteReviewCard').style.display='block';" class="btn" style="width: 100px; height: 32px; padding: 0; font-size: 0.85em; background: #ffffff; color: #555555; border: 1px solid #cccccc; border-radius: 4px; cursor: pointer;">Cancel</button>
-                        <button onclick="SkyIndex.submitEditedProposal(JSON.parse(decodeURIComponent(escape(atob('${dataPayloadAttr}')))))" class="btn" style="width: 180px; height: 32px; padding: 0; font-size: 0.85em; background: #2e7d32; color: #ffffff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Submit Updated Proposal</button>
+                    <div style="padding: 12px 16px; background: #fffaf0; border-top: 1px dashed #ffeaa7; font-size: 0.9em;">
+                        <strong>Proposal Summary</strong><br>
+                        ${this.escapeHtml(cleanPayload.message || 'Proposal is incomplete.')}
+                    </div>
+
+                    <div class="result-actions" style="padding: 12px 16px; display: flex; gap: 8px;">
+                        <button class="btn btn-warning" style="flex: 1;" onclick="SkyIndex.revalidateProposal()">✏️ Edit & Resubmit</button>
+                        <button class="btn btn-secondary" style="flex: 1;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                        <button class="btn btn-danger" style="flex: 1;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                     </div>
                 </div>
             </div>
