@@ -1889,13 +1889,12 @@ window.SkyIndex = {
         // 1. Resolve Active Context Code (Prioritize Exception RS flags over base PC layouts)
         let activeStatusKey = pcCode;
         if (rsCodes.length > 0) {
-            // Pick highest severity exception flag present in the batch pipeline
             const criticalExceptions = ['RS-8', 'RS-3', 'RS-7', 'RS-6', 'RS-5'];
             const match = criticalExceptions.find(code => rsCodes.includes(code));
             if (match) activeStatusKey = match;
         }
 
-        // 2. Extensible Theme Matrix Map (Decoupled Status Styling Language)
+        // 2. Extensible Theme Matrix Map (Action-State Visual Language Layer)
         const THEMES = {
             'PC-0': {
                 borderLeft: '#17a2b8',
@@ -1913,7 +1912,7 @@ window.SkyIndex = {
                 summaryBg: 'rgba(40, 167, 69, 0.03)',
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
-                icon: '📇',
+                icon: '💾',
                 title: 'Proposed Identity Link',
                 subtitle: 'Create new Entity, Location and Contact'
             },
@@ -1923,7 +1922,7 @@ window.SkyIndex = {
                 summaryBg: 'rgba(40, 167, 69, 0.03)',
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
-                icon: '📇',
+                icon: '💾',
                 title: 'Proposed Identity Link',
                 subtitle: 'Create new Location and Contact'
             },
@@ -1933,7 +1932,7 @@ window.SkyIndex = {
                 summaryBg: 'rgba(40, 167, 69, 0.03)',
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
-                icon: '📇',
+                icon: '💾',
                 title: 'Proposed Identity Link',
                 subtitle: 'Create new Contact'
             },
@@ -1943,7 +1942,7 @@ window.SkyIndex = {
                 summaryBg: 'rgba(0, 122, 255, 0.03)',
                 summaryBorder: 'rgba(0, 122, 255, 0.15)',
                 summaryText: '#007aff',
-                icon: '📍',
+                icon: '💾',
                 title: 'Location Proposal',
                 subtitle: 'Create new Location'
             },
@@ -1953,7 +1952,7 @@ window.SkyIndex = {
                 summaryBg: 'rgba(40, 167, 69, 0.03)',
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
-                icon: '📇',
+                icon: '💾',
                 title: 'Proposed Identity Link',
                 subtitle: 'Create new Entity and Location'
             },
@@ -2009,7 +2008,6 @@ window.SkyIndex = {
             }
         };
 
-        // Complete structural alignment template fallback if unknown status codes process
         const theme = THEMES[activeStatusKey] || {
             borderLeft: '#6c757d',
             badge: 'background: #e9ecef; color: #495057; border: 1px solid #ced4da;',
@@ -2021,7 +2019,7 @@ window.SkyIndex = {
             subtitle: 'Evaluating entry logic and transaction properties'
         };
 
-        // 3. String Compilation Handlers
+        // 3. Normalized String Compilation Handlers
         let contactIdentity = '—';
         if (proposalKind !== 'location') {
             const fullName = [
@@ -2040,6 +2038,9 @@ window.SkyIndex = {
             location.locationZip || location.zip
         ].filter(Boolean).join(', ');
 
+        const displayPhone = contact.contactPrimaryPhone || contact.primaryPhone || '—';
+        const displayEmail = contact.contactEmail || contact.email || '—';
+
         // 4. Extract Operational Intent Checklists Directly from Commit Plan
         let commitPlanMarkup = '';
         if (activeStatusKey === 'PC-0') {
@@ -2051,7 +2052,6 @@ window.SkyIndex = {
             if (commit.createContact) checklist.push('✓ Contact');
             commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Creates:</span> <span style="font-family: monospace; color: #28a745; font-weight: bold;">${checklist.join(' &nbsp; ')}</span>`;
         } else {
-            // Implicit execution path display fallback
             commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Action:</span> <span style="color: #444;">${theme.subtitle}</span>`;
         }
 
@@ -2085,21 +2085,18 @@ window.SkyIndex = {
                             <span style="color: #222;">${this.escapeHtml(contactIdentity)}</span>
                             ` : ''}
                             
-                            ${locationName ? `
                             <span style="color: #666; font-weight: 600;">Location:</span> 
-                            <span style="color: #222; font-weight: 600;">${this.escapeHtml(locationName)}</span>
+                            <span style="color: #222;">${this.escapeHtml(locationName || '—')}</span>
+                            
                             <span style="color: #666; font-weight: 600;">Address:</span> 
                             <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
-                            ` : `
-                            <span style="color: #666; font-weight: 600;">Location:</span> 
-                            <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
-                            `}
                             
                             ${proposalKind !== 'location' ? `
                             <span style="color: #666; font-weight: 600;">Phone:</span> 
-                            <span style="color: #222;">${this.escapeHtml(contact.contactPrimaryPhone || contact.primaryPhone || '—')}</span>
+                            <span style="color: #222;">${this.escapeHtml(displayPhone)}</span>
+                            
                             <span style="color: #666; font-weight: 600;">Email:</span> 
-                            <span style="color: #222;">${this.escapeHtml(contact.contactEmail || contact.email || '—')}</span>
+                            <span style="color: #222;">${this.escapeHtml(displayEmail)}</span>
                             ` : ''}
                         </div>
                     </div>
