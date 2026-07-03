@@ -1882,16 +1882,18 @@ window.SkyIndex = {
         const location = proposal.location || {};
         const commit   = payload.commitPlan || {};
 
-        const pcCode = pcm.pc || 'PC-?';
-        const rsCodes = pcm.rs || [];
-        const proposalKind = payload.proposalKind || 'contact';
+        const proposalKind = payload.proposalKind || (contact.lastName || contact.firstName ? 'contact' : 'location');
 
-        // 1. Resolve Active Context Code (Prioritize Exception RS flags over base PC layouts)
-        let activeStatusKey = pcCode;
-        if (rsCodes.length > 0) {
-            const criticalExceptions = ['RS-8', 'RS-3', 'RS-7', 'RS-6', 'RS-5'];
-            const match = criticalExceptions.find(code => rsCodes.includes(code));
-            if (match) activeStatusKey = match;
+        // 1. Resolve Active Context Code (Prioritize Explicit Governance Errors over Base Layouts)
+        let activeStatusKey = 'PC-?';
+        if (pcm.rs && pcm.rs.length > 0) {
+            activeStatusKey = pcm.rs[0];
+        } else if (payload.governance?.resolution_status) {
+            activeStatusKey = payload.governance.resolution_status;
+        } else if (pcm.pc) {
+            activeStatusKey = pcm.pc;
+        } else if (payload.status === 'incomplete') {
+            activeStatusKey = 'RS-3';
         }
 
         // 2. Extensible Theme Matrix Map (Action-State Visual & Button Control Language Layer)
@@ -2080,15 +2082,13 @@ window.SkyIndex = {
         };
 
         // 3. Normalized String Compilation Handlers
-        let contactIdentity = '—';
-        if (proposalKind !== 'location') {
-            const fullName = [
-                contact.contactFirstName || contact.firstName,
-                contact.contactLastName || contact.lastName
-            ].filter(Boolean).join(' ');
-            const titleStr = contact.contactTitle || contact.title || '';
-            contactIdentity = [fullName, titleStr].filter(Boolean).join(' — ') || '—';
-        }
+        let contactIdentity = '';
+        const fullName = [
+            contact.contactFirstName || contact.firstName,
+            contact.contactLastName || contact.lastName
+        ].filter(Boolean).join(' ');
+        const titleStr = contact.contactTitle || contact.title || '';
+        contactIdentity = [fullName, titleStr].filter(Boolean).join(' — ');
 
         const locationName = location.locationName || location.name || '';
         const addressLine = [
@@ -2098,8 +2098,8 @@ window.SkyIndex = {
             location.locationZip || location.zip
         ].filter(Boolean).join(', ');
 
-        const displayPhone = contact.contactPrimaryPhone || contact.primaryPhone || '—';
-        const displayEmail = contact.contactEmail || contact.email || '—';
+        const displayPhone = contact.contactPrimaryPhone || contact.primaryPhone || '';
+        const displayEmail = contact.contactEmail || contact.email || '';
 
         // 4. Extract Operational Intent Checklists Directly from Commit Plan
         let commitPlanMarkup = '';
@@ -2114,8 +2114,6 @@ window.SkyIndex = {
         } else {
             commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Action:</span> <span style="color: #444;">${theme.subtitle}</span>`;
         }
-
-        const dataPayloadAttr = safeBase64Encode(JSON.stringify(payload));
 
         const html = `
             <div class="commandLine system html">
@@ -2140,7 +2138,7 @@ window.SkyIndex = {
                             <span style="color: #666; font-weight: 600;">Entity:</span> 
                             <span style="color: #222;">${this.escapeHtml(entity.entityName || entity.name || '—')}</span>
                             
-                            ${proposalKind !== 'location' ? `
+                            ${contactIdentity ? `
                             <span style="color: #666; font-weight: 600;">Contact:</span> 
                             <span style="color: #222;">${this.escapeHtml(contactIdentity)}</span>
                             ` : ''}
@@ -2151,10 +2149,12 @@ window.SkyIndex = {
                             <span style="color: #666; font-weight: 600;">Address:</span> 
                             <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
                             
-                            ${proposalKind !== 'location' ? `
+                            ${displayPhone ? `
                             <span style="color: #666; font-weight: 600;">Phone:</span> 
                             <span style="color: #222;">${this.escapeHtml(displayPhone)}</span>
+                            ` : ''}
                             
+                            ${displayEmail ? `
                             <span style="color: #666; font-weight: 600;">Email:</span> 
                             <span style="color: #222;">${this.escapeHtml(displayEmail)}</span>
                             ` : ''}
@@ -2167,7 +2167,7 @@ window.SkyIndex = {
 
                     <div style="padding: 12px 16px; background: ${theme.summaryBg}; border-top: 1px dashed ${theme.summaryBorder}; font-size: 0.9em; line-height: 1.35; color: ${theme.summaryText};">
                         <strong style="font-size: 0.95em; display: block; margin-bottom: 2px;">Proposal Summary</strong>
-                        ${this.escapeHtml(payload.narratives?.ui || payload.governance?.reason || 'Proposal parsing complete.')}
+                        ${this.escapeHtml(payload.narratives?.ui || payload.governance?.reason || payload.message || 'Proposal parsing complete.')}
                     </div>
 
                     <div class="result-actions" style="padding: 12px 16px; border-top: 1px solid #eee; background: #fff; display: flex; gap: 8px;">
