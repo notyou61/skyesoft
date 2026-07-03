@@ -1961,11 +1961,11 @@ window.SkyIndex = {
                 btnHandler: 'SkyIndex.acceptEditedProposal()'
             },
             'PC-4': {
-                borderLeft: '#007aff',
-                badge: 'background: rgba(0, 122, 255, 0.1); color: #007aff; border: 1px solid rgba(0, 122, 255, 0.2);',
-                summaryBg: 'rgba(0, 122, 255, 0.03)',
-                summaryBorder: 'rgba(0, 122, 255, 0.15)',
-                summaryText: '#007aff',
+                borderLeft: '#28a745',
+                badge: 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);',
+                summaryBg: 'rgba(40, 167, 69, 0.03)',
+                summaryBorder: 'rgba(40, 167, 69, 0.15)',
+                summaryText: '#1e7e34',
                 icon: '💾',
                 title: 'Location Proposal',
                 subtitle: 'Create new Location',
