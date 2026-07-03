@@ -1870,48 +1870,169 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Unified Proposed Proposal Renderer (Contact + Location)
-    renderProposedContact(data) {   // Keep the name for now to avoid breaking callers
+    // #region 📇 Unified Governance & Identity Proposal Component Engine (v2)
+    renderProposedContact(data) {
         const payload = data || {};
         const proposal = payload.data || {};
+        const pcm      = payload.pcm || {};
+        
+        // Target Identity & Payload Structuring
         const entity   = proposal.entity || {};
         const contact  = proposal.contact || {};
         const location = proposal.location || {};
+        const commit   = payload.commitPlan || {};
 
-        const pcm       = payload.pcm || {};
-        const narratives = payload.narratives || {};
+        const pcCode = pcm.pc || 'PC-?';
+        const rsCodes = pcm.rs || [];
         const proposalKind = payload.proposalKind || 'contact';
 
-        const pc = pcm.pc || 'PC-?';
-        const rs = pcm.rs || [];
-
-        const isLocationProposal = proposalKind === 'location';
-        const isIncomplete = rs.includes('RS-3') || rs.includes('RS-8');
-        const isExactMatch = pc === 'PC-0';
-
-        // Dynamic title and subtitle based on proposal kind
-        let cardTitle = isLocationProposal ? 'Location Proposal' : 'Proposed Contact';
-        let icon = isLocationProposal ? '📍' : '📇';
-        
-        let subtitle = payload.narratives?.ui || payload.governance?.parcelStatus || 'Proposal ready for review.';
-
-        if (isExactMatch) {
-            subtitle = 'All records already exist — No action required';
+        // 1. Resolve Active Context Code (Prioritize Exception RS flags over base PC layouts)
+        let activeStatusKey = pcCode;
+        if (rsCodes.length > 0) {
+            // Pick highest severity exception flag present in the batch pipeline
+            const criticalExceptions = ['RS-8', 'RS-3', 'RS-7', 'RS-6', 'RS-5'];
+            const match = criticalExceptions.find(code => rsCodes.includes(code));
+            if (match) activeStatusKey = match;
         }
 
-        // Contact identity
-        let contactIdentity = '';
-        if (!isLocationProposal) {
+        // 2. Extensible Theme Matrix Map (Decoupled Status Styling Language)
+        const THEMES = {
+            'PC-0': {
+                borderLeft: '#17a2b8',
+                badge: 'background: rgba(23, 162, 184, 0.12); color: #117a8b; border: 1px solid rgba(23, 162, 184, 0.25);',
+                summaryBg: 'rgba(23, 162, 184, 0.03)',
+                summaryBorder: 'rgba(23, 162, 184, 0.2)',
+                summaryText: '#117a8b',
+                icon: '✓',
+                title: 'Existing Identity Verified',
+                subtitle: 'All records already exist — No action required'
+            },
+            'PC-1': {
+                borderLeft: '#28a745',
+                badge: 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);',
+                summaryBg: 'rgba(40, 167, 69, 0.03)',
+                summaryBorder: 'rgba(40, 167, 69, 0.15)',
+                summaryText: '#1e7e34',
+                icon: '📇',
+                title: 'Proposed Identity Link',
+                subtitle: 'Create new Entity, Location and Contact'
+            },
+            'PC-2': {
+                borderLeft: '#28a745',
+                badge: 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);',
+                summaryBg: 'rgba(40, 167, 69, 0.03)',
+                summaryBorder: 'rgba(40, 167, 69, 0.15)',
+                summaryText: '#1e7e34',
+                icon: '📇',
+                title: 'Proposed Identity Link',
+                subtitle: 'Create new Location and Contact'
+            },
+            'PC-3': {
+                borderLeft: '#28a745',
+                badge: 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);',
+                summaryBg: 'rgba(40, 167, 69, 0.03)',
+                summaryBorder: 'rgba(40, 167, 69, 0.15)',
+                summaryText: '#1e7e34',
+                icon: '📇',
+                title: 'Proposed Identity Link',
+                subtitle: 'Create new Contact'
+            },
+            'PC-4': {
+                borderLeft: '#007aff',
+                badge: 'background: rgba(0, 122, 255, 0.1); color: #007aff; border: 1px solid rgba(0, 122, 255, 0.2);',
+                summaryBg: 'rgba(0, 122, 255, 0.03)',
+                summaryBorder: 'rgba(0, 122, 255, 0.15)',
+                summaryText: '#007aff',
+                icon: '📍',
+                title: 'Location Proposal',
+                subtitle: 'Create new Location'
+            },
+            'PC-5': {
+                borderLeft: '#28a745',
+                badge: 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);',
+                summaryBg: 'rgba(40, 167, 69, 0.03)',
+                summaryBorder: 'rgba(40, 167, 69, 0.15)',
+                summaryText: '#1e7e34',
+                icon: '📇',
+                title: 'Proposed Identity Link',
+                subtitle: 'Create new Entity and Location'
+            },
+            'RS-3': {
+                borderLeft: '#ffc107',
+                badge: 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);',
+                summaryBg: '#fffdf6',
+                summaryBorder: '#ffeaa7',
+                summaryText: '#d35400',
+                icon: '⚠️',
+                title: 'Proposed Contact',
+                subtitle: 'Proposed Contact Incomplete — Missing required fields'
+            },
+            'RS-5': {
+                borderLeft: '#0056b3',
+                badge: 'background: rgba(0, 86, 179, 0.1); color: #0056b3; border: 1px solid rgba(0, 86, 179, 0.25);',
+                summaryBg: 'rgba(0, 86, 179, 0.02)',
+                summaryBorder: 'rgba(0, 86, 179, 0.15)',
+                summaryText: '#004085',
+                icon: '👥',
+                title: 'Duplicate Record Warning',
+                subtitle: 'Matching identity records detected in master dataset'
+            },
+            'RS-6': {
+                borderLeft: '#fd7e14',
+                badge: 'background: rgba(253, 126, 20, 0.12); color: #fd7e14; border: 1px solid rgba(253, 126, 20, 0.25);',
+                summaryBg: 'rgba(253, 126, 20, 0.02)',
+                summaryBorder: 'rgba(253, 126, 20, 0.15)',
+                summaryText: '#ba5200',
+                icon: '🗺️',
+                title: 'Parcel Conflict Exception',
+                subtitle: 'Multiple properties map to coordinates — Choice required'
+            },
+            'RS-7': {
+                borderLeft: '#dc3545',
+                badge: 'background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2);',
+                summaryBg: 'rgba(220, 53, 69, 0.02)',
+                summaryBorder: 'rgba(220, 53, 69, 0.15)',
+                summaryText: '#bd2130',
+                icon: '🛑',
+                title: 'Unresolved Address Point',
+                subtitle: 'Regional parcel mapping bounds could not be validated'
+            },
+            'RS-8': {
+                borderLeft: '#ffc107',
+                badge: 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);',
+                summaryBg: '#fffdf6',
+                summaryBorder: '#ffeaa7',
+                summaryText: '#d35400',
+                icon: '⚠️',
+                title: 'Proposed Contact',
+                subtitle: 'Validation Exception Notice'
+            }
+        };
+
+        // Complete structural alignment template fallback if unknown status codes process
+        const theme = THEMES[activeStatusKey] || {
+            borderLeft: '#6c757d',
+            badge: 'background: #e9ecef; color: #495057; border: 1px solid #ced4da;',
+            summaryBg: '#fafafa',
+            summaryBorder: '#eee',
+            summaryText: '#333',
+            icon: '📋',
+            title: proposalKind === 'location' ? 'Location Proposal' : 'Proposed Record',
+            subtitle: 'Evaluating entry logic and transaction properties'
+        };
+
+        // 3. String Compilation Handlers
+        let contactIdentity = '—';
+        if (proposalKind !== 'location') {
             const fullName = [
                 contact.contactFirstName || contact.firstName,
                 contact.contactLastName || contact.lastName
             ].filter(Boolean).join(' ');
-
             const titleStr = contact.contactTitle || contact.title || '';
-
-            contactIdentity = [fullName, titleStr].filter(Boolean).join(' — ');
+            contactIdentity = [fullName, titleStr].filter(Boolean).join(' — ') || '—';
         }
 
+        const locationName = location.locationName || location.name || '';
         const addressLine = [
             location.locationAddress || location.address,
             location.locationCity || location.city,
@@ -1919,88 +2040,90 @@ window.SkyIndex = {
             location.locationZip || location.zip
         ].filter(Boolean).join(', ');
 
-        // Setup contextual palette accents
-        let borderLeftColor = '#28a745';
-        let badgeStyle = 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);';
-        let summaryBg = 'rgba(40, 167, 69, 0.03)';
-        let summaryBorder = 'rgba(40, 167, 69, 0.2)';
-        let summaryTextColor = '#1e7e34';
-
-        if (isIncomplete) {
-            borderLeftColor = '#ffc107';
-            badgeStyle = 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);';
-            summaryBg = '#fffdf6';
-            summaryBorder = '#ffeaa7';
-            summaryTextColor = '#d35400';
-        } else if (isExactMatch) {
-            borderLeftColor = '#17a2b8';
-            badgeStyle = 'background: rgba(23, 162, 184, 0.15); color: #117a8b; border: 1px solid rgba(23, 162, 184, 0.3);';
-            summaryBg = 'rgba(23, 162, 184, 0.03)';
-            summaryBorder = 'rgba(23, 162, 184, 0.2)';
-            summaryTextColor = '#117a8b';
-        } else if (isLocationProposal) {
-            borderLeftColor = '#007aff';
-            badgeStyle = 'background: rgba(0, 122, 255, 0.1); color: #007aff; border: 1px solid rgba(0, 122, 255, 0.2);';
-            summaryBg = 'rgba(0, 122, 255, 0.03)';
-            summaryBorder = 'rgba(0, 122, 255, 0.2)';
-            summaryTextColor = '#007aff';
+        // 4. Extract Operational Intent Checklists Directly from Commit Plan
+        let commitPlanMarkup = '';
+        if (activeStatusKey === 'PC-0') {
+            commitPlanMarkup = `<span style="color:#6c757d;">No structural changes required</span>`;
+        } else if (commit && (commit.createEntity || commit.createLocation || commit.createContact)) {
+            const checklist = [];
+            if (commit.createEntity) checklist.push('✓ Entity');
+            if (commit.createLocation) checklist.push('✓ Location');
+            if (commit.createContact) checklist.push('✓ Contact');
+            commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Creates:</span> <span style="font-family: monospace; color: #28a745; font-weight: bold;">${checklist.join(' &nbsp; ')}</span>`;
+        } else {
+            // Implicit execution path display fallback
+            commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Action:</span> <span style="color: #444;">${theme.subtitle}</span>`;
         }
 
         const dataPayloadAttr = safeBase64Encode(JSON.stringify(payload));
 
         const html = `
             <div class="commandLine system html">
-                <div class="result-card" style="border-left: 5px solid ${borderLeftColor}; background: #fff; width: 100%; max-width: 100%;">
+                <div class="result-card" style="border-left: 5px solid ${theme.borderLeft}; background: #fff; width: 100%; max-width: 100%;">
+                    
                     <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="result-icon">${icon}</span>
+                            <span class="result-icon">${theme.icon}</span>
                             <div style="display: flex; flex-direction: column;">
-                                <strong class="result-title">${cardTitle}</strong>
-                                <small style="color: #666; font-size: 0.78em; line-height: 1.2; display: block; margin-top: 1px;">${this.escapeHtml(subtitle)}</small>
+                                <strong class="result-title" style="color: #222;">${theme.title}</strong>
+                                <small style="color: #666; font-size: 0.78em; line-height: 1.2; display: block; margin-top: 1px;">${this.escapeHtml(theme.subtitle)}</small>
                             </div>
                         </div>
-                        <span style="${badgeStyle} padding: 3px 8px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold; white-space: nowrap; display: inline-block;">
-                            ${this.escapeHtml(pc)}
+                        <span style="${theme.badge} padding: 3px 8px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold; white-space: nowrap; display: inline-block;">
+                            ${this.escapeHtml(activeStatusKey)}
                         </span>
                     </div>
 
                     <div class="result-body" style="padding: 16px;">
                         <div class="result-grid" style="display: grid; grid-template-columns: minmax(70px, auto) 1fr; row-gap: 6px; column-gap: 16px; font-size: 0.92em; line-height: 1.3;">
-                            <span style="color: #555; font-weight: 600;">Entity:</span> 
+                            
+                            <span style="color: #666; font-weight: 600;">Entity:</span> 
                             <span style="color: #222;">${this.escapeHtml(entity.entityName || entity.name || '—')}</span>
                             
-                            ${!isLocationProposal ? `
-                            <span style="color: #555; font-weight: 600;">Contact:</span> 
-                            <span style="color: #222;">${this.escapeHtml(contactIdentity || '—')}</span>
+                            ${proposalKind !== 'location' ? `
+                            <span style="color: #666; font-weight: 600;">Contact:</span> 
+                            <span style="color: #222;">${this.escapeHtml(contactIdentity)}</span>
                             ` : ''}
                             
-                            <span style="color: #555; font-weight: 600;">Location:</span> 
-                            <span style="color: #222;">${this.escapeHtml(location.locationName || addressLine || '—')}</span>
+                            ${locationName ? `
+                            <span style="color: #666; font-weight: 600;">Location:</span> 
+                            <span style="color: #222; font-weight: 600;">${this.escapeHtml(locationName)}</span>
+                            <span style="color: #666; font-weight: 600;">Address:</span> 
+                            <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
+                            ` : `
+                            <span style="color: #666; font-weight: 600;">Location:</span> 
+                            <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
+                            `}
                             
-                            ${!isLocationProposal ? `
-                            <span style="color: #555; font-weight: 600;">Phone:</span> 
+                            ${proposalKind !== 'location' ? `
+                            <span style="color: #666; font-weight: 600;">Phone:</span> 
                             <span style="color: #222;">${this.escapeHtml(contact.contactPrimaryPhone || contact.primaryPhone || '—')}</span>
-                            <span style="color: #555; font-weight: 600;">Email:</span> 
+                            <span style="color: #666; font-weight: 600;">Email:</span> 
                             <span style="color: #222;">${this.escapeHtml(contact.contactEmail || contact.email || '—')}</span>
                             ` : ''}
                         </div>
                     </div>
 
-                    <div style="padding: 12px 16px; background: ${summaryBg}; border-top: 1px dashed ${summaryBorder}; font-size: 0.9em; line-height: 1.35; color: ${summaryTextColor};">
+                    <div style="padding: 8px 16px; background: #fafafa; border-top: 1px solid #f0f0f0; font-size: 0.85em; display: flex; align-items: center; gap: 4px;">
+                        ${commitPlanMarkup}
+                    </div>
+
+                    <div style="padding: 12px 16px; background: ${theme.summaryBg}; border-top: 1px dashed ${theme.summaryBorder}; font-size: 0.9em; line-height: 1.35; color: ${theme.summaryText};">
                         <strong style="font-size: 0.95em; display: block; margin-bottom: 2px;">Proposal Summary</strong>
-                        ${this.escapeHtml(narratives.ui || 'Proposal ready for review.')}
+                        ${this.escapeHtml(payload.narratives?.ui || payload.governance?.reason || 'Proposal parsing complete.')}
                     </div>
 
                     <div class="result-actions" style="padding: 12px 16px; border-top: 1px solid #eee; background: #fff; display: flex; gap: 8px;">
-                        ${isExactMatch ? 
+                        ${activeStatusKey === 'PC-0' ? 
                             `<button class="btn btn-secondary" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;" disabled>✓ Already Exists</button>` :
-                            isIncomplete ?
-                            `<button class="btn btn-warning" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #ffc107; color: #212529; border: 1px solid #d39e00;" onclick="SkyIndex.revalidateProposal()">🔄 Fix Missing Fields</button>` :
+                            (activeStatusKey.startsWith('RS-')) ?
+                            `<button class="btn btn-warning" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #ffc107; color: #212529; border: 1px solid #d39e00;" onclick="SkyIndex.revalidateProposal()">✏️ Edit &amp; Resubmit</button>` :
                             `<button class="btn btn-success" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #28a745; color: #fff; border: 1px solid #218838;" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>`
                         }
                         <button class="btn btn-secondary" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #6c757d; color: #fff; border: 1px solid #545b62;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
                         <button class="btn btn-danger" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff; border: 1px solid #bd2130;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                     </div>
+
                 </div>
             </div>
         `;
