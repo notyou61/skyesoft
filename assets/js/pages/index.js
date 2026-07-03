@@ -1156,35 +1156,41 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📇 Unified Proposal Router (PC-1 through PC-5)
+        // 📇 Unified Proposal Router (PC-1 through PC-5) — FIXED
         // --------------------------------------------------
         if (lines.length >= 2) {
             const hasEmail         = /@\S+/.test(text);
             const hasStrictEmail   = /@\S+\.\S{2,}/.test(text);
             const hasPhone         = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
             const hasName          = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
-            const hasZip           = /\b\d{5}(-\d{4})?\b/.test(text); 
+            const hasZip           = /\b\d{5}(-\d{4})?\b/.test(text);
             const hasStreetAddress = /\b\d{1,6}\s+\S+/.test(text);
 
-            const looksLikeContactProposal = (hasStrictEmail || hasPhone) && hasName;
-            const looksLikeLocationProposal = hasStreetAddress && hasZip && !hasEmail && !hasPhone;
+            // Contextual checks for professional contact blocks
+            const structuralLines = text.split('\n');
+            const hasJobTitleKeywords = structuralLines.some(line => 
+                /\b(Manager|Director|VP|CEO|COO|President|Officer|Supervisor|Coordinator|Lead|Executive)\b/i.test(line)
+            );
+
+            // Stricter separation: If it has a person's name and job title, or contact markers, treat as a Contact.
+            const looksLikeContactProposal = (hasStrictEmail || hasPhone) && hasName || (hasName && hasJobTitleKeywords);
+            
+            // A location proposal should strictly look like a property description or standalone address matrix
+            const looksLikeLocationProposal = hasStreetAddress && hasZip && !hasEmail && !hasPhone && !hasJobTitleKeywords;
 
             if (looksLikeContactProposal) {
                 console.log('[Proposal Router] Routing to CONTACT workflow');
                 const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
                 const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
-
                 this.appendSystemLine(`Proposed Contact - ${normalizedName}`, 'user');
                 this.suppressRawContactEcho();
                 this.renderContactProcessingState();
-
                 await this.executeContactProposalWorkflow(text, activitySessionId);
                 return;
             }
 
             if (looksLikeLocationProposal) {
                 console.log('[Proposal Router] Routing to LOCATION workflow');
-
                 let calibratedLines = [...lines];
                 if (calibratedLines.length === 3) {
                     const lastLine = calibratedLines[2];
@@ -1194,17 +1200,14 @@ window.SkyIndex = {
                         calibratedLines.push(zipMatch[2].trim());
                     }
                 }
-
                 const entityName = calibratedLines[0] || 'Proposed Location';
                 this.appendSystemLine(`Processing Location Proposal — ${entityName}`, 'user');
                 this.suppressRawContactEcho();
-                
                 if (typeof this.renderLocationProcessingState === 'function') {
                     this.renderLocationProcessingState();
                 } else {
                     this.renderContactProcessingState();
                 }
-
                 await this.executeLocationProposalWorkflow(text, activitySessionId, calibratedLines);
                 return;
             }
@@ -1870,7 +1873,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Unified Governance & Identity Proposal Component Engine (v2)
+    // #region 📇 Unified Governance & Identity Proposal Component Engine (v2.1)
     renderProposedContact(data) {
         const payload = data || {};
         const proposal = payload.data || {};
@@ -1907,7 +1910,7 @@ window.SkyIndex = {
                 summaryBorder: 'rgba(23, 162, 184, 0.2)',
                 summaryText: '#117a8b',
                 icon: '✓',
-                title: 'Existing Identity Verified',
+                baseTitle: 'Existing Identity Verified',
                 subtitle: 'All records already exist — No action required',
                 btnClass: 'btn-secondary',
                 btnStyle: 'background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;',
@@ -1922,7 +1925,7 @@ window.SkyIndex = {
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
                 icon: '💾',
-                title: 'Proposed Identity Link',
+                baseTitle: 'Proposed Identity Link',
                 subtitle: 'Create new Entity, Location and Contact',
                 btnClass: 'btn-success',
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
@@ -1937,7 +1940,7 @@ window.SkyIndex = {
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
                 icon: '💾',
-                title: 'Proposed Identity Link',
+                baseTitle: 'Proposed Identity Link',
                 subtitle: 'Create new Location and Contact',
                 btnClass: 'btn-success',
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
@@ -1952,7 +1955,7 @@ window.SkyIndex = {
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
                 icon: '💾',
-                title: 'Proposed Identity Link',
+                baseTitle: 'Proposed Identity Link',
                 subtitle: 'Create new Contact',
                 btnClass: 'btn-success',
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
@@ -1967,7 +1970,7 @@ window.SkyIndex = {
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
                 icon: '💾',
-                title: 'Location Proposal',
+                baseTitle: 'Location Proposal',
                 subtitle: 'Create new Location',
                 btnClass: 'btn-success',
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
@@ -1982,7 +1985,7 @@ window.SkyIndex = {
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
                 icon: '💾',
-                title: 'Proposed Identity Link',
+                baseTitle: 'Proposed Identity Link',
                 subtitle: 'Create new Entity and Location',
                 btnClass: 'btn-success',
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
@@ -1995,15 +1998,75 @@ window.SkyIndex = {
                 badge: 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);',
                 summaryBg: '#fffdf6',
                 summaryBorder: '#ffeaa7',
-                summaryText: '#d35400',
+                summaryText: '#b58100',
                 icon: '⚠️',
-                title: 'Proposed Contact',
-                subtitle: 'Proposed Contact Incomplete — Missing required fields',
+                baseTitle: 'Incomplete Proposal',
+                subtitle: 'Required payload elements are missing',
                 btnClass: 'btn-warning',
                 btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
                 btnText: '✏️ Edit &amp; Resubmit',
                 btnDisabled: false,
                 btnHandler: 'SkyIndex.revalidateProposal()'
+            },
+            'RS-5': {
+                borderLeft: '#dc3545',
+                badge: 'background: rgba(220, 53, 69, 0.12); color: #bd2130; border: 1px solid rgba(220, 53, 69, 0.25);',
+                summaryBg: 'rgba(220, 53, 69, 0.02)',
+                summaryBorder: 'rgba(220, 53, 69, 0.15)',
+                summaryText: '#bd2130',
+                icon: '👥',
+                baseTitle: 'Duplicate Contact Detected',
+                subtitle: 'An existing contact already matches the submitted information',
+                btnClass: 'btn-secondary',
+                btnStyle: 'background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;',
+                btnText: '🚫 Blocked by Governance',
+                btnDisabled: true,
+                btnHandler: ''
+            },
+            'RS-6': {
+                borderLeft: '#ffc107',
+                badge: 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);',
+                summaryBg: '#fffdf6',
+                summaryBorder: '#ffeaa7',
+                summaryText: '#212529',
+                icon: '🗺️',
+                baseTitle: 'Multiple Parcels',
+                subtitle: 'Coordinates return multiple tax parcels — Boundary assignment choice required',
+                btnClass: 'btn-warning',
+                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
+                btnText: '🗺️ Map Custom Boundary',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.revalidateProposal()'
+            },
+            'RS-7': {
+                borderLeft: '#dc3545',
+                badge: 'background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2);',
+                summaryBg: 'rgba(220, 53, 69, 0.02)',
+                summaryBorder: 'rgba(220, 53, 69, 0.15)',
+                summaryText: '#bd2130',
+                icon: '📍',
+                baseTitle: 'Parcel Not Resolved',
+                subtitle: 'Regional map service coordinates could not be structurally matched',
+                btnClass: 'btn-secondary',
+                btnStyle: 'background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;',
+                btnText: '🚫 Blocked by Governance',
+                btnDisabled: true,
+                btnHandler: ''
+            },
+            'RS-8': {
+                borderLeft: '#dc3545',
+                badge: 'background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2);',
+                summaryBg: 'rgba(220, 53, 69, 0.02)',
+                summaryBorder: 'rgba(220, 53, 69, 0.15)',
+                summaryText: '#bd2130',
+                icon: '🚫',
+                baseTitle: 'Invalid Location',
+                subtitle: 'Critical physical geometry or structural format validation failure',
+                btnClass: 'btn-danger',
+                btnStyle: 'background: #dc3545; color: #fff; border: 1px solid #bd2130;',
+                btnText: '✕ Decline Proposal',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.handleProposalAction(\x27decline\x27)'
             }
         };
 
@@ -2014,7 +2077,7 @@ window.SkyIndex = {
             summaryBorder: '#eee',
             summaryText: '#333',
             icon: '📋',
-            title: proposalKind === 'location' ? 'Location Proposal' : 'Proposed Record',
+            baseTitle: 'Proposed Record',
             subtitle: 'Evaluating entry logic and transaction properties',
             btnClass: 'btn-success',
             btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
@@ -2023,7 +2086,20 @@ window.SkyIndex = {
             btnHandler: 'SkyIndex.acceptEditedProposal()'
         };
 
-        // 3. Normalized String Compilation Handlers
+        // 3. Dynamic Title Computation Engine (Prevents "Proposed Contact" string overlap errors)
+        let computedTitle = theme.baseTitle;
+        let computedSubtitle = theme.subtitle;
+
+        if (activeStatusKey.startsWith('RS-')) {
+            const displayKind = proposalKind === 'location' ? 'Location Proposal' : 'Contact Proposal';
+            computedTitle = `${displayKind} — ${theme.baseTitle}`;
+            
+            if (activeStatusKey === 'RS-3') {
+                computedSubtitle = `${displayKind} Incomplete — Missing required fields`;
+            }
+        }
+
+        // 4. Normalized String Compilation Handlers
         let contactIdentity = '';
         const fullName = [
             contact.contactFirstName || contact.firstName,
@@ -2043,7 +2119,7 @@ window.SkyIndex = {
         const displayPhone = contact.contactPrimaryPhone || contact.primaryPhone || '';
         const displayEmail = contact.contactEmail || contact.email || '';
 
-        // 4. Extract Operational Intent Checklists (Supports explicit flags or array actions tokens)
+        // 5. Extract Operational Intent Checklists
         let commitPlanMarkup = '';
         const actions = commit.actions || [];
         const hasActions = actions.length > 0;
@@ -2057,8 +2133,30 @@ window.SkyIndex = {
             if (actions.includes('insert_contact') || commit.createContact) checklist.push('✓ Contact');
             commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Creates:</span> <span style="font-family: monospace; color: #28a745; font-weight: bold;">${checklist.join(' &nbsp; ')}</span>`;
         } else {
-            commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Action:</span> <span style="color: #444;">${theme.subtitle}</span>`;
+            commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Action:</span> <span style="color: #444;">${computedSubtitle}</span>`;
         }
+
+        // 6. Extraction for Dynamic Summary / Required Correction Panes
+        let summaryHeading = 'Proposal Summary';
+        let summaryContent = '';
+
+        if (activeStatusKey === 'RS-3') {
+            summaryHeading = 'Required Corrections';
+            // Fallback cleanly to string patterns if message block strings have escaped elements
+            const rawMsg = payload.message || '';
+            summaryContent = rawMsg.replace(/Proposal is incomplete\.\s*/gi, '').trim();
+            if (!summaryContent) {
+                summaryContent = 'Missing required field calculations. Please edit configuration values.';
+            }
+        } else if (activeStatusKey === 'RS-5') {
+            summaryHeading = 'Duplicate Record Profile';
+            summaryContent = 'An existing contact already matches the submitted information. Review the existing record before creating another contact.';
+        } else {
+            summaryContent = payload.narratives?.ui || payload.governance?.reason || payload.message || 'Proposal parsing complete.';
+        }
+
+        // Convert raw newlines inside server messages to display-friendly line break tags
+        summaryContent = this.escapeHtml(summaryContent).replace(/\n/g, '<br>');
 
         const html = `
             <div class="commandLine system html">
@@ -2068,8 +2166,8 @@ window.SkyIndex = {
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span class="result-icon">${theme.icon}</span>
                             <div style="display: flex; flex-direction: column;">
-                                <strong class="result-title" style="color: #222;">${theme.title}</strong>
-                                <small style="color: #666; font-size: 0.78em; line-height: 1.2; display: block; margin-top: 1px;">${this.escapeHtml(theme.subtitle)}</small>
+                                <strong class="result-title" style="color: #222;">${this.escapeHtml(computedTitle)}</strong>
+                                <small style="color: #666; font-size: 0.78em; line-height: 1.2; display: block; margin-top: 1px;">${this.escapeHtml(computedSubtitle)}</small>
                             </div>
                         </div>
                         <span style="${theme.badge} padding: 3px 8px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold; white-space: nowrap; display: inline-block;">
@@ -2113,8 +2211,8 @@ window.SkyIndex = {
                     </div>
 
                     <div style="padding: 12px 16px; background: ${theme.summaryBg}; border-top: 1px dashed ${theme.summaryBorder}; font-size: 0.9em; line-height: 1.35; color: ${theme.summaryText};">
-                        <strong style="font-size: 0.95em; display: block; margin-bottom: 2px;">Proposal Summary</strong>
-                        ${this.escapeHtml(payload.narratives?.ui || payload.governance?.reason || payload.message || 'Proposal parsing complete.')}
+                        <strong style="font-size: 0.95em; display: block; margin-bottom: 4px;">${summaryHeading}</strong>
+                        <div class="summary-message-block">${summaryContent}</div>
                     </div>
 
                     <div class="result-actions" style="padding: 12px 16px; border-top: 1px solid #eee; background: #fff; display: flex; gap: 8px;">
