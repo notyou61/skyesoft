@@ -1156,7 +1156,7 @@ window.SkyIndex = {
         }
 
         // --------------------------------------------------
-        // 📇 Unified Proposal Router (PC-1 through PC-5) — FIXED
+        // 📇 Unified Proposal Router (PC-1 through PC-5) — Structural Validation
         // --------------------------------------------------
         if (lines.length >= 2) {
             const hasEmail         = /@\S+/.test(text);
@@ -1166,17 +1166,24 @@ window.SkyIndex = {
             const hasZip           = /\b\d{5}(-\d{4})?\b/.test(text);
             const hasStreetAddress = /\b\d{1,6}\s+\S+/.test(text);
 
-            // Contextual checks for professional contact blocks
-            const structuralLines = text.split('\n');
+            // Look for professional title keywords
+            const structuralLines = lines.map(l => l.trim()).filter(Boolean);
             const hasJobTitleKeywords = structuralLines.some(line => 
-                /\b(Manager|Director|VP|CEO|COO|President|Officer|Supervisor|Coordinator|Lead|Executive)\b/i.test(line)
+                /\b(Manager|Director|VP|CEO|COO|President|Officer|Supervisor|Coordinator|Lead|Executive|Secretary|Admin|Staff|Owner|Founder)\b/i.test(line)
             );
 
-            // Stricter separation: If it has a person's name and job title, or contact markers, treat as a Contact.
-            const looksLikeContactProposal = (hasStrictEmail || hasPhone) && hasName || (hasName && hasJobTitleKeywords);
-            
-            // A location proposal should strictly look like a property description or standalone address matrix
-            const looksLikeLocationProposal = hasStreetAddress && hasZip && !hasEmail && !hasPhone && !hasJobTitleKeywords;
+            // Contextual Rule: If the very first line starts with a street address pattern, 
+            // it's highly likely a standalone physical property proposal.
+            const firstLineIsAddress = hasStreetAddress && /\b\d{1,6}\s+\S+/.test(structuralLines[0] || '');
+
+            // Classify as a Contact if it contains contact credentials, explicit title markers,
+            // or if a person's name is listed on top without an immediate street address prefix.
+            const looksLikeContactProposal = (hasStrictEmail || hasPhone) || 
+                                            hasJobTitleKeywords || 
+                                            (hasName && !firstLineIsAddress);
+
+            // A Location Proposal should strictly look like a property description or a standalone address matrix
+            const looksLikeLocationProposal = !looksLikeContactProposal && hasStreetAddress && hasZip;
 
             if (looksLikeContactProposal) {
                 console.log('[Proposal Router] Routing to CONTACT workflow');
@@ -3839,6 +3846,8 @@ window.SkyIndex = {
     // #endregion
 
 };
+// #endregion
+
 // #endregion
 
 // #region 🗺️ Google Maps Dual View Initializer (Map + Street View)
