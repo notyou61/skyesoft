@@ -249,9 +249,23 @@ error_log('[PPC][SECTION-04] Schema enforcement complete');
 #region SECTION 05 — Data Normalization & Completeness Validation
 
 // =====================================================
+// INTENT DETECTION ENGINE (Ensures PC-4 & PC-5 drop contact requirements)
+// =====================================================
+// If we don't have a contact name, email, or phone number, it's explicitly a location-only proposal.
+$hasParserContactData = !empty(trim($parsed['contact']['firstName'] ?? $parsed['contact']['contactFirstName'] ?? '')) ||
+                        !empty(trim($parsed['contact']['lastName'] ?? $parsed['contact']['contactLastName'] ?? '')) ||
+                        !empty(trim($parsed['contact']['primaryPhone'] ?? $parsed['contact']['contactPrimaryPhone'] ?? '')) ||
+                        !empty(trim($parsed['contact']['email'] ?? $parsed['contact']['contactEmail'] ?? ''));
+
+if (!$hasParserContactData) {
+    error_log('[PPC][SECTION-05] No contact details identified. Forcing location-only mode.');
+    $isExplicitLocationOnlyIntent = true;
+}
+
+// =====================================================
 // MINIMAL FALLBACK (Temporary safety net during transition)
 // =====================================================
-if ($isExplicitLocationOnlyIntent) {
+if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
     error_log('[PPC][SECTION-05] Minimal location fallback (parser should handle most data)');
 
     $clientLoc    = $inputData['inputData']['location'] ?? [];
@@ -369,6 +383,7 @@ error_log('[PPC][SECTION-05] Data normalization complete');
 error_log('[PPC][PHASE-3] Running Completeness Check');
 
 if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
+    // 🏢 Location-Only Workflow requirements (PC-4 / PC-5)
     $requiredFields = [
         'entity.name'           => 'Entity Name',
         'location.locationName' => 'Location Name',
@@ -378,6 +393,7 @@ if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
         'location.zip'          => 'ZIP Code'
     ];
 } else {
+    // 👤 Full Standard Contact Record requirements (PC-1 / PC-2 / PC-3)
     $requiredFields = [
         'entity.name'          => 'Entity Name',
         'contact.firstName'    => 'Contact First Name',
@@ -412,14 +428,16 @@ $hasLast  = !empty(trim($parsed['contact']['lastName'] ?? ''));
 $hasPhone = !empty(trim($parsed['contact']['primaryPhone'] ?? ''));
 $hasEmail = !empty(trim($parsed['contact']['email'] ?? ''));
 
+$isLocationOnly = (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent);
+
 $completeness = [
     'entity' => [
         'name' => !empty(trim($parsed['entity']['name'] ?? '')) ? '✔ Complete' : '✖ Missing Entity Name'
     ],
     'contact' => [
-        'names' => ($isExplicitLocationOnlyIntent || ($hasFirst && $hasLast)) ? '✔ Contact Name' : '✖ Contact Name Missing',
-        'phone' => ($isExplicitLocationOnlyIntent || $hasPhone) ? '✔ Primary Phone' : '✖ Primary Phone Required',
-        'email' => ($isExplicitLocationOnlyIntent || $hasEmail) ? '✔ Email Address' : '✖ Email Address Required'
+        'names' => $isLocationOnly ? '✔ Not Required' : (($hasFirst && $hasLast) ? '✔ Contact Name' : '✖ Contact Name Missing'),
+        'phone' => $isLocationOnly ? '✔ Not Required' : ($hasPhone ? '✔ Primary Phone' : '✖ Primary Phone Required'),
+        'email' => $isLocationOnly ? '✔ Not Required' : ($hasEmail ? '✔ Email Address' : '✖ Email Address Required')
     ],
     'location' => [
         'name'   => !empty(trim($parsed['location']['locationName'] ?? '')) ? '✔ Location Name' : '✖ Location Name Missing',
