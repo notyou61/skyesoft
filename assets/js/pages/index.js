@@ -1636,10 +1636,10 @@ window.SkyIndex = {
 
     // #endregion
 
-    // #region 📍 Location Proposal Workflow (Fixed)
+    // #region 📍 Location Proposal Workflow (Diagnostic)
     async executeLocationProposalWorkflow(text, activitySessionId, parsedLines) {
         if (parsedLines.length < 2) {
-            this.appendSystemLine('❌ Invalid location input. Need Entity + Location details.', 'error');
+            this.appendSystemLine('❌ Invalid location format.', 'error');
             return;
         }
 
@@ -1656,7 +1656,6 @@ window.SkyIndex = {
 
         console.log('[Location Proposal Payload]', { entity, locationName, rawAddress, city, state, zip });
 
-        // Show processing state
         this.renderLocationProcessingState();
 
         try {
@@ -1678,7 +1677,7 @@ window.SkyIndex = {
                 }
             };
 
-            console.log('[Location] Sending payload:', payload);
+            console.log('[Location] Full payload being sent:', payload);
 
             const response = await fetch('/skyesoft/api/processProposedContact.php', {
                 method: 'POST',
@@ -1687,35 +1686,37 @@ window.SkyIndex = {
                 body: JSON.stringify(payload)
             });
 
-            const resultText = await response.text();
-            console.log('[Location] Raw response:', resultText);
+            const responseText = await response.text();
+            console.log('[Location] Raw response text:', responseText);
 
             let result;
             try {
-                result = JSON.parse(resultText);
+                result = JSON.parse(responseText);
             } catch (parseErr) {
-                throw new Error(`Invalid JSON: ${resultText.substring(0, 200)}`);
+                throw new Error(`Invalid JSON response: ${responseText.substring(0, 300)}`);
             }
 
+            console.log('[Location] Parsed result:', result);
+
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${result.message || 'Server error'}`);
+                throw new Error(`HTTP ${response.status}: ${result.message || 'Unknown server error'}`);
             }
 
             // Clean UI
             document.querySelectorAll('#streetViewProcessing, .processing').forEach(el => el.remove());
 
             if (result.success === true) {
-                console.log('[Location Engine] Success → rendering proposal');
+                console.log('[Location] Success - handing to renderer');
                 result.inputAddress = text;
-                this.handleContactProposal(result);   // ← This calls the unified renderer
+                this.handleContactProposal(result);
             } else {
-                this.appendSystemLine(`❌ ${result.message || result.summary || 'Processing failed.'}`, 'error');
+                this.appendSystemLine(`❌ ${result.message || result.summary || 'Failed to process location proposal.'}`, 'error');
             }
 
         } catch (e) {
-            console.error('[Location Engine Error]', e);
+            console.error('[Location Engine Full Error]', e);
             document.querySelectorAll('#streetViewProcessing, .processing').forEach(el => el.remove());
-            this.appendSystemLine(`Failed to process location proposal: ${e.message}. Please try again.`, 'system-error');
+            this.appendSystemLine(`Failed to process location proposal: ${e.message}`, 'system-error');
         }
     },
     // #endregion
