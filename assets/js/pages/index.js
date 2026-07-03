@@ -1641,7 +1641,7 @@ window.SkyIndex = {
 
     // #endregion
 
-    // #region 📍 Location Proposal Workflow (Diagnostic)
+    // #region 📍 Location Proposal Workflow (Clean + No Duplicates)
     async executeLocationProposalWorkflow(text, activitySessionId, parsedLines) {
         if (parsedLines.length < 2) {
             this.appendSystemLine('❌ Invalid location format.', 'error');
@@ -1661,6 +1661,7 @@ window.SkyIndex = {
 
         console.log('[Location Proposal Payload]', { entity, locationName, rawAddress, city, state, zip });
 
+        // Prevent duplicate processing UI
         this.renderLocationProcessingState();
 
         try {
@@ -1707,8 +1708,8 @@ window.SkyIndex = {
                 throw new Error(`HTTP ${response.status}: ${result.message || 'Unknown server error'}`);
             }
 
-            // Clean UI
-            document.querySelectorAll('#streetViewProcessing, .processing').forEach(el => el.remove());
+            // Clean UI (including any duplicates)
+            document.querySelectorAll('#locationProcessing, #streetViewProcessing, .processing').forEach(el => el.remove());
 
             if (result.success === true) {
                 console.log('[Location] Success - handing to renderer');
@@ -1720,7 +1721,7 @@ window.SkyIndex = {
 
         } catch (e) {
             console.error('[Location Engine Full Error]', e);
-            document.querySelectorAll('#streetViewProcessing, .processing').forEach(el => el.remove());
+            document.querySelectorAll('#locationProcessing, #streetViewProcessing, .processing').forEach(el => el.remove());
             this.appendSystemLine(`Failed to process location proposal: ${e.message}`, 'system-error');
         }
     },
@@ -2673,11 +2674,15 @@ window.SkyIndex = {
     },
 
     renderLocationProcessingState() {
+        // Always clean previous instances first
+        document.querySelectorAll('#streetViewProcessing, .processing, .commandLine.processing').forEach(el => el.remove());
+
         const output = this.getOutputHost();
         if (!output) return;
 
         const processing = document.createElement('div');
         processing.className = 'commandLine system processing';
+        processing.id = 'locationProcessing';
         processing.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">📍</span>
