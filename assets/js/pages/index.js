@@ -2004,74 +2004,67 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Incomplete Proposal Renderer (RS-8) — Matches PC-2 Style
+    // #region 📇 RS-8 (Incomplete) Renderer — Matches PC Style
     renderIncompleteProposal(data) {
-        let cleanPayload = {};
-        if (data && typeof data === 'object') {
-            cleanPayload = data;
-        } else if (typeof data === 'string') {
-            try { cleanPayload = JSON.parse(data); } catch(e) { cleanPayload = {}; }
-        }
+        const payload = data || {};
+        const proposal = payload.data || {};
+        const entity = proposal.entity || {};
+        const contact = proposal.contact || {};
+        const location = proposal.location || {};
 
-        const comp = cleanPayload.completeness || {};
-        const preview = cleanPayload.data || {};
-        const entity = preview.entity || {};
-        const contact = preview.contact || {};
-        const location = preview.location || {};
-
-        const missingFields = cleanPayload.governance?.missingFields || [];
-        const isZipMissing = missingFields.includes('location.zip');
-        const isEmailMissing = missingFields.includes('contact.email');
+        const governance = payload.governance || {};
+        const blocking = governance.blockingIssues?.[0] || {};
+        const missingFields = governance.missingFields || [];
 
         const addressLine = [
-            location.address || location.locationAddress,
-            location.city || location.locationCity,
-            location.state || location.locationState,
-            location.zip || location.locationZip
+            location.locationAddress || location.address,
+            location.locationCity || location.city,
+            location.locationState || location.state,
+            location.locationZip || location.zip
         ].filter(Boolean).join(', ');
 
         const html = `
             <div class="commandLine system html">
                 <div class="result-card" style="border-left: 5px solid #ffc107; background: #fffaf0;">
-                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #ffeaa7;">
+                    <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="result-icon">⚠️</span>
+                            <span class="result-icon" style="color:#e67e22;">⚠️</span>
                             <div>
-                                <strong class="result-title" style="color: #e67e22;">Proposed Contact</strong>
-                                <small style="color: #d35400; font-size: 0.8em;">Incomplete — Missing required fields</small>
+                                <strong class="result-title" style="color:#e67e22;">Proposed Contact</strong>
+                                <small style="color:#d35400;">Incomplete — Missing required fields</small>
                             </div>
                         </div>
-                        <span style="background: #ffeaa7; color: #e67e22; padding: 3px 8px; border-radius: 4px; font-family: monospace; font-size: 0.85em; font-weight: bold;">RS-8</span>
+                        <span style="background:#ffeaa7; color:#e67e22; padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">RS-8</span>
                     </div>
 
-                    <div class="result-body" style="padding: 16px;">
-                        <div class="result-grid" style="grid-template-columns: minmax(70px, auto) 1fr; row-gap: 6px; column-gap: 16px; font-size: 0.92em;">
-                            <span style="color: #555; font-weight: 600;">Entity:</span>
-                            <span style="color: #222;">${this.escapeHtml(entity.entityName || entity.name || '—')}</span>
+                    <div class="result-body" style="padding:16px;">
+                        <div class="result-grid" style="grid-template-columns:minmax(70px,auto) 1fr; row-gap:6px; column-gap:16px; font-size:0.92em;">
+                            <span style="color:#555;font-weight:600;">Entity:</span>
+                            <span style="color:#222;">${this.escapeHtml(entity.entityName || entity.name || '—')}</span>
 
-                            <span style="color: #555; font-weight: 600;">Contact:</span>
-                            <span style="color: #222;">${this.escapeHtml(contact.contactFirstName || contact.firstName || '')} ${this.escapeHtml(contact.contactLastName || contact.lastName || '')} — ${this.escapeHtml(contact.contactTitle || contact.title || '—')}</span>
+                            <span style="color:#555;font-weight:600;">Contact:</span>
+                            <span style="color:#222;">${this.escapeHtml(contact.contactFirstName || contact.firstName || '')} ${this.escapeHtml(contact.contactLastName || contact.lastName || '')} — ${this.escapeHtml(contact.contactTitle || contact.title || '—')}</span>
 
-                            <span style="color: #555; font-weight: 600;">Location:</span>
-                            <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
+                            <span style="color:#555;font-weight:600;">Location:</span>
+                            <span style="color:#222;">${this.escapeHtml(addressLine || '—')}</span>
 
-                            <span style="color: #555; font-weight: 600;">Phone:</span>
-                            <span style="color: #222;">${this.escapeHtml(contact.contactPrimaryPhone || contact.primaryPhone || '—')}</span>
+                            <span style="color:#555;font-weight:600;">Phone:</span>
+                            <span style="color:#222;">${this.escapeHtml(contact.contactPrimaryPhone || contact.primaryPhone || '—')}</span>
 
-                            <span style="color: #555; font-weight: 600;">Email:</span>
-                            <span style="color: #222;">${this.escapeHtml(contact.contactEmail || contact.email || '—')}</span>
+                            <span style="color:#555;font-weight:600;">Email:</span>
+                            <span style="color:#222;">${this.escapeHtml(contact.contactEmail || contact.email || '—')}</span>
                         </div>
                     </div>
 
-                    <div style="padding: 12px 16px; background: #fffaf0; border-top: 1px dashed #ffeaa7; font-size: 0.9em;">
+                    <div style="padding:12px 16px; background:#fffaf0; border-top:1px dashed #ffeaa7; font-size:0.9em; color:#d35400;">
                         <strong>Proposal Summary</strong><br>
-                        ${this.escapeHtml(cleanPayload.message || 'Proposal is incomplete.')}
+                        ${this.escapeHtml(payload.narratives?.ui || governance.reason || 'Proposal is incomplete.')}
                     </div>
 
-                    <div class="result-actions" style="padding: 12px 16px; display: flex; gap: 8px;">
-                        <button class="btn btn-warning" style="flex: 1;" onclick="SkyIndex.revalidateProposal()">✏️ Edit & Resubmit</button>
-                        <button class="btn btn-secondary" style="flex: 1;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
-                        <button class="btn btn-danger" style="flex: 1;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                    <div class="result-actions" style="padding:12px 16px; display:flex; gap:8px;">
+                        <button class="btn btn-warning" style="flex:1;" onclick="SkyIndex.revalidateProposal()">✏️ Edit & Resubmit</button>
+                        <button class="btn btn-secondary" style="flex:1;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                        <button class="btn btn-danger" style="flex:1;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                     </div>
                 </div>
             </div>
