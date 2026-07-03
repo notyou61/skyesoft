@@ -1636,31 +1636,25 @@ window.SkyIndex = {
 
     // #endregion
 
-    // #region 📍 Location Proposal Workflow
+    // #region 📍 Location Proposal Workflow (Robust)
     async executeLocationProposalWorkflow(text, activitySessionId, parsedLines) {
-        if (parsedLines.length < 4) {
-            // ... your existing validation ...
-            return; 
+        if (parsedLines.length < 2) {
+            this.appendSystemLine('❌ Invalid location format. Need at least Entity + Location Name + Address.', 'error');
+            return;
         }
 
-        const entity = parsedLines[0];
-        const locationName = parsedLines[1];
-        const rawAddress = parsedLines[2] || '';
-        const cityLine = parsedLines[3] || '';
+        const entity = parsedLines[0]?.trim() || '';
+        const locationName = parsedLines[1]?.trim() || '';
+        const rawAddress = (parsedLines[2] || '').trim();
+        const cityLine = (parsedLines[3] || '').trim();
+
         const city = cityLine.split(',')[0]?.trim() || '';
         const stateZipPart = cityLine.split(',').slice(1).join(',').trim();
-        const state = stateZipPart.split(/\s+/)[0] || '';
-        const zip = stateZipPart.split(/\s+/).pop() || '';
+        const stateParts = stateZipPart.split(/\s+/);
+        const state = stateParts[0] || '';
+        const zip = stateParts[stateParts.length - 1] || '';
 
-        console.log('[Location Proposal Payload]', {
-            proposalType: 'location',
-            entity,
-            locationName,
-            rawAddress,
-            city,
-            state,
-            zip
-        });
+        console.log('[Location Proposal Payload]', { entity, locationName, rawAddress, city, state, zip });
 
         try {
             const response = await fetch('/skyesoft/api/processProposedContact.php', {
@@ -1674,9 +1668,9 @@ window.SkyIndex = {
                     inputData: {
                         mode: "propose",
                         actionTypeId: 13,
-                        entity: { entityName: entity || '' },
+                        entity: { entityName: entity },
                         location: {
-                            locationName: locationName || '',
+                            locationName: locationName,
                             locationAddress: rawAddress,
                             locationCity: city,
                             locationState: state,
@@ -1686,46 +1680,26 @@ window.SkyIndex = {
                 })
             });
             
-            if (!response.ok) throw new Error(`Server returned status ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
             const result = await response.json();
             console.log('[Location Engine Success]', result);
 
-            document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
+            // Clean up any processing UI
+            document.querySelectorAll('#streetViewProcessing, .processing').forEach(el => el.remove());
             
-            if (result.success) {
+            if (result.success === true) {
                 result.inputAddress = text; 
-
-                this.handleContactProposal(result);
-
-                // --------------------------------------------------
-                // 🔐 Secure Workspace Auto-Chaining — DISABLED FOR NOW
-                // --------------------------------------------------
-                // We can add a manual button in the card instead
-                /*
-                const loc = result.data?.location || {};
-                const lat = loc.locationLatitude ?? loc.latitude;
-                const lng = loc.locationLongitude ?? loc.longitude;
-                const hasCoordinates = lat && lng;
-                const serverApiKey = result.google?.apiKey ?? result.streetView?.apiKey;
-
-                if (hasCoordinates && serverApiKey) {
-                    console.log('[Location Engine] Chaining into imagery workspace...');
-                    this.openInteractiveStreetView({
-                        latitude: lat,
-                        longitude: lng,
-                        address: text,
-                        apiKey: serverApiKey
-                    });
-                }
-                */
-
+                this.handleContactProposal(result);   // ← This calls renderProposedContact
             } else {
                 this.appendSystemLine(`❌ ${result.message || result.summary || 'Failed to process location proposal.'}`, 'error');
             }
 
         } catch (e) {
             console.error('[Location Engine Error]', e);
-            document.querySelectorAll('#streetViewProcessing').forEach(el => el.remove());
+            document.querySelectorAll('#streetViewProcessing, .processing').forEach(el => el.remove());
             this.appendSystemLine(`Failed to process location proposal. Please try again.`, 'system-error');
         }
     },
