@@ -1886,19 +1886,17 @@ window.SkyIndex = {
         const rs = pcm.rs || [];
 
         const isLocationProposal = proposalKind === 'location';
-        const isIncomplete = rs.includes('RS-3');
+        const isIncomplete = rs.includes('RS-3') || rs.includes('RS-8');
         const isExactMatch = pc === 'PC-0';
 
         // Dynamic title and subtitle based on proposal kind
         let cardTitle = isLocationProposal ? 'Location Proposal' : 'Proposed Contact';
         let icon = isLocationProposal ? '📍' : '📇';
-        let subtitle = isLocationProposal 
-            ? 'Add new location to existing or new entity' 
-            : 'Link existing Entity + Location • Insert new Contact';
+        
+        // D: Fallback to real governance status or engine narrative instead of a generic string
+        let subtitle = payload.narratives?.ui || payload.governance?.parcelStatus || 'Proposal ready for review.';
 
-        if (isIncomplete) {
-            subtitle = 'Incomplete — Missing required fields';
-        } else if (isExactMatch) {
+        if (isExactMatch) {
             subtitle = 'All records already exist — No action required';
         }
 
@@ -1924,11 +1922,12 @@ window.SkyIndex = {
             location.locationZip
         ].filter(Boolean).join(', ');
 
+        // C: All body cards remain clean grey/white layouts, color context shifts to left accent bars
         let borderLeftColor = '#28a745';
         let badgeStyle = 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);';
 
         if (isIncomplete) {
-            borderLeftColor = '#ffc107';
+            borderLeftColor = '#ffc107'; // Yellow/Amber RS indicator striping
             badgeStyle = 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);';
         } else if (isExactMatch) {
             borderLeftColor = '#17a2b8';
@@ -1942,7 +1941,7 @@ window.SkyIndex = {
 
         const html = `
             <div class="commandLine system html">
-                <div class="result-card" style="border-left-color: ${borderLeftColor};">
+                <div class="result-card" style="border-left: 5px solid ${borderLeftColor}; background: #fff;">
                     <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span class="result-icon">${icon}</span>
@@ -1984,16 +1983,16 @@ window.SkyIndex = {
                     </div>
 
                     <div style="padding: 8px 18px; border-top: 1px solid #eee; background: #fff; display: flex; flex-direction: column; gap: 8px;">
-                        <!-- Actions remain the same for now -->
+                        <!-- B: Refactored with thin buttons to protect layout surface density -->
                         <div class="result-actions" style="padding: 0; background: none; border: none; gap: 6px;">
                             ${isExactMatch ? 
-                                `<button class="btn btn-secondary" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;" disabled>✓ Already Exists</button>` :
+                                `<button class="btn btn-secondary" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;" disabled>✓ Already Exists</button>` :
                                 isIncomplete ?
-                                `<button class="btn btn-warning" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #ffc107; color: #212529;" onclick="SkyIndex.revalidateProposal()">🔄 Fix Missing Fields</button>` :
-                                `<button class="btn btn-success" style="flex: 2; padding: 6px 12px; font-size: 0.88em; background: #28a745; color: #fff;" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>`
+                                `<button class="btn btn-warning" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #ffc107; color: #212529; border: 1px solid #d39e00;" onclick="SkyIndex.revalidateProposal()">🔄 Fix Missing Fields</button>` :
+                                `<button class="btn btn-success" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #28a745; color: #fff;" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>`
                             }
-                            <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #6c757d; color: #fff;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
-                            <button class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.88em; background: #dc3545; color: #fff;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                            <button class="btn btn-secondary" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #6c757d; color: #fff;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                            <button class="btn btn-secondary" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                         </div>
                     </div>
                 </div>
@@ -2023,15 +2022,18 @@ window.SkyIndex = {
             location.locationZip || location.zip
         ].filter(Boolean).join(', ');
 
+        // D: Direct presentation of payload logic message instead of the generic text flag string
+        const errorReason = payload.narratives?.ui || governance.reason || 'Address parcel validation failure.';
+
         const html = `
             <div class="commandLine system html">
-                <div class="result-card" style="border-left: 5px solid #ffc107; background: #fffaf0;">
+                <div class="result-card" style="border-left: 5px solid #ffc107; background: #fff;">
                     <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span class="result-icon" style="color:#e67e22;">⚠️</span>
                             <div>
                                 <strong class="result-title" style="color:#e67e22;">Proposed Contact</strong>
-                                <small style="color:#d35400;">Incomplete — Missing required fields</small>
+                                <small style="color:#666; font-size: 0.78em; line-height: 1.2; display: block; margin-top: 1px;">Validation Exception Notice</small>
                             </div>
                         </div>
                         <span style="background:#ffeaa7; color:#e67e22; padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">RS-8</span>
@@ -2056,15 +2058,16 @@ window.SkyIndex = {
                         </div>
                     </div>
 
-                    <div style="padding:12px 16px; background:#fffaf0; border-top:1px dashed #ffeaa7; font-size:0.9em; color:#d35400;">
+                    <div style="padding:12px 16px; background:#fffdf6; border-top:1px dashed #ffeaa7; font-size:0.9em; color:#d35400;">
                         <strong>Proposal Summary</strong><br>
-                        ${this.escapeHtml(payload.narratives?.ui || governance.reason || 'Proposal is incomplete.')}
+                        ${this.escapeHtml(errorReason)}
                     </div>
 
+                    <!-- A & B: Prime buttons tinted with card style yellow/orange parameters using space saving layout padding -->
                     <div class="result-actions" style="padding:12px 16px; display:flex; gap:8px;">
-                        <button class="btn btn-warning" style="flex:1;" onclick="SkyIndex.revalidateProposal()">✏️ Edit & Resubmit</button>
-                        <button class="btn btn-secondary" style="flex:1;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
-                        <button class="btn btn-danger" style="flex:1;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                        <button class="btn btn-warning" style="flex:1; padding: 4px 10px; font-size: 0.85em; background: #ffc107; color: #212529; border: 1px solid #d39e00;" onclick="SkyIndex.revalidateProposal()">✏️ Edit & Resubmit</button>
+                        <button class="btn btn-secondary" style="flex:1; padding: 4px 10px; font-size: 0.85em;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
+                        <button class="btn btn-danger" style="flex:1; padding: 4px 10px; font-size: 0.85em;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                     </div>
                 </div>
             </div>
