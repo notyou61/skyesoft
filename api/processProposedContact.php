@@ -479,9 +479,14 @@ $data['contact'] = [
 ];
 
 // =====================================================
-// LOCATION
+// LOCATION — Fully preserved for PC-4 / PC-5
 // =====================================================
 $data['location'] = [
+    'locationName'           => $parsed['location']['locationName'] ?? '',
+    'locationNameConfirmed'  => $parsed['location']['locationNameConfirmed'] ?? (!empty($parsed['location']['locationName'])),
+    'locationNameInferred'   => $parsed['location']['locationNameInferred'] ?? false,
+    'locationNameSource'     => $parsed['location']['locationNameSource'] ?? 'location_parser',
+
     'locationAddress'    => $parsed['location']['address'] ?? '',
     'locationCity'       => $parsed['location']['city'] ?? '',
     'locationState'      => $parsed['location']['state'] ?? '',
@@ -494,7 +499,12 @@ $data['location'] = [
         ($parsed['location']['state'] ?? '') .
         ' ' .
         ($parsed['location']['zip'] ?? '')
-    )
+    ),
+
+    'locationPlaceId'   => null,
+    'locationLatitude'  => null,
+    'locationLongitude' => null,
+    'locationValidated' => false
 ];
 
 // =====================================================
@@ -1124,7 +1134,10 @@ if (in_array('RS-3', $rsList)) {
     $narratives['ui'] = "Location proposal for {$entityName} at {$loc}.\n\nExisting entity match found. Ready to add new location.";
     $narratives['report'] = "Location-only proposal for existing entity {$entityName}.";
 } elseif ($pc === 'PC-5') {
-    $narratives['ui'] = "New location proposal for {$entityName} at {$loc}.\n\nNew entity + location will be created.";
+    $locName = !empty($data['location']['locationName']) 
+        ? " — {$data['location']['locationName']}" 
+        : '';
+    $narratives['ui'] = "New location proposal for {$entityName}{$locName} at {$loc}.\n\nNew entity + location will be created.";
     $narratives['report'] = "New entity + location proposal for {$entityName}.";
 } else {
     $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.";
