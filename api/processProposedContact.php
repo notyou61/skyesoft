@@ -365,27 +365,33 @@ foreach ($requiredFields as $dotPath => $label) {
     }
 }
 
-// Build the self-documenting completeness object for the UI
-$hasFirst = !empty(trim($parsed['contact']['firstName'] ?? ''));
-$hasLast  = !empty(trim($parsed['contact']['lastName'] ?? ''));
-$hasEmail = !empty(trim($parsed['contact']['email'] ?? ''));
+// Build granular evaluation values for safe display structuring
+$hasEntityName = !empty(trim($parsed['entity']['name'] ?? ''));
+$hasFirst      = !empty(trim($parsed['contact']['firstName'] ?? ''));
+$hasLast       = !empty(trim($parsed['contact']['lastName'] ?? ''));
+$hasEmail      = !empty(trim($parsed['contact']['email'] ?? ''));
+$hasLocName    = !empty(trim($parsed['location']['locationName'] ?? ''));
+$hasStreet     = !empty(trim($parsed['location']['address'] ?? ''));
+$hasCity       = !empty(trim($parsed['location']['city'] ?? ''));
+$hasState      = !empty(trim($parsed['location']['state'] ?? ''));
+$hasZip        = !empty(trim($parsed['location']['zip'] ?? ''));
 
+// Build the self-documenting completeness object for the UI
 $completeness = [
     'entity' => [
-        'name' => !empty(trim($parsed['entity']['name'] ?? ''))
-            ? '✔ Complete'
-            : '✖ Missing Entity Name'
+        'name' => $hasEntityName ? '✔ Complete' : '✖ Missing Entity Name'
     ],
     'contact' => [
-        'names' => ($isExplicitLocationOnlyIntent || ($hasFirst && $hasLast)) ? '✔ Not Required' : '✖ First/Last Name Missing',
-        'email' => ($isExplicitLocationOnlyIntent || $hasEmail) ? '✔ Not Required' : '✖ Email Address Required'
+        'firstName' => ($isExplicitLocationOnlyIntent) ? '✔ Not Required' : ($hasFirst ? '✔ Complete' : '✖ First Name Missing (Required)'),
+        'lastName'  => ($isExplicitLocationOnlyIntent) ? '✔ Not Required' : ($hasLast  ? '✔ Complete' : '✖ Last Name Missing (Required)'),
+        'email'     => ($isExplicitLocationOnlyIntent) ? '✔ Not Required' : ($hasEmail ? '✔ Complete' : '✖ Email Missing (Required)')
     ],
     'location' => [
-        'name'   => !empty(trim($parsed['location']['locationName'] ?? '')) ? '✔ Location Name' : '✖ Location Name Missing',
-        'street' => !empty(trim($parsed['location']['address'] ?? '')) ? '✔ Street Address' : '✖ Street Address Missing',
-        'city'   => !empty(trim($parsed['location']['city'] ?? '')) ? '✔ City' : '✖ City Missing',
-        'state'  => !empty(trim($parsed['location']['state'] ?? '')) ? '✔ State' : '✖ State Missing',
-        'zip'    => !empty(trim($parsed['location']['zip'] ?? '')) ? '✔ ZIP' : '✖ ZIP Missing (Required)'
+        'name'   => ($isExplicitLocationOnlyIntent) ? ($hasLocName ? '✔ Location Name' : '✖ Location Name Missing') : '✔ Not Required',
+        'street' => $hasStreet ? '✔ Street Address' : '✖ Street Address Missing',
+        'city'   => $hasCity   ? '✔ City'           : '✖ City Missing',
+        'state'  => $hasState  ? '✔ State'          : '✖ State Missing',
+        'zip'    => $hasZip    ? '✔ State'          : '✖ ZIP Missing (Required)'
     ],
     'overall' => empty($missingFields) ? 'PASS' : 'FAIL'
 ];
