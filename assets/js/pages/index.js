@@ -1894,7 +1894,7 @@ window.SkyIndex = {
             if (match) activeStatusKey = match;
         }
 
-        // 2. Extensible Theme Matrix Map (Action-State Visual Language Layer)
+        // 2. Extensible Theme Matrix Map (Action-State Visual & Button Control Language Layer)
         const THEMES = {
             'PC-0': {
                 borderLeft: '#17a2b8',
@@ -1904,7 +1904,12 @@ window.SkyIndex = {
                 summaryText: '#117a8b',
                 icon: '✓',
                 title: 'Existing Identity Verified',
-                subtitle: 'All records already exist — No action required'
+                subtitle: 'All records already exist — No action required',
+                btnClass: 'btn-secondary',
+                btnStyle: 'background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;',
+                btnText: '✓ Already Exists',
+                btnDisabled: true,
+                btnHandler: ''
             },
             'PC-1': {
                 borderLeft: '#28a745',
@@ -1914,7 +1919,12 @@ window.SkyIndex = {
                 summaryText: '#1e7e34',
                 icon: '💾',
                 title: 'Proposed Identity Link',
-                subtitle: 'Create new Entity, Location and Contact'
+                subtitle: 'Create new Entity, Location and Contact',
+                btnClass: 'btn-success',
+                btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
+                btnText: '✔ Accept &amp; Save',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.acceptEditedProposal()'
             },
             'PC-2': {
                 borderLeft: '#28a745',
@@ -1924,7 +1934,12 @@ window.SkyIndex = {
                 summaryText: '#1e7e34',
                 icon: '💾',
                 title: 'Proposed Identity Link',
-                subtitle: 'Create new Location and Contact'
+                subtitle: 'Create new Location and Contact',
+                btnClass: 'btn-success',
+                btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
+                btnText: '✔ Accept &amp; Save',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.acceptEditedProposal()'
             },
             'PC-3': {
                 borderLeft: '#28a745',
@@ -1934,7 +1949,12 @@ window.SkyIndex = {
                 summaryText: '#1e7e34',
                 icon: '💾',
                 title: 'Proposed Identity Link',
-                subtitle: 'Create new Contact'
+                subtitle: 'Create new Contact',
+                btnClass: 'btn-success',
+                btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
+                btnText: '✔ Accept &amp; Save',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.acceptEditedProposal()'
             },
             'PC-4': {
                 borderLeft: '#007aff',
@@ -1944,7 +1964,12 @@ window.SkyIndex = {
                 summaryText: '#007aff',
                 icon: '💾',
                 title: 'Location Proposal',
-                subtitle: 'Create new Location'
+                subtitle: 'Create new Location',
+                btnClass: 'btn-success',
+                btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
+                btnText: '✔ Accept &amp; Save',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.acceptEditedProposal()'
             },
             'PC-5': {
                 borderLeft: '#28a745',
@@ -1954,7 +1979,12 @@ window.SkyIndex = {
                 summaryText: '#1e7e34',
                 icon: '💾',
                 title: 'Proposed Identity Link',
-                subtitle: 'Create new Entity and Location'
+                subtitle: 'Create new Entity and Location',
+                btnClass: 'btn-success',
+                btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
+                btnText: '✔ Accept &amp; Save',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.acceptEditedProposal()'
             },
             'RS-3': {
                 borderLeft: '#ffc107',
@@ -1964,7 +1994,12 @@ window.SkyIndex = {
                 summaryText: '#d35400',
                 icon: '⚠️',
                 title: 'Proposed Contact',
-                subtitle: 'Proposed Contact Incomplete — Missing required fields'
+                subtitle: 'Proposed Contact Incomplete — Missing required fields',
+                btnClass: 'btn-warning',
+                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
+                btnText: '✏️ Edit &amp; Resubmit',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.revalidateProposal()'
             },
             'RS-5': {
                 borderLeft: '#0056b3',
@@ -1974,7 +2009,12 @@ window.SkyIndex = {
                 summaryText: '#004085',
                 icon: '👥',
                 title: 'Duplicate Record Warning',
-                subtitle: 'Matching identity records detected in master dataset'
+                subtitle: 'Matching identity records detected in master dataset',
+                btnClass: 'btn-warning',
+                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
+                btnText: '🔍 Resolve Duplicates',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.revalidateProposal()'
             },
             'RS-6': {
                 borderLeft: '#fd7e14',
@@ -1984,7 +2024,12 @@ window.SkyIndex = {
                 summaryText: '#ba5200',
                 icon: '🗺️',
                 title: 'Parcel Conflict Exception',
-                subtitle: 'Multiple properties map to coordinates — Choice required'
+                subtitle: 'Multiple properties map to coordinates — Choice required',
+                btnClass: 'btn-warning',
+                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
+                btnText: '🗺️ Select Custom Parcel',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.revalidateProposal()'
             },
             'RS-7': {
                 borderLeft: '#dc3545',
@@ -1994,7 +2039,12 @@ window.SkyIndex = {
                 summaryText: '#bd2130',
                 icon: '🛑',
                 title: 'Unresolved Address Point',
-                subtitle: 'Regional parcel mapping bounds could not be validated'
+                subtitle: 'Regional parcel mapping bounds could not be validated',
+                btnClass: 'btn-warning',
+                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
+                btnText: '✏️ Edit &amp; Resubmit',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.revalidateProposal()'
             },
             'RS-8': {
                 borderLeft: '#ffc107',
@@ -2004,7 +2054,12 @@ window.SkyIndex = {
                 summaryText: '#d35400',
                 icon: '⚠️',
                 title: 'Proposed Contact',
-                subtitle: 'Validation Exception Notice'
+                subtitle: 'Validation Exception Notice',
+                btnClass: 'btn-warning',
+                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
+                btnText: '✏️ Edit &amp; Resubmit',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.revalidateProposal()'
             }
         };
 
@@ -2016,7 +2071,12 @@ window.SkyIndex = {
             summaryText: '#333',
             icon: '📋',
             title: proposalKind === 'location' ? 'Location Proposal' : 'Proposed Record',
-            subtitle: 'Evaluating entry logic and transaction properties'
+            subtitle: 'Evaluating entry logic and transaction properties',
+            btnClass: 'btn-success',
+            btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
+            btnText: '✔ Accept &amp; Save',
+            btnDisabled: false,
+            btnHandler: 'SkyIndex.acceptEditedProposal()'
         };
 
         // 3. Normalized String Compilation Handlers
@@ -2111,12 +2171,9 @@ window.SkyIndex = {
                     </div>
 
                     <div class="result-actions" style="padding: 12px 16px; border-top: 1px solid #eee; background: #fff; display: flex; gap: 8px;">
-                        ${activeStatusKey === 'PC-0' ? 
-                            `<button class="btn btn-secondary" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: not-allowed;" disabled>✓ Already Exists</button>` :
-                            (activeStatusKey.startsWith('RS-')) ?
-                            `<button class="btn btn-warning" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #ffc107; color: #212529; border: 1px solid #d39e00;" onclick="SkyIndex.revalidateProposal()">✏️ Edit &amp; Resubmit</button>` :
-                            `<button class="btn btn-success" style="flex: 2; padding: 4px 10px; font-size: 0.85em; background: #28a745; color: #fff; border: 1px solid #218838;" onclick="SkyIndex.acceptEditedProposal()">✔ Accept &amp; Save</button>`
-                        }
+                        <button class="btn ${theme.btnClass}" style="flex: 2; padding: 4px 10px; font-size: 0.85em; ${theme.btnStyle}" ${theme.btnDisabled ? 'disabled' : ''} onclick="${theme.btnHandler}">
+                            ${theme.btnText}
+                        </button>
                         <button class="btn btn-secondary" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #6c757d; color: #fff; border: 1px solid #545b62;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
                         <button class="btn btn-danger" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff; border: 1px solid #bd2130;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
                     </div>
@@ -2962,7 +3019,7 @@ window.SkyIndex = {
         });
     },
 
-    // Contact Proposal Handler
+    // #region 📇 Unified Contact/Governance Proposal Routing Handlers
     handleContactProposal(data) {
         this.replaceProcessingWithProposal();
 
@@ -2974,31 +3031,31 @@ window.SkyIndex = {
 
         this.currentProposal = data;
 
+        // 1. Structural Termination Errors
         if (data.status === 'error') {
             this.appendSystemLine(`❌ ${data.message || 'Processing error'}`, 'error');
             return;
         }
 
-        if (data.status === 'incomplete') {
-            this.renderIncompleteProposal(data);
-            return;
-        }
-
+        // 2. Clear Rejection Errors
         if (data.status === 'reject') {
             this.appendSystemLine(`⚠️ ${data.message || 'Not recognized as proposal data.'}`, 'warning');
             return;
         }
 
+        // 3. Consolidated Proposal Routing Matrix (Processes PC codes & RS Exception states via theme engine)
         if (
             data.status === 'proposed' ||
             data.status === 'partial' ||
+            data.status === 'incomplete' || 
             data.ui?.proposalStatus === 'proposed'
         ) {
-            // Unified renderer (Contact + Location)
+            // Unified v2 renderer handles all matching grid properties and exceptions cleanly
             this.renderProposedContact(data);
             return;
         }
 
+        // 4. Default Fallback Warning
         this.appendSystemLine(
             data.message || 'Could not process proposal information.',
             'warning'
@@ -3242,14 +3299,9 @@ window.SkyIndex = {
             // --------------------------------------------------
             // 📇 CONTACT PROPOSAL HANDLING
             // --------------------------------------------------
-            if (data?.status === 'incomplete') {
-                console.log('📇 Incomplete proposal received');
-                this.handleContactProposal(data);   // ← This will call renderIncompleteProposal
-                return;
-            }
-
-            if (data?.status === 'proposed' || data?.status === 'partial') {
-                console.log('📇 Complete proposal received');
+            // Unified entry point for all valid proposal data statuses (including exception types)
+            if (data?.status === 'proposed' || data?.status === 'partial' || data?.status === 'incomplete') {
+                console.log(`📇 Proposal received with status: ${data.status}`);
                 this.handleContactProposal(data);
                 return;
             }
