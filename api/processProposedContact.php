@@ -246,7 +246,7 @@ error_log('[PPC][SECTION-04] Schema enforcement complete');
 
 #endregion
 
-#region SECTION 05 — Data Normalization & Completeness Check
+#region SECTION 05 — Data Normalization
 
 // =====================================================
 // MINIMAL FALLBACK (Temporary safety net during transition)
@@ -279,47 +279,12 @@ if ($isExplicitLocationOnlyIntent) {
 }
 
 // =====================================================
-// KEY ALIGNMENT & BRIDGING (Fixes parser prefix drifting)
-// =====================================================
-// Extract values from prefixed keys if naked keys are unpopulated
-if (empty($parsed['entity']['name']) && !empty($parsed['entity']['entityName'])) {
-    $parsed['entity']['name'] = $parsed['entity']['entityName'];
-}
-
-$contactFieldMap = [
-    'firstName'    => 'contactFirstName',
-    'lastName'     => 'contactLastName',
-    'salutation'   => 'contactSalutation',
-    'title'        => 'contactTitle',
-    'primaryPhone' => 'contactPrimaryPhone',
-    'email'        => 'contactEmail'
-];
-foreach ($contactFieldMap as $naked => $prefixed) {
-    if (empty($parsed['contact'][$naked]) && !empty($parsed['contact'][$prefixed])) {
-        $parsed['contact'][$naked] = $parsed['contact'][$prefixed];
-    }
-}
-
-$locationFieldMap = [
-    'address' => 'locationAddress',
-    'city'    => 'locationCity',
-    'state'   => 'locationState',
-    'zip'     => 'locationZip',
-    'suite'   => 'locationSuite'
-];
-foreach ($locationFieldMap as $naked => $prefixed) {
-    if (empty($parsed['location'][$naked]) && !empty($parsed['location'][$prefixed])) {
-        $parsed['location'][$naked] = $parsed['location'][$prefixed];
-    }
-}
-
-// =====================================================
-// ENTITY NORMALIZATION
+// ENTITY
 // =====================================================
 $parsed['entity']['name'] = trim($parsed['entity']['name'] ?? '');
 
 // =====================================================
-// CONTACT NORMALIZATION
+// CONTACT
 // =====================================================
 $parsed['contact']['firstName']   = trim($parsed['contact']['firstName'] ?? '');
 $parsed['contact']['lastName']    = trim($parsed['contact']['lastName'] ?? '');
@@ -343,7 +308,7 @@ if (!empty($phoneValue)) {
 }
 
 // =====================================================
-// LOCATION NORMALIZATION
+// LOCATION
 // =====================================================
 $parsed['location']['address']      = trim($parsed['location']['address'] ?? '');
 $parsed['location']['city']         = trim($parsed['location']['city'] ?? '');
@@ -352,28 +317,19 @@ $parsed['location']['zip']          = trim($parsed['location']['zip'] ?? '');
 $parsed['location']['suite']        = trim($parsed['location']['suite'] ?? '');
 $parsed['location']['locationName'] = trim($parsed['location']['locationName'] ?? '');
 
-// Map values back to prefixed variations for downstream synchronization safety
-$parsed['entity']['entityName'] = $parsed['entity']['name'];
-foreach ($contactFieldMap as $naked => $prefixed) {
-    $parsed['contact'][$prefixed] = $parsed['contact'][$naked];
-}
-foreach ($locationFieldMap as $naked => $prefixed) {
-    $parsed['location'][$prefixed] = $parsed['location'][$naked];
-}
-
 error_log('[PPC][SECTION-05] Data normalization complete');
 
 // =====================================================
-// COMPLETENESS CHECK (Updated for Contact Communication requirements)
+// COMPLETENESS CHECK (Updated with locationName requirement)
 // =====================================================
 
 error_log('[PPC][PHASE-3] Running Completeness Check');
 
 // 🔥 MTCO: Dynamically split requirements based on layout intent context
 if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
-    // Requirements for Location-Only Workflow
+    // Requirements for Location-Only Workflow (now includes locationName)
     $requiredFields = [
-        'entity.name'           => 'Entity Name',
+        'entity.name'           => 'Entity Name',           // Needed for PC-5
         'location.locationName' => 'Location Name',
         'location.address'      => 'Street Address',
         'location.city'         => 'City',
@@ -381,11 +337,12 @@ if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
         'location.zip'          => 'ZIP Code'
     ];
 } else {
-    // Full Standard Contact Record Base Requirements (Email removed from here to handle conditional logic)
+    // Full Standard Contact Record Requirements (unchanged)
     $requiredFields = [
         'entity.name'       => 'Entity Name',
         'contact.firstName' => 'Contact First Name',
         'contact.lastName'  => 'Contact Last Name',
+        'contact.email'     => 'Email Address',
         'location.address'  => 'Street Address',
         'location.city'     => 'City',
         'location.state'    => 'State',
@@ -395,7 +352,7 @@ if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
 
 $missingFields = [];
 
-// Evaluate base requirements dynamically
+// Evaluate requirements dynamically
 foreach ($requiredFields as $dotPath => $label) {
     list($category, $field) = explode('.', $dotPath);
     $value = trim($parsed[$category][$field] ?? '');
@@ -408,24 +365,10 @@ foreach ($requiredFields as $dotPath => $label) {
     }
 }
 
-// 📞 CONDITIONAL RULE GATE: Contact proposals must contain an Email OR a Phone Number
-if (!isset($isExplicitLocationOnlyIntent) || !$isExplicitLocationOnlyIntent) {
-    $emailVal = trim($parsed['contact']['email'] ?? '');
-    $phoneVal = trim($parsed['contact']['primaryPhone'] ?? '');
-
-    if (empty($emailVal) && empty($phoneVal)) {
-        $missingFields[] = [
-            'path'  => 'contact.communicationChannel',
-            'label' => 'Contact Communication Method (Either Email Address or Phone Number is required)'
-        ];
-    }
-}
-
 // Build the self-documenting completeness object for the UI
 $hasFirst = !empty(trim($parsed['contact']['firstName'] ?? ''));
 $hasLast  = !empty(trim($parsed['contact']['lastName'] ?? ''));
 $hasEmail = !empty(trim($parsed['contact']['email'] ?? ''));
-$hasPhone = !empty(trim($parsed['contact']['primaryPhone'] ?? ''));
 
 $completeness = [
     'entity' => [
@@ -435,9 +378,7 @@ $completeness = [
     ],
     'contact' => [
         'names' => ($isExplicitLocationOnlyIntent || ($hasFirst && $hasLast)) ? '✔ Not Required' : '✖ First/Last Name Missing',
-        'communication' => ($isExplicitLocationOnlyIntent || ($hasEmail || $hasPhone)) 
-            ? '✔ Channel Provided' 
-            : '✖ Missing Both Email and Phone Number'
+        'email' => ($isExplicitLocationOnlyIntent || $hasEmail) ? '✔ Not Required' : '✖ Email Address Required'
     ],
     'location' => [
         'name'   => !empty(trim($parsed['location']['locationName'] ?? '')) ? '✔ Location Name' : '✖ Location Name Missing',
