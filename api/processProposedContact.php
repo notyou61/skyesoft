@@ -364,16 +364,16 @@ foreach ($locationFieldMap as $naked => $prefixed) {
 error_log('[PPC][SECTION-05] Data normalization complete');
 
 // =====================================================
-// COMPLETENESS CHECK (Updated with locationName requirement)
+// COMPLETENESS CHECK (Updated for Contact Communication requirements)
 // =====================================================
 
 error_log('[PPC][PHASE-3] Running Completeness Check');
 
 // 🔥 MTCO: Dynamically split requirements based on layout intent context
 if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
-    // Requirements for Location-Only Workflow (now includes locationName)
+    // Requirements for Location-Only Workflow
     $requiredFields = [
-        'entity.name'           => 'Entity Name',           // Needed for PC-5
+        'entity.name'           => 'Entity Name',
         'location.locationName' => 'Location Name',
         'location.address'      => 'Street Address',
         'location.city'         => 'City',
@@ -381,12 +381,11 @@ if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
         'location.zip'          => 'ZIP Code'
     ];
 } else {
-    // Full Standard Contact Record Requirements (unchanged)
+    // Full Standard Contact Record Base Requirements (Email removed from here to handle conditional logic)
     $requiredFields = [
         'entity.name'       => 'Entity Name',
         'contact.firstName' => 'Contact First Name',
         'contact.lastName'  => 'Contact Last Name',
-        'contact.email'     => 'Email Address',
         'location.address'  => 'Street Address',
         'location.city'     => 'City',
         'location.state'    => 'State',
@@ -396,7 +395,7 @@ if (isset($isExplicitLocationOnlyIntent) && $isExplicitLocationOnlyIntent) {
 
 $missingFields = [];
 
-// Evaluate requirements dynamically
+// Evaluate base requirements dynamically
 foreach ($requiredFields as $dotPath => $label) {
     list($category, $field) = explode('.', $dotPath);
     $value = trim($parsed[$category][$field] ?? '');
@@ -409,10 +408,24 @@ foreach ($requiredFields as $dotPath => $label) {
     }
 }
 
+// 📞 CONDITIONAL RULE GATE: Contact proposals must contain an Email OR a Phone Number
+if (!isset($isExplicitLocationOnlyIntent) || !$isExplicitLocationOnlyIntent) {
+    $emailVal = trim($parsed['contact']['email'] ?? '');
+    $phoneVal = trim($parsed['contact']['primaryPhone'] ?? '');
+
+    if (empty($emailVal) && empty($phoneVal)) {
+        $missingFields[] = [
+            'path'  => 'contact.communicationChannel',
+            'label' => 'Contact Communication Method (Either Email Address or Phone Number is required)'
+        ];
+    }
+}
+
 // Build the self-documenting completeness object for the UI
 $hasFirst = !empty(trim($parsed['contact']['firstName'] ?? ''));
 $hasLast  = !empty(trim($parsed['contact']['lastName'] ?? ''));
 $hasEmail = !empty(trim($parsed['contact']['email'] ?? ''));
+$hasPhone = !empty(trim($parsed['contact']['primaryPhone'] ?? ''));
 
 $completeness = [
     'entity' => [
@@ -422,7 +435,9 @@ $completeness = [
     ],
     'contact' => [
         'names' => ($isExplicitLocationOnlyIntent || ($hasFirst && $hasLast)) ? '✔ Not Required' : '✖ First/Last Name Missing',
-        'email' => ($isExplicitLocationOnlyIntent || $hasEmail) ? '✔ Not Required' : '✖ Email Address Required'
+        'communication' => ($isExplicitLocationOnlyIntent || ($hasEmail || $hasPhone)) 
+            ? '✔ Channel Provided' 
+            : '✖ Missing Both Email and Phone Number'
     ],
     'location' => [
         'name'   => !empty(trim($parsed['location']['locationName'] ?? '')) ? '✔ Location Name' : '✖ Location Name Missing',
