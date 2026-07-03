@@ -22,6 +22,11 @@
 import { adaptStreamedDomain } from '/skyesoft/assets/js/domainAdapter.js';
 import { renderOutline } from '/skyesoft/assets/js/outlineRenderer.js';
 
+// Safe Base64 that handles Unicode (em-dashes, smart quotes, etc.)
+function safeBase64Encode(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+}
+
 if (typeof adaptStreamedDomain !== 'function') {
     console.error('[SkyIndex] adaptStreamedDomain not loaded');
 }
@@ -1377,7 +1382,7 @@ window.SkyIndex = {
             const imageType = (data.imageType || 'streetview').toUpperCase();
             const imageSrc = data.imagePath || '';
 
-            const dataPayloadAttr = btoa(JSON.stringify(data));
+            const dataPayloadAttr = safeBase64Encode(JSON.stringify(data));
 
             const html = `
                 <div class="commandLine system html">
@@ -1932,7 +1937,7 @@ window.SkyIndex = {
             badgeStyle = 'background: rgba(0, 122, 255, 0.1); color: #007aff; border: 1px solid rgba(0, 122, 255, 0.2);';
         }
 
-        const dataPayloadAttr = btoa(JSON.stringify(payload));
+        const dataPayloadAttr = safeBase64Encode(JSON.stringify(payload));
 
         const html = `
             <div class="commandLine system html">
@@ -2025,7 +2030,7 @@ window.SkyIndex = {
             data: { entity, contact, location }
         };
 
-        const dataPayloadAttr = btoa(unescape(encodeURIComponent(JSON.stringify(unifiedData))));
+        const dataPayloadAttr = safeBase64Encode(unescape(encodeURIComponent(JSON.stringify(unifiedData))));
 
         // Extract backend missing fields array
         const missingFields = unifiedData.governance?.missingFields || [];
