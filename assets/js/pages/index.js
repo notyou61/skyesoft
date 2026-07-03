@@ -1884,11 +1884,13 @@ window.SkyIndex = {
 
         const proposalKind = payload.proposalKind || (contact.lastName || contact.firstName ? 'contact' : 'location');
 
-        // 1. Resolve Active Context Code (Prioritize Explicit Governance Errors over Base Layouts)
+        // 1. Resolve Active Context Code (Prioritize Critical Exceptions over Base Codes; Ignore RS-0)
         let activeStatusKey = 'PC-?';
-        if (pcm.rs && pcm.rs.length > 0) {
-            activeStatusKey = pcm.rs[0];
-        } else if (payload.governance?.resolution_status) {
+        const realRsException = pcm.rs?.find(code => code && code !== 'RS-0');
+
+        if (realRsException) {
+            activeStatusKey = realRsException;
+        } else if (payload.governance?.resolution_status && payload.governance.resolution_status !== 'RS-0') {
             activeStatusKey = payload.governance.resolution_status;
         } else if (pcm.pc) {
             activeStatusKey = pcm.pc;
@@ -2002,66 +2004,6 @@ window.SkyIndex = {
                 btnText: '✏️ Edit &amp; Resubmit',
                 btnDisabled: false,
                 btnHandler: 'SkyIndex.revalidateProposal()'
-            },
-            'RS-5': {
-                borderLeft: '#0056b3',
-                badge: 'background: rgba(0, 86, 179, 0.1); color: #0056b3; border: 1px solid rgba(0, 86, 179, 0.25);',
-                summaryBg: 'rgba(0, 86, 179, 0.02)',
-                summaryBorder: 'rgba(0, 86, 179, 0.15)',
-                summaryText: '#004085',
-                icon: '👥',
-                title: 'Duplicate Record Warning',
-                subtitle: 'Matching identity records detected in master dataset',
-                btnClass: 'btn-warning',
-                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
-                btnText: '🔍 Resolve Duplicates',
-                btnDisabled: false,
-                btnHandler: 'SkyIndex.revalidateProposal()'
-            },
-            'RS-6': {
-                borderLeft: '#fd7e14',
-                badge: 'background: rgba(253, 126, 20, 0.12); color: #fd7e14; border: 1px solid rgba(253, 126, 20, 0.25);',
-                summaryBg: 'rgba(253, 126, 20, 0.02)',
-                summaryBorder: 'rgba(253, 126, 20, 0.15)',
-                summaryText: '#ba5200',
-                icon: '🗺️',
-                title: 'Parcel Conflict Exception',
-                subtitle: 'Multiple properties map to coordinates — Choice required',
-                btnClass: 'btn-warning',
-                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
-                btnText: '🗺️ Select Custom Parcel',
-                btnDisabled: false,
-                btnHandler: 'SkyIndex.revalidateProposal()'
-            },
-            'RS-7': {
-                borderLeft: '#dc3545',
-                badge: 'background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2);',
-                summaryBg: 'rgba(220, 53, 69, 0.02)',
-                summaryBorder: 'rgba(220, 53, 69, 0.15)',
-                summaryText: '#bd2130',
-                icon: '🛑',
-                title: 'Unresolved Address Point',
-                subtitle: 'Regional parcel mapping bounds could not be validated',
-                btnClass: 'btn-warning',
-                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
-                btnText: '✏️ Edit &amp; Resubmit',
-                btnDisabled: false,
-                btnHandler: 'SkyIndex.revalidateProposal()'
-            },
-            'RS-8': {
-                borderLeft: '#ffc107',
-                badge: 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);',
-                summaryBg: '#fffdf6',
-                summaryBorder: '#ffeaa7',
-                summaryText: '#d35400',
-                icon: '⚠️',
-                title: 'Proposed Contact',
-                subtitle: 'Validation Exception Notice',
-                btnClass: 'btn-warning',
-                btnStyle: 'background: #ffc107; color: #212529; border: 1px solid #d39e00;',
-                btnText: '✏️ Edit &amp; Resubmit',
-                btnDisabled: false,
-                btnHandler: 'SkyIndex.revalidateProposal()'
             }
         };
 
@@ -2101,15 +2043,18 @@ window.SkyIndex = {
         const displayPhone = contact.contactPrimaryPhone || contact.primaryPhone || '';
         const displayEmail = contact.contactEmail || contact.email || '';
 
-        // 4. Extract Operational Intent Checklists Directly from Commit Plan
+        // 4. Extract Operational Intent Checklists (Supports explicit flags or array actions tokens)
         let commitPlanMarkup = '';
+        const actions = commit.actions || [];
+        const hasActions = actions.length > 0;
+        
         if (activeStatusKey === 'PC-0') {
             commitPlanMarkup = `<span style="color:#6c757d;">No structural changes required</span>`;
-        } else if (commit && (commit.createEntity || commit.createLocation || commit.createContact)) {
+        } else if (hasActions || commit.createEntity || commit.createLocation || commit.createContact) {
             const checklist = [];
-            if (commit.createEntity) checklist.push('✓ Entity');
-            if (commit.createLocation) checklist.push('✓ Location');
-            if (commit.createContact) checklist.push('✓ Contact');
+            if (actions.includes('insert_entity') || commit.createEntity) checklist.push('✓ Entity');
+            if (actions.includes('insert_location') || commit.createLocation) checklist.push('✓ Location');
+            if (actions.includes('insert_contact') || commit.createContact) checklist.push('✓ Contact');
             commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Creates:</span> <span style="font-family: monospace; color: #28a745; font-weight: bold;">${checklist.join(' &nbsp; ')}</span>`;
         } else {
             commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Action:</span> <span style="color: #444;">${theme.subtitle}</span>`;
@@ -2143,8 +2088,10 @@ window.SkyIndex = {
                             <span style="color: #222;">${this.escapeHtml(contactIdentity)}</span>
                             ` : ''}
                             
+                            ${locationName ? `
                             <span style="color: #666; font-weight: 600;">Location:</span> 
-                            <span style="color: #222;">${this.escapeHtml(locationName || '—')}</span>
+                            <span style="color: #222;">${this.escapeHtml(locationName)}</span>
+                            ` : ''}
                             
                             <span style="color: #666; font-weight: 600;">Address:</span> 
                             <span style="color: #222;">${this.escapeHtml(addressLine || '—')}</span>
