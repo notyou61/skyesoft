@@ -1190,6 +1190,39 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
     ];
 }
 
+
+// * Generates a standard-compliant filename according to Universal Artifact Standard rules.
+function generateArtifactFilename(string $proposalId, string $mediaType, string $sequence, string $extension = 'jpg'): string {
+    // 1. Classification (CCC) - Defaulting to permanent Record for core visual files
+    $ccc = 'REC';
+
+    // 2. Media Type (MMM) - Fixed-width formatting uppercase 3 chars
+    $mmm = strtoupper(substr(trim($mediaType), 0, 3));
+
+    // 3. Extract Purpose Code (PPP) and 6-digit Object ID (OOOOOO) from Proposal ID (PRP-000001)
+    $ppp = 'PRP';
+    $oooooo = '000000';
+    if (preg_match('/^([A-Z]{3})-([0-9]{6})$/i', trim($proposalId), $matches)) {
+        $ppp = strtoupper($matches[1]);
+        $oooooo = $matches[2];
+    }
+
+    // 4. User ID (UUU) - System automated or default worker tracking sequence
+    $uuu = '000';
+
+    // 5. Ten-digit Unix Timestamp (TTTTTTTTTT)
+    $tttttttttt = (string)time();
+    if (strlen($tttttttttt) !== 10) {
+        $tttttttttt = str_pad(substr($tttttttttt, 0, 10), 10, '0', STR_PAD_RIGHT);
+    }
+
+    // 6. Sequence Number (SSS) - Fixed-width 3 chars with leading zeros
+    $sss = str_pad(preg_replace('/[^0-9]/', '', $sequence), 3, '0', STR_PAD_LEFT);
+
+    // Assemble uniform canonical filename with lowercase extension
+    return sprintf('%s-%s-%s-%s-%s-%s-%s.%s', $ccc, $mmm, $ppp, $oooooo, $uuu, $tttttttttt, $sss, strtolower($extension));
+}
+
 // Infer Street View Heading based on address (simple heuristic)
 function inferStreetViewHeading(string $address): int
 {
@@ -1255,22 +1288,13 @@ function generateStreetViewImage(
         return null;
     }
 
-    // Direct path to canonical root artifacts directory
     $artifactsDir = dirname(__DIR__, 2) . '/artifacts/';
     if (!is_dir($artifactsDir)) {
         mkdir($artifactsDir, 0755, true);
     }
 
-    // Fixed-Length Components: CCC-MMM-PPP-OOOOOO-UUU-TTTTTTTTTT-SSS.ext
-    $ccc = 'VIS'; 
-    $mmm = 'JPG';
-    $ppp = 'PRP';
-    $oooooo = str_pad(preg_replace('/[^0-9]/', '', $proposalId), 6, '0', STR_PAD_LEFT);
-    $uuu = '000'; // System default user
-    $tttttttttt = time();
-    $sss = '001'; // Sequence entry
-
-    $filename = "{$ccc}-{$mmm}-{$ppp}-{$oooooo}-{$uuu}-{$tttttttttt}-{$sss}.jpg";
+    // Single-line comment explanation: Generate compliant filename using universal helper function
+    $filename = generateArtifactFilename($proposalId, 'IMG', '1', 'jpg');
     $fullPath = $artifactsDir . $filename;
 
     if (file_put_contents($fullPath, $imageData) === false) {
@@ -1319,16 +1343,8 @@ function generateParcelMapImage(
         return null;
     }
 
-    // Fixed-Length Components: CCC-MMM-PPP-OOOOOO-UUU-TTTTTTTTTT-SSS.ext
-    $ccc = 'MAP';
-    $mmm = 'PNG';
-    $ppp = 'PRP';
-    $oooooo = str_pad(preg_replace('/[^0-9]/', '', $proposalId), 6, '0', STR_PAD_LEFT);
-    $uuu = '000';
-    $tttttttttt = time();
-    $sss = '002'; // Increment sequence to keep it perfectly uniform but distinct
-
-    $filename = "{$ccc}-{$mmm}-{$ppp}-{$oooooo}-{$uuu}-{$tttttttttt}-{$sss}.png";
+    // Single-line comment explanation: Generate compliant filename using universal helper function
+    $filename = generateArtifactFilename($proposalId, 'IMG', '2', 'png');
     $outputPath = $artifactsDir . $filename;
 
     if (file_put_contents($outputPath, $imageData) === false) {
