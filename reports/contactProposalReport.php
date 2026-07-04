@@ -241,58 +241,29 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
-    error_log("DEBUG normalizeProposalData - Top level keys: " . json_encode(array_keys($input)));
+    error_log("DEBUG normalizeProposalData - Using flat payload structure");
 
-    // Try all possible paths
-    $root = $input['data'] ?? $input['proposal'] ?? $input;
-    error_log("DEBUG - Root keys: " . json_encode(array_keys($root)));
+    // The payload from the client is already flat — just enhance it
+    return [
+        'entityName'           => $input['entityName'] ?? 'Unknown Entity',
+        'contactName'          => $input['contactName'] ?? 'Unknown Contact',
+        'contactTitle'         => $input['contactTitle'] ?? '',
+        'contactPhone'         => $input['contactPhone'] ?? '',
+        'contactEmail'         => $input['contactEmail'] ?? '',
 
-    $data = $root['data'] ?? $root;
-    error_log("DEBUG - Data keys: " . json_encode(array_keys($data)));
+        'locationAddress'      => $input['locationAddress'] ?? '',
+        'locationCityStateZip' => $input['locationCityStateZip'] ?? '—',
+        'locationCounty'       => $input['locationCounty'] ?? '',
+        'locationCountyFips'   => $input['locationCountyFips'] ?? '',
+        'locationJurisdiction' => $input['locationJurisdiction'] ?? 'Maricopa County',
+        'locationPlaceId'      => $input['locationPlaceId'] ?? '',
 
-    $entity   = $data['entity']   ?? $root['entity']   ?? [];
-    $contact  = $data['contact']  ?? $root['contact']  ?? [];
-    $location = $data['location'] ?? $root['location'] ?? [];
-    $pcm      = $input['pcm']     ?? $root['pcm']      ?? [];
-    $narr     = $input['narratives'] ?? $root['narratives'] ?? [];
+        'latitude'             => $input['latitude'] ?? null,
+        'longitude'            => $input['longitude'] ?? null,
 
-    error_log("DEBUG Entity: " . json_encode($entity));
-    error_log("DEBUG Contact: " . json_encode($contact));
-    error_log("DEBUG Location: " . json_encode($location));
-
-    // Full contact name
-    $fullName = trim(implode(' ', array_filter([
-        $contact['contactSalutation'] ?? '',
-        $contact['contactFirstName']  ?? $contact['firstName'] ?? '',
-        $contact['contactLastName']   ?? $contact['lastName'] ?? ''
-    ])));
-
-    $cityStateZip = trim(implode(', ', array_filter([
-        $location['locationCity'] ?? $location['city'] ?? '',
-        trim(($location['locationState'] ?? $location['state'] ?? '') . ' ' . ($location['locationZip'] ?? $location['zip'] ?? ''))
-    ])));
-
-    $result = [
-        'entityName'           => $entity['entityName'] ?? $entity['name'] ?? 'Unknown Entity',
-        'contactName'          => $fullName ?: 'Unknown Contact',
-        'contactTitle'         => $contact['contactTitle'] ?? $contact['title'] ?? '',
-        'contactPhone'         => $contact['contactPrimaryPhone'] ?? $contact['primaryPhone'] ?? '',
-        'contactEmail'         => $contact['contactEmail'] ?? $contact['email'] ?? '',
-        'locationAddress'      => $location['locationAddress'] ?? $location['address'] ?? '',
-        'locationCityStateZip' => $cityStateZip ?: '—',
-        'locationCounty'       => $location['locationCounty'] ?? '',
-        'locationCountyFips'   => $location['locationCountyFips'] ?? '',
-        'locationJurisdiction' => $location['locationJurisdiction'] ?? 'Maricopa County',
-        'locationPlaceId'      => $location['locationPlaceId'] ?? '',
-        'latitude'             => $location['latitude'] ?? $location['locationLatitude'] ?? null,
-        'longitude'            => $location['longitude'] ?? $location['locationLongitude'] ?? null,
-        'governanceNarrative'  => $narr['ui'] ?? $narr['report'] ?? 'Proposal processing complete.',
-        'pc_code'              => $pcm['pc'] ?? '',
-        'parcelDetails'        => $location['parcelDetails'] ?? [],
+        'governanceNarrative'  => $input['governanceNarrative'] ?? 'Proposal processing complete.',
+        'pc_code'              => $input['proposalCode'] ?? $input['pc_code'] ?? '',
+        'parcelDetails'        => $input['parcelDetails'] ?? [],
         'reportArtifacts'      => $input['reportArtifacts'] ?? []
     ];
-
-    error_log("DEBUG Final normalized result: " . json_encode($result, JSON_UNESCAPED_SLASHES));
-
-    return $result;
 }
