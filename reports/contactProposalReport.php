@@ -241,6 +241,8 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
+
+error_log("DEBUG normalizeProposalData - Keys in input: " . json_encode(array_keys($input)));
     // Deep dive into common proposal structures
     $root = $input['data'] ?? $input['proposal'] ?? $input;
     $data = $root['data'] ?? $root;
