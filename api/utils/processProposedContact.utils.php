@@ -1190,10 +1190,10 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
     ];
 }
 
-/// Generate Street View Image → /artifacts/
+// Generate Street View Image → /artifacts/
 function generateStreetViewImage(
-    $lat,           // Accept float or string
-    $lng,           // Accept float or string
+    float|string $lat,
+    float|string $lng,
     string $googleKey,
     string $address = '',
     string $proposalId = ''
@@ -1264,8 +1264,8 @@ function generateStreetViewImage(
 
 // Generate Parcel Map → /artifacts/
 function generateParcelMapImage(
-    $lat,           // Accept float or string
-    $lng,           // Accept float or string
+    float|string $lat,
+    float|string $lng,
     string $apn,
     string $googleKey,
     string $proposalId = ''
