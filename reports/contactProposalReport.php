@@ -241,17 +241,24 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
+    error_log("DEBUG normalizeProposalData - Top level keys: " . json_encode(array_keys($input)));
 
-error_log("DEBUG normalizeProposalData - Keys in input: " . json_encode(array_keys($input)));
-    // Deep dive into common proposal structures
+    // Try all possible paths
     $root = $input['data'] ?? $input['proposal'] ?? $input;
+    error_log("DEBUG - Root keys: " . json_encode(array_keys($root)));
+
     $data = $root['data'] ?? $root;
+    error_log("DEBUG - Data keys: " . json_encode(array_keys($data)));
 
     $entity   = $data['entity']   ?? $root['entity']   ?? [];
     $contact  = $data['contact']  ?? $root['contact']  ?? [];
     $location = $data['location'] ?? $root['location'] ?? [];
     $pcm      = $input['pcm']     ?? $root['pcm']      ?? [];
     $narr     = $input['narratives'] ?? $root['narratives'] ?? [];
+
+    error_log("DEBUG Entity: " . json_encode($entity));
+    error_log("DEBUG Contact: " . json_encode($contact));
+    error_log("DEBUG Location: " . json_encode($location));
 
     // Full contact name
     $fullName = trim(implode(' ', array_filter([
@@ -260,35 +267,32 @@ error_log("DEBUG normalizeProposalData - Keys in input: " . json_encode(array_ke
         $contact['contactLastName']   ?? $contact['lastName'] ?? ''
     ])));
 
-    // City, State ZIP
     $cityStateZip = trim(implode(', ', array_filter([
         $location['locationCity'] ?? $location['city'] ?? '',
         trim(($location['locationState'] ?? $location['state'] ?? '') . ' ' . ($location['locationZip'] ?? $location['zip'] ?? ''))
     ])));
 
-    return [
+    $result = [
         'entityName'           => $entity['entityName'] ?? $entity['name'] ?? 'Unknown Entity',
-
         'contactName'          => $fullName ?: 'Unknown Contact',
         'contactTitle'         => $contact['contactTitle'] ?? $contact['title'] ?? '',
         'contactPhone'         => $contact['contactPrimaryPhone'] ?? $contact['primaryPhone'] ?? '',
         'contactEmail'         => $contact['contactEmail'] ?? $contact['email'] ?? '',
-
         'locationAddress'      => $location['locationAddress'] ?? $location['address'] ?? '',
         'locationCityStateZip' => $cityStateZip ?: '—',
         'locationCounty'       => $location['locationCounty'] ?? '',
         'locationCountyFips'   => $location['locationCountyFips'] ?? '',
         'locationJurisdiction' => $location['locationJurisdiction'] ?? 'Maricopa County',
         'locationPlaceId'      => $location['locationPlaceId'] ?? '',
-
         'latitude'             => $location['latitude'] ?? $location['locationLatitude'] ?? null,
         'longitude'            => $location['longitude'] ?? $location['locationLongitude'] ?? null,
-
         'governanceNarrative'  => $narr['ui'] ?? $narr['report'] ?? 'Proposal processing complete.',
         'pc_code'              => $pcm['pc'] ?? '',
         'parcelDetails'        => $location['parcelDetails'] ?? [],
         'reportArtifacts'      => $input['reportArtifacts'] ?? []
     ];
-}
 
-#endregion
+    error_log("DEBUG Final normalized result: " . json_encode($result, JSON_UNESCAPED_SLASHES));
+
+    return $result;
+}
