@@ -1211,7 +1211,7 @@ function inferStreetViewHeading(string $address): int
     return 90;
 }
 
-// Generate Street View Image → /artifacts/
+// Save directly to canonical /artifacts/ with fixed-length protocol naming
 function generateStreetViewImage(
     float|string $lat,
     float|string $lng,
@@ -1224,7 +1224,7 @@ function generateStreetViewImage(
     $lng = (string)$lng;
 
     if (empty($googleKey) || empty($lat) || empty($lng)) {
-        error_log("[generateReports] generateStreetViewImage() - Missing lat, lng or API key");
+        error_log("[generateReports] generateStreetViewImage() - Missing parameters");
         return null;
     }
 
@@ -1238,52 +1238,51 @@ function generateStreetViewImage(
         . '&fov=' . $fov
         . '&key=' . $googleKey;
 
-    error_log("[generateReports] Street View URL: " . $url);
-
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 10,
-        CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_FOLLOWLOCATION => true
     ]);
 
     $imageData = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
     curl_close($ch);
 
-    if ($imageData === false || $httpCode != 200) {
-        error_log("[generateReports] Street View failed. HTTP: $httpCode | Error: $curlError");
+    if ($imageData === false || $httpCode != 200 || strlen($imageData) < 1000) {
+        error_log("[generateReports] Street View image capture failed.");
         return null;
     }
 
-    if (strlen($imageData) < 1000) {
-        error_log("[generateReports] Street View returned invalid image");
-        return null;
-    }
-
-    // Save directly to /artifacts/
-    $artifactsDir = __DIR__ . '/../artifacts/';
+    // Direct path to canonical root artifacts directory
+    $artifactsDir = dirname(__DIR__, 2) . '/artifacts/';
     if (!is_dir($artifactsDir)) {
         mkdir($artifactsDir, 0755, true);
     }
 
-    $safeAddress = preg_replace('/[^A-Za-z0-9]/', '', substr($address, 0, 30));
-    $filename = $proposalId . '-streetview-' . $safeAddress . '-' . uniqid() . '.jpg';
+    // Fixed-Length Components: CCC-MMM-PPP-OOOOOO-UUU-TTTTTTTTTT-SSS.ext
+    $ccc = 'VIS'; 
+    $mmm = 'JPG';
+    $ppp = 'PRP';
+    $oooooo = str_pad(preg_replace('/[^0-9]/', '', $proposalId), 6, '0', STR_PAD_LEFT);
+    $uuu = '000'; // System default user
+    $tttttttttt = time();
+    $sss = '001'; // Sequence entry
+
+    $filename = "{$ccc}-{$mmm}-{$ppp}-{$oooooo}-{$uuu}-{$tttttttttt}-{$sss}.jpg";
     $fullPath = $artifactsDir . $filename;
 
     if (file_put_contents($fullPath, $imageData) === false) {
-        error_log("[generateReports] Failed to write Street View to $fullPath");
+        error_log("[generateReports] Failed to write to $fullPath");
         return null;
     }
 
-    error_log("[generateReports] ✅ Street View saved: $filename");
+    error_log("[generateReports] ✅ Protocol Compliant Street View saved: $filename");
     return $fullPath;
 }
 
-// Generate Parcel Map → /artifacts/
+// Save directly to canonical /artifacts/ with fixed-length protocol naming
 function generateParcelMapImage(
     float|string $lat,
     float|string $lng,
@@ -1300,15 +1299,10 @@ function generateParcelMapImage(
         return null;
     }
 
-    $safeApn = preg_replace('/[^A-Za-z0-9]/', '', $apn);
-
-    $artifactsDir = __DIR__ . '/../artifacts/';
+    $artifactsDir = dirname(__DIR__, 2) . '/artifacts/';
     if (!is_dir($artifactsDir)) {
         mkdir($artifactsDir, 0755, true);
     }
-
-    $filename = $proposalId . '-parcelmap-' . $safeApn . '-' . uniqid() . '.png';
-    $outputPath = $artifactsDir . $filename;
 
     $mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
         . 'center=' . $lat . ',' . $lng
@@ -1321,16 +1315,28 @@ function generateParcelMapImage(
     $imageData = @file_get_contents($mapUrl);
 
     if ($imageData === false || strlen($imageData) < 3000) {
-        error_log("[PARCEL MAP] Failed to fetch image for APN: $apn");
+        error_log("[PARCEL MAP] Failed to fetch image map.");
         return null;
     }
+
+    // Fixed-Length Components: CCC-MMM-PPP-OOOOOO-UUU-TTTTTTTTTT-SSS.ext
+    $ccc = 'MAP';
+    $mmm = 'PNG';
+    $ppp = 'PRP';
+    $oooooo = str_pad(preg_replace('/[^0-9]/', '', $proposalId), 6, '0', STR_PAD_LEFT);
+    $uuu = '000';
+    $tttttttttt = time();
+    $sss = '002'; // Increment sequence to keep it perfectly uniform but distinct
+
+    $filename = "{$ccc}-{$mmm}-{$ppp}-{$oooooo}-{$uuu}-{$tttttttttt}-{$sss}.png";
+    $outputPath = $artifactsDir . $filename;
 
     if (file_put_contents($outputPath, $imageData) === false) {
         error_log("[PARCEL MAP] Failed to write image: $outputPath");
         return null;
     }
 
-    error_log("[PARCEL MAP] ✅ Saved: $filename");
+    error_log("[PARCEL MAP] ✅ Protocol Compliant Parcel Map saved: $filename");
     return $outputPath;
 }
 
@@ -1395,10 +1401,9 @@ function createProposalSnapshot(
     array $parcelImages = []          // ← NEW: Accept generated parcel images
 ): array {
 
-    $timestamp = microtime(true);
-    
-    $uniquePart = (int)($timestamp * 1000) % 999999;
-    $proposalId = 'PRP-' . date('Ymd') . '-' . str_pad((string)$uniquePart, 6, '0', STR_PAD_LEFT);
+    // If proposalId isn't passed or isn't 6 digits, enforce strict numeric padding
+    $proposalId = $data['proposalId'] ?? str_pad((string)mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+    $proposalId = str_pad(preg_replace('/[^0-9]/', '', $proposalId), 6, '0', STR_PAD_LEFT);
 
     $proposalSnapshot = [
         'proposalId'        => $proposalId,

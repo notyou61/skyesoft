@@ -1069,7 +1069,8 @@ $pcm = [
 
 error_log('[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] . ' | RS=[' . implode(', ', $pcm['rs']) . '] | Blocks=' . ($blocksCommit ? 'YES' : 'NO'));
 
-$proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
+// Generates a 6-digit numeric sequence (e.g., using microseconds part or a random pad)
+$proposalId = str_pad((string)mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
 
 #endregion
 
