@@ -2,20 +2,18 @@
 declare(strict_types=1);
 
 // =============================================
-// FORCE FULL RELOAD - REMOVE AFTER FIXING
-// =============================================
-if (function_exists('opcache_invalidate')) {
-    opcache_invalidate(__FILE__, true);
-}
-error_log("=== contactProposalReport.php FULLY RELOADED at " . date('H:i:s') . " ===");
-
-// =============================================
-//  Skyesoft — contactProposalReport.php
-//  Version: 1.6.0
-//  Last Updated: 2026-05-31
+// Skyesoft — contactProposalReport.php
+// Dynamic Foldable Proposal Report
+// Version: 2.0.0
 // =============================================
 
 #region SECTION 00 - Main Report Generator
+
+if (function_exists('opcache_invalidate')) {
+    opcache_invalidate(__FILE__, true);
+}
+
+error_log("=== contactProposalReport.php FULLY RELOADED (Dynamic v2) at " . date('H:i:s') . " ===");
 
 function generateContactProposalReport(array $input): array
 {
@@ -23,16 +21,10 @@ function generateContactProposalReport(array $input): array
     
     $bodyHtml = buildContactProposalBody($proposal);
 
-    // === Build Contact Information ===
-    $contactName  = trim($proposal['contactName'] ?? '');
+    $contactName  = trim($proposal['contactName'] ?? 'Unknown Contact');
     $contactTitle = trim($proposal['contactTitle'] ?? '');
     $entityName   = trim($proposal['entityName'] ?? 'Unknown Entity');
 
-    if (empty($contactName)) {
-        $contactName = 'Unknown Contact';
-    }
-
-    // === Professional Download Filename ===
     $reportFilename = "Proposed Contact Report: {$contactName}";
     if (!empty($contactTitle)) {
         $reportFilename .= ", {$contactTitle}";
@@ -41,44 +33,19 @@ function generateContactProposalReport(array $input): array
 
     return [
         'reportType'      => 'contact_proposal',
-
-        'reportTitle'     => 'Proposed Contact Report',     // Clean title for PDF header
-
-        // -------------------------------------------------
-        // Dynamic Download Filename
-        // -------------------------------------------------
+        'reportTitle'     => 'Proposed Contact Report',
         'reportFilename'  => $reportFilename,
 
         'reportSummary'   => generateSummarySection($proposal),
-
         'reportBodyHtml'  => $bodyHtml,
 
-        'reportArtifacts' => collectArtifacts($proposal),
-
+        'reportArtifacts' => $proposal['reportArtifacts'] ?? [],
         'reportMeta'      => [
             'generated_at' => date('Y-m-d H:i:s'),
             'proposal_id'  => $input['proposalId'] ?? $input['activitySessionId'] ?? null,
+            'pc_code'      => $proposal['pc_code'] ?? '',
         ]
     ];
-}
-
-
-// =============================================
-//  Load Environment Helper (Critical for skyesoftGetEnv)
-// =============================================
-
-$envLoaderPath = __DIR__ . '/../api/utils/envLoader.php';
-
-if (file_exists($envLoaderPath)) {
-    require_once $envLoaderPath;
-    if (function_exists('skyesoftLoadEnv')) {
-        skyesoftLoadEnv();
-        error_log("[ENV] Successfully loaded envLoader.php from: " . $envLoaderPath);
-    } else {
-        error_log("[ENV] envLoader.php loaded but skyesoftLoadEnv() not found");
-    }
-} else {
-    error_log("[ENV] WARNING: envLoader.php not found at: " . $envLoaderPath);
 }
 
 #endregion
@@ -89,27 +56,19 @@ function buildContactProposalBody(array $proposal): string
 {
     $html = '';
 
-    error_log("[BODY] Starting buildContactProposalBody()");
-
-    // Page 1
+    // Core Identity Sections
     $html .= buildEntitySection($proposal);
     $html .= buildContactSection($proposal);
     $html .= buildLocationSection($proposal);
 
-    // Page 2
+    // Visual Sections
     $html .= buildSatelliteSection($proposal);
-
-    // Page 3 - Street View (Force call)
-    error_log("[BODY] Calling buildStreetViewSection()");
     $html .= buildStreetViewSection($proposal);
 
-    // Page 4+
+    // Parcel & Governance
     $html .= buildParcelSummarySection($proposal);
     $html .= buildParcelDetailSection($proposal);
-
     $html .= buildGovernanceSection($proposal);
-
-    error_log("[BODY] Finished buildContactProposalBody()");
 
     return $html;
 }
@@ -118,93 +77,37 @@ function buildContactProposalBody(array $proposal): string
 
 #region SECTION 02 - Core Sections
 
-/**
- * Builds the Entity Information section
- */
 function buildEntitySection(array $proposal): string
 {
     $html = buildSectionHeader('Entity Information', 'property.png');
     $html .= '<table class="dataTable">';
-    $html .= '<tr><th>Entity Name</th><td>' 
-        . htmlspecialchars($proposal['entityName'] ?? 'N/A') 
-        . '</td></tr>';
+    $html .= '<tr><th>Entity Name</th><td>' . htmlspecialchars($proposal['entityName'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
     return $html;
 }
 
-/**
- * Builds the Contact Information section
- */
 function buildContactSection(array $proposal): string
 {
     $html = buildSectionHeader('Contact Information', 'users.png');
     $html .= '<table class="dataTable">';
-    
-    $html .= '<tr><th>Contact Name</th><td>' 
-        . htmlspecialchars($proposal['contactName'] ?? 'N/A') 
-        . '</td></tr>';
-    
-    $html .= '<tr><th>Title</th><td>' 
-        . htmlspecialchars($proposal['contactTitle'] ?? '—') 
-        . '</td></tr>';
-    
-    $html .= '<tr><th>Phone</th><td>' 
-        . htmlspecialchars($proposal['contactPhone'] ?? '—') 
-        . '</td></tr>';
-    
-    $html .= '<tr><th>Email</th><td>' 
-        . htmlspecialchars($proposal['contactEmail'] ?? '—') 
-        . '</td></tr>';
-    
+    $html .= '<tr><th>Contact Name</th><td>' . htmlspecialchars($proposal['contactName'] ?? 'N/A') . '</td></tr>';
+    $html .= '<tr><th>Title</th><td>' . htmlspecialchars($proposal['contactTitle'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Phone</th><td>' . htmlspecialchars($proposal['contactPhone'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Email</th><td>' . htmlspecialchars($proposal['contactEmail'] ?? '—') . '</td></tr>';
     $html .= '</table>';
     return $html;
 }
 
-/**
- * Builds the Location Information section
- * Uses normalized flat keys from normalizeProposalData()
- */
 function buildLocationSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Information', 'pin.png');
     $html .= '<table class="dataTable">';
-
-    // Full Address
-    $fullAddress = $proposal['locationAddress'] ?? 'N/A';
-    $html .= '<tr><th>Full Address</th><td>' 
-        . htmlspecialchars($fullAddress) 
-        . '</td></tr>';
-
-    // City, State ZIP
-    $cityStateZip = $proposal['locationCityStateZip'] ?? '—';
-    $html .= '<tr><th>City, State ZIP</th><td>' 
-        . htmlspecialchars($cityStateZip) 
-        . '</td></tr>';
-
-    // County
-    $county = $proposal['locationCounty'] ?? '—';
-    $html .= '<tr><th>County</th><td>' 
-        . htmlspecialchars($county) 
-        . '</td></tr>';
-
-    // County FIPS
-    $fips = $proposal['locationCountyFips'] ?? '—';
-    $html .= '<tr><th>County FIPS</th><td>' 
-        . htmlspecialchars($fips) 
-        . '</td></tr>';
-
-    // Jurisdiction
-    $jur = $proposal['locationJurisdiction'] ?? 'Pending';
-    $html .= '<tr><th>Jurisdiction</th><td>' 
-        . htmlspecialchars($jur) 
-        . '</td></tr>';
-
-    // Place ID
-    $placeId = $proposal['locationPlaceId'] ?? 'N/A';
-    $html .= '<tr><th>Place ID</th><td>' 
-        . htmlspecialchars($placeId) 
-        . '</td></tr>';
-
+    $html .= '<tr><th>Full Address</th><td>' . htmlspecialchars($proposal['locationAddress'] ?? 'N/A') . '</td></tr>';
+    $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>County</th><td>' . htmlspecialchars($proposal['locationCounty'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>County FIPS</th><td>' . htmlspecialchars($proposal['locationCountyFips'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? 'Maricopa County') . '</td></tr>';
+    $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
     return $html;
 }
@@ -215,72 +118,42 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
-    $html = '<div class="satellite-group" style="page-break-inside:avoid; break-inside:avoid;">';
-
+    $html = '<div class="satellite-group" style="page-break-inside:avoid;">';
     $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
 
-    // === SATELLITE MAP ===
-    $lat = $proposal['locationLatitude']
-        ?? $proposal['latitude']
-        ?? ($proposal['data']['location']['latitude'] ?? 33.4848523);
+    $lat = $proposal['latitude'] ?? $proposal['locationLatitude'] ?? null;
+    $lng = $proposal['longitude'] ?? $proposal['locationLongitude'] ?? null;
 
-    $lng = $proposal['locationLongitude']
-        ?? $proposal['longitude']
-        ?? ($proposal['data']['location']['longitude'] ?? -112.1288006);
+    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
 
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-              ?: '';
-
-    if ($googleKey) {
-        $staticMapUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=' 
-            . $lat . ',' . $lng 
-            . '&zoom=18&size=950x450&maptype=satellite&markers=color:red%7C' 
-            . $lat . ',' . $lng 
-            . '&key=' . $googleKey;
-
-        $html .= '<div style="text-align:center; margin:12px 0 16px 0;">';
-        $html .= '<img src="' . htmlspecialchars($staticMapUrl) . '" ';
-        $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Satellite View of Location">';
+    if ($googleKey && $lat && $lng) {
+        $staticUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=18&size=950x450&maptype=satellite&markers=color:red%7C{$lat},{$lng}&key={$googleKey}";
+        $html .= '<div style="text-align:center; margin:12px 0;">';
+        $html .= '<img src="' . htmlspecialchars($staticUrl) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Satellite View">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px;">';
-        $html .= '📍 Satellite imagery unavailable at this time';
-        $html .= '</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px;">📍 Satellite imagery unavailable</div>';
     }
 
-    // === GOOGLE BUSINESS DETAILS (6 rows) ===
-    $html .= '<table class="dataTable" style="margin-top:12px; margin-bottom:20px; page-break-inside:avoid;">';
-    $html .= '<tr><th style="width:35%;">Business Name</th><td>' 
-        . htmlspecialchars($proposal['locationName'] ?? $proposal['entityName'] ?? 'Christy Signs') 
-        . '</td></tr>';
+    $html .= '</div>';
+    return $html;
+}
 
-    $html .= '<tr><th>Google Address</th><td>' 
-        . htmlspecialchars($proposal['formattedAddress'] ?? $proposal['locationAddress'] ?? '3145 N 33rd Ave, Phoenix, AZ 85017, USA') 
-        . '</td></tr>';
+function buildStreetViewSection(array $proposal): string
+{
+    $html = '<div class="section">';
+    $html .= buildSectionHeader('Street View Verification', 'property.png');
 
-    $html .= '<tr><th>Phone Number</th><td>' 
-        . htmlspecialchars($proposal['locationPhone'] ?? $proposal['formattedPhoneNumber'] ?? '(602) 242-4488') 
-        . '</td></tr>';
+    $path = $proposal['reportArtifacts']['streetview'] ?? null;
+    if ($path && file_exists($path)) {
+        $html .= '<div style="text-align:center; margin:8px 0;">';
+        $html .= '<img src="' . htmlspecialchars($path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
+        $html .= '</div>';
+    } else {
+        $html .= '<div class="image-placeholder" style="min-height:260px;">📍 Street View unavailable</div>';
+    }
 
-    $html .= '<tr><th>Business Status</th><td>' 
-        . htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $proposal['businessStatus'] ?? 'Operational')))) 
-        . '</td></tr>';
-
-    $rating = $proposal['locationRating'] ?? $proposal['rating'] ?? '4.1';
-    $reviews = $proposal['locationReviewCount'] ?? $proposal['user_ratings_total'] ?? '18';
-    $html .= '<tr><th>Google Rating</th><td>' 
-        . htmlspecialchars($rating) . ' ★ (' . htmlspecialchars($reviews) . ' reviews)' 
-        . '</td></tr>';
-
-    $html .= '<tr><th>Website</th><td>' 
-        . htmlspecialchars($proposal['locationWebsite'] ?? $proposal['website'] ?? 'https://christysigns.com/') 
-        . '</td></tr>';
-    $html .= '</table>';
-
-    $html .= '</div>'; // Close satellite-group
-
+    $html .= '</div>';
     return $html;
 }
 
@@ -288,178 +161,36 @@ function buildParcelSummarySection(array $proposal): string
 {
     $html = '<div style="page-break-inside:avoid; margin-top:10px;">';
     $html .= buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
-    $html .= '<div class="parcelSummaryBlock" style="page-break-inside:avoid;">';
-    $html .= '<strong>Multiple parcel candidates exist at this address.</strong><br><br>';
+    $html .= '<div class="parcelSummaryBlock">';
+    $html .= 'Multiple parcel candidates exist at this address.<br><br>';
     $html .= 'Review and selection is required before proceeding.';
     $html .= '</div>';
     $html .= '</div>';
-
     return $html;
 }
 
 function buildParcelDetailSection(array $proposal): string
 {
-    $parcelDetails = $proposal['parcelDetails'] ?? [];
-
-    if (empty($parcelDetails)) {
-        return '';
-    }
+    $parcels = $proposal['parcelDetails'] ?? [];
+    if (empty($parcels)) return '';
 
     $html = '<div class="section">';
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
 
-    $html .= '<div class="parcelSummaryBlock" style="margin-bottom:16px;">';
-    $html .= 'The following parcel candidates were identified for this location. Please review and select the correct parcel(s) before proceeding.';
-    $html .= '</div>';
+    foreach ($parcels as $i => $p) {
+        $num = $i + 1;
+        $apn = htmlspecialchars($p['apnRaw'] ?? $p['parcelNumber'] ?? '—');
+        $owner = htmlspecialchars($p['owner'] ?? '—');
+        $addr = htmlspecialchars(trim(($p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
 
-    foreach ($parcelDetails as $index => $parcel) {
-        $parcelNum = $index + 1;
-        $apnRaw    = $parcel['apnRaw'] ?? $parcel['apnDisplay'] ?? '';
-        $apn       = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $apnRaw));
-        $owner     = $parcel['owner'] ?? '—';
-        $address   = trim(($parcel['address'] ?? '') . ', ' . ($parcel['city'] ?? ''));
-
-        $html .= '<div class="parcel-block" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px;">';
-
-        // Header
-        $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">';
-        $html .= '<div>';
-        $html .= '<span style="font-size:13pt; font-weight:700; color:#14377C;">Parcel ' . $parcelNum . '</span>';
-        $html .= '<span style="font-size:12pt; font-weight:600; margin-left:12px;">APN: ' . htmlspecialchars($apnRaw) . '</span>';
-        $html .= '</div>';
-        $html .= '<div style="background:#e6f0ff; color:#14377C; padding:4px 14px; border-radius:5px; font-size:10pt; font-weight:600;">';
-        $html .= 'Confidence: ' . ($parcel['confidence'] ?? 98) . '%';
-        $html .= '</div>';
-        $html .= '</div>';
-
-        // === Main Details Table ===
-        $html .= '<table class="dataTable" style="margin-bottom:14px;">';
-        $html .= '<tr><th style="width:22%;">Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
-        $html .= '<tr><th>Property Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
-
-        // NEW: Mailing Address
-        if (!empty($parcel['mailingAddress'])) {
-            $mailing = trim($parcel['mailingAddress']);
-            if (!empty($parcel['mailingCity']) || !empty($parcel['mailingState'])) {
-                $mailing .= '<br>' . trim(($parcel['mailingCity'] ?? '') . ', ' . ($parcel['mailingState'] ?? '') . ' ' . ($parcel['mailingZip'] ?? ''));
-            }
-            $html .= '<tr><th>Mailing Address</th><td>' . $mailing . '</td></tr>';
-        }
-
-        // NEW: Deed + Sale Information
-        if (!empty($parcel['deedNumber']) || !empty($parcel['saleDate']) || !empty($parcel['salePrice'])) {
-            $saleInfo = '';
-            if (!empty($parcel['deedNumber'])) {
-                $saleInfo .= '<strong>Deed:</strong> ' . htmlspecialchars($parcel['deedNumber']) . '<br>';
-            }
-            if (!empty($parcel['saleDate'])) {
-                $saleInfo .= '<strong>Sale Date:</strong> ' . htmlspecialchars($parcel['saleDate']) . ' ';
-            }
-            if (!empty($parcel['salePrice'])) {
-                $saleInfo .= '| <strong>Sale Price:</strong> $' . number_format((float)$parcel['salePrice']);
-            }
-            $html .= '<tr><th>Deed / Sale Info</th><td>' . $saleInfo . '</td></tr>';
-        }
-
-        // NEW: Property Details
-        if (!empty($parcel['lotSizeSqFt']) || !empty($parcel['yearBuilt']) || !empty($parcel['subdivision'])) {
-            $propDetails = '';
-            if (!empty($parcel['lotSizeSqFt'])) {
-                $propDetails .= '<strong>Lot Size:</strong> ' . number_format((float)$parcel['lotSizeSqFt']) . ' sq ft<br>';
-            }
-            if (!empty($parcel['yearBuilt'])) {
-                $propDetails .= '<strong>Year Built:</strong> ' . htmlspecialchars($parcel['yearBuilt']) . '<br>';
-            }
-            if (!empty($parcel['subdivision'])) {
-                $propDetails .= '<strong>Subdivision:</strong> ' . htmlspecialchars($parcel['subdivision']);
-            }
-            $html .= '<tr><th>Property Details</th><td>' . $propDetails . '</td></tr>';
-        }
-
-        $html .= '</table>';
-
-        // === Maricopa County Link ===
-        $maricopaUrl = 'https://mcassessor.maricopa.gov/';
-        if (!empty($apn)) {
-            $maricopaUrl = 'https://mcassessor.maricopa.gov/Parcel/' . urlencode($apnRaw);
-        }
-
-        $html .= '<div style="text-align:center; margin:16px 0 8px 0;">';
-        $html .= '<a href="' . htmlspecialchars($maricopaUrl) . '" target="_blank" ';
-        $html .= 'style="display:inline-block; background:#14377C; color:white; padding:12px 28px; border-radius:6px; text-decoration:none; font-weight:600; font-size:11.5pt;">';
-        $html .= '🗺️ Open in Maricopa County Map Viewer';
-        $html .= '</a>';
-        $html .= '</div>';
-
-        $html .= '<div style="text-align:center; font-size:9.5pt; color:#555; margin-bottom:8px;">';
-        $html .= 'Official Maricopa County parcel boundaries, ownership &amp; records';
-        $html .= '</div>';
-
-        $html .= '</div>'; // close parcel-block
-    }
-
-    $html .= '</div>';
-
-    return $html;
-}
-
-function buildStreetViewSection(array $proposal): string
-{
-    $html = '<div class="section">';
-
-    $html .= buildSectionHeader('Street View Verification', 'property.png');
-
-    $html .= '<div style="page-break-inside:avoid !important; break-inside:avoid !important;">';
-
-    $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
-
-    // Get coordinates for the link
-    $lat = $proposal['latitude'] 
-        ?? $proposal['locationLatitude'] 
-        ?? $proposal['data']['location']['latitude'] 
-        ?? null;
-
-    $lng = $proposal['longitude'] 
-        ?? $proposal['locationLongitude'] 
-        ?? $proposal['data']['location']['longitude'] 
-        ?? null;
-
-    if ($streetViewPath && file_exists($streetViewPath)) {
-
-        // === IMAGE ===
-        $html .= '<div style="text-align:center; margin:4px 0 8px 0;">';
-        $html .= '<img src="' . htmlspecialchars($streetViewPath) . '" ';
-        $html .= 'style="max-width:100%; width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" ';
-        $html .= 'alt="Street View of Location">';
-        $html .= '</div>';
-
-        // === CAPTION ===
-        $html .= '<p style="text-align:center; font-size:9.5pt; color:#444; margin:0 0 8px 0;">';
-        $html .= 'Google Street View • ' . htmlspecialchars($proposal['locationAddress'] ?? '3145 N 33rd Ave');
-        $html .= '</p>';
-
-        if ($lat && $lng) {
-            $streetViewUrl = "https://www.google.com/maps/@{$lat},{$lng},3a,75y,200h,90t/data=!3m6!1e1!3m4!1s!2e0!7i13312!8i6656";
-
-            $html .= '<div style="text-align:center; margin-bottom:10px;">';
-            $html .= '<a href="' . htmlspecialchars($streetViewUrl) . '" target="_blank" ';
-            $html .= 'style="font-size:9.5pt; color:#14377C; text-decoration:underline;">';
-            $html .= 'Open interactive Street View';
-            $html .= '</a>';
-            $html .= '<span style="font-size:8pt; color:#666;"> (right-click → Open in new tab)</span>';
-            $html .= '</div>';
-        }
-
-    } else {
-        // Placeholder
-        $html .= '<div class="image-placeholder" style="min-height:260px; display:flex; align-items:center; justify-content:center;">';
-        $html .= '<span style="font-size:11pt; color:#555;">📍 Street View imagery unavailable at this time</span>';
+        $html .= '<div class="parcel-block">';
+        $html .= '<strong>Parcel ' . $num . ' — APN: ' . $apn . '</strong><br>';
+        $html .= 'Owner: ' . $owner . '<br>';
+        $html .= 'Address: ' . $addr . '<br><br>';
         $html .= '</div>';
     }
 
-    $html .= '</div>'; // close inner wrapper
-    $html .= '</div>'; // close .section
-
+    $html .= '</div>';
     return $html;
 }
 
@@ -469,48 +200,6 @@ function buildGovernanceSection(array $proposal): string
     $html = buildSectionHeader('Governance &amp; Operational Narrative', 'scales.png');
     $html .= '<div class="highlight">' . nl2br(htmlspecialchars($narrative)) . '</div>';
     return $html;
-}
-
-function generateParcelMapImage(string $lat, string $lng, string $apn, string $googleKey): ?string
-{
-    if (empty($googleKey) || empty($lat) || empty($lng) || empty($apn)) {
-        error_log("[PARCEL MAP] Missing required parameters for APN: $apn");
-        return null;
-    }
-
-    // Create safe filename
-    $safeApn = preg_replace('/[^A-Za-z0-9]/', '', $apn);
-    $filename = 'parcelmap-' . $safeApn . '-' . uniqid() . '.png';
-
-    $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/parcelMaps/';
-    if (!is_dir($ephemeralDir)) {
-        mkdir($ephemeralDir, 0755, true);
-    }
-
-    $outputPath = $ephemeralDir . $filename;
-
-    // High-quality satellite image centered on the parcel
-    $mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
-        . 'center=' . $lat . ',' . $lng
-        . '&zoom=20'
-        . '&size=900x550'
-        . '&maptype=satellite'
-        . '&markers=color:red%7Csize:mid%7Clabel:' . urlencode(substr($apn, -5)) . '%7C' . $lat . ',' . $lng
-        . '&key=' . $googleKey;
-
-    $imageData = @file_get_contents($mapUrl);
-
-    if ($imageData === false || strlen($imageData) < 3000) {
-        error_log("[PARCEL MAP] Failed to fetch image for APN: $apn");
-        return null;
-    }
-
-    if (file_put_contents($outputPath, $imageData) === false) {
-        error_log("[PARCEL MAP] Failed to write image to disk: $outputPath");
-        return null;
-    }
-
-    return $outputPath;
 }
 
 #endregion
@@ -528,206 +217,53 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
     </table>';
 }
 
-function insertPageBreak(): string
-{
-    return '<div style="page-break-before: always;"></div>';
-}
-
-function renderImagePlaceholder(string $type, array $proposal, int $parcelNum = 0): string
-{
-    if ($type === 'satellite' && !empty($proposal['staticMapUrl'])) {
-        return '<div style="text-align:center; margin:15px 0;">
-            <img src="' . htmlspecialchars($proposal['staticMapUrl']) . '" 
-                 style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
-                 alt="Satellite View">
-        </div>';
-    }
-
-    $label = strtoupper($type);
-    if ($type === 'parcel') $label .= ' ' . $parcelNum;
-
-    return '<div class="image-placeholder">[ ' . $label . ' IMAGE PLACEHOLDER ]</div>';
-}
-
 #endregion
 
-#region SECTION 05 - Summary (AI-Powered + Clean)
+#region SECTION 05 - Summary
 
 function generateSummarySection(array $proposal): string
 {
-    $summaryNarrative = 'The operational narrative for this proposal is currently unavailable.';
+    $summary = $proposal['governanceNarrative'] 
+            ?? $proposal['narratives']['ui'] 
+            ?? 'Proposal processing complete.';
 
-    try {
-        $payload = [
-            'type'         => 'proposalNarrative',
-            'promptFile'   => 'proposedContactReportSummary.prompt',
-            'proposalData' => $proposal,
-            'userQuery'    => 'Generate Proposed Contact Report Summary'
-        ];
-
-        $context = stream_context_create([
-            'http' => [
-                'method'  => 'POST',
-                'header'  => "Content-Type: application/json\r\n",
-                'content' => json_encode($payload),
-                'timeout' => 60
-            ]
-        ]);
-
-        $rawResponse = file_get_contents(
-            'https://skyelighting.com/skyesoft/api/askOpenAI.php',
-            false,
-            $context
-        );
-
-        if ($rawResponse === false) {
-            throw new Exception('Failed to connect to askOpenAI.php');
-        }
-
-        $responseData = json_decode($rawResponse, true);
-
-        if (isset($responseData['summaryNarrative']) && trim($responseData['summaryNarrative']) !== '') {
-            $summaryNarrative = trim($responseData['summaryNarrative']);
-        }
-    } catch (Exception $e) {
-        error_log("[PDF] Summary AI Error: " . $e->getMessage());
-        
-        $summaryNarrative = 'The proposal involves adding ' . ($proposal['contactName'] ?? 'Ms. Susan Alderson') .
-                            ' as the Accounting Manager contact to the existing ' .
-                            ($proposal['entityName'] ?? 'Christy Signs') .
-                            ' location at ' . ($proposal['locationAddress'] ?? '3145 N 33rd Ave') . 
-                            ', ' . ($proposal['locationCityStateZip'] ?? 'Phoenix, AZ 85017') . '.';
-    }
-
-    // Safety limit
-    if (strlen($summaryNarrative) > 1250) {
-        $summaryNarrative = substr($summaryNarrative, 0, 1250) . '...';
-    }
-
-    return '
-        <div class="summaryNarrative">
-            ' . nl2br(htmlspecialchars($summaryNarrative)) . '
-        </div>';
+    return '<div class="summaryNarrative">' . nl2br(htmlspecialchars($summary)) . '</div>';
 }
 
 #endregion
 
-#region SECTION 06 - Data Source (Normalized Proposal)
+#region SECTION 06 - Data Normalization
 
 function getProposalData(array $input): array
 {
     return normalizeProposalData($input);
 }
 
-/**
- * Normalizes the raw proposal JSON into a flat, predictable structure
- * for report generation.
- */
 function normalizeProposalData(array $input): array
 {
-    // === CASE 1: Already flat payload ===
-    if (isset($input['entityName']) && isset($input['locationAddress'])) {
-        $base = $input;
-    } else {
-        $base = [];
-    }
-
-    // === FULL NESTED PROPOSAL - Source of Truth ===
-    $root     = $input['proposal'] ?? $input;
-    $data     = $root['data'] ?? $root;
-    $location = $data['location'] ?? [];
-    $contact  = $data['contact']  ?? [];
-    $entity   = $data['entity']   ?? [];
-    $res      = $root['resolution'] ?? [];
-    $pers     = $root['persistence'] ?? [];
-
-    // Build City, State ZIP
-    $cityStateZip = trim(implode(', ', array_filter([
-        $location['locationCity'] ?? '',
-        trim(($location['locationState'] ?? '') . ' ' . ($location['locationZip'] ?? ''))
-    ])));
-
-    // === JURISDICTION - Aggressive Extraction ===
-    $jurisdiction = $location['locationJurisdiction'] 
-                 ?? $base['locationJurisdiction'] 
-                 ?? ($location['parcelDetails'][0]['jurisdiction'] ?? '');
-
-    if (empty($jurisdiction) || strtoupper($jurisdiction) === 'NO CITY/TOWN') {
-        $jurisdiction = 'Maricopa County';
-    } else {
-        $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
-    }
-
-    // === COUNTY FIPS - Aggressive Extraction ===
-    $countyFips = $location['locationCountyFips'] 
-               ?? $base['locationCountyFips'] 
-               ?? ($location['countyFips'] ?? '');
+    $root = $input['data'] ?? $input;
+    $loc  = $root['location'] ?? [];
+    $cont = $root['contact'] ?? [];
+    $ent  = $root['entity'] ?? [];
 
     return [
-        'entityName'           => $entity['entityName'] ?? $base['entityName'] ?? 'Unknown Entity',
-
-        'contactName'          => trim(implode(' ', array_filter([
-                                    $contact['contactSalutation'] ?? '',
-                                    $contact['contactFirstName']  ?? '',
-                                    $contact['contactLastName']   ?? ''
-                                  ]))) ?: $base['contactName'] ?? 'Unknown Contact',
-
-        'contactTitle'         => $contact['contactTitle'] ?? $base['contactTitle'] ?? '',
-        'contactPhone'         => $contact['contactPrimaryPhone'] ?? $base['contactPhone'] ?? '',
-        'contactEmail'         => $contact['contactEmail'] ?? $base['contactEmail'] ?? '',
-
-        'locationAddress'      => $location['locationAddress'] ?? $base['locationAddress'] ?? '',
-        'locationCityStateZip' => $cityStateZip ?: $base['locationCityStateZip'] ?? '—',
-        'locationCounty'       => $location['locationCounty'] ?? $base['locationCounty'] ?? '',
-        'locationCountyFips'   => $countyFips,
-        'locationJurisdiction' => $jurisdiction,
-        'locationPlaceId'      => $location['locationPlaceId'] ?? $base['locationPlaceId'] ?? '',
-
-        // =====================================================
-        // Latitude & Longitude (needed for Street View link)
-        // =====================================================
-        'latitude'             => $location['latitude'] 
-                               ?? $location['locationLatitude'] 
-                               ?? ($base['latitude'] ?? null),
-
-        'longitude'            => $location['longitude'] 
-                               ?? $location['locationLongitude'] 
-                               ?? ($base['longitude'] ?? null),
-
-        'governanceNarrative'  => $root['resolution']['narratives']['decision'][0] 
-                               ?? $base['governanceNarrative'] 
-                               ?? '',
-
-        'confidence'           => $root['confidence'] ?? $base['confidence'] ?? 85,
-        'pc_code'              => $res['pc']['code'] ?? $base['pc_code'] ?? '',
-        'resolutionStatus'     => $res['pc']['status'] ?? $base['resolutionStatus'] ?? '',
-        'commitAllowed'        => ($pers['commitAllowed'] ?? false) ? 'YES' : 'NO',
-
-        'parcelDetails'        => $location['parcelDetails'] ?? $base['parcelDetails'] ?? [],
-
-        // =====================================================
-        // CRITICAL FIX: Carry over reportArtifacts (Street View, etc.)
-        // =====================================================
-        'reportArtifacts'      => $input['reportArtifacts'] 
-                               ?? $root['reportArtifacts'] 
-                               ?? $data['reportArtifacts'] 
-                               ?? []
-    ];
-}
-
-// ================================================
-// HELPER FUNCTIONS
-// ================================================
-
-/**
- * Returns placeholder artifacts (can be expanded later)
- */
-function collectArtifacts(array $proposal): array
-{
-    return [
-        'satellite'   => null,
-        'streetview'  => null,
-        'parcel_maps' => []
+        'entityName'           => $ent['entityName'] ?? 'Unknown Entity',
+        'contactName'          => trim(($cont['contactFirstName'] ?? '') . ' ' . ($cont['contactLastName'] ?? '')) ?: 'Unknown Contact',
+        'contactTitle'         => $cont['contactTitle'] ?? '',
+        'contactPhone'         => $cont['contactPrimaryPhone'] ?? '',
+        'contactEmail'         => $cont['contactEmail'] ?? '',
+        'locationAddress'      => $loc['locationAddress'] ?? '',
+        'locationCityStateZip' => trim(($loc['locationCity'] ?? '') . ', ' . ($loc['locationState'] ?? '') . ' ' . ($loc['locationZip'] ?? '')),
+        'locationCounty'       => $loc['locationCounty'] ?? '',
+        'locationCountyFips'   => $loc['locationCountyFips'] ?? '',
+        'locationJurisdiction' => $loc['locationJurisdiction'] ?? 'Maricopa County',
+        'locationPlaceId'      => $loc['locationPlaceId'] ?? '',
+        'latitude'             => $loc['latitude'] ?? $loc['locationLatitude'] ?? null,
+        'longitude'            => $loc['longitude'] ?? $loc['locationLongitude'] ?? null,
+        'governanceNarrative'  => $input['narratives']['ui'] ?? $input['governanceNarrative'] ?? '',
+        'pc_code'              => $input['pcm']['pc'] ?? '',
+        'parcelDetails'        => $loc['parcelDetails'] ?? [],
+        'reportArtifacts'      => $input['reportArtifacts'] ?? []
     ];
 }
 
