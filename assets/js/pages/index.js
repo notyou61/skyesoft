@@ -2221,6 +2221,19 @@ window.SkyIndex = {
                         <strong style="font-size: 0.95em; display: block; margin-bottom: 4px;">${summaryHeading}</strong>
                         <div class="summary-message-block">${summaryContent}</div>
                     </div>
+                    
+                    <div style="padding: 12px 16px; background: #fff; border-top: 1px solid #eee; font-size: 0.85em;">
+                        <a href="#"
+                        onclick="SkyIndex.viewProposalReport(); return false;"
+                        style="text-decoration: none;
+                                color: #007bff;
+                                font-weight: 500;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 6px;">
+                            📄 View ${reportLabel} (PDF)
+                        </a>
+                    </div>
 
                     <div class="result-actions" style="padding: 12px 16px; border-top: 1px solid #eee; background: #fff; display: flex; gap: 8px;">
                         <button class="btn ${theme.btnClass}" style="flex: 2; padding: 4px 10px; font-size: 0.85em; ${theme.btnStyle}" ${theme.btnDisabled ? 'disabled' : ''} onclick="${theme.btnHandler}">
@@ -2332,6 +2345,111 @@ window.SkyIndex = {
         input.value = JSON.stringify(payload);
 
         form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        // Restore link text
+        if (link) {
+            setTimeout(() => {
+                link.textContent = originalText;
+            }, 2000);
+        }
+    },
+    // #endregion
+
+    // #region 📇 View Proposal Report — PDF Generation (Generalized)
+    viewProposalReport() {
+        const prop = this.currentProposal || this.lastProposal || {};
+        if (!prop?.data) {
+            alert("No active proposal to view report.");
+            return;
+        }
+
+        const d = prop.data || {};
+        const loc = d.location || {};
+        const cont = d.contact || {};
+        const ent = d.entity || {};
+        const res = prop.resolution || prop.governance || {};
+        const pers = prop.persistence || {};
+        const pcm = prop.pcm || {};
+
+        // Optional loading feedback on the clicked link
+        const link = document.querySelector('a[onclick*="viewProposalReport"]');
+        const originalText = link ? link.textContent : 'View Proposal Report';
+        if (link) link.textContent = 'Generating PDF...';
+
+        // Build Identity Info
+        const contactFirstLast = `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim();
+        const contactName = contactFirstLast || 'Unknown Contact';
+        const contactTitle = cont.contactTitle || '';
+        const entityName = ent.entityName || 'Unknown Entity';
+
+        // Dynamic Report Title & Filename
+        let reportTitle = prop.reportTitle || 
+            (prop.proposalKind === 'location' ? 'Proposed Location Report' : 'Proposed Contact Report');
+
+        let reportFilename = `${reportTitle}: ${contactName}`;
+        if (contactTitle) reportFilename += `, ${contactTitle}`;
+        reportFilename += ` - ${entityName}`;
+
+        // Jurisdiction normalization
+        const rawJurisdiction = loc.locationJurisdiction || loc.parcelDetails?.[0]?.jurisdiction || "";
+        const locationJurisdiction = !rawJurisdiction ||
+            rawJurisdiction.toUpperCase() === "NO CITY/TOWN"
+                ? "Maricopa County"
+                : rawJurisdiction.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+
+        const payload = {
+            reportType: "proposal",                    // Generalized
+            reportTitle: reportTitle,
+
+            entityName: entityName,
+            entityAction: pers.entity?.action || "",
+
+            contactName: contactName,
+            contactTitle: contactTitle,
+            contactPhone: cont.contactPrimaryPhone || "",
+            contactEmail: cont.contactEmail || "",
+            contactAction: pers.contact?.action || "",
+
+            locationAddress: loc.locationAddress || "",
+            locationCityStateZip: `${loc.locationCity || ''}, ${loc.locationState || ''} ${loc.locationZip || ''}`.trim(),
+            locationPlaceId: loc.locationPlaceId || "",
+            locationCounty: loc.locationCounty || "",
+            locationCountyFips: loc.locationCountyFips || "",
+            locationJurisdiction: locationJurisdiction,
+
+            latitude: loc.latitude || loc.locationLatitude || null,
+            longitude: loc.longitude || loc.locationLongitude || null,
+
+            governanceNarrative: res.narratives?.decision?.[0] || res.reason || "",
+            confidence: prop.confidence || 85,
+
+            // === NEW: Proposal Classification Fields ===
+            proposalKind: prop.proposalKind || "contact",
+            proposalCode: pcm.pc || prop.pcm?.pc || res.pc?.code || "",
+            resolutionStatus: res.resolution_status || res.pc?.status || "RS-0",
+
+            commitAllowed: pers.commitAllowed ? "YES" : "NO",
+            parcelDetails: loc.parcelDetails || [],
+
+            // Critical: Custom filename
+            reportFilename: reportFilename
+        };
+
+        // === FORM POST ===
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/skyesoft/api/generateReports.php';
+        form.target = '_blank';
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'payload';
+        input.value = JSON.stringify(payload);
+        form.appendChild(input);
+
         document.body.appendChild(form);
         form.submit();
         document.body.removeChild(form);
