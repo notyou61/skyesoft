@@ -237,6 +237,8 @@ function generateSummarySection(array $proposal): string
         </div>';
 }
 
+#endregion
+
 #region SECTION 06 - Data Normalization
 
 function getProposalData(array $input): array

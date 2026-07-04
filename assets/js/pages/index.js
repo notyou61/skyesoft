@@ -2415,7 +2415,7 @@ window.SkyIndex = {
                 : rawJurisdiction.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
 
         const payload = {
-            reportType: "contact_proposal",                    // Generalized
+            reportType: "contact_proposal",
             reportTitle: reportTitle,
 
             entityName: entityName,
@@ -2437,16 +2437,18 @@ window.SkyIndex = {
             latitude: loc.latitude || loc.locationLatitude || null,
             longitude: loc.longitude || loc.locationLongitude || null,
 
-            governanceNarrative: res.narratives?.decision?.[0] || res.reason || "",
+            governanceNarrative: prop.narratives?.ui || prop.narratives?.report || res.reason || "",
             confidence: prop.confidence || 85,
 
-            // === NEW: Proposal Classification Fields ===
             proposalKind: prop.proposalKind || "contact",
             proposalCode: pcm.pc || prop.pcm?.pc || res.pc?.code || "",
             resolutionStatus: res.resolution_status || res.pc?.status || "RS-0",
 
             commitAllowed: pers.commitAllowed ? "YES" : "NO",
             parcelDetails: loc.parcelDetails || [],
+
+            // === FULL NARRATIVES ===
+            narratives: prop.narratives || {},
 
             // Critical: Custom filename
             reportFilename: reportFilename
