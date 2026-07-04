@@ -447,4 +447,44 @@ function generateStreetViewImage(
     return $tempPath;
 }
 
+function generateParcelMapImage(string $lat, string $lng, string $apn, string $googleKey): ?string
+{
+    if (empty($googleKey) || empty($lat) || empty($lng) || empty($apn)) {
+        error_log("[PARCEL MAP] Missing parameters for APN: $apn");
+        return null;
+    }
+
+    $safeApn = preg_replace('/[^A-Za-z0-9]/', '', $apn);
+    $filename = 'parcelmap-' . $safeApn . '-' . uniqid() . '.png';
+
+    $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/parcelMaps/';
+    if (!is_dir($ephemeralDir)) {
+        mkdir($ephemeralDir, 0755, true);
+    }
+
+    $outputPath = $ephemeralDir . $filename;
+
+    $mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
+        . 'center=' . $lat . ',' . $lng
+        . '&zoom=20'
+        . '&size=900x550'
+        . '&maptype=satellite'
+        . '&markers=color:red%7Csize:mid%7Clabel:' . urlencode(substr($apn, -5)) . '%7C' . $lat . ',' . $lng
+        . '&key=' . $googleKey;
+
+    $imageData = @file_get_contents($mapUrl);
+
+    if ($imageData === false || strlen($imageData) < 3000) {
+        error_log("[PARCEL MAP] Failed to fetch image for APN: $apn");
+        return null;
+    }
+
+    if (file_put_contents($outputPath, $imageData) === false) {
+        error_log("[PARCEL MAP] Failed to write image: $outputPath");
+        return null;
+    }
+
+    return $outputPath;
+}
+
 #endregion
