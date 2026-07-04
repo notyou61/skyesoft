@@ -223,11 +223,20 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 
 function generateSummarySection(array $proposal): string
 {
+    // Prefer the rich narrative from the proposal
     $summary = $proposal['governanceNarrative'] 
             ?? $proposal['narratives']['ui'] 
+            ?? $proposal['narratives']['report'] 
             ?? 'Proposal processing complete.';
 
-    return '<div class="summaryNarrative">' . nl2br(htmlspecialchars($summary)) . '</div>';
+    // Optional: Make it more executive / scannable
+    $summary = trim($summary);
+
+    return '
+        <div class="summaryNarrative" style="background:#f8f9fa; padding:16px; border-left:4px solid #17a2b8; margin-bottom:20px;">
+            <strong>Proposal Summary</strong><br><br>
+            ' . nl2br(htmlspecialchars($summary)) . '
+        </div>';
 }
 
 #endregion
@@ -267,3 +276,5 @@ function normalizeProposalData(array $input): array
         'reportArtifacts'      => $input['reportArtifacts'] ?? []
     ];
 }
+
+#endregion
