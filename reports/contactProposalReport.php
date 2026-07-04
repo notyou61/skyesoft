@@ -241,45 +241,50 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
-    // Try multiple possible structures
+    // Deep dive into common proposal structures
     $root = $input['data'] ?? $input['proposal'] ?? $input;
     $data = $root['data'] ?? $root;
-    
-    $loc  = $data['location'] ?? $root['location'] ?? [];
-    $cont = $data['contact'] ?? $root['contact'] ?? [];
-    $ent  = $data['entity'] ?? $root['entity'] ?? [];
-    $pcm  = $input['pcm'] ?? $root['pcm'] ?? [];
-    $narr = $input['narratives'] ?? $root['narratives'] ?? [];
 
-    // Build full name
+    $entity   = $data['entity']   ?? $root['entity']   ?? [];
+    $contact  = $data['contact']  ?? $root['contact']  ?? [];
+    $location = $data['location'] ?? $root['location'] ?? [];
+    $pcm      = $input['pcm']     ?? $root['pcm']      ?? [];
+    $narr     = $input['narratives'] ?? $root['narratives'] ?? [];
+
+    // Full contact name
     $fullName = trim(implode(' ', array_filter([
-        $cont['contactFirstName'] ?? $cont['firstName'] ?? '',
-        $cont['contactLastName'] ?? $cont['lastName'] ?? ''
+        $contact['contactSalutation'] ?? '',
+        $contact['contactFirstName']  ?? $contact['firstName'] ?? '',
+        $contact['contactLastName']   ?? $contact['lastName'] ?? ''
     ])));
 
-    // City State ZIP
+    // City, State ZIP
     $cityStateZip = trim(implode(', ', array_filter([
-        $loc['locationCity'] ?? $loc['city'] ?? '',
-        trim(($loc['locationState'] ?? $loc['state'] ?? '') . ' ' . ($loc['locationZip'] ?? $loc['zip'] ?? ''))
+        $location['locationCity'] ?? $location['city'] ?? '',
+        trim(($location['locationState'] ?? $location['state'] ?? '') . ' ' . ($location['locationZip'] ?? $location['zip'] ?? ''))
     ])));
 
     return [
-        'entityName'           => $ent['entityName'] ?? $ent['name'] ?? 'Unknown Entity',
+        'entityName'           => $entity['entityName'] ?? $entity['name'] ?? 'Unknown Entity',
+
         'contactName'          => $fullName ?: 'Unknown Contact',
-        'contactTitle'         => $cont['contactTitle'] ?? $cont['title'] ?? '',
-        'contactPhone'         => $cont['contactPrimaryPhone'] ?? $cont['primaryPhone'] ?? '',
-        'contactEmail'         => $cont['contactEmail'] ?? $cont['email'] ?? '',
-        'locationAddress'      => $loc['locationAddress'] ?? $loc['address'] ?? '',
+        'contactTitle'         => $contact['contactTitle'] ?? $contact['title'] ?? '',
+        'contactPhone'         => $contact['contactPrimaryPhone'] ?? $contact['primaryPhone'] ?? '',
+        'contactEmail'         => $contact['contactEmail'] ?? $contact['email'] ?? '',
+
+        'locationAddress'      => $location['locationAddress'] ?? $location['address'] ?? '',
         'locationCityStateZip' => $cityStateZip ?: '—',
-        'locationCounty'       => $loc['locationCounty'] ?? '',
-        'locationCountyFips'   => $loc['locationCountyFips'] ?? '',
-        'locationJurisdiction' => $loc['locationJurisdiction'] ?? 'Maricopa County',
-        'locationPlaceId'      => $loc['locationPlaceId'] ?? '',
-        'latitude'             => $loc['latitude'] ?? $loc['locationLatitude'] ?? null,
-        'longitude'            => $loc['longitude'] ?? $loc['locationLongitude'] ?? null,
-        'governanceNarrative'  => $narr['ui'] ?? $input['governanceNarrative'] ?? 'Proposal processing complete.',
+        'locationCounty'       => $location['locationCounty'] ?? '',
+        'locationCountyFips'   => $location['locationCountyFips'] ?? '',
+        'locationJurisdiction' => $location['locationJurisdiction'] ?? 'Maricopa County',
+        'locationPlaceId'      => $location['locationPlaceId'] ?? '',
+
+        'latitude'             => $location['latitude'] ?? $location['locationLatitude'] ?? null,
+        'longitude'            => $location['longitude'] ?? $location['locationLongitude'] ?? null,
+
+        'governanceNarrative'  => $narr['ui'] ?? $narr['report'] ?? 'Proposal processing complete.',
         'pc_code'              => $pcm['pc'] ?? '',
-        'parcelDetails'        => $loc['parcelDetails'] ?? [],
+        'parcelDetails'        => $location['parcelDetails'] ?? [],
         'reportArtifacts'      => $input['reportArtifacts'] ?? []
     ];
 }
