@@ -1192,34 +1192,30 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
 
 
 // * Generates a standard-compliant filename according to Universal Artifact Standard rules.
-function generateArtifactFilename(string $proposalId, string $mediaType, string $sequence, string $extension = 'jpg'): string {
-    // 1. Classification (CCC) - Defaulting to permanent Record for core visual files
-    $ccc = 'REC';
+function generateArtifactFilename(string $classification, string $proposalId, string $mediaType, string $sequence, string $extension = 'jpg'): string {
+    // 1. Classification (CCC) - Expects TMP, REC, or SYS
+    $ccc = strtoupper(substr(trim($classification), 0, 3));
 
     // 2. Media Type (MMM) - Fixed-width formatting uppercase 3 chars
     $mmm = strtoupper(substr(trim($mediaType), 0, 3));
-
-    // 3. Extract Purpose Code (PPP) and 6-digit Object ID (OOOOOO) from Proposal ID (PRP-000001)
+    
+    // Default Fallbacks
     $ppp = 'PRP';
     $oooooo = '000000';
-    if (preg_match('/^([A-Z]{3})-([0-9]{6})$/i', trim($proposalId), $matches)) {
+
+    // Single-line comment explanation: Extract prefix if present, otherwise pad raw numeric ID to 6 digits
+    $cleanId = trim($proposalId);
+    if (preg_match('/^([A-Z]{3})-([0-9]+)$/i', $cleanId, $matches)) {
         $ppp = strtoupper($matches[1]);
-        $oooooo = $matches[2];
+        $oooooo = str_pad($matches[2], 6, '0', STR_PAD_LEFT);
+    } elseif (ctype_digit($cleanId)) {
+        $oooooo = str_pad($cleanId, 6, '0', STR_PAD_LEFT);
     }
 
-    // 4. User ID (UUU) - System automated or default worker tracking sequence
     $uuu = '000';
-
-    // 5. Ten-digit Unix Timestamp (TTTTTTTTTT)
     $tttttttttt = (string)time();
-    if (strlen($tttttttttt) !== 10) {
-        $tttttttttt = str_pad(substr($tttttttttt, 0, 10), 10, '0', STR_PAD_RIGHT);
-    }
-
-    // 6. Sequence Number (SSS) - Fixed-width 3 chars with leading zeros
     $sss = str_pad(preg_replace('/[^0-9]/', '', $sequence), 3, '0', STR_PAD_LEFT);
 
-    // Assemble uniform canonical filename with lowercase extension
     return sprintf('%s-%s-%s-%s-%s-%s-%s.%s', $ccc, $mmm, $ppp, $oooooo, $uuu, $tttttttttt, $sss, strtolower($extension));
 }
 
@@ -1293,8 +1289,8 @@ function generateStreetViewImage(
         mkdir($artifactsDir, 0755, true);
     }
 
-    // Single-line comment explanation: Generate compliant filename using universal helper function
-    $filename = generateArtifactFilename($proposalId, 'IMG', '1', 'jpg');
+    // Single-line comment explanation: Generate compliant filename passing TMP as classification for unaccepted proposals
+    $filename = generateArtifactFilename('TMP', $proposalId, 'IMG', '1', 'jpg');
     $fullPath = $artifactsDir . $filename;
 
     if (file_put_contents($fullPath, $imageData) === false) {
@@ -1343,8 +1339,8 @@ function generateParcelMapImage(
         return null;
     }
 
-    // Single-line comment explanation: Generate compliant filename using universal helper function
-    $filename = generateArtifactFilename($proposalId, 'IMG', '2', 'png');
+    // Single-line comment explanation: Generate compliant filename passing TMP as classification for unaccepted proposals
+    $filename = generateArtifactFilename('TMP', $proposalId, 'IMG', '2', 'png');
     $outputPath = $artifactsDir . $filename;
 
     if (file_put_contents($outputPath, $imageData) === false) {
