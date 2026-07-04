@@ -2240,16 +2240,12 @@ window.SkyIndex = {
                         <div class="summary-message-block">${summaryContent}</div>
                     </div>
                     
+                    <!-- Proposal Report Link -->
                     <div style="padding: 12px 16px; background: #fff; border-top: 1px solid #eee; font-size: 0.85em;">
-                        <a href="#"
-                        onclick="SkyIndex.viewProposalReport(); return false;"
-                        style="text-decoration: none;
-                                color: #007bff;
-                                font-weight: 500;
-                                display: inline-flex;
-                                align-items: center;
-                                gap: 6px;">
-                            📄 View ${reportLabel} (PDF)
+                        <a href="#" 
+                           onclick="SkyIndex.viewProposalReport(); return false;"
+                           style="text-decoration: none; color: #007bff; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                            📄 View Proposal Report (PDF)
                         </a>
                     </div>
 
