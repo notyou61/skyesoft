@@ -223,19 +223,15 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 
 function generateSummarySection(array $proposal): string
 {
-    // Prefer the rich narrative from the proposal
-    $summary = $proposal['governanceNarrative'] 
-            ?? $proposal['narratives']['ui'] 
+    // Prefer the best narrative from the JSON
+    $summary = $proposal['narratives']['ui'] 
+            ?? $proposal['governanceNarrative'] 
             ?? $proposal['narratives']['report'] 
             ?? 'Proposal processing complete.';
 
-    // Optional: Make it more executive / scannable
-    $summary = trim($summary);
-
-    return '
-        <div class="summaryNarrative" style="background:#f8f9fa; padding:16px; border-left:4px solid #17a2b8; margin-bottom:20px;">
-            <strong>Proposal Summary</strong><br><br>
-            ' . nl2br(htmlspecialchars($summary)) . '
+    return buildSectionHeader('Proposal Summary', 'clipboard.png') . '
+        <div class="summaryNarrative" style="padding:16px; background:#f8f9fa; border-left:4px solid #17a2b8; margin-bottom:20px; line-height:1.5;">
+            ' . nl2br(htmlspecialchars(trim($summary))) . '
         </div>';
 }
 
