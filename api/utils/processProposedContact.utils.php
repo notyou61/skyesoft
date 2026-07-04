@@ -1190,6 +1190,27 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
     ];
 }
 
+// Infer Street View Heading based on address (simple heuristic)
+function inferStreetViewHeading(string $address): int
+{
+    preg_match('/^\s*(\d+)/', $address, $matches);
+
+    $streetNumber = isset($matches[1]) ? (int)$matches[1] : 0;
+    $isOdd = $streetNumber > 0 ? ($streetNumber % 2 === 1) : true;
+
+    $upper = strtoupper($address);
+
+    if (strpos($upper, ' AVE') !== false) {
+        return $isOdd ? 90 : 270;
+    }
+
+    if (strpos($upper, ' ST') !== false || strpos($upper, ' RD') !== false) {
+        return $isOdd ? 180 : 0;
+    }
+
+    return 90;
+}
+
 // Generate Street View Image → /artifacts/
 function generateStreetViewImage(
     float|string $lat,
