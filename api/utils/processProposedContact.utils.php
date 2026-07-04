@@ -1190,6 +1190,123 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
     ];
 }
 
+// Generate Street View Image → /artifacts/
+function generateStreetViewImage(
+    string $lat,
+    string $lng,
+    string $googleKey,
+    string $address = '',
+    string $proposalId = ''
+): ?string
+{
+    if (empty($googleKey) || empty($lat) || empty($lng)) {
+        error_log("[generateReports] generateStreetViewImage() - Missing lat, lng or API key");
+        return null;
+    }
+
+    $heading = inferStreetViewHeading($address);
+    $fov = 85;
+
+    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
+        . '&location=' . $lat . ',' . $lng
+        . '&heading=' . $heading
+        . '&pitch=5'
+        . '&fov=' . $fov
+        . '&key=' . $googleKey;
+
+    error_log("[generateReports] Street View URL: " . $url);
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_FOLLOWLOCATION => true
+    ]);
+
+    $imageData = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($imageData === false || $httpCode != 200) {
+        error_log("[generateReports] Street View failed. HTTP: $httpCode | Error: $curlError");
+        return null;
+    }
+
+    if (strlen($imageData) < 1000) {
+        error_log("[generateReports] Street View returned invalid image");
+        return null;
+    }
+
+    // Save directly to /artifacts/
+    $artifactsDir = __DIR__ . '/../artifacts/';
+    if (!is_dir($artifactsDir)) {
+        mkdir($artifactsDir, 0755, true);
+    }
+
+    $safeAddress = preg_replace('/[^A-Za-z0-9]/', '', substr($address, 0, 30));
+    $filename = $proposalId . '-streetview-' . $safeAddress . '-' . uniqid() . '.jpg';
+    $fullPath = $artifactsDir . $filename;
+
+    if (file_put_contents($fullPath, $imageData) === false) {
+        error_log("[generateReports] Failed to write Street View to $fullPath");
+        return null;
+    }
+
+    error_log("[generateReports] ✅ Street View saved: $filename");
+    return $fullPath;
+}
+
+// Generate Parcel Map → /artifacts/
+function generateParcelMapImage(
+    string $lat,
+    string $lng,
+    string $apn,
+    string $googleKey,
+    string $proposalId = ''
+): ?string
+{
+    if (empty($googleKey) || empty($lat) || empty($lng) || empty($apn)) {
+        error_log("[PARCEL MAP] Missing parameters for APN: $apn");
+        return null;
+    }
+
+    $safeApn = preg_replace('/[^A-Za-z0-9]/', '', $apn);
+
+    $artifactsDir = __DIR__ . '/../artifacts/';
+    if (!is_dir($artifactsDir)) {
+        mkdir($artifactsDir, 0755, true);
+    }
+
+    $filename = $proposalId . '-parcelmap-' . $safeApn . '-' . uniqid() . '.png';
+    $outputPath = $artifactsDir . $filename;
+
+    $mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
+        . 'center=' . $lat . ',' . $lng
+        . '&zoom=20'
+        . '&size=900x550'
+        . '&maptype=satellite'
+        . '&markers=color:red%7Csize:mid%7Clabel:' . urlencode(substr($apn, -5)) . '%7C' . $lat . ',' . $lng
+        . '&key=' . $googleKey;
+
+    $imageData = @file_get_contents($mapUrl);
+
+    if ($imageData === false || strlen($imageData) < 3000) {
+        error_log("[PARCEL MAP] Failed to fetch image for APN: $apn");
+        return null;
+    }
+
+    if (file_put_contents($outputPath, $imageData) === false) {
+        error_log("[PARCEL MAP] Failed to write image: $outputPath");
+        return null;
+    }
+
+    error_log("[PARCEL MAP] ✅ Saved: $filename");
+    return $outputPath;
+}
+
 // =====================================================
 // DEFENSIVE SHARED HELPERS (No duplicates)
 // =====================================================

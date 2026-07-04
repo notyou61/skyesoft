@@ -1305,6 +1305,54 @@ $clientWorkspaceKey = getenv('GOOGLE_MAPS_API_KEY')
     ?: '';
 
 // =====================================================
+// ARTIFACT GENERATION (Street View + Parcel Maps)
+// =====================================================
+$artifacts = [];
+
+$proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
+
+$googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
+    ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
+    ?: '';
+
+$lat = $data['location']['locationLatitude'] ?? null;
+$lng = $data['location']['locationLongitude'] ?? null;
+
+if ($googleKey && $lat && $lng) {
+
+    // Street View
+    $streetViewPath = generateStreetViewImage(
+        $lat, 
+        $lng, 
+        $googleKey, 
+        $data['location']['locationAddress'] ?? '', 
+        $proposalId
+    );
+    if ($streetViewPath) {
+        $artifacts['streetview'] = $streetViewPath;
+    }
+
+    // Parcel Maps
+    $parcelMaps = [];
+    foreach ($data['location']['parcelDetails'] ?? [] as $parcel) {
+        $apn = $parcel['apnRaw'] ?? $parcel['parcelNumber'] ?? 'unknown';
+        $parcelPath = generateParcelMapImage(
+            $lat, 
+            $lng, 
+            $apn, 
+            $googleKey, 
+            $proposalId
+        );
+        if ($parcelPath) {
+            $parcelMaps[] = $parcelPath;
+        }
+    }
+    if (!empty($parcelMaps)) {
+        $artifacts['parcel_maps'] = $parcelMaps;
+    }
+}
+
+// =====================================================
 // FINAL ACTION RESPONSE UPDATE
 // =====================================================
 if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
@@ -1313,8 +1361,8 @@ if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
             'success'           => true,
             'status'            => 'proposed',
             'proposalId'        => $proposalId,
-            'proposalKind'      => $proposalType ?? 'contact',        // NEW
-            'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'), // NEW
+            'proposalKind'      => $proposalType ?? 'contact',
+            'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'),
             'data'              => $data ?? [],
             'databaseResolution'=> $databaseResolution ?? [],
             'pcm'               => $pcm ?? [],
@@ -1323,13 +1371,14 @@ if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
             'governance'        => $governance ?? [],
             'narratives'        => $narratives ?? [],
             'meta'              => $proposalSnapshot['meta'] ?? [],
-            'rawInput'          => $proposalSnapshot['rawInput'] ?? []
+            'rawInput'          => $proposalSnapshot['rawInput'] ?? [],
+
+            // NEW: Artifacts
+            'reportArtifacts'   => $artifacts
         ];
 
-        // Ensure key is appended to internal historical tracking logs
         $finalResponseData['google']['apiKey'] = $clientWorkspaceKey;
 
-        // Update the existing action record
         $updateStmt = $pdo->prepare("
             UPDATE tblActions 
             SET actionResponseData = ? 
@@ -1355,58 +1404,31 @@ echo json_encode([
     'success'           => true,
     'status'            => 'proposed',
     'proposalId'        => $proposalId,
-    'proposalKind'      => $proposalType ?? 'contact',           // NEW
-    'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'), // NEW
+    'proposalKind'      => $proposalType ?? 'contact',
+    'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'),
     'activitySessionId' => $context['activitySessionId'] ?? '',
 
-    // Inject secure key parameters for frontend SDK bootstrap chaining
     'google' => [
         'apiKey' => $clientWorkspaceKey
     ],
 
-    // Core Structured Data
     'data' => [
         'entity'   => $data['entity']   ?? [],
         'contact'  => $data['contact']  ?? [],
         'location' => $data['location'] ?? []
     ],
 
-    // Database Resolution
     'databaseResolution' => $databaseResolution ?? [],
-
-    // Classification
-    'pcm' => [
-        'pc' => (isset($pcm['pc']) ? $pcm['pc'] : null),
-        'rs' => (isset($pcm['rs']) ? $pcm['rs'] : [])
-    ],
-
-    // Execution Plan
+    'pcm' => $pcm ?? [],
     'commitPlan' => $commitPlan ?? [],
-
-    // UI Presentation State
     'ui' => $uiState ?? [],
-
-    // Governance Details (why blocked, missing fields, etc.)
     'governance' => $governance ?? ['blockingIssues' => []],
-
-    // Human-readable Narratives
     'narratives' => $narratives ?? [],
+    'meta' => $proposalSnapshot['meta'] ?? [],
+    'rawInput' => $proposalSnapshot['rawInput'] ?? [],
 
-    // Meta / Summary
-    'meta' => [
-        'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
-        'parcelCount'        => $data['location']['parcelCount'] ?? 0,
-        'censusValidated'    => $data['location']['locationCensusValidated'] ?? false,
-        'googleValidated'    => $data['location']['locationValidated'] ?? false,
-        'searchAddress'      => $searchAddress ?? ''
-    ],
-
-    // Raw Input
-    'rawInput' => [
-        'original' => $rawInput ?? '',
-        'type'     => 'signature',
-        'source'   => 'skyebot_prompt'
-    ]
+    // NEW: Artifact paths
+    'reportArtifacts' => $artifacts
 
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
