@@ -223,11 +223,13 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 
 function generateSummarySection(array $proposal): string
 {
-    // Prefer the best narrative from the JSON
+    // Direct access to the exact narrative from your JSON
     $summary = $proposal['narratives']['ui'] 
-            ?? $proposal['governanceNarrative'] 
             ?? $proposal['narratives']['report'] 
+            ?? $proposal['governanceNarrative'] 
             ?? 'Proposal processing complete.';
+
+    error_log("DEBUG Summary final text: " . substr($summary, 0, 150));
 
     return buildSectionHeader('Proposal Summary', 'clipboard.png') . '
         <div class="summaryNarrative" style="padding:16px; background:#f8f9fa; border-left:4px solid #17a2b8; margin-bottom:20px; line-height:1.5;">
