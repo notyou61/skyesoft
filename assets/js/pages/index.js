@@ -3069,24 +3069,42 @@ window.SkyIndex = {
     },
 
     // --------------------------------------------------
-    // Signature Detection
+    // Signature Detection — Improved for Structured Proposals
     // --------------------------------------------------
     isObviousContactSignature(query) {
-        const text = (query || '').trim();
-        if (!text) {
-            return false;
-        }
-        // Check for standard digital communication patterns
-        const hasEmail = /@\S+\.\S{2,}/.test(text);
-        const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
-        // Fallback block detection: checks lines and structure if common delimiters are present
-        const lineCount = text.split('\n').filter(l => l.trim().length > 0).length;
-        const hasCommaSeparator = text.includes(',') && lineCount >= 3;
-        // Fast-path evaluation route
-        if ((hasEmail && hasPhone) || (hasEmail && lineCount >= 3) || (hasPhone && hasCommaSeparator)) {
+        if (!query || typeof query !== 'string') return false;
+
+        const text = query.trim();
+        if (text.length < 15) return false;
+
+        const lower = text.toLowerCase();
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        const lineCount = lines.length;
+
+        // 1. Explicit structural markers (very strong signal)
+        if (/Entity:|Location:|Contact:|Phone:|Email:/i.test(text)) {
             return true;
         }
-        return false;
+
+        // 2. Classic signature patterns
+        const hasEmail = /@\S+\.\S{2,}/.test(text);
+        const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
+        const hasName   = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
+        const hasAddress = /\b\d{1,6}\s+[A-Za-z]/.test(text);
+
+        // 3. Multi-line structured input
+        const hasCommaSeparator = text.includes(',') && lineCount >= 2;
+        const hasStructuredLines = lineCount >= 3 && (hasName || hasAddress);
+
+        return (
+            (hasEmail && hasPhone) ||
+            (hasEmail && (lineCount >= 2 || hasName)) ||
+            (hasPhone && (hasCommaSeparator || hasStructuredLines)) ||
+            (hasName && hasAddress && lineCount >= 2) ||
+            lower.includes('permit manager') ||   // common in your domain
+            lower.includes('entity:') ||
+            lower.includes('location:')
+        );
     },
 
     // Global query router tracking application intent workflow execution
