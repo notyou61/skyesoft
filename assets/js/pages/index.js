@@ -2415,7 +2415,7 @@ window.SkyIndex = {
                 : rawJurisdiction.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
 
         const payload = {
-            reportType: "proposal",                    // Generalized
+            reportType: "contact_proposal",                    // Generalized
             reportTitle: reportTitle,
 
             entityName: entityName,
