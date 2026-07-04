@@ -241,27 +241,44 @@ function getProposalData(array $input): array
 
 function normalizeProposalData(array $input): array
 {
-    $root = $input['data'] ?? $input;
-    $loc  = $root['location'] ?? [];
-    $cont = $root['contact'] ?? [];
-    $ent  = $root['entity'] ?? [];
+    // Try multiple possible structures
+    $root = $input['data'] ?? $input['proposal'] ?? $input;
+    $data = $root['data'] ?? $root;
+    
+    $loc  = $data['location'] ?? $root['location'] ?? [];
+    $cont = $data['contact'] ?? $root['contact'] ?? [];
+    $ent  = $data['entity'] ?? $root['entity'] ?? [];
+    $pcm  = $input['pcm'] ?? $root['pcm'] ?? [];
+    $narr = $input['narratives'] ?? $root['narratives'] ?? [];
+
+    // Build full name
+    $fullName = trim(implode(' ', array_filter([
+        $cont['contactFirstName'] ?? $cont['firstName'] ?? '',
+        $cont['contactLastName'] ?? $cont['lastName'] ?? ''
+    ])));
+
+    // City State ZIP
+    $cityStateZip = trim(implode(', ', array_filter([
+        $loc['locationCity'] ?? $loc['city'] ?? '',
+        trim(($loc['locationState'] ?? $loc['state'] ?? '') . ' ' . ($loc['locationZip'] ?? $loc['zip'] ?? ''))
+    ])));
 
     return [
-        'entityName'           => $ent['entityName'] ?? 'Unknown Entity',
-        'contactName'          => trim(($cont['contactFirstName'] ?? '') . ' ' . ($cont['contactLastName'] ?? '')) ?: 'Unknown Contact',
-        'contactTitle'         => $cont['contactTitle'] ?? '',
-        'contactPhone'         => $cont['contactPrimaryPhone'] ?? '',
-        'contactEmail'         => $cont['contactEmail'] ?? '',
-        'locationAddress'      => $loc['locationAddress'] ?? '',
-        'locationCityStateZip' => trim(($loc['locationCity'] ?? '') . ', ' . ($loc['locationState'] ?? '') . ' ' . ($loc['locationZip'] ?? '')),
+        'entityName'           => $ent['entityName'] ?? $ent['name'] ?? 'Unknown Entity',
+        'contactName'          => $fullName ?: 'Unknown Contact',
+        'contactTitle'         => $cont['contactTitle'] ?? $cont['title'] ?? '',
+        'contactPhone'         => $cont['contactPrimaryPhone'] ?? $cont['primaryPhone'] ?? '',
+        'contactEmail'         => $cont['contactEmail'] ?? $cont['email'] ?? '',
+        'locationAddress'      => $loc['locationAddress'] ?? $loc['address'] ?? '',
+        'locationCityStateZip' => $cityStateZip ?: '—',
         'locationCounty'       => $loc['locationCounty'] ?? '',
         'locationCountyFips'   => $loc['locationCountyFips'] ?? '',
         'locationJurisdiction' => $loc['locationJurisdiction'] ?? 'Maricopa County',
         'locationPlaceId'      => $loc['locationPlaceId'] ?? '',
         'latitude'             => $loc['latitude'] ?? $loc['locationLatitude'] ?? null,
         'longitude'            => $loc['longitude'] ?? $loc['locationLongitude'] ?? null,
-        'governanceNarrative'  => $input['narratives']['ui'] ?? $input['governanceNarrative'] ?? '',
-        'pc_code'              => $input['pcm']['pc'] ?? '',
+        'governanceNarrative'  => $narr['ui'] ?? $input['governanceNarrative'] ?? 'Proposal processing complete.',
+        'pc_code'              => $pcm['pc'] ?? '',
         'parcelDetails'        => $loc['parcelDetails'] ?? [],
         'reportArtifacts'      => $input['reportArtifacts'] ?? []
     ];
