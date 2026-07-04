@@ -1244,19 +1244,37 @@ window.SkyIndex = {
                 })
             });
 
+            // === IMPROVED ERROR HANDLING ===
             if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
+                const errorText = await res.text().catch(() => 'No error body');
+                console.error(`❌ Proposal API HTTP ${res.status}:`, errorText);
+                throw new Error(`HTTP ${res.status} - ${errorText.substring(0, 200)}`);
             }
 
-            const proposal = await res.json();
+            let proposal;
+            try {
+                proposal = await res.json();
+            } catch (parseErr) {
+                console.error('❌ Failed to parse JSON response from proposal API');
+                throw new Error('Invalid JSON response from server');
+            }
+
+            console.log('✅ Proposal API returned:', proposal);
+
+            // Hand off to renderer
             this.handleContactProposal(proposal);
 
         } catch (err) {
             console.error('❌ Contact proposal workflow failed:', err);
-            this.appendSystemLine('❌ Failed to process contact proposal. Falling back to AI...');
 
-            // Safe fallback
-            await this.executeAICommand(input, activitySessionId);
+            // More informative UI message
+            this.appendSystemLine(`⚠️ Proposal engine error: ${err.message}`, 'warning');
+            
+            // Only fall back to AI for genuine failures (not validation errors)
+            if (err.message.includes('HTTP') || err.message.includes('Invalid JSON')) {
+                this.appendSystemLine('Falling back to AI analysis...', 'system');
+                await this.executeAICommand(input, activitySessionId);
+            }
         }
     },
     // #endregion
