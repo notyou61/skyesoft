@@ -1190,15 +1190,18 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
     ];
 }
 
-// Generate Street View Image → /artifacts/
+/// Generate Street View Image → /artifacts/
 function generateStreetViewImage(
-    string $lat,
-    string $lng,
+    $lat,           // Accept float or string
+    $lng,           // Accept float or string
     string $googleKey,
     string $address = '',
     string $proposalId = ''
 ): ?string
 {
+    $lat = (string)$lat;
+    $lng = (string)$lng;
+
     if (empty($googleKey) || empty($lat) || empty($lng)) {
         error_log("[generateReports] generateStreetViewImage() - Missing lat, lng or API key");
         return null;
@@ -1261,13 +1264,16 @@ function generateStreetViewImage(
 
 // Generate Parcel Map → /artifacts/
 function generateParcelMapImage(
-    string $lat,
-    string $lng,
+    $lat,           // Accept float or string
+    $lng,           // Accept float or string
     string $apn,
     string $googleKey,
     string $proposalId = ''
 ): ?string
 {
+    $lat = (string)$lat;
+    $lng = (string)$lng;
+
     if (empty($googleKey) || empty($lat) || empty($lng) || empty($apn)) {
         error_log("[PARCEL MAP] Missing parameters for APN: $apn");
         return null;
