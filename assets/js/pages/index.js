@@ -1566,9 +1566,23 @@ window.SkyIndex = {
                 return;
             }
 
+            // Prevent duplicate script loads
+            if (window._googleMapsLoading) {
+                window._googleMapsLoadedCallbacks = window._googleMapsLoadedCallbacks || [];
+                window._googleMapsLoadedCallbacks.push(callback);
+                return;
+            }
+
+            window._googleMapsLoading = true;
+            window._googleMapsLoadedCallbacks = [callback];
+
             window._googleMapsSdkCallback = () => {
                 delete window._googleMapsSdkCallback;
-                callback();
+                window._googleMapsLoading = false;
+
+                const cbs = window._googleMapsLoadedCallbacks || [];
+                cbs.forEach(cb => cb());
+                window._googleMapsLoadedCallbacks = [];
             };
 
             const script = document.createElement('script');
@@ -1576,7 +1590,9 @@ window.SkyIndex = {
             script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=_googleMapsSdkCallback`;
             script.async = true;
             script.defer = true;
-            script.onerror = () => alert("Failed to fetch Google Maps JS engine layout modules.");
+            script.onerror = () => {
+                alert("Failed to load Google Maps SDK.");
+            };
             document.head.appendChild(script);
         },
 
@@ -1825,14 +1841,22 @@ window.SkyIndex = {
             document.body.appendChild(modal);
 
             this._loadGoogleMapsSdk(apiKey, () => {
-                this._initializeDualPaneWorkspace(
-                    lat, lng,
-                    'proposalWorkspaceMapCanvas',
-                    'proposalWorkspacePanCanvas',
-                    proposal.streetView.heading,
-                    proposal.streetView.pitch,
-                    proposal.streetView.zoom
-                );
+                // Small delay ensures modal is painted and elements are observable
+                setTimeout(() => {
+                    try {
+                        this._initializeDualPaneWorkspace(
+                            lat, lng,
+                            'proposalWorkspaceMapCanvas',
+                            'proposalWorkspacePanCanvas',
+                            proposal.streetView?.heading || 105,
+                            proposal.streetView?.pitch || 8,
+                            proposal.streetView?.zoom || 1
+                        );
+                    } catch (e) {
+                        console.error("Failed to initialize Google Maps workspace:", e);
+                        alert("Google Maps failed to initialize. Check console.");
+                    }
+                }, 100);   // 100ms delay is usually enough
             });
         },
 
