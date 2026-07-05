@@ -6,9 +6,6 @@ open sftp://notyou64:Steven1!@68.178.221.71:22 -hostkey="ssh-ed25519 255 9NktM0x
 # =========================================================
 # 📁 LOCAL REPO ROOT
 # =========================================================
-# Passed from PowerShell:
-# deploy.cmd "C:\Users\Steve\Documents\skyesoft"
-# =========================================================
 lcd "%1%"
 
 # =========================================================
@@ -23,23 +20,22 @@ cd /home/notyou64/public_html
 # Delete remote files no longer existing locally
 #
 # EXCLUDED:
-#   .git
-#   node_modules
-#   secure
+#   artifacts/
+#   vendor/
+#   .git/
+#   node_modules/
+#   secure/
 #   .env files
-#   runtime logs/caches
+#   Runtime caches
 #
 # INCLUDED:
-#   vendor/       ← REQUIRED for Composer (mPDF)
-#   tmp/          ← REQUIRED for mPDF tempDir
+#   Everything else
 # =========================================================
-synchronize remote -delete -filemask="|*/vendor/;*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
+synchronize remote -delete -filemask="|artifacts/;*/vendor/;*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
 
 # =========================================================
 # 🧪 PREVIEW MODE (DRY RUN)
 # =========================================================
-# Uncomment to preview changes without uploading
-# =========================================================
-# synchronize remote -preview -delete -filemask="|*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
+# synchronize remote -preview -delete -filemask="|artifacts/;*/vendor/;*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
 
 exit
