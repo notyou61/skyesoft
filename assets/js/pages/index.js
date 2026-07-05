@@ -1596,7 +1596,7 @@ window.SkyIndex = {
             document.head.appendChild(script);
         },
 
-        // INITIALIZE DUAL-PANE STREET VIEW WORKSPACE
+        // INITIALIZE DUAL-PANE STREET VIEW WORKSPACE (Modern + Warning-Free)
         _initializeDualPaneWorkspace(
             lat,
             lng,
@@ -1609,15 +1609,11 @@ window.SkyIndex = {
 
             const centerPoint = { lat: lat, lng: lng };
 
-            // Clear any previous instances
-            if (this._streetViewWorkspace.map) {
-                google.maps.event.clearInstanceListeners(this._streetViewWorkspace.map);
-            }
-            if (this._streetViewWorkspace.panorama) {
-                google.maps.event.clearInstanceListeners(this._streetViewWorkspace.panorama);
-            }
+            // Clear old listeners
+            if (this._streetViewWorkspace.map) google.maps.event.clearInstanceListeners(this._streetViewWorkspace.map);
+            if (this._streetViewWorkspace.panorama) google.maps.event.clearInstanceListeners(this._streetViewWorkspace.panorama);
 
-            // Initialize overhead map canvas
+            // Initialize overhead map
             this._streetViewWorkspace.map = new google.maps.Map(
                 document.getElementById(mapCanvasId),
                 {
@@ -1643,11 +1639,10 @@ window.SkyIndex = {
 
             this._streetViewWorkspace.map.setStreetView(this._streetViewWorkspace.panorama);
 
-            // Mount movable focal target pin marker
-            this._streetViewWorkspace.marker = new google.maps.Marker({
+            // Modern Advanced Marker (replaces deprecated google.maps.Marker)
+            this._streetViewWorkspace.marker = new google.maps.marker.AdvancedMarkerElement({
                 position: centerPoint,
                 map: this._streetViewWorkspace.map,
-                draggable: true,
                 title: "Selected Frame Perspective Centerpoint"
             });
 
@@ -1655,36 +1650,28 @@ window.SkyIndex = {
             const panObj    = this._streetViewWorkspace.panorama;
             const markerObj = this._streetViewWorkspace.marker;
 
-            // =====================================================
-            // Interactive Hook A - Map click → move panorama
-            // =====================================================
+            // Interactive Hook A - Map click
             mapObj.addListener('click', (event) => {
                 const point = event.latLng;
-                markerObj.setPosition(point);
+                markerObj.position = point;
                 panObj.setPosition(point);
             });
 
-            // =====================================================
-            // Interactive Hook B - Marker drag → update panorama
-            // =====================================================
-            markerObj.addListener('dragend', () => {
-                const point = markerObj.getPosition();
+            // Interactive Hook B - Marker drag (AdvancedMarkerElement uses gmp-dragend)
+            markerObj.addListener('gmp-dragend', () => {
+                const point = markerObj.position;
                 panObj.setPosition(point);
             });
 
-            // =====================================================
-            // Interactive Hook C - Panorama movement → sync map + marker
-            // =====================================================
+            // Interactive Hook C - Panorama movement
             panObj.addListener('position_changed', () => {
                 const position = panObj.getPosition();
                 mapObj.setCenter(position);
-                markerObj.setPosition(position);
+                markerObj.position = position;
             });
 
-            // =====================================================
-            // Compatibility aliases (used by both proposal + general workflows)
-            // =====================================================
-            this._streetViewWorkspace.panoramaInstance = panObj;   // for replaceProposalStreetView()
+            // Compatibility alias
+            this._streetViewWorkspace.panoramaInstance = panObj;
 
             console.log(`[DUAL WORKSPACE] Initialized → Map: ${mapCanvasId} | Panorama: ${panoCanvasId}`);
         },
