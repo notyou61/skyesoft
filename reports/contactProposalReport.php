@@ -243,7 +243,35 @@ function generateSummarySection(array $proposal): string
 
 function getProposalData(array $input): array
 {
-    return normalizeProposalData($input);
+    $data = $input['data'] ?? $input;
+    if (isset($input['reportArtifacts'])) {
+        $artifacts = $input['reportArtifacts'];
+    } elseif (isset($data['reportArtifacts'])) {
+        $artifacts = $data['reportArtifacts'];
+    } else {
+        $artifacts = [];
+    }
+    // Single-line comment explanation: Map normalized framework keys straight to downstream presentation layout names
+    return [
+        'entityName'           => $data['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
+        'contactName'          => $data['contactName'] ?? $input['contactName'] ?? 'Unknown Contact',
+        'contactTitle'         => $data['contactTitle'] ?? $input['contactTitle'] ?? '',
+        'contactPhone'         => $data['contactPhone'] ?? $input['contactPhone'] ?? '',
+        'contactEmail'         => $data['contactEmail'] ?? $input['contactEmail'] ?? '',
+        'locationAddress'      => $data['locationAddress'] ?? $input['locationAddress'] ?? '',
+        'locationCityStateZip' => $data['locationCityStateZip'] ?? $input['locationCityStateZip'] ?? '—',
+        'locationJurisdiction' => $data['locationJurisdiction'] ?? $input['locationJurisdiction'] ?? 'Maricopa County',
+        'latitude'             => $data['latitude'] ?? $input['latitude'] ?? null,
+        'longitude'            => $data['longitude'] ?? $input['longitude'] ?? null,
+        'governanceNarrative'  => $data['governanceNarrative'] ?? $input['governanceNarrative'] ?? 'Proposal processing complete.',
+        'proposalCode'         => $data['proposalCode'] ?? $input['proposalCode'] ?? $data['pc_code'] ?? $input['pc_code'] ?? '',
+        'parcelDetails'        => $data['parcelDetails'] ?? $input['parcelDetails'] ?? [],
+        'reportArtifacts'      => [
+            'streetViewImage'  => $artifacts['streetview'] ?? $artifacts['streetViewImage'] ?? null,
+            'satelliteImage'   => $artifacts['satellite'] ?? $artifacts['satelliteImage'] ?? null,
+            'parcelMapImage'   => $artifacts['parcel_maps'][0] ?? $artifacts['parcelMapImage'] ?? null
+        ]
+    ];
 }
 
 function normalizeProposalData(array $input): array
