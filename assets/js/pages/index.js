@@ -1916,21 +1916,25 @@ window.SkyIndex = {
                 address: proposal.location?.locationAddress || ''
             };
 
-            fetch('getStreetView.php', {
+            // ✅ CORRECTED PATH
+            fetch('/skyesoft/api/getStreetView.php', {   // ← Updated path
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestPayload)
             })
-            .then(r => r.json())
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error(`HTTP ${r.status} - ${r.statusText}`);
+                }
+                return r.json();
+            })
             .then(result => {
                 if (result.success && result.imagePath) {
                     proposal.streetView.imagePath = result.imagePath;
 
-                    // Refresh UI
                     if (typeof this.refreshProposalCard === 'function') {
                         this.refreshProposalCard(proposal);
                     } else {
-                        // Fallback: re-render the current proposal if needed
                         this.renderProposedContact(this.currentProposalPayload);
                     }
 
@@ -1941,7 +1945,7 @@ window.SkyIndex = {
                 }
             })
             .catch(err => {
-                console.error(err);
+                console.error('[REPLACE STREET VIEW]', err);
                 alert('Failed to update Street View: ' + err.message);
             });
         },
