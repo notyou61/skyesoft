@@ -1240,70 +1240,68 @@ function inferStreetViewHeading(string $address): int
     return 90;
 }
 
-// Save directly to canonical /artifacts/ with fixed-length protocol naming
+// Generate Ephemeral Landscape Street View Image for PDF Reports
 function generateStreetViewImage(
-    float|string $lat,
-    float|string $lng,
+    string $lat,
+    string $lng,
     string $googleKey,
-    string $address = '',
-    string $proposalId = '',
-    string $manualHeading = null
+    string $address = ''
 ): ?string {
-    $lat = (string)$lat;
-    $lng = (string)$lng;
     if (empty($googleKey) || empty($lat) || empty($lng)) {
-        error_log("[generateReports] generateStreetViewImage() - Missing parameters");
+        error_log("[generateReports] generateStreetViewImage() - Missing lat, lng or API key");
         return null;
     }
-    // Explicit reference to the canonical root artifacts directory path
-    $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts/';
-    if (!is_dir($artifactsDir)) {
-        mkdir($artifactsDir, 0755, true);
-    }
-    // Single-line comment explanation: Check metadata endpoint first to avoid downloading gray placeholder graphics if imagery is missing
-    if ($manualHeading === null) {
-        $metaUrl = 'https://maps.googleapis.com/maps/api/streetview/metadata?location=' . $lat . ',' . $lng . '&key=' . $googleKey;
-        $metaJson = @file_get_contents($metaUrl);
-        $metaData = $metaJson ? json_decode($metaJson, true) : null;
-        if (isset($metaData['status']) && $metaData['status'] === 'ZERO_RESULTS') {
-            $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '1', 'jpg');
-            $fullPath = $artifactsDir . $filename;
-            file_put_contents($fullPath, 'NO_IMAGERY_AVAILABLE');
-            error_log("[generateReports] ⚠️ No Street View coverage found. Sentinel token dropped for Workspace modal.");
-            return $fullPath;
-        }
-    }
-    $heading = ($manualHeading !== null) ? $manualHeading : inferStreetViewHeading($address);
-    $fov = 85;
-    $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
+
+    $heading = inferStreetViewHeading($address);
+    $fov = 90; // Expanded field of view to maximize landscape contextual capture
+
+    // Upgraded dimensions to 1200x800 for high-resolution landscape presentation
+    $url = 'https://maps.googleapis.com/maps/api/streetview?size=1200x800'
         . '&location=' . $lat . ',' . $lng
         . '&heading=' . $heading
-        . '&pitch=5'
+        . '&pitch=8'
         . '&fov=' . $fov
         . '&key=' . $googleKey;
+
+    error_log("[generateReports] generateStreetViewImage() - Calling URL: " . $url);
+
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_FOLLOWLOCATION => true
     ]);
+
     $imageData = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
-    if ($imageData === false || $httpCode != 200 || strlen($imageData) < 1000) {
-        error_log("[generateReports] Street View image capture failed.");
+
+    if ($imageData === false || $httpCode != 200) {
+        error_log("[generateReports] generateStreetViewImage() - cURL failed. HTTP Code: $httpCode | cURL Error: $curlError");
         return null;
     }
-    // Single-line comment explanation: Generate compliant filename passing STR to identify it explicitly as a street view record
-    $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '1', 'jpg');
-    $fullPath = $artifactsDir . $filename;
-    if (file_put_contents($fullPath, $imageData) === false) {
-        error_log("[generateReports] Failed to write to $fullPath");
+
+    if (strlen($imageData) < 3000) {
+        error_log("[generateReports] generateStreetViewImage() - Google returned invalid payload size: " . strlen($imageData) . " bytes");
         return null;
     }
-    error_log("[generateReports] ✅ Protocol Compliant Street View saved: $filename");
-    return $fullPath;
+
+    $ephemeralDir = __DIR__ . '/../data/runtimeEphemeral/streetview/';
+    if (!is_dir($ephemeralDir)) {
+        mkdir($ephemeralDir, 0755, true);
+    }
+
+    $tempPath = $ephemeralDir . 'streetview-' . uniqid() . '.jpg';
+
+    if (file_put_contents($tempPath, $imageData) === false) {
+        error_log("[generateReports] generateStreetViewImage() - Failed to write image to disk");
+        return null;
+    }
+
+    return $tempPath;
 }
 
 // Save directly to canonical /artifacts/ with fixed-length protocol naming
