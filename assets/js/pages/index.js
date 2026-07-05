@@ -1722,15 +1722,19 @@ window.SkyIndex = {
             const proposal = payload.data || {};
             const location = proposal.location || {};
 
+            // Support both common key patterns from backend (locationLatitude / location.latitude)
+            const lat = parseFloat(location.latitude || location.locationLatitude);
+            const lng = parseFloat(location.longitude || location.locationLongitude);
+
             // Validate required geometry
-            if (!location.latitude || !location.longitude) {
+            if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                console.error('[STREET VIEW] Missing coordinates in location object:', location);
                 alert('This proposal does not contain valid location coordinates.');
                 return;
             }
 
             // Open the Proposal Street View Editor
             this.openProposalStreetViewEditor();
-
         },
 
         // PROPOSAL STREET VIEW EDITOR
@@ -1739,7 +1743,6 @@ window.SkyIndex = {
             console.log('[PROPOSAL STREET VIEW EDITOR] Opening...');
 
             const payload = this.currentProposalPayload;
-
             if (!payload) {
                 alert('No active proposal is loaded.');
                 return;
@@ -1748,10 +1751,12 @@ window.SkyIndex = {
             const proposal = payload.data || {};
             const location = proposal.location || {};
 
-            const lat = parseFloat(location.latitude);
-            const lng = parseFloat(location.longitude);
+            // Support both possible key patterns from backend
+            let lat = parseFloat(location.latitude || location.locationLatitude);
+            let lng = parseFloat(location.longitude || location.locationLongitude);
 
-            if (!lat || !lng) {
+            if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                console.error('Location coordinates not found:', location);
                 alert('This proposal does not contain valid location coordinates.');
                 return;
             }
@@ -1767,25 +1772,23 @@ window.SkyIndex = {
                 };
             }
 
-            // Use application-level API key (NOT stored in proposal)
-            const apiKey = this.googleMapsApiKey || window.GOOGLE_MAPS_API_KEY || '';
+            const apiKey = this.googleMapsApiKey || 
+                        payload.google?.apiKey || 
+                        window.GOOGLE_MAPS_API_KEY || '';
 
             if (!apiKey) {
                 alert('Google Maps API key is unavailable.');
                 return;
             }
 
-            // Store references for replace function + future shared workspace
+            // Store references
             this._activeProposalStreetView = proposal;
             this._streetViewWorkspace = this._streetViewWorkspace || {};
             this._streetViewWorkspace.mode = 'proposal';
 
-            // Close any existing editor
             this.closeProposalStreetViewEditor();
 
-            // =====================================================
-            // BUILD MODAL
-            // =====================================================
+            // Build modal (unchanged)
             const modal = document.createElement('div');
             modal.id = 'proposalStreetViewEditor';
             modal.className = 'modal-backdrop';
@@ -1798,11 +1801,10 @@ window.SkyIndex = {
 
             modal.innerHTML = `
                 <div style="background:#fff; padding:20px; border-radius:12px; width:95%; max-width:1150px; box-shadow:0 15px 45px rgba(0,0,0,.6);">
-
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                         <div>
                             <strong style="display:block; font-size:1.15em; color:#222;">Proposal Street View Editor</strong>
-                            <small style="display:block; color:#666; margin-top:3px;">📍 ${this.escapeHtml(location.locationAddress || '')}</small>
+                            <small style="display:block; color:#666; margin-top:3px;">📍 ${this.escapeHtml(location.locationAddress || location.address || '')}</small>
                             <small style="display:block; color:#888; margin-top:5px;">Adjust the Street View image used in the Proposal Report.</small>
                         </div>
                         <button onclick="SkyIndex.closeProposalStreetViewEditor();" style="background:none; border:none; font-size:32px; cursor:pointer; color:#bbb;">&times;</button>
@@ -1817,17 +1819,14 @@ window.SkyIndex = {
                         <button onclick="SkyIndex.closeProposalStreetViewEditor();" style="background:#f1f3f5; color:#495057; border:none; padding:11px 20px; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
                         <button onclick="SkyIndex.replaceProposalStreetView();" style="background:#28a745; color:white; border:none; padding:11px 26px; border-radius:6px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(40,167,69,.3);">💾 Replace Proposal Image</button>
                     </div>
-
                 </div>
             `;
 
             document.body.appendChild(modal);
 
-            // Initialize Google Maps
             this._loadGoogleMapsSdk(apiKey, () => {
                 this._initializeDualPaneWorkspace(
-                    lat,
-                    lng,
+                    lat, lng,
                     'proposalWorkspaceMapCanvas',
                     'proposalWorkspacePanCanvas',
                     proposal.streetView.heading,
