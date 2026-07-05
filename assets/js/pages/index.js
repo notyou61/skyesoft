@@ -1566,20 +1566,13 @@ window.SkyIndex = {
                 return;
             }
 
-            // Prevent duplicate script loads
-            if (window._googleMapsLoading) {
-                window._googleMapsLoadedCallbacks = window._googleMapsLoadedCallbacks || [];
-                window._googleMapsLoadedCallbacks.push(callback);
-                return;
-            }
-
             window._googleMapsLoading = true;
-            window._googleMapsLoadedCallbacks = [callback];
+            window._googleMapsLoadedCallbacks = window._googleMapsLoadedCallbacks || [];
+            window._googleMapsLoadedCallbacks.push(callback);
 
             window._googleMapsSdkCallback = () => {
                 delete window._googleMapsSdkCallback;
                 window._googleMapsLoading = false;
-
                 const cbs = window._googleMapsLoadedCallbacks || [];
                 cbs.forEach(cb => cb());
                 window._googleMapsLoadedCallbacks = [];
@@ -1587,12 +1580,11 @@ window.SkyIndex = {
 
             const script = document.createElement('script');
             script.type = 'text/javascript';
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=_googleMapsSdkCallback`;
+            // Added libraries=marker
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=marker&callback=_googleMapsSdkCallback`;
             script.async = true;
             script.defer = true;
-            script.onerror = () => {
-                alert("Failed to load Google Maps SDK.");
-            };
+            script.onerror = () => alert("Failed to load Google Maps SDK.");
             document.head.appendChild(script);
         },
 
@@ -1657,9 +1649,17 @@ window.SkyIndex = {
                 panObj.setPosition(point);
             });
 
-            // Interactive Hook B - Marker drag (AdvancedMarkerElement uses gmp-dragend)
-            markerObj.addListener('gmp-dragend', () => {
-                const point = markerObj.position;
+            // Temporary fallback (old marker)
+            this._streetViewWorkspace.marker = new google.maps.Marker({
+                position: centerPoint,
+                map: this._streetViewWorkspace.map,
+                draggable: true,
+                title: "Selected Frame Perspective Centerpoint"
+            });
+
+            // Then update the drag listener back to 'dragend'
+            markerObj.addListener('dragend', () => {
+                const point = markerObj.getPosition();
                 panObj.setPosition(point);
             });
 
