@@ -1306,50 +1306,17 @@ $clientWorkspaceKey = getenv('GOOGLE_MAPS_API_KEY')
     ?: '';
 
 // =====================================================
-// ARTIFACT GENERATION (Street View + Parcel Maps)
+// ARTIFACT GENERATION (Street View + Parcel Maps) — Centralized
 // =====================================================
-$artifacts = [];
-
-$proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
-
 $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') 
     ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
     ?: '';
 
-$lat = $data['location']['locationLatitude'] ?? null;
-$lng = $data['location']['locationLongitude'] ?? null;
-
-if ($googleKey && $lat && $lng) {
-
-    // Street View
-    // Single-line comment explanation: Generate temporary, protocol-compliant street-level view imagery under the STR purpose code
-    $streetViewPath = generateStreetViewImage(
-        $lat, 
-        $lng, 
-        $googleKey, 
-        $data['location']['locationAddress'] ?? '', 
-        $proposalId
-    );
-    if ($streetViewPath) {
-        $artifacts['streetview'] = $streetViewPath;
-    }
-
-    // Parcel Maps
-    foreach ($data['location']['parcelDetails'] ?? [] as $parcel) {
-        $apn = $parcel['apnRaw'] ?? $parcel['parcelNumber'] ?? 'unknown';
-        // Single-line comment explanation: Generate temporary, protocol-compliant satellite imagery under the SAT purpose code
-        $parcelPath = generateParcelMapImage(
-            $lat, 
-            $lng, 
-            $apn, 
-            $googleKey, 
-            $proposalId
-        );
-        if ($parcelPath) {
-            $artifacts['satellite'] = $parcelPath;
-        }
-    }
-}
+$artifacts = generateProposalArtifacts(
+    $data['location'] ?? [],
+    $proposalId,
+    $googleKey
+);
 
 // =====================================================
 // FINAL ACTION RESPONSE UPDATE
