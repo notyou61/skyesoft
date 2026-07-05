@@ -1667,6 +1667,57 @@ window.SkyIndex = {
             this.closeStreetViewModal();
         },
 
+        // PROPOSAL STREET VIEW EDITOR - Opens the Proposal Street View Editor
+        adjustProposalStreetView() {
+
+            console.log('[PROPOSAL STREET VIEW EDITOR] Opening...');
+
+            // Validate active proposal
+            if (!this.currentProposalPayload) {
+                alert('No active proposal is available.');
+                return;
+            }
+
+            const payload  = this.currentProposalPayload;
+            const proposal = payload.data || {};
+            const location = proposal.location || {};
+
+            // Validate required geometry
+            if (!location.latitude || !location.longitude) {
+                alert('This proposal does not contain valid location coordinates.');
+                return;
+            }
+
+            // Build Street View payload
+            const streetViewData = {
+                proposalId: proposal.proposalId || '',
+                address: location.locationAddress || location.address || '',
+                fullAddress: [
+                    location.locationAddress || location.address,
+                    location.locationCity || location.city,
+                    location.locationState || location.state,
+                    location.locationZip || location.zip
+                ].filter(Boolean).join(', '),
+
+                latitude:  location.latitude,
+                longitude: location.longitude,
+
+                heading: proposal.streetView?.heading || 105,
+                pitch:   proposal.streetView?.pitch   || 8,
+                fov:     proposal.streetView?.fov     || 65,
+
+                imagePath: proposal.streetView?.imagePath || '',
+                apiKey:    proposal.streetView?.apiKey    || '',
+                interactiveUrl: proposal.streetView?.interactiveUrl || ''
+            };
+
+            console.log('[PROPOSAL STREET VIEW]', streetViewData);
+
+            // Open the Proposal Street View Editor
+            this.openProposalStreetViewEditor(streetViewData);
+
+        },
+
     // #endregion
 
     // #region 📍 Location Proposal Workflow (Clean + No Duplicates)
@@ -2240,13 +2291,21 @@ window.SkyIndex = {
                         <div class="summary-message-block">${summaryContent}</div>
                     </div>
                     
-                    <!-- Proposal Report Link -->
-                    <div style="padding: 12px 16px; background: #fff; border-top: 1px solid #eee; font-size: 0.85em;">
-                        <a href="#" 
-                           onclick="SkyIndex.viewProposalReport(); return false;"
-                           style="text-decoration: none; color: #007bff; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                    <!-- Proposal Artifacts -->
+                    <div style="padding: 12px 16px; background: #fff; border-top: 1px solid #eee; font-size: 0.85em; display: flex; flex-direction: column; gap: 8px;">
+
+                        <a href="#"
+                        onclick="SkyIndex.viewProposalReport(); return false;"
+                        style="text-decoration: none; color: #007bff; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
                             📄 View Proposal Report (PDF)
                         </a>
+
+                        <a href="#"
+                        onclick="SkyIndex.adjustProposalStreetView(); return false;"
+                        style="text-decoration: none; color: #007bff; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                            📷 Adjust Street View
+                        </a>
+
                     </div>
 
                     <div class="result-actions" style="padding: 12px 16px; border-top: 1px solid #eee; background: #fff; display: flex; gap: 8px;">
