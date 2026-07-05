@@ -1549,14 +1549,17 @@ window.SkyIndex = {
             document.body.appendChild(modal);
 
             this._loadGoogleMapsSdk(apiKey, () => {
-                this._initializeDualPaneWorkspace(
-                    lat, lng,
-                    'workspaceMapCanvas',      // ← Correct canvas IDs for general workflow
-                    'workspacePanCanvas',
-                    data.heading || 105,
-                    data.pitch || 8,
-                    data.zoom || 1
-                );
+                // Small delay for DOM readiness
+                setTimeout(() => {
+                    this._initializeDualPaneWorkspace(
+                        lat, lng,
+                        'workspaceMapCanvas',
+                        'workspacePanCanvas',
+                        data.heading || 105,
+                        data.pitch || 8,
+                        data.zoom || 1
+                    );
+                }, 100);
             });
         },
 
@@ -1566,13 +1569,20 @@ window.SkyIndex = {
                 return;
             }
 
+            // Prevent duplicate script loads
+            if (window._googleMapsLoading) {
+                window._googleMapsLoadedCallbacks = window._googleMapsLoadedCallbacks || [];
+                window._googleMapsLoadedCallbacks.push(callback);
+                return;
+            }
+
             window._googleMapsLoading = true;
-            window._googleMapsLoadedCallbacks = window._googleMapsLoadedCallbacks || [];
-            window._googleMapsLoadedCallbacks.push(callback);
+            window._googleMapsLoadedCallbacks = [callback];
 
             window._googleMapsSdkCallback = () => {
                 delete window._googleMapsSdkCallback;
                 window._googleMapsLoading = false;
+
                 const cbs = window._googleMapsLoadedCallbacks || [];
                 cbs.forEach(cb => cb());
                 window._googleMapsLoadedCallbacks = [];
@@ -1580,7 +1590,7 @@ window.SkyIndex = {
 
             const script = document.createElement('script');
             script.type = 'text/javascript';
-            // Added libraries=marker
+            // ✅ Added libraries=marker to fix deprecation
             script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=marker&callback=_googleMapsSdkCallback`;
             script.async = true;
             script.defer = true;
@@ -1631,7 +1641,7 @@ window.SkyIndex = {
 
             this._streetViewWorkspace.map.setStreetView(this._streetViewWorkspace.panorama);
 
-            // Modern Advanced Marker (replaces deprecated google.maps.Marker)
+            // Modern Advanced Marker
             this._streetViewWorkspace.marker = new google.maps.marker.AdvancedMarkerElement({
                 position: centerPoint,
                 map: this._streetViewWorkspace.map,
@@ -1649,17 +1659,9 @@ window.SkyIndex = {
                 panObj.setPosition(point);
             });
 
-            // Temporary fallback (old marker)
-            this._streetViewWorkspace.marker = new google.maps.Marker({
-                position: centerPoint,
-                map: this._streetViewWorkspace.map,
-                draggable: true,
-                title: "Selected Frame Perspective Centerpoint"
-            });
-
-            // Then update the drag listener back to 'dragend'
-            markerObj.addListener('dragend', () => {
-                const point = markerObj.getPosition();
+            // Interactive Hook B - Marker drag
+            markerObj.addListener('gmp-dragend', () => {
+                const point = markerObj.position;
                 panObj.setPosition(point);
             });
 
