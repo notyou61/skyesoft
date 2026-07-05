@@ -1266,7 +1266,7 @@ function generateStreetViewImage(
         $metaJson = @file_get_contents($metaUrl);
         $metaData = $metaJson ? json_decode($metaJson, true) : null;
         if (isset($metaData['status']) && $metaData['status'] === 'ZERO_RESULTS') {
-            $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '1', 'jpg');
+            $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '001', 'jpg');
             $fullPath = $artifactsDir . $filename;
             file_put_contents($fullPath, 'NO_IMAGERY_AVAILABLE');
             error_log("[generateReports] ⚠️ No Street View coverage found. Sentinel token dropped for Workspace modal.");
@@ -1275,7 +1275,7 @@ function generateStreetViewImage(
     }
     $heading = ($manualHeading !== null) ? $manualHeading : inferStreetViewHeading($address);
     $fov = 90;
-    $url = 'https://maps.googleapis.com/maps/api/streetview?size=1200x800'
+    $url = 'https://maps.googleapis.com/maps/api/streetview?size=1200x600'
         . '&location=' . $lat . ',' . $lng
         . '&heading=' . $heading
         . '&pitch=8'
@@ -1296,13 +1296,13 @@ function generateStreetViewImage(
         return null;
     }
     // Single-line comment explanation: Generate compliant filename passing STR to identify it explicitly as a street view record
-    $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '1', 'jpg');
+    $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '001', 'jpg');
     $fullPath = $artifactsDir . $filename;
     if (file_put_contents($fullPath, $imageData) === false) {
         error_log("[generateReports] Failed to write to $fullPath");
         return null;
     }
-    error_log("[generateReports] ✅ Protocol Compliant Street View saved: $filename");
+    error_log("[generateReports] ✅ Protocol Compliant Widescreen Street View saved: $filename");
     return $fullPath;
 }
 
@@ -1799,38 +1799,29 @@ function generateProposalArtifacts(array $location, string $proposalId, string $
     $lat = (float)$location['locationLatitude'];
     $lng = (float)$location['locationLongitude'];
     $address = trim($location['locationAddress'] ?? $location['address'] ?? 'unknown');
-    $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts';
-    if (!is_dir($artifactsDir)) {
-        mkdir($artifactsDir, 0755, true);
-    }
-    // ====================== STREET VIEW ======================
-    $streetViewUrl = "https://maps.googleapis.com/maps/api/streetview?size=1200x800&location={$lat},{$lng}&heading=105&pitch=8&fov=90&key=" . $googleKey;
-    $streetFilename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '001', 'jpg');
-    $streetPath = $artifactsDir . '/' . $streetFilename;
-    $imageData = @file_get_contents($streetViewUrl);
-    if ($imageData && strlen($imageData) > 5000 && file_put_contents($streetPath, $imageData)) {
+    // Single-line comment explanation: Force image processing through the standardized functional wrapper to ensure consistent widescreen bounds
+    $streetPath = generateStreetViewImage($lat, $lng, $googleKey, $address, $proposalId);
+    if ($streetPath) {
         $artifacts['streetview'] = $streetPath;
-        error_log("[ARTIFACTS] ✅ Street View saved: {$streetFilename}");
     } else {
-        error_log("[ARTIFACTS] ❌ Street View failed for proposal {$proposalId}");
+        error_log("[ARTIFACTS] ❌ Street View capture sequence failed for proposal {$proposalId}");
     }
     // ====================== PARCEL MAP(S) & SATELLITE ======================
     if (!empty($location['parcelDetails']) && is_array($location['parcelDetails'])) {
         foreach ($location['parcelDetails'] as $parcel) {
             $apn = $parcel['parcelNumber'] ?? $parcel['apnRaw'] ?? 'unknown';
-            // Run standard protocol execution layer to build compliance parcel file
             $parcelPath = generateParcelMapImage($lat, $lng, $apn, $googleKey, $proposalId);
             if ($parcelPath) {
                 $artifacts['parcelmap'] = $parcelPath;
             }
-            // Optional redundant capture sequence to maintain support for general satellite tracking fields
-            $parcelUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=20&size=900x550&maptype=satellite&markers=color:red%7Csize:mid%7Clabel:" . urlencode(substr($apn, -5)) . "%7C{$lat},{$lng}&key=" . $googleKey;
+            $parcelUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=20&size=1200x800&maptype=satellite&markers=color:red%7Csize:mid%7Clabel:" . urlencode(substr($apn, -5)) . "%7C{$lat},{$lng}&key=" . $googleKey;
             $satFilename = generateArtifactFilename('TMP', 'SAT', $proposalId, 'IMG', '001', 'png');
+            $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts';
             $satPath = $artifactsDir . '/' . $satFilename;
             $satData = @file_get_contents($parcelUrl);
             if ($satData && strlen($satData) > 3000 && file_put_contents($satPath, $satData)) {
                 $artifacts['satellite'] = $satPath;
-                error_log("[ARTIFACTS] ✅ Optional Legacy Satellite backup image saved: {$satFilename}");
+                error_log("[ARTIFACTS] ✅ Satellite backup image saved: {$satFilename}");
             }
         }
     }
