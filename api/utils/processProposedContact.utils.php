@@ -1248,27 +1248,23 @@ function generateStreetViewImage(
     string $address = '',
     string $proposalId = '',
     string $manualHeading = null
-): ?string
-{
+): ?string {
     $lat = (string)$lat;
     $lng = (string)$lng;
-
     if (empty($googleKey) || empty($lat) || empty($lng)) {
         error_log("[generateReports] generateStreetViewImage() - Missing parameters");
         return null;
     }
-
-    $artifactsDir = dirname(__DIR__, 2) . '/artifacts/';
+    // Explicit reference to the canonical root artifacts directory path
+    $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts/';
     if (!is_dir($artifactsDir)) {
         mkdir($artifactsDir, 0755, true);
     }
-
     // Single-line comment explanation: Check metadata endpoint first to avoid downloading gray placeholder graphics if imagery is missing
     if ($manualHeading === null) {
         $metaUrl = 'https://maps.googleapis.com/maps/api/streetview/metadata?location=' . $lat . ',' . $lng . '&key=' . $googleKey;
         $metaJson = @file_get_contents($metaUrl);
         $metaData = $metaJson ? json_decode($metaJson, true) : null;
-
         if (isset($metaData['status']) && $metaData['status'] === 'ZERO_RESULTS') {
             $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '1', 'jpg');
             $fullPath = $artifactsDir . $filename;
@@ -1277,17 +1273,14 @@ function generateStreetViewImage(
             return $fullPath;
         }
     }
-
     $heading = ($manualHeading !== null) ? $manualHeading : inferStreetViewHeading($address);
     $fov = 85;
-
     $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
         . '&location=' . $lat . ',' . $lng
         . '&heading=' . $heading
         . '&pitch=5'
         . '&fov=' . $fov
         . '&key=' . $googleKey;
-
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
@@ -1295,25 +1288,20 @@ function generateStreetViewImage(
         CURLOPT_TIMEOUT => 10,
         CURLOPT_FOLLOWLOCATION => true
     ]);
-
     $imageData = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-
     if ($imageData === false || $httpCode != 200 || strlen($imageData) < 1000) {
         error_log("[generateReports] Street View image capture failed.");
         return null;
     }
-
     // Single-line comment explanation: Generate compliant filename passing STR to identify it explicitly as a street view record
     $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '1', 'jpg');
     $fullPath = $artifactsDir . $filename;
-
     if (file_put_contents($fullPath, $imageData) === false) {
         error_log("[generateReports] Failed to write to $fullPath");
         return null;
     }
-
     error_log("[generateReports] ✅ Protocol Compliant Street View saved: $filename");
     return $fullPath;
 }
@@ -1325,21 +1313,18 @@ function generateParcelMapImage(
     string $apn,
     string $googleKey,
     string $proposalId = ''
-): ?string
-{
+): ?string {
     $lat = (string)$lat;
     $lng = (string)$lng;
-
     if (empty($googleKey) || empty($lat) || empty($lng) || empty($apn)) {
         error_log("[PARCEL MAP] Missing parameters for APN: $apn");
         return null;
     }
-
-    $artifactsDir = dirname(__DIR__, 2) . '/artifacts/';
+    // Explicit reference to the canonical root artifacts directory path
+    $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts/';
     if (!is_dir($artifactsDir)) {
         mkdir($artifactsDir, 0755, true);
     }
-
     $mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
         . 'center=' . $lat . ',' . $lng
         . '&zoom=20'
@@ -1347,23 +1332,18 @@ function generateParcelMapImage(
         . '&maptype=satellite'
         . '&markers=color:red%7Csize:mid%7Clabel:' . urlencode(substr($apn, -5)) . '%7C' . $lat . ',' . $lng
         . '&key=' . $googleKey;
-
     $imageData = @file_get_contents($mapUrl);
-
     if ($imageData === false || strlen($imageData) < 3000) {
         error_log("[PARCEL MAP] Failed to fetch image map.");
         return null;
     }
-
     // Single-line comment explanation: Generate compliant filename passing SAT to identify it explicitly as a satellite record
     $filename = generateArtifactFilename('TMP', 'SAT', $proposalId, 'IMG', '1', 'png');
     $outputPath = $artifactsDir . $filename;
-
     if (file_put_contents($outputPath, $imageData) === false) {
         error_log("[PARCEL MAP] Failed to write image: $outputPath");
         return null;
     }
-
     error_log("[PARCEL MAP] ✅ Protocol Compliant Parcel Map saved: $filename");
     return $outputPath;
 }
