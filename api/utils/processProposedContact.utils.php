@@ -1812,31 +1812,22 @@ EOT;
 function generateProposalArtifacts(array $location, string $proposalId, string $googleKey): array
 {
     $artifacts = [];
-
     if (empty($googleKey) || empty($location['locationLatitude']) || empty($location['locationLongitude'])) {
         error_log("[ARTIFACTS] Missing coordinates or API key for proposal {$proposalId}");
         return $artifacts;
     }
-
     $lat = (float)$location['locationLatitude'];
     $lng = (float)$location['locationLongitude'];
     $address = trim($location['locationAddress'] ?? $location['address'] ?? 'unknown');
-
-    $artifactsDir = dirname(__DIR__) . '/artifacts';
+    // Absolute path routing back to the canonical base installation artifacts directory
+    $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts';
     if (!is_dir($artifactsDir)) {
         mkdir($artifactsDir, 0755, true);
     }
-
     // ====================== STREET VIEW ======================
-    $streetViewUrl = "https://maps.googleapis.com/maps/api/streetview?"
-        . "size=1200x800"
-        . "&location={$lat},{$lng}"
-        . "&heading=105&pitch=8&fov=90"
-        . "&key=" . $googleKey;
-
+    $streetViewUrl = "https://maps.googleapis.com/maps/api/streetview?size=1200x800&location={$lat},{$lng}&heading=105&pitch=8&fov=90&key=" . $googleKey;
     $streetFilename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '001', 'jpg');
     $streetPath = $artifactsDir . '/' . $streetFilename;
-
     $imageData = @file_get_contents($streetViewUrl);
     if ($imageData && strlen($imageData) > 5000 && file_put_contents($streetPath, $imageData)) {
         $artifacts['streetview'] = $streetPath;
@@ -1844,21 +1835,14 @@ function generateProposalArtifacts(array $location, string $proposalId, string $
     } else {
         error_log("[ARTIFACTS] ❌ Street View failed for proposal {$proposalId}");
     }
-
     // ====================== PARCEL MAP(S) ======================
     if (!empty($location['parcelDetails']) && is_array($location['parcelDetails'])) {
         foreach ($location['parcelDetails'] as $parcel) {
             $apn = $parcel['parcelNumber'] ?? $parcel['apnRaw'] ?? 'unknown';
             $safeApn = preg_replace('/[^A-Za-z0-9]/', '', $apn);
-
-            $parcelUrl = "https://maps.googleapis.com/maps/api/staticmap?"
-                . "center={$lat},{$lng}&zoom=20&size=900x550&maptype=satellite"
-                . "&markers=color:red%7Csize:mid%7Clabel:" . urlencode(substr($apn, -5)) . "%7C{$lat},{$lng}"
-                . "&key=" . $googleKey;
-
+            $parcelUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=20&size=900x550&maptype=satellite&markers=color:red%7Csize:mid%7Clabel:" . urlencode(substr($apn, -5)) . "%7C{$lat},{$lng}&key=" . $googleKey;
             $parcelFilename = generateArtifactFilename('TMP', 'SAT', $proposalId, 'IMG', '001', 'png');
             $parcelPath = $artifactsDir . '/' . $parcelFilename;
-
             $imageData = @file_get_contents($parcelUrl);
             if ($imageData && strlen($imageData) > 3000 && file_put_contents($parcelPath, $imageData)) {
                 $artifacts['satellite'] = $parcelPath;
@@ -1866,7 +1850,6 @@ function generateProposalArtifacts(array $location, string $proposalId, string $
             }
         }
     }
-
     return $artifacts;
 }
 
