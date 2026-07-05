@@ -1493,23 +1493,21 @@ window.SkyIndex = {
 
         openInteractiveStreetView(data) {
 
-            // Clean up any lingering processing indicator
             this.replaceStreetViewProcessingWithResult();
 
-            console.log('[OPEN WORKSPACE MODAL]', data);
+            console.log('[OPEN INTERACTIVE STREET VIEW]', data);
 
             const lat = parseFloat(data.latitude);
             const lng = parseFloat(data.longitude);
-            const apiKey = data.apiKey;
+            const apiKey = data.apiKey || this.googleMapsApiKey || window.GOOGLE_MAPS_API_KEY;
 
             if (!lat || !lng || !apiKey) {
-                alert("Workspace load failed: Missing coordinate mappings or API restriction keys.");
+                alert("Workspace load failed: Missing coordinate mappings or API key.");
                 return;
             }
 
             this.closeStreetViewModal();
 
-            // 1. Setup layout canvas workspace instead of old static iframe container
             const modal = document.createElement('div');
             modal.id = 'streetViewModal';
             modal.className = 'modal-backdrop';
@@ -1520,11 +1518,11 @@ window.SkyIndex = {
             `;
 
             modal.innerHTML = `
-                <div style="background:#fff; padding:20px; border-radius:12px; width:95%; max-width:1150px; box-shadow:0 15px 45px rgba(0,0,0,0.6);">
+                <div style="background:#fff; padding:20px; border-radius:12px; width:95%; max-width:1150px; box-shadow:0 15px 45px rgba(0,0,0,.6);">
                     <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:center;">
                         <div>
                             <strong style="font-size:1.15em; color:#222; display:block; margin-bottom:2px;">Location Imagery Selection Workspace</strong>
-                            <small style="color:#666; font-size:0.9em; display:block;">📍 ${data.address || ''}</small>
+                            <small style="color:#666; font-size:0.9em; display:block;">📍 ${this.escapeHtml(data.address || '')}</small>
                         </div>
                         <button onclick="SkyIndex.closeStreetViewModal()" 
                                 style="background:none; border:none; font-size:32px; cursor:pointer; color:#bbb; line-height:1;">&times;</button>
@@ -1541,7 +1539,7 @@ window.SkyIndex = {
                             Cancel
                         </button>
                         <button onclick="SkyIndex.captureCurrentView()" 
-                                style="background:#28a745; color:white; border:none; padding:11px 26px; border-radius:6px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(40,167,69,0.3);">
+                                style="background:#28a745; color:white; border:none; padding:11px 26px; border-radius:6px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(40,167,69,.3);">
                             📸 Use This View
                         </button>
                     </div>
@@ -1550,21 +1548,15 @@ window.SkyIndex = {
 
             document.body.appendChild(modal);
 
-            // 2. Asynchronously load SDK library script and render elements map canvas inside workspace
-            const streetView = proposal.streetView || {};
-            // Initialize the Proposal Street View workspace
             this._loadGoogleMapsSdk(apiKey, () => {
-
                 this._initializeDualPaneWorkspace(
-                    lat,
-                    lng,
-                    'proposalWorkspaceMapCanvas',
-                    'proposalWorkspacePanCanvas',
-                    proposal.streetView?.heading || 105,
-                    proposal.streetView?.pitch   || 8,
-                    proposal.streetView?.zoom    || 1
+                    lat, lng,
+                    'workspaceMapCanvas',      // ← Correct canvas IDs for general workflow
+                    'workspacePanCanvas',
+                    data.heading || 105,
+                    data.pitch || 8,
+                    data.zoom || 1
                 );
-
             });
         },
 
@@ -1599,10 +1591,15 @@ window.SkyIndex = {
             zoom = 1
         ) {
 
-            const centerPoint = {
-                lat: lat,
-                lng: lng
-            };
+            const centerPoint = { lat: lat, lng: lng };
+
+            // Clear any previous instances
+            if (this._streetViewWorkspace.map) {
+                google.maps.event.clearInstanceListeners(this._streetViewWorkspace.map);
+            }
+            if (this._streetViewWorkspace.panorama) {
+                google.maps.event.clearInstanceListeners(this._streetViewWorkspace.panorama);
+            }
 
             // Initialize overhead map canvas
             this._streetViewWorkspace.map = new google.maps.Map(
@@ -1618,19 +1615,15 @@ window.SkyIndex = {
             );
 
             // Initialize Street View panorama
-            this._streetViewWorkspace.panorama =
-                new google.maps.StreetViewPanorama(
-                    document.getElementById(panoCanvasId),
-                    {
-                        position: centerPoint,
-                        pov: {
-                            heading: heading,
-                            pitch: pitch
-                        },
-                        zoom: zoom,
-                        visible: true
-                    }
-                );
+            this._streetViewWorkspace.panorama = new google.maps.StreetViewPanorama(
+                document.getElementById(panoCanvasId),
+                {
+                    position: centerPoint,
+                    pov: { heading: heading, pitch: pitch },
+                    zoom: zoom,
+                    visible: true
+                }
+            );
 
             this._streetViewWorkspace.map.setStreetView(this._streetViewWorkspace.panorama);
 
@@ -1647,43 +1640,37 @@ window.SkyIndex = {
             const markerObj = this._streetViewWorkspace.marker;
 
             // =====================================================
-            // Interactive Hook A
-            // Clicking on the map moves the Street View location
+            // Interactive Hook A - Map click → move panorama
             // =====================================================
             mapObj.addListener('click', (event) => {
-
                 const point = event.latLng;
-
                 markerObj.setPosition(point);
                 panObj.setPosition(point);
-
             });
 
             // =====================================================
-            // Interactive Hook B
-            // Dragging the marker updates the panorama location
+            // Interactive Hook B - Marker drag → update panorama
             // =====================================================
             markerObj.addListener('dragend', () => {
-
                 const point = markerObj.getPosition();
-
                 panObj.setPosition(point);
-
             });
 
             // =====================================================
-            // Interactive Hook C
-            // Moving through Street View keeps the map synchronized
+            // Interactive Hook C - Panorama movement → sync map + marker
             // =====================================================
             panObj.addListener('position_changed', () => {
-
                 const position = panObj.getPosition();
-
                 mapObj.setCenter(position);
                 markerObj.setPosition(position);
-
             });
 
+            // =====================================================
+            // Compatibility aliases (used by both proposal + general workflows)
+            // =====================================================
+            this._streetViewWorkspace.panoramaInstance = panObj;   // for replaceProposalStreetView()
+
+            console.log(`[DUAL WORKSPACE] Initialized → Map: ${mapCanvasId} | Panorama: ${panoCanvasId}`);
         },
 
         closeStreetViewModal() {
@@ -1723,6 +1710,7 @@ window.SkyIndex = {
         adjustProposalStreetView() {
 
             console.log('[PROPOSAL STREET VIEW EDITOR] Opening...');
+            console.log('Current Proposal Payload:', this.currentProposalPayload);
 
             // Validate active proposal
             if (!this.currentProposalPayload) {
@@ -1745,7 +1733,7 @@ window.SkyIndex = {
 
         },
 
-        // PROPOSAL STREET VIEW EDITOR - Opens the Proposal Street View Editor
+        // PROPOSAL STREET VIEW EDITOR
         openProposalStreetViewEditor() {
 
             console.log('[PROPOSAL STREET VIEW EDITOR] Opening...');
@@ -1768,9 +1756,7 @@ window.SkyIndex = {
                 return;
             }
 
-            // =====================================================
-            // ENSURE STREET VIEW ARTIFACT EXISTS (consistent structure)
-            // =====================================================
+            // Ensure consistent streetView structure
             if (!proposal.streetView || typeof proposal.streetView !== 'object') {
                 proposal.streetView = {
                     heading: 105,
@@ -1781,15 +1767,15 @@ window.SkyIndex = {
                 };
             }
 
-            // Use application-level Google Maps API key (not stored per proposal)
-            const apiKey = this.googleMapsApiKey || window.GOOGLE_MAPS_API_KEY || '';  // Adjust to your app's actual key source
+            // Use application-level API key (NOT stored in proposal)
+            const apiKey = this.googleMapsApiKey || window.GOOGLE_MAPS_API_KEY || '';
 
             if (!apiKey) {
                 alert('Google Maps API key is unavailable.');
                 return;
             }
 
-            // Store references for the replace function + future shared workspace
+            // Store references for replace function + future shared workspace
             this._activeProposalStreetView = proposal;
             this._streetViewWorkspace = this._streetViewWorkspace || {};
             this._streetViewWorkspace.mode = 'proposal';
@@ -1800,166 +1786,45 @@ window.SkyIndex = {
             // =====================================================
             // BUILD MODAL
             // =====================================================
-
             const modal = document.createElement('div');
-
             modal.id = 'proposalStreetViewEditor';
             modal.className = 'modal-backdrop';
-
             modal.style.cssText = `
-                position:fixed;
-                top:0;
-                left:0;
-                width:100%;
-                height:100%;
-                background:rgba(0,0,0,.85);
-                z-index:99999;
-                display:flex;
-                align-items:center;
-                justify-content:center;
+                position:fixed; top:0; left:0; width:100%; height:100%;
+                background:rgba(0,0,0,.85); z-index:99999;
+                display:flex; align-items:center; justify-content:center;
                 font-family:sans-serif;
             `;
 
             modal.innerHTML = `
+                <div style="background:#fff; padding:20px; border-radius:12px; width:95%; max-width:1150px; box-shadow:0 15px 45px rgba(0,0,0,.6);">
 
-                <div style="
-                    background:#fff;
-                    padding:20px;
-                    border-radius:12px;
-                    width:95%;
-                    max-width:1150px;
-                    box-shadow:0 15px 45px rgba(0,0,0,.6);
-                ">
-
-                    <div style="
-                        display:flex;
-                        justify-content:space-between;
-                        align-items:center;
-                        margin-bottom:12px;
-                    ">
-
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                         <div>
-
-                            <strong style="
-                                display:block;
-                                font-size:1.15em;
-                                color:#222;
-                            ">
-                                Proposal Street View Editor
-                            </strong>
-
-                            <small style="
-                                display:block;
-                                color:#666;
-                                margin-top:3px;
-                            ">
-                                📍 ${location.locationAddress || ''}
-                            </small>
-
-                            <small style="
-                                display:block;
-                                color:#888;
-                                margin-top:5px;
-                            ">
-                                Adjust the Street View image used in the Proposal Report.
-                            </small>
-
+                            <strong style="display:block; font-size:1.15em; color:#222;">Proposal Street View Editor</strong>
+                            <small style="display:block; color:#666; margin-top:3px;">📍 ${this.escapeHtml(location.locationAddress || '')}</small>
+                            <small style="display:block; color:#888; margin-top:5px;">Adjust the Street View image used in the Proposal Report.</small>
                         </div>
-
-                        <button
-                            onclick="SkyIndex.closeProposalStreetViewEditor();"
-                            style="
-                                background:none;
-                                border:none;
-                                font-size:32px;
-                                cursor:pointer;
-                                color:#bbb;
-                            ">
-                            &times;
-                        </button>
-
+                        <button onclick="SkyIndex.closeProposalStreetViewEditor();" style="background:none; border:none; font-size:32px; cursor:pointer; color:#bbb;">&times;</button>
                     </div>
 
-                    <div style="
-                        display:flex;
-                        gap:16px;
-                        height:500px;
-                        margin-bottom:16px;
-                    ">
-
-                        <div
-                            id="proposalWorkspaceMapCanvas"
-                            style="
-                                flex:1;
-                                background:#f0f0f0;
-                                border-radius:8px;
-                                border:1px solid #ddd;
-                            ">
-                        </div>
-
-                        <div
-                            id="proposalWorkspacePanCanvas"
-                            style="
-                                flex:1;
-                                background:#f0f0f0;
-                                border-radius:8px;
-                                border:1px solid #ddd;
-                            ">
-                        </div>
-
+                    <div style="display:flex; gap:16px; height:500px; margin-bottom:16px;">
+                        <div id="proposalWorkspaceMapCanvas" style="flex:1; background:#f0f0f0; border-radius:8px; border:1px solid #ddd;"></div>
+                        <div id="proposalWorkspacePanCanvas" style="flex:1; background:#f0f0f0; border-radius:8px; border:1px solid #ddd;"></div>
                     </div>
 
-                    <div style="
-                        display:flex;
-                        justify-content:flex-end;
-                        gap:12px;
-                        border-top:1px solid #eee;
-                        padding-top:14px;
-                    ">
-
-                        <button
-                            onclick="SkyIndex.closeProposalStreetViewEditor();"
-                            style="
-                                background:#f1f3f5;
-                                color:#495057;
-                                border:none;
-                                padding:11px 20px;
-                                border-radius:6px;
-                                font-weight:600;
-                                cursor:pointer;
-                            ">
-                            Cancel
-                        </button>
-
-                        <button
-                            onclick="SkyIndex.replaceProposalStreetView();"
-                            style="
-                                background:#28a745;
-                                color:white;
-                                border:none;
-                                padding:11px 26px;
-                                border-radius:6px;
-                                font-weight:700;
-                                cursor:pointer;
-                                box-shadow:0 2px 8px rgba(40,167,69,.3);
-                            ">
-                            💾 Replace Proposal Image
-                        </button>
-
+                    <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid #eee; padding-top:14px;">
+                        <button onclick="SkyIndex.closeProposalStreetViewEditor();" style="background:#f1f3f5; color:#495057; border:none; padding:11px 20px; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
+                        <button onclick="SkyIndex.replaceProposalStreetView();" style="background:#28a745; color:white; border:none; padding:11px 26px; border-radius:6px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(40,167,69,.3);">💾 Replace Proposal Image</button>
                     </div>
 
                 </div>
-
             `;
 
             document.body.appendChild(modal);
 
-            // =====================================================
-            // INITIALIZE GOOGLE MAPS
-            // =====================================================
-
+            // Initialize Google Maps
             this._loadGoogleMapsSdk(apiKey, () => {
-
                 this._initializeDualPaneWorkspace(
                     lat,
                     lng,
@@ -1969,26 +1834,35 @@ window.SkyIndex = {
                     proposal.streetView.pitch,
                     proposal.streetView.zoom
                 );
-
             });
-
         },
 
-        // REPLACE PROPOSAL STREET VIEW - Captures current Street View and generates replacement image
+        closeProposalStreetViewEditor() {
+            const modal = document.getElementById('proposalStreetViewEditor');
+            if (modal) modal.remove();
+
+            // Optional: light cleanup
+            if (this._streetViewWorkspace) {
+                this._streetViewWorkspace.map = null;
+                this._streetViewWorkspace.panorama = null;
+                this._streetViewWorkspace.marker = null;
+            }
+        },
+
+        // REPLACE PROPOSAL STREET VIEW IMAGE
         replaceProposalStreetView() {
 
-            console.log('[PROPOSAL STREET VIEW EDITOR] Replacing proposal Street View image...');
+            console.log('[PROPOSAL STREET VIEW] Capturing and replacing image...');
 
             const proposal = this._activeProposalStreetView;
 
-            if (!proposal || !proposal.streetView) {
+            if (!proposal?.streetView) {
                 alert('No active proposal Street View data found.');
                 this.closeProposalStreetViewEditor();
                 return;
             }
 
-            // Get current Street View state from the panorama (assumes _initializeDualPaneWorkspace exposes it)
-            const svPanorama = this._streetViewWorkspace.panorama;  // Adjust property name based on your _initializeDualPaneWorkspace implementation
+            const svPanorama = this._streetViewWorkspace?.panorama;
 
             if (!svPanorama) {
                 alert('Street View panorama not available.');
@@ -1999,22 +1873,18 @@ window.SkyIndex = {
             const pov = svPanorama.getPov();
             const position = svPanorama.getPosition();
 
-            // =====================================================
-            // UPDATE STREET VIEW ARTIFACT
-            // =====================================================
+            // Update streetView object
             proposal.streetView.heading = parseFloat(pov.heading.toFixed(2));
             proposal.streetView.pitch = parseFloat(pov.pitch.toFixed(2));
-            proposal.streetView.zoom = svPanorama.getZoom();
-
+            proposal.streetView.zoom = parseFloat((pov.zoom || 1).toFixed(2));
             proposal.streetView.latitude = parseFloat(position.lat().toFixed(8));
             proposal.streetView.longitude = parseFloat(position.lng().toFixed(8));
-
             proposal.streetView.updatedOn = new Date().toISOString();
 
-            // Prepare payload for backend (getStreetView.php)
+            // Payload for backend
             const requestPayload = {
                 mode: 'proposal',
-                proposalId: proposal.proposalId,  // Adjust key as needed
+                proposalId: proposal.id || proposal.proposalId,
                 heading: proposal.streetView.heading,
                 pitch: proposal.streetView.pitch,
                 zoom: proposal.streetView.zoom,
@@ -2023,32 +1893,33 @@ window.SkyIndex = {
                 address: proposal.location?.locationAddress || ''
             };
 
-            // POST to backend to generate static Street View image
-            fetch('getStreetView.php', {  // Adjust endpoint if needed
+            fetch('getStreetView.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestPayload)
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(result => {
                 if (result.success && result.imagePath) {
                     proposal.streetView.imagePath = result.imagePath;
 
-                    // Refresh the proposal card / UI
-                    this.refreshProposalCard?.(proposal);  // Or your specific refresh method
+                    // Refresh UI
+                    if (typeof this.refreshProposalCard === 'function') {
+                        this.refreshProposalCard(proposal);
+                    } else {
+                        // Fallback: re-render the current proposal if needed
+                        this.renderProposedContact(this.currentProposalPayload);
+                    }
 
                     alert('✅ Proposal Street View image updated successfully!');
                     this.closeProposalStreetViewEditor();
-
-                    // Optional: Trigger a full proposal save if desired
-                    // this.saveCurrentProposal?.();
                 } else {
-                    throw new Error(result.message || 'Failed to generate Street View image');
+                    throw new Error(result.message || 'Backend failed to generate image');
                 }
             })
-            .catch(error => {
-                console.error('[PROPOSAL STREET VIEW] Error:', error);
-                alert('Failed to update Street View image: ' + error.message);
+            .catch(err => {
+                console.error(err);
+                alert('Failed to update Street View: ' + err.message);
             });
         },
 
@@ -2289,6 +2160,11 @@ window.SkyIndex = {
         const proposal = payload.data || {};
         const pcm      = payload.pcm || {};
         
+        // =====================================================
+        // STORE ACTIVE PROPOSAL PAYLOAD (Critical for Street View Editor + other actions)
+        // =====================================================
+        this.currentProposalPayload = payload;   // ← ADD THIS LINE
+
         // Target Identity & Payload Structuring
         const entity   = proposal.entity || {};
         const contact  = proposal.contact || {};
