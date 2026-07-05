@@ -1814,14 +1814,23 @@ function generateProposalArtifacts(array $location, string $proposalId, string $
     } else {
         error_log("[ARTIFACTS] ❌ Street View failed for proposal {$proposalId}");
     }
-    // ====================== PARCEL MAP(S) ======================
+    // ====================== PARCEL MAP(S) & SATELLITE ======================
     if (!empty($location['parcelDetails']) && is_array($location['parcelDetails'])) {
         foreach ($location['parcelDetails'] as $parcel) {
             $apn = $parcel['parcelNumber'] ?? $parcel['apnRaw'] ?? 'unknown';
-            // Route execution loop tracking safely into the clean canonical purpose identifier helper
+            // Run standard protocol execution layer to build compliance parcel file
             $parcelPath = generateParcelMapImage($lat, $lng, $apn, $googleKey, $proposalId);
             if ($parcelPath) {
                 $artifacts['parcelmap'] = $parcelPath;
+            }
+            // Optional redundant capture sequence to maintain support for general satellite tracking fields
+            $parcelUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=20&size=900x550&maptype=satellite&markers=color:red%7Csize:mid%7Clabel:" . urlencode(substr($apn, -5)) . "%7C{$lat},{$lng}&key=" . $googleKey;
+            $satFilename = generateArtifactFilename('TMP', 'SAT', $proposalId, 'IMG', '001', 'png');
+            $satPath = $artifactsDir . '/' . $satFilename;
+            $satData = @file_get_contents($parcelUrl);
+            if ($satData && strlen($satData) > 3000 && file_put_contents($satPath, $satData)) {
+                $artifacts['satellite'] = $satPath;
+                error_log("[ARTIFACTS] ✅ Optional Legacy Satellite backup image saved: {$satFilename}");
             }
         }
     }
