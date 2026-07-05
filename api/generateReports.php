@@ -141,127 +141,34 @@ try {
     }
 
     // =====================================================
-    // UNIVERSAL IMAGE & ARTIFACT PREPARATION
+    // UNIVERSAL IMAGE & ARTIFACT PREPARATION (MAPPED TO CANONICAL ARTIFACTS)
     // =====================================================
-    error_log("[IMAGES] Starting universal artifact preparation for reportType: {$reportType}");
-
-    // Extract location data with broad fallback paths (supports contact_proposal, location_review, property_review, etc.)
-    $lat = $input['latitude']
-        ?? $input['google']['latitude']
-        ?? $input['data']['location']['latitude']
-        ?? $input['proposal']['data']['location']['latitude']
-        ?? $input['parsed']['location']['latitude']
-        ?? $input['location']['latitude']
-        ?? $input['property']['latitude']
-        ?? null;
-
-    $lng = $input['longitude']
-        ?? $input['google']['longitude']
-        ?? $input['data']['location']['longitude']
-        ?? $input['proposal']['data']['location']['longitude']
-        ?? $input['parsed']['location']['longitude']
-        ?? $input['location']['longitude']
-        ?? $input['property']['longitude']
-        ?? null;
-
-    $streetAddress = $input['locationAddress']
-        ?? $input['inputAddress']
-        ?? $input['data']['location']['locationAddress']
-        ?? $input['proposal']['data']['location']['locationAddress']
-        ?? $input['parsed']['location']['locationAddress']
-        ?? $input['location']['locationAddress']
-        ?? $input['property']['address']
-        ?? '';
-
-    $parcelDetails = $input['parcelDetails']
-        ?? $input['data']['location']['parcelDetails']
-        ?? $input['proposal']['data']['location']['parcelDetails']
-        ?? $input['parsed']['location']['parcelDetails']
-        ?? $input['location']['parcelDetails']
-        ?? $input['property']['parcelDetails']
-        ?? [];
-
-    $googleKey = skyesoftGetEnv('GOOGLE_MAPS_PLACE_ID_API_KEY')
-        ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
-        ?: skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
-        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-        ?: '';
-
-    error_log("[IMAGES] lat = " . ($lat ?? 'MISSING'));
-    error_log("[IMAGES] lng = " . ($lng ?? 'MISSING'));
-    error_log("[IMAGES] address = " . ($streetAddress ?: 'MISSING'));
-    error_log("[IMAGES] parcelCount = " . count($parcelDetails));
-    error_log("[IMAGES] API Key = " . (!empty($googleKey) ? 'PRESENT' : 'MISSING'));
-
-    if ($lat && $lng && $googleKey) {
-        // Ensure image helper functions are loaded
-        if (!function_exists('generateStreetViewImage')) {
-            require_once __DIR__ . '/../reports/contactProposalReport.php'; // Contains shared helpers
+    error_log("[IMAGES] Starting universal artifact mapping for reportType: {$reportType}");
+    $proposalId = $input['proposalId'] ?? $input['data']['proposalId'] ?? null;
+    if ($proposalId) {
+        if (!isset($input['reportArtifacts'])) {
+            $input['reportArtifacts'] = [];
         }
-
-        // 1. STREET VIEW (universal)
-        error_log("[IMAGES] Generating Street View image...");
-        $streetViewPath = generateStreetViewImage(
-            (string)$lat,
-            (string)$lng,
-            $googleKey,
-            $streetAddress
-        );
-
-        if ($streetViewPath) {
-            if (!isset($input['reportArtifacts'])) {
-                $input['reportArtifacts'] = [];
-            }
+        // Single-line comment explanation: Map existing widescreen street view record from root artifacts directory
+        $streetViewPath = resolveReportArtifactPath((string)$proposalId, 'STR', 'jpg');
+        if ($streetViewPath && file_exists($streetViewPath)) {
             $input['reportArtifacts']['streetview'] = $streetViewPath;
-            error_log("[IMAGES] ✅ Street View generated: " . $streetViewPath);
-        } else {
-            error_log("[IMAGES] ❌ Street View generation failed");
+            error_log("[IMAGES] ✅ Canonical Street View mapped: " . $streetViewPath);
         }
-
-        // 2. PARCEL MAPS (if applicable)
-        if (!empty($parcelDetails) && is_array($parcelDetails)) {
-            if (!function_exists('generateParcelMapImage')) {
-                require_once __DIR__ . '/../reports/contactProposalReport.php';
-            }
-
-            $generatedParcelMaps = [];
-
-            foreach ($parcelDetails as $index => $parcel) {
-                $parcelLat = $parcel['latitude'] ?? $lat;
-                $parcelLng = $parcel['longitude'] ?? $lng;
-                $apn       = $parcel['apnRaw'] ?? $parcel['apnDisplay'] ?? 'unknown';
-
-                error_log("[IMAGES] Generating parcel map for APN: $apn");
-
-                $parcelMapPath = generateParcelMapImage(
-                    (string)$parcelLat,
-                    (string)$parcelLng,
-                    $apn,
-                    $googleKey
-                );
-
-                if ($parcelMapPath) {
-                    $generatedParcelMaps[] = $parcelMapPath;
-                    $parcelDetails[$index]['parcelMapImage'] = $parcelMapPath; // Mutate for downstream use
-                    error_log("[IMAGES] ✅ Parcel map generated for $apn: $parcelMapPath");
-                } else {
-                    error_log("[IMAGES] ❌ Failed to generate parcel map for $apn");
-                }
-            }
-
-            if (!empty($generatedParcelMaps)) {
-                if (!isset($input['reportArtifacts'])) {
-                    $input['reportArtifacts'] = [];
-                }
-                $input['reportArtifacts']['parcel_maps'] = $generatedParcelMaps;
-                error_log("[IMAGES] ✅ Total parcel maps generated: " . count($generatedParcelMaps));
-            }
+        // Single-line comment explanation: Map existing high-resolution satellite record from root artifacts directory
+        $satellitePath = resolveReportArtifactPath((string)$proposalId, 'SAT', 'png');
+        if ($satellitePath && file_exists($satellitePath)) {
+            $input['reportArtifacts']['satellite'] = $satellitePath;
+            error_log("[IMAGES] ✅ Canonical Satellite mapped: " . $satellitePath);
         }
-
-        // TODO: Future extensions (Satellite, etc.) go here with similar pattern
-
+        // Single-line comment explanation: Map existing parcel map container asset array from root artifacts directory
+        $parcelPath = resolveReportArtifactPath((string)$proposalId, 'PAR', 'png');
+        if ($parcelPath && file_exists($parcelPath)) {
+            $input['reportArtifacts']['parcel_maps'] = [$parcelPath];
+            error_log("[IMAGES] ✅ Canonical Parcel Map mapped: " . $parcelPath);
+        }
     } else {
-        error_log("[IMAGES] Skipping artifact generation - missing lat/lng or API key");
+        error_log("[IMAGES] Skipping artifact mapping - no valid proposalId provided");
     }
 
     // =====================================================
@@ -485,6 +392,21 @@ function generateParcelMapImage(string $lat, string $lng, string $apn, string $g
     }
 
     return $outputPath;
+}
+
+// Locate an existing proposal artifact from the canonical root directory
+function resolveReportArtifactPath(string $proposalId, string $purpose, string $ext = 'jpg'): ?string
+{
+    $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts/';
+    if (is_dir($artifactsDir)) {
+        $pattern = "TMP-IMG-{$purpose}-" . str_pad($proposalId, 6, '0', STR_PAD_LEFT) . "-*.{$ext}";
+        $matches = glob($artifactsDir . $pattern);
+        if (!empty($matches)) {
+            return $matches[0];
+        }
+    }
+    error_log("[generateReports] ⚠️ Missing expected artifact in root: ID {$proposalId} | Purpose: {$purpose}");
+    return null;
 }
 
 #endregion
