@@ -1322,6 +1322,7 @@ $lng = $data['location']['locationLongitude'] ?? null;
 if ($googleKey && $lat && $lng) {
 
     // Street View
+    // Single-line comment explanation: Generate temporary, protocol-compliant street-level view imagery under the STR purpose code
     $streetViewPath = generateStreetViewImage(
         $lat, 
         $lng, 
@@ -1334,9 +1335,9 @@ if ($googleKey && $lat && $lng) {
     }
 
     // Parcel Maps
-    $parcelMaps = [];
     foreach ($data['location']['parcelDetails'] ?? [] as $parcel) {
         $apn = $parcel['apnRaw'] ?? $parcel['parcelNumber'] ?? 'unknown';
+        // Single-line comment explanation: Generate temporary, protocol-compliant satellite imagery under the SAT purpose code
         $parcelPath = generateParcelMapImage(
             $lat, 
             $lng, 
@@ -1345,11 +1346,8 @@ if ($googleKey && $lat && $lng) {
             $proposalId
         );
         if ($parcelPath) {
-            $parcelMaps[] = $parcelPath;
+            $artifacts['satellite'] = $parcelPath;
         }
-    }
-    if (!empty($parcelMaps)) {
-        $artifacts['parcel_maps'] = $parcelMaps;
     }
 }
 
@@ -1374,7 +1372,7 @@ if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
             'meta'              => $proposalSnapshot['meta'] ?? [],
             'rawInput'          => $proposalSnapshot['rawInput'] ?? [],
 
-            // NEW: Artifacts
+            // NEW: Artifact Registry Tracking Compliant with Tier 2 Architecture
             'reportArtifacts'   => $artifacts
         ];
 
@@ -1428,7 +1426,7 @@ echo json_encode([
     'meta' => $proposalSnapshot['meta'] ?? [],
     'rawInput' => $proposalSnapshot['rawInput'] ?? [],
 
-    // NEW: Artifact paths
+    // NEW: Artifact Registry Tracking Compliant with Tier 2 Architecture
     'reportArtifacts' => $artifacts
 
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

@@ -1190,26 +1190,26 @@ function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
     ];
 }
 
-
 // * Generates a standard-compliant filename according to Universal Artifact Standard rules.
-function generateArtifactFilename(string $classification, string $proposalId, string $mediaType, string $sequence, string $extension = 'jpg'): string {
+function generateArtifactFilename(string $classification, string $purpose, string $objectId, string $mediaType, string $sequence, string $extension = 'jpg'): string {
     // 1. Classification (CCC) - Expects TMP, REC, or SYS
     $ccc = strtoupper(substr(trim($classification), 0, 3));
 
     // 2. Media Type (MMM) - Fixed-width formatting uppercase 3 chars
     $mmm = strtoupper(substr(trim($mediaType), 0, 3));
-    
-    // Default Fallbacks
-    $ppp = 'PRP';
-    $oooooo = '000000';
 
-    // Single-line comment explanation: Extract prefix if present, otherwise pad raw numeric ID to 6 digits
-    $cleanId = trim($proposalId);
-    if (preg_match('/^([A-Z]{3})-([0-9]+)$/i', $cleanId, $matches)) {
-        $ppp = strtoupper($matches[1]);
-        $oooooo = str_pad($matches[2], 6, '0', STR_PAD_LEFT);
-    } elseif (ctype_digit($cleanId)) {
-        $oooooo = str_pad($cleanId, 6, '0', STR_PAD_LEFT);
+    // 3. Artifact Purpose (PPP) - Strict 3-character uppercase enforcement matching registry
+    $ppp = strtoupper(substr(trim($purpose), 0, 3));
+
+    // 4. Object Identifier (OOOOOO) - Extract numeric digits or pad to exactly 6 characters
+    $cleanId = trim($objectId);
+    if (preg_match('/(?:[A-Z]{3}-)?([0-9]+)$/i', $cleanId, $matches)) {
+        $oooooo = str_pad($matches[1], 6, '0', STR_PAD_LEFT);
+    } else {
+        $oooooo = str_pad(preg_replace('/[^0-9]/', '', $cleanId), 6, '0', STR_PAD_LEFT);
+    }
+    if (empty($oooooo) || strlen($oooooo) > 6) {
+        $oooooo = '000000';
     }
 
     $uuu = '000';
@@ -1246,7 +1246,8 @@ function generateStreetViewImage(
     float|string $lng,
     string $googleKey,
     string $address = '',
-    string $proposalId = ''
+    string $proposalId = '',
+    string $manualHeading = null
 ): ?string
 {
     $lat = (string)$lat;
@@ -1257,7 +1258,27 @@ function generateStreetViewImage(
         return null;
     }
 
-    $heading = inferStreetViewHeading($address);
+    $artifactsDir = dirname(__DIR__, 2) . '/artifacts/';
+    if (!is_dir($artifactsDir)) {
+        mkdir($artifactsDir, 0755, true);
+    }
+
+    // Single-line comment explanation: Check metadata endpoint first to avoid downloading gray placeholder graphics if imagery is missing
+    if ($manualHeading === null) {
+        $metaUrl = 'https://maps.googleapis.com/maps/api/streetview/metadata?location=' . $lat . ',' . $lng . '&key=' . $googleKey;
+        $metaJson = @file_get_contents($metaUrl);
+        $metaData = $metaJson ? json_decode($metaJson, true) : null;
+
+        if (isset($metaData['status']) && $metaData['status'] === 'ZERO_RESULTS') {
+            $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '1', 'jpg');
+            $fullPath = $artifactsDir . $filename;
+            file_put_contents($fullPath, 'NO_IMAGERY_AVAILABLE');
+            error_log("[generateReports] ⚠️ No Street View coverage found. Sentinel token dropped for Workspace modal.");
+            return $fullPath;
+        }
+    }
+
+    $heading = ($manualHeading !== null) ? $manualHeading : inferStreetViewHeading($address);
     $fov = 85;
 
     $url = 'https://maps.googleapis.com/maps/api/streetview?size=640x320'
@@ -1284,13 +1305,8 @@ function generateStreetViewImage(
         return null;
     }
 
-    $artifactsDir = dirname(__DIR__, 2) . '/artifacts/';
-    if (!is_dir($artifactsDir)) {
-        mkdir($artifactsDir, 0755, true);
-    }
-
-    // Single-line comment explanation: Generate compliant filename passing TMP as classification for unaccepted proposals
-    $filename = generateArtifactFilename('TMP', $proposalId, 'IMG', '1', 'jpg');
+    // Single-line comment explanation: Generate compliant filename passing STR to identify it explicitly as a street view record
+    $filename = generateArtifactFilename('TMP', 'STR', $proposalId, 'IMG', '1', 'jpg');
     $fullPath = $artifactsDir . $filename;
 
     if (file_put_contents($fullPath, $imageData) === false) {
@@ -1339,8 +1355,8 @@ function generateParcelMapImage(
         return null;
     }
 
-    // Single-line comment explanation: Generate compliant filename passing TMP as classification for unaccepted proposals
-    $filename = generateArtifactFilename('TMP', $proposalId, 'IMG', '2', 'png');
+    // Single-line comment explanation: Generate compliant filename passing SAT to identify it explicitly as a satellite record
+    $filename = generateArtifactFilename('TMP', 'SAT', $proposalId, 'IMG', '1', 'png');
     $outputPath = $artifactsDir . $filename;
 
     if (file_put_contents($outputPath, $imageData) === false) {
