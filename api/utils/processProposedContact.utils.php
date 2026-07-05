@@ -1799,7 +1799,6 @@ function generateProposalArtifacts(array $location, string $proposalId, string $
     $lat = (float)$location['locationLatitude'];
     $lng = (float)$location['locationLongitude'];
     $address = trim($location['locationAddress'] ?? $location['address'] ?? 'unknown');
-    // Absolute path routing back to the canonical base installation artifacts directory
     $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts';
     if (!is_dir($artifactsDir)) {
         mkdir($artifactsDir, 0755, true);
@@ -1819,14 +1818,10 @@ function generateProposalArtifacts(array $location, string $proposalId, string $
     if (!empty($location['parcelDetails']) && is_array($location['parcelDetails'])) {
         foreach ($location['parcelDetails'] as $parcel) {
             $apn = $parcel['parcelNumber'] ?? $parcel['apnRaw'] ?? 'unknown';
-            $safeApn = preg_replace('/[^A-Za-z0-9]/', '', $apn);
-            $parcelUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=20&size=900x550&maptype=satellite&markers=color:red%7Csize:mid%7Clabel:" . urlencode(substr($apn, -5)) . "%7C{$lat},{$lng}&key=" . $googleKey;
-            $parcelFilename = generateArtifactFilename('TMP', 'SAT', $proposalId, 'IMG', '001', 'png');
-            $parcelPath = $artifactsDir . '/' . $parcelFilename;
-            $imageData = @file_get_contents($parcelUrl);
-            if ($imageData && strlen($imageData) > 3000 && file_put_contents($parcelPath, $imageData)) {
-                $artifacts['satellite'] = $parcelPath;
-                error_log("[ARTIFACTS] ✅ Parcel map saved: {$parcelFilename}");
+            // Route execution loop tracking safely into the clean canonical purpose identifier helper
+            $parcelPath = generateParcelMapImage($lat, $lng, $apn, $googleKey, $proposalId);
+            if ($parcelPath) {
+                $artifacts['parcelmap'] = $parcelPath;
             }
         }
     }
