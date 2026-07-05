@@ -706,8 +706,8 @@
                     "text": "Repository & Artifact Standard"
                 },
                 "tier": 2,
-                    "hierarchyOrder": 3,
-                    "type": "Structural Standard",
+                "hierarchyOrder": 3,
+                "type": "Structural Standard",
                 "preamble": {
                     "icon": 0,
                     "text": "The Repository & Artifact Standard defines the canonical filesystem structure, artifact governance model, retention classifications, and naming architecture of Skyesoft. All folders, files, generated artifacts, evidence records, reports, images, documents, and system outputs exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity prevents drift, eliminates ambiguity, enforces governance, and ensures long-term maintainability. No file, directory, or artifact may exist outside this standard without explicit Codex authorization."
@@ -718,32 +718,32 @@
                 },
                 "artifactLifecycle": {
                     "title": {
-                    "icon": 44,
-                    "text": "Artifact Lifecycle Classification"
-                },
-                "directive": "All artifacts must be classified according to lifecycle before creation.",
+                        "icon": 44,
+                        "text": "Artifact Lifecycle Classification"
+                    },
+                    "directive": "All artifacts must be classified according to lifecycle before creation.",
                     "classifications": [
                         {
-                        "code": "TMP",
-                        "name": "Temporary Artifact",
-                        "description": "Regeneratable artifacts that are not business records and may be purged."
+                            "code": "TMP",
+                            "name": "Temporary Artifact",
+                            "description": "Regeneratable artifacts that are not business records and may be purged."
                         },
                         {
-                        "code": "REC",
-                        "name": "Record Artifact",
-                        "description": "Permanent business records retained indefinitely and included in backups."
+                            "code": "REC",
+                            "name": "Record Artifact",
+                            "description": "Permanent business records retained indefinitely and included in backups."
                         },
                         {
-                        "code": "SYS",
-                        "name": "System Artifact",
-                        "description": "System-generated support files used for platform operations and governance."
+                            "code": "SYS",
+                            "name": "System Artifact",
+                            "description": "System-generated support files used for platform operations and governance."
                         }
                     ]
                 },
                 "artifactRepository": {
                     "title": {
-                    "icon": 28,
-                    "text": "Artifact Repository"
+                        "icon": 28,
+                        "text": "Artifact Repository"
                     },
                     "directive": "Artifacts shall be stored in the canonical artifact repository.",
                     "rules": [
@@ -752,16 +752,16 @@
                         "The canonical artifact repository shall reside at /artifacts/.",
                         "Artifact retrieval shall be performed through metadata, filename parsing, or registry lookup.",
                         "Artifact filenames must be globally unique."
-                        ]
-                        },
-                        "artifactNaming": {
-                        "title": {
+                    ]
+                },
+                "artifactNaming": {
+                    "title": {
                         "icon": 11,
                         "text": "Universal Artifact Standard"
-                        },
-                        "directive": "All generated, uploaded, captured, or retained artifacts shall follow the Universal Artifact Standard.",
-                        "format": "CCC-MMM-PPP-OOOOOO-UUU-TTTTTTTTTT-SSS.ext",
-                        "segments": {
+                    },
+                    "directive": "All generated, uploaded, captured, or retained artifacts shall follow the Universal Artifact Standard.",
+                    "format": "CCC-MMM-PPP-OOOOOO-UUU-TTTTTTTTTT-SSS.ext",
+                    "segments": {
                         "CCC": "Artifact Classification (TMP, REC, SYS)",
                         "MMM": "Media Type (IMG, PDF, DOC, DAT, VID, AUD)",
                         "PPP": "Artifact Purpose",
@@ -769,8 +769,8 @@
                         "UUU": "Three-digit User Identifier",
                         "TTTTTTTTTT": "Ten-digit Unix Timestamp",
                         "SSS": "Three-digit Sequence Number"
-                        },
-                        "rules": [
+                    },
+                    "rules": [
                         "All filename segments shall use fixed-width formatting.",
                         "Leading zeros shall be used when required.",
                         "File extensions must remain lowercase.",
@@ -781,10 +781,10 @@
                 },
                 "namingRules": {
                     "title": {
-                    "icon": 11,
-                    "text": "Naming Governance"
-                },
-                "directive": "Artifact purpose codes and naming conventions are governed exclusively through Codex amendment.",
+                        "icon": 11,
+                        "text": "Naming Governance"
+                    },
+                    "directive": "Artifact purpose codes and naming conventions are governed exclusively through Codex amendment.",
                     "rules": [
                         "All artifact purpose codes must be exactly three characters.",
                         "All media codes must be exactly three characters.",
@@ -808,28 +808,28 @@
             },
             "artifactPurposeRegistry": {
                 "title": {
-                "icon": 31,
-                "text": "Artifact Purpose Registry"
+                    "icon": 31,
+                    "text": "Artifact Purpose Registry"
                 },
                 "tier": 2,
                 "type": "Registry Standard",
                 "authority": "The Artifact Purpose Registry is the sole authoritative source for artifact purpose classification within Skyesoft. All artifact purpose codes derive their meaning, governance, validation requirements, and lifecycle interpretation from this registry.",
                 "purpose": {
-                "icon": 6,
-                "text": "Provide a permanent, immutable, and universally governed classification system for all business, evidence, imagery, document, and reporting artifacts generated or retained by Skyesoft."
+                    "icon": 6,
+                    "text": "Provide a permanent, immutable, and universally governed classification system for all business, evidence, imagery, document, and reporting artifacts generated or retained by Skyesoft."
                 },
                 "directive": "Every artifact shall be assigned exactly one purpose code from this registry. Purpose codes define business meaning and shall remain immutable once established.",
                 "governance": {
-                "rules": [
-                "Purpose codes must be exactly three uppercase alphabetic characters.",
-                "Purpose codes must remain globally unique.",
-                "Purpose codes shall never be repurposed.",
-                "Purpose definitions are permanent.",
-                "Purpose codes may not be deprecated without Codex amendment.",
-                "New purpose codes require explicit Codex amendment.",
-                "Purpose codes shall be interpreted identically across all modules and subsystems.",
-                "No artifact may be created using an undefined purpose code."
-                ]
+                    "rules": [
+                        "Purpose codes must be exactly three uppercase alphabetic characters.",
+                        "Purpose codes must remain globally unique.",
+                        "Purpose codes shall never be repurposed.",
+                        "Purpose definitions are permanent.",
+                        "Purpose codes may not be deprecated without Codex amendment.",
+                        "New purpose codes require explicit Codex amendment.",
+                        "Purpose codes shall be interpreted identically across all modules and subsystems.",
+                        "No artifact may be created using an undefined purpose code."
+                    ]
                 },
                 "validation": {
                     "rules": [
@@ -843,8 +843,8 @@
                     "generatedImagery": {
                         "title": "Generated Imagery",
                         "codes": {
-                            "STV": "Street View",
-                            "MAP": "Satellite Map",
+                            "STR": "Showing the property from the street",
+                            "SAT": "Overhead view for Google Maps",
                             "CPV": "Composite View"
                         }
                     },
@@ -860,24 +860,25 @@
                     "projectPhotography": {
                         "title": "Project Photography",
                         "codes": {
-                        "SVY": "Site Survey Photo",
-                        "WIP": "Work In Progress Photo",
-                        "COM": "Completion Photo",
-                        "PNC": "Punch List Photo",
-                        "INP": "Inspection Photo"
+                            "SVY": "Photos taken in the field or with the Location Imagery Selection Workspace",
+                            "WIP": "An image taken as part of a work in progress report",
+                            "CMP": "Used for completion reports",
+                            "PNC": "Punch List Photo",
+                            "INP": "Inspection Photo"
                         }
                     },
                     "businessArtifacts": {
-                    "title": "Business Artifacts",
+                        "title": "Business Artifacts",
                         "codes": {
-                        "ART": "Artwork",
-                        "APP": "Application",
-                        "RPT": "Report",
-                        "DOC": "Supporting Document",
-                        "EML": "Email Archive",
-                        "NOT": "Note Attachment"
-                }
-                }
+                            "ART": "Artwork",
+                            "APP": "Application",
+                            "RPT": "Report",
+                            "DOC": "Supporting Document",
+                            "EML": "Email Archive",
+                            "NOT": "Note Attachment",
+                            "SNP": "An image from a portal or website for a snapshot report"
+                        }
+                    }
                 },
                 "futureExpansion": {
                     "directive": "Additional purpose categories and codes shall be added only through formal Codex amendment.",
