@@ -1337,8 +1337,8 @@ function generateParcelMapImage(
         error_log("[PARCEL MAP] Failed to fetch image map.");
         return null;
     }
-    // Single-line comment explanation: Generate compliant filename passing SAT to identify it explicitly as a satellite record
-    $filename = generateArtifactFilename('TMP', 'SAT', $proposalId, 'IMG', '1', 'png');
+    // Single-line comment explanation: Generate compliant filename passing PAR to identify it explicitly as a registry parcel map record
+    $filename = generateArtifactFilename('TMP', 'PAR', $proposalId, 'IMG', '1', 'png');
     $outputPath = $artifactsDir . $filename;
     if (file_put_contents($outputPath, $imageData) === false) {
         error_log("[PARCEL MAP] Failed to write image: $outputPath");
