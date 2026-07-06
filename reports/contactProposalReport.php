@@ -125,35 +125,23 @@ function buildStreetViewSection(array $proposal): string
     $html = '<div class="section">';
     $html .= buildSectionHeader('Street View Verification', 'property.png');
 
-    $rawPath = $proposal['reportArtifacts']['streetview'] ?? null;
+    $proposalId = $proposal['proposalId'] ?? '';
+
     $base64Data = null;
     $mimeType = 'image/jpeg';
 
-    error_log("[PDF DEBUG] StreetView rawPath = " . ($rawPath ?? 'NULL'));
+    if ($proposalId) {
+        $artifactsDir = __DIR__ . '/../artifacts/';
+        $pattern = $artifactsDir . "TMP-IMG-STR-{$proposalId}-*.jpg";
 
-    if ($rawPath) {
-        // Try multiple path resolutions
-        $possiblePaths = [
-            $rawPath,
-            __DIR__ . '/../artifacts/' . basename($rawPath),
-            dirname(__DIR__) . '/artifacts/' . basename($rawPath)
-        ];
-
-        foreach ($possiblePaths as $testPath) {
-            if (file_exists($testPath)) {
-                $imgData = @file_get_contents($testPath);
-                if ($imgData !== false && strlen($imgData) > 5000) {
-                    $base64Data = base64_encode($imgData);
-                    $ext = strtolower(pathinfo($testPath, PATHINFO_EXTENSION));
-                    if ($ext === 'png') $mimeType = 'image/png';
-                    error_log("[PDF] ✅ Street View loaded from: " . $testPath);
-                    break;
-                }
+        $files = glob($pattern);
+        if (!empty($files)) {
+            $latestFile = array_pop($files); // most recent
+            $imgData = @file_get_contents($latestFile);
+            if ($imgData !== false && strlen($imgData) > 5000) {
+                $base64Data = base64_encode($imgData);
+                error_log("[PDF] ✅ Street View found via glob: " . basename($latestFile));
             }
-        }
-
-        if (!$base64Data) {
-            error_log("[PDF] ❌ All path attempts failed for: " . $rawPath);
         }
     }
 
