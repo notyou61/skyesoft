@@ -3,7 +3,7 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — contactProposalReport.php
 // Dynamic Foldable Proposal Report
-// Version: 2.5.0 (Standardized Artifact Keys)
+// Version: 2.7.0 (County & FIPS Mapping Fixed)
 // =============================================
 
 #region SECTION 00 - Main Report Generator
@@ -84,7 +84,7 @@ function buildLocationSection(array $proposal): string
     $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>County</th><td>' . htmlspecialchars($proposal['locationCounty'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>County FIPS</th><td>' . htmlspecialchars($proposal['locationCountyFips'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? 'Maricopa County') . '</td></tr>';
+    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
     return $html;
@@ -169,9 +169,9 @@ function buildParcelDetailSection(array $proposal): string
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
     foreach ($parcels as $i => $p) {
         $num = $i + 1;
-        $apn = htmlspecialchars($p['apnRaw'] ?? $p['parcelNumber'] ?? '—');
-        $owner = htmlspecialchars($p['owner'] ?? '—');
-        $addr = htmlspecialchars(trim(($p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
+        $apn = htmlspecialchars($p['parcelNumber'] ?? $p['apnRaw'] ?? '—');
+        $owner = htmlspecialchars($p['ownerName'] ?? $p['owner'] ?? '—');
+        $addr = htmlspecialchars(trim(($p['siteAddress'] ?? $p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
         $html .= '<div class="parcel-block">';
         $html .= '<strong>Parcel ' . $num . ' — APN: ' . $apn . '</strong><br>';
         $html .= 'Owner: ' . $owner . '<br>';
@@ -219,29 +219,41 @@ function generateSummarySection(array $proposal): string
 function getProposalData(array $input): array
 {
     $data = $input['data'] ?? $input;
+    $entity = $data['entity'] ?? [];
+    $contact = $data['contact'] ?? [];
+    $location = $data['location'] ?? [];
     $artifacts = $input['reportArtifacts'] ?? $data['reportArtifacts'] ?? [];
-    // Single-line comment explanation: Map normalized architecture properties and retain legacy parcel_maps array fallback
+    $rawStreet = $artifacts['streetview'] ?? null;
+    $rawSat = $artifacts['satellite'] ?? null;
+    $rawParcel = $artifacts['parcelmap'] ?? null;
+    $urlStreet = $rawStreet ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawStreet) : null;
+    $urlSat = $rawSat ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawSat) : null;
+    $urlParcel = $rawParcel ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawParcel) : null;
     return [
-        'entityName'           => $data['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
-        'contactName'          => $data['contactName'] ?? $input['contactName'] ?? 'Unknown Contact',
-        'contactTitle'         => $data['contactTitle'] ?? $input['contactTitle'] ?? '',
-        'contactPhone'         => $data['contactPhone'] ?? $input['contactPhone'] ?? '',
-        'contactEmail'         => $data['contactEmail'] ?? $input['contactEmail'] ?? '',
-        'locationAddress'      => $data['locationAddress'] ?? $input['locationAddress'] ?? '',
-        'locationCityStateZip' => $data['locationCityStateZip'] ?? $input['locationCityStateZip'] ?? '—',
-        'locationJurisdiction' => $data['locationJurisdiction'] ?? $input['locationJurisdiction'] ?? 'Maricopa County',
-        'latitude'             => $data['latitude'] ?? $input['latitude'] ?? null,
-        'longitude'            => $data['longitude'] ?? $input['longitude'] ?? null,
+        'entityName'           => $entity['entityName'] ?? $data['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
+        'contactName'          => isset($contact['contactFirstName']) ? trim(($contact['contactFirstName'] ?? '') . ' ' . ($contact['contactLastName'] ?? '')) : ($data['contactName'] ?? $input['contactName'] ?? 'Unknown Contact'),
+        'contactTitle'         => $contact['contactTitle'] ?? $data['contactTitle'] ?? $input['contactTitle'] ?? '',
+        'contactPhone'         => $contact['contactPrimaryPhone'] ?? $data['contactPhone'] ?? $input['contactPhone'] ?? '',
+        'contactEmail'         => $contact['contactEmail'] ?? $data['contactEmail'] ?? $input['contactEmail'] ?? '',
+        'locationAddress'      => $location['locationAddress'] ?? $data['locationAddress'] ?? $input['locationAddress'] ?? '',
+        'locationCityStateZip' => isset($location['locationCity']) ? trim(($location['locationCity'] ?? '') . ', ' . ($location['locationState'] ?? '') . ' ' . ($location['locationZip'] ?? '')) : ($data['locationCityStateZip'] ?? $input['locationCityStateZip'] ?? '—'),
+        'locationJurisdiction' => $location['jurisdictionName'] ?? $data['locationJurisdiction'] ?? $input['locationJurisdiction'] ?? '—',
+        'locationCounty'       => $location['locationCounty'] ?? $data['locationCounty'] ?? '—',
+        'locationCountyFips'   => $location['locationCountyFips'] ?? $data['locationCountyFips'] ?? '—',
+        'locationPlaceId'      => $location['locationPlaceId'] ?? $data['locationPlaceId'] ?? 'N/A',
+        'latitude'             => $location['locationLatitude'] ?? $data['latitude'] ?? $input['latitude'] ?? null,
+        'longitude'            => $location['locationLongitude'] ?? $data['longitude'] ?? $input['longitude'] ?? null,
         'governanceNarrative'  => $data['governanceNarrative'] ?? $input['governanceNarrative'] ?? 'Proposal processing complete.',
         'proposalCode'         => $data['proposalCode'] ?? $input['proposalCode'] ?? $data['pc_code'] ?? $input['pc_code'] ?? '',
-        'parcelDetails'        => $data['parcelDetails'] ?? $input['parcelDetails'] ?? [],
+        'parcelDetails'        => $location['parcelDetails'] ?? $data['parcelDetails'] ?? $input['parcelDetails'] ?? [],
+        'narratives'           => $input['narratives'] ?? [],
         'reportArtifacts'      => [
-            'streetview'       => $artifacts['streetview'] ?? null,
-            'streetviewUrl'    => $artifacts['streetviewUrl'] ?? $artifacts['streetview'] ?? null,
-            'satellite'        => $artifacts['satellite'] ?? null,
-            'satelliteUrl'     => $artifacts['satelliteUrl'] ?? $artifacts['satellite'] ?? null,
-            'parcelmap'        => $artifacts['parcelmap'] ?? $artifacts['parcel_maps'][0] ?? null,
-            'parcelmapUrl'     => $artifacts['parcelmapUrl'] ?? $artifacts['parcelmap'] ?? $artifacts['parcel_maps'][0] ?? null
+            'streetview'       => $rawStreet,
+            'streetviewUrl'    => $artifacts['streetviewUrl'] ?? $urlStreet,
+            'satellite'        => $rawSat,
+            'satelliteUrl'     => $artifacts['satelliteUrl'] ?? $urlSat,
+            'parcelmap'        => $rawParcel,
+            'parcelmapUrl'     => $artifacts['parcelmapUrl'] ?? $urlParcel
         ]
     ];
 }
@@ -256,9 +268,9 @@ function normalizeProposalData(array $input): array
         'contactEmail'         => $input['contactEmail'] ?? '',
         'locationAddress'      => $input['locationAddress'] ?? '',
         'locationCityStateZip' => $input['locationCityStateZip'] ?? '—',
-        'locationCounty'       => $input['locationCounty'] ?? '',
-        'locationCountyFips'   => $input['locationCountyFips'] ?? '',
-        'locationJurisdiction' => $input['locationJurisdiction'] ?? 'Maricopa County',
+        'locationCounty'       => $input['locationCounty'] ?? '—',
+        'locationCountyFips'   => $input['locationCountyFips'] ?? '—',
+        'locationJurisdiction' => $input['locationJurisdiction'] ?? '—',
         'locationPlaceId'      => $input['locationPlaceId'] ?? '',
         'latitude'             => $input['latitude'] ?? null,
         'longitude'            => $input['longitude'] ?? null,
