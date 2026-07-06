@@ -43,19 +43,21 @@ function generateContactProposalReport(array $input): array
 #region SECTION 01 - HTML Body Builder
 function buildContactProposalBody(array $proposal): string
 {
-    // Inject highly compatible, non-overlapping mPDF print styles
+    // Inject calibrated mPDF container-wrapped styles
     $html = '
     <style>
+        /* 🌟 Wrap container gives mPDF breathing room so outer borders never clip */
+        .tableWrapper {
+            width: 100%;
+            padding: 2px; 
+            margin-bottom: 14px;
+        }
         .dataTable { 
             width: 100%; 
-            border-collapse: separate; /* 🌟 Fixes border clipping at the ends/edges */
-            border-spacing: 0;
-            margin-bottom: 18px; 
+            border-collapse: collapse; /* 🌟 Merges headers and descriptions smoothly with NO gaps */
             font-family: Arial, sans-serif; 
             font-size: 11px;
-            border-top: 1.5px solid #1a365d;
-            border-left: 1.5px solid #1a365d;
-            border-right: 1.5px solid #1a365d;
+            border: 1.5px solid #1a365d; /* Solid framing wrap */
         }
         .dataTable th { 
             background-color: #1a365d; 
@@ -64,38 +66,42 @@ function buildContactProposalBody(array $proposal): string
             padding: 7px 10px; 
             font-weight: bold; 
             width: 32%; 
-            border-bottom: 1.5px solid #ffffff; /* Clear bright channel lines between th anchors */
+            border-bottom: 1px solid #ffffff; /* Clean line between header rows */
         }
         .dataTable td { 
             padding: 7px 10px; 
             color: #2d3748; 
-            border-bottom: 1.5px solid #1a365d; /* 🌟 Clear crisp border lines between description portions */
+            border-bottom: 1.5px solid #1a365d; /* Solid color bars between description rows */
+            border-left: 1.5px solid #1a365d;   /* 🌟 Seals the inner vertical line where blue meets grey/white */
         }
-        /* Ensure the very last header cell doesn\'t leave an orphaned white line at the base */
+        /* Clean off the bottom edge line of the final rows */
         .dataTable tr:last-child th {
-            border-bottom: 1.5px solid #1a365d;
+            border-bottom: none;
         }
-        /* 🌟 Striping isolated exclusively to the description td values to maximize visibility */
+        .dataTable tr:last-child td {
+            border-bottom: none;
+        }
+        /* Alternating description block backgrounds */
         .dataTable tr:nth-child(even) td { 
-            background-color: #f1f5f9; /* Slightly darker crisp gray for clear printing contrast */
+            background-color: #f1f5f9; 
         }
         .dataTable tr:nth-child(odd) td { 
             background-color: #ffffff; 
         }
     </style>';
     
-    // Card 1: Entity Information Block
-    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%;">';
+    // Card 1: Entity Information Block (Using the new wrapper pattern)
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 10px; width: 100%;">';
     $html .= buildEntitySection($proposal);
     $html .= '</div>';
     
     // Card 2: Contact Information Block
-    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%;">';
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 10px; width: 100%;">';
     $html .= buildContactSection($proposal);
     $html .= '</div>';
     
     // Card 3: Location Information Block
-    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%;">';
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 10px; width: 100%;">';
     $html .= buildLocationSection($proposal);
     $html .= '</div>';
     
@@ -121,27 +127,32 @@ function buildContactProposalBody(array $proposal): string
 function buildEntitySection(array $proposal): string
 {
     $html = buildSectionHeader('Entity Information', 'property.png');
+    $html .= '<div class="tableWrapper">'; // 🌟 Added wrap
     $html .= '<table class="dataTable">';
     $html .= '<tr><th>Entity Name</th><td>' . htmlspecialchars($proposal['entityName'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
+    $html .= '</div>';
     return $html;
 }
 
 function buildContactSection(array $proposal): string
 {
     $html = buildSectionHeader('Contact Information', 'users.png');
+    $html .= '<div class="tableWrapper">'; // 🌟 Added wrap
     $html .= '<table class="dataTable">';
     $html .= '<tr><th>Contact Name</th><td>' . htmlspecialchars($proposal['contactName'] ?? 'N/A') . '</td></tr>';
     $html .= '<tr><th>Title</th><td>' . htmlspecialchars($proposal['contactTitle'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>Phone</th><td>' . htmlspecialchars($proposal['contactPhone'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>Email</th><td>' . htmlspecialchars($proposal['contactEmail'] ?? '—') . '</td></tr>';
     $html .= '</table>';
+    $html .= '</div>';
     return $html;
 }
 
 function buildLocationSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Information', 'pin.png');
+    $html .= '<div class="tableWrapper">'; // 🌟 Added wrap
     $html .= '<table class="dataTable">';
     $html .= '<tr><th>Full Address</th><td>' . htmlspecialchars($proposal['locationAddress'] ?? 'N/A') . '</td></tr>';
     $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') . '</td></tr>';
@@ -150,6 +161,7 @@ function buildLocationSection(array $proposal): string
     $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
+    $html .= '</div>';
     return $html;
 }
 #endregion
