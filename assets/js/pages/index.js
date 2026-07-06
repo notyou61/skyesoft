@@ -2665,12 +2665,7 @@ window.SkyIndex = {
             return;
         }
 
-        console.log("[REPORT] Full Proposal Object", prop);  // ← Diagnostic
-        console.log("[REPORT] Action ID candidates", {
-            actionId: prop.actionId,
-            persistenceActionId: prop.persistence?.actionId,
-            activitySessionId: prop.activitySessionId
-        });
+        console.log("[REPORT] Full Proposal Object", prop);
 
         const d = prop.data || {};
         const loc = d.location || {};
@@ -2685,13 +2680,11 @@ window.SkyIndex = {
         const originalText = link ? link.textContent : 'View Proposal Report';
         if (link) link.textContent = 'Generating PDF...';
 
-        // Build Identity Info
         const contactFirstLast = `${cont.contactFirstName || ''} ${cont.contactLastName || ''}`.trim();
         const contactName = contactFirstLast || 'Unknown Contact';
         const contactTitle = cont.contactTitle || '';
         const entityName = ent.entityName || 'Unknown Entity';
 
-        // Dynamic Report Title & Filename
         let reportTitle = prop.reportTitle || 
             (prop.proposalKind === 'location' ? 'Proposed Location Report' : 'Proposed Contact Report');
 
@@ -2699,7 +2692,6 @@ window.SkyIndex = {
         if (contactTitle) reportFilename += `, ${contactTitle}`;
         reportFilename += ` - ${entityName}`;
 
-        // Jurisdiction normalization
         const rawJurisdiction = loc.locationJurisdiction || loc.parcelDetails?.[0]?.jurisdiction || "";
         const locationJurisdiction = !rawJurisdiction ||
             rawJurisdiction.toUpperCase() === "NO CITY/TOWN"
@@ -2710,7 +2702,8 @@ window.SkyIndex = {
             reportType: "contact_proposal",
             reportTitle: reportTitle,
 
-            // CRITICAL: Send Action ID so backend can load full snapshot
+            // CRITICAL: Send both proposalId and actionId
+            proposalId: prop.proposalId || prop.data?.proposalId || "unknown",
             actionId: prop.actionId ?? pers.actionId ?? prop.persistence?.actionId ?? 0,
 
             entityName: entityName,
@@ -2742,14 +2735,14 @@ window.SkyIndex = {
             commitAllowed: pers.commitAllowed ? "YES" : "NO",
             parcelDetails: loc.parcelDetails || [],
 
-            // === FULL NARRATIVES ===
             narratives: prop.narratives || {},
 
-            // Critical: Custom filename
             reportFilename: reportFilename
         };
 
         console.log("[REPORT] Final Payload Keys:", Object.keys(payload));
+        console.log("[REPORT] Sent proposalId:", payload.proposalId);
+        console.log("[REPORT] Sent actionId:", payload.actionId);
 
         // === FORM POST ===
         const form = document.createElement('form');
@@ -2767,7 +2760,6 @@ window.SkyIndex = {
         form.submit();
         document.body.removeChild(form);
 
-        // Restore link text
         if (link) {
             setTimeout(() => {
                 link.textContent = originalText;
@@ -3436,6 +3428,8 @@ window.SkyIndex = {
             return this.executeWorkflow(intent, response?.payload || { query: query });
         });
     },
+
+    // #endregion
 
     // #region 📇 Unified Contact/Governance Proposal Routing Handlers
     handleContactProposal(data) {
