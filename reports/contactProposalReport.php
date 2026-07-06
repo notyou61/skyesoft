@@ -170,15 +170,17 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
-    // Header and Image locked inside a single page-break-inside avoid block
-    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
+    // 🌟 Using a structural table block to enforce page-break locks across all mPDF engine variants
+    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
+    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
+    
+    // Inject Section Header inside the locked cell block
     $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
     
     $path = $proposal['reportArtifacts']['satellite'] ?? null;
     $url  = $proposal['reportArtifacts']['satelliteUrl'] ?? null;
     
     if ($path && file_exists($path)) {
-        // 🌟 Changed container to remove padding and set image to a crisp 100% full container width
         $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
         $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Satellite View">';
         $html .= '</div>';
@@ -187,17 +189,21 @@ function buildSatelliteSection(array $proposal): string
         $lng = $proposal['longitude'] ?? null;
         $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
         if ($googleKey && $lat && $lng) {
-            // 🌟 Upgraded the fallback Static Maps payload sizing to standard 16:9 layout scaling rules
             $staticUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=18&size=1024x576&maptype=satellite&markers=color:red%7C{$lat},{$lng}&key={$googleKey}";
             $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
             $html .= '<img src="' . htmlspecialchars($staticUrl) . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Satellite View Fallback">';
             $html .= '</div>';
         } else {
-            $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px;">📍 Satellite imagery unavailable</div>';
+            $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1;">📍 Satellite imagery unavailable</div>';
         }
     }
     
-    $html .= '</div>';
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    
+    // Add margin buffer spacing after the locked table element to clean up layout flow
+    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
+    
     return $html;
 }
 
