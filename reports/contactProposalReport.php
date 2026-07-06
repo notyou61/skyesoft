@@ -3,9 +3,8 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — contactProposalReport.php
 // Dynamic Foldable Proposal Report
-// Version: 2.3.0 (Asset Key Mismatch Fixed)
+// Version: 2.2.0 (Dual Payload Extraction Fix)
 // =============================================
-
 #region SECTION 00 - Main Report Generator
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
@@ -27,7 +26,7 @@ function generateContactProposalReport(array $input): array
         'reportType'      => 'contact_proposal',
         'reportTitle'     => 'Proposed Contact Report',
         'reportFilename'  => $reportFilename,
-        'reportSummary'   => generateSummarySection($proposal),
+        'reportSummary'   => generateSummarySection($input),
         'reportBodyHtml'  => $bodyHtml,
         'reportArtifacts' => $proposal['reportArtifacts'] ?? [],
         'reportMeta'      => [
@@ -38,7 +37,6 @@ function generateContactProposalReport(array $input): array
     ];
 }
 #endregion
-
 #region SECTION 01 - HTML Body Builder
 function buildContactProposalBody(array $proposal): string
 {
@@ -54,7 +52,6 @@ function buildContactProposalBody(array $proposal): string
     return $html;
 }
 #endregion
-
 #region SECTION 02 - Core Sections
 function buildEntitySection(array $proposal): string
 {
@@ -89,25 +86,24 @@ function buildLocationSection(array $proposal): string
     return $html;
 }
 #endregion
-
 #region SECTION 03 - Visual & Governance Sections
 function buildSatelliteSection(array $proposal): string
 {
     $html = '<div class="satellite-group" style="page-break-inside:avoid;">';
     $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
-    $path = $proposal['reportArtifacts']['satelliteImage'] ?? null;
+    $path = $proposal['reportArtifacts']['satellite'] ?? null;
     if ($path && file_exists($path)) {
         $html .= '<div style="text-align:center; margin:12px 0;">';
         $html .= '<img src="' . htmlspecialchars($path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Satellite View">';
         $html .= '</div>';
     } else {
-        $lat = $proposal['latitude'] ?? $proposal['locationLatitude'] ?? null;
-        $lng = $proposal['longitude'] ?? $proposal['locationLongitude'] ?? null;
+        $lat = $proposal['latitude'] ?? null;
+        $lng = $proposal['longitude'] ?? null;
         $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
         if ($googleKey && $lat && $lng) {
             $staticUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=18&size=950x450&maptype=satellite&markers=color:red%7C{$lat},{$lng}&key={$googleKey}";
             $html .= '<div style="text-align:center; margin:12px 0;">';
-            $html .= '<img src="' . htmlspecialchars($staticUrl) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Satellite View">';
+            $html .= '<img src="' . htmlspecialchars($staticUrl) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Satellite View Fallback">';
             $html .= '</div>';
         } else {
             $html .= '<div class="image-placeholder" style="min-height:260px;">📍 Satellite imagery unavailable</div>';
@@ -120,8 +116,7 @@ function buildStreetViewSection(array $proposal): string
 {
     $html = '<div class="section">';
     $html .= buildSectionHeader('Street View Verification', 'property.png');
-    // Single-line comment explanation: Target the active normalized array layout property key built by getProposalData
-    $path = $proposal['reportArtifacts']['streetViewImage'] ?? null;
+    $path = $proposal['reportArtifacts']['streetview'] ?? null;
     if ($path && file_exists($path)) {
         $html .= '<div style="text-align:center; margin:8px 0;">';
         $html .= '<img src="' . htmlspecialchars($path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
@@ -152,14 +147,13 @@ function buildParcelDetailSection(array $proposal): string
     foreach ($parcels as $i => $p) {
         $num = $i + 1;
         $apn = htmlspecialchars($p['apnRaw'] ?? $p['parcelNumber'] ?? '—');
-        $owner = htmlspecialchars($p['owner'] ?? '—');
-        $addr = htmlspecialchars(trim(($p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
+        $owner = htmlspecialchars($p['ownerName'] ?? $p['owner'] ?? '—');
+        $addr = htmlspecialchars(trim(($p['siteAddress'] ?? $p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
         $html .= '<div class="parcel-block">';
         $html .= '<strong>Parcel ' . $num . ' — APN: ' . $apn . '</strong><br>';
         $html .= 'Owner: ' . $owner . '<br>';
         $html .= 'Address: ' . $addr . '<br><br>';
-        // Single-line comment explanation: Direct file inclusion lookup check for current active layout parameters
-        $path = $proposal['reportArtifacts']['parcelMapImage'] ?? null;
+        $path = $proposal['reportArtifacts']['parcelmap'] ?? null;
         if ($path && file_exists($path)) {
             $html .= '<div style="text-align:center; margin:8px 0;">';
             $html .= '<img src="' . htmlspecialchars($path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Parcel Map">';
@@ -178,7 +172,6 @@ function buildGovernanceSection(array $proposal): string
     return $html;
 }
 #endregion
-
 #region SECTION 04 - Helpers
 function buildSectionHeader(string $title, string $icon = 'clipboard.png'): string
 {
@@ -191,11 +184,10 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
     </table>';
 }
 #endregion
-
 #region SECTION 05 - Summary
-function generateSummarySection(array $proposal): string
+function generateSummarySection(array $input): string
 {
-    $summary = $proposal['narratives']['ui'] ?? $proposal['narratives']['report'] ?? $proposal['governanceNarrative'] ?? 'Proposal processing complete.';
+    $summary = $input['narratives']['ui'] ?? $input['narratives']['report'] ?? $input['data']['governanceNarrative'] ?? $input['governanceNarrative'] ?? 'Proposal processing complete.';
     error_log("DEBUG Summary final text: " . substr($summary, 0, 150));
     return buildSectionHeader('Proposal Summary', 'clipboard.png') . '
         <div class="summaryNarrative" style="padding:16px; background:#f8f9fa; border-left:4px solid #17a2b8; margin-bottom:20px; line-height:1.5;">
@@ -203,37 +195,40 @@ function generateSummarySection(array $proposal): string
         </div>';
 }
 #endregion
-
 #region SECTION 06 - Data Normalization
 function getProposalData(array $input): array
 {
     $data = $input['data'] ?? $input;
-    if (isset($input['reportArtifacts'])) {
-        $artifacts = $input['reportArtifacts'];
-    } elseif (isset($data['reportArtifacts'])) {
-        $artifacts = $data['reportArtifacts'];
-    } else {
-        $artifacts = [];
-    }
-    // Single-line comment explanation: Preserve exact fallbacks matching current platform data structures
+    $entity = $data['entity'] ?? [];
+    $contact = $data['contact'] ?? [];
+    $location = $data['location'] ?? [];
+    $artifacts = $input['reportArtifacts'] ?? $data['reportArtifacts'] ?? [];
+    $city = $location['locationCity'] ?? '';
+    $state = $location['locationState'] ?? '';
+    $zip = $location['locationZip'] ?? '';
+    $cityStateZip = trim($city . ' ' . $state . ' ' . $zip);
+    // Single-line comment explanation: Check the layout properties from nested layout blocks then try flat root variants
     return [
-        'entityName'           => $data['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
-        'contactName'          => $data['contactName'] ?? $input['contactName'] ?? 'Unknown Contact',
-        'contactTitle'         => $data['contactTitle'] ?? $input['contactTitle'] ?? '',
-        'contactPhone'         => $data['contactPhone'] ?? $input['contactPhone'] ?? '',
-        'contactEmail'         => $data['contactEmail'] ?? $input['contactEmail'] ?? '',
-        'locationAddress'      => $data['locationAddress'] ?? $input['locationAddress'] ?? '',
-        'locationCityStateZip' => $data['locationCityStateZip'] ?? $input['locationCityStateZip'] ?? '—',
-        'locationJurisdiction' => $data['locationJurisdiction'] ?? $input['locationJurisdiction'] ?? 'Maricopa County',
-        'latitude'             => $data['latitude'] ?? $input['latitude'] ?? null,
-        'longitude'            => $data['longitude'] ?? $input['longitude'] ?? null,
-        'governanceNarrative'  => $data['governanceNarrative'] ?? $input['governanceNarrative'] ?? 'Proposal processing complete.',
-        'proposalCode'         => $data['proposalCode'] ?? $input['proposalCode'] ?? $data['pc_code'] ?? $input['pc_code'] ?? '',
-        'parcelDetails'        => $data['parcelDetails'] ?? $input['parcelDetails'] ?? [],
+        'entityName'           => $entity['entityName'] ?? $data['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
+        'contactName'          => trim(($contact['contactFirstName'] ?? '') . ' ' . ($contact['contactLastName'] ?? '')) ?: ($data['contactName'] ?? $input['contactName'] ?? 'Unknown Contact'),
+        'contactTitle'         => $contact['contactTitle'] ?? $data['contactTitle'] ?? $input['contactTitle'] ?? '',
+        'contactPhone'         => $contact['contactPrimaryPhone'] ?? $data['contactPhone'] ?? $input['contactPhone'] ?? '',
+        'contactEmail'         => $contact['contactEmail'] ?? $data['contactEmail'] ?? $input['contactEmail'] ?? '',
+        'locationAddress'      => $location['locationAddress'] ?? $data['locationAddress'] ?? $input['locationAddress'] ?? '',
+        'locationCityStateZip' => (!empty($cityStateZip)) ? $cityStateZip : ($data['locationCityStateZip'] ?? $input['locationCityStateZip'] ?? '—'),
+        'locationCounty'       => $location['locationCounty'] ?? $data['locationCounty'] ?? '',
+        'locationCountyFips'   => $location['locationCountyFips'] ?? $data['locationCountyFips'] ?? '',
+        'locationJurisdiction' => $location['jurisdictionName'] ?? $data['locationJurisdiction'] ?? 'Maricopa County',
+        'locationPlaceId'      => $location['locationPlaceId'] ?? $data['locationPlaceId'] ?? 'N/A',
+        'latitude'             => $location['locationLatitude'] ?? $data['latitude'] ?? $input['latitude'] ?? null,
+        'longitude'            => $location['locationLongitude'] ?? $data['longitude'] ?? $input['longitude'] ?? null,
+        'governanceNarrative'  => $input['narratives']['ui'] ?? $data['governanceNarrative'] ?? $input['governanceNarrative'] ?? 'Proposal processing complete.',
+        'proposalCode'         => $input['proposalCode'] ?? $input['pc_code'] ?? '',
+        'parcelDetails'        => $location['parcelDetails'] ?? $data['parcelDetails'] ?? [],
         'reportArtifacts'      => [
-            'streetViewImage'  => $artifacts['streetview'] ?? $artifacts['streetViewImage'] ?? null,
-            'satelliteImage'   => $artifacts['satellite'] ?? $artifacts['satelliteImage'] ?? null,
-            'parcelMapImage'   => $artifacts['parcelmap'] ?? $artifacts['parcel_maps'][0] ?? $artifacts['parcelMapImage'] ?? null
+            'streetview'       => $artifacts['streetview'] ?? null,
+            'satellite'        => $artifacts['satellite'] ?? null,
+            'parcelmap'        => $artifacts['parcelmap'] ?? $artifacts['parcel_maps'][0] ?? null
         ]
     ];
 }
