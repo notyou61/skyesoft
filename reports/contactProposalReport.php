@@ -43,16 +43,19 @@ function generateContactProposalReport(array $input): array
 #region SECTION 01 - HTML Body Builder
 function buildContactProposalBody(array $proposal): string
 {
-    // Inject enhanced CSS style blocks to guarantee dark, crisp borders and high contrast
+    // Inject highly compatible, non-overlapping mPDF print styles
     $html = '
     <style>
         .dataTable { 
             width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 16px; 
+            border-collapse: separate; /* 🌟 Fixes border clipping at the ends/edges */
+            border-spacing: 0;
+            margin-bottom: 18px; 
             font-family: Arial, sans-serif; 
             font-size: 11px;
-            border: 1px solid #1a365d; /* Crisp dark framing anchor for the container */
+            border-top: 1.5px solid #1a365d;
+            border-left: 1.5px solid #1a365d;
+            border-right: 1.5px solid #1a365d;
         }
         .dataTable th { 
             background-color: #1a365d; 
@@ -60,22 +63,24 @@ function buildContactProposalBody(array $proposal): string
             text-align: left; 
             padding: 7px 10px; 
             font-weight: bold; 
-            width: 30%; 
-            border: 1px solid #1a365d;
+            width: 32%; 
+            border-bottom: 1.5px solid #ffffff; /* Clear bright channel lines between th anchors */
         }
         .dataTable td { 
             padding: 7px 10px; 
             color: #2d3748; 
-            border-bottom: 1px solid #cbd5e1; /* Darker, explicitly set gray line to prevent vanishing */
-            border-right: 1px solid #e2e8f0;  /* Clean lateral partitioning gridlines */
+            border-bottom: 1.5px solid #1a365d; /* 🌟 Clear crisp border lines between description portions */
         }
-        /* Ensure the last table row retains a clear, bold frame base line */
-        .dataTable tr:last-child td {
-            border-bottom: 1px solid #1a365d;
+        /* Ensure the very last header cell doesn\'t leave an orphaned white line at the base */
+        .dataTable tr:last-child th {
+            border-bottom: 1.5px solid #1a365d;
         }
-        /* Restore table zebra striping */
+        /* 🌟 Striping isolated exclusively to the description td values to maximize visibility */
         .dataTable tr:nth-child(even) td { 
-            background-color: #f8fafc; 
+            background-color: #f1f5f9; /* Slightly darker crisp gray for clear printing contrast */
+        }
+        .dataTable tr:nth-child(odd) td { 
+            background-color: #ffffff; 
         }
     </style>';
     
