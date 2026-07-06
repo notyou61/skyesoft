@@ -1038,8 +1038,51 @@ function buildOperationalNarratives(array $context): array {
     }
 }
 // 🔍 evaluateEntityDuplicate — DB-backed entity normalization + matching
-function evaluateEntityDuplicate(array $parsed, PDO $pdo): array
+function evaluateEntityDuplicate(array $parsed, PDO &$pdo): array
 {
+    // ─────────────────────────────────────────────────────────────────
+    // 🔄 SELF-HEALING HOOK: Verify connection health & restore if lost
+    // ─────────────────────────────────────────────────────────────────
+    try {
+        // Run a lightweight test query to see if MySQL is alive
+        $pdo->query("SELECT 1");
+    } catch (PDOException $e) {
+        // If server has gone away (2006) or dropped out, catch it and rebuild
+        if ($e->errorInfo[1] == 2006 || strpos($e->getMessage(), 'gone away') !== false) {
+            error_log("[PPC][DB-RECONNECT] Database link lost during heavy processing. Re-establishing link...");
+            
+            try {
+                // Safely reuse your global dbConnect.php connection routine to self-heal
+                if (function_exists('getPDO')) {
+                    $pdo = getPDO();
+                } else {
+                    // Fallback if dbConnect factory isn't in scope
+                    $dbHost = getenv('DB_HOST') ?: 'localhost';
+                    $dbName = getenv('DB_NAME') ?: '';
+                    $dbUser = getenv('DB_USER') ?: '';
+                    $dbPass = getenv('DB_PASS') ?: ''; // Maps to your system's DB_PASS variable
+                    $dbChar = getenv('DB_CHARSET') ?: 'utf8mb4';
+
+                    $pdo = new PDO(
+                        "mysql:host={$dbHost};dbname={$dbName};charset={$dbChar}",
+                        $dbUser,
+                        $dbPass,
+                        [
+                            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                            PDO::ATTR_EMULATE_PREPARES   => false,
+                        ]
+                    );
+                }
+            } catch (PDOException $reconError) {
+                error_log("[PPC][FATAL] Re-connection initialization failed: " . $reconError->getMessage());
+                throw $reconError;
+            }
+        } else {
+            throw $e; // Bubble up if it's a completely different structural DB issue
+        }
+    }
+
     // -------------------------------------------------
     // RAW VALUES
     // -------------------------------------------------
