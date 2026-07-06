@@ -336,12 +336,49 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
+    // Extract status values from the normalized array or nested fallback paths
+    $uiStatus     = $proposal['ui']['proposalStatus'] ?? $proposal['proposalStatus'] ?? 'unknown';
+    $commitStatus = $proposal['status'] ?? 'unknown';
+    
+    // Determine the badge look based on system status (Matching portal styles)
+    $badgeText = strtoupper($uiStatus);
+    $bgColor   = '#718096'; // Default slate gray
+    $textColor = '#ffffff';
+    
+    if ($uiStatus === 'existing' || $commitStatus === 'matched') {
+        $badgeText = 'EXISTING RECORD';
+        $bgColor   = '#2f855a'; // Clean success green
+    } elseif ($uiStatus === 'proposed' || $commitStatus === 'proposed') {
+        $badgeText = 'PROPOSED NEW';
+        $bgColor   = '#dd6b20'; // Notice orange
+    } elseif ($uiStatus === 'conflict') {
+        $badgeText = 'CONFLICT DETECTED';
+        $bgColor   = '#e53e3e'; // Alert red
+    }
+
     $summary = $proposal['narratives']['ui'] ?? $proposal['narratives']['report'] ?? $proposal['governanceNarrative'] ?? 'Proposal processing complete.';
-    error_log("DEBUG Summary final text: " . substr($summary, 0, 150));
-    return buildSectionHeader('Proposal Summary', 'clipboard.png') . '
-        <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding:16px; background:#f8f9fa; border-left:4px solid #17a2b8; margin-bottom:20px; line-height:1.5; font-size:10.5px;">
-            ' . nl2br(htmlspecialchars(trim($summary))) . '
-        </div>';
+    
+    // Build the section frame header
+    $html = buildSectionHeader('Proposal Summary', 'clipboard.png');
+    
+    // Render the summary box with the status badge float-aligned right
+    $html .= '
+    <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding: 16px; background: #f8f9fa; border-left: 4px solid #17a2b8; margin-bottom: 20px; position: relative;">
+        <table style="width: 100%; border-collapse: collapse; margin: 0; padding: 0;">
+            <tr>
+                <td style="vertical-align: top; padding: 0; text-align: left; color: #2d3748; font-size: 10.5px; line-height: 1.5;">
+                    ' . nl2br(htmlspecialchars(trim($summary))) . '
+                </td>
+                <td style="vertical-align: top; padding: 0 0 0 15px; text-align: right; width: 140px;">
+                    <div style="display: inline-block; background-color: ' . $bgColor . '; color: ' . $textColor . '; font-family: Arial, sans-serif; font-size: 9px; font-weight: bold; padding: 5px 12px; border-radius: 50px; text-align: center; white-space: nowrap; letter-spacing: 0.5px;">
+                        ' . htmlspecialchars($badgeText) . '
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>';
+    
+    return $html;
 }
 #endregion
 
@@ -359,6 +396,7 @@ function getProposalData(array $input): array
     $urlStreet = $rawStreet ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawStreet) : null;
     $urlSat = $rawSat ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawSat) : null;
     $urlParcel = $rawParcel ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawParcel) : null;
+    
     return [
         'entityName'           => $entity['entityName'] ?? $data['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
         'contactName'          => isset($contact['contactFirstName']) ? trim(($contact['contactFirstName'] ?? '') . ' ' . ($contact['contactLastName'] ?? '')) : ($data['contactName'] ?? $input['contactName'] ?? 'Unknown Contact'),
@@ -376,14 +414,20 @@ function getProposalData(array $input): array
         'governanceNarrative'  => $data['governanceNarrative'] ?? $input['governanceNarrative'] ?? 'Proposal processing complete.',
         'proposalCode'         => $data['proposalCode'] ?? $input['proposalCode'] ?? $data['pc_code'] ?? $input['pc_code'] ?? '',
         'parcelDetails'        => $location['parcelDetails'] ?? $data['parcelDetails'] ?? $input['parcelDetails'] ?? [],
-        'narratives'           => $input['narratives'] ?? [],
+        'narratives'           => $input['narratives'] ?? $data['narratives'] ?? [],
+        
+        // 🌟 System Status Maps for Badge Rendering
+        'status'               => $input['status'] ?? $data['status'] ?? 'proposed',
+        'ui'                   => $input['ui'] ?? $data['ui'] ?? [],
+        'proposalStatus'       => $input['ui']['proposalStatus'] ?? $data['ui']['proposalStatus'] ?? 'existing',
+        
         'reportArtifacts'      => [
-            'streetview'       => $rawStreet,
-            'streetviewUrl'    => $artifacts['streetviewUrl'] ?? $urlStreet,
-            'satellite'        => $rawSat,
-            'satelliteUrl'     => $artifacts['satelliteUrl'] ?? $urlSat,
-            'parcelmap'        => $rawParcel,
-            'parcelmapUrl'     => $artifacts['parcelmapUrl'] ?? $urlParcel
+            'streetview'    => $rawStreet,
+            'streetviewUrl' => $artifacts['streetviewUrl'] ?? $urlStreet,
+            'satellite'     => $rawSat,
+            'satelliteUrl'  => $artifacts['satelliteUrl'] ?? $urlSat,
+            'parcelmap'     => $rawParcel,
+            'parcelmapUrl'  => $artifacts['parcelmapUrl'] ?? $urlParcel
         ]
     ];
 }
@@ -408,6 +452,12 @@ function normalizeProposalData(array $input): array
         'governanceNarrative'  => $input['governanceNarrative'] ?? 'Proposal processing complete.',
         'pc_code'              => $input['proposalCode'] ?? $input['pc_code'] ?? '',
         'parcelDetails'        => $input['parcelDetails'] ?? [],
+        
+        // 🌟 Pass-through fields kept intact here as well
+        'status'               => $input['status'] ?? 'proposed',
+        'ui'                   => $input['ui'] ?? [],
+        'proposalStatus'       => $input['ui']['proposalStatus'] ?? $input['proposalStatus'] ?? 'existing',
+        
         'reportArtifacts'      => $input['reportArtifacts'] ?? []
     ];
 }
