@@ -124,49 +124,40 @@ function buildStreetViewSection(array $proposal): string
 {
     $html = '<div class="section">';
     $html .= buildSectionHeader('Street View Verification', 'property.png');
-
-    // === DIAGNOSTIC LOGGING ===
-    error_log("[PDF DEBUG] buildStreetViewSection() received proposal keys: " . implode(', ', array_keys($proposal)));
-    error_log("[PDF DEBUG] proposalId = " . ($proposal['proposalId'] ?? 'NULL'));
-    error_log("[PDF DEBUG] reportArtifacts = " . json_encode($proposal['reportArtifacts'] ?? 'NULL'));
-
-    $rawPath = $proposal['reportArtifacts']['streetview'] ?? null;
+    $proposalId = $proposal['proposalCode'] ?? $proposal['proposalId'] ?? null;
     $base64Data = null;
     $mimeType = 'image/jpeg';
-
-    if ($rawPath) {
-        $candidates = [
-            $rawPath,
-            __DIR__ . '/../artifacts/' . basename($rawPath),
-            dirname(__DIR__) . '/artifacts/' . basename($rawPath),
-            '/home/notyou64/public_html/skyesoft/artifacts/' . basename($rawPath)
-        ];
-
-        foreach ($candidates as $testPath) {
-            if (file_exists($testPath)) {
-                $imgData = @file_get_contents($testPath);
-                if ($imgData !== false && strlen($imgData) > 5000) {
-                    $base64Data = base64_encode($imgData);
-                    $ext = strtolower(pathinfo($testPath, PATHINFO_EXTENSION));
-                    if ($ext === 'png') $mimeType = 'image/png';
-                    error_log("[PDF] ✅ Street View loaded from: " . basename($testPath));
-                    break;
-                }
+    if ($proposalId) {
+        $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts/';
+        $pattern = $artifactsDir . 'TMP-IMG-STR-' . str_pad((string)$proposalId, 6, '0', STR_PAD_LEFT) . '-*.jpg';
+        $matches = glob($pattern);
+        if (!empty($matches) && file_exists($matches[0])) {
+            $imgData = @file_get_contents($matches[0]);
+            if ($imgData !== false) {
+                $base64Data = base64_encode($imgData);
             }
         }
     }
-
+    if ($base64Data === null) {
+        $path = $proposal['reportArtifacts']['streetview'] ?? null;
+        $url  = $proposal['reportArtifacts']['streetviewUrl'] ?? null;
+        if (empty($path) && !empty($url)) {
+            $path = str_replace('https://skyelighting.com', '/home/notyou64/public_html', $url);
+        }
+        if ($path && file_exists($path)) {
+            $imgData = @file_get_contents($path);
+            if ($imgData !== false) {
+                $base64Data = base64_encode($imgData);
+            }
+        }
+    }
     if ($base64Data !== null) {
-        $html .= '<div style="text-align:center; margin:12px 0 8px;">';
-        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" ';
-        $html .= 'style="max-width:100%; height:auto; border:1px solid #ddd; border-radius:6px;" alt="Street View">';
+        $html .= '<div style="text-align:center; margin:8px 0;">';
+        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px; background:#f8f9fa; border:2px dashed #ccc; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#888; font-size:1.1em;">';
-        $html .= '📍 Street View unavailable for this location';
-        $html .= '</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px;">📍 Street View unavailable</div>';
     }
-
     $html .= '</div>';
     return $html;
 }
