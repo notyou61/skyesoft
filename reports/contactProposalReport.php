@@ -37,6 +37,7 @@ function generateContactProposalReport(array $input): array
     ];
 }
 #endregion
+
 #region SECTION 01 - HTML Body Builder
 function buildContactProposalBody(array $proposal): string
 {
@@ -52,6 +53,7 @@ function buildContactProposalBody(array $proposal): string
     return $html;
 }
 #endregion
+
 #region SECTION 02 - Core Sections
 function buildEntitySection(array $proposal): string
 {
@@ -86,6 +88,7 @@ function buildLocationSection(array $proposal): string
     return $html;
 }
 #endregion
+
 #region SECTION 03 - Visual & Governance Sections
 function buildSatelliteSection(array $proposal): string
 {
@@ -172,6 +175,7 @@ function buildGovernanceSection(array $proposal): string
     return $html;
 }
 #endregion
+
 #region SECTION 04 - Helpers
 function buildSectionHeader(string $title, string $icon = 'clipboard.png'): string
 {
@@ -184,6 +188,7 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
     </table>';
 }
 #endregion
+
 #region SECTION 05 - Summary
 function generateSummarySection(array $input): string
 {
@@ -195,6 +200,7 @@ function generateSummarySection(array $input): string
         </div>';
 }
 #endregion
+
 #region SECTION 06 - Data Normalization
 function getProposalData(array $input): array
 {
