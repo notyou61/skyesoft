@@ -1189,25 +1189,35 @@ if ($pc === 'PC-0') {
 // =====================================================
 error_log('[PPC][SECTION-14] Gathering runtime context for operational AI narratives...');
 
+// Flatten out data references so the AI prompt can find the keys immediately at the root level
 $narrativeContext = [
     'pcmStatus'          => $pc,
     'pcm'                => $pcm,
+    'databaseResolution' => $databaseResolution ?? [],
+    'governance'         => $governance ?? [],
+    
+    // 🌟 Explicitly flattened keys matching the prompt definitions exactly
+    'contactFirstName'   => $data['contact']['contactFirstName'] ?? '',
+    'contactLastName'    => $data['contact']['contactLastName'] ?? '',
+    'entityName'         => $data['entity']['entityName'] ?? '',
+    'locationCity'       => $data['location']['locationCity'] ?? '',
+    'locationState'      => $data['location']['locationState'] ?? '',
+    
+    // Retain original arrays for full context evaluations
     'entity'             => $data['entity'] ?? [],
     'contact'            => $data['contact'] ?? [],
-    'location'           => $data['location'] ?? [],
-    'databaseResolution' => $databaseResolution ?? [],
-    'governance'         => $governance ?? []
+    'location'           => $data['location'] ?? []
 ];
 
 // Call the utility function updated in processProposedContact.utils.php
 $aiNarrativeResult = buildOperationalNarratives($narrativeContext);
 
-// 🌟 Extract the standalone Content Line
+// Extract the standalone Content Line
 $contentLine = $aiNarrativeResult['contentLine'] ?? 'Proposal Information Update';
 
 // Format the structural array to map seamlessly with your existing framework
 $narratives = [
-    'contentLine'=> $contentLine, // 🌟 Preserved directly inside the narratives object
+    'contentLine'=> $contentLine, 
     'ui'         => $aiNarrativeResult['decision'][0] ?? 'Proposal processing routing initiated.',
     'report'     => implode(' ', $aiNarrativeResult['informational'] ?? []),
     'decisions'  => $aiNarrativeResult['decision'] ?? [],
