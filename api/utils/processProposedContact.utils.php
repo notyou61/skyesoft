@@ -1013,7 +1013,7 @@ function buildOperationalNarratives(array $context): array {
         // Robust JSON extraction
         preg_match('/\{[\s\S]*\}/', $content, $matches);
         if (empty($matches[0])) {
-            error_log('[NARRATIVE] ❌ Critical: No curly brace JSON block found in AI content');
+            error_log('[NARRATIVE] No JSON block found in response');
             return $fallback;
         }
 
@@ -1024,18 +1024,31 @@ function buildOperationalNarratives(array $context): array {
         
         $parsed = json_decode($jsonStr, true);
 
-        if ($parsed === null) {
-            error_log('[NARRATIVE] ❌ Critical: json_decode returned NULL. Raw text payload was: ' . $jsonStr);
+        if (!is_array($parsed)) {
+            error_log('[NARRATIVE] JSON decode failed to produce an array');
             return $fallback;
         }
 
-        // Standardize the decision metrics layout matching the structural criteria
+        // 🔄 AUTOMATIC UNWRAPPING: If the payload is nested inside a root "narratives" key, elevate it
+        if (isset($parsed['narratives']) && is_array($parsed['narratives'])) {
+            error_log('[NARRATIVE] Detected root "narratives" wrapper block. Elevating internal variables...');
+            $parsed = $parsed['narratives'];
+        }
+
+        // Validates structure across both legacy layouts and new payload keys
+        if (empty($parsed['decision']) && empty($parsed['decisions']) && empty($parsed['ui'])) {
+            error_log('[NARRATIVE] Missing operational validation structures at extracted root layer');
+            return $fallback;
+        }
+
+        error_log('[NARRATIVE] Success - Parsed AI narrative payload');
+
+        // Extract and normalize payload fields safely
         $decisionData = $parsed['decisions'] ?? ($parsed['decision'] ?? []);
         if (empty($decisionData) && !empty($parsed['ui'])) {
             $decisionData = (array)$parsed['ui'];
         }
 
-        // Enforce strong array typing for structural matching
         if (!is_array($decisionData)) {
             $decisionData = [$decisionData];
         }
@@ -1045,10 +1058,8 @@ function buildOperationalNarratives(array $context): array {
             $infoData = [$infoData];
         }
 
-        error_log('[NARRATIVE]  Success - Parsed live AI narrative payload.');
-
         return [
-            'contentLine'   => $parsed['contentLine'] ?? 'Proposal Information Update',
+            'contentLine'   => $parsed['contentLine'] ?? 'Contact Proposal Processing Request',
             'decision'      => $decisionData,
             'blocking'      => (array)($parsed['blocking'] ?? []),
             'review'        => (array)($parsed['review'] ?? []),
@@ -1056,7 +1067,7 @@ function buildOperationalNarratives(array $context): array {
         ];
 
     } catch (Throwable $e) {
-        error_log('[NARRATIVE] ❌ Exception: ' . $e->getMessage());
+        error_log('[NARRATIVE] Exception: ' . $e->getMessage());
         return $fallback;
     }
 }
