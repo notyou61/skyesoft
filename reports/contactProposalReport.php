@@ -3,14 +3,15 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — contactProposalReport.php
 // Dynamic Foldable Proposal Report
-// Version: 2.9.0 (Unified Typography & Component Alignment)
+// Version: 2.8.1 (Table Stripes, Page Break Lock & Entity Fixed)
 // =============================================
 
 #region SECTION 00 - Main Report Generator
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
 }
-error_log("=== contactProposalReport.php FULLY RELOADED (Dynamic v2.9) at " . date('H:i:s') . " ===");
+error_log("=== contactProposalReport.php FULLY RELOADED (Dynamic v2.8.1) at " . date('H:i:s') . " ===");
+
 function generateContactProposalReport(array $input): array
 {
     $proposal = getProposalData($input);
@@ -42,31 +43,42 @@ function generateContactProposalReport(array $input): array
 #region SECTION 01 - HTML Body Builder
 function buildContactProposalBody(array $proposal): string
 {
-    $html = '';
+    // Inject core CSS style blocks directly to ensure consistent rendering & zebra striping
+    $html = '
+    <style>
+        .dataTable { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-family: Arial, sans-serif; font-size: 11px; }
+        .dataTable th { background-color: #1a365d; color: #ffffff; text-align: left; padding: 6px 8px; font-weight: bold; width: 30%; }
+        .dataTable td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; color: #2d3748; }
+        .dataTable tr:nth-child(even) td { background-color: #f8fafc; } /* 🌟 FIX A: Restore table striping */
+    </style>';
     
-    // Core details group - individual surface cards optimized for layout distribution
-    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%; font-family: Arial, sans-serif;">';
+    // Card 1: Entity Information Block
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%;">';
     $html .= buildEntitySection($proposal);
     $html .= '</div>';
     
-    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%; font-family: Arial, sans-serif;">';
+    // Card 2: Contact Information Block
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%;">';
     $html .= buildContactSection($proposal);
     $html .= '</div>';
     
-    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%; font-family: Arial, sans-serif;">';
+    // Card 3: Location Information Block
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%;">';
     $html .= buildLocationSection($proposal);
     $html .= '</div>';
     
-    // Map Context Group
+    // Map Context Group (Satellite overview) — Locked inside a structurally complete single container
     $html .= buildSatelliteSection($proposal);
+    
+    // Interactive Street View Imagery
     $html .= buildStreetViewSection($proposal);
     
-    // Land/Parcel Context Group
+    // Parcel Overviews & Plat Map matching
     $html .= buildParcelSummarySection($proposal);
     $html .= buildParcelMapSection($proposal);
     $html .= buildParcelDetailSection($proposal);
     
-    // Narrative Context
+    // Governance narrative block
     $html .= buildGovernanceSection($proposal);
     
     return $html;
@@ -77,32 +89,34 @@ function buildContactProposalBody(array $proposal): string
 function buildEntitySection(array $proposal): string
 {
     $html = buildSectionHeader('Entity Information', 'property.png');
-    $html .= '<table class="dataTable" style="width:100%; margin-bottom:4px; font-family: Arial, sans-serif; font-size: 10px; border-collapse: collapse;">';
-    $html .= '<tr><th style="width:30%; text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">Entity Name</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['entityName'] ?? 'N/A') . '</td></tr>';
+    $html .= '<table class="dataTable">';
+    $html .= '<tr><th>Entity Name</th><td>' . htmlspecialchars($proposal['entityName'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
     return $html;
 }
+
 function buildContactSection(array $proposal): string
 {
     $html = buildSectionHeader('Contact Information', 'users.png');
-    $html .= '<table class="dataTable" style="width:100%; margin-bottom:4px; font-family: Arial, sans-serif; font-size: 10px; border-collapse: collapse;">';
-    $html .= '<tr><th style="width:30%; text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">Contact Name</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['contactName'] ?? 'N/A') . '</td></tr>';
-    $html .= '<tr><th style="text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">Title</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['contactTitle'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th style="text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">Phone</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['contactPhone'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th style="text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">Email</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['contactEmail'] ?? '—') . '</td></tr>';
+    $html .= '<table class="dataTable">';
+    $html .= '<tr><th>Contact Name</th><td>' . htmlspecialchars($proposal['contactName'] ?? 'N/A') . '</td></tr>';
+    $html .= '<tr><th>Title</th><td>' . htmlspecialchars($proposal['contactTitle'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Phone</th><td>' . htmlspecialchars($proposal['contactPhone'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Email</th><td>' . htmlspecialchars($proposal['contactEmail'] ?? '—') . '</td></tr>';
     $html .= '</table>';
     return $html;
 }
+
 function buildLocationSection(array $proposal): string
 {
     $html = buildSectionHeader('Location Information', 'pin.png');
-    $html .= '<table class="dataTable" style="width:100%; margin-bottom:4px; font-family: Arial, sans-serif; font-size: 10px; border-collapse: collapse;">';
-    $html .= '<tr><th style="width:30%; text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">Full Address</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['locationAddress'] ?? 'N/A') . '</td></tr>';
-    $html .= '<tr><th style="text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">City, State ZIP</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th style="text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">County</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['locationCounty'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th style="text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">County FIPS</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['locationCountyFips'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th style="text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">Jurisdiction</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['locationJurisdiction'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th style="text-align:left; padding:6px; background-color:#f8fafc; border:1px solid #e2e8f0; font-weight:bold; color:#1a365d;">Place ID</th><td style="padding:6px; border:1px solid #e2e8f0; color:#333333;">' . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') . '</td></tr>';
+    $html .= '<table class="dataTable">';
+    $html .= '<tr><th>Full Address</th><td>' . htmlspecialchars($proposal['locationAddress'] ?? 'N/A') . '</td></tr>';
+    $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>County</th><td>' . htmlspecialchars($proposal['locationCounty'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>County FIPS</th><td>' . htmlspecialchars($proposal['locationCountyFips'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? '—') . '</td></tr>';
+    $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
     return $html;
 }
@@ -112,10 +126,13 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
-    $html = '<div class="proposal-section" style="page-break-inside:avoid; margin-bottom: 24px; width: 100%; font-family: Arial, sans-serif;">';
+    // 🌟 FIX B: Header and Image locked inside a single page-break-inside avoid block
+    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
     $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+    
     $path = $proposal['reportArtifacts']['satellite'] ?? null;
     $url  = $proposal['reportArtifacts']['satelliteUrl'] ?? null;
+    
     if ($path && file_exists($path)) {
         $html .= '<div style="text-align:center; margin:12px 0;">';
         $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Satellite View">';
@@ -130,7 +147,7 @@ function buildSatelliteSection(array $proposal): string
             $html .= '<img src="' . htmlspecialchars($staticUrl) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Satellite View Fallback">';
             $html .= '</div>';
         } else {
-            $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; color:#718096; text-align:center;">📍 Satellite imagery unavailable</div>';
+            $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px;">📍 Satellite imagery unavailable</div>';
         }
     }
     $html .= '</div>';
@@ -139,11 +156,12 @@ function buildSatelliteSection(array $proposal): string
 
 function buildStreetViewSection(array $proposal): string
 {
-    $html = '<div class="proposal-section" style="page-break-inside:avoid; margin-bottom: 24px; width: 100%; font-family: Arial, sans-serif;">';
+    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
     $html .= buildSectionHeader('Street View Verification', 'property.png');
     $proposalId = $proposal['proposalCode'] ?? $proposal['proposalId'] ?? null;
     $base64Data = null;
     $mimeType = 'image/jpeg';
+    
     if ($proposalId) {
         $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts/';
         $pattern = $artifactsDir . 'TMP-IMG-STR-' . str_pad((string)$proposalId, 6, '0', STR_PAD_LEFT) . '-*.jpg';
@@ -173,7 +191,7 @@ function buildStreetViewSection(array $proposal): string
         $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; color:#718096; text-align:center;">📍 Street View unavailable</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px;">📍 Street View unavailable</div>';
     }
     $html .= '</div>';
     return $html;
@@ -181,9 +199,9 @@ function buildStreetViewSection(array $proposal): string
 
 function buildParcelSummarySection(array $proposal): string
 {
-    $html = '<div class="proposal-section" style="page-break-inside:avoid; margin-bottom: 24px; width: 100%; font-family: Arial, sans-serif;">';
+    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
     $html .= buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
-    $html .= '<div class="parcelSummaryBlock" style="padding:12px; line-height:1.4; font-family: Arial, sans-serif; font-size: 10.5px; color:#333333; background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:4px;">';
+    $html .= '<div class="parcelSummaryBlock" style="padding:12px; line-height:1.4; font-family: Arial, sans-serif; font-size:11px;">';
     $html .= 'Multiple parcel candidates exist at this address.<br><br>';
     $html .= 'Review and selection is required before proceeding.';
     $html .= '</div>';
@@ -193,7 +211,7 @@ function buildParcelSummarySection(array $proposal): string
 
 function buildParcelMapSection(array $proposal): string
 {
-    $html = '<div class="proposal-section" style="page-break-inside:avoid; margin-bottom: 24px; width: 100%; font-family: Arial, sans-serif;">';
+    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
     $html .= buildSectionHeader('Parcel Plat Map Artifact', 'compass.png');
     $path = $proposal['reportArtifacts']['parcelmap'] ?? null;
     $url  = $proposal['reportArtifacts']['parcelmapUrl'] ?? null;
@@ -202,7 +220,7 @@ function buildParcelMapSection(array $proposal): string
         $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Parcel Plat Map">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:120px; padding-top:10px; font-family: Arial, sans-serif; font-size:11px; color:#718096; text-align:center;">📍 Parcel plat map artifact unavailable</div>';
+        $html .= '<div class="image-placeholder" style="min-height:120px; padding-top:10px;">📍 Parcel plat map artifact unavailable</div>';
     }
     $html .= '</div>';
     return $html;
@@ -213,7 +231,7 @@ function buildParcelDetailSection(array $proposal): string
     $parcels = $proposal['parcelDetails'] ?? [];
     if (empty($parcels)) return '';
     
-    $html = '<div class="proposal-section" style="page-break-inside:avoid; margin-bottom: 24px; width: 100%; font-family: Arial, sans-serif;">';
+    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
     
     $displayCount = 0;
@@ -226,10 +244,10 @@ function buildParcelDetailSection(array $proposal): string
         $owner = htmlspecialchars($p['ownerName'] ?? $p['owner'] ?? '—');
         $addr = htmlspecialchars(trim(($p['siteAddress'] ?? $p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
         
-        $html .= '<div class="parcel-block" style="background-color:#f8fafc; border:1px solid #e2e8f0; padding:10px; margin-bottom:10px; border-radius:4px; font-family: Arial, sans-serif; font-size:10px; color:#333333; line-height:1.4;">';
-        $html .= '<strong style="color:#1a365d; font-size:10.5px;">Parcel ' . $num . ' — APN: ' . $apn . '</strong><br>';
-        $html .= '<strong>Owner:</strong> ' . $owner . '<br>';
-        $html .= '<strong>Address:</strong> ' . $addr . '<br>';
+        $html .= '<div class="parcel-block" style="font-family: Arial, sans-serif; font-size:11px; background-color:#f8fafc; border:1px solid #e2e8f0; padding:10px; margin-bottom:10px; border-radius:4px;">';
+        $html .= '<strong>Parcel ' . $num . ' — APN: ' . $apn . '</strong><br>';
+        $html .= 'Owner: ' . $owner . '<br>';
+        $html .= 'Address: ' . $addr . '<br>';
         $html .= '</div>';
     }
     
@@ -248,18 +266,19 @@ function buildGovernanceSection(array $proposal): string
     $narrative = $proposal['governanceNarrative'] ?? 'Governance review pending.';
     
     $html = '<pagebreak />';
-    $html .= '<div class="proposal-section" style="page-break-inside: avoid; width: 100%; font-family: Arial, sans-serif;">';
-    $html .= buildSectionHeader('Governance &amp; Operational Narrative', 'scales.png');
-    $html .= '<div class="highlight" style="font-family: Arial, sans-serif; background-color: #ffffff; border-left: 4px solid #3182ce; padding: 14px; font-size: 10.5px; line-height: 1.6; text-align: justify; color: #2d3748; margin-top:10px; border-top:1px solid #e2e8f0; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; border-radius:0 4px 4px 0;">' . nl2br(htmlspecialchars($narrative)) . '</div>';
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; width: 100%;">';
+    // 🌟 FIX C: Handled ampersand raw format safely so it generates correctly without double translation
+    $html .= buildSectionHeader('Governance & Operational Narrative', 'scales.png');
+    $html .= '<div class="highlight" style="font-family: Arial, sans-serif; background-color: #ffffff; border-left: 4px solid #3182ce; padding: 14px; font-size: 10.5px; line-height: 1.6; text-align: justify; color: #2d3748; margin-top:10px;">' . nl2br(htmlspecialchars($narrative)) . '</div>';
     $html .= '</div>';
     return $html;
 }
-
 #endregion
 
 #region SECTION 04 - Helpers
 function buildSectionHeader(string $title, string $icon = 'clipboard.png'): string
 {
+    // Ensure titles bypass internal double escaping loops safely
     return '
     <table class="sectionHeaderTable" style="width:100%; margin-bottom:8px; border-bottom: 2px solid #1a365d; font-family: Arial, sans-serif;">
         <tr>
@@ -276,7 +295,7 @@ function generateSummarySection(array $proposal): string
     $summary = $proposal['narratives']['ui'] ?? $proposal['narratives']['report'] ?? $proposal['governanceNarrative'] ?? 'Proposal processing complete.';
     error_log("DEBUG Summary final text: " . substr($summary, 0, 150));
     return buildSectionHeader('Proposal Summary', 'clipboard.png') . '
-        <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding:16px; background:#f8f9fa; border-left:4px solid #17a2b8; margin-bottom:20px; line-height:1.5; font-size:10.5px; color:#333333; border-top:1px solid #e2e8f0; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; border-radius:0 4px 4px 0;">
+        <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding:16px; background:#f8f9fa; border-left:4px solid #17a2b8; margin-bottom:20px; line-height:1.5; font-size:10.5px;">
             ' . nl2br(htmlspecialchars(trim($summary))) . '
         </div>';
 }
@@ -324,6 +343,7 @@ function getProposalData(array $input): array
         ]
     ];
 }
+
 function normalizeProposalData(array $input): array
 {
     error_log("DEBUG normalizeProposalData - Using flat payload structure");
@@ -344,7 +364,7 @@ function normalizeProposalData(array $input): array
         'governanceNarrative'  => $input['governanceNarrative'] ?? 'Proposal processing complete.',
         'pc_code'              => $input['proposalCode'] ?? $input['pc_code'] ?? '',
         'parcelDetails'        => $input['parcelDetails'] ?? [],
-        'reportArtifacts'      => $input['reportArtifact...']
+        'reportArtifacts'      => $input['reportArtifacts'] ?? []
     ];
 }
 #endregion
