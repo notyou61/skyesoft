@@ -56,6 +56,9 @@ function renderReport(array $report): string
 function buildReportHeader(array $report): string
 {
     $title = $report['reportTitle'] ?? 'Proposed Contact Report (PC-3)';
+    
+    // 🌟 Check for our injected dynamic AI contentLine, fall back to default if empty
+    $subtitle = $report['reportSubtitle'] ?? 'Skyesoft Operational Intelligence';
 
     return '
     <div style="border-bottom: 3px solid #14377C; padding-bottom: 6px;">
@@ -67,7 +70,7 @@ function buildReportHeader(array $report): string
                 </td>
                 <td>
                     <div style="font-size:14pt; font-weight:700; color:#14377C;">' . htmlspecialchars($title) . '</div>
-                    <div style="font-size:9pt; color:#555;">Skyesoft Operational Intelligence | Report Date: ' . date('m/d/y') . '</div>
+                    <div style="font-size:9pt; color:#555;">' . htmlspecialchars($subtitle) . ' | Report Date: ' . date('m/d/y') . '</div>
                 </td>
             </tr>
         </table>
