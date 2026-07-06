@@ -1013,39 +1013,50 @@ function buildOperationalNarratives(array $context): array {
         // Robust JSON extraction
         preg_match('/\{[\s\S]*\}/', $content, $matches);
         if (empty($matches[0])) {
-            error_log('[NARRATIVE] No JSON block found in response');
+            error_log('[NARRATIVE] ❌ Critical: No curly brace JSON block found in AI content');
             return $fallback;
         }
 
-        $jsonStr = $matches[0];
+        $jsonStr = trim($matches[0]);
+        
+        // Strip out hidden system control characters or unescaped line breaks that disrupt json_decode
+        $jsonStr = preg_replace('/[\x00-\x1F\x7F]/', '', $jsonStr);
+        
         $parsed = json_decode($jsonStr, true);
 
-        // Validates structure across both legacy layouts and new payload keys
-        if (!is_array($parsed) || (empty($parsed['decision']) && empty($parsed['decisions']) && empty($parsed['ui']))) {
-            error_log('[NARRATIVE] JSON decode failed or missing operational validation structures');
+        if ($parsed === null) {
+            error_log('[NARRATIVE] ❌ Critical: json_decode returned NULL. Raw text payload was: ' . $jsonStr);
             return $fallback;
         }
 
-        error_log('[NARRATIVE] Success - Parsed AI narrative payload');
-
-        // Extract and normalize payload to interface with corporate framework collections
+        // Standardize the decision metrics layout matching the structural criteria
         $decisionData = $parsed['decisions'] ?? ($parsed['decision'] ?? []);
         if (empty($decisionData) && !empty($parsed['ui'])) {
             $decisionData = (array)$parsed['ui'];
         }
 
+        // Enforce strong array typing for structural matching
+        if (!is_array($decisionData)) {
+            $decisionData = [$decisionData];
+        }
+
         $infoData = $parsed['info'] ?? ($parsed['informational'] ?? ($parsed['report'] ?? []));
+        if (!is_array($infoData)) {
+            $infoData = [$infoData];
+        }
+
+        error_log('[NARRATIVE]  Success - Parsed live AI narrative payload.');
 
         return [
-            'contentLine'   => $parsed['contentLine'] ?? 'Contact Proposal Processing Request',
-            'decision'      => (array)$decisionData,
+            'contentLine'   => $parsed['contentLine'] ?? 'Proposal Information Update',
+            'decision'      => $decisionData,
             'blocking'      => (array)($parsed['blocking'] ?? []),
             'review'        => (array)($parsed['review'] ?? []),
-            'informational' => (array)$infoData
+            'informational' => $infoData
         ];
 
     } catch (Throwable $e) {
-        error_log('[NARRATIVE] Exception: ' . $e->getMessage());
+        error_log('[NARRATIVE] ❌ Exception: ' . $e->getMessage());
         return $fallback;
     }
 }
