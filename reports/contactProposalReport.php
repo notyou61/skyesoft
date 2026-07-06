@@ -170,7 +170,7 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
-    // 🌟 FIX B: Header and Image locked inside a single page-break-inside avoid block
+    // Header and Image locked inside a single page-break-inside avoid block
     $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
     $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
     
@@ -178,22 +178,25 @@ function buildSatelliteSection(array $proposal): string
     $url  = $proposal['reportArtifacts']['satelliteUrl'] ?? null;
     
     if ($path && file_exists($path)) {
-        $html .= '<div style="text-align:center; margin:12px 0;">';
-        $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Satellite View">';
+        // 🌟 Changed container to remove padding and set image to a crisp 100% full container width
+        $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
+        $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Satellite View">';
         $html .= '</div>';
     } else {
         $lat = $proposal['latitude'] ?? null;
         $lng = $proposal['longitude'] ?? null;
         $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY') ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') ?: '';
         if ($googleKey && $lat && $lng) {
-            $staticUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=18&size=950x450&maptype=satellite&markers=color:red%7C{$lat},{$lng}&key={$googleKey}";
-            $html .= '<div style="text-align:center; margin:12px 0;">';
-            $html .= '<img src="' . htmlspecialchars($staticUrl) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Satellite View Fallback">';
+            // 🌟 Upgraded the fallback Static Maps payload sizing to standard 16:9 layout scaling rules
+            $staticUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=18&size=1024x576&maptype=satellite&markers=color:red%7C{$lat},{$lng}&key={$googleKey}";
+            $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
+            $html .= '<img src="' . htmlspecialchars($staticUrl) . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Satellite View Fallback">';
             $html .= '</div>';
         } else {
             $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px;">📍 Satellite imagery unavailable</div>';
         }
     }
+    
     $html .= '</div>';
     return $html;
 }
