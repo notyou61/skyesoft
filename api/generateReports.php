@@ -95,21 +95,22 @@ try {
         if (!isset($input['reportArtifacts'])) {
             $input['reportArtifacts'] = [];
         }
-        // Single-line comment explanation: Map existing widescreen street view record from root artifacts directory
         $streetViewPath = resolveReportArtifactPath((string)$proposalId, 'STR', 'jpg');
         if ($streetViewPath && file_exists($streetViewPath)) {
             $input['reportArtifacts']['streetview'] = $streetViewPath;
+            $input['reportArtifacts']['streetviewUrl'] = str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $streetViewPath);
             error_log("[IMAGES] ✅ Canonical Street View mapped: " . $streetViewPath);
         }
-        // Single-line comment explanation: Map existing high-resolution satellite record from root artifacts directory
         $satellitePath = resolveReportArtifactPath((string)$proposalId, 'SAT', 'png');
         if ($satellitePath && file_exists($satellitePath)) {
             $input['reportArtifacts']['satellite'] = $satellitePath;
+            $input['reportArtifacts']['satelliteUrl'] = str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $satellitePath);
             error_log("[IMAGES] ✅ Canonical Satellite mapped: " . $satellitePath);
         }
-        // Single-line comment explanation: Map existing parcel map container asset array from root artifacts directory
         $parcelPath = resolveReportArtifactPath((string)$proposalId, 'PAR', 'png');
         if ($parcelPath && file_exists($parcelPath)) {
+            $input['reportArtifacts']['parcelmap'] = $parcelPath;
+            $input['reportArtifacts']['parcelmapUrl'] = str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $parcelPath);
             $input['reportArtifacts']['parcel_maps'] = [$parcelPath];
             error_log("[IMAGES] ✅ Canonical Parcel Map mapped: " . $parcelPath);
         }
