@@ -1222,42 +1222,45 @@ error_log("[PPC][SECTION-14] AI Narrative Generation complete → Content Line: 
 #region SECTION 15 — Proposal Snapshot Creation
 
 // =====================================================
-// Prepare Snapshot
+// Prepare Snapshot Matching Utility Architecture
 // =====================================================
 $proposalSnapshot = [
     'proposalId'        => $proposalId,
+    'contentLine'       => $contentLine ?? 'Proposal Information Update', 
     'generatedAt'       => date('c'),
     'version'           => '1.9.0',
     'activitySessionId' => $context['activitySessionId'] ?? '',
     'rawInput'          => $rawInput ?? '',
     'proposalStatus'    => 'proposed',
     
+    'parsed'            => $parsed ?? [],
     'data'              => $data ?? [],
-    'databaseResolution'=> $databaseResolution ?? [],
-    
-    // Classification
-    'pcm'               => [
-        'pc' => (isset($pcm['pc']) ? $pcm['pc'] : null),
-        'rs' => (isset($pcm['rs']) ? $pcm['rs'] : [])
-    ],
-    
-    // Execution Plan
-    'commitPlan'        => $commitPlan ?? [],
-    
-    // UI Presentation State
-    'ui'                => $uiState ?? [],
-    
-    // Governance Details (blocking reasons)
-    'governance'        => $governance ?? ['blockingIssues' => []],
-    
-    // Human-readable Narratives
-    'narratives'        => $narratives ?? [],
-    
     'meta'              => [
         'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
         'parcelCount'        => $data['location']['parcelCount'] ?? 0,
         'censusValidated'    => $data['location']['locationCensusValidated'] ?? false,
         'googleValidated'    => $data['location']['locationValidated'] ?? false
+    ],
+    
+    'pcm'               => [
+        'pc' => ($pcm['pc'] ?? null),
+        'rs' => ($pcm['rs'] ?? [])
+    ],
+    'locationValidation'=> $locationValidation ?? [],
+    'resolution'        => $databaseResolution ?? [],
+    'persistence'       => $commitPlan ?? [],
+    
+    'status'            => ($pcm['readyForCommit'] ?? false) ? 'ready' : 'review',
+    'reportStatus'      => 'pending',
+    
+    'governance'        => $governance ?? ['blockingIssues' => []],
+    'narratives'        => $narratives ?? [],
+    
+    'artifactRegistry'  => [
+        'parcelImages'  => $parcelImages ?? [],
+        'satelliteView' => null,
+        'streetView'    => null,
+        'pdfReport'     => null
     ]
 ];
 
@@ -1277,12 +1280,12 @@ $written = file_put_contents(
 );
 
 if ($written !== false) {
-    error_log("[PPC][SECTION-15] ✅ Snapshot saved: {$proposalId}.json");
+    error_log("[PPC][SECTION-15] ✅ Snapshot saved with Content Line: {$proposalId}.json");
 } else {
     error_log("[PPC][SECTION-15] ❌ Failed to save snapshot");
 }
 
-// Attach path for reference
+// Attach path reference
 $proposalSnapshot['snapshotPath'] = $snapshotPath;
 
 #endregion
