@@ -1290,7 +1290,7 @@ function generateStreetViewImage(
     string $googleKey,
     string $address = '',
     string $proposalId = '',
-    string $manualHeading = null
+    ?string $manualHeading = null // 🛠️ FIX: Explicitly typed as nullable to eliminate PHP6410 warning
 ): ?string {
     $lat = (string)$lat;
     $lng = (string)$lng;
