@@ -92,6 +92,7 @@ function buildLocationSection(array $proposal): string
 #endregion
 
 #region SECTION 03 - Visual & Governance Sections
+
 function buildSatelliteSection(array $proposal): string
 {
     $html = '<div class="satellite-group" style="page-break-inside:avoid;">';
@@ -118,41 +119,54 @@ function buildSatelliteSection(array $proposal): string
     $html .= '</div>';
     return $html;
 }
+
 function buildStreetViewSection(array $proposal): string
 {
     $html = '<div class="section">';
     $html .= buildSectionHeader('Street View Verification', 'property.png');
-    $path = $proposal['reportArtifacts']['streetview'] ?? null;
-    $url  = $proposal['reportArtifacts']['streetviewUrl'] ?? null;
+
+    $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
     $base64Data = null;
     $mimeType = 'image/jpeg';
-    if ($path && file_exists($path)) {
-        $imgData = @file_get_contents($path);
-        if ($imgData !== false) {
-            $base64Data = base64_encode($imgData);
-            if (pathinfo($path, PATHINFO_EXTENSION) === 'png') {
-                $mimeType = 'image/png';
-            }
+
+    if ($streetViewPath) {
+        // Support both relative and absolute paths
+        if (!file_exists($streetViewPath) && !str_starts_with($streetViewPath, '/')) {
+            $streetViewPath = __DIR__ . '/../artifacts/' . basename($streetViewPath);
         }
-    } elseif (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
-        $imgData = @file_get_contents($url);
-        if ($imgData !== false) {
-            $base64Data = base64_encode($imgData);
-            if (strpos($url, '.png') !== false) {
-                $mimeType = 'image/png';
+
+        if (file_exists($streetViewPath)) {
+            $imgData = @file_get_contents($streetViewPath);
+            if ($imgData !== false && strlen($imgData) > 1000) {
+                $base64Data = base64_encode($imgData);
+                $ext = strtolower(pathinfo($streetViewPath, PATHINFO_EXTENSION));
+                if ($ext === 'png') {
+                    $mimeType = 'image/png';
+                }
+                error_log("[PDF] ✅ Street View embedded from: " . basename($streetViewPath));
+            } else {
+                error_log("[PDF] ❌ Street View file empty or unreadable: " . $streetViewPath);
             }
+        } else {
+            error_log("[PDF] ❌ Street View file not found: " . $streetViewPath);
         }
     }
+
     if ($base64Data !== null) {
-        $html .= '<div style="text-align:center; margin:8px 0;">';
-        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
+        $html .= '<div style="text-align:center; margin:12px 0 8px;">';
+        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" ';
+        $html .= 'style="max-width:100%; height:auto; border:1px solid #ddd; border-radius:6px;" alt="Street View">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px;">📍 Street View unavailable</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px; background:#f8f9fa; border:2px dashed #ccc; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#888; font-size:1.1em;">';
+        $html .= '📍 Street View unavailable for this location';
+        $html .= '</div>';
     }
+
     $html .= '</div>';
     return $html;
 }
+
 function buildParcelSummarySection(array $proposal): string
 {
     $html = '<div style="page-break-inside:avoid; margin-top:10px;">';
@@ -164,6 +178,7 @@ function buildParcelSummarySection(array $proposal): string
     $html .= '</div>';
     return $html;
 }
+
 function buildParcelMapSection(array $proposal): string
 {
     $html = '<div class="section" style="page-break-inside:avoid; margin-top:10px;">';
@@ -180,6 +195,7 @@ function buildParcelMapSection(array $proposal): string
     $html .= '</div>';
     return $html;
 }
+
 function buildParcelDetailSection(array $proposal): string
 {
     $parcels = $proposal['parcelDetails'] ?? [];
@@ -200,6 +216,7 @@ function buildParcelDetailSection(array $proposal): string
     $html .= '</div>';
     return $html;
 }
+
 function buildGovernanceSection(array $proposal): string
 {
     $narrative = $proposal['governanceNarrative'] ?? 'Governance review pending.';
@@ -207,6 +224,7 @@ function buildGovernanceSection(array $proposal): string
     $html .= '<div class="highlight">' . nl2br(htmlspecialchars($narrative)) . '</div>';
     return $html;
 }
+
 #endregion
 
 #region SECTION 04 - Helpers
