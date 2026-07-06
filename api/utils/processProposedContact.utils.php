@@ -941,6 +941,7 @@ function extractPhoneExtension(string $input): ?string {
 function buildOperationalNarratives(array $context): array {
 
     $fallback = [
+        'contentLine'   => 'Contact Proposal Processing Request', // Added to fallback
         'decision'      => ['The proposal is operationally eligible for insertion as a new entity, location, and contact relationship.'],
         'blocking'      => [],
         'review'        => [],
@@ -1026,6 +1027,7 @@ function buildOperationalNarratives(array $context): array {
 
         error_log('[NARRATIVE] Success - Parsed AI narrative');
         return array_merge([
+            'contentLine'   => 'Contact Proposal Processing Request', // Merged default key
             'decision'      => [],
             'blocking'      => [],
             'review'        => [],
@@ -1391,6 +1393,7 @@ function generateParcelMapImage(
     return $outputPath;
 }
 
+
 // =====================================================
 // DEFENSIVE SHARED HELPERS (No duplicates)
 // =====================================================
@@ -1449,7 +1452,8 @@ function createProposalSnapshot(
     array $resolution,
     array $persistence,
     string $activitySessionId,
-    array $parcelImages = []          // ← NEW: Accept generated parcel images
+    array $parcelImages = [],
+    string $contentLine = 'Proposal Information Update' // ← NEW: Explicitly typed default parameter
 ): array {
 
     // If proposalId isn't passed or isn't 6 digits, enforce strict numeric padding
@@ -1458,6 +1462,7 @@ function createProposalSnapshot(
 
     $proposalSnapshot = [
         'proposalId'        => $proposalId,
+        'contentLine'       => $contentLine, // ← NEW: Saved directly to the snapshot JSON layout
         'generatedAt'       => date('c'),
         'version'           => '1.6.0',
         'activitySessionId' => $activitySessionId,
@@ -1475,7 +1480,7 @@ function createProposalSnapshot(
         'reportStatus'      => 'pending',
 
         'artifactRegistry'  => [
-            'parcelImages'  => $parcelImages,     // ← Now populated
+            'parcelImages'  => $parcelImages,
             'satelliteView' => null,
             'streetView'    => null,
             'pdfReport'     => null
@@ -1494,7 +1499,7 @@ function createProposalSnapshot(
         json_encode($proposalSnapshot, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
     );
 
-    error_log("[PROPOSAL] " . ($written !== false ? "✅ Created snapshot" : "❌ Failed") . ": {$proposalId}");
+    error_log("[PROPOSAL] " . ($written !== false ? "✅ Created snapshot with Content Line" : "❌ Failed") . ": {$proposalId}");
 
     return [
         'proposalId'   => $proposalId,
