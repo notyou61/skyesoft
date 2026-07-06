@@ -276,8 +276,8 @@ function generateExecutiveSummary(Mpdf $mpdf, array $report): void
     $summaryText = $report['report'] ?? $report['reportSummary'] ?? '';
     
     if (!empty($summaryText)) {
-        // Render inside matching clean narrative layout paragraphs
-        $mpdf->WriteHTML('<p>' . htmlspecialchars($summaryText) . '</p>');
+        // 🌟 Print the raw string content directly so the HTML elements evaluate correctly
+        $mpdf->WriteHTML('<p>' . $summaryText . '</p>');
     } else {
         $mpdf->WriteHTML('<p>Proposal ready for review.</p>');
     }
