@@ -2665,6 +2665,13 @@ window.SkyIndex = {
             return;
         }
 
+        console.log("[REPORT] Full Proposal Object", prop);  // ← Diagnostic
+        console.log("[REPORT] Action ID candidates", {
+            actionId: prop.actionId,
+            persistenceActionId: prop.persistence?.actionId,
+            activitySessionId: prop.activitySessionId
+        });
+
         const d = prop.data || {};
         const loc = d.location || {};
         const cont = d.contact || {};
@@ -2673,7 +2680,7 @@ window.SkyIndex = {
         const pers = prop.persistence || {};
         const pcm = prop.pcm || {};
 
-        // Optional loading feedback on the clicked link
+        // Optional loading feedback
         const link = document.querySelector('a[onclick*="viewProposalReport"]');
         const originalText = link ? link.textContent : 'View Proposal Report';
         if (link) link.textContent = 'Generating PDF...';
@@ -2702,6 +2709,9 @@ window.SkyIndex = {
         const payload = {
             reportType: "contact_proposal",
             reportTitle: reportTitle,
+
+            // CRITICAL: Send Action ID so backend can load full snapshot
+            actionId: prop.actionId ?? pers.actionId ?? prop.persistence?.actionId ?? 0,
 
             entityName: entityName,
             entityAction: pers.entity?.action || "",
@@ -2738,6 +2748,8 @@ window.SkyIndex = {
             // Critical: Custom filename
             reportFilename: reportFilename
         };
+
+        console.log("[REPORT] Final Payload Keys:", Object.keys(payload));
 
         // === FORM POST ===
         const form = document.createElement('form');
