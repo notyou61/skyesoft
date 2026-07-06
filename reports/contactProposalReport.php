@@ -124,7 +124,8 @@ function buildStreetViewSection(array $proposal): string
     $html .= buildSectionHeader('Street View Verification', 'property.png');
     $path = $proposal['reportArtifacts']['streetview'] ?? null;
     $url  = $proposal['reportArtifacts']['streetviewUrl'] ?? null;
-    if ($path && file_exists($path)) {
+    // Single-line comment explanation: Check local file presence or look for fallback to a valid network location source string
+    if (($path && file_exists($path)) || (!empty($url) && filter_var($url, FILTER_VALIDATE_URL))) {
         $html .= '<div style="text-align:center; margin:8px 0;">';
         $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
         $html .= '</div>';
