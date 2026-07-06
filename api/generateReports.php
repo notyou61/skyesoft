@@ -66,111 +66,127 @@ if (!$reportHandler) {
 
 #region SECTION 04 - Report Preparation & Generation (Universal)
 try {
-    $pdo = getPDO();
-    if ($actionId > 0) {
-        error_log("[PREP] Loading actionResponseData for actionId: {$actionId} (universal prep)");
-        $stmt = $pdo->prepare("SELECT actionResponseData FROM tblActions WHERE actionId = ? LIMIT 1");
-        $stmt->execute([$actionId]);
-        $action = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($action && !empty($action['actionResponseData'])) {
-            $payload = json_decode($action['actionResponseData'], true);
-            if (is_array($payload)) {
-                $input = array_merge($input, $payload);
-                error_log("[PREP] ✅ Successfully merged actionResponseData. New keys: " . json_encode(array_keys($input)));
-            } else {
-                error_log("[PREP] ⚠️ Invalid JSON in actionResponseData for actionId {$actionId}");
+    $pdo = getPDO(); //[cite: 3]
+    if ($actionId > 0) { //[cite: 3]
+        error_log("[PREP] Loading actionResponseData for actionId: {$actionId} (universal prep)"); //[cite: 3]
+        $stmt = $pdo->prepare("SELECT actionResponseData FROM tblActions WHERE actionId = ? LIMIT 1"); //[cite: 3]
+        $stmt->execute([$actionId]); //[cite: 3]
+        $action = $stmt->fetch(PDO::FETCH_ASSOC); //[cite: 3]
+        if ($action && !empty($action['actionResponseData'])) { //[cite: 3]
+            $payload = json_decode($action['actionResponseData'], true); //[cite: 3]
+            if (is_array($payload)) { //[cite: 3]
+                $input = array_merge($input, $payload); //[cite: 3]
+                error_log("[PREP] ✅ Successfully merged actionResponseData. New keys: " . json_encode(array_keys($input))); //[cite: 3]
+            } else { //[cite: 3]
+                error_log("[PREP] ⚠️ Invalid JSON in actionResponseData for actionId {$actionId}"); //[cite: 3]
             }
-        } else {
-            error_log("[PREP] ⚠️ No actionResponseData found for actionId {$actionId}");
+        } else { //[cite: 3]
+            error_log("[PREP] ⚠️ No actionResponseData found for actionId {$actionId}"); //[cite: 3]
         }
-    } else {
-        error_log("[PREP] No actionId provided — using direct input only");
+    } else { //[cite: 3]
+        error_log("[PREP] No actionId provided — using direct input only"); //[cite: 3]
     }
     // =====================================================
     // LOAD FULL PROPOSAL SNAPSHOT (Critical for reportArtifacts)
     // =====================================================
-    $proposalId = $input['proposalId'] ?? $input['data']['proposalId'] ?? null;
-    if ($proposalId) {
-        $snapshotPath = __DIR__ . '/../data/runtimeEphemeral/proposals/' . $proposalId . '.json';
-        if (file_exists($snapshotPath)) {
-            $fullSnapshot = json_decode(file_get_contents($snapshotPath), true);
-            if (is_array($fullSnapshot)) {
-                $input = array_merge($input, $fullSnapshot);
-                error_log("[PREP] ✅ Loaded full snapshot for proposalId: " . $proposalId);
+    $proposalId = $input['proposalId'] ?? $input['data']['proposalId'] ?? null; //[cite: 3]
+    if ($proposalId) { //[cite: 3]
+        $snapshotPath = __DIR__ . '/../data/runtimeEphemeral/proposals/' . $proposalId . '.json'; //[cite: 3]
+        if (file_exists($snapshotPath)) { //[cite: 3]
+            $fullSnapshot = json_decode(file_get_contents($snapshotPath), true); //[cite: 3]
+            if (is_array($fullSnapshot)) { //[cite: 3]
+                $input = array_merge($input, $fullSnapshot); //[cite: 3]
+                error_log("[PREP] ✅ Loaded full snapshot for proposalId: " . $proposalId); //[cite: 3]
             }
-        } else {
-            error_log("[PREP] ⚠️ Snapshot not found: " . $snapshotPath);
+        } else { //[cite: 3]
+            error_log("[PREP] ⚠️ Snapshot not found: " . $snapshotPath); //[cite: 3]
         }
-    } else {
-        error_log("[PREP] ⚠️ No proposalId found in input");
+    } else { //[cite: 3]
+        error_log("[PREP] ⚠️ No proposalId found in input"); //[cite: 3]
     }
+
+    // =====================================================
+    // EXTRACT AND INJECT DYNAMIC AI CONTENT LINE
+    // =====================================================
+    $dynamicContentLine = $input['narratives']['contentLine'] ?? $input['contentLine'] ?? null;
+    if (!empty($dynamicContentLine)) {
+        error_log("[PREP] Injecting dynamic contentLine: '{$dynamicContentLine}'");
+        $input['reportSubtitle'] = $dynamicContentLine;
+    }
+
     // =====================================================
     // UNIVERSAL IMAGE & ARTIFACT PREPARATION (MAPPED TO CANONICAL ARTIFACTS)
     // =====================================================
-    error_log("[IMAGES] Starting universal artifact mapping for reportType: {$reportType}");
-    if ($proposalId) {
-        if (!isset($input['reportArtifacts'])) {
-            $input['reportArtifacts'] = [];
+    error_log("[IMAGES] Starting universal artifact mapping for reportType: {$reportType}"); //[cite: 3]
+    if ($proposalId) { //[cite: 3]
+        if (!isset($input['reportArtifacts'])) { //[cite: 3]
+            $input['reportArtifacts'] = []; //[cite: 3]
         }
-        $streetViewPath = resolveReportArtifactPath((string)$proposalId, 'STR', 'jpg');
-        if ($streetViewPath && file_exists($streetViewPath)) {
-            $input['reportArtifacts']['streetview'] = $streetViewPath;
-            $input['reportArtifacts']['streetviewUrl'] = str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $streetViewPath);
-            error_log("[IMAGES] ✅ Canonical Street View mapped: " . $streetViewPath);
+        $streetViewPath = resolveReportArtifactPath((string)$proposalId, 'STR', 'jpg'); //[cite: 3]
+        if ($streetViewPath && file_exists($streetViewPath)) { //[cite: 3]
+            $input['reportArtifacts']['streetview'] = $streetViewPath; //[cite: 3]
+            $input['reportArtifacts']['streetviewUrl'] = str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $streetViewPath); //[cite: 3]
+            error_log("[IMAGES] ✅ Canonical Street View mapped: " . $streetViewPath); //[cite: 3]
         }
-        $satellitePath = resolveReportArtifactPath((string)$proposalId, 'SAT', 'png');
-        if ($satellitePath && file_exists($satellitePath)) {
-            $input['reportArtifacts']['satellite'] = $satellitePath;
-            $input['reportArtifacts']['satelliteUrl'] = str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $satellitePath);
-            error_log("[IMAGES] ✅ Canonical Satellite mapped: " . $satellitePath);
+        $satellitePath = resolveReportArtifactPath((string)$proposalId, 'SAT', 'png'); //[cite: 3]
+        if ($satellitePath && file_exists($satellitePath)) { //[cite: 3]
+            $input['reportArtifacts']['satellite'] = $satellitePath; //[cite: 3]
+            $input['reportArtifacts']['satelliteUrl'] = str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $satellitePath); //[cite: 3]
+            error_log("[IMAGES] ✅ Canonical Satellite mapped: " . $satellitePath); //[cite: 3]
         }
-        $parcelPath = resolveReportArtifactPath((string)$proposalId, 'PAR', 'png');
-        if ($parcelPath && file_exists($parcelPath)) {
-            $input['reportArtifacts']['parcelmap'] = $parcelPath;
-            $input['reportArtifacts']['parcelmapUrl'] = str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $parcelPath);
-            $input['reportArtifacts']['parcel_maps'] = [$parcelPath];
-            error_log("[IMAGES] ✅ Canonical Parcel Map mapped: " . $parcelPath);
+        $parcelPath = resolveReportArtifactPath((string)$proposalId, 'PAR', 'png'); //[cite: 3]
+        if ($parcelPath && file_exists($parcelPath)) { //[cite: 3]
+            $input['reportArtifacts']['parcelmap'] = $parcelPath; //[cite: 3]
+            $input['reportArtifacts']['parcelmapUrl'] = str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $parcelPath); //[cite: 3]
+            $input['reportArtifacts']['parcel_maps'] = [$parcelPath]; //[cite: 3]
+            error_log("[IMAGES] ✅ Canonical Parcel Map mapped: " . $parcelPath); //[cite: 3]
         }
-    } else {
-        error_log("[IMAGES] Skipping artifact mapping - no valid proposalId provided");
+    } else { //[cite: 3]
+        error_log("[IMAGES] Skipping artifact mapping - no valid proposalId provided"); //[cite: 3]
     }
-    require_once $reportHandler['file'];
-    $generator = $reportHandler['generator'] ?? null;
-    if (!$generator || !function_exists($generator)) {
-        throw new Exception('Generator function not found: ' . ($generator ?? 'null'));
+    require_once $reportHandler['file']; //[cite: 3]
+    $generator = $reportHandler['generator'] ?? null; //[cite: 3]
+    if (!$generator || !function_exists($generator)) { //[cite: 3]
+        throw new Exception('Generator function not found: ' . ($generator ?? 'null')); //[cite: 3]
     }
-    error_log("[PREP] Calling generator: {$generator} with prepared input");
-    $report = call_user_func($generator, $input);
-    if (empty($report) || !is_array($report)) {
-        throw new Exception('Report generator returned invalid data');
+    error_log("[PREP] Calling generator: {$generator} with prepared input"); //[cite: 3]
+    $report = call_user_func($generator, $input); //[cite: 3]
+    if (empty($report) || !is_array($report)) { //[cite: 3]
+        throw new Exception('Report generator returned invalid data'); //[cite: 3]
     }
-    require_once __DIR__ . '/../reports/templates/baseReport.php';
-    $pdfContent = renderReport($report);
-    if (empty($pdfContent)) {
-        throw new Exception('PDF generation returned empty content');
+
+    // Force override if the downstream generator enforces the legacy default
+    if (!empty($dynamicContentLine)) {
+        $report['reportSubtitle'] = $dynamicContentLine;
     }
-    $filename = $report['reportFilename'] ?? $report['reportTitle'] ?? ucwords(str_replace('_', ' ', $reportType)) . ' Report';
-    $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename));
-    if (empty($filename)) {
-        $filename = 'Report';
+
+    require_once __DIR__ . '/../reports/templates/baseReport.php'; //[cite: 3]
+    $pdfContent = renderReport($report); //[cite: 3]
+    if (empty($pdfContent)) { //[cite: 3]
+        throw new Exception('PDF generation returned empty content'); //[cite: 3]
     }
-    header('Content-Type: application/pdf');
-    header('Content-Disposition: inline; filename="' . $filename . '.pdf"');
-    header('Content-Length: ' . strlen($pdfContent));
-    header('Cache-Control: no-cache, must-revalidate');
-    header('Pragma: no-cache');
-    echo $pdfContent;
-    exit;
-} catch (Throwable $e) {
-    error_log("[generateReports] ERROR: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
-    http_response_code(500);
-    echo json_encode([
-        'error'   => $e->getMessage(),
-        'file'    => basename($e->getFile()),
-        'line'    => $e->getLine(),
-        'trace'   => $e->getTraceAsString()
-    ]);
-    exit;
+    $filename = $report['reportFilename'] ?? $report['reportTitle'] ?? ucwords(str_replace('_', ' ', $reportType)) . ' Report'; //[cite: 3]
+    $filename = preg_replace('/[\\\\\/:"*?<>|]+/', '', trim($filename)); //[cite: 3]
+    if (empty($filename)) { //[cite: 3]
+        $filename = 'Report'; //[cite: 3]
+    }
+    header('Content-Type: application/pdf'); //[cite: 3]
+    header('Content-Disposition: inline; filename="' . $filename . '.pdf"'); //[cite: 3]
+    header('Content-Length: ' . strlen($pdfContent)); //[cite: 3]
+    header('Cache-Control: no-cache, must-revalidate'); //[cite: 3]
+    header('Pragma: no-cache'); //[cite: 3]
+    echo $pdfContent; //[cite: 3]
+    exit; //[cite: 3]
+} catch (Throwable $e) { //[cite: 3]
+    error_log("[generateReports] ERROR: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine()); //[cite: 3]
+    http_response_code(500); //[cite: 3]
+    echo json_encode([ //[cite: 3]
+        'error'   => $e->getMessage(), //[cite: 3]
+        'file'    => basename($e->getFile()), //[cite: 3]
+        'line'    => $e->getLine(), //[cite: 3]
+        'trace'   => $e->getTraceAsString() //[cite: 3]
+    ]); //[cite: 3]
+    exit; //[cite: 3]
 }
 #endregion
 
