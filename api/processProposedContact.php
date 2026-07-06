@@ -1160,7 +1160,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 #region SECTION 14 — Narrative Builder + UI State
 
 // =====================================================
-// UI State Builder
+// UI State Builder (Preserved Deterministic Rules)
 // =====================================================
 $uiState = [
     'proposalStatus' => 'proposed',
@@ -1185,46 +1185,37 @@ if ($pc === 'PC-0') {
 }
 
 // =====================================================
-// Narrative Builder
+// AI Content Line & Narrative Builder Injection
 // =====================================================
-$narratives = ['ui' => null, 'report' => null];
+error_log('[PPC][SECTION-14] Gathering runtime context for operational AI narratives...');
 
-$contactName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
-$entityName  = trim($data['entity']['entityName'] ?? '');
-$loc         = trim($data['location']['locationAddressRaw'] ?? '');
+$narrativeContext = [
+    'pcmStatus'          => $pc,
+    'pcm'                => $pcm,
+    'entity'             => $data['entity'] ?? [],
+    'contact'            => $data['contact'] ?? [],
+    'location'           => $data['location'] ?? [],
+    'databaseResolution' => $databaseResolution ?? [],
+    'governance'         => $governance ?? []
+];
 
-if (empty($entityName)) $entityName = 'the entity';
-if (empty($contactName)) $contactName = 'the contact';
-if (empty($loc)) $loc = 'the provided address';
+// Call the utility function updated in processProposedContact.utils.php
+$aiNarrativeResult = buildOperationalNarratives($narrativeContext);
 
-if (in_array('RS-3', $rsList)) {
-    $missingFields = $governance['blockingIssues'][0]['fields'] ?? ['required information'];
-    $fieldList = implode(', ', $missingFields);
+// 🌟 Extract the standalone Content Line
+$contentLine = $aiNarrativeResult['contentLine'] ?? 'Proposal Information Update';
 
-    $narratives['ui'] = "The proposal is incomplete.\n\nRequired information is missing.\n\nMissing fields: {$fieldList}.\n\nThis proposal cannot be accepted until the missing information is provided.";
-    $narratives['report'] = "Incomplete proposal — missing required fields ({$fieldList}).";
-} elseif (in_array('RS-6', $rsList)) {
-    $parcelCount = $data['location']['parcelCount'] ?? 0;
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nMultiple parcels ({$parcelCount}) were found.\n\nParcel selection is required before this proposal can be accepted.";
-    $narratives['report'] = "New proposal for {$contactName} at {$entityName}. Multiple parcels detected — selection required.";
-} elseif ($pc === 'PC-0') {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nAll records already exist. No action required.";
-    $narratives['report'] = "Existing record match for {$contactName} at {$entityName}.";
-} elseif ($pc === 'PC-4') {
-    $narratives['ui'] = "Location proposal for {$entityName} at {$loc}.\n\nExisting entity match found. Ready to add new location.";
-    $narratives['report'] = "Location-only proposal for existing entity {$entityName}.";
-} elseif ($pc === 'PC-5') {
-    $locName = !empty($data['location']['locationName']) 
-        ? " — {$data['location']['locationName']}" 
-        : '';
-    $narratives['ui'] = "New location proposal for {$entityName}{$locName} at {$loc}.\n\nNew entity + location will be created.";
-    $narratives['report'] = "New entity + location proposal for {$entityName}.";
-} else {
-    $narratives['ui'] = "{$contactName} was identified for {$entityName} at {$loc}.\n\nThis proposal is eligible for acceptance.";
-    $narratives['report'] = "New proposal for {$contactName} at {$entityName}, {$loc}.";
-}
+// Format the structural array to map seamlessly with your existing framework
+$narratives = [
+    'ui'         => $aiNarrativeResult['decision'][0] ?? 'Proposal processing routing initiated.',
+    'report'     => implode(' ', $aiNarrativeResult['informational'] ?? []),
+    'decisions'  => $aiNarrativeResult['decision'] ?? [],
+    'blocking'   => $aiNarrativeResult['blocking'] ?? [],
+    'review'     => $aiNarrativeResult['review'] ?? [],
+    'info'       => $aiNarrativeResult['informational'] ?? []
+];
 
-error_log('[PPC][SECTION-14] Narrative Builder complete');
+error_log("[PPC][SECTION-14] AI Narrative Generation complete → Content Line: '{$contentLine}'");
 
 #endregion
 
