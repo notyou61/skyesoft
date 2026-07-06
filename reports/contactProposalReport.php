@@ -44,23 +44,49 @@ function buildContactProposalBody(array $proposal): string
 {
     $html = '';
     
-    // Core details group wrapper
-    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 24px; width: 100%;">';
+    // ─────────────────────────────────────────────────────────────────
+    // 📊 ISOLATED SURFACE CARDS: Break blocks into distinct containers
+    // ─────────────────────────────────────────────────────────────────
+    
+    // Card 1: Entity Information Block
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%;">';
     $html .= buildEntitySection($proposal);
+    $html .= '</div>';
+    
+    // Card 2: Contact Information Block
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%;">';
     $html .= buildContactSection($proposal);
+    $html .= '</div>';
+    
+    // Card 3: Location Information Block
+    $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 20px; width: 100%;">';
     $html .= buildLocationSection($proposal);
     $html .= '</div>';
     
-    // Map Context Group
+    // ─────────────────────────────────────────────────────────────────
+    // 🗺️ VISUAL & GEOGRAPHIC WORKFLOW ARTIFACTS
+    // ─────────────────────────────────────────────────────────────────
+    
+    // Map Context Group (Satellite overview)
     $html .= buildSatelliteSection($proposal);
+    
+    // Interactive Street View Imagery
     $html .= buildStreetViewSection($proposal);
     
-    // Land/Parcel Context Group
+    // ─────────────────────────────────────────────────────────────────
+    // 🗺️ LAND MANAGEMENT & JURISDICTION SECTIONS
+    // ─────────────────────────────────────────────────────────────────
+    
+    // Parcel Overviews & Plat Map matching
     $html .= buildParcelSummarySection($proposal);
     $html .= buildParcelMapSection($proposal);
     $html .= buildParcelDetailSection($proposal);
     
-    // Explicit clean page break pushing Governance narrative productively to Page 5
+    // ─────────────────────────────────────────────────────────────────
+    // ⚖️ COMPLIANCE & NARRATIVE ARCHITECTURE
+    // ─────────────────────────────────────────────────────────────────
+    
+    // Explicit page break handler inside to claim Page 5 for Governance narrative exclusively
     $html .= buildGovernanceSection($proposal);
     
     return $html;
