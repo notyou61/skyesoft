@@ -43,13 +43,40 @@ function generateContactProposalReport(array $input): array
 #region SECTION 01 - HTML Body Builder
 function buildContactProposalBody(array $proposal): string
 {
-    // Inject core CSS style blocks directly to ensure consistent rendering & zebra striping
+    // Inject enhanced CSS style blocks to guarantee dark, crisp borders and high contrast
     $html = '
     <style>
-        .dataTable { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-family: Arial, sans-serif; font-size: 11px; }
-        .dataTable th { background-color: #1a365d; color: #ffffff; text-align: left; padding: 6px 8px; font-weight: bold; width: 30%; }
-        .dataTable td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; color: #2d3748; }
-        .dataTable tr:nth-child(even) td { background-color: #f8fafc; } /* 🌟 FIX A: Restore table striping */
+        .dataTable { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 16px; 
+            font-family: Arial, sans-serif; 
+            font-size: 11px;
+            border: 1px solid #1a365d; /* Crisp dark framing anchor for the container */
+        }
+        .dataTable th { 
+            background-color: #1a365d; 
+            color: #ffffff; 
+            text-align: left; 
+            padding: 7px 10px; 
+            font-weight: bold; 
+            width: 30%; 
+            border: 1px solid #1a365d;
+        }
+        .dataTable td { 
+            padding: 7px 10px; 
+            color: #2d3748; 
+            border-bottom: 1px solid #cbd5e1; /* Darker, explicitly set gray line to prevent vanishing */
+            border-right: 1px solid #e2e8f0;  /* Clean lateral partitioning gridlines */
+        }
+        /* Ensure the last table row retains a clear, bold frame base line */
+        .dataTable tr:last-child td {
+            border-bottom: 1px solid #1a365d;
+        }
+        /* Restore table zebra striping */
+        .dataTable tr:nth-child(even) td { 
+            background-color: #f8fafc; 
+        }
     </style>';
     
     // Card 1: Entity Information Block
