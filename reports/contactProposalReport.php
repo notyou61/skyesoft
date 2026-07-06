@@ -125,24 +125,20 @@ function buildStreetViewSection(array $proposal): string
     $html = '<div class="section">';
     $html .= buildSectionHeader('Street View Verification', 'property.png');
 
-    $proposalId = $proposal['proposalId'] ?? '';
+    // HARD CODED FOR TESTING
+    $hardcodedPath = '/home/notyou64/public_html/skyesoft/artifacts/TMP-IMG-STR-591279-000-1783343362-001.jpg';
 
     $base64Data = null;
     $mimeType = 'image/jpeg';
 
-    if ($proposalId) {
-        $artifactsDir = __DIR__ . '/../artifacts/';
-        $pattern = $artifactsDir . "TMP-IMG-STR-{$proposalId}-*.jpg";
-
-        $files = glob($pattern);
-        if (!empty($files)) {
-            $latestFile = array_pop($files); // most recent
-            $imgData = @file_get_contents($latestFile);
-            if ($imgData !== false && strlen($imgData) > 5000) {
-                $base64Data = base64_encode($imgData);
-                error_log("[PDF] ✅ Street View found via glob: " . basename($latestFile));
-            }
+    if (file_exists($hardcodedPath)) {
+        $imgData = file_get_contents($hardcodedPath);
+        if ($imgData !== false) {
+            $base64Data = base64_encode($imgData);
+            error_log("[PDF] ✅ Hardcoded Street View loaded successfully");
         }
+    } else {
+        error_log("[PDF] ❌ Hardcoded file not found: " . $hardcodedPath);
     }
 
     if ($base64Data !== null) {
