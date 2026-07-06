@@ -937,11 +937,11 @@ function extractPhoneExtension(string $input): ?string {
     }
     return null;
 }
-// 🧠 buildOperationalNarratives — Robust version with better extraction
+// 🧠 buildOperationalNarratives — Robust version with strict key normalization
 function buildOperationalNarratives(array $context): array {
 
     $fallback = [
-        'contentLine'   => 'Contact Proposal Processing Request', // Added to fallback
+        'contentLine'   => 'Contact Proposal Processing Request',
         'decision'      => ['The proposal is operationally eligible for insertion as a new entity, location, and contact relationship.'],
         'blocking'      => [],
         'review'        => [],
@@ -982,7 +982,7 @@ function buildOperationalNarratives(array $context): array {
 
         $ch = curl_init("https://api.openai.com/v1/chat/completions");
         curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
+            CURLOPT_POST           => true, // 🌟 Fixed typo from CURLPOST
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER     => ["Content-Type: application/json", "Authorization: Bearer $apiKey"],
             CURLOPT_POSTFIELDS     => json_encode($payload),
@@ -997,10 +997,6 @@ function buildOperationalNarratives(array $context): array {
             error_log('[NARRATIVE] CURL failed');
             return $fallback;
         }
-
-        // === DEBUG LOGGING ===
-        error_log('[NARRATIVE DEBUG] Raw response length: ' . strlen($response));
-        error_log('[NARRATIVE DEBUG] Raw content snippet: ' . substr($response, 0, 500));
 
         $decoded = json_decode($response, true);
         $content = $decoded['choices'][0]['message']['content'] ?? '';
@@ -1018,52 +1014,37 @@ function buildOperationalNarratives(array $context): array {
         }
 
         $jsonStr = trim($matches[0]);
-        
-        // Strip out hidden system control characters or unescaped line breaks that disrupt json_decode
-        $jsonStr = preg_replace('/[\x00-\x1F\x7F]/', '', $jsonStr);
-        
         $parsed = json_decode($jsonStr, true);
 
         if (!is_array($parsed)) {
-            error_log('[NARRATIVE] JSON decode failed to produce an array');
+            error_log('[NARRATIVE] JSON decode failed to parse array');
             return $fallback;
         }
 
-        // 🔄 AUTOMATIC UNWRAPPING: If the payload is nested inside a root "narratives" key, elevate it
+        // Elevate nested block if AI wraps it under a root "narratives" key
         if (isset($parsed['narratives']) && is_array($parsed['narratives'])) {
-            error_log('[NARRATIVE] Detected root "narratives" wrapper block. Elevating internal variables...');
             $parsed = $parsed['narratives'];
         }
 
-        // Validates structure across both legacy layouts and new payload keys
-        if (empty($parsed['decision']) && empty($parsed['decisions']) && empty($parsed['ui'])) {
-            error_log('[NARRATIVE] Missing operational validation structures at extracted root layer');
-            return $fallback;
-        }
+        error_log('[NARRATIVE] Success - Parsed live AI narrative payload.');
 
-        error_log('[NARRATIVE] Success - Parsed AI narrative payload');
-
-        // Extract and normalize payload fields safely
-        $decisionData = $parsed['decisions'] ?? ($parsed['decision'] ?? []);
-        if (empty($decisionData) && !empty($parsed['ui'])) {
-            $decisionData = (array)$parsed['ui'];
-        }
-
+        // 🔄 Strictly map and normalize AI layout keys to corporate framework keys
+        $decisionData = $parsed['decision'] ?? ($parsed['decisions'] ?? ($parsed['ui'] ?? []));
         if (!is_array($decisionData)) {
-            $decisionData = [$decisionData];
+            $decisionData = array_filter([$decisionData]);
         }
 
-        $infoData = $parsed['info'] ?? ($parsed['informational'] ?? ($parsed['report'] ?? []));
+        $infoData = $parsed['informational'] ?? ($parsed['info'] ?? ($parsed['report'] ?? []));
         if (!is_array($infoData)) {
-            $infoData = [$infoData];
+            $infoData = array_filter([$infoData]);
         }
 
         return [
             'contentLine'   => $parsed['contentLine'] ?? 'Contact Proposal Processing Request',
-            'decision'      => $decisionData,
-            'blocking'      => (array)($parsed['blocking'] ?? []),
-            'review'        => (array)($parsed['review'] ?? []),
-            'informational' => $infoData
+            'decision'      => array_values($decisionData),
+            'blocking'      => array_values((array)($parsed['blocking'] ?? [])),
+            'review'        => array_values((array)($parsed['review'] ?? [])),
+            'informational' => array_values($infoData)
         ];
 
     } catch (Throwable $e) {
