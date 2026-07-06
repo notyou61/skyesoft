@@ -961,9 +961,10 @@ function buildOperationalNarratives(array $context): array {
             return $fallback;
         }
 
-        $promptPath = dirname(__DIR__) . '/codex/prompts/operationalNarrative.prompt.md';
+        // Go up two levels from utils to reach public_html/skyesoft/
+        $promptPath = dirname(__DIR__, 2) . '/codex/prompts/operationalNarrative.prompt.md';
         if (!file_exists($promptPath)) {
-            error_log('[NARRATIVE] Prompt file missing');
+            error_log('[NARRATIVE] Prompt file missing at path: ' . $promptPath); // Added path telemetry
             return $fallback;
         }
 
