@@ -1207,6 +1207,7 @@ $contentLine = $aiNarrativeResult['contentLine'] ?? 'Proposal Information Update
 
 // Format the structural array to map seamlessly with your existing framework
 $narratives = [
+    'contentLine'=> $contentLine, // 🌟 Preserved directly inside the narratives object
     'ui'         => $aiNarrativeResult['decision'][0] ?? 'Proposal processing routing initiated.',
     'report'     => implode(' ', $aiNarrativeResult['informational'] ?? []),
     'decisions'  => $aiNarrativeResult['decision'] ?? [],
@@ -1383,7 +1384,7 @@ echo json_encode([
     'commitPlan' => $commitPlan ?? [],
     'ui' => $uiState ?? [],
     'governance' => $governance ?? ['blockingIssues' => []],
-    'narratives' => $narratives ?? [],
+    'narratives' => $narratives ?? [], // 🌟 Contains contentLine internally as well
     'meta' => $proposalSnapshot['meta'] ?? [],
     'rawInput' => $proposalSnapshot['rawInput'] ?? [],
 
