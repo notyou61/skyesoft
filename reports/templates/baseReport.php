@@ -252,7 +252,7 @@ function buildReportStyles(): string
 
 #endregion
 
-#region SECTION 04 - Executive Summary (Now matches test_mpdf.php exactly)
+#region SECTION 04 - Executive Summary
 
 function generateExecutiveSummary(Mpdf $mpdf, array $report): void
 {
@@ -271,7 +271,17 @@ function generateExecutiveSummary(Mpdf $mpdf, array $report): void
     ';
 
     $mpdf->WriteHTML($summaryHtml);
-    $mpdf->WriteHTML($report['reportSummary'] ?? '<p>Proposal ready for review.</p>');
+    
+    // 🌟 Extract our newly fortified text block string, fall back gracefully if missing
+    $summaryText = $report['report'] ?? $report['reportSummary'] ?? '';
+    
+    if (!empty($summaryText)) {
+        // Render inside matching clean narrative layout paragraphs
+        $mpdf->WriteHTML('<p>' . htmlspecialchars($summaryText) . '</p>');
+    } else {
+        $mpdf->WriteHTML('<p>Proposal ready for review.</p>');
+    }
+    
     $mpdf->WriteHTML('</div>');
 }
 

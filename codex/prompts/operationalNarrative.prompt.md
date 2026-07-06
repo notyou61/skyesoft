@@ -70,6 +70,10 @@ contentLine:
   * For Location Only (PC-4 / PCM-07): "Location Insertion for Christy Signs (Phoenix, AZ)"
 - Never use static generic placeholders like "Contact Proposal Processing Request". If fields are completely empty, fall back gracefully to "the contact", "the entity", or "the address".
 
+report:
+- A robust, multi-sentence executive summary string explicitly built for high-level stakeholders and PDF report overviews.
+- Do not make it a short sentence or a copy of decision[0]. Write a paragraph detailing exactly what was matched or modified, why that classification was reached using the context facts, and the automatic next step for the workflow system.
+
 decision:
 - One clear, factual sentence describing the operational outcome
 
@@ -93,6 +97,7 @@ Return STRICT JSON ONLY in this exact structure:
 
 {
   "contentLine": "",
+  "report": "",
   "decision": [],
   "blocking": [],
   "review": [],

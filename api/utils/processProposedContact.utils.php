@@ -937,7 +937,7 @@ function extractPhoneExtension(string $input): ?string {
     }
     return null;
 }
-// 🧠 buildOperationalNarratives — Robust version with strict key normalization
+// 🧠 buildOperationalNarratives — Robust version with strict key normalization & report extraction
 function buildOperationalNarratives(array $context): array {
 
     $fallback = [
@@ -949,7 +949,8 @@ function buildOperationalNarratives(array $context): array {
             'The submitted address was successfully geocoded and associated with a resolved Maricopa County parcel.',
             'A single parcel candidate was identified and automatically selected.',
             'All current operational validation requirements were satisfied.'
-        ]
+        ],
+        'report'        => 'All submitted entity, location, and contact records already exist within the active system mapping.'
     ];
 
     try {
@@ -964,7 +965,7 @@ function buildOperationalNarratives(array $context): array {
         // Go up two levels from utils to reach public_html/skyesoft/
         $promptPath = dirname(__DIR__, 2) . '/codex/prompts/operationalNarrative.prompt.md';
         if (!file_exists($promptPath)) {
-            error_log('[NARRATIVE] Prompt file missing at path: ' . $promptPath); // Added path telemetry
+            error_log('[NARRATIVE] Prompt file missing at path: ' . $promptPath);
             return $fallback;
         }
 
@@ -983,7 +984,7 @@ function buildOperationalNarratives(array $context): array {
 
         $ch = curl_init("https://api.openai.com/v1/chat/completions");
         curl_setopt_array($ch, [
-            CURLOPT_POST           => true, // 🌟 Fixed typo from CURLPOST
+            CURLOPT_POST           => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER     => ["Content-Type: application/json", "Authorization: Bearer $apiKey"],
             CURLOPT_POSTFIELDS     => json_encode($payload),
@@ -1035,9 +1036,17 @@ function buildOperationalNarratives(array $context): array {
             $decisionData = array_filter([$decisionData]);
         }
 
-        $infoData = $parsed['informational'] ?? ($parsed['info'] ?? ($parsed['report'] ?? []));
+        // Map logs safely to informational array
+        $infoData = $parsed['informational'] ?? ($parsed['info'] ?? []);
         if (!is_array($infoData)) {
             $infoData = array_filter([$infoData]);
+        }
+
+        // 🌟 Extract the dedicated, robust Executive Summary text string
+        $reportSummary = $parsed['report'] ?? $parsed['summary'] ?? '';
+        if (empty($reportSummary) && is_array($infoData)) {
+            // Fallback generation if missing
+            $reportSummary = implode(' ', $infoData);
         }
 
         return [
@@ -1045,7 +1054,8 @@ function buildOperationalNarratives(array $context): array {
             'decision'      => array_values($decisionData),
             'blocking'      => array_values((array)($parsed['blocking'] ?? [])),
             'review'        => array_values((array)($parsed['review'] ?? [])),
-            'informational' => array_values($infoData)
+            'informational' => array_values($infoData),
+            'report'        => trim((string)$reportSummary) // 🌟 Injected dynamic summary text string
         ];
 
     } catch (Throwable $e) {
