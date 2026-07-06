@@ -1020,19 +1020,29 @@ function buildOperationalNarratives(array $context): array {
         $jsonStr = $matches[0];
         $parsed = json_decode($jsonStr, true);
 
-        if (!is_array($parsed) || empty($parsed['decision'])) {
-            error_log('[NARRATIVE] JSON decode failed or invalid structure');
+        // Validates structure across both legacy layouts and new payload keys
+        if (!is_array($parsed) || (empty($parsed['decision']) && empty($parsed['decisions']) && empty($parsed['ui']))) {
+            error_log('[NARRATIVE] JSON decode failed or missing operational validation structures');
             return $fallback;
         }
 
-        error_log('[NARRATIVE] Success - Parsed AI narrative');
-        return array_merge([
-            'contentLine'   => 'Contact Proposal Processing Request', // Merged default key
-            'decision'      => [],
-            'blocking'      => [],
-            'review'        => [],
-            'informational' => []
-        ], $parsed);
+        error_log('[NARRATIVE] Success - Parsed AI narrative payload');
+
+        // Extract and normalize payload to interface with corporate framework collections
+        $decisionData = $parsed['decisions'] ?? ($parsed['decision'] ?? []);
+        if (empty($decisionData) && !empty($parsed['ui'])) {
+            $decisionData = (array)$parsed['ui'];
+        }
+
+        $infoData = $parsed['info'] ?? ($parsed['informational'] ?? ($parsed['report'] ?? []));
+
+        return [
+            'contentLine'   => $parsed['contentLine'] ?? 'Contact Proposal Processing Request',
+            'decision'      => (array)$decisionData,
+            'blocking'      => (array)($parsed['blocking'] ?? []),
+            'review'        => (array)($parsed['review'] ?? []),
+            'informational' => (array)$infoData
+        ];
 
     } catch (Throwable $e) {
         error_log('[NARRATIVE] Exception: ' . $e->getMessage());
