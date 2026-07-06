@@ -124,10 +124,28 @@ function buildStreetViewSection(array $proposal): string
     $html .= buildSectionHeader('Street View Verification', 'property.png');
     $path = $proposal['reportArtifacts']['streetview'] ?? null;
     $url  = $proposal['reportArtifacts']['streetviewUrl'] ?? null;
-    // Single-line comment explanation: Bypass strict disk validation if a clean web resource address has been provided
-    if (($path && file_exists($path)) || (!empty($url) && filter_var($url, FILTER_VALIDATE_URL))) {
+    $base64Data = null;
+    $mimeType = 'image/jpeg';
+    if ($path && file_exists($path)) {
+        $imgData = @file_get_contents($path);
+        if ($imgData !== false) {
+            $base64Data = base64_encode($imgData);
+            if (pathinfo($path, PATHINFO_EXTENSION) === 'png') {
+                $mimeType = 'image/png';
+            }
+        }
+    } elseif (!empty($url) && filter_var($url, FILTER_VALIDATE_URL)) {
+        $imgData = @file_get_contents($url);
+        if ($imgData !== false) {
+            $base64Data = base64_encode($imgData);
+            if (strpos($url, '.png') !== false) {
+                $mimeType = 'image/png';
+            }
+        }
+    }
+    if ($base64Data !== null) {
         $html .= '<div style="text-align:center; margin:8px 0;">';
-        $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
+        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
         $html .= '</div>';
     } else {
         $html .= '<div class="image-placeholder" style="min-height:260px;">📍 Street View unavailable</div>';
