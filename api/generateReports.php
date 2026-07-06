@@ -87,10 +87,27 @@ try {
         error_log("[PREP] No actionId provided — using direct input only");
     }
     // =====================================================
+    // LOAD FULL PROPOSAL SNAPSHOT (Critical for reportArtifacts)
+    // =====================================================
+    $proposalId = $input['proposalId'] ?? $input['data']['proposalId'] ?? null;
+    if ($proposalId) {
+        $snapshotPath = __DIR__ . '/../data/runtimeEphemeral/proposals/' . $proposalId . '.json';
+        if (file_exists($snapshotPath)) {
+            $fullSnapshot = json_decode(file_get_contents($snapshotPath), true);
+            if (is_array($fullSnapshot)) {
+                $input = array_merge($input, $fullSnapshot);
+                error_log("[PREP] ✅ Loaded full snapshot for proposalId: " . $proposalId);
+            }
+        } else {
+            error_log("[PREP] ⚠️ Snapshot not found: " . $snapshotPath);
+        }
+    } else {
+        error_log("[PREP] ⚠️ No proposalId found in input");
+    }
+    // =====================================================
     // UNIVERSAL IMAGE & ARTIFACT PREPARATION (MAPPED TO CANONICAL ARTIFACTS)
     // =====================================================
     error_log("[IMAGES] Starting universal artifact mapping for reportType: {$reportType}");
-    $proposalId = $input['proposalId'] ?? $input['data']['proposalId'] ?? null;
     if ($proposalId) {
         if (!isset($input['reportArtifacts'])) {
             $input['reportArtifacts'] = [];
