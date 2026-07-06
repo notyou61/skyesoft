@@ -125,30 +125,35 @@ function buildStreetViewSection(array $proposal): string
     $html = '<div class="section">';
     $html .= buildSectionHeader('Street View Verification', 'property.png');
 
-    $streetViewPath = $proposal['reportArtifacts']['streetview'] ?? null;
+    $rawPath = $proposal['reportArtifacts']['streetview'] ?? null;
     $base64Data = null;
     $mimeType = 'image/jpeg';
 
-    if ($streetViewPath) {
-        // Support both relative and absolute paths
-        if (!file_exists($streetViewPath) && !str_starts_with($streetViewPath, '/')) {
-            $streetViewPath = __DIR__ . '/../artifacts/' . basename($streetViewPath);
+    error_log("[PDF DEBUG] StreetView rawPath = " . ($rawPath ?? 'NULL'));
+
+    if ($rawPath) {
+        // Try multiple path resolutions
+        $possiblePaths = [
+            $rawPath,
+            __DIR__ . '/../artifacts/' . basename($rawPath),
+            dirname(__DIR__) . '/artifacts/' . basename($rawPath)
+        ];
+
+        foreach ($possiblePaths as $testPath) {
+            if (file_exists($testPath)) {
+                $imgData = @file_get_contents($testPath);
+                if ($imgData !== false && strlen($imgData) > 5000) {
+                    $base64Data = base64_encode($imgData);
+                    $ext = strtolower(pathinfo($testPath, PATHINFO_EXTENSION));
+                    if ($ext === 'png') $mimeType = 'image/png';
+                    error_log("[PDF] ✅ Street View loaded from: " . $testPath);
+                    break;
+                }
+            }
         }
 
-        if (file_exists($streetViewPath)) {
-            $imgData = @file_get_contents($streetViewPath);
-            if ($imgData !== false && strlen($imgData) > 1000) {
-                $base64Data = base64_encode($imgData);
-                $ext = strtolower(pathinfo($streetViewPath, PATHINFO_EXTENSION));
-                if ($ext === 'png') {
-                    $mimeType = 'image/png';
-                }
-                error_log("[PDF] ✅ Street View embedded from: " . basename($streetViewPath));
-            } else {
-                error_log("[PDF] ❌ Street View file empty or unreadable: " . $streetViewPath);
-            }
-        } else {
-            error_log("[PDF] ❌ Street View file not found: " . $streetViewPath);
+        if (!$base64Data) {
+            error_log("[PDF] ❌ All path attempts failed for: " . $rawPath);
         }
     }
 
