@@ -337,8 +337,8 @@ function buildParcelDetailSection(array $proposal): string
 
     $html = '<div class="detail-section-container" style="width: 100%; display: block; clear: both;">';
     
-    // 🌟 FIXED ICON PATH: Linked to your secure absolute asset hosting directory
-    $html .= buildSectionHeader('Parcel Candidates – Detail', 'https://skyelighting.com/skyesoft/assets/images/icons/magnifier.png');
+    // 🌟 FIXED: Swapped back to local string format to match system resource engine
+    $html .= buildSectionHeader('Parcel Candidates – Detail', 'magnifier.png');
     
     foreach ($parcels as $index => $p) {
         $num       = $index + 1;
@@ -402,8 +402,8 @@ function buildGovernanceSection(array $proposal): string
     
     $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; width: 100%; margin-top: 14px; display: block; clear: both;">';
     
-    // 🌟 FIXED ICON PATH: Linked to your secure absolute asset hosting directory 
-    $html .= buildSectionHeader('Governance &amp; Operational Narrative', 'https://skyelighting.com/skyesoft/assets/images/icons/scales.png');
+    // 🌟 FIXED: Swapped back to local string format to match system resource engine
+    $html .= buildSectionHeader('Governance &amp; Operational Narrative', 'scales.png');
     
     $html .= '<div class="highlight" style="font-family: Arial, sans-serif; background-color: #ffffff; border-left: 4px solid #14377C; padding: 14px; font-size: 10.5px; line-height: 1.6; text-align: justify; color: #2d3748; margin-top: 10px;">' . nl2br(htmlspecialchars($narrative)) . '</div>';
     $html .= '</div>';
