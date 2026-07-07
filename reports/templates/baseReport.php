@@ -124,8 +124,8 @@ function buildReportStyles(): string
         .dataTable { 
             width:100%; 
             border-collapse:collapse; 
-            margin-top:-4px !important; 
-            margin-bottom:8px; 
+            margin-top:-8px !important;   /* Pulled upward by an extra 4px */
+            margin-bottom:6px;            /* Tighter gap before the next section */ 
             page-break-inside: avoid; 
         }
         .dataTable th, .dataTable td { 
