@@ -20,8 +20,8 @@ function renderReport(array $report): string
             'format'        => 'Letter',
             'margin_left'   => 12,
             'margin_right'  => 12,
-            'margin_top'    => 28,
-            'margin_bottom' => 25,
+            'margin_top'    => 20,
+            'margin_bottom' => 20,
             'margin_header' => 8,
             'margin_footer' => 8,
         ]);
