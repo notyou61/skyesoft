@@ -125,7 +125,7 @@ function buildReportStyles(): string
             width:100%; 
             border-collapse:collapse; 
             margin-top:-4px !important; 
-            margin-bottom:7px; 
+            margin-bottom:14px; 
             page-break-inside: avoid; 
         }
         .dataTable th, .dataTable td { 
@@ -210,8 +210,8 @@ function buildReportStyles(): string
         }
         .section {
             page-break-inside: avoid;
-            margin-top: 8px;
-            margin-bottom: 12px;
+            margin-top: 4px;
+            margin-bottom: 6px;
         }
         .streetview-section {
             page-break-inside: avoid !important;
