@@ -21,7 +21,7 @@ function renderReport(array $report): string
             'margin_left'   => 12,
             'margin_right'  => 12,
             'margin_top'    => 24,
-            'margin_bottom' => 20,
+            'margin_bottom' => 25,
             'margin_header' => 8,
             'margin_footer' => 8,
         ]);
