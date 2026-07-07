@@ -113,7 +113,7 @@ function buildContactProposalBody(array $proposal): string
     $html .= buildStreetViewSection($proposal);
     
     // Parcel Overviews & Plat Map matching
-    $html .= buildParcelSummarySection($proposal);
+    //$html .= buildParcelSummarySection($proposal);
     $html .= buildParcelMapSection($proposal);
     $html .= buildParcelDetailSection($proposal);
     
