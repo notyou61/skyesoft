@@ -298,18 +298,30 @@ function buildParcelSummarySection(array $proposal): string
 
 function buildParcelMapSection(array $proposal): string
 {
-    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
+    // 🌟 Using a structural table block to enforce page-break locks and match the Page 2 layout perfectly
+    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
+    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
+
     $html .= buildSectionHeader('Parcel Plat Map Artifact', 'compass.png');
+    
     $path = $proposal['reportArtifacts']['parcelmap'] ?? null;
     $url  = $proposal['reportArtifacts']['parcelmapUrl'] ?? null;
+    
     if ($path && file_exists($path)) {
-        $html .= '<div style="text-align:center; margin:8px 0;">';
-        $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Parcel Plat Map">';
+        // 🌟 MATCHING LAYOUT REAL-ESTATE: Force 100% width and brand-matching border
+        $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
+        $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Parcel Plat Map">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:120px; padding-top:10px;">📍 Parcel plat map artifact unavailable</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1;">📍 Parcel plat map artifact unavailable</div>';
     }
-    $html .= '</div>';
+    
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    
+    // Smooth trail margin out to the next block baseline bounds
+    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
+    
     return $html;
 }
 
@@ -318,7 +330,10 @@ function buildParcelDetailSection(array $proposal): string
     $parcels = $proposal['parcelDetails'] ?? [];
     if (empty($parcels)) return '';
     
-    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
+    // Wrapped in a matching structural table boundary to prevent layout separation
+    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
+    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
+    
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
     
     $displayCount = 0;
@@ -331,7 +346,7 @@ function buildParcelDetailSection(array $proposal): string
         $owner = htmlspecialchars($p['ownerName'] ?? $p['owner'] ?? '—');
         $addr = htmlspecialchars(trim(($p['siteAddress'] ?? $p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
         
-        $html .= '<div class="parcel-block" style="font-family: Arial, sans-serif; font-size:11px; background-color:#f8fafc; border:1px solid #e2e8f0; padding:10px; margin-bottom:10px; border-radius:4px;">';
+        $html .= '<div class="parcel-block" style="font-family: Arial, sans-serif; font-size:11px; background-color:#f8fafc; border:1px solid #e2e8f0; padding:10px; margin-top: 12px; margin-bottom:4px; border-radius:4px;">';
         $html .= '<strong>Parcel ' . $num . ' — APN: ' . $apn . '</strong><br>';
         $html .= 'Owner: ' . $owner . '<br>';
         $html .= 'Address: ' . $addr . '<br>';
@@ -344,7 +359,11 @@ function buildParcelDetailSection(array $proposal): string
         $html .= '</div>';
     }
     
-    $html .= '</div>';
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    
+    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
+    
     return $html;
 }
 
