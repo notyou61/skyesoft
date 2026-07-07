@@ -6,7 +6,6 @@ declare(strict_types=1);
 // Version: 2.8.1 (Table Stripes, Page Break Lock & Entity Fixed)
 // =============================================
 
-
 #region SECTION 00 - Main Report Generator
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
