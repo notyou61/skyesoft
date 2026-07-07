@@ -3,7 +3,7 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — baseReport.php
 //  Universal PDF Renderer
-//  Version: 1.4.6 (Section Padding Fixed)
+//  Version: 1.4.7 (Ghost Header Line Defeated)
 //  Last Updated: 2026-07-07
 // =============================================
 
@@ -13,6 +13,7 @@ if (function_exists('opcache_invalidate')) {
 }
 require_once __DIR__ . '/../../vendor/autoload.php';
 use Mpdf\Mpdf;
+
 function renderReport(array $report): string
 {
     try {
@@ -34,7 +35,7 @@ function renderReport(array $report): string
         
         generateExecutiveSummary($mpdf, $report);
         
-        // 🌟 FIX: Forward the entire $report matrix to let the parser cleanly insert the detail table inline
+        // 🌟 FIX: Pass the full parent report context array array here
         $processedBodyHtml = processReportArtifacts(
             $report['reportBodyHtml'] ?? '', 
             $report['reportArtifacts'] ?? [],
@@ -85,7 +86,7 @@ function buildReportFooter(): string
 }
 #endregion
 
-#region SECTION 03 - Stylesheet (Matched to test_mpdf.php)
+#region SECTION 03 - Stylesheet
 function buildReportStyles(): string
 {
     return '
@@ -99,8 +100,8 @@ function buildReportStyles(): string
             width:100%; 
             border-collapse:collapse; 
             border:none; 
-            margin-top:6px;               /* Reduced from 14px */
-            margin-bottom:2px !important; /* Reduced from 6px */
+            margin-top:6px;
+            margin-bottom:2px !important;
             padding-bottom:0px;
             border-bottom:1.5px solid #888;
         }
@@ -169,38 +170,6 @@ function buildReportStyles(): string
             page-break-inside: avoid;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
-        .parcel-block .dataTable {
-            margin-top: 2px !important;
-            margin-bottom: 12px;
-        }
-        .parcel-block .dataTable th {
-            background-color: #f3f4f6;
-            color: #374151;
-            font-weight: 600;
-            width: 26%;
-            padding: 8px 10px;
-            border: 1px solid #e5e7eb;
-            font-size: 10pt;
-        }
-        .parcel-block .dataTable td {
-            padding: 8px 10px;
-            border: 1px solid #e5e7eb;
-            color: #1f2937;
-            font-size: 10pt;
-            line-height: 1.45;
-        }
-        .parcel-block .dataTable tr:nth-child(3) td,
-        .parcel-block .dataTable tr:nth-child(4) td,
-        .parcel-block .dataTable tr:nth-child(5) td {
-            background-color: #f8fafc;
-        }
-        .parcelSummaryBlock {
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            padding: 14px 16px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-        }
         .image-placeholder { 
             border: 2px dashed #14377C; 
             background: #f8f9fa; 
@@ -221,10 +190,6 @@ function buildReportStyles(): string
             page-break-inside: avoid;
             margin-top: 8px;
             margin-bottom: 12px;
-        }
-        .streetview-section {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
         }
     ';
 }
@@ -262,21 +227,10 @@ function generateMainBody(Mpdf $mpdf, string $bodyHtml): void
 {
     $mpdf->WriteHTML($bodyHtml);
 }
-function getEmbeddedImageHtmlFromUrl(string $url, string $alt = 'Image'): string
+
+function processReportArtifacts(string $html, array $artifacts, array $report = []): string
 {
-    if (empty($url)) {
-        return '<div class="image-placeholder">📍 Satellite image not available yet</div>';
-    }
-    return '<div style="text-align:center; margin:12px 0;">
-                <img src="' . htmlspecialchars($url) . '" 
-                     style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
-                     alt="' . htmlspecialchars($alt) . '">
-            </div>';
-}
-function processReportArtifacts(string $html, array $artifacts, array $proposal = []): string
-{
-    if (empty($artifacts)) return $html;
-    
+    // Handle maps structures first
     if (!empty($artifacts['staticMapUrl'])) {
         $mapHtml = '<div style="text-align:center; margin:15px 0;">
                 <img src="' . htmlspecialchars($artifacts['staticMapUrl']) . '" 
@@ -292,7 +246,7 @@ function processReportArtifacts(string $html, array $artifacts, array $proposal 
         $placeholderHtml = '<div class="image-placeholder">📍 Satellite image not available yet</div>';
         $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - Other]', $placeholderHtml, $html);
     }
-    
+
     if (!empty($artifacts['streetview'])) {
         $html = str_replace(
             '[Street View Image will be inserted here by baseReport.php]', 
@@ -300,7 +254,7 @@ function processReportArtifacts(string $html, array $artifacts, array $proposal 
             $html
         );
     }
-    
+
     if (!empty($artifacts['parcel_maps']) && is_array($artifacts['parcel_maps'])) {
         foreach ($artifacts['parcel_maps'] as $path) {
             if ($path) {
@@ -313,15 +267,34 @@ function processReportArtifacts(string $html, array $artifacts, array $proposal 
         }
     }
 
-    // 🌟 FIX: Handle the details insertion directly here to cleanly replace the placeholder code block
-    if (!empty($proposal) && (strpos($html, '[PARCEL DETAIL SECTION PLACEHOLDER]') !== false || strpos($html, '[PARCEL CANDIDATES – DETAIL]') !== false)) {
-        $detailHtml = function_exists('buildParcelDetailSection') ? buildParcelDetailSection($proposal) : '';
-        $html = str_replace('[PARCEL DETAIL SECTION PLACEHOLDER]', $detailHtml, $html);
-        $html = str_replace('[PARCEL CANDIDATES – DETAIL]', $detailHtml, $html);
+    // 🌟 FIX: Check for all case types of parcel block headers & inline targets
+    $hasPlaceholder = (
+        strpos($html, '[PARCEL DETAIL SECTION PLACEHOLDER]') !== false || 
+        strpos($html, '[PARCEL CANDIDATES – DETAIL]') !== false ||
+        strpos($html, 'Parcel Candidates – Detail') !== false
+    );
+
+    if ($hasPlaceholder && function_exists('buildParcelDetailSection')) {
+        $tableHtml = buildParcelDetailSection($report);
+        
+        // Replace explicit bracket fields
+        $html = str_replace('[PARCEL DETAIL SECTION PLACEHOLDER]', $tableHtml, $html);
+        $html = str_replace('[PARCEL CANDIDATES – DETAIL]', $tableHtml, $html);
+        
+        // 🌟 CRITICAL FIX: If an empty layout wrap is lingering in the template body, 
+        // swipe it completely clear using a structural regular expression replacement pattern.
+        $pattern = '/<div[^>]*class=["\']section["\'][^>]*>\s*<table[^>]*class=["\']sectionHeaderTable["\'][^>]*>.*?<\/table>\s*(?:<p>.*?<\/p>|\s)*<\/div>/is';
+        if (preg_match($pattern, $html)) {
+            $html = preg_replace($pattern, $tableHtml, $html);
+        } else {
+            // Fallback placement fallback if no regex matches
+            $html .= $tableHtml;
+        }
     }
-    
+
     return $html;
 }
+
 function getEmbeddedImageHtml(string $imagePath, string $alt = 'Image'): string
 {
     if (empty($imagePath) || !file_exists($imagePath)) {
@@ -338,8 +311,8 @@ function getEmbeddedImageHtml(string $imagePath, string $alt = 'Image'): string
     }
     $data = base64_encode(file_get_contents($imagePath));
     $src = 'data:' . $mime . ';base64,' . $data;
-    
-    // 🌟 FIX: Updated legacy #1a365d border frame color to match unified brand color #14377C
+
+    // 🌟 FIX: Frame layout borders use the solid corporate branding scheme (#14377C)
     return '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">
                 <img src="' . $src . '"
                      width="100%"
