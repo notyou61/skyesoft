@@ -124,8 +124,8 @@ function buildReportStyles(): string
         .dataTable { 
             width:100%; 
             border-collapse:collapse; 
-            margin-top:-8px !important;   /* Pulled upward by an extra 4px */
-            margin-bottom:6px;            /* Tighter gap before the next section */ 
+            margin-top:-4px !important; 
+            margin-bottom:8px; 
             page-break-inside: avoid; 
         }
         .dataTable th, .dataTable td { 
@@ -210,8 +210,8 @@ function buildReportStyles(): string
         }
         .section {
             page-break-inside: avoid;
-            margin-top: 2px;              /* Reduced from 8px */
-            margin-bottom: 4px;           /* Reduced from 12px */
+            margin-top: 0px;              /* Reduced from 8px */
+            margin-bottom: 2px;           /* Reduced from 12px */
         }
         .streetview-section {
             page-break-inside: avoid !important;
