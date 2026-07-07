@@ -6,6 +6,7 @@ declare(strict_types=1);
 // Version: 2.8.1 (Table Stripes, Page Break Lock & Entity Fixed)
 // =============================================
 
+
 #region SECTION 00 - Main Report Generator
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
@@ -151,15 +152,36 @@ function buildContactSection(array $proposal): string
 
 function buildLocationSection(array $proposal): string
 {
+    // Extract Verification details for inline integration
+    $placeName    = htmlspecialchars($proposal['reportArtifacts']['place_details']['name'] ?? $proposal['entityName'] ?? 'N/A');
+    $placeRating  = htmlspecialchars($proposal['reportArtifacts']['place_details']['rating'] ?? '—');
+    $placeReviews = htmlspecialchars((string)($proposal['reportArtifacts']['place_details']['user_ratings_total'] ?? ''));
+    $ratingString = !empty($placeReviews) ? "{$placeRating} ★ (Based on {$placeReviews} user reviews)" : "{$placeRating} ★";
+    
+    $latValue = $proposal['latitude'] ?? '—';
+    $lngValue = $proposal['longitude'] ?? '—';
+    $placeId  = $proposal['locationPlaceId'] ?? '';
+    
+    $mapsUrl = !empty($placeId) 
+        ? "https://maps.google.com/?q=place_id:" . htmlspecialchars($placeId)
+        : "#";
+
     $html = buildSectionHeader('Location Information', 'pin.png');
-    $html .= '<div class="tableWrapper">'; // 🌟 Added wrap
+    $html .= '<div class="tableWrapper">'; 
     $html .= '<table class="dataTable">';
     $html .= '<tr><th>Full Address</th><td>' . htmlspecialchars($proposal['locationAddress'] ?? 'N/A') . '</td></tr>';
     $html .= '<tr><th>City, State ZIP</th><td>' . htmlspecialchars($proposal['locationCityStateZip'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>County</th><td>' . htmlspecialchars($proposal['locationCounty'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>County FIPS</th><td>' . htmlspecialchars($proposal['locationCountyFips'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? '—') . '</td></tr>';
-    $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($proposal['locationPlaceId'] ?? 'N/A') . '</td></tr>';
+    $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($placeId ?: 'N/A') . '</td></tr>';
+    
+    // 🌟 INTEGRATED: Google Verification Fields appended cleanly to the matching Location set
+    $html .= '<tr><th>Verification Name</th><td>' . $placeName . '</td></tr>';
+    $html .= '<tr><th>Google Rating</th><td>' . $ratingString . '</td></tr>';
+    $html .= '<tr><th>Coordinates</th><td>Lat: ' . $latValue . ' | Lng: ' . $lngValue . '</td></tr>';
+    $html .= '<tr><th>Google Maps Link</th><td><a href="' . $mapsUrl . '" style="color: #1a365d; text-decoration: underline;" target="_blank">View Live Listing</a></td></tr>';
+    
     $html .= '</table>';
     $html .= '</div>';
     return $html;
@@ -174,10 +196,8 @@ function buildSatelliteSection(array $proposal): string
     $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
     $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
     
-    // 🌟 FIX: Inject inline margin-top reset to override stylesheet rules during auto page-breaks
-    $headerHtml = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
-    $headerHtml = str_replace('class="sectionHeaderTable"', 'class="sectionHeaderTable" style="margin-top: 0 !important;"', $headerHtml);
-    $html .= $headerHtml;
+    // Inject Section Header inside the locked cell block
+    $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
     
     $path = $proposal['reportArtifacts']['satellite'] ?? null;
     $url  = $proposal['reportArtifacts']['satelliteUrl'] ?? null;
@@ -200,69 +220,10 @@ function buildSatelliteSection(array $proposal): string
         }
     }
     
-    // 🌟 CLOSE SATELLITE LOCK CONTAINER EARLY HERE TO SPLIT THE BLOCKS NATIVELY
     $html .= '</td></tr>';
     $html .= '</table>';
     
-    // 🌟 INJECT EXPLICIT PRINT ROW CONTEXT FOR BUFFER SPACE LIKE THE OTHERS
-    $html .= '<table style="width:100%; border-collapse:collapse; border:none; margin:0; padding:0;">';
-    $html .= '  <tr><td style="height:14px; line-height:1px; font-size:1px; border:none; padding:0;">&nbsp;</td></tr>';
-    $html .= '</table>';
-    
-    // =================================================================
-    // 📍 GOOGLE PLACE ID VERIFICATION TABLE (INDEPENDENT WRAPPER)
-    // =================================================================
-    $placeName    = htmlspecialchars($proposal['reportArtifacts']['place_details']['name'] ?? $proposal['entityName'] ?? 'N/A');
-    $placeAddress = htmlspecialchars($proposal['reportArtifacts']['place_details']['formatted_address'] ?? $proposal['locationAddress'] ?? '—');
-    $placeRating  = htmlspecialchars($proposal['reportArtifacts']['place_details']['rating'] ?? '—');
-    $placeReviews = htmlspecialchars((string)($proposal['reportArtifacts']['place_details']['user_ratings_total'] ?? ''));
-    
-    $ratingString = !empty($placeReviews) ? "{$placeRating} ★ (Based on {$placeReviews} user reviews)" : "{$placeRating} ★";
-    
-    $latValue = $proposal['latitude'] ?? '—';
-    $lngValue = $proposal['longitude'] ?? '—';
-    $placeId  = $proposal['locationPlaceId'] ?? '';
-    
-    $mapsUrl = !empty($placeId) 
-        ? "https://maps.google.com/?q=place_id:" . htmlspecialchars($placeId)
-        : "#";
-
-    $html .= '
-    <div class="proposal-section" style="margin-top: 0px; width: 100%; page-break-inside: avoid; break-inside: avoid;">
-        <table class="sectionHeaderTable" style="width:100%; margin-bottom:2px; border-bottom: 2px solid #1a365d; font-family: Arial, sans-serif;">
-            <tr>
-                <td class="sectionIconCell" style="width:24px; padding:1px 0;"><img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" class="sectionIcon" style="width:16px; height:16px; display:block;"></td>
-                <td class="sectionTitleCell" style="padding:1px 6px;"><div class="sectionTitle" style="font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; color: #1a365d; text-transform: uppercase; letter-spacing: 0.5px;">Google Place Verification</div></td>
-            </tr>
-        </table>
-
-        <div class="tableWrapper" style="width: 100%; padding: 2px; margin-bottom: 4px;">
-            <table class="dataTable" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; border: 1.5px solid #1a365d;">
-                <tr>
-                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Establishment Name</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $placeName . '</td>
-                </tr>
-                <tr>
-                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Formatted Address</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $placeAddress . '</td>
-                </tr>
-                <tr>
-                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Google Rating</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $ratingString . '</td>
-                </tr>
-                <tr>
-                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Coordinates</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">Lat: ' . $latValue . ' | Lng: ' . $lngValue . '</td>
-                </tr>
-                <tr>
-                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: none;">Google Maps Link</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: none; border-left: 1.5px solid #1a365d;"><a href="' . $mapsUrl . '" style="color: #1a365d; text-decoration: underline;" target="_blank">View Live Listing</a></td>
-                </tr>
-            </table>
-        </div>
-    </div>';
-    
-    // Add margin buffer spacing after the component to clean up layout flow
+    // Add margin buffer spacing after the locked table element to clean up layout flow
     $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     
     return $html;
