@@ -333,9 +333,11 @@ function getEmbeddedImageHtml(string $imagePath, string $alt = 'Image'): string
     }
     $data = base64_encode(file_get_contents($imagePath));
     $src = 'data:' . $mime . ';base64,' . $data;
-    return '<div style="text-align:center; margin:12px 0;">
+    // 🌟 FIX: Force image to use 100% width and apply matching brand framing colors
+    return '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">
                 <img src="' . $src . '"
-                     style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;"
+                     width="100%"
+                     style="border: 1.5px solid #1a365d; border-radius: 4px;"
                      alt="' . htmlspecialchars($alt) . '">
             </div>';
 }
