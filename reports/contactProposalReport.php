@@ -198,6 +198,59 @@ function buildSatelliteSection(array $proposal): string
         }
     }
     
+    // =================================================================
+    // 📍 GOOGLE PLACE ID VERIFICATION TABLE
+    // =================================================================
+    $placeName    = htmlspecialchars($proposal['reportArtifacts']['place_details']['name'] ?? $proposal['entityName'] ?? 'N/A');
+    $placeAddress = htmlspecialchars($proposal['reportArtifacts']['place_details']['formatted_address'] ?? $proposal['locationAddress'] ?? '—');
+    $placeRating  = htmlspecialchars($proposal['reportArtifacts']['place_details']['rating'] ?? '—');
+    $placeReviews = htmlspecialchars((string)($proposal['reportArtifacts']['place_details']['user_ratings_total'] ?? ''));
+    
+    $ratingString = !empty($placeReviews) ? "{$placeRating} ★ (Based on {$placeReviews} user reviews)" : "{$placeRating} ★";
+    
+    $latValue = $proposal['latitude'] ?? '—';
+    $lngValue = $proposal['longitude'] ?? '—';
+    $placeId  = $proposal['locationPlaceId'] ?? '';
+    
+    $mapsUrl = !empty($placeId) 
+        ? "https://maps.google.com/?q=place_id:" . htmlspecialchars($placeId)
+        : "#";
+
+    $html .= '
+    <div class="proposal-section" style="margin-top: 12px; width: 100%;">
+        <table class="sectionHeaderTable" style="width:100%; margin-bottom:2px; border-bottom: 2px solid #1a365d; font-family: Arial, sans-serif;">
+            <tr>
+                <td class="sectionIconCell" style="width:24px; padding:1px 0;"><img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" class="sectionIcon" style="width:16px; height:16px; display:block;"></td>
+                <td class="sectionTitleCell" style="padding:1px 6px;"><div class="sectionTitle" style="font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; color: #1a365d; text-transform: uppercase; letter-spacing: 0.5px;">Google Place Verification</div></td>
+            </tr>
+        </table>
+
+        <div class="tableWrapper" style="width: 100%; padding: 2px; margin-bottom: 4px;">
+            <table class="dataTable" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; border: 1.5px solid #1a365d;">
+                <tr>
+                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Establishment Name</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $placeName . '</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Formatted Address</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $placeAddress . '</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Google Rating</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $ratingString . '</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Coordinates</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">Lat: ' . $latValue . ' | Lng: ' . $lngValue . '</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: none;">Google Maps Link</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: none; border-left: 1.5px solid #1a365d;"><a href="' . $mapsUrl . '" style="color: #1a365d; text-decoration: underline;" target="_blank">View Live Listing</a></td>
+                </tr>
+            </table>
+        </div>
+    </div>';
+    
     $html .= '</td></tr>';
     $html .= '</table>';
     
@@ -206,7 +259,6 @@ function buildSatelliteSection(array $proposal): string
     
     return $html;
 }
-
 function buildStreetViewSection(array $proposal): string
 {
     $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
