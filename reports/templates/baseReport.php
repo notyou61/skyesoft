@@ -20,29 +20,20 @@ function renderReport(array $report): string
             'format'        => 'Letter',
             'margin_left'   => 12,
             'margin_right'  => 12,
-            'margin_top'    => 24,   // This now rigidly defines the exact start of your content body
-            'margin_bottom' => 22,
+            'margin_top'    => 24,
+            'margin_bottom' => 25,
             'margin_header' => 8,
             'margin_footer' => 8,
         ]);
-
-        // 🌟 REMOVED: $mpdf->SetHTMLHeader() and SetHTMLFooter() to prevent layout tracking drift
-
+        $mpdf->SetHTMLHeader(buildReportHeader($report));
+        $mpdf->SetHTMLFooter(buildReportFooter());
         $mpdf->WriteHTML(buildReportStyles(), \Mpdf\HTMLParserMode::HEADER_CSS);
-
-        // 🌟 INJECT: Define the header/footer structures so the CSS @page rule can bind them globally
-        $mpdf->WriteHTML('<htmlpageheader name="ReportHeader">' . buildReportHeader($report) . '</htmlpageheader>');
-        $mpdf->WriteHTML('<htmlpagefooter name="ReportFooter">' . buildReportFooter() . '</htmlpagefooter>');
-
         generateExecutiveSummary($mpdf, $report);
-        
         $processedBodyHtml = processReportArtifacts(
             $report['reportBodyHtml'] ?? '', 
             $report['reportArtifacts'] ?? []
         );
-        
         generateMainBody($mpdf, $processedBodyHtml);
-        
         return $mpdf->Output('', 'S');
     } catch (Throwable $e) {
         http_response_code(500);
@@ -89,30 +80,26 @@ function buildReportFooter(): string
 function buildReportStyles(): string
 {
     return '
-        /* 🌟 FORCE LOCK: Binds the header and footer components perfectly across all page actions */
-        @page {
-            margin-top: 24px;
-            margin-bottom: 22px;
-            header: html_ReportHeader;
-            footer: html_ReportFooter;
-        }
         body { 
             font-family: Helvetica, Arial, sans-serif; 
             font-size: 11pt; 
             color: #222; 
             line-height: 1.4; 
-            margin: 0;
-            padding: 0;
         }
         .sectionHeaderTable { 
             width:100%; 
             border-collapse:collapse; 
             border:none; 
-            margin-top:0px;              /* 🌟 Set to 0 to align perfectly with the page baseline */
-            margin-bottom:2px !important; 
+            margin-top:6px;               /* Reduced from 14px */
+            margin-bottom:2px !important; /* Reduced from 6px */
             padding-bottom:0px;
             border-bottom:1.5px solid #888;
-        }   vertical-align:middle; 
+        }
+        .sectionIconCell { 
+            width:22px; 
+            border:none; 
+            padding:0 8px 2px 0; 
+            vertical-align:middle; 
         }
         .sectionTitleCell { 
             border:none; 
