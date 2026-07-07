@@ -228,7 +228,8 @@ function generateMainBody(Mpdf $mpdf, string $bodyHtml): void
     $mpdf->WriteHTML($bodyHtml);
 }
 
-function processReportArtifacts(string $html, array $artifacts): string
+// 🌟 FIX: Add the optional 3rd parameter $report to match the call arguments
+function processReportArtifacts(string $html, array $artifacts, array $report = []): string
 {
     if (empty($artifacts)) return $html;
     
