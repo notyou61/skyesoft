@@ -90,20 +90,20 @@ function buildReportStyles(): string
             width:100%; 
             border-collapse:collapse; 
             border:none; 
-            margin-top:12px; 
-            margin-bottom:0px; 
+            margin-top:14px; 
+            margin-bottom:6px !important; 
             padding-bottom:0px;
             border-bottom:1.5px solid #888;
         }
         .sectionIconCell { 
             width:22px; 
             border:none; 
-            padding:0 8px 1px 0; 
+            padding:0 8px 2px 0; 
             vertical-align:middle; 
         }
         .sectionTitleCell { 
             border:none; 
-            padding:0 0 1px 0; 
+            padding:0 0 2px 0; 
             vertical-align:middle; 
         }
         .sectionIcon { 
@@ -124,7 +124,7 @@ function buildReportStyles(): string
         .dataTable { 
             width:100%; 
             border-collapse:collapse; 
-            margin-top:-12px !important; 
+            margin-top:2px !important; 
             margin-bottom:14px; 
             page-break-inside: avoid; 
         }
@@ -161,7 +161,7 @@ function buildReportStyles(): string
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         .parcel-block .dataTable {
-            margin-top: -2px !important;
+            margin-top: 2px !important;
             margin-bottom: 12px;
         }
         .parcel-block .dataTable th {
