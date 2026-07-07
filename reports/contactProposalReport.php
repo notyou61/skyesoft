@@ -330,48 +330,77 @@ function buildParcelMapSection(array $proposal): string
 
 function buildParcelDetailSection(array $proposal): string
 {
-    $candidates = $proposal['parcelCandidates'] ?? [];
-    if (empty($candidates)) {
+    // 🌟 FIX: Pull from parcelDetails to match getProposalData mapping matrix
+    $parcels = $proposal['parcelDetails'] ?? [];
+    if (empty($parcels)) {
         return '';
     }
 
-    // 🌟 FIX: Isolate the entire section title and table inside a single non-splittable block
+    // Isolate the entire section title and table inside a single non-splittable block
     $html = '<div class="isolated-detail-block" style="width: 100%; page-break-inside: avoid; break-inside: avoid; display: block; clear: both;">';
     
-    // 1. Unified Section Header
+    // 1. Unified Section Header Call
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'magnifier.png');
     
-    $index = 1;
-    foreach ($candidates as $candidate) {
-        $apn     = $candidate['apn'] ?? 'N/A';
-        $owner   = $candidate['owner'] ?? 'N/A';
-        $address = $candidate['address'] ?? 'N/A';
-        $juris   = $candidate['jurisdiction'] ?? 'N/A';
-        $source  = $candidate['source'] ?? 'arcgis_coordinate';
+    foreach ($parcels as $index => $p) {
+        $num       = $index + 1;
+        // Map keys cleanly using fallback targets for safe handling
+        $apn       = htmlspecialchars($p['parcelNumber'] ?? $p['apnRaw'] ?? '—');
+        $owner     = htmlspecialchars($p['ownerName'] ?? $p['owner'] ?? '—');
+        $addr      = htmlspecialchars(trim(($p['siteAddress'] ?? $p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
+        $source    = htmlspecialchars($p['source'] ?? 'Inferred');
+        $jurisdict = htmlspecialchars($p['jurisdiction'] ?? 'Phoenix');
         
-        // Build the dynamic GIS link using the APN
-        $portalLink = !empty($candidate['portalUrl']) 
-            ? $candidate['portalUrl'] 
-            : 'https://mcassessor.maricopa.gov/mcs/?q=' . urlencode($apn);
+        // Clean out double spaces from raw input address variables
+        $addr = preg_replace('/\s+/', ' ', $addr);
+        
+        // Target URI structure for Maricopa County Assessor GIS Portal
+        $cleanApnForUrl = str_replace('-', '', $apn);
+        $assessorUrl    = "https://mcassessor.maricopa.gov/mcs.php?q=" . urlencode($cleanApnForUrl);
 
-        // 2. Start data table structure safely
-        $html .= '<table class="dataTable" style="width: 100%; margin-top: 6px; margin-bottom: 14px; border-collapse: collapse; page-break-inside: avoid;">';
+        // 2. Data table structure matches global stylesheet variables
+        $html .= '<table class="dataTable" style="width: 100%; margin-top: 6px; margin-bottom: 14px; border-collapse: collapse;">';
         
-        // Header Row
-        $html .= '<tr><th colspan="2" style="background: #14377C; color: #ffffff; font-weight: 700; text-align: left; padding: 7px 9px;">Candidate #' . $index . ' — Assessor Parcel Record</th></tr>';
-        
-        // Data Rows
-        $html .= '<tr><th style="width: 28%; background: #e8e8e8; font-weight: 700; color: #333;">Assessor Parcel Number (APN)</th><td><strong>' . htmlspecialchars($apn) . '</strong></td></tr>';
-        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">Registered Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
-        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">Site Boundary Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
-        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">Tax/Permit Jurisdiction</th><td>' . htmlspecialchars($juris) . '</td></tr>';
-        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">GIS Mapping Source</th><td><em style="color: #666;">' . htmlspecialchars($source) . '</em></td></tr>';
-        
-        // Portal Link Row
-        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">Assessor Portal Link</th><td><a href="' . htmlspecialchars($portalLink) . '" style="color: #14377C; font-weight: bold; text-decoration: underline;">View Live Parcel Map</a></td></tr>';
+        // Header Banner Row
+        $html .= '<thead>
+                    <tr>
+                        <th colspan="2" style="background-color: #14377C; color: #ffffff; text-align: left; padding: 7px 10px; font-weight: bold;">
+                            Candidate #' . $num . ' — Assessor Parcel Record
+                        </th>
+                    </tr>
+                 </thead>';
+                 
+        // Body Grid
+        $html .= '<tbody>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 7px 10px; font-weight: bold; width: 32%;">Assessor Parcel Number (APN)</th>
+                        <td style="padding: 7px 10px; color: #2d3748; font-weight: bold;">' . $apn . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 7px 10px; font-weight: bold;">Registered Owner</th>
+                        <td style="padding: 7px 10px; color: #2d3748;">' . $owner . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 7px 10px; font-weight: bold;">Site Boundary Address</th>
+                        <td style="padding: 7px 10px; color: #2d3748;">' . $addr . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 7px 10px; font-weight: bold;">Tax/Permit Jurisdiction</th>
+                        <td style="padding: 7px 10px; color: #2d3748;">' . $jurisdict . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 7px 10px; font-weight: bold;">GIS Mapping Source</th>
+                        <td style="padding: 7px 10px; color: #718096; font-style: italic;">' . $source . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 7px 10px; font-weight: bold;">Assessor Portal Link</th>
+                        <td style="padding: 7px 10px; color: #2d3748;">
+                            <a href="' . $assessorUrl . '" style="color: #14377C; text-decoration: underline; font-weight: bold;" target="_blank">View Live Parcel Map</a>
+                        </td>
+                    </tr>
+                 </tbody>';
         
         $html .= '</table>';
-        $index++;
     }
     
     $html .= '</div>'; // Close the isolation block container cleanly
