@@ -57,10 +57,10 @@ function buildContactProposalBody(array $proposal): string
             border-collapse: collapse; /* 🌟 Merges headers and descriptions smoothly with NO gaps */
             font-family: Arial, sans-serif; 
             font-size: 11px;
-            border: 1.5px solid #1a365d; /* Solid framing wrap */
+            border: 1.5px solid #14377C; /* Updated to unified corporate brand framing wrap */
         }
         .dataTable th { 
-            background-color: #1a365d; 
+            background-color: #14377C; 
             color: #ffffff; 
             text-align: left; 
             padding: 7px 10px; 
@@ -71,8 +71,8 @@ function buildContactProposalBody(array $proposal): string
         .dataTable td { 
             padding: 7px 10px; 
             color: #2d3748; 
-            border-bottom: 1.5px solid #1a365d; /* Solid color bars between description rows */
-            border-left: 1.5px solid #1a365d;   /* 🌟 Seals the inner vertical line where blue meets grey/white */
+            border-bottom: 1.5px solid #14377C; /* Solid color bars between description rows */
+            border-left: 1.5px solid #14377C;   /* 🌟 Seals the inner vertical line where blue meets grey/white */
         }
         /* Clean off the bottom edge line of the final rows */
         .dataTable tr:last-child th {
@@ -113,8 +113,16 @@ function buildContactProposalBody(array $proposal): string
     
     // Parcel Overviews & Plat Map matching
     //$html .= buildParcelSummarySection($proposal);
+    
+    // 🌟 FIX: Isolate the Plat Map inside its own clean structural section container block
+    $html .= '<div class="parcel-map-block-wrapper" style="width: 100%; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">';
     $html .= buildParcelMapSection($proposal);
+    $html .= '</div>';
+    
+    // 🌟 FIX: Isolate the Detail Table completely into its own distinct, un-nested block container
+    $html .= '<div class="parcel-detail-block-wrapper" style="width: 100%; margin-top: 4px; page-break-inside: avoid; break-inside: avoid;">';
     $html .= buildParcelDetailSection($proposal);
+    $html .= '</div>';
     
     // Governance narrative block
     $html .= buildGovernanceSection($proposal);
