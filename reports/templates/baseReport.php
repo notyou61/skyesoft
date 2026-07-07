@@ -228,11 +228,12 @@ function generateMainBody(Mpdf $mpdf, string $bodyHtml): void
     $mpdf->WriteHTML($bodyHtml);
 }
 
-function processReportArtifacts(string $html, array $artifacts, array $report = []): string
+function processReportArtifacts(string $html, array $artifacts): string
 {
-    // Render location imagery mappings
+    if (empty($artifacts)) return $html;
+    
     if (!empty($artifacts['staticMapUrl'])) {
-        $mapHtml = '<div style="text-align:center; margin:15px 0;">
+        $mapHtml = '<div style="text-align:center; margin:15px 0; clear: both;">
                 <img src="' . htmlspecialchars($artifacts['staticMapUrl']) . '" 
                     style="max-width:100%; height:auto; border:1px solid #bbb; border-radius:6px;" 
                     alt="Satellite View">
@@ -243,10 +244,10 @@ function processReportArtifacts(string $html, array $artifacts, array $report = 
         $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - 2]', $mapHtml, $html);
         $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - 3]', $mapHtml, $html);
     } else {
-        $placeholderHtml = '<div class="image-placeholder">📍 Satellite image not available yet</div>';
+        $placeholderHtml = '<div class="image-placeholder" style="clear: both;">📍 Satellite image not available yet</div>';
         $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - Other]', $placeholderHtml, $html);
     }
-
+    
     if (!empty($artifacts['streetview'])) {
         $html = str_replace(
             '[Street View Image will be inserted here by baseReport.php]', 
@@ -254,51 +255,24 @@ function processReportArtifacts(string $html, array $artifacts, array $report = 
             $html
         );
     }
-
+    
     if (!empty($artifacts['parcel_maps']) && is_array($artifacts['parcel_maps'])) {
         foreach ($artifacts['parcel_maps'] as $path) {
             if ($path) {
+                // 🌟 FIX: Wrap the injected binary image inline to prevent layout block leaks
+                $cleanImageHtml = '<div class="mpdf-isolated-image-block" style="width: 100%; clear: both; display: block; page-break-inside: avoid;">' 
+                                . getEmbeddedImageHtml($path, 'Parcel Aerial') 
+                                . '</div>';
+                                
                 $html = str_replace(
                     '[Parcel Aerial Image Placeholder]', 
-                    getEmbeddedImageHtml($path, 'Parcel Aerial'), 
+                    $cleanImageHtml, 
                     $html
                 );
             }
         }
     }
-
-    // Build programmatic output data block if custom implementation is loaded
-    $detailTableHtml = '';
-    if (function_exists('buildParcelDetailSection')) {
-        $detailTableHtml = buildParcelDetailSection($report);
-    }
-
-    // Replace basic inline markup text brackets
-    if (!empty($detailTableHtml)) {
-        $html = str_replace('[PARCEL DETAIL SECTION PLACEHOLDER]', $detailTableHtml, $html);
-        $html = str_replace('[PARCEL CANDIDATES – DETAIL]', $detailTableHtml, $html);
-    }
-
-    // 🛡️ THE GHOSTBUSTER PATTERN:
-    // This regular expression matches any structural ".section" container block that wraps a 
-    // ".sectionHeaderTable" containing text variants of "Parcel Candidates – Detail".
-    // It captures that entire redundant markup block and cleanly overwrites it with our table output.
-    $regexPattern = '/<div[^>]*class=["\']section["\'][^>]*>\s*<table[^>]*class=["\']sectionHeaderTable["\'][^>]*>.*?Parcel\s+Candidates\s*–\s*Detail.*?<\/table>\s*(?:<p>.*?<\/p>|<div[^>]*>.*?<\/div>|\s)*<\/div>/is';
     
-    if (preg_match($regexPattern, $html)) {
-        $html = preg_replace($regexPattern, $detailTableHtml, $html);
-    } else {
-        // If it was raw loose html outside standard div frameworks, do a targeted swap
-        if (strpos($html, 'Parcel Candidates – Detail') !== false && !empty($detailTableHtml)) {
-            // Drop a clean replacement anchoring layout points
-            $html = preg_replace('/<table[^>]*class=["\']sectionHeaderTable["\'].*?Parcel\s+Candidates\s*–\s*Detail.*?<\/table>/is', '', $html);
-            $html .= $detailTableHtml;
-        } elseif (!empty($detailTableHtml) && strpos($html, 'Candidate #1') === false) {
-            // Append fallback protect
-            $html .= $detailTableHtml;
-        }
-    }
-
     return $html;
 }
 
