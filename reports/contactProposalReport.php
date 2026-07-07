@@ -330,9 +330,11 @@ function buildParcelDetailSection(array $proposal): string
     $parcels = $proposal['parcelDetails'] ?? [];
     if (empty($parcels)) return '';
     
-    // 🌟 FIX: Removed structural outer table to avoid page-overflow bugs. 
-    // The section header can sit comfortably in the regular body page flow.
-    $html = buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
+    // Wrapped in a matching structural table boundary to prevent page-break layout separation
+    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
+    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
+    
+    $html .= buildSectionHeader('Parcel – Detail', 'compass.png');
     
     $displayCount = 0;
     foreach ($parcels as $i => $p) {
@@ -353,9 +355,8 @@ function buildParcelDetailSection(array $proposal): string
         $cleanApnForUrl = str_replace('-', '', $apn);
         $assessorUrl    = "https://mcassessor.maricopa.gov/mcs.php?q=" . urlencode($cleanApnForUrl);
         
-        // 🌟 FIX: The data table itself is wrapped in an inner div container to cleanly clip and style
         $html .= '
-        <div style="width: 100%; margin-top: 10px; margin-bottom: 4px; page-break-inside: avoid; break-inside: avoid;">
+        <div class="tableWrapper" style="width: 100%; padding: 2px; margin-top: 12px; margin-bottom: 8px;">
             <table class="dataTable" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; border: 1.5px solid #1a365d;">
                 <tr>
                     <th colspan="2" style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 4px 10px; font-weight: bold; font-size: 11px;">
@@ -393,13 +394,15 @@ function buildParcelDetailSection(array $proposal): string
     }
     
     if (count($parcels) > 2) {
-        $html .= '<div style="font-family: Arial, sans-serif; font-size: 9px; color: #718096; font-style: italic; text-align: right; margin-top: 4px;">';
+        $html .= '<div style="font-family: Arial, sans-serif; font-size: 9px; color: #718096; font-style: italic; text-align: right; margin-top: 4px; padding-right: 2px;">';
         $html .= '* Showing primary candidates only — full selection list available in Skyesoft portal interface.';
         $html .= '</div>';
     }
     
-    // Smooth trail margin out without structural wrapper locks
-    $html .= '<div style="margin-bottom: 16px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    
+    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     
     return $html;
 }
