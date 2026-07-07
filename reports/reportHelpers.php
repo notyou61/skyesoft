@@ -11,16 +11,18 @@ declare(strict_types=1);
 /**
  * Build a consistent section header for all reports
  */
+#region SECTION 04 - Helpers
 function buildSectionHeader(string $title, string $icon = 'clipboard.png'): string
 {
     return '
-    <table class="sectionHeaderTable">
+    <table class="sectionHeaderTable" style="width:100%; margin-top:12px; margin-bottom:2px; border-collapse:collapse;">
         <tr>
-            <td class="sectionIconCell"><img src="https://skyelighting.com/skyesoft/assets/images/icons/' . htmlspecialchars($icon) . '" class="sectionIcon"></td>
-            <td class="sectionTitleCell"><div class="sectionTitle">' . htmlspecialchars($title) . '</div></td>
+            <td class="sectionIconCell" style="padding:0; width:24px; vertical-align:middle;"><img src="https://skyelighting.com/skyesoft/assets/images/icons/' . htmlspecialchars($icon) . '" class="sectionIcon" style="display:block; margin:0;"></td>
+            <td class="sectionTitleCell" style="padding:0; padding-left:8px; vertical-align:middle;"><div class="sectionTitle" style="margin:0; padding:0; line-height:1.2;">' . htmlspecialchars($title) . '</div></td>
         </tr>
     </table>';
 }
+#endregion
 
 /**
  * Build Google Satellite Map Section (reusable)
