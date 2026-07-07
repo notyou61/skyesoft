@@ -125,7 +125,7 @@ function buildReportStyles(): string
             width:100%; 
             border-collapse:collapse; 
             margin-top:-4px !important; 
-            margin-bottom:14px; 
+            margin-bottom:7px; 
             page-break-inside: avoid; 
         }
         .dataTable th, .dataTable td { 
