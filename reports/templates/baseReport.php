@@ -90,8 +90,8 @@ function buildReportStyles(): string
             width:100%; 
             border-collapse:collapse; 
             border:none; 
-            margin-top:14px; 
-            margin-bottom:6px !important; 
+            margin-top:6px;               /* Reduced from 14px */
+            margin-bottom:2px !important; /* Reduced from 6px */
             padding-bottom:0px;
             border-bottom:1.5px solid #888;
         }
