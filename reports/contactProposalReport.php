@@ -335,11 +335,9 @@ function buildParcelDetailSection(array $proposal): string
         return '';
     }
 
-    // 🌟 FIX: Removed the restrictive 'page-break-inside: avoid' outer div wrapper.
-    // This allows the section header to print immediately at the bottom of Page 4.
     $html = '<div class="detail-section-container" style="width: 100%; display: block; clear: both;">';
     
-    // 🌟 FIX A: Use the absolute URL path to fix the missing header icon bug
+    // 🌟 FIXED ICON PATH: Linked to your secure absolute asset hosting directory
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'https://skyelighting.com/skyesoft/assets/images/icons/magnifier.png');
     
     foreach ($parcels as $index => $p) {
@@ -355,10 +353,7 @@ function buildParcelDetailSection(array $proposal): string
         $cleanApnForUrl = str_replace('-', '', $apn);
         $assessorUrl    = "https://mcassessor.maricopa.gov/mcs.php?q=" . urlencode($cleanApnForUrl);
 
-        // 🌟 FIX B: Keep the rule here on each INDIVIDUAL table structure card.
-        // Candidate #1 fits on Page 4, while subsequent candidates split cleanly over to Page 5.
         $html .= '<table class="dataTable" style="width: 100%; margin-top: 6px; margin-bottom: 14px; border-collapse: collapse; page-break-inside: avoid; break-inside: avoid;">';
-        
         $html .= '<thead>
                     <tr>
                         <th colspan="2" style="background-color: #14377C; color: #ffffff; text-align: left; padding: 7px 10px; font-weight: bold;">
@@ -366,7 +361,6 @@ function buildParcelDetailSection(array $proposal): string
                         </th>
                     </tr>
                  </thead>';
-                 
         $html .= '<tbody>
                     <tr>
                         <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 7px 10px; font-weight: bold; width: 32%;">Assessor Parcel Number (APN)</th>
@@ -395,7 +389,6 @@ function buildParcelDetailSection(array $proposal): string
                         </td>
                     </tr>
                  </tbody>';
-        
         $html .= '</table>';
     }
     
@@ -407,10 +400,9 @@ function buildGovernanceSection(array $proposal): string
 {
     $narrative = $proposal['governanceNarrative'] ?? 'Governance review pending.';
     
-    // 🌟 FIX C: Removed the hardcoded '<pagebreak />' tag so it streams naturally into the layout flow!
     $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; width: 100%; margin-top: 14px; display: block; clear: both;">';
     
-    // 🌟 FIX A: Use the absolute secure asset directory URL path to fix the missing header icon bug
+    // 🌟 FIXED ICON PATH: Linked to your secure absolute asset hosting directory 
     $html .= buildSectionHeader('Governance &amp; Operational Narrative', 'https://skyelighting.com/skyesoft/assets/images/icons/scales.png');
     
     $html .= '<div class="highlight" style="font-family: Arial, sans-serif; background-color: #ffffff; border-left: 4px solid #14377C; padding: 14px; font-size: 10.5px; line-height: 1.6; text-align: justify; color: #2d3748; margin-top: 10px;">' . nl2br(htmlspecialchars($narrative)) . '</div>';
