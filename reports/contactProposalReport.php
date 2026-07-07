@@ -330,31 +330,71 @@ function buildParcelDetailSection(array $proposal): string
     $parcels = $proposal['parcelDetails'] ?? [];
     if (empty($parcels)) return '';
     
-    // Wrapped in a matching structural table boundary to prevent layout separation
+    // Wrapped in a matching structural table boundary to prevent page-break layout separation
     $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
     $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
     
-    $html .= buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
+    $html .= buildSectionHeader('Parcel – Detail', 'compass.png');
     
     $displayCount = 0;
     foreach ($parcels as $i => $p) {
         if ($displayCount >= 2) break;
         $displayCount++;
         
-        $num = $i + 1;
-        $apn = htmlspecialchars($p['parcelNumber'] ?? $p['apnRaw'] ?? '—');
-        $owner = htmlspecialchars($p['ownerName'] ?? $p['owner'] ?? '—');
-        $addr = htmlspecialchars(trim(($p['siteAddress'] ?? $p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
+        $num       = $i + 1;
+        $apn       = htmlspecialchars($p['parcelNumber'] ?? $p['apnRaw'] ?? '—');
+        $owner     = htmlspecialchars($p['ownerName'] ?? $p['owner'] ?? '—');
+        $addr      = htmlspecialchars(trim(($p['siteAddress'] ?? $p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
+        $source    = htmlspecialchars($p['source'] ?? 'Inferred');
+        $jurisdict = htmlspecialchars($p['jurisdiction'] ?? 'Phoenix');
         
-        $html .= '<div class="parcel-block" style="font-family: Arial, sans-serif; font-size:11px; background-color:#f8fafc; border:1px solid #e2e8f0; padding:10px; margin-top: 12px; margin-bottom:4px; border-radius:4px;">';
-        $html .= '<strong>Parcel ' . $num . ' — APN: ' . $apn . '</strong><br>';
-        $html .= 'Owner: ' . $owner . '<br>';
-        $html .= 'Address: ' . $addr . '<br>';
-        $html .= '</div>';
+        // Clean up formatting spaces often left over from GIS string dumps
+        $addr = preg_replace('/\s+/', ' ', $addr);
+        
+        // Construct a direct tracking deep-link to the Maricopa County Assessor's Office portal
+        $cleanApnForUrl = str_replace('-', '', $apn);
+        $assessorUrl    = "https://mcassessor.maricopa.gov/mcs.php?q=" . urlencode($cleanApnForUrl);
+        
+        $html .= '
+        <div class="tableWrapper" style="width: 100%; padding: 2px; margin-top: 12px; margin-bottom: 8px;">
+            <table class="dataTable" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; border: 1.5px solid #1a365d;">
+                <tr>
+                    <th colspan="2" style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 4px 10px; font-weight: bold; font-size: 11px;">
+                        Candidate #' . $num . ' — Assessor Parcel Record
+                    </th>
+                </tr>
+                <tr>
+                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Assessor Parcel Number (APN)</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d; font-weight: bold;">' . $apn . '</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Registered Owner</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $owner . '</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Site Boundary Address</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $addr . '</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Tax/Permit Jurisdiction</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $jurisdict . '</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">GIS Mapping Source</th>
+                    <td style="padding: 3px 10px; color: #718096; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d; font-style: italic;">' . $source . '</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: none;">Assessor Portal Link</th>
+                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: none; border-left: 1.5px solid #1a365d;">
+                        <a href="' . $assessorUrl . '" style="color: #1a365d; text-decoration: underline; font-weight: bold;" target="_blank">View Live Parcel Map</a>
+                    </td>
+                </tr>
+            </table>
+        </div>';
     }
     
     if (count($parcels) > 2) {
-        $html .= '<div style="font-family: Arial, sans-serif; font-size: 9px; color: #718096; font-style: italic; text-align: right; margin-top: 4px;">';
+        $html .= '<div style="font-family: Arial, sans-serif; font-size: 9px; color: #718096; font-style: italic; text-align: right; margin-top: 4px; padding-right: 2px;">';
         $html .= '* Showing primary candidates only — full selection list available in Skyesoft portal interface.';
         $html .= '</div>';
     }
