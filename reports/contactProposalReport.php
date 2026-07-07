@@ -200,8 +200,17 @@ function buildSatelliteSection(array $proposal): string
         }
     }
     
+    // 🌟 CLOSE SATELLITE LOCK CONTAINER EARLY HERE TO SPLIT THE BLOCKS NATIVELY
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    
+    // 🌟 INJECT EXPLICIT PRINT ROW CONTEXT FOR BUFFER SPACE LIKE THE OTHERS
+    $html .= '<table style="width:100%; border-collapse:collapse; border:none; margin:0; padding:0;">';
+    $html .= '  <tr><td style="height:14px; line-height:1px; font-size:1px; border:none; padding:0;">&nbsp;</td></tr>';
+    $html .= '</table>';
+    
     // =================================================================
-    // 📍 GOOGLE PLACE ID VERIFICATION TABLE
+    // 📍 GOOGLE PLACE ID VERIFICATION TABLE (INDEPENDENT WRAPPER)
     // =================================================================
     $placeName    = htmlspecialchars($proposal['reportArtifacts']['place_details']['name'] ?? $proposal['entityName'] ?? 'N/A');
     $placeAddress = htmlspecialchars($proposal['reportArtifacts']['place_details']['formatted_address'] ?? $proposal['locationAddress'] ?? '—');
@@ -219,7 +228,7 @@ function buildSatelliteSection(array $proposal): string
         : "#";
 
     $html .= '
-    <div class="proposal-section" style="margin-top: 12px; width: 100%;">
+    <div class="proposal-section" style="margin-top: 0px; width: 100%; page-break-inside: avoid; break-inside: avoid;">
         <table class="sectionHeaderTable" style="width:100%; margin-bottom:2px; border-bottom: 2px solid #1a365d; font-family: Arial, sans-serif;">
             <tr>
                 <td class="sectionIconCell" style="width:24px; padding:1px 0;"><img src="https://skyelighting.com/skyesoft/assets/images/icons/pin.png" class="sectionIcon" style="width:16px; height:16px; display:block;"></td>
@@ -253,10 +262,7 @@ function buildSatelliteSection(array $proposal): string
         </div>
     </div>';
     
-    $html .= '</td></tr>';
-    $html .= '</table>';
-    
-    // Add margin buffer spacing after the locked table element to clean up layout flow
+    // Add margin buffer spacing after the component to clean up layout flow
     $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     
     return $html;
