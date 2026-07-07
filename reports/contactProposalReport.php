@@ -330,8 +330,20 @@ function buildParcelDetailSection(array $proposal): string
     $parcels = $proposal['parcelDetails'] ?? [];
     if (empty($parcels)) return '';
     
-    // Render standard section header matching the global style sheet rules
-    $html = buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
+    // 🌟 FIX: Render the section header matching Skyesoft universal layout standards
+    $html = '
+    <div style="margin-top: 14px; margin-bottom: 8px;">
+        <table style="width:100%; border-collapse:collapse; border:none; border-bottom:1.5px solid #888;">
+            <tr>
+                <td style="width:22px; border:none; padding:0 8px 2px 0; vertical-align:middle;">
+                    <img src="https://skyelighting.com/skyesoft/assets/images/icons/compass.png" style="width:17px; height:17px; display:block;" alt="">
+                </td>
+                <td style="border:none; padding:0 0 2px 0; vertical-align:middle;">
+                    <div style="font-size:12pt; font-weight:700; color:#14377C; line-height:1.0; margin:0; padding:0;">Parcel Candidates – Detail</div>
+                </td>
+            </tr>
+        </table>
+    </div>';
     
     $displayCount = 0;
     foreach ($parcels as $i => $p) {
@@ -345,16 +357,16 @@ function buildParcelDetailSection(array $proposal): string
         $source    = htmlspecialchars($p['source'] ?? 'Inferred');
         $jurisdict = htmlspecialchars($p['jurisdiction'] ?? 'Phoenix');
         
-        // Clean up redundant internal spaces left over from GIS database line returns
+        // Clean up redundant internal formatting spaces
         $addr = preg_replace('/\s+/', ' ', $addr);
         
-        // Direct tracking deep-link to the Maricopa County Assessor's Office parcel interface
+        // Target URI structure for Maricopa County Assessor GIS Portal
         $cleanApnForUrl = str_replace('-', '', $apn);
         $assessorUrl    = "https://mcassessor.maricopa.gov/mcs.php?q=" . urlencode($cleanApnForUrl);
         
-        // Enforce the table to strictly follow the document body flow without structural wrapper loops
+        // Clean flow container with precise margin balancing below the header rule line
         $html .= '
-        <div style="width: 100%; margin-top: 10px; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">
+        <div style="width: 100%; margin-top: 6px; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">
             <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; border: 1.5px solid #14377C;">
                 <thead>
                     <tr>
@@ -400,9 +412,6 @@ function buildParcelDetailSection(array $proposal): string
         $html .= '* Showing primary candidates only — full selection list available in Skyesoft portal interface.';
         $html .= '</div>';
     }
-    
-    // Standard baseline spacing trail
-    $html .= '<div style="margin-bottom: 14px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     
     return $html;
 }

@@ -34,9 +34,11 @@ function renderReport(array $report): string
         
         generateExecutiveSummary($mpdf, $report);
         
+        // 🌟 FIX: Forward the entire $report matrix to let the parser cleanly insert the detail table inline
         $processedBodyHtml = processReportArtifacts(
             $report['reportBodyHtml'] ?? '', 
-            $report['reportArtifacts'] ?? []
+            $report['reportArtifacts'] ?? [],
+            $report
         );
         
         generateMainBody($mpdf, $processedBodyHtml);
@@ -271,9 +273,10 @@ function getEmbeddedImageHtmlFromUrl(string $url, string $alt = 'Image'): string
                      alt="' . htmlspecialchars($alt) . '">
             </div>';
 }
-function processReportArtifacts(string $html, array $artifacts): string
+function processReportArtifacts(string $html, array $artifacts, array $proposal = []): string
 {
     if (empty($artifacts)) return $html;
+    
     if (!empty($artifacts['staticMapUrl'])) {
         $mapHtml = '<div style="text-align:center; margin:15px 0;">
                 <img src="' . htmlspecialchars($artifacts['staticMapUrl']) . '" 
@@ -289,6 +292,7 @@ function processReportArtifacts(string $html, array $artifacts): string
         $placeholderHtml = '<div class="image-placeholder">📍 Satellite image not available yet</div>';
         $html = str_replace('[SATELLITE IMAGE PLACEHOLDER - Other]', $placeholderHtml, $html);
     }
+    
     if (!empty($artifacts['streetview'])) {
         $html = str_replace(
             '[Street View Image will be inserted here by baseReport.php]', 
@@ -296,6 +300,7 @@ function processReportArtifacts(string $html, array $artifacts): string
             $html
         );
     }
+    
     if (!empty($artifacts['parcel_maps']) && is_array($artifacts['parcel_maps'])) {
         foreach ($artifacts['parcel_maps'] as $path) {
             if ($path) {
@@ -307,6 +312,14 @@ function processReportArtifacts(string $html, array $artifacts): string
             }
         }
     }
+
+    // 🌟 FIX: Handle the details insertion directly here to cleanly replace the placeholder code block
+    if (!empty($proposal) && (strpos($html, '[PARCEL DETAIL SECTION PLACEHOLDER]') !== false || strpos($html, '[PARCEL CANDIDATES – DETAIL]') !== false)) {
+        $detailHtml = function_exists('buildParcelDetailSection') ? buildParcelDetailSection($proposal) : '';
+        $html = str_replace('[PARCEL DETAIL SECTION PLACEHOLDER]', $detailHtml, $html);
+        $html = str_replace('[PARCEL CANDIDATES – DETAIL]', $detailHtml, $html);
+    }
+    
     return $html;
 }
 function getEmbeddedImageHtml(string $imagePath, string $alt = 'Image'): string
@@ -316,28 +329,21 @@ function getEmbeddedImageHtml(string $imagePath, string $alt = 'Image'): string
     }
     $extension = strtolower(pathinfo($imagePath, PATHINFO_EXTENSION));
     switch ($extension) {
-        case 'png':
-            $mime = 'image/png';
-            break;
-        case 'gif':
-            $mime = 'image/gif';
-            break;
-        case 'webp':
-            $mime = 'image/webp';
-            break;
+        case 'png': $mime = 'image/png'; break;
+        case 'gif': $mime = 'image/gif'; break;
+        case 'webp': $mime = 'image/webp'; break;
         case 'jpg':
         case 'jpeg':
-        default:
-            $mime = 'image/jpeg';
-            break;
+        default: $mime = 'image/jpeg'; break;
     }
     $data = base64_encode(file_get_contents($imagePath));
     $src = 'data:' . $mime . ';base64,' . $data;
-    // 🌟 FIX: Force image to use 100% width and apply matching brand framing colors
+    
+    // 🌟 FIX: Updated legacy #1a365d border frame color to match unified brand color #14377C
     return '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">
                 <img src="' . $src . '"
                      width="100%"
-                     style="border: 1.5px solid #1a365d; border-radius: 4px;"
+                     style="border: 1.5px solid #14377C; border-radius: 4px;"
                      alt="' . htmlspecialchars($alt) . '">
             </div>';
 }
