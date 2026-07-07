@@ -330,18 +330,50 @@ function buildParcelMapSection(array $proposal): string
 
 function buildParcelDetailSection(array $proposal): string
 {
+    $candidates = $proposal['parcelCandidates'] ?? [];
+    if (empty($candidates)) {
+        return '';
+    }
+
     // 🌟 FIX: Isolate the entire section title and table inside a single non-splittable block
     $html = '<div class="isolated-detail-block" style="width: 100%; page-break-inside: avoid; break-inside: avoid; display: block; clear: both;">';
     
-    // 1. Your existing Section Header call
+    // 1. Unified Section Header
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'magnifier.png');
     
-    // 2. Start your table structure safely without changing its interior rows
-    $html .= '<table class="dataTable" style="width: 100%; margin-top: 6px; border-collapse: collapse;">';
+    $index = 1;
+    foreach ($candidates as $candidate) {
+        $apn     = $candidate['apn'] ?? 'N/A';
+        $owner   = $candidate['owner'] ?? 'N/A';
+        $address = $candidate['address'] ?? 'N/A';
+        $juris   = $candidate['jurisdiction'] ?? 'N/A';
+        $source  = $candidate['source'] ?? 'arcgis_coordinate';
+        
+        // Build the dynamic GIS link using the APN
+        $portalLink = !empty($candidate['portalUrl']) 
+            ? $candidate['portalUrl'] 
+            : 'https://mcassessor.maricopa.gov/mcs/?q=' . urlencode($apn);
+
+        // 2. Start data table structure safely
+        $html .= '<table class="dataTable" style="width: 100%; margin-top: 6px; margin-bottom: 14px; border-collapse: collapse; page-break-inside: avoid;">';
+        
+        // Header Row
+        $html .= '<tr><th colspan="2" style="background: #14377C; color: #ffffff; font-weight: 700; text-align: left; padding: 7px 9px;">Candidate #' . $index . ' — Assessor Parcel Record</th></tr>';
+        
+        // Data Rows
+        $html .= '<tr><th style="width: 28%; background: #e8e8e8; font-weight: 700; color: #333;">Assessor Parcel Number (APN)</th><td><strong>' . htmlspecialchars($apn) . '</strong></td></tr>';
+        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">Registered Owner</th><td>' . htmlspecialchars($owner) . '</td></tr>';
+        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">Site Boundary Address</th><td>' . htmlspecialchars($address) . '</td></tr>';
+        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">Tax/Permit Jurisdiction</th><td>' . htmlspecialchars($juris) . '</td></tr>';
+        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">GIS Mapping Source</th><td><em style="color: #666;">' . htmlspecialchars($source) . '</em></td></tr>';
+        
+        // Portal Link Row
+        $html .= '<tr><th style="background: #e8e8e8; font-weight: 700; color: #333;">Assessor Portal Link</th><td><a href="' . htmlspecialchars($portalLink) . '" style="color: #14377C; font-weight: bold; text-decoration: underline;">View Live Parcel Map</a></td></tr>';
+        
+        $html .= '</table>';
+        $index++;
+    }
     
-    // ... (Keep all your existing table rows / loops fetching your candidate data here) ...
-    
-    $html .= '</table>';
     $html .= '</div>'; // Close the isolation block container cleanly
     
     return $html;
