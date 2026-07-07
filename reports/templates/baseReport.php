@@ -20,20 +20,27 @@ function renderReport(array $report): string
             'format'        => 'Letter',
             'margin_left'   => 12,
             'margin_right'  => 12,
-            'margin_top'    => 24,
+            'margin_top'    => 24,   // Rigidly forces the global baseline
             'margin_bottom' => 25,
             'margin_header' => 8,
             'margin_footer' => 8,
         ]);
+
+        // Use the native setters (safest execution path for complex headers)
         $mpdf->SetHTMLHeader(buildReportHeader($report));
         $mpdf->SetHTMLFooter(buildReportFooter());
+        
         $mpdf->WriteHTML(buildReportStyles(), \Mpdf\HTMLParserMode::HEADER_CSS);
+        
         generateExecutiveSummary($mpdf, $report);
+        
         $processedBodyHtml = processReportArtifacts(
             $report['reportBodyHtml'] ?? '', 
             $report['reportArtifacts'] ?? []
         );
+        
         generateMainBody($mpdf, $processedBodyHtml);
+        
         return $mpdf->Output('', 'S');
     } catch (Throwable $e) {
         http_response_code(500);
