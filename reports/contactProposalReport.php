@@ -330,38 +330,35 @@ function buildParcelMapSection(array $proposal): string
 
 function buildParcelDetailSection(array $proposal): string
 {
-    // 🌟 FIX: Pull from parcelDetails to match getProposalData mapping matrix
     $parcels = $proposal['parcelDetails'] ?? [];
     if (empty($parcels)) {
         return '';
     }
 
-    // Isolate the entire section title and table inside a single non-splittable block
-    $html = '<div class="isolated-detail-block" style="width: 100%; page-break-inside: avoid; break-inside: avoid; display: block; clear: both;">';
+    // 🌟 FIX: Removed the restrictive 'page-break-inside: avoid' outer div wrapper.
+    // This allows the section header to print immediately at the bottom of Page 4.
+    $html = '<div class="detail-section-container" style="width: 100%; display: block; clear: both;">';
     
-    // 1. Unified Section Header Call
-    $html .= buildSectionHeader('Parcel Candidates – Detail', 'magnifier.png');
+    // 🌟 FIX A: Use the absolute URL path to fix the missing header icon bug
+    $html .= buildSectionHeader('Parcel Candidates – Detail', 'https://skyelighting.com/skyesoft/assets/images/icons/magnifier.png');
     
     foreach ($parcels as $index => $p) {
         $num       = $index + 1;
-        // Map keys cleanly using fallback targets for safe handling
         $apn       = htmlspecialchars($p['parcelNumber'] ?? $p['apnRaw'] ?? '—');
         $owner     = htmlspecialchars($p['ownerName'] ?? $p['owner'] ?? '—');
         $addr      = htmlspecialchars(trim(($p['siteAddress'] ?? $p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
         $source    = htmlspecialchars($p['source'] ?? 'Inferred');
         $jurisdict = htmlspecialchars($p['jurisdiction'] ?? 'Phoenix');
         
-        // Clean out double spaces from raw input address variables
         $addr = preg_replace('/\s+/', ' ', $addr);
         
-        // Target URI structure for Maricopa County Assessor GIS Portal
         $cleanApnForUrl = str_replace('-', '', $apn);
         $assessorUrl    = "https://mcassessor.maricopa.gov/mcs.php?q=" . urlencode($cleanApnForUrl);
 
-        // 2. Data table structure matches global stylesheet variables
-        $html .= '<table class="dataTable" style="width: 100%; margin-top: 6px; margin-bottom: 14px; border-collapse: collapse;">';
+        // 🌟 FIX B: Keep the rule here on each INDIVIDUAL table structure card.
+        // Candidate #1 fits on Page 4, while subsequent candidates split cleanly over to Page 5.
+        $html .= '<table class="dataTable" style="width: 100%; margin-top: 6px; margin-bottom: 14px; border-collapse: collapse; page-break-inside: avoid; break-inside: avoid;">';
         
-        // Header Banner Row
         $html .= '<thead>
                     <tr>
                         <th colspan="2" style="background-color: #14377C; color: #ffffff; text-align: left; padding: 7px 10px; font-weight: bold;">
@@ -370,7 +367,6 @@ function buildParcelDetailSection(array $proposal): string
                     </tr>
                  </thead>';
                  
-        // Body Grid
         $html .= '<tbody>
                     <tr>
                         <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 7px 10px; font-weight: bold; width: 32%;">Assessor Parcel Number (APN)</th>
@@ -403,8 +399,7 @@ function buildParcelDetailSection(array $proposal): string
         $html .= '</table>';
     }
     
-    $html .= '</div>'; // Close the isolation block container cleanly
-    
+    $html .= '</div>';
     return $html;
 }
 
@@ -412,12 +407,15 @@ function buildGovernanceSection(array $proposal): string
 {
     $narrative = $proposal['governanceNarrative'] ?? 'Governance review pending.';
     
-    $html = '<pagebreak />';
-    $html .= '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; width: 100%;">';
-    // 🌟 FIX C: Handled ampersand raw format safely so it generates correctly without double translation
-    $html .= buildSectionHeader('Governance & Operational Narrative', 'scales.png');
-    $html .= '<div class="highlight" style="font-family: Arial, sans-serif; background-color: #ffffff; border-left: 4px solid #3182ce; padding: 14px; font-size: 10.5px; line-height: 1.6; text-align: justify; color: #2d3748; margin-top:10px;">' . nl2br(htmlspecialchars($narrative)) . '</div>';
+    // 🌟 FIX C: Removed the hardcoded '<pagebreak />' tag so it streams naturally into the layout flow!
+    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; width: 100%; margin-top: 14px; display: block; clear: both;">';
+    
+    // 🌟 FIX A: Use the absolute secure asset directory URL path to fix the missing header icon bug
+    $html .= buildSectionHeader('Governance &amp; Operational Narrative', 'https://skyelighting.com/skyesoft/assets/images/icons/scales.png');
+    
+    $html .= '<div class="highlight" style="font-family: Arial, sans-serif; background-color: #ffffff; border-left: 4px solid #14377C; padding: 14px; font-size: 10.5px; line-height: 1.6; text-align: justify; color: #2d3748; margin-top: 10px;">' . nl2br(htmlspecialchars($narrative)) . '</div>';
     $html .= '</div>';
+    
     return $html;
 }
 #endregion
