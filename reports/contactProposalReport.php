@@ -174,8 +174,10 @@ function buildSatelliteSection(array $proposal): string
     $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
     $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
     
-    // Inject Section Header inside the locked cell block
-    $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+    // 🌟 FIX: Inject inline margin-top reset to override stylesheet rules during auto page-breaks
+    $headerHtml = buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
+    $headerHtml = str_replace('class="sectionHeaderTable"', 'class="sectionHeaderTable" style="margin-top: 0 !important;"', $headerHtml);
+    $html .= $headerHtml;
     
     $path = $proposal['reportArtifacts']['satellite'] ?? null;
     $url  = $proposal['reportArtifacts']['satelliteUrl'] ?? null;
