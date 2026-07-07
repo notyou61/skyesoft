@@ -338,7 +338,7 @@ function buildParcelDetailSection(array $proposal): string
     $html = '<div class="detail-section-container" style="width: 100%; display: block; clear: both;">';
     
     // 🌟 FIXED: Reverted to local resource string filename to resolve the missing icon
-    $html .= buildSectionHeader('Parcel Candidates – Detail', 'search.png');
+    $html .= buildSectionHeader('Parcel Candidates – Detail', 'folder.png');
     
     foreach ($parcels as $index => $p) {
         $num       = $index + 1;
