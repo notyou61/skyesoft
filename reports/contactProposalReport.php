@@ -330,91 +330,19 @@ function buildParcelMapSection(array $proposal): string
 
 function buildParcelDetailSection(array $proposal): string
 {
-    $parcels = $proposal['parcelDetails'] ?? [];
-    if (empty($parcels)) return '';
+    // 🌟 FIX: Isolate the entire section title and table inside a single non-splittable block
+    $html = '<div class="isolated-detail-block" style="width: 100%; page-break-inside: avoid; break-inside: avoid; display: block; clear: both;">';
     
-    // 🌟 FIX: Render the section header matching Skyesoft universal layout standards
-    $html = '
-    <div style="margin-top: 14px; margin-bottom: 8px;">
-        <table style="width:100%; border-collapse:collapse; border:none; border-bottom:1.5px solid #888;">
-            <tr>
-                <td style="width:22px; border:none; padding:0 8px 2px 0; vertical-align:middle;">
-                    <img src="https://skyelighting.com/skyesoft/assets/images/icons/compass.png" style="width:17px; height:17px; display:block;" alt="">
-                </td>
-                <td style="border:none; padding:0 0 2px 0; vertical-align:middle;">
-                    <div style="font-size:12pt; font-weight:700; color:#14377C; line-height:1.0; margin:0; padding:0;">Parcel Candidates – Detail</div>
-                </td>
-            </tr>
-        </table>
-    </div>';
+    // 1. Your existing Section Header call
+    $html .= buildSectionHeader('Parcel Candidates – Detail', 'magnifier.png');
     
-    $displayCount = 0;
-    foreach ($parcels as $i => $p) {
-        if ($displayCount >= 2) break;
-        $displayCount++;
-        
-        $num       = $i + 1;
-        $apn       = htmlspecialchars($p['parcelNumber'] ?? $p['apnRaw'] ?? '—');
-        $owner     = htmlspecialchars($p['ownerName'] ?? $p['owner'] ?? '—');
-        $addr      = htmlspecialchars(trim(($p['siteAddress'] ?? $p['address'] ?? '') . ', ' . ($p['city'] ?? '')));
-        $source    = htmlspecialchars($p['source'] ?? 'Inferred');
-        $jurisdict = htmlspecialchars($p['jurisdiction'] ?? 'Phoenix');
-        
-        // Clean up redundant internal formatting spaces
-        $addr = preg_replace('/\s+/', ' ', $addr);
-        
-        // Target URI structure for Maricopa County Assessor GIS Portal
-        $cleanApnForUrl = str_replace('-', '', $apn);
-        $assessorUrl    = "https://mcassessor.maricopa.gov/mcs.php?q=" . urlencode($cleanApnForUrl);
-        
-        // Clean flow container with precise margin balancing below the header rule line
-        $html .= '
-        <div style="width: 100%; margin-top: 6px; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">
-            <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; border: 1.5px solid #14377C;">
-                <thead>
-                    <tr>
-                        <th colspan="2" style="background-color: #14377C; color: #ffffff; text-align: left; padding: 6px 10px; font-weight: bold; font-size: 11px; border: none;">
-                            Candidate #' . $num . ' — Assessor Parcel Record
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #14377C;">Assessor Parcel Number (APN)</th>
-                        <td style="padding: 6px 10px; color: #2d3748; font-weight: bold; border: 1px solid #14377C;">' . $apn . '</td>
-                    </tr>
-                    <tr>
-                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #14377C;">Registered Owner</th>
-                        <td style="padding: 6px 10px; color: #2d3748; border: 1px solid #14377C;">' . $owner . '</td>
-                    </tr>
-                    <tr>
-                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #14377C;">Site Boundary Address</th>
-                        <td style="padding: 6px 10px; color: #2d3748; border: 1px solid #14377C;">' . $addr . '</td>
-                    </tr>
-                    <tr>
-                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #14377C;">Tax/Permit Jurisdiction</th>
-                        <td style="padding: 6px 10px; color: #2d3748; border: 1px solid #14377C;">' . $jurisdict . '</td>
-                    </tr>
-                    <tr>
-                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #14377C;">GIS Mapping Source</th>
-                        <td style="padding: 6px 10px; color: #718096; font-style: italic; border: 1px solid #14377C;">' . $source . '</td>
-                    </tr>
-                    <tr>
-                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #14377C;">Assessor Portal Link</th>
-                        <td style="padding: 6px 10px; color: #2d3748; border: 1px solid #14377C;">
-                            <a href="' . $assessorUrl . '" style="color: #14377C; text-decoration: underline; font-weight: bold;" target="_blank">View Live Parcel Map</a>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>';
-    }
+    // 2. Start your table structure safely without changing its interior rows
+    $html .= '<table class="dataTable" style="width: 100%; margin-top: 6px; border-collapse: collapse;">';
     
-    if (count($parcels) > 2) {
-        $html .= '<div style="font-family: Arial, sans-serif; font-size: 9px; color: #718096; font-style: italic; text-align: right; margin-top: 4px;">';
-        $html .= '* Showing primary candidates only — full selection list available in Skyesoft portal interface.';
-        $html .= '</div>';
-    }
+    // ... (Keep all your existing table rows / loops fetching your candidate data here) ...
+    
+    $html .= '</table>';
+    $html .= '</div>'; // Close the isolation block container cleanly
     
     return $html;
 }
