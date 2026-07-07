@@ -237,11 +237,10 @@ function buildSatelliteSection(array $proposal): string
 }
 function buildStreetViewSection(array $proposal): string
 {
-    // 🌟 Using a structural table block to match the Page 2 Satellite layout perfectly
-    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
-    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
+    // 🌟 RESET: Dropped structural tables completely. Using modern block containers to match your UX design.
+    $html = '<div class="proposal-section" style="width: 100%; margin-bottom: 14px; page-break-inside: avoid; break-inside: avoid; display: block; clear: both;">';
     
-    // Inject Section Header inside the locked cell block
+    // Inject Section Header cleanly into the standard document flow
     $html .= buildSectionHeader('Street View Verification', 'property.png');
     
     $proposalId = $proposal['proposalCode'] ?? $proposal['proposalId'] ?? null;
@@ -274,20 +273,16 @@ function buildStreetViewSection(array $proposal): string
         }
     }
     
-    // 🌟 RENDER IMAGE WITH SAME REAL-ESTATE AS THE SATELLITE CARD
+    // RENDER IMAGE WITH SAME REAL-ESTATE AS THE SATELLITE CARD
     if ($base64Data !== null) {
-        $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
-        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Street View">';
+        $html .= '<div style="text-align: center; margin: 10px 0 4px 0; width: 100%; clear: both; display: block;">';
+        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" width="100%" style="border: 1.5px solid #14377C; border-radius: 4px; display: block;" alt="Street View">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1;">📍 Street View unavailable</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1; margin-top: 10px; clear: both;">📍 Street View unavailable</div>';
     }
     
-    $html .= '</td></tr>';
-    $html .= '</table>';
-    
-    // Add margin buffer spacing after the locked table element to clean up layout flow
-    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
+    $html .= '</div>'; // Safely closes the standalone structural container
     
     return $html;
 }
