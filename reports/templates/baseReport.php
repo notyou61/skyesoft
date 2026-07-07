@@ -80,17 +80,11 @@ function buildReportFooter(): string
 function buildReportStyles(): string
 {
     return '
-        @page {
-            margin-top: 24px;
-            margin-bottom: 20px;
-        }
         body { 
             font-family: Helvetica, Arial, sans-serif; 
             font-size: 11pt; 
             color: #222; 
             line-height: 1.4; 
-            margin: 0;
-            padding: 0;
         }
         .sectionHeaderTable { 
             width:100%; 
