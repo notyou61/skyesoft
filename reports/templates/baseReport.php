@@ -210,8 +210,8 @@ function buildReportStyles(): string
         }
         .section {
             page-break-inside: avoid;
-            margin-top: 0px;              /* Reduced from 8px */
-            margin-bottom: 2px;           /* Reduced from 12px */
+            margin-top: 8px;
+            margin-bottom: 12px;
         }
         .streetview-section {
             page-break-inside: avoid !important;
