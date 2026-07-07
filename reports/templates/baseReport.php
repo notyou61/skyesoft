@@ -8,6 +8,9 @@ declare(strict_types=1);
 // =============================================
 
 #region SECTION 00 - Main Report Renderer
+if (function_exists('opcache_invalidate')) {
+    opcache_invalidate(__FILE__, true);
+}
 require_once __DIR__ . '/../../vendor/autoload.php';
 use Mpdf\Mpdf;
 function renderReport(array $report): string
