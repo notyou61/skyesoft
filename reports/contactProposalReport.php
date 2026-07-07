@@ -230,8 +230,13 @@ function buildSatelliteSection(array $proposal): string
 }
 function buildStreetViewSection(array $proposal): string
 {
-    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
+    // 🌟 Using a structural table block to match the Page 2 Satellite layout perfectly
+    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
+    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
+    
+    // Inject Section Header inside the locked cell block
     $html .= buildSectionHeader('Street View Verification', 'property.png');
+    
     $proposalId = $proposal['proposalCode'] ?? $proposal['proposalId'] ?? null;
     $base64Data = null;
     $mimeType = 'image/jpeg';
@@ -247,6 +252,7 @@ function buildStreetViewSection(array $proposal): string
             }
         }
     }
+    
     if ($base64Data === null) {
         $path = $proposal['reportArtifacts']['streetview'] ?? null;
         $url  = $proposal['reportArtifacts']['streetviewUrl'] ?? null;
@@ -260,14 +266,22 @@ function buildStreetViewSection(array $proposal): string
             }
         }
     }
+    
+    // 🌟 RENDER IMAGE WITH SAME REAL-ESTATE AS THE SATELLITE CARD
     if ($base64Data !== null) {
-        $html .= '<div style="text-align:center; margin:8px 0;">';
-        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" style="max-width:100%; border:1px solid #bbb; border-radius:6px;" alt="Street View">';
+        $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
+        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Street View">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px;">📍 Street View unavailable</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1;">📍 Street View unavailable</div>';
     }
-    $html .= '</div>';
+    
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    
+    // Add margin buffer spacing after the locked table element to clean up layout flow
+    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
+    
     return $html;
 }
 
