@@ -330,11 +330,8 @@ function buildParcelDetailSection(array $proposal): string
     $parcels = $proposal['parcelDetails'] ?? [];
     if (empty($parcels)) return '';
     
-    // Wrapped in a matching structural table boundary to prevent page-break layout separation
-    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
-    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
-    
-    $html .= buildSectionHeader('Parcel – Detail', 'compass.png');
+    // 🌟 Standard section header matching the rest of the document flow
+    $html = buildSectionHeader('Parcel Candidates – Detail', 'compass.png');
     
     $displayCount = 0;
     foreach ($parcels as $i => $p) {
@@ -355,54 +352,58 @@ function buildParcelDetailSection(array $proposal): string
         $cleanApnForUrl = str_replace('-', '', $apn);
         $assessorUrl    = "https://mcassessor.maricopa.gov/mcs.php?q=" . urlencode($cleanApnForUrl);
         
+        // 🌟 FIX: Cleaned up structural boundaries. No outer layout tables.
+        // Self-contained table component ensures proper border alignments.
         $html .= '
-        <div class="tableWrapper" style="width: 100%; padding: 2px; margin-top: 12px; margin-bottom: 8px;">
-            <table class="dataTable" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; border: 1.5px solid #1a365d;">
-                <tr>
-                    <th colspan="2" style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 4px 10px; font-weight: bold; font-size: 11px;">
-                        Candidate #' . $num . ' — Assessor Parcel Record
-                    </th>
-                </tr>
-                <tr>
-                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Assessor Parcel Number (APN)</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d; font-weight: bold;">' . $apn . '</td>
-                </tr>
-                <tr>
-                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Registered Owner</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $owner . '</td>
-                </tr>
-                <tr>
-                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Site Boundary Address</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $addr . '</td>
-                </tr>
-                <tr>
-                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">Tax/Permit Jurisdiction</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d;">' . $jurisdict . '</td>
-                </tr>
-                <tr>
-                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: 1px solid #ffffff;">GIS Mapping Source</th>
-                    <td style="padding: 3px 10px; color: #718096; border-bottom: 1.5px solid #1a365d; border-left: 1.5px solid #1a365d; font-style: italic;">' . $source . '</td>
-                </tr>
-                <tr>
-                    <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 3px 10px; font-weight: bold; width: 32%; border-bottom: none;">Assessor Portal Link</th>
-                    <td style="padding: 3px 10px; color: #2d3748; border-bottom: none; border-left: 1.5px solid #1a365d;">
-                        <a href="' . $assessorUrl . '" style="color: #1a365d; text-decoration: underline; font-weight: bold;" target="_blank">View Live Parcel Map</a>
-                    </td>
-                </tr>
+        <div style="width: 100%; margin-top: 12px; margin-bottom: 4px; page-break-inside: avoid; break-inside: avoid;">
+            <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px; border: 1.5px solid #1a365d;">
+                <thead>
+                    <tr>
+                        <th colspan="2" style="background-color: #1a365d; color: #ffffff; text-align: left; padding: 6px 10px; font-weight: bold; font-size: 11px; border: none;">
+                            Candidate #' . $num . ' — Assessor Parcel Record
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #1a365d;">Assessor Parcel Number (APN)</th>
+                        <td style="padding: 6px 10px; color: #2d3748; font-weight: bold; border: 1px solid #1a365d;">' . $apn . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #1a365d;">Registered Owner</th>
+                        <td style="padding: 6px 10px; color: #2d3748; border: 1px solid #1a365d;">' . $owner . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #1a365d;">Site Boundary Address</th>
+                        <td style="padding: 6px 10px; color: #2d3748; border: 1px solid #1a365d;">' . $addr . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #1a365d;">Tax/Permit Jurisdiction</th>
+                        <td style="padding: 6px 10px; color: #2d3748; border: 1px solid #1a365d;">' . $jurisdict . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #1a365d;">GIS Mapping Source</th>
+                        <td style="padding: 6px 10px; color: #718096; font-style: italic; border: 1px solid #1a365d;">' . $source . '</td>
+                    </tr>
+                    <tr>
+                        <th style="background-color: #e8e8e8; color: #333333; text-align: left; padding: 6px 10px; font-weight: bold; width: 32%; border: 1px solid #1a365d;">Assessor Portal Link</th>
+                        <td style="padding: 6px 10px; color: #2d3748; border: 1px solid #1a365d;">
+                            <a href="' . $assessorUrl . '" style="color: #1a365d; text-decoration: underline; font-weight: bold;" target="_blank">View Live Parcel Map</a>
+                        </td>
+                    </tr>
+                </tbody>
             </table>
         </div>';
     }
     
     if (count($parcels) > 2) {
-        $html .= '<div style="font-family: Arial, sans-serif; font-size: 9px; color: #718096; font-style: italic; text-align: right; margin-top: 4px; padding-right: 2px;">';
+        $html .= '<div style="font-family: Arial, sans-serif; font-size: 9px; color: #718096; font-style: italic; text-align: right; margin-top: 4px;">';
         $html .= '* Showing primary candidates only — full selection list available in Skyesoft portal interface.';
         $html .= '</div>';
     }
     
-    $html .= '</td></tr>';
-    $html .= '</table>';
-    
-    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
+    // Trailing page element buffer
+    $html .= '<div style="margin-bottom: 12px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     
     return $html;
 }
