@@ -3,7 +3,7 @@ declare(strict_types=1);
 // =============================================
 //  Skyesoft — baseReport.php
 //  Universal PDF Renderer
-//  Version: 1.4.7 (Ghost Header Line Defeated)
+//  Version: 1.5.0 (Absolute Layout Cleanup Reset)
 //  Last Updated: 2026-07-07
 // =============================================
 
@@ -27,7 +27,7 @@ function renderReport(array $report): string
             'margin_footer' => 8,
         ]);
 
-        // Use the native setters (safest execution path for complex headers)
+        // Use native setters for complex header tracking
         $mpdf->SetHTMLHeader(buildReportHeader($report));
         $mpdf->SetHTMLFooter(buildReportFooter());
         
@@ -35,7 +35,7 @@ function renderReport(array $report): string
         
         generateExecutiveSummary($mpdf, $report);
         
-        // 🌟 FIX: Pass the full parent report context array array here
+        // Pass the entire $report configuration downstream for structural substitution
         $processedBodyHtml = processReportArtifacts(
             $report['reportBodyHtml'] ?? '', 
             $report['reportArtifacts'] ?? [],
@@ -230,7 +230,7 @@ function generateMainBody(Mpdf $mpdf, string $bodyHtml): void
 
 function processReportArtifacts(string $html, array $artifacts, array $report = []): string
 {
-    // Handle maps structures first
+    // Render location imagery mappings
     if (!empty($artifacts['staticMapUrl'])) {
         $mapHtml = '<div style="text-align:center; margin:15px 0;">
                 <img src="' . htmlspecialchars($artifacts['staticMapUrl']) . '" 
@@ -267,28 +267,35 @@ function processReportArtifacts(string $html, array $artifacts, array $report = 
         }
     }
 
-    // 🌟 FIX: Check for all case types of parcel block headers & inline targets
-    $hasPlaceholder = (
-        strpos($html, '[PARCEL DETAIL SECTION PLACEHOLDER]') !== false || 
-        strpos($html, '[PARCEL CANDIDATES – DETAIL]') !== false ||
-        strpos($html, 'Parcel Candidates – Detail') !== false
-    );
+    // Build programmatic output data block if custom implementation is loaded
+    $detailTableHtml = '';
+    if (function_exists('buildParcelDetailSection')) {
+        $detailTableHtml = buildParcelDetailSection($report);
+    }
 
-    if ($hasPlaceholder && function_exists('buildParcelDetailSection')) {
-        $tableHtml = buildParcelDetailSection($report);
-        
-        // Replace explicit bracket fields
-        $html = str_replace('[PARCEL DETAIL SECTION PLACEHOLDER]', $tableHtml, $html);
-        $html = str_replace('[PARCEL CANDIDATES – DETAIL]', $tableHtml, $html);
-        
-        // 🌟 CRITICAL FIX: If an empty layout wrap is lingering in the template body, 
-        // swipe it completely clear using a structural regular expression replacement pattern.
-        $pattern = '/<div[^>]*class=["\']section["\'][^>]*>\s*<table[^>]*class=["\']sectionHeaderTable["\'][^>]*>.*?<\/table>\s*(?:<p>.*?<\/p>|\s)*<\/div>/is';
-        if (preg_match($pattern, $html)) {
-            $html = preg_replace($pattern, $tableHtml, $html);
-        } else {
-            // Fallback placement fallback if no regex matches
-            $html .= $tableHtml;
+    // Replace basic inline markup text brackets
+    if (!empty($detailTableHtml)) {
+        $html = str_replace('[PARCEL DETAIL SECTION PLACEHOLDER]', $detailTableHtml, $html);
+        $html = str_replace('[PARCEL CANDIDATES – DETAIL]', $detailTableHtml, $html);
+    }
+
+    // 🛡️ THE GHOSTBUSTER PATTERN:
+    // This regular expression matches any structural ".section" container block that wraps a 
+    // ".sectionHeaderTable" containing text variants of "Parcel Candidates – Detail".
+    // It captures that entire redundant markup block and cleanly overwrites it with our table output.
+    $regexPattern = '/<div[^>]*class=["\']section["\'][^>]*>\s*<table[^>]*class=["\']sectionHeaderTable["\'][^>]*>.*?Parcel\s+Candidates\s*–\s*Detail.*?<\/table>\s*(?:<p>.*?<\/p>|<div[^>]*>.*?<\/div>|\s)*<\/div>/is';
+    
+    if (preg_match($regexPattern, $html)) {
+        $html = preg_replace($regexPattern, $detailTableHtml, $html);
+    } else {
+        // If it was raw loose html outside standard div frameworks, do a targeted swap
+        if (strpos($html, 'Parcel Candidates – Detail') !== false && !empty($detailTableHtml)) {
+            // Drop a clean replacement anchoring layout points
+            $html = preg_replace('/<table[^>]*class=["\']sectionHeaderTable["\'].*?Parcel\s+Candidates\s*–\s*Detail.*?<\/table>/is', '', $html);
+            $html .= $detailTableHtml;
+        } elseif (!empty($detailTableHtml) && strpos($html, 'Candidate #1') === false) {
+            // Append fallback protect
+            $html .= $detailTableHtml;
         }
     }
 
@@ -312,7 +319,6 @@ function getEmbeddedImageHtml(string $imagePath, string $alt = 'Image'): string
     $data = base64_encode(file_get_contents($imagePath));
     $src = 'data:' . $mime . ';base64,' . $data;
 
-    // 🌟 FIX: Frame layout borders use the solid corporate branding scheme (#14377C)
     return '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">
                 <img src="' . $src . '"
                      width="100%"
