@@ -898,22 +898,57 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     if ($detailHttpCode === 200 && $detailResponse !== false) {
         $detailData = json_decode($detailResponse, true);
 
-        if (is_array($detailData)) {
-            // Merge useful fields from the detail response
-            $parcel['ownerMailingAddress'] = $detailData['mailing_address'] ?? null;
-            $parcel['propertyType'] = $detailData['property_type'] ?? $detailData['use_code'] ?? null;
-            $parcel['lotSizeSqFt'] = $detailData['lot_size_sqft'] ?? null;
-            $parcel['buildingSizeSqFt'] = $detailData['building_size_sqft'] ?? null;
-            $parcel['yearBuilt'] = $detailData['year_built'] ?? null;
-            $parcel['lastSaleDate'] = $detailData['last_sale_date'] ?? null;
-            $parcel['lastSalePrice'] = $detailData['last_sale_price'] ?? null;
+    if (is_array($detailData)) {
+            // 1. Extract Owner & Mailing info safely from the nested 'Owner' array
+            $ownerData = $detailData['Owner'] ?? [];
+            if (is_array($ownerData)) {
+                $parcel['ownerMailingAddress'] = $ownerData['FullMailingAddress'] 
+                    ?? (!empty($ownerData['MailingAddress1']) ? trim(($ownerData['MailingAddress1'] ?? '') . ', ' . ($ownerData['MailingCity'] ?? '') . ', ' . ($ownerData['MailingState'] ?? '') . ' ' . ($ownerData['MailingZip'] ?? '')) : null);
+                
+                $parcel['lastSaleDate']  = $ownerData['SaleDate'] ?? null;
+                $parcel['lastSalePrice'] = $ownerData['SalePrice'] ?? null;
+            } else {
+                $parcel['ownerMailingAddress'] = null;
+                $parcel['lastSaleDate']  = null;
+                $parcel['lastSalePrice'] = null;
+            }
+
+            // 2. Map standard root properties (Fixing PascalCase mismatch)
+            $parcel['propertyType'] = $detailData['PropertyType'] ?? null;
+            $parcel['lotSizeSqFt']  = $detailData['LotSize'] ?? null;
+            $parcel['yearBuilt']    = null; // Will extract below if improvements exist
+
+            // 3. Dynamically calculate total building size and find year built from improvements
+            $totalBuildingSqFt = 0;
+            $earliestAge = null;
+
+            if (!empty($detailData['Improvements']) && is_array($detailData['Improvements'])) {
+                foreach ($detailData['Improvements'] as $imp) {
+                    // Accumulate square footage for structural improvements
+                    if (isset($imp['ImprovementSquareFootage'])) {
+                        $totalBuildingSqFt += (int)$imp['ImprovementSquareFootage'];
+                    }
+                    // Capture EffectiveAge to infer Year Built if needed
+                    if (isset($imp['EffectiveAge'])) {
+                        $age = (int)$imp['EffectiveAge'];
+                        if ($earliestAge === null || $age > $earliestAge) {
+                            $earliestAge = $age; // Track the oldest structural footprint
+                        }
+                    }
+                }
+            }
+
+            $parcel['buildingSizeSqFt'] = $totalBuildingSqFt > 0 ? (string)$totalBuildingSqFt : null;
             
-            // Keep raw assessor detail safely inside initialized array
+            // Calculate an approximate Year Built if EffectiveAge is provided
+            if ($earliestAge !== null) {
+                $currentYear = (int)date('Y');
+                $parcel['yearBuilt'] = (string)($currentYear - $earliestAge);
+            }
+            
+            // Retain raw payload for debugging/UI components
             $parcel['assessor']['detail'] = $detailData;
             $parcel['assessor']['status'] = 'resolved';
-        } else {
-            $parcel['assessor']['status'] = 'failed';
-            error_log('[PPC][SECTION-10] Invalid JSON structure returned for parcel: ' . $apn);
         }
     } else {
         $parcel['assessor']['status'] = 'failed';
