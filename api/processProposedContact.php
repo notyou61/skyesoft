@@ -863,6 +863,17 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         'status'         => 'pending'
     ];
 
+    // Shared headers for the Maricopa County API
+    $httpHeaders = [
+        'Accept: application/json, text/plain, */*',
+        'Cache-Control: no-cache'
+    ];
+    if ($token) {
+        $httpHeaders[] = 'Authorization: ' . trim($token);
+    }
+
+    $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
     // =====================================================
     // FETCH STANDARD ASSESSOR DETAILS
     // =====================================================
@@ -870,16 +881,21 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
 
     error_log('[PPC][SECTION-10] Enriching parcel: ' . $apn);
 
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => 10,
-            'header'  => "User-Agent: Skyesoft/1.0\r\n"
-        ]
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $detailUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_USERAGENT      => $userAgent,
+        CURLOPT_HTTPHEADER     => $httpHeaders
     ]);
 
-    $detailResponse = @file_get_contents($detailUrl, false, $context);
+    $detailResponse = curl_exec($ch);
+    $detailHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-    if ($detailResponse !== false) {
+    if ($detailHttpCode === 200 && $detailResponse !== false) {
         $detailData = json_decode($detailResponse, true);
 
         if (is_array($detailData)) {
@@ -897,10 +913,11 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
             $parcel['assessor']['status'] = 'resolved';
         } else {
             $parcel['assessor']['status'] = 'failed';
+            error_log('[PPC][SECTION-10] Invalid JSON structure returned for parcel: ' . $apn);
         }
     } else {
         $parcel['assessor']['status'] = 'failed';
-        error_log('[PPC][SECTION-10] Failed to enrich standard details for parcel: ' . $apn);
+        error_log('[PPC][SECTION-10] Failed to fetch standard details for parcel: ' . $apn . ' (HTTP ' . $detailHttpCode . ')');
     }
 
     // =====================================================
@@ -915,22 +932,18 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_TIMEOUT        => 10,
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            CURLOPT_HTTPHEADER     => [
-                'Accept: application/json, text/plain, */*',
-                'Authorization: ' . trim($token),
-                'Cache-Control: no-cache'
-            ]
+            CURLOPT_USERAGENT      => $userAgent,
+            CURLOPT_HTTPHEADER     => $httpHeaders
         ]);
 
         $mapMetaResponse = curl_exec($ch);
-        $httpCode        = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $mapHttpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         // Track and audit response shapes safely
         error_log('[PPC][SECTION-10] MapID raw response for ' . $apn . ': ' . substr((string)$mapMetaResponse, 0, 500));
 
-        if ($httpCode === 200 && $mapMetaResponse !== false) {
+        if ($mapHttpCode === 200 && $mapMetaResponse !== false) {
             $mapData = json_decode($mapMetaResponse, true);
             
             if (is_array($mapData)) {
@@ -962,7 +975,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
                 }
             }
         } else {
-            error_log('[PPC][SECTION-10] MapID resolution failed for: ' . $apn . ' (HTTP ' . $httpCode . ')');
+            error_log('[PPC][SECTION-10] MapID resolution failed for: ' . $apn . ' (HTTP ' . $mapHttpCode . ')');
         }
     }
 }
