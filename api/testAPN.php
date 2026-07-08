@@ -1,3 +1,5 @@
+<?php
+declare(strict_types=1);
 $apn = '17342369A';
 
 $url = 'https://mcassessor.maricopa.gov/mapid/parcel/' . urlencode($apn);
