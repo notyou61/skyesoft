@@ -913,7 +913,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
                 $parcel['lastSalePrice'] = null;
             }
 
-            // 2. Map standard property info (Zoning dropped, keeping lean metrics)
+            // 2. Map standard property info (No dynamic calculations or valuation loops)
             $parcel['propertyType']     = $detailData['PropertyType'] ?? null;
             $parcel['lotSizeSqFt']      = $detailData['LotSize'] ?? null;
             $parcel['constructionYear'] = $detailData['ConstructionYear'] ?? null;
@@ -922,8 +922,16 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
             $parcel['mcrNumber']        = $detailData['MCR'] ?? null;
             $parcel['str']              = $detailData['STR'] ?? null;
 
-            // Retain raw payload for debugging/UI components
-            $parcel['assessor']['detail'] = $detailData;
+            // Retain ONLY the lean metrics in the details object—all historical valuations stripped
+            $parcel['assessor']['detail'] = [
+                'PropertyType'     => $parcel['propertyType'],
+                'LotSize'          => $parcel['lotSizeSqFt'],
+                'ConstructionYear' => $parcel['constructionYear'],
+                'PUC'              => $parcel['puc'],
+                'Subdivision'      => $parcel['subdivision'],
+                'MCR'              => $parcel['mcrNumber'],
+                'STR'              => $parcel['str']
+            ];
             $parcel['assessor']['status'] = 'resolved';
         }
     } else {
