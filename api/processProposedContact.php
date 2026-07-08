@@ -850,10 +850,25 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         continue;
     }
 
-    // 1. Fetch Standard Assessor Details
+    // =====================================================
+    // INITIALIZE ASSESSOR METADATA
+    // =====================================================
+    $parcel['assessor'] = [
+        'detail'         => null,
+        'mapId'          => null,
+        'mapUrl'         => null,
+        'mapImage'       => null,
+        'mapPdf'         => null,
+        'lastRetrieved'  => null,
+        'status'         => 'pending'
+    ];
+
+    // =====================================================
+    // FETCH STANDARD ASSESSOR DETAILS
+    // =====================================================
     $detailUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
 
-    error_log('[PPC][SECTION-09] Enriching parcel: ' . $apn);
+    error_log('[PPC][SECTION-10] Enriching parcel: ' . $apn);
 
     $context = stream_context_create([
         'http' => [
@@ -877,24 +892,20 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
             $parcel['lastSaleDate'] = $detailData['last_sale_date'] ?? null;
             $parcel['lastSalePrice'] = $detailData['last_sale_price'] ?? null;
             
-            // Keep raw assessor detail for future use if needed
+            // Keep raw assessor detail safely inside initialized array
             $parcel['assessor']['detail'] = $detailData;
+            $parcel['assessor']['status'] = 'resolved';
+        } else {
+            $parcel['assessor']['status'] = 'failed';
         }
     } else {
-        error_log('[PPC][SECTION-09] Failed to enrich standard details for parcel: ' . $apn);
+        $parcel['assessor']['status'] = 'failed';
+        error_log('[PPC][SECTION-10] Failed to enrich standard details for parcel: ' . $apn);
     }
 
-    // 2. Fetch Map ID and Map URL via Cloudflare-safe cURL
     // =====================================================
-    // Initialize Assessor Metadata
+    // FETCH MAP ID & MAP URL
     // =====================================================
-    $parcel['assessor'] = [
-        'mapId'         => null,
-        'mapUrl'        => null,
-        'mapImage'      => null,
-        'lastRetrieved' => null
-    ];
-
     if ($token) {
         $mapMetaUrl = 'https://mcassessor.maricopa.gov/mapid/parcel/' . urlencode($apn);
         
@@ -917,7 +928,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         curl_close($ch);
 
         // Track and audit response shapes safely
-        error_log('[PPC][SECTION-09] MapID raw response for ' . $apn . ': ' . substr((string)$mapMetaResponse, 0, 500));
+        error_log('[PPC][SECTION-10] MapID raw response for ' . $apn . ': ' . substr((string)$mapMetaResponse, 0, 500));
 
         if ($httpCode === 200 && $mapMetaResponse !== false) {
             $mapData = json_decode($mapMetaResponse, true);
@@ -929,7 +940,6 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
                     $mapId = preg_replace('/\.pdf$/i', '', trim($mapItem));
 
                     $parcel['assessor']['mapId'] = $mapId;
-
                     $parcel['assessor']['mapUrl'] =
                         'https://mcassessor.maricopa.gov/getmapid/' .
                         rawurlencode($mapId) .
@@ -939,7 +949,6 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
                     $mapId = $mapId ? preg_replace('/\.pdf$/i', '', trim((string)$mapId)) : null;
 
                     $parcel['assessor']['mapId'] = $mapId;
-
                     $parcel['assessor']['mapUrl'] =
                         $mapItem['Url']
                         ?? $mapItem['url']
@@ -953,7 +962,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
                 }
             }
         } else {
-            error_log('[PPC][SECTION-09] MapID resolution failed for: ' . $apn . ' (HTTP ' . $httpCode . ')');
+            error_log('[PPC][SECTION-10] MapID resolution failed for: ' . $apn . ' (HTTP ' . $httpCode . ')');
         }
     }
 }
@@ -961,7 +970,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
 unset($parcel);
 
 error_log(
-    '[PPC][SECTION-09] Parcel resolution + enrichment complete. ' .
+    '[PPC][SECTION-10] Parcel resolution + enrichment complete. ' .
     'Count=' . ($data['location']['parcelCount'] ?? 0) .
     ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL') .
     ' | Type=' . ($data['location']['jurisdictionType'] ?? 'NULL')
