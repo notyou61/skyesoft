@@ -878,15 +878,22 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
             $parcel['lastSalePrice'] = $detailData['last_sale_price'] ?? null;
             
             // Keep raw assessor detail for future use if needed
-            $parcel['assessorDetail'] = $detailData;
+            $parcel['assessor']['detail'] = $detailData;
         }
     } else {
         error_log('[PPC][SECTION-09] Failed to enrich standard details for parcel: ' . $apn);
     }
 
     // 2. Fetch Map ID and Map URL via Cloudflare-safe cURL
-    $parcel['mapId'] = null;
-    $parcel['mapUrl'] = null;
+    // =====================================================
+    // Initialize Assessor Metadata
+    // =====================================================
+    $parcel['assessor'] = [
+        'mapId'         => null,
+        'mapUrl'        => null,
+        'mapImage'      => null,
+        'lastRetrieved' => null
+    ];
 
     if ($token) {
         $mapMetaUrl = 'https://mcassessor.maricopa.gov/mapid/parcel/' . urlencode($apn);
@@ -921,14 +928,28 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
                 if (is_string($mapItem)) {
                     $mapId = preg_replace('/\.pdf$/i', '', trim($mapItem));
 
-                    $parcel['mapId']  = $mapId;
-                    $parcel['mapUrl'] = 'https://mcassessor.maricopa.gov/getmapid/' . rawurlencode($mapId) . '/';
+                    $parcel['assessor']['mapId'] = $mapId;
+
+                    $parcel['assessor']['mapUrl'] =
+                        'https://mcassessor.maricopa.gov/getmapid/' .
+                        rawurlencode($mapId) .
+                        '/';
                 } elseif (is_array($mapItem)) {
                     $mapId = $mapItem['FileName'] ?? $mapItem['fileName'] ?? $mapItem['filename'] ?? $mapItem['mapId'] ?? null;
                     $mapId = $mapId ? preg_replace('/\.pdf$/i', '', trim((string)$mapId)) : null;
 
-                    $parcel['mapId']  = $mapId;
-                    $parcel['mapUrl'] = $mapItem['Url'] ?? $mapItem['url'] ?? ($mapId ? 'https://mcassessor.maricopa.gov/getmapid/' . rawurlencode($mapId) . '/' : null);
+                    $parcel['assessor']['mapId'] = $mapId;
+
+                    $parcel['assessor']['mapUrl'] =
+                        $mapItem['Url']
+                        ?? $mapItem['url']
+                        ?? (
+                            $mapId
+                                ? 'https://mcassessor.maricopa.gov/getmapid/' .
+                                rawurlencode($mapId) .
+                                '/'
+                                : null
+                        );
                 }
             }
         } else {
