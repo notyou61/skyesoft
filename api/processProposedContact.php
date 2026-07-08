@@ -1388,6 +1388,7 @@ $googleKey = skyesoftGetEnv('GOOGLE_MAPS_STATIC_API_KEY')
     ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
     ?: '';
 
+// 🌟 This method builds your structured multi-artifact array
 $artifacts = generateProposalArtifacts(
     $data['location'] ?? [],
     $proposalId,
@@ -1415,7 +1416,7 @@ if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
             'meta'              => $proposalSnapshot['meta'] ?? [],
             'rawInput'          => $proposalSnapshot['rawInput'] ?? [],
 
-            // NEW: Artifact Registry Tracking Compliant with Tier 2 Architecture
+            // 🌟 1. Saved directly to your Actions Table History Log
             'reportArtifacts'   => $artifacts
         ];
 
@@ -1465,11 +1466,11 @@ echo json_encode([
     'commitPlan' => $commitPlan ?? [],
     'ui' => $uiState ?? [],
     'governance' => $governance ?? ['blockingIssues' => []],
-    'narratives' => $narratives ?? [], // 🌟 Contains contentLine internally as well
+    'narratives' => $narratives ?? [], 
     'meta' => $proposalSnapshot['meta'] ?? [],
     'rawInput' => $proposalSnapshot['rawInput'] ?? [],
 
-    // NEW: Artifact Registry Tracking Compliant with Tier 2 Architecture
+    // 🌟 2. Outputted in real-time to the UI Engine for the baseReport compiler
     'reportArtifacts' => $artifacts
 
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
