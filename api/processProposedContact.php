@@ -837,95 +837,104 @@ error_log('[PPC][SECTION-10] After parcelResult → JurisdictionType=' .
     json_encode($data['location']['jurisdictionType']));
 
 // =====================================================
-// ENRICH EACH PARCEL WITH DETAILED ASSESSOR DATA
+// ENRICH EACH PARCEL WITH DETAILED ASSESSOR DATA + MAP ID
 // =====================================================
+
+$token = getenv('MARICOPA_COUNTY_API_KEY') ?: '';
 
 foreach ($data['location']['parcelDetails'] as &$parcel) {
 
-    $apn =
-        $parcel['parcelNumber'] ?? null;
+    $apn = $parcel['parcelNumber'] ?? null;
 
     if (!$apn) {
         continue;
     }
 
-    $detailUrl =
-        'https://mcassessor.maricopa.gov/parcel/' .
-        urlencode($apn);
+    // 1. Fetch Standard Assessor Details
+    $detailUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
 
-    error_log(
-        '[PPC][SECTION-09] Enriching parcel: ' .
-        $apn
-    );
+    error_log('[PPC][SECTION-09] Enriching parcel: ' . $apn);
 
-    $context =
-        stream_context_create([
-            'http' => [
-                'timeout' => 10,
-                'header'  => "User-Agent: Skyesoft/1.0\r\n"
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 10,
+            'header'  => "User-Agent: Skyesoft/1.0\r\n"
+        ]
+    ]);
+
+    $detailResponse = @file_get_contents($detailUrl, false, $context);
+
+    if ($detailResponse !== false) {
+        $detailData = json_decode($detailResponse, true);
+
+        if (is_array($detailData)) {
+            // Merge useful fields from the detail response
+            $parcel['ownerMailingAddress'] = $detailData['mailing_address'] ?? null;
+            $parcel['propertyType'] = $detailData['property_type'] ?? $detailData['use_code'] ?? null;
+            $parcel['lotSizeSqFt'] = $detailData['lot_size_sqft'] ?? null;
+            $parcel['buildingSizeSqFt'] = $detailData['building_size_sqft'] ?? null;
+            $parcel['yearBuilt'] = $detailData['year_built'] ?? null;
+            $parcel['lastSaleDate'] = $detailData['last_sale_date'] ?? null;
+            $parcel['lastSalePrice'] = $detailData['last_sale_price'] ?? null;
+            
+            // Keep raw assessor detail for future use if needed
+            $parcel['assessorDetail'] = $detailData;
+        }
+    } else {
+        error_log('[PPC][SECTION-09] Failed to enrich standard details for parcel: ' . $apn);
+    }
+
+    // 2. Fetch Map ID and Map URL via Cloudflare-safe cURL
+    $parcel['mapId'] = null;
+    $parcel['mapUrl'] = null;
+
+    if ($token) {
+        $mapMetaUrl = 'https://mcassessor.maricopa.gov/mapid/parcel/' . urlencode($apn);
+        
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $mapMetaUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            CURLOPT_HTTPHEADER     => [
+                'Accept: application/json, text/plain, */*',
+                'Authorization: ' . trim($token),
+                'Cache-Control: no-cache'
             ]
         ]);
 
-    $detailResponse =
-        @file_get_contents(
-            $detailUrl,
-            false,
-            $context
-        );
+        $mapMetaResponse = curl_exec($ch);
+        $httpCode        = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
-    if ($detailResponse === false) {
+        // Track and audit response shapes safely
+        error_log('[PPC][SECTION-09] MapID raw response for ' . $apn . ': ' . substr((string)$mapMetaResponse, 0, 500));
 
-        error_log(
-            '[PPC][SECTION-09] Failed to enrich parcel: ' .
-            $apn
-        );
+        if ($httpCode === 200 && $mapMetaResponse !== false) {
+            $mapData = json_decode($mapMetaResponse, true);
+            
+            if (is_array($mapData)) {
+                $mapItem = $mapData[0] ?? null;
 
-        continue;
+                if (is_string($mapItem)) {
+                    $mapId = preg_replace('/\.pdf$/i', '', trim($mapItem));
+
+                    $parcel['mapId']  = $mapId;
+                    $parcel['mapUrl'] = 'https://mcassessor.maricopa.gov/getmapid/' . rawurlencode($mapId) . '/';
+                } elseif (is_array($mapItem)) {
+                    $mapId = $mapItem['FileName'] ?? $mapItem['fileName'] ?? $mapItem['filename'] ?? $mapItem['mapId'] ?? null;
+                    $mapId = $mapId ? preg_replace('/\.pdf$/i', '', trim((string)$mapId)) : null;
+
+                    $parcel['mapId']  = $mapId;
+                    $parcel['mapUrl'] = $mapItem['Url'] ?? $mapItem['url'] ?? ($mapId ? 'https://mcassessor.maricopa.gov/getmapid/' . rawurlencode($mapId) . '/' : null);
+                }
+            }
+        } else {
+            error_log('[PPC][SECTION-09] MapID resolution failed for: ' . $apn . ' (HTTP ' . $httpCode . ')');
+        }
     }
-
-    $detailData =
-        json_decode(
-            $detailResponse,
-            true
-        );
-
-    if (!is_array($detailData)) {
-
-        error_log(
-            '[PPC][SECTION-09] Invalid detail response for: ' .
-            $apn
-        );
-
-        continue;
-    }
-
-    // Merge useful fields from the detail response
-    $parcel['ownerMailingAddress'] =
-        $detailData['mailing_address'] ?? null;
-
-    $parcel['propertyType'] =
-        $detailData['property_type'] ??
-        $detailData['use_code'] ??
-        null;
-
-    $parcel['lotSizeSqFt'] =
-        $detailData['lot_size_sqft'] ?? null;
-
-    $parcel['buildingSizeSqFt'] =
-        $detailData['building_size_sqft'] ?? null;
-
-    $parcel['yearBuilt'] =
-        $detailData['year_built'] ?? null;
-
-    $parcel['lastSaleDate'] =
-        $detailData['last_sale_date'] ?? null;
-
-    $parcel['lastSalePrice'] =
-        $detailData['last_sale_price'] ?? null;
-
-    // Keep raw assessor detail for future use if needed
-    $parcel['assessorDetail'] =
-        $detailData;
 }
 
 unset($parcel);
