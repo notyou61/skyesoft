@@ -851,16 +851,16 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     }
 
     // =====================================================
-    // INITIALIZE ASSESSOR METADATA
+    // INITIALIZE LEAN ASSESSOR METADATA
     // =====================================================
     $parcel['assessor'] = [
-        'detail'         => null,
-        'mapId'          => null,
-        'mapUrl'         => null,
-        'mapImage'       => null,
-        'mapPdf'         => null,
-        'lastRetrieved'  => null,
-        'status'         => 'pending'
+        'detail'        => null,
+        'mapId'         => null,
+        'mapUrl'        => null,
+        'mapImage'      => null,
+        'mapPdf'        => null,
+        'lastRetrieved' => null,
+        'status'        => 'pending'
     ];
 
     // Shared headers for the Maricopa County API
@@ -898,8 +898,8 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     if ($detailHttpCode === 200 && $detailResponse !== false) {
         $detailData = json_decode($detailResponse, true);
 
-    if (is_array($detailData)) {
-            // 1. Extract Owner & Mailing info safely from the nested 'Owner' array
+        if (is_array($detailData)) {
+            // 1. Owner & Mailing Mapping
             $ownerData = $detailData['Owner'] ?? [];
             if (is_array($ownerData)) {
                 $parcel['ownerMailingAddress'] = $ownerData['FullMailingAddress'] 
@@ -913,39 +913,15 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
                 $parcel['lastSalePrice'] = null;
             }
 
-            // 2. Map standard root properties (Fixing PascalCase mismatch)
-            $parcel['propertyType'] = $detailData['PropertyType'] ?? null;
-            $parcel['lotSizeSqFt']  = $detailData['LotSize'] ?? null;
-            $parcel['yearBuilt']    = null; // Will extract below if improvements exist
+            // 2. Map standard property info (Zoning dropped, keeping lean metrics)
+            $parcel['propertyType']     = $detailData['PropertyType'] ?? null;
+            $parcel['lotSizeSqFt']      = $detailData['LotSize'] ?? null;
+            $parcel['constructionYear'] = $detailData['ConstructionYear'] ?? null;
+            $parcel['puc']              = $detailData['PUC'] ?? null;
+            $parcel['subdivision']      = $detailData['Subdivision'] ?? null;
+            $parcel['mcrNumber']        = $detailData['MCR'] ?? null;
+            $parcel['str']              = $detailData['STR'] ?? null;
 
-            // 3. Dynamically calculate total building size and find year built from improvements
-            $totalBuildingSqFt = 0;
-            $earliestAge = null;
-
-            if (!empty($detailData['Improvements']) && is_array($detailData['Improvements'])) {
-                foreach ($detailData['Improvements'] as $imp) {
-                    // Accumulate square footage for structural improvements
-                    if (isset($imp['ImprovementSquareFootage'])) {
-                        $totalBuildingSqFt += (int)$imp['ImprovementSquareFootage'];
-                    }
-                    // Capture EffectiveAge to infer Year Built if needed
-                    if (isset($imp['EffectiveAge'])) {
-                        $age = (int)$imp['EffectiveAge'];
-                        if ($earliestAge === null || $age > $earliestAge) {
-                            $earliestAge = $age; // Track the oldest structural footprint
-                        }
-                    }
-                }
-            }
-
-            $parcel['buildingSizeSqFt'] = $totalBuildingSqFt > 0 ? (string)$totalBuildingSqFt : null;
-            
-            // Calculate an approximate Year Built if EffectiveAge is provided
-            if ($earliestAge !== null) {
-                $currentYear = (int)date('Y');
-                $parcel['yearBuilt'] = (string)($currentYear - $earliestAge);
-            }
-            
             // Retain raw payload for debugging/UI components
             $parcel['assessor']['detail'] = $detailData;
             $parcel['assessor']['status'] = 'resolved';
