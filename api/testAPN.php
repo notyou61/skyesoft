@@ -13,40 +13,52 @@ $token = getenv('MARICOPA_COUNTY_API_KEY') ?: '';
 
 $url = 'https://mcassessor.maricopa.gov/mapid/parcel/' . urlencode($apn);
 
-// Build context headers matching Maricopa's security specs
-$options = [
-    'http' => [
-        'method' => "GET",
-        'header' => "Authorization: " . trim($token) . "\r\n" .
-                    "User-Agent: \r\n" . // Leave empty to comply with API edge firewall rules
-                    "Accept: application/json, text/plain, */*\r\n" .
-                    "Cache-Control: no-cache\r\n",
-        'timeout' => 20
-    ]
-];
+$headers = [];
 
-$context = stream_context_create($options);
+$ch = curl_init();
+curl_setopt_array($ch, [
+    CURLOPT_URL            => $url,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_TIMEOUT        => 20,
+    
+    // Present a legitimate browser context to pass Cloudflare's edge checks
+    CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    
+    CURLOPT_HTTPHEADER     => [
+        'Accept: application/json, text/plain, */*',
+        'Authorization: ' . trim($token),
+        'Cache-Control: no-cache',
+        'Connection: keep-alive'
+    ],
+    CURLOPT_HEADERFUNCTION => function($curl, $header) use (&$headers) {
+        $len = strlen($header);
+        $parts = explode(':', $header, 2);
+        if (count($parts) === 2) {
+            $headers[strtolower(trim($parts[0]))] = trim($parts[1]);
+        }
+        return $len;
+    }
+]);
 
-// Execute the request
-$response = @file_get_contents($url, false, $context);
+$response  = curl_exec($ch);
+$httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlError = curl_error($ch);
+curl_close($ch);
 
-echo "<h2>Maricopa MapID Token Test</h2>";
-echo "<strong>Token Present:</strong> " . ($token ? 'Yes' : 'No') . "<br>";
-if ($token) {
-    echo "<strong>Token Length:</strong> " . strlen($token) . "<br>";
-}
-echo "<br>";
+echo "<h2>Maricopa MapID cURL Test</h2>";
+echo "<strong>Token Present:</strong> " . ($token ? 'Yes' : 'No') . " (Length: " . strlen($token) . ")<br>";
+echo "<strong>HTTP Status Code:</strong> $httpCode<br>";
+echo "<strong>Curl Error:</strong> " . ($curlError ?: 'None') . "<br><br>";
 
 echo "<h2>HTTP Response Headers</h2><pre>";
-print_r($http_response_header ?? []);
+print_r($headers);
 echo "</pre>";
 
 echo "<h2>Raw Response</h2><pre>";
-
 if ($response === false) {
-    echo "Request failed. Check if the token is valid or if the endpoint structure has changed.";
+    echo "Request failed completely. Curl Error: " . htmlspecialchars($curlError);
 } else {
     echo htmlspecialchars($response);
 }
-
 echo "</pre>";
