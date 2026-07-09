@@ -429,6 +429,11 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
+    // Fix 1: Auto-unwrap payload if nested under a 'data' index or similar wrapper
+    if (!isset($proposal['pcm']) && isset($proposal['data']['pcm'])) {
+        $proposal = $proposal['data'];
+    }
+
     // 1. Extract and sanitize PCM State Values
     $pcRaw = $proposal['pcm']['proposalClassification'] 
         ?? $proposal['pcm']['pc'] 
@@ -451,6 +456,7 @@ function generateSummarySection(array $proposal): string
     $bgColor   = '#718096'; // Default Slate Gray
     $textColor = '#ffffff';
 
+    // Fix 2: Move the legacy fallback to the top of the switch statement or handle explicitly
     switch ($pc) {
         case 'PC-0':
             $badgeText = 'EXISTING RECORD';
@@ -473,14 +479,18 @@ function generateSummarySection(array $proposal): string
             break;
             
         default:
-            // Fallback safety net to legacy indicators if PCM string evaluation fails
-            $uiStatus = strtolower(trim($proposal['ui']['proposalStatus'] ?? ''));
-            if ($uiStatus === 'existing') {
+            // Absolute baseline fallback: read legacy properties explicitly if PCM was unresolvable
+            $uiStatus = strtolower(trim($proposal['ui']['proposalStatus'] ?? $proposal['status'] ?? ''));
+            if ($uiStatus === 'existing' || $uiStatus === 'matched') {
                 $badgeText = 'EXISTING RECORD';
                 $bgColor   = '#2f855a';
             } elseif ($uiStatus === 'proposed') {
                 $badgeText = 'READY TO CREATE';
                 $bgColor   = '#dd6b20';
+            } else {
+                // If it really is completely unresolvable, make it clean and readable
+                $badgeText = $pcRaw ?: 'REVIEW STATE';
+                $bgColor   = '#718096';
             }
             break;
     }
