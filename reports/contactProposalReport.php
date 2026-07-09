@@ -429,32 +429,81 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // Extract status values from the normalized array or nested fallback paths
-    $uiStatus     = $proposal['ui']['proposalStatus'] ?? $proposal['proposalStatus'] ?? 'unknown';
-    $commitStatus = $proposal['status'] ?? 'unknown';
-    
-    // Determine the badge look based on system status (Matching portal styles)
-    $badgeText = strtoupper($uiStatus);
-    $bgColor   = '#718096'; // Default slate gray
+    // 1. Resolve authoritative PCM State Values
+    $pc = $proposal['pcm']['proposalClassification'] 
+        ?? $proposal['pcm']['pc'] 
+        ?? null;
+
+    $rs = $proposal['pcm']['resolutionState'] 
+        ?? $proposal['pcm']['rs'] 
+        ?? null;
+
+    // 2. Determine base badge configuration driven by Proposal Classification (PC)
+    $badgeText = $pc ? strtoupper($pc) : 'UNKNOWN';
+    $bgColor   = '#718096'; // Default Slate Gray
     $textColor = '#ffffff';
-    
-    if ($uiStatus === 'existing' || $commitStatus === 'matched') {
-        $badgeText = 'EXISTING RECORD';
-        $bgColor   = '#2f855a'; // Clean success green
-    } elseif ($uiStatus === 'proposed' || $commitStatus === 'proposed') {
-        $badgeText = 'PROPOSED NEW';
-        $bgColor   = '#dd6b20'; // Notice orange
-    } elseif ($uiStatus === 'conflict') {
-        $badgeText = 'CONFLICT DETECTED';
-        $bgColor   = '#e53e3e'; // Alert red
+
+    switch ($pc) {
+        case 'PC-0':
+            $badgeText = 'EXISTING RECORD';
+            $bgColor   = '#2f855a'; // Success Green
+            break;
+
+        case 'PC-1':
+            $badgeText = 'READY TO CREATE';
+            $bgColor   = '#dd6b20'; // Notice Orange
+            break;
+
+        case 'PC-2':
+            $badgeText = 'NEW LOCATION';
+            $bgColor   = '#3182ce'; // Sky Blue
+            break;
+
+        case 'PC-3':
+            $badgeText = 'NEW CONTACT';
+            $bgColor   = '#805ad5'; // Purple
+            break;
     }
 
-    $summary = $proposal['narratives']['ui'] ?? $proposal['narratives']['report'] ?? $proposal['governanceNarrative'] ?? 'Proposal processing complete.';
+    // 3. Enforce Governance Overrides driven by Resolution State (RS)
+    if ($rs && $rs !== 'RS-0') {
+        switch ($rs) {
+            case 'RS-3':
+                $badgeText = 'INCOMPLETE';
+                $bgColor   = '#d69e2e'; // Warning Yellow
+                break;
+
+            case 'RS-5':
+                $badgeText = 'DUPLICATE';
+                $bgColor   = '#c53030'; // Dark Red
+                break;
+
+            case 'RS-6':
+                $badgeText = 'REVIEW REQUIRED';
+                $bgColor   = '#dd6b20'; // Alert Orange
+                break;
+
+            case 'RS-7':
+                $badgeText = 'PARCEL UNRESOLVED';
+                $bgColor   = '#e53e3e'; // Bright Red
+                break;
+
+            case 'RS-8':
+                $badgeText = 'LOCATION INVALID';
+                $bgColor   = '#e53e3e'; // Bright Red
+                break;
+        }
+    }
+
+    // 4. Extract Narrative Text Block
+    $summary = $proposal['narratives']['ui'] 
+        ?? $proposal['narratives']['report'] 
+        ?? $proposal['governanceNarrative'] 
+        ?? 'Proposal evaluation sequence completed.';
     
-    // Build the section frame header
+    // 5. Render standard Skyesoft Frame Structure
     $html = buildSectionHeader('Proposal Summary', 'clipboard.png');
     
-    // Render the summary box with the status badge float-aligned right
     $html .= '
     <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding: 16px; background: #f8f9fa; border-left: 4px solid #17a2b8; margin-bottom: 20px; position: relative;">
         <table style="width: 100%; border-collapse: collapse; margin: 0; padding: 0;">
@@ -462,7 +511,7 @@ function generateSummarySection(array $proposal): string
                 <td style="vertical-align: top; padding: 0; text-align: left; color: #2d3748; font-size: 10.5px; line-height: 1.5;">
                     ' . nl2br(htmlspecialchars(trim($summary))) . '
                 </td>
-                <td style="vertical-align: top; padding: 0 0 0 15px; text-align: right; width: 140px;">
+                <td style="vertical-align: top; padding: 0 0 0 15px; text-align: right; width: 150px;">
                     <div style="display: inline-block; background-color: ' . $bgColor . '; color: ' . $textColor . '; font-family: Arial, sans-serif; font-size: 9px; font-weight: bold; padding: 5px 12px; border-radius: 50px; text-align: center; white-space: nowrap; letter-spacing: 0.5px;">
                         ' . htmlspecialchars($badgeText) . '
                     </div>
