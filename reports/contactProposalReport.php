@@ -429,20 +429,19 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // 1. Resolve authoritative PCM State Values with aggressive fallback digging
-    $pcRaw = $proposal['pcm']['proposalClassification'] 
+    // 1. Extract from Flat Engine Keys (As shown in the generateReports POST log)
+    $pcRaw = $proposal['proposalCode']
+        ?? $proposal['pcm']['proposalClassification'] 
         ?? $proposal['pcm']['pc'] 
-        ?? $proposal['data']['pcm']['proposalClassification']
         ?? $proposal['data']['pcm']['pc']
         ?? null;
 
     $pc = $pcRaw ? strtoupper(trim($pcRaw)) : null;
 
-    // Handle whether 'rs' is provided as a flat string or an array block
-    $rsRaw = $proposal['pcm']['resolutionState'] 
+    // Handle flat resolutionStatus vs nested arrays
+    $rsRaw = $proposal['resolutionStatus']
+        ?? $proposal['pcm']['resolutionState'] 
         ?? $proposal['pcm']['rs'] 
-        ?? $proposal['data']['pcm']['resolutionState']
-        ?? $proposal['data']['pcm']['rs']
         ?? null;
     
     if (is_array($rsRaw)) {
@@ -450,20 +449,13 @@ function generateSummarySection(array $proposal): string
     }
     $rs = $rsRaw ? strtoupper(trim($rsRaw)) : null;
 
-    // Extract UI Status indicators for an absolute priority fallback check
-    $uiStatus = strtolower(trim(
-        $proposal['ui']['proposalStatus'] 
-        ?? $proposal['data']['ui']['proposalStatus'] 
-        ?? $proposal['status'] 
-        ?? ''
-    ));
-
-    // 2. Determine base badge configuration driven by Proposal Classification (PC) or absolute state overrides
+    // 2. Determine base badge configuration driven by Proposal Classification (PC)
     $badgeText = 'REVIEW STATE';
     $bgColor   = '#718096'; // Default Slate Gray
     $textColor = '#ffffff';
 
-    // Force an override if the PCM keys are missing but the UI explicitly states it's an existing record
+    // Ultimate fallback if keys are missing but general indicators point to an existing match
+    $uiStatus = strtolower(trim($proposal['ui']['proposalStatus'] ?? $proposal['status'] ?? ''));
     if (empty($pc) && ($uiStatus === 'existing' || $uiStatus === 'matched')) {
         $pc = 'PC-0';
     }
@@ -500,7 +492,7 @@ function generateSummarySection(array $proposal): string
             break;
     }
 
-    // 3. Enforce Governance Overrides driven by Resolution State (RS Array Values)
+    // 3. Enforce Governance Overrides driven by Resolution State (RS)
     if ($rs && $rs !== 'RS-0') {
         switch ($rs) {
             case 'RS-3':
@@ -530,12 +522,19 @@ function generateSummarySection(array $proposal): string
         }
     }
 
-    // 4. Extract Narrative Text Block
-    $summary = $proposal['narratives']['ui'] 
-        ?? $proposal['narratives']['report'] 
-        ?? $proposal['data']['narratives']['ui']
-        ?? $proposal['governanceNarrative'] 
-        ?? 'Proposal evaluation sequence completed.';
+    // 4. Extract Narrative Text Block (Supporting both array and string structures)
+    $summary = 'Proposal evaluation sequence completed.';
+    if (isset($proposal['narratives'])) {
+        if (is_array($proposal['narratives'])) {
+            $summary = $proposal['narratives']['ui'] 
+                ?? $proposal['narratives']['report'] 
+                ?? ($proposal['narratives'][0] ?? $summary);
+        } else {
+            $summary = $proposal['narratives'];
+        }
+    } else {
+        $summary = $proposal['governanceNarrative'] ?? $summary;
+    }
     
     // 5. Render standard Skyesoft Frame Structure
     $html = buildSectionHeader('Proposal Summary', 'clipboard.png');
