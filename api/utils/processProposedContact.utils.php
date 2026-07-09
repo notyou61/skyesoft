@@ -1375,46 +1375,69 @@ function generateStreetViewImage(
     return $fullPath;
 }
 
-// Save directly to canonical /artifacts/ with fixed-length protocol naming
-function generateParcelMapImage(
-    float|string $lat,
-    float|string $lng,
-    string $apn,
-    string $googleKey,
-    string $proposalId = ''
-): ?string {
-    $lat = (string)$lat;
-    $lng = (string)$lng;
-    if (empty($googleKey) || empty($lat) || empty($lng) || empty($apn)) {
-        error_log("[PARCEL MAP] Missing parameters for APN: $apn");
+/**
+ * Fetches Maricopa Assessor Plat Map PDF, converts Page 1 to PNG, and saves as an artifact
+ */
+function generateParcelMapImage(array $parcel, string $proposalId): ?string
+{
+    // Runtime Guard: Quietly fail if server missing Imagick dependencies
+    if (!extension_loaded('imagick') || !class_exists('Imagick')) {
+        error_log("[ARTIFACTS] ❌ Imagick extension or class unavailable. Skipping Maricopa Plat Map generation.");
         return null;
     }
-    // Explicit reference to the canonical root artifacts directory path
-    $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts/';
-    if (!is_dir($artifactsDir)) {
-        mkdir($artifactsDir, 0755, true);
-    }
-    $mapUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
-        . 'center=' . $lat . ',' . $lng
-        . '&zoom=20'
-        . '&size=900x550'
-        . '&maptype=satellite'
-        . '&markers=color:red%7Csize:mid%7Clabel:' . urlencode(substr($apn, -5)) . '%7C' . $lat . ',' . $lng
-        . '&key=' . $googleKey;
-    $imageData = @file_get_contents($mapUrl);
-    if ($imageData === false || strlen($imageData) < 3000) {
-        error_log("[PARCEL MAP] Failed to fetch image map.");
+
+    $mapUrl = $parcel['assessor']['mapUrl'] ?? null;
+    $apn = $parcel['parcelNumber'] ?? $parcel['apnRaw'] ?? 'unknown';
+    $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts';
+
+    if (empty($mapUrl)) {
+        error_log("[ARTIFACTS] ❌ No Assessor mapUrl found for APN: {$apn}, Proposal: {$proposalId}");
         return null;
     }
-    // Single-line comment explanation: Generate compliant filename passing PAR to identify it explicitly as a registry parcel map record
-    $filename = generateArtifactFilename('TMP', 'PAR', $proposalId, 'IMG', '1', 'png');
-    $outputPath = $artifactsDir . $filename;
-    if (file_put_contents($outputPath, $imageData) === false) {
-        error_log("[PARCEL MAP] Failed to write image: $outputPath");
+
+    try {
+        // 1. Download the raw PDF binary content
+        $pdfData = @file_get_contents($mapUrl);
+        if (!$pdfData || strlen($pdfData) < 5000) {
+            throw new Exception("Downloaded PDF from Assessor API is empty or invalid.");
+        }
+
+        // 2. Generate protocol-compliant filename via internal standard
+        $filename = generateArtifactFilename('TMP', 'PAR', $proposalId, 'IMG', '001', 'png');
+        $outputPath = $artifactsDir . '/' . $filename;
+
+        // 3. Initialize Imagick (Escaped to global namespace for IDE safety)
+        $im = new \Imagick();
+        
+        // Optimize rendering resolution prior to reading the blob
+        $im->setResolution(150, 150); 
+        
+        // Target the first page of the PDF stream exclusively
+        $im->readImageBlob($pdfData);
+        $im->setIteratorIndex(0);
+        
+        // 4. Flatten layout over white background to handle transparent PDF elements safely
+        $im->setImageFormat('png');
+        $im->setImageBackgroundColor('white');
+        $im = $im->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+
+        // 5. Scale/Normalize dimensions to widescreen proportions (e.g., 1200x800 bounding box)
+        $im->resizeImage(1200, 800, \Imagick::FILTER_LANCZOS, 1, true);
+
+        // 6. Persist to central filesystem
+        if ($im->writeImage($outputPath)) {
+            error_log("[ARTIFACTS] ✅ Maricopa Plat Map artifact generated: {$filename}");
+            $im->clear();
+            $im->destroy();
+            return $outputPath;
+        }
+
+        throw new Exception("Failed to write final image layer to disk.");
+
+    } catch (Exception $e) {
+        error_log("[ARTIFACTS] ❌ generateParcelMapImage execution failure: " . $e->getMessage());
         return null;
     }
-    error_log("[PARCEL MAP] ✅ Protocol Compliant Parcel Map saved: $filename");
-    return $outputPath;
 }
 
 
@@ -1868,28 +1891,37 @@ function generateProposalArtifacts(array $location, string $proposalId, string $
         error_log("[ARTIFACTS] Missing coordinates or API key for proposal {$proposalId}");
         return $artifacts;
     }
+    
     $lat = (float)$location['locationLatitude'];
     $lng = (float)$location['locationLongitude'];
     $address = trim($location['locationAddress'] ?? $location['address'] ?? 'unknown');
-    // Single-line comment explanation: Force image processing through the standardized functional wrapper to ensure consistent widescreen bounds
+    
+    // Force image processing through the standardized functional wrapper to ensure consistent widescreen bounds
     $streetPath = generateStreetViewImage($lat, $lng, $googleKey, $address, $proposalId);
     if ($streetPath) {
         $artifacts['streetview'] = $streetPath;
     } else {
         error_log("[ARTIFACTS] ❌ Street View capture sequence failed for proposal {$proposalId}");
     }
+    
     // ====================== PARCEL MAP(S) & SATELLITE ======================
     if (!empty($location['parcelDetails']) && is_array($location['parcelDetails'])) {
         foreach ($location['parcelDetails'] as $parcel) {
-            $apn = $parcel['parcelNumber'] ?? $parcel['apnRaw'] ?? 'unknown';
-            $parcelPath = generateParcelMapImage($lat, $lng, $apn, $googleKey, $proposalId);
+            
+            // Clean abstraction: Pass the full parcel payload to the generator
+            $parcelPath = generateParcelMapImage($parcel, $proposalId);
             if ($parcelPath) {
                 $artifacts['parcelmap'] = $parcelPath;
             }
+            
+            // Satellite backup continues using Google Static Maps API
+            $apn = $parcel['parcelNumber'] ?? $parcel['apnRaw'] ?? 'unknown';
             $parcelUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=20&size=1200x800&maptype=satellite&markers=color:red%7Csize:mid%7Clabel:" . urlencode(substr($apn, -5)) . "%7C{$lat},{$lng}&key=" . $googleKey;
+            
             $satFilename = generateArtifactFilename('TMP', 'SAT', $proposalId, 'IMG', '001', 'png');
             $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts';
             $satPath = $artifactsDir . '/' . $satFilename;
+            
             $satData = @file_get_contents($parcelUrl);
             if ($satData && strlen($satData) > 3000 && file_put_contents($satPath, $satData)) {
                 $artifacts['satellite'] = $satPath;
