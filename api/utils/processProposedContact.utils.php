@@ -1376,7 +1376,7 @@ function generateStreetViewImage(
 }
 
 /**
- * Hands the Maricopa Assessor URL off to Playwright for a native browser capture sequence.
+ * Captures the Maricopa Assessor Plat Map using the decoupled remote Browserless API infrastructure.
  */
 function generateParcelMapImage(array $parcel, string $proposalId): ?string
 {
@@ -1389,30 +1389,66 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
         return null;
     }
 
-    // Generate standard protocol filename matching the rest of Skyesoft
+    // 1. Resolve Environment Credentials Safely
+    $browserlessToken = skyesoftGetEnv('BROWSERLESS_API_KEY') 
+        ?: getenv('BROWSERLESS_API_KEY') 
+        ?: skyesoftGetEnv('BROWSERLESS_TOKEN') 
+        ?: getenv('BROWSERLESS_TOKEN');
+
+    if (empty($browserlessToken)) {
+        error_log("[ARTIFACTS] ❌ Environment configuration missing for BROWSERLESS_API_KEY. Skipping execution loop.");
+        return null;
+    }
+
+    // 2. Generate protocol-compliant filename matching Skyesoft standard
     $filename = generateArtifactFilename('TMP', 'PAR', $proposalId, 'IMG', '001', 'png');
     $outputPath = $artifactsDir . '/' . $filename;
 
-    // Package parameters into the shell payload contract
-    $jobPayload = json_encode([
-        'mapUrl'     => $mapUrl,
-        'outputPath' => $outputPath
-    ]);
+    error_log("[ARTIFACTS] 🌐 Requesting remote Plat Map screenshot via Browserless API for APN: {$apn}");
 
-    $escapedPayload = escapeshellarg($jobPayload);
-    
-    // Command the newly uploaded backend Node environment
-    $nodeScript = '/home/notyou64/public_html/skyesoft/api/node-services/renderPlatMap.js';
-    $cmd = "node {$nodeScript} {$escapedPayload} 2>&1";
-    
-    exec($cmd, $output, $returnCode);
+    // 3. Prepare stateless POST payload structure
+    $browserlessUrl = 'https://chrome.browserless.io/screenshot?token=' . urlencode($browserlessToken);
 
-    if ($returnCode === 0 && file_exists($outputPath)) {
-        error_log("[ARTIFACTS] ✅ Maricopa Plat Map generated via Playwright: {$filename}");
-        return $outputPath;
+    $payload = [
+        'url' => $mapUrl,
+        'options' => [
+            'type' => 'png',
+            'fullPage' => false
+        ],
+        'gotoOptions' => [
+            'waitUntil' => 'networkidle0'
+        ],
+        'viewport' => [
+            'width' => 1200,
+            'height' => 800,
+            'deviceScaleFactor' => 2 // Forces high-density vector rendering for legible tract lines
+        ]
+    ];
+
+    // 4. Dispatch the payload via standard cURL
+    $ch = curl_init($browserlessUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30); 
+
+    $imageData = curl_exec($ch);
+    $httpStatusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    // 5. Commit image buffer directly to the unified artifacts file system
+    if ($httpStatusCode === 200 && $imageData && strlen($imageData) > 10000) {
+        if (file_put_contents($outputPath, $imageData)) {
+            error_log("[ARTIFACTS] ✅ Maricopa Plat Map generated smoothly via remote Browserless: {$filename}");
+            return $outputPath;
+        }
+        error_log("[ARTIFACTS] ❌ Failed to write Browserless output stream to storage at {$outputPath}");
+    } else {
+        error_log("[ARTIFACTS] ❌ Browserless execution failure. HTTP Status: {$httpStatusCode} | Error: {$curlError}");
     }
 
-    error_log("[ARTIFACTS] ❌ Playwright plat map conversion failed: " . implode("\n", $output));
     return null;
 }
 
