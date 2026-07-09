@@ -27,7 +27,7 @@ if (!$apiKey) {
 }
 
 // Target directory for the test artifact output
-$artifactsDir = __DIR__ . '/../../artifacts';
+$artifactsDir = __DIR__ . '/../artifacts';
 $testFilename = 'TST-IMG-PAR-DEBUG-001.png';
 $outputPath = $artifactsDir . '/' . $testFilename;
 
@@ -35,7 +35,7 @@ $outputPath = $artifactsDir . '/' . $testFilename;
 $testMapUrl = 'https://mcassessor.maricopa.gov/getmapid/825220401/'; 
 
 // Match your verified hosting region, switching to the dedicated screenshot service
-$endpoint = 'https://production-sfo.browserless.io/screenshot?token=' . urlencode($apiKey);
+$endpoint = 'https://production-sfo.browserless.io/chromium?token=' . urlencode($apiKey);
 
 // =====================================================
 // 📦 PREPARE BROWSERLESS SCREENSHOT PAYLOAD
