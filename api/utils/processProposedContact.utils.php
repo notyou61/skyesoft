@@ -1376,16 +1376,10 @@ function generateStreetViewImage(
 }
 
 /**
- * Fetches Maricopa Assessor Plat Map PDF, converts Page 1 to PNG, and saves as an artifact
+ * Hands the Maricopa Assessor URL off to Playwright for a native browser capture sequence.
  */
 function generateParcelMapImage(array $parcel, string $proposalId): ?string
 {
-    // Runtime Guard: Quietly fail if server missing Imagick dependencies
-    if (!extension_loaded('imagick') || !class_exists('Imagick')) {
-        error_log("[ARTIFACTS] ❌ Imagick extension or class unavailable. Skipping Maricopa Plat Map generation.");
-        return null;
-    }
-
     $mapUrl = $parcel['assessor']['mapUrl'] ?? null;
     $apn = $parcel['parcelNumber'] ?? $parcel['apnRaw'] ?? 'unknown';
     $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts';
@@ -1395,49 +1389,31 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
         return null;
     }
 
-    try {
-        // 1. Download the raw PDF binary content
-        $pdfData = @file_get_contents($mapUrl);
-        if (!$pdfData || strlen($pdfData) < 5000) {
-            throw new Exception("Downloaded PDF from Assessor API is empty or invalid.");
-        }
+    // Generate standard protocol filename matching the rest of Skyesoft
+    $filename = generateArtifactFilename('TMP', 'PAR', $proposalId, 'IMG', '001', 'png');
+    $outputPath = $artifactsDir . '/' . $filename;
 
-        // 2. Generate protocol-compliant filename via internal standard
-        $filename = generateArtifactFilename('TMP', 'PAR', $proposalId, 'IMG', '001', 'png');
-        $outputPath = $artifactsDir . '/' . $filename;
+    // Package parameters into the shell payload contract
+    $jobPayload = json_encode([
+        'mapUrl'     => $mapUrl,
+        'outputPath' => $outputPath
+    ]);
 
-        // 3. Initialize Imagick (Escaped to global namespace for IDE safety)
-        $im = new \Imagick();
-        
-        // Optimize rendering resolution prior to reading the blob
-        $im->setResolution(150, 150); 
-        
-        // Target the first page of the PDF stream exclusively
-        $im->readImageBlob($pdfData);
-        $im->setIteratorIndex(0);
-        
-        // 4. Flatten layout over white background to handle transparent PDF elements safely
-        $im->setImageFormat('png');
-        $im->setImageBackgroundColor('white');
-        $im = $im->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+    $escapedPayload = escapeshellarg($jobPayload);
+    
+    // Command the existing Node execution service environment
+    $nodeScript = '/home/notyou64/public_html/skyesoft/api/node-services/renderPlatMap.js';
+    $cmd = "node {$nodeScript} {$escapedPayload} 2>&1";
+    
+    exec($cmd, $output, $returnCode);
 
-        // 5. Scale/Normalize dimensions to widescreen proportions (e.g., 1200x800 bounding box)
-        $im->resizeImage(1200, 800, \Imagick::FILTER_LANCZOS, 1, true);
-
-        // 6. Persist to central filesystem
-        if ($im->writeImage($outputPath)) {
-            error_log("[ARTIFACTS] ✅ Maricopa Plat Map artifact generated: {$filename}");
-            $im->clear();
-            $im->destroy();
-            return $outputPath;
-        }
-
-        throw new Exception("Failed to write final image layer to disk.");
-
-    } catch (Exception $e) {
-        error_log("[ARTIFACTS] ❌ generateParcelMapImage execution failure: " . $e->getMessage());
-        return null;
+    if ($returnCode === 0 && file_exists($outputPath)) {
+        error_log("[ARTIFACTS] ✅ Maricopa Plat Map generated via Playwright: {$filename}");
+        return $outputPath;
     }
+
+    error_log("[ARTIFACTS] ❌ Playwright plat map conversion failed: " . implode("\n", $output));
+    return null;
 }
 
 
