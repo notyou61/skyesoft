@@ -1379,6 +1379,10 @@ function generateStreetViewImage(
  * Captures the Maricopa Assessor Plat Map using Browserless, strips the browser frame, 
  * and commits a protocol-compliant PNG to Skyesoft artifacts.
  */
+/**
+ * Captures the Maricopa Assessor Plat Map via Browserless and saves the full,
+ * uncropped frame to safeguard the visibility of all target parcel variants.
+ */
 function generateParcelMapImage(array $parcel, string $proposalId): ?string
 {
     $mapUrl = $parcel['assessor']['mapUrl'] ?? null;
@@ -1415,13 +1419,13 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
             'fullPage' => false
         ],
         'gotoOptions' => [
-            'waitUntil' => 'networkidle0', // Ensures the canvas layer finishes rendering vector details
+            'waitUntil' => 'networkidle0',
             'timeout'   => 25000
         ],
         'viewport' => [
             'width' => 1200,
             'height' => 800,
-            'deviceScaleFactor' => 2 // Matches our crisp 2048x1365 vector density benchmark
+            'deviceScaleFactor' => 2 
         ]
     ];
 
@@ -1445,52 +1449,20 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
         return null;
     }
 
-// 5. Clean Crop Execution (Strips UI Chrome natively)
-    $srcImage = imagecreatefromstring($rawBuffer);
-    if ($srcImage === false) {
-        error_log("[ARTIFACTS] ❌ Failed to parse raw image buffer stream into GD framework.");
-        return null;
-    }
-
-    // Bounding crop mapping to capture Option 1 (Full legal document block with title cards)
-    $cropBox = [
-        'x'      => 330,
-        'y'      => 66,
-        'width'  => 1718,
-        'height' => 1299
-    ];
-
-    $croppedImage = imagecrop($srcImage, $cropBox);
-    if ($croppedImage === false) {
-        error_log("[ARTIFACTS] ❌ GD framework failed to slice coordinates. Saving raw fallback configuration.");
-        
-        // Dynamic fallback to save the uncropped canvas if cropping fails
-        if (file_put_contents($outputPath, $rawBuffer)) {
-            return $outputPath;
-        }
-        return null;
-    }
-
     // Ensure directory layout contract is present
     if (!is_dir($artifactsDir)) {
         mkdir($artifactsDir, 0755, true);
     }
 
-    // 6. Output finalized asset (Balanced file footprint reduction)
-    $saveSuccess = imagepng($croppedImage, $outputPath, 5); 
-    
-    // NOTE: Old imagedestroy() calls removed here. Memory frames are automatically 
-    // freed by PHP's garbage collector when this function exits or loses reference.
-
-    if ($saveSuccess) {
-        error_log("[ARTIFACTS] ✅ Maricopa Plat Map generated, cropped, and saved: {$filename}");
+    // 5. Save the RAW buffer directly to disk (Reverted crop pattern for safety)
+    if (file_put_contents($outputPath, $rawBuffer)) {
+        error_log("[ARTIFACTS] ✅ Full-frame Maricopa Plat Map saved successfully: {$filename}");
         return $outputPath;
     }
 
-    error_log("[ARTIFACTS] ❌ Failed to write cropped image stream to disk at {$outputPath}");
+    error_log("[ARTIFACTS] ❌ Failed to write raw image stream to disk at {$outputPath}");
     return null;
 }
-
 
 // =====================================================
 // DEFENSIVE SHARED HELPERS (No duplicates)
