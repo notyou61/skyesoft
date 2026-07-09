@@ -1238,7 +1238,8 @@ $uiState = [
     'canAccept'      => false,
     'canReject'      => true,
     'canEdit'        => true,
-    'canCommit'      => false
+    'canCommit'      => false,
+    'theme'          => [] // 🎨 Centralized theme matrix container
 ];
 
 $pc = $pcm['pc'] ?? 'UNKNOWN';
@@ -1254,6 +1255,94 @@ if ($pc === 'PC-0') {
 } else {
     $uiState['canAccept'] = $uiState['canCommit'] = true;
 }
+
+// =====================================================
+// DYNAMIC THEME MATRIX SELECTION (PC / RS Controlled)
+// =====================================================
+$badgeText   = 'REVIEW STATE';
+$bgColor     = '#6c757d'; // Default Muted Gray
+$bgLight     = '#f8f9fa'; 
+$textColor   = '#495057';
+$borderColor = '#dee2e6';
+
+// 1. Evaluate Baseline Classification Styling via PC Mode
+if (empty($pc) && ($uiState['proposalStatus'] === 'existing' || $uiState['proposalStatus'] === 'matched')) {
+    $pc = 'PC-0';
+}
+
+switch ($pc) {
+    case 'PC-0':
+    case 'PC-1':
+        $badgeText   = ($pc === 'PC-0') ? 'EXISTING RECORD' : 'READY TO CREATE';
+        $bgColor     = '#198754'; // Emerald Success Green
+        $bgLight     = '#e8f5e9'; 
+        $textColor   = '#198754';
+        $borderColor = '#a3cfbb';
+        break;
+
+    case 'PC-2':
+        $badgeText   = 'NEW LOCATION';
+        $bgColor     = '#0dcaf0'; // Info Cyan
+        $bgLight     = '#e0f7fa'; 
+        $textColor   = '#0a58ca';
+        $borderColor = '#9eeaf9';
+        break;
+
+    case 'PC-3':
+        $badgeText   = 'NEW CONTACT';
+        $bgColor     = '#6f42c1'; // Purple
+        $bgLight     = '#f3e5f5'; 
+        $textColor   = '#6f42c1';
+        $borderColor = '#e1bee7';
+        break;
+
+    case 'PC-4':
+    case 'PC-5':
+        $badgeText   = ($pc === 'PC-4') ? 'LINK & MAP LOCATION' : 'NEW LOCATION ONLY';
+        $bgColor     = '#0d6efd'; // Primary Blue
+        $bgLight     = '#e7f1ff';
+        $textColor   = '#0d6efd';
+        $borderColor = '#b6d4fe';
+        break;
+}
+
+// 2. Override with High-Priority Governance Rules (Resolution State Matrix)
+if (!empty($rsList) && !in_array('RS-0', $rsList)) {
+    if (in_array('RS-3', $rsList)) {
+        $badgeText   = 'INCOMPLETE';
+        $bgColor     = '#ffc107'; // Warning Amber
+        $bgLight     = '#fff9db';
+        $textColor   = '#664d03';
+        $borderColor = '#ffecb5';
+    } elseif (in_array('RS-5', $rsList)) {
+        $badgeText   = 'DUPLICATE';
+        $bgColor     = '#dc3545'; // Danger Red
+        $bgLight     = '#f8d7da';
+        $textColor   = '#842029';
+        $borderColor = '#f5c2c7';
+    } elseif (in_array('RS-6', $rsList)) {
+        $badgeText   = 'REVIEW REQUIRED';
+        $bgColor     = '#fd7e14'; // Warning Orange
+        $bgLight     = '#fff3cd';
+        $textColor   = '#b95000';
+        $borderColor = '#ffe69c';
+    } elseif (in_array('RS-7', $rsList) || in_array('RS-8', $rsList)) {
+        $badgeText   = (in_array('RS-7', $rsList)) ? 'PARCEL UNRESOLVED' : 'LOCATION INVALID';
+        $bgColor     = '#dc3545'; // Danger Red
+        $bgLight     = '#f8d7da';
+        $textColor   = '#842029';
+        $borderColor = '#f5c2c7';
+    }
+}
+
+// Inject theme properties directly into UI State
+$uiState['theme'] = [
+    'badgeText'   => $badgeText,
+    'bgColor'     => $bgColor,
+    'bgLight'     => $bgLight,
+    'textColor'   => $textColor,
+    'borderColor' => $borderColor
+];
 
 // =====================================================
 // AI Content Line & Narrative Builder Injection
