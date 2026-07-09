@@ -1376,7 +1376,8 @@ function generateStreetViewImage(
 }
 
 /**
- * Captures the Maricopa Assessor Plat Map using the decoupled remote Browserless API infrastructure.
+ * Captures the Maricopa Assessor Plat Map using Browserless, strips the browser frame, 
+ * and commits a protocol-compliant PNG to Skyesoft artifacts.
  */
 function generateParcelMapImage(array $parcel, string $proposalId): ?string
 {
@@ -1389,69 +1390,105 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
         return null;
     }
 
-    // 1. Resolve Environment Credentials Safely
+    // 1. Resolve Environment Credentials Safely via Skyesoft Standards
     $browserlessToken = skyesoftGetEnv('BROWSERLESS_API_KEY') 
         ?: getenv('BROWSERLESS_API_KEY') 
         ?: skyesoftGetEnv('BROWSERLESS_TOKEN') 
         ?: getenv('BROWSERLESS_TOKEN');
 
     if (empty($browserlessToken)) {
-        error_log("[ARTIFACTS] ❌ Environment configuration missing for BROWSERLESS_API_KEY. Skipping execution loop.");
+        error_log("[ARTIFACTS] ❌ Missing BROWSERLESS_API_KEY config. Skipping PAR generation.");
         return null;
     }
 
-    // 2. Generate protocol-compliant filename matching Skyesoft standard
+    // 2. Generate protocol-compliant filename matching Skyesoft standards
     $filename = generateArtifactFilename('TMP', 'PAR', $proposalId, 'IMG', '001', 'png');
     $outputPath = $artifactsDir . '/' . $filename;
 
-    error_log("[ARTIFACTS] 🌐 Requesting remote Plat Map screenshot via Browserless API for APN: {$apn}");
-
-    // 3. Prepare stateless POST payload structure
-    $browserlessUrl =
-        'https://chrome.browserless.io/screenshot?token=' .
-        urlencode($browserlessToken);
+    // 3. Prepare stateless POST payload structure targeting the production-sfo instance
+    $browserlessUrl = 'https://production-sfo.browserless.io/screenshot?token=' . urlencode($browserlessToken);
 
     $payload = [
         'url' => $mapUrl,
-
-        'type'     => 'png',
-        'fullPage' => false,
-
-        'gotoOptions' => [
-            'waitUntil' => 'networkidle0'
+        'options' => [
+            'type' => 'png',
+            'fullPage' => false
         ],
-
+        'gotoOptions' => [
+            'waitUntil' => 'networkidle0', // Ensures the canvas layer finishes rendering vector details
+            'timeout'   => 25000
+        ],
         'viewport' => [
-            'width'             => 1200,
-            'height'            => 800,
-            'deviceScaleFactor' => 2
+            'width' => 1200,
+            'height' => 800,
+            'deviceScaleFactor' => 2 // Matches our crisp 2048x1365 vector density benchmark
         ]
     ];
 
     // 4. Dispatch the payload via standard cURL
     $ch = curl_init($browserlessUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30); 
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $browserlessUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 45
+    ]);
 
-    $imageData = curl_exec($ch);
+    $rawBuffer = curl_exec($ch);
     $httpStatusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
     curl_close($ch);
 
-    // 5. Commit image buffer directly to the unified artifacts file system
-    if ($httpStatusCode === 200 && $imageData && strlen($imageData) > 10000) {
-        if (file_put_contents($outputPath, $imageData)) {
-            error_log("[ARTIFACTS] ✅ Maricopa Plat Map generated smoothly via remote Browserless: {$filename}");
-            return $outputPath;
-        }
-        error_log("[ARTIFACTS] ❌ Failed to write Browserless output stream to storage at {$outputPath}");
-    } else {
-        error_log("[ARTIFACTS] ❌ Browserless execution failure. HTTP Status: {$httpStatusCode} | Error: {$curlError}");
+    if ($httpStatusCode !== 200 || !$rawBuffer || strlen($rawBuffer) < 10000) {
+        error_log("[ARTIFACTS] ❌ Browserless edge rendering failed for APN {$apn}. HTTP Code: {$httpStatusCode}");
+        return null;
     }
 
+    // 5. Clean Crop Execution (Strips UI Chrome natively)
+    $srcImage = imagecreatefromstring($rawBuffer);
+    if ($srcImage === false) {
+        error_log("[ARTIFACTS] ❌ Failed to parse raw image buffer stream into GD framework.");
+        return null;
+    }
+
+    // Bounding crop mapping to capture Option 1 (Full legal document block with title cards)
+    $cropBox = [
+        'x'      => 330,
+        'y'      => 66,
+        'width'  => 1718,
+        'height' => 1299
+    ];
+
+    $croppedImage = imagecrop($srcImage, $cropBox);
+    if ($croppedImage === false) {
+        error_log("[ARTIFACTS] ❌ GD framework failed to slice coordinates. Saving raw fallback configuration.");
+        imagedestroy($srcImage);
+        
+        if (file_put_contents($outputPath, $rawBuffer)) {
+            return $outputPath;
+        }
+        return null;
+    }
+
+    // Ensure directory layout contract is present
+    if (!is_dir($artifactsDir)) {
+        mkdir($artifactsDir, 0755, true);
+    }
+
+    // 6. Output finalized asset
+    $saveSuccess = imagepng($croppedImage, $outputPath, 5); // Balanced file footprint reduction
+    
+    // Free host memory contexts instantly
+    imagedestroy($srcImage);
+    imagedestroy($croppedImage);
+
+    if ($saveSuccess) {
+        error_log("[ARTIFACTS] ✅ Maricopa Plat Map generated, cropped, and saved: {$filename}");
+        return $outputPath;
+    }
+
+    error_log("[ARTIFACTS] ❌ Failed to write cropped image stream to disk at {$outputPath}");
     return null;
 }
 
