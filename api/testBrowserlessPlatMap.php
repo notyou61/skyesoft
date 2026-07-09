@@ -3,9 +3,9 @@
 // 🧠 Skyesoft — testBrowserlessPlatMap.php
 // 🌐 Browserless Plat Map Rendering Validation Test
 // 🔬 Validates:
-//     • Outbound rendering requests to the production-sfo instance
+//     • Outbound stateless /screenshot requests to production-sfo instance
 //     • High-DPI browser viewports for PDF rasterization
-//     • File system write permissions inside /artifacts
+//     • Dynamic artifact directory verification and creation
 // ======================================================================
 
 // =====================================================
@@ -34,8 +34,8 @@ $outputPath = $artifactsDir . '/' . $testFilename;
 // Test URL using a real Maricopa County Map ID from your records
 $testMapUrl = 'https://mcassessor.maricopa.gov/getmapid/825220401/'; 
 
-// Match your verified hosting region, switching to the dedicated screenshot service
-$endpoint = 'https://production-sfo.browserless.io/chromium?token=' . urlencode($apiKey);
+// Corrected: Explicitly targeting the stateless screenshot endpoint
+$endpoint = 'https://production-sfo.browserless.io/screenshot?token=' . urlencode($apiKey);
 
 // =====================================================
 // 📦 PREPARE BROWSERLESS SCREENSHOT PAYLOAD
@@ -47,27 +47,19 @@ $payload = [
         'fullPage' => false
     ],
     'gotoOptions' => [
-        'waitUntil' => 'networkidle0', // Wait until the PDF viewer completely stops downloading assets
+        'waitUntil' => 'networkidle0', // Let the native PDF canvas fully settle
         'timeout'   => 25000
     ],
     'viewport' => [
         'width' => 1200,
         'height' => 800,
-        'deviceScaleFactor' => 2 // Render at 2x resolution to ensure map lines stay razor-sharp
+        'deviceScaleFactor' => 2 // 2x resolution boost for readable tax text lines
     ]
 ];
 
 // =====================================================
 // 🚀 RUN THE TEST
 // =====================================================
-header('Content-Type: text/plain');
-echo "=====================================\n";
-echo "🧠 Skyesoft Browserless Plat Map Test\n";
-echo "=====================================\n\n";
-echo "🌐 Targeting Map: {$testMapUrl}\n";
-echo "📡 Sending to: {$endpoint}\n";
-echo "⏳ Waiting for remote browser engine rendering...\n\n";
-
 $ch = curl_init();
 curl_setopt_array($ch, [
     CURLOPT_URL            => $endpoint,
@@ -75,7 +67,7 @@ curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
     CURLOPT_POSTFIELDS     => json_encode($payload),
-    CURLOPT_TIMEOUT        => 45 // Generous timeout to allow the browser instance to process the PDF
+    CURLOPT_TIMEOUT        => 45 
 ]);
 
 $response = curl_exec($ch);
@@ -84,27 +76,51 @@ $curlError = curl_error($ch);
 curl_close($ch);
 
 // =====================================================
-// 📋 EVALUATE RESULTS
+// 📋 EVALUATE & DISPLAY RESULTS
 // =====================================================
+
+// Step 1: Check if Browserless successfully returned an image buffer stream
 if ($httpCode === 200 && $response && strlen($response) > 10000) {
+    
+    // --- TEMPORARY VISUAL PASSTHROUGH DIAGNOSTIC ---
+    // If you want to check the visual rendering directly in your browser,
+    // uncomment the next three lines below:
+    // header('Content-Type: image/png');
+    // echo $response;
+    // exit;
+    // ------------------------------------------------
+    
+    // Ensure artifacts directory exists safely with correct permissions
+    if (!is_dir($artifactsDir)) {
+        mkdir($artifactsDir, 0755, true);
+    }
+
+    header('Content-Type: text/plain');
+    echo "=====================================\n";
+    echo "🧠 Skyesoft Browserless Plat Map Test\n";
+    echo "=====================================\n\n";
     echo "✅ Success! Received valid binary stream from Browserless (" . round(strlen($response) / 1024, 2) . " KB).\n";
     
-    // Attempt to write the file into the central artifacts path
+    // Attempt to commit the raw buffer stream into the central file storage layout
     if (file_put_contents($outputPath, $response)) {
         echo "💾 File written successfully to disk!\n";
         echo "📍 Path: {$outputPath}\n";
         echo "📂 Filename: {$testFilename}\n\n";
-        echo "Go check your file manager. If the file looks perfect, we are ready to copy this logic to production.\n";
+        echo "Go check your file manager. If the file looks perfect, we can confidently drop this request into production.\n";
     } else {
-        echo "❌ Error: Failed to write image stream to path: {$outputPath}. Check folder write permissions.\n";
+        echo "❌ Error: Failed to write image stream to path: {$outputPath}. Verify folder owner permissions.\n";
     }
 } else {
+    header('Content-Type: text/plain');
+    echo "=====================================\n";
+    echo "🧠 Skyesoft Browserless Plat Map Test\n";
+    echo "=====================================\n\n";
     echo "⚠ Rendering Failure!\n";
     echo "📡 HTTP Status Code: {$httpCode}\n";
     if ($curlError) {
         echo "❌ cURL Error: {$curlError}\n";
     }
-    echo "\n📝 Raw API Response:\n";
+    echo "\n📝 Raw API Response Sample:\n";
     echo substr($response, 0, 1000) . (strlen($response) > 1000 ? "... [truncated]" : "") . "\n";
 }
 
