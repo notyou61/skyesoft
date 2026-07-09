@@ -429,14 +429,78 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // 1. Direct Extraction from the Centralized UI Theme Matrix
-    $badgeText   = $proposal['ui']['theme']['badgeText']   ?? 'REVIEW STATE';
-    $bgColor     = $proposal['ui']['theme']['bgColor']     ?? '#6c757d'; 
-    $bgLight     = $proposal['ui']['theme']['bgLight']     ?? '#f8f9fa'; 
-    $textColor   = $proposal['ui']['theme']['textColor']   ?? '#495057';
-    $borderColor = $proposal['ui']['theme']['borderColor'] ?? '#dee2e6';
+    // 1. Try direct extraction from the Centralized UI Theme Matrix
+    $badgeText   = $proposal['ui']['theme']['badgeText']   ?? null;
+    $bgColor     = $proposal['ui']['theme']['bgColor']     ?? null; 
+    $bgLight     = $proposal['ui']['theme']['bgLight']     ?? null; 
+    $textColor   = $proposal['ui']['theme']['textColor']   ?? null;
+    $borderColor = $proposal['ui']['theme']['borderColor'] ?? null;
 
-    // 2. Extract Narrative Text Block safely
+    // 2. 🛡️ Hardened Local Fallback if the theme matrix wasn't injected into JSON yet
+    if (!$badgeText) {
+        $pcRaw = $proposal['proposalCode'] ?? $proposal['pcm']['pc'] ?? null;
+        $pc = $pcRaw ? strtoupper(trim($pcRaw)) : null;
+
+        $rsRaw = $proposal['resolutionStatus'] ?? $proposal['pcm']['rs'] ?? null;
+        if (is_array($rsRaw)) {
+            $rsRaw = $rsRaw[0] ?? null;
+        }
+        $rs = $rsRaw ? strtoupper(trim($rsRaw)) : null;
+
+        $uiStatus = strtolower(trim($proposal['ui']['proposalStatus'] ?? $proposal['status'] ?? ''));
+
+        // Establish Default Specs
+        $badgeText   = 'REVIEW STATE';
+        $bgColor     = '#6c757d'; 
+        $bgLight     = '#f8f9fa'; 
+        $textColor   = '#495057';
+        $borderColor = '#dee2e6';
+
+        if (empty($pc) && ($uiStatus === 'existing' || $uiStatus === 'matched')) {
+            $pc = 'PC-0';
+        }
+
+        switch ($pc) {
+            case 'PC-0':
+            case 'PC-1': // Forces PC-1 "READY TO CREATE" to assume the Green interface styling
+                $badgeText   = ($pc === 'PC-0') ? 'EXISTING RECORD' : 'READY TO CREATE';
+                $bgColor     = '#198754'; 
+                $bgLight     = '#e8f5e9'; 
+                $textColor   = '#198754';
+                $borderColor = '#a3cfbb';
+                break;
+            case 'PC-2':
+                $badgeText   = 'NEW LOCATION';
+                $bgColor     = '#0dcaf0'; 
+                $bgLight     = '#e0f7fa'; 
+                $textColor   = '#0a58ca';
+                $borderColor = '#9eeaf9';
+                break;
+            case 'PC-3':
+                $badgeText   = 'NEW CONTACT';
+                $bgColor     = '#6f42c1'; 
+                $bgLight     = '#f3e5f5'; 
+                $textColor   = '#6f42c1';
+                $borderColor = '#e1bee7';
+                break;
+        }
+
+        // Apply Governance Rules Overrides
+        if ($rs && $rs !== 'RS-0') {
+            if ($rs === 'RS-3') {
+                $badgeText = 'INCOMPLETE'; $bgColor = '#ffc107'; $bgLight = '#fff9db'; $textColor = '#664d03'; $borderColor = '#ffecb5';
+            } elseif ($rs === 'RS-5') {
+                $badgeText = 'DUPLICATE'; $bgColor = '#dc3545'; $bgLight = '#f8d7da'; $textColor = '#842029'; $borderColor = '#f5c2c7';
+            } elseif ($rs === 'RS-6') {
+                $badgeText = 'REVIEW REQUIRED'; $bgColor = '#fd7e14'; $bgLight = '#fff3cd'; $textColor = '#b95000'; $borderColor = '#ffe69c';
+            } elseif ($rs === 'RS-7' || $rs === 'RS-8') {
+                $badgeText = ($rs === 'RS-7') ? 'PARCEL UNRESOLVED' : 'LOCATION INVALID';
+                $bgColor = '#dc3545'; $bgLight = '#f8d7da'; $textColor = '#842029'; $borderColor = '#f5c2c7';
+            }
+        }
+    }
+
+    // 3. Extract Narrative Text Block safely
     $summary = 'Proposal evaluation sequence completed.';
     if (isset($proposal['narratives'])) {
         if (is_array($proposal['narratives'])) {
@@ -450,8 +514,7 @@ function generateSummarySection(array $proposal): string
         $summary = $proposal['governanceNarrative'] ?? $summary;
     }
     
-    // 3. Render Component inside a Defensive structural containment wrapper
-    // The wrapper ensures layout boundaries isolate the content flow cleanly from running page headers
+    // 4. Render Component inside clean structural container layout bounds
     $html = '<div class="page-content-wrapper" style="padding-top: 10px; position: relative; clear: both;">';
     $html .= buildSectionHeader('Proposal Summary', 'clipboard.png');
     
