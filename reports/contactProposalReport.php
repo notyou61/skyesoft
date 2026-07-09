@@ -429,14 +429,17 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // 1. Resolve authoritative PCM State Values
+    // 1. Resolve authoritative PCM State Values (Checking flat strings & fallback short-keys)
     $pc = $proposal['pcm']['proposalClassification'] 
         ?? $proposal['pcm']['pc'] 
         ?? null;
 
-    $rs = $proposal['pcm']['resolutionState'] 
+    // Handle whether 'rs' is provided as a flat string or an array block
+    $rsRaw = $proposal['pcm']['resolutionState'] 
         ?? $proposal['pcm']['rs'] 
         ?? null;
+    
+    $rs = is_array($rsRaw) ? ($rsRaw[0] ?? null) : $rsRaw;
 
     // 2. Determine base badge configuration driven by Proposal Classification (PC)
     $badgeText = $pc ? strtoupper($pc) : 'UNKNOWN';
@@ -465,7 +468,7 @@ function generateSummarySection(array $proposal): string
             break;
     }
 
-    // 3. Enforce Governance Overrides driven by Resolution State (RS)
+    // 3. Enforce Governance Overrides driven by Resolution State (RS Array Values)
     if ($rs && $rs !== 'RS-0') {
         switch ($rs) {
             case 'RS-3':
