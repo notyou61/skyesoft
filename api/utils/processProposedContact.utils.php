@@ -1445,7 +1445,7 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
         return null;
     }
 
-    // 5. Clean Crop Execution (Strips UI Chrome natively)
+// 5. Clean Crop Execution (Strips UI Chrome natively)
     $srcImage = imagecreatefromstring($rawBuffer);
     if ($srcImage === false) {
         error_log("[ARTIFACTS] ❌ Failed to parse raw image buffer stream into GD framework.");
@@ -1463,8 +1463,8 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
     $croppedImage = imagecrop($srcImage, $cropBox);
     if ($croppedImage === false) {
         error_log("[ARTIFACTS] ❌ GD framework failed to slice coordinates. Saving raw fallback configuration.");
-        imagedestroy($srcImage);
         
+        // Dynamic fallback to save the uncropped canvas if cropping fails
         if (file_put_contents($outputPath, $rawBuffer)) {
             return $outputPath;
         }
@@ -1476,12 +1476,11 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
         mkdir($artifactsDir, 0755, true);
     }
 
-    // 6. Output finalized asset
-    $saveSuccess = imagepng($croppedImage, $outputPath, 5); // Balanced file footprint reduction
+    // 6. Output finalized asset (Balanced file footprint reduction)
+    $saveSuccess = imagepng($croppedImage, $outputPath, 5); 
     
-    // Free host memory contexts instantly
-    imagedestroy($srcImage);
-    imagedestroy($croppedImage);
+    // NOTE: Old imagedestroy() calls removed here. Memory frames are automatically 
+    // freed by PHP's garbage collector when this function exits or loses reference.
 
     if ($saveSuccess) {
         error_log("[ARTIFACTS] ✅ Maricopa Plat Map generated, cropped, and saved: {$filename}");
