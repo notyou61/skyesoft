@@ -429,20 +429,25 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // 1. Resolve authoritative PCM State Values (Checking flat strings & fallback short-keys)
-    $pc = $proposal['pcm']['proposalClassification'] 
+    // 1. Extract and sanitize PCM State Values
+    $pcRaw = $proposal['pcm']['proposalClassification'] 
         ?? $proposal['pcm']['pc'] 
         ?? null;
+
+    $pc = $pcRaw ? strtoupper(trim($pcRaw)) : null;
 
     // Handle whether 'rs' is provided as a flat string or an array block
     $rsRaw = $proposal['pcm']['resolutionState'] 
         ?? $proposal['pcm']['rs'] 
         ?? null;
     
-    $rs = is_array($rsRaw) ? ($rsRaw[0] ?? null) : $rsRaw;
+    if (is_array($rsRaw)) {
+        $rsRaw = $rsRaw[0] ?? null;
+    }
+    $rs = $rsRaw ? strtoupper(trim($rsRaw)) : null;
 
     // 2. Determine base badge configuration driven by Proposal Classification (PC)
-    $badgeText = $pc ? strtoupper($pc) : 'UNKNOWN';
+    $badgeText = $pc ?: 'UNKNOWN';
     $bgColor   = '#718096'; // Default Slate Gray
     $textColor = '#ffffff';
 
@@ -466,9 +471,21 @@ function generateSummarySection(array $proposal): string
             $badgeText = 'NEW CONTACT';
             $bgColor   = '#805ad5'; // Purple
             break;
+            
+        default:
+            // Fallback safety net to legacy indicators if PCM string evaluation fails
+            $uiStatus = strtolower(trim($proposal['ui']['proposalStatus'] ?? ''));
+            if ($uiStatus === 'existing') {
+                $badgeText = 'EXISTING RECORD';
+                $bgColor   = '#2f855a';
+            } elseif ($uiStatus === 'proposed') {
+                $badgeText = 'READY TO CREATE';
+                $bgColor   = '#dd6b20';
+            }
+            break;
     }
 
-    // 3. Enforce Governance Overrides driven by Resolution State (RS Array Values)
+    // 3. Enforce Governance Overrides driven by Resolution State (RS)
     if ($rs && $rs !== 'RS-0') {
         switch ($rs) {
             case 'RS-3':
