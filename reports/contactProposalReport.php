@@ -451,8 +451,10 @@ function generateSummarySection(array $proposal): string
 
     // 2. Determine base badge configuration driven by Proposal Classification (PC)
     $badgeText = 'REVIEW STATE';
-    $bgColor   = '#718096'; // Default Slate Gray
-    $textColor = '#ffffff';
+    $bgColor   = '#6c757d'; // Bootstrap secondary gray
+    $bgLight   = '#f8f9fa'; 
+    $textColor = '#495057';
+    $borderColor = '#dee2e6';
 
     // Ultimate fallback if keys are missing but general indicators point to an existing match
     $uiStatus = strtolower(trim($proposal['ui']['proposalStatus'] ?? $proposal['status'] ?? ''));
@@ -462,32 +464,50 @@ function generateSummarySection(array $proposal): string
 
     switch ($pc) {
         case 'PC-0':
-            $badgeText = 'EXISTING RECORD';
-            $bgColor   = '#2f855a'; // Success Green
+            $badgeText   = 'EXISTING RECORD';
+            $bgColor     = '#198754'; // Bootstrap success green
+            $bgLight     = '#e8f5e9'; // Light tint container variant
+            $textColor   = '#198754';
+            $borderColor = '#a3cfbb';
             break;
 
         case 'PC-1':
-            $badgeText = 'READY TO CREATE';
-            $bgColor   = '#dd6b20'; // Notice Orange
+            $badgeText   = 'READY TO CREATE';
+            $bgColor     = '#fd7e14'; // Bootstrap orange
+            $bgLight     = '#fff3cd'; // Light yellow/orange tint
+            $textColor   = '#b95000';
+            $borderColor = '#ffe69c';
             break;
 
         case 'PC-2':
-            $badgeText = 'NEW LOCATION';
-            $bgColor   = '#3182ce'; // Sky Blue
+            $badgeText   = 'NEW LOCATION';
+            $bgColor     = '#0dcaf0'; // Bootstrap info cyan
+            $bgLight     = '#e0f7fa'; 
+            $textColor   = '#0a58ca';
+            $borderColor = '#9eeaf9';
             break;
 
         case 'PC-3':
-            $badgeText = 'NEW CONTACT';
-            $bgColor   = '#805ad5'; // Purple
+            $badgeText   = 'NEW CONTACT';
+            $bgColor     = '#6f42c1'; // Bootstrap purple
+            $bgLight     = '#f3e5f5'; 
+            $textColor   = '#6f42c1';
+            $borderColor = '#e1bee7';
             break;
             
         default:
             if ($uiStatus === 'proposed' || $uiStatus === 'ready') {
-                $badgeText = 'READY TO CREATE';
-                $bgColor   = '#dd6b20';
+                $badgeText   = 'READY TO CREATE';
+                $bgColor     = '#fd7e14';
+                $bgLight     = '#fff3cd';
+                $textColor   = '#b95000';
+                $borderColor = '#ffe69c';
             } else {
-                $badgeText = $pcRaw ? strtoupper(trim($pcRaw)) : 'REVIEW STATE';
-                $bgColor   = '#718096';
+                $badgeText   = $pcRaw ? strtoupper(trim($pcRaw)) : 'REVIEW STATE';
+                $bgColor     = '#6c757d';
+                $bgLight     = '#f8f9fa';
+                $textColor   = '#495057';
+                $borderColor = '#dee2e6';
             }
             break;
     }
@@ -496,33 +516,41 @@ function generateSummarySection(array $proposal): string
     if ($rs && $rs !== 'RS-0') {
         switch ($rs) {
             case 'RS-3':
-                $badgeText = 'INCOMPLETE';
-                $bgColor   = '#d69e2e'; // Warning Yellow
+                $badgeText   = 'INCOMPLETE';
+                $bgColor     = '#ffc107'; // Warning yellow
+                $bgLight     = '#fff9db';
+                $textColor   = '#664d03';
+                $borderColor = '#ffecb5';
                 break;
 
             case 'RS-5':
-                $badgeText = 'DUPLICATE';
-                $bgColor   = '#c53030'; // Dark Red
+                $badgeText   = 'DUPLICATE';
+                $bgColor     = '#dc3545'; // Danger red
+                $bgLight     = '#f8d7da';
+                $textColor   = '#842029';
+                $borderColor = '#f5c2c7';
                 break;
 
             case 'RS-6':
-                $badgeText = 'REVIEW REQUIRED';
-                $bgColor   = '#dd6b20'; // Alert Orange
+                $badgeText   = 'REVIEW REQUIRED';
+                $bgColor     = '#fd7e14'; 
+                $bgLight     = '#fff3cd';
+                $textColor   = '#b95000';
+                $borderColor = '#ffe69c';
                 break;
 
             case 'RS-7':
-                $badgeText = 'PARCEL UNRESOLVED';
-                $bgColor   = '#e53e3e'; // Bright Red
-                break;
-
             case 'RS-8':
-                $badgeText = 'LOCATION INVALID';
-                $bgColor   = '#e53e3e'; // Bright Red
+                $badgeText   = ($rs === 'RS-7') ? 'PARCEL UNRESOLVED' : 'LOCATION INVALID';
+                $bgColor     = '#dc3545'; 
+                $bgLight     = '#f8d7da';
+                $textColor   = '#842029';
+                $borderColor = '#f5c2c7';
                 break;
         }
     }
 
-    // 4. Extract Narrative Text Block (Supporting both array and string structures)
+    // 4. Extract Narrative Text Block
     $summary = 'Proposal evaluation sequence completed.';
     if (isset($proposal['narratives'])) {
         if (is_array($proposal['narratives'])) {
@@ -536,19 +564,19 @@ function generateSummarySection(array $proposal): string
         $summary = $proposal['governanceNarrative'] ?? $summary;
     }
     
-    // 5. Render standard Skyesoft Frame Structure
+    // 5. Render Upgraded Bootstrap-Style Premium Frame Structure
     $html = buildSectionHeader('Proposal Summary', 'clipboard.png');
     
     $html .= '
-    <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding: 16px; background: #f8f9fa; border-left: 4px solid #17a2b8; margin-bottom: 20px; position: relative;">
+    <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding: 18px; background: ' . $bgLight . '; border-left: 5px solid ' . $bgColor . '; border-top: 1px solid ' . $borderColor . '; border-right: 1px solid ' . $borderColor . '; border-bottom: 1px solid ' . $borderColor . '; border-radius: 6px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); position: relative;">
         <table style="width: 100%; border-collapse: collapse; margin: 0; padding: 0;">
             <tr>
-                <td style="vertical-align: top; padding: 0; text-align: left; color: #2d3748; font-size: 10.5px; line-height: 1.5;">
+                <td style="vertical-align: middle; padding: 0; text-align: left; color: #212529; font-size: 11px; line-height: 1.6; font-weight: 500;">
                     ' . nl2br(htmlspecialchars(trim($summary))) . '
                 </td>
-                <td style="vertical-align: top; padding: 0 0 0 15px; text-align: right; width: 150px;">
-                    <div style="display: inline-block; background-color: ' . $bgColor . '; color: ' . $textColor . '; font-family: Arial, sans-serif; font-size: 9px; font-weight: bold; padding: 5px 12px; border-radius: 50px; text-align: center; white-space: nowrap; letter-spacing: 0.5px;">
-                        ' . htmlspecialchars($badgeText) . '
+                <td style="vertical-align: middle; padding: 0 0 0 20px; text-align: right; width: 160px;">
+                    <div style="display: inline-block; background-color: ' . $bgLight . '; color: ' . $textColor . '; border: 1px solid ' . $borderColor . '; font-family: Arial, sans-serif; font-size: 9.5px; font-weight: 700; padding: 6px 14px; border-radius: 4px; text-align: center; white-space: nowrap; letter-spacing: 0.7px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                        ● ' . htmlspecialchars($badgeText) . '
                     </div>
                 </td>
             </tr>
