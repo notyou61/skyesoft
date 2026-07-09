@@ -429,14 +429,11 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // Fix 1: Auto-unwrap payload if nested under a 'data' index or similar wrapper
-    if (!isset($proposal['pcm']) && isset($proposal['data']['pcm'])) {
-        $proposal = $proposal['data'];
-    }
-
-    // 1. Extract and sanitize PCM State Values
+    // 1. Resolve authoritative PCM State Values with aggressive fallback digging
     $pcRaw = $proposal['pcm']['proposalClassification'] 
         ?? $proposal['pcm']['pc'] 
+        ?? $proposal['data']['pcm']['proposalClassification']
+        ?? $proposal['data']['pcm']['pc']
         ?? null;
 
     $pc = $pcRaw ? strtoupper(trim($pcRaw)) : null;
@@ -444,6 +441,8 @@ function generateSummarySection(array $proposal): string
     // Handle whether 'rs' is provided as a flat string or an array block
     $rsRaw = $proposal['pcm']['resolutionState'] 
         ?? $proposal['pcm']['rs'] 
+        ?? $proposal['data']['pcm']['resolutionState']
+        ?? $proposal['data']['pcm']['rs']
         ?? null;
     
     if (is_array($rsRaw)) {
@@ -451,12 +450,24 @@ function generateSummarySection(array $proposal): string
     }
     $rs = $rsRaw ? strtoupper(trim($rsRaw)) : null;
 
-    // 2. Determine base badge configuration driven by Proposal Classification (PC)
-    $badgeText = $pc ?: 'UNKNOWN';
+    // Extract UI Status indicators for an absolute priority fallback check
+    $uiStatus = strtolower(trim(
+        $proposal['ui']['proposalStatus'] 
+        ?? $proposal['data']['ui']['proposalStatus'] 
+        ?? $proposal['status'] 
+        ?? ''
+    ));
+
+    // 2. Determine base badge configuration driven by Proposal Classification (PC) or absolute state overrides
+    $badgeText = 'REVIEW STATE';
     $bgColor   = '#718096'; // Default Slate Gray
     $textColor = '#ffffff';
 
-    // Fix 2: Move the legacy fallback to the top of the switch statement or handle explicitly
+    // Force an override if the PCM keys are missing but the UI explicitly states it's an existing record
+    if (empty($pc) && ($uiStatus === 'existing' || $uiStatus === 'matched')) {
+        $pc = 'PC-0';
+    }
+
     switch ($pc) {
         case 'PC-0':
             $badgeText = 'EXISTING RECORD';
@@ -479,23 +490,17 @@ function generateSummarySection(array $proposal): string
             break;
             
         default:
-            // Absolute baseline fallback: read legacy properties explicitly if PCM was unresolvable
-            $uiStatus = strtolower(trim($proposal['ui']['proposalStatus'] ?? $proposal['status'] ?? ''));
-            if ($uiStatus === 'existing' || $uiStatus === 'matched') {
-                $badgeText = 'EXISTING RECORD';
-                $bgColor   = '#2f855a';
-            } elseif ($uiStatus === 'proposed') {
+            if ($uiStatus === 'proposed' || $uiStatus === 'ready') {
                 $badgeText = 'READY TO CREATE';
                 $bgColor   = '#dd6b20';
             } else {
-                // If it really is completely unresolvable, make it clean and readable
-                $badgeText = $pcRaw ?: 'REVIEW STATE';
+                $badgeText = $pcRaw ? strtoupper(trim($pcRaw)) : 'REVIEW STATE';
                 $bgColor   = '#718096';
             }
             break;
     }
 
-    // 3. Enforce Governance Overrides driven by Resolution State (RS)
+    // 3. Enforce Governance Overrides driven by Resolution State (RS Array Values)
     if ($rs && $rs !== 'RS-0') {
         switch ($rs) {
             case 'RS-3':
@@ -528,6 +533,7 @@ function generateSummarySection(array $proposal): string
     // 4. Extract Narrative Text Block
     $summary = $proposal['narratives']['ui'] 
         ?? $proposal['narratives']['report'] 
+        ?? $proposal['data']['narratives']['ui']
         ?? $proposal['governanceNarrative'] 
         ?? 'Proposal evaluation sequence completed.';
     
