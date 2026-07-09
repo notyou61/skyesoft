@@ -1407,21 +1407,29 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
     error_log("[ARTIFACTS] 🌐 Requesting remote Plat Map screenshot via Browserless API for APN: {$apn}");
 
     // 3. Prepare stateless POST payload structure
-    $browserlessUrl = 'https://chrome.browserless.io/screenshot?token=' . urlencode($browserlessToken);
+    $browserlessUrl =
+        'https://chrome.browserless.io/screenshot?token=' .
+        urlencode($browserlessToken);
 
     $payload = [
         'url' => $mapUrl,
         'options' => [
-            'type' => 'png',
-            'fullPage' => false
+            'type'     => 'png',
+            'fullPage' => false,
+            'clip' => [
+                'x'      => 40,
+                'y'      => 90,
+                'width'  => 1120,
+                'height' => 700
+            ]
         ],
         'gotoOptions' => [
             'waitUntil' => 'networkidle0'
         ],
         'viewport' => [
-            'width' => 1200,
-            'height' => 800,
-            'deviceScaleFactor' => 2 // Forces high-density vector rendering for legible tract lines
+            'width'             => 1200,
+            'height'            => 800,
+            'deviceScaleFactor' => 2
         ]
     ];
 
