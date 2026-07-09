@@ -1401,7 +1401,7 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
 
     $escapedPayload = escapeshellarg($jobPayload);
     
-    // Command the existing Node execution service environment
+    // Command the newly uploaded backend Node environment
     $nodeScript = '/home/notyou64/public_html/skyesoft/api/node-services/renderPlatMap.js';
     $cmd = "node {$nodeScript} {$escapedPayload} 2>&1";
     
