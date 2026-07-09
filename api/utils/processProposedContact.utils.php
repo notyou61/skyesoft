@@ -1413,19 +1413,14 @@ function generateParcelMapImage(array $parcel, string $proposalId): ?string
 
     $payload = [
         'url' => $mapUrl,
-        'options' => [
-            'type'     => 'png',
-            'fullPage' => false,
-            'clip' => [
-                'x'      => 40,
-                'y'      => 90,
-                'width'  => 1120,
-                'height' => 700
-            ]
-        ],
+
+        'type'     => 'png',
+        'fullPage' => false,
+
         'gotoOptions' => [
             'waitUntil' => 'networkidle0'
         ],
+
         'viewport' => [
             'width'             => 1200,
             'height'            => 800,
