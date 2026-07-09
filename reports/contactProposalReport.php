@@ -429,128 +429,14 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // 1. Extract from Flat Engine Keys (As shown in the generateReports POST log)
-    $pcRaw = $proposal['proposalCode']
-        ?? $proposal['pcm']['proposalClassification'] 
-        ?? $proposal['pcm']['pc'] 
-        ?? $proposal['data']['pcm']['pc']
-        ?? null;
+    // 1. Direct Extraction from the Centralized UI Theme Matrix
+    $badgeText   = $proposal['ui']['theme']['badgeText']   ?? 'REVIEW STATE';
+    $bgColor     = $proposal['ui']['theme']['bgColor']     ?? '#6c757d'; 
+    $bgLight     = $proposal['ui']['theme']['bgLight']     ?? '#f8f9fa'; 
+    $textColor   = $proposal['ui']['theme']['textColor']   ?? '#495057';
+    $borderColor = $proposal['ui']['theme']['borderColor'] ?? '#dee2e6';
 
-    $pc = $pcRaw ? strtoupper(trim($pcRaw)) : null;
-
-    // Handle flat resolutionStatus vs nested arrays
-    $rsRaw = $proposal['resolutionStatus']
-        ?? $proposal['pcm']['resolutionState'] 
-        ?? $proposal['pcm']['rs'] 
-        ?? null;
-    
-    if (is_array($rsRaw)) {
-        $rsRaw = $rsRaw[0] ?? null;
-    }
-    $rs = $rsRaw ? strtoupper(trim($rsRaw)) : null;
-
-    // 2. Determine base badge configuration driven by Proposal Classification (PC)
-    $badgeText = 'REVIEW STATE';
-    $bgColor   = '#6c757d'; // Bootstrap secondary gray
-    $bgLight   = '#f8f9fa'; 
-    $textColor = '#495057';
-    $borderColor = '#dee2e6';
-
-    // Ultimate fallback if keys are missing but general indicators point to an existing match
-    $uiStatus = strtolower(trim($proposal['ui']['proposalStatus'] ?? $proposal['status'] ?? ''));
-    if (empty($pc) && ($uiStatus === 'existing' || $uiStatus === 'matched')) {
-        $pc = 'PC-0';
-    }
-
-    switch ($pc) {
-        case 'PC-0':
-            $badgeText   = 'EXISTING RECORD';
-            $bgColor     = '#198754'; // Bootstrap success green
-            $bgLight     = '#e8f5e9'; // Light tint container variant
-            $textColor   = '#198754';
-            $borderColor = '#a3cfbb';
-            break;
-
-        case 'PC-1':
-            $badgeText   = 'READY TO CREATE';
-            $bgColor     = '#fd7e14'; // Bootstrap orange
-            $bgLight     = '#fff3cd'; // Light yellow/orange tint
-            $textColor   = '#b95000';
-            $borderColor = '#ffe69c';
-            break;
-
-        case 'PC-2':
-            $badgeText   = 'NEW LOCATION';
-            $bgColor     = '#0dcaf0'; // Bootstrap info cyan
-            $bgLight     = '#e0f7fa'; 
-            $textColor   = '#0a58ca';
-            $borderColor = '#9eeaf9';
-            break;
-
-        case 'PC-3':
-            $badgeText   = 'NEW CONTACT';
-            $bgColor     = '#6f42c1'; // Bootstrap purple
-            $bgLight     = '#f3e5f5'; 
-            $textColor   = '#6f42c1';
-            $borderColor = '#e1bee7';
-            break;
-            
-        default:
-            if ($uiStatus === 'proposed' || $uiStatus === 'ready') {
-                $badgeText   = 'READY TO CREATE';
-                $bgColor     = '#fd7e14';
-                $bgLight     = '#fff3cd';
-                $textColor   = '#b95000';
-                $borderColor = '#ffe69c';
-            } else {
-                $badgeText   = $pcRaw ? strtoupper(trim($pcRaw)) : 'REVIEW STATE';
-                $bgColor     = '#6c757d';
-                $bgLight     = '#f8f9fa';
-                $textColor   = '#495057';
-                $borderColor = '#dee2e6';
-            }
-            break;
-    }
-
-    // 3. Enforce Governance Overrides driven by Resolution State (RS)
-    if ($rs && $rs !== 'RS-0') {
-        switch ($rs) {
-            case 'RS-3':
-                $badgeText   = 'INCOMPLETE';
-                $bgColor     = '#ffc107'; // Warning yellow
-                $bgLight     = '#fff9db';
-                $textColor   = '#664d03';
-                $borderColor = '#ffecb5';
-                break;
-
-            case 'RS-5':
-                $badgeText   = 'DUPLICATE';
-                $bgColor     = '#dc3545'; // Danger red
-                $bgLight     = '#f8d7da';
-                $textColor   = '#842029';
-                $borderColor = '#f5c2c7';
-                break;
-
-            case 'RS-6':
-                $badgeText   = 'REVIEW REQUIRED';
-                $bgColor     = '#fd7e14'; 
-                $bgLight     = '#fff3cd';
-                $textColor   = '#b95000';
-                $borderColor = '#ffe69c';
-                break;
-
-            case 'RS-7':
-            case 'RS-8':
-                $badgeText   = ($rs === 'RS-7') ? 'PARCEL UNRESOLVED' : 'LOCATION INVALID';
-                $bgColor     = '#dc3545'; 
-                $bgLight     = '#f8d7da';
-                $textColor   = '#842029';
-                $borderColor = '#f5c2c7';
-                break;
-        }
-    }
-
-    // 4. Extract Narrative Text Block
+    // 2. Extract Narrative Text Block safely
     $summary = 'Proposal evaluation sequence completed.';
     if (isset($proposal['narratives'])) {
         if (is_array($proposal['narratives'])) {
@@ -564,8 +450,10 @@ function generateSummarySection(array $proposal): string
         $summary = $proposal['governanceNarrative'] ?? $summary;
     }
     
-    // 5. Render Upgraded Bootstrap-Style Premium Frame Structure
-    $html = buildSectionHeader('Proposal Summary', 'clipboard.png');
+    // 3. Render Component inside a Defensive structural containment wrapper
+    // The wrapper ensures layout boundaries isolate the content flow cleanly from running page headers
+    $html = '<div class="page-content-wrapper" style="padding-top: 10px; position: relative; clear: both;">';
+    $html .= buildSectionHeader('Proposal Summary', 'clipboard.png');
     
     $html .= '
     <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding: 18px; background: ' . $bgLight . '; border-left: 5px solid ' . $bgColor . '; border-top: 1px solid ' . $borderColor . '; border-right: 1px solid ' . $borderColor . '; border-bottom: 1px solid ' . $borderColor . '; border-radius: 6px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); position: relative;">
@@ -582,6 +470,7 @@ function generateSummarySection(array $proposal): string
             </tr>
         </table>
     </div>';
+    $html .= '</div>';
     
     return $html;
 }
