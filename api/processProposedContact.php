@@ -1257,120 +1257,124 @@ if ($pc === 'PC-0') {
 }
 
 // =====================================================
-// DYNAMIC THEME MATRIX SELECTION (PC / RS Controlled)
+// CENTRALIZED UI THEME CONFIGURATION MATRICES
 // =====================================================
-$badgeText   = 'REVIEW STATE';
-$bgColor     = '#6c757d'; // Default Muted Gray
-$bgLight     = '#f8f9fa'; 
-$textColor   = '#495057';
-$borderColor = '#dee2e6';
+$pcmMatrix = [
+    'PC-0' => [
+        'badgeText'   => 'EXISTING RECORD',
+        'bgColor'     => '#17a2b8', // Info Teal
+        'bgLight'     => 'rgba(23,162,184,.12)', 
+        'textColor'   => '#117a8b',
+        'borderColor' => 'rgba(23,162,184,.25)'
+    ],
+    'PC-1' => [
+        'badgeText'   => 'READY TO CREATE',
+        'bgColor'     => '#198754', // Emerald Success Green
+        'bgLight'     => '#e8f5e9', 
+        'textColor'   => '#198754',
+        'borderColor' => '#a3cfbb'
+    ],
+    'PC-2' => [
+        'badgeText'   => 'NEW LOCATION',
+        'bgColor'     => '#0dcaf0', // Info Cyan
+        'bgLight'     => '#e0f7fa', 
+        'textColor'   => '#0a58ca',
+        'borderColor' => '#9eeaf9'
+    ],
+    'PC-3' => [
+        'badgeText'   => 'NEW CONTACT',
+        'bgColor'     => '#6f42c1', // Purple
+        'bgLight'     => '#f3e5f5', 
+        'textColor'   => '#6f42c1',
+        'borderColor' => '#e1bee7'
+    ],
+    'PC-4' => [
+        'badgeText'   => 'LINK & MAP LOCATION',
+        'bgColor'     => '#0d6efd', // Primary Blue
+        'bgLight'     => '#e7f1ff',
+        'textColor'   => '#0d6efd',
+        'borderColor' => '#b6d4fe'
+    ],
+    'PC-5' => [
+        'badgeText'   => 'NEW LOCATION ONLY',
+        'bgColor'     => '#0d6efd', // Primary Blue
+        'bgLight'     => '#e7f1ff',
+        'textColor'   => '#0d6efd',
+        'borderColor' => '#b6d4fe'
+    ]
+];
 
-// 1. Evaluate Baseline Classification Styling via PC Mode
-if (empty($pc) && ($uiState['proposalStatus'] === 'existing' || $uiState['proposalStatus'] === 'matched')) {
+$rsMatrix = [
+    'RS-3' => [
+        'badgeText'   => 'INCOMPLETE',
+        'bgColor'     => '#ffc107', // Warning Amber
+        'bgLight'     => '#fff9db',
+        'textColor'   => '#664d03',
+        'borderColor' => '#ffecb5'
+    ],
+    'RS-5' => [
+        'badgeText'   => 'DUPLICATE',
+        'bgColor'     => '#dc3545', // Danger Red
+        'bgLight'     => '#f8d7da',
+        'textColor'   => '#842029',
+        'borderColor' => '#f5c2c7'
+    ],
+    'RS-6' => [
+        'badgeText'   => 'REVIEW REQUIRED',
+        'bgColor'     => '#fd7e14', // Warning Orange
+        'bgLight'     => '#fff3cd',
+        'textColor'   => '#b95000',
+        'borderColor' => '#ffe69c'
+    ],
+    'RS-7' => [
+        'badgeText'   => 'PARCEL UNRESOLVED',
+        'bgColor'     => '#dc3545', // Danger Red
+        'bgLight'     => '#f8d7da',
+        'textColor'   => '#842029',
+        'borderColor' => '#f5c2c7'
+    ],
+    'RS-8' => [
+        'badgeText'   => 'LOCATION INVALID',
+        'bgColor'     => '#dc3545', // Danger Red
+        'bgLight'     => '#f8d7da',
+        'textColor'   => '#842029',
+        'borderColor' => '#f5c2c7'
+    ]
+];
+
+// 1. Establish Baseline Proposal Classification Mode
+if (empty($pc) && (($uiState['proposalStatus'] ?? '') === 'existing' || ($uiState['proposalStatus'] ?? '') === 'matched')) {
     $pc = 'PC-0';
 }
 
-switch ($pc) {
-    // =====================================================
-    // PC-0 — Existing Record
-    // =====================================================
-    case 'PC-0':
-        $badgeText   = 'EXISTING RECORD';
-        $bgColor     = '#17a2b8'; // Info Teal
-        $bgLight     = 'rgba(23,162,184,.12)'; 
-        $textColor   = '#117a8b';
-        $borderColor = 'rgba(23,162,184,.25)';
-        break;
+// Map baseline styles, falling back cleanly to a default gray state if undefined
+$theme = $pcmMatrix[$pc] ?? [
+    'badgeText'   => 'REVIEW STATE',
+    'bgColor'     => '#6c757d', 
+    'bgLight'     => '#f8f9fa', 
+    'textColor'   => '#495057',
+    'borderColor' => '#dee2e6'
+];
 
-    // =====================================================
-    // PC-1 — New Entity + Location + Contact
-    // =====================================================
-    case 'PC-1':
-        $badgeText   = 'READY TO CREATE';
-        $bgColor     = '#198754'; // Emerald Success Green
-        $bgLight     = '#e8f5e9'; 
-        $textColor   = '#198754';
-        $borderColor = '#a3cfbb';
-        break;
-
-    // =====================================================
-    // PC-2 — Existing Entity / New Location
-    // =====================================================
-    case 'PC-2':
-        $badgeText   = 'NEW LOCATION';
-        $bgColor     = '#0dcaf0'; // Info Cyan
-        $bgLight     = '#e0f7fa'; 
-        $textColor   = '#0a58ca';
-        $borderColor = '#9eeaf9';
-        break;
-
-    // =====================================================
-    // PC-3 — Existing Location / New Contact
-    // =====================================================
-    case 'PC-3':
-        $badgeText   = 'NEW CONTACT';
-        $bgColor     = '#6f42c1'; // Purple
-        $bgLight     = '#f3e5f5'; 
-        $textColor   = '#6f42c1';
-        $borderColor = '#e1bee7';
-        break;
-
-    // =====================================================
-    // PC-4 / PC-5 — Link & Map Location / New Location Only
-    // =====================================================
-    case 'PC-4':
-    case 'PC-5':
-        $badgeText   = ($pc === 'PC-4') ? 'LINK & MAP LOCATION' : 'NEW LOCATION ONLY';
-        $bgColor     = '#0d6efd'; // Primary Blue
-        $bgLight     = '#e7f1ff';
-        $textColor   = '#0d6efd';
-        $borderColor = '#b6d4fe';
-        break;
-}
-
-// 2. Override with High-Priority Governance Rules (Resolution State Matrix)
+// 2. Evaluate High-Priority Governance Code Overrides sequentially
 if (!empty($rsList) && !in_array('RS-0', $rsList)) {
-    if (in_array('RS-3', $rsList)) {
-        $badgeText   = 'INCOMPLETE';
-        $bgColor     = '#ffc107'; // Warning Amber
-        $bgLight     = '#fff9db';
-        $textColor   = '#664d03';
-        $borderColor = '#ffecb5';
-    } elseif (in_array('RS-5', $rsList)) {
-        $badgeText   = 'DUPLICATE';
-        $bgColor     = '#dc3545'; // Danger Red
-        $bgLight     = '#f8d7da';
-        $textColor   = '#842029';
-        $borderColor = '#f5c2c7';
-    } elseif (in_array('RS-6', $rsList)) {
-        $badgeText   = 'REVIEW REQUIRED';
-        $bgColor     = '#fd7e14'; // Warning Orange
-        $bgLight     = '#fff3cd';
-        $textColor   = '#b95000';
-        $borderColor = '#ffe69c';
-    } elseif (in_array('RS-7', $rsList) || in_array('RS-8', $rsList)) {
-        $badgeText   = (in_array('RS-7', $rsList)) ? 'PARCEL UNRESOLVED' : 'LOCATION INVALID';
-        $bgColor     = '#dc3545'; // Danger Red
-        $bgLight     = '#f8d7da';
-        $textColor   = '#842029';
-        $borderColor = '#f5c2c7';
+    foreach (['RS-3', 'RS-5', 'RS-6', 'RS-7', 'RS-8'] as $rsKey) {
+        if (in_array($rsKey, $rsList) && isset($rsMatrix[$rsKey])) {
+            $theme = $rsMatrix[$rsKey];
+            break; // First match wins based on priority hierarchy sequence
+        }
     }
 }
 
 // 3. Inject Completed Presentation Model directly into UI State
 $uiState['theme'] = [
-    // Classification Context
     'pc'          => $pc,
-    'rs'          => $rsList,
-
-    // Presentation Specs
-    'badgeText'   => $badgeText,
-    'bgColor'     => $bgColor,
-    'bgLight'     => $bgLight,
-    'textColor'   => $textColor,
-    'borderColor' => $borderColor,
-
-    // Component Variant UI Hook
+    'rs'          => $rsList ?? [],
+    'badgeText'   => $theme['badgeText'],
+    'bgColor'     => $theme['bgColor'],
+    'bgLight'     => $theme['bgLight'],
+    'textColor'   => $theme['textColor'],
+    'borderColor' => $theme['borderColor'],
     'variant'     => strtolower($pc ?? 'default')
 ];
 

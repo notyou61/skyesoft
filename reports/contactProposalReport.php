@@ -429,9 +429,8 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // 1. Direct consumption of the decoupled presentation model properties
-    // Supports either nestled under ['ui']['theme'] or passed as a direct top-level payload array
-    $themeSource = $proposal['ui']['theme'] ?? $proposal;
+    // 1. Bulletproof Extraction checking deep matrix paths or top-level array directly
+    $themeSource = $proposal['ui']['theme'] ?? $proposal['theme'] ?? $proposal;
 
     $badgeText   = $themeSource['badgeText']   ?? 'REVIEW STATE';
     $bgColor     = $themeSource['bgColor']     ?? '#6c757d'; 
@@ -453,7 +452,7 @@ function generateSummarySection(array $proposal): string
         $summary = $proposal['governanceNarrative'] ?? $summary;
     }
     
-    // 3. Render unified markup consuming the verified Theme Matrix properties
+    // 3. Render Component inside clean structural container layout bounds
     $html = '<div class="page-content-wrapper" style="padding-top: 10px; position: relative; clear: both;">';
     $html .= buildSectionHeader('Proposal Summary', 'clipboard.png');
     
