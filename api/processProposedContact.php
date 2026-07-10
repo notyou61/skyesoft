@@ -1317,7 +1317,8 @@ $rsMatrix = [
 ];
 
 // 1. Establish Baseline Proposal Classification Mode
-if (empty($pc) && (($uiState['proposalStatus'] ?? '') === 'existing' || ($uiState['proposalStatus'] ?? '') === 'matched')) {
+// 🌟 DYNAMIC FALLBACK: If Section 12 found an exact match, make sure $pc maps here correctly
+if (($pc === 'UNKNOWN' || empty($pc)) && (strpos(strtolower($contentLine ?? ''), 'existing') !== false)) {
     $pc = 'PC-0';
 }
 
@@ -1388,7 +1389,7 @@ $aiNarrativeResult = buildOperationalNarratives($narrativeContext);
 $contentLine = $aiNarrativeResult['contentLine'] ?? 'Proposal Information Update';
 
 // =====================================================
-// AI Content Line & Narrative Builder Injection
+// AI Content Line & Narrative Builder Injection Output Packaging
 // =====================================================
 
 // 1. Format the structural narratives array with the computed theme nested directly inside it
@@ -1405,18 +1406,22 @@ $narratives = [
     'theme'      => $uiState['theme']
 ];
 
-// 2. 🌟 THE FIX: Inject the updated narratives array straight back into the canonical $data structure
+// 2. 🌟 THE SNARE FIX: Explicitly bind the flat parent attributes expected by generateReports.php
 if (isset($data) && is_array($data)) {
-    $data['narratives'] = $narratives;
-    $data['theme']      = $uiState['theme']; // Backup top-level reference
+    $data['proposalCode']     = $pc;
+    $data['resolutionStatus'] = $uiState['proposalStatus'];
+    $data['narratives']       = $narratives;
+    $data['theme']            = $uiState['theme']; // Backup top-level reference
 }
 
 if (isset($proposal) && is_array($proposal)) {
-    $proposal['narratives'] = $narratives;
-    $proposal['theme']      = $uiState['theme'];
+    $proposal['proposalCode']     = $pc;
+    $proposal['resolutionStatus'] = $uiState['proposalStatus'];
+    $proposal['narratives']       = $narratives;
+    $proposal['theme']            = $uiState['theme'];
 }
 
-error_log("[PPC][SECTION-14] AI Narrative Generation complete → Content Line: '{$contentLine}'");
+error_log("[PPC][SECTION-14] AI Narrative Generation complete → Content Line: '{$contentLine}' | Bound Code: {$pc}");
 
 #endregion
 
