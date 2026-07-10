@@ -429,50 +429,42 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // 1. 🛡️ Deep-Scan Extraction Layer (Handles flat JSON payloads or nested wrappers)
-    if (isset($proposal['ui']['theme']) && is_array($proposal['ui']['theme'])) {
-        $themeSource = $proposal['ui']['theme'];
-    } elseif (isset($proposal['theme']) && is_array($proposal['theme'])) {
-        $themeSource = $proposal['theme'];
-    } else {
-        $themeSource = $proposal; // Direct fallback to root array scope for flat JSON
+    // 1. 🛡️ Target the precise theme array context source cleanly
+    $themeSource = $proposal['theme'] ?? $proposal['ui']['theme'] ?? $proposal;
+    
+    // Normalize keys to lowercase to completely eliminate case-sensitivity bugs dynamically
+    $theme = [];
+    if (is_array($themeSource)) {
+        foreach ($themeSource as $key => $value) {
+            $theme[strtolower($key)] = $value;
+        }
     }
 
-    // Extract styles with case-insensitive resilience to catch variations immediately
-    $badgeText   = $themeSource['badgeText']   ?? $themeSource['badgetext']   ?? 'REVIEW STATE';
-    $bgColor     = $themeSource['bgColor']     ?? $themeSource['bgcolor']     ?? '#6c757d'; 
-    $bgLight     = $themeSource['bgLight']     ?? $themeSource['bglight']     ?? '#f8f9fa'; 
-    $textColor   = $themeSource['textColor']   ?? $themeSource['textcolor']   ?? '#495057';
-    $borderColor = $themeSource['borderColor'] ?? $themeSource['bordercolor'] ?? '#dee2e6';
-
-    // 2. Safe extraction of the Narrative text description block
+    // 2. Extract the Summary Narrative text block
     $summary = 'Proposal evaluation sequence completed.';
-    if (isset($proposal['narratives'])) {
-        if (is_array($proposal['narratives'])) {
-            $summary = $proposal['narratives']['ui'] 
-                ?? $proposal['narratives']['report'] 
-                ?? ($proposal['narratives'][0] ?? $summary);
-        } else {
-            $summary = $proposal['narratives'];
-        }
+    if (!empty($proposal['narratives'])) {
+        $narratives = $proposal['narratives'];
+        $summary = is_array($narratives) 
+            ? ($narratives['ui'] ?? $narratives['report'] ?? ($narratives[0] ?? $summary))
+            : $narratives;
     } else {
-        $summary = $proposal['governanceNarrative'] ?? $summary;
+        $summary = $proposal['governanceNarrative'] ?? $proposal['summary'] ?? $summary;
     }
     
-    // 3. Render Component inside clean structural container layout bounds
+    // 3. Render Component using dynamic, pass-through lookups with strict fallback protections
     $html = '<div class="page-content-wrapper" style="padding-top: 10px; position: relative; clear: both;">';
     $html .= buildSectionHeader('Proposal Summary', 'clipboard.png');
     
     $html .= '
-    <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding: 18px; background: ' . $bgLight . '; border-left: 5px solid ' . $bgColor . '; border-top: 1px solid ' . $borderColor . '; border-right: 1px solid ' . $borderColor . '; border-bottom: 1px solid ' . $borderColor . '; border-radius: 6px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); position: relative;">
+    <div class="summaryNarrative" style="font-family: Arial, sans-serif; padding: 18px; background: ' . ($theme['bglight'] ?? '#f8f9fa') . '; border-left: 5px solid ' . ($theme['bgcolor'] ?? '#6c757d') . '; border-top: 1px solid ' . ($theme['bordercolor'] ?? '#dee2e6') . '; border-right: 1px solid ' . ($theme['bordercolor'] ?? '#dee2e6') . '; border-bottom: 1px solid ' . ($theme['bordercolor'] ?? '#dee2e6') . '; border-radius: 6px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); position: relative;">
         <table style="width: 100%; border-collapse: collapse; margin: 0; padding: 0;">
             <tr>
                 <td style="vertical-align: middle; padding: 0; text-align: left; color: #212529; font-size: 11px; line-height: 1.6; font-weight: 500;">
                     ' . nl2br(htmlspecialchars(trim($summary))) . '
                 </td>
                 <td style="vertical-align: middle; padding: 0 0 0 20px; text-align: right; width: 160px;">
-                    <div style="display: inline-block; background-color: ' . $bgLight . '; color: ' . $textColor . '; border: 1px solid ' . $borderColor . '; font-family: Arial, sans-serif; font-size: 9.5px; font-weight: 700; padding: 6px 14px; border-radius: 4px; text-align: center; white-space: nowrap; letter-spacing: 0.7px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                        ● ' . htmlspecialchars($badgeText) . '
+                    <div style="display: inline-block; background-color: ' . ($theme['bglight'] ?? '#f8f9fa') . '; color: ' . ($theme['textcolor'] ?? '#495057') . '; border: 1px solid ' . ($theme['bordercolor'] ?? '#dee2e6') . '; font-family: Arial, sans-serif; font-size: 9.5px; font-weight: 700; padding: 6px 14px; border-radius: 4px; text-align: center; white-space: nowrap; letter-spacing: 0.7px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                        ● ' . htmlspecialchars($theme['badgetext'] ?? 'REVIEW STATE') . '
                     </div>
                 </td>
             </tr>

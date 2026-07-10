@@ -1323,7 +1323,7 @@ if (empty($pc) && (($uiState['proposalStatus'] ?? '') === 'existing' || ($uiStat
 
 // Map baseline styles, falling back cleanly to a default gray state if undefined
 $theme = $pcmMatrix[$pc] ?? [
-    'badgeText'   => 'REVIEW STATES',
+    'badgeText'   => 'REVIEW STATE',
     'bgColor'     => '#6c757d', 
     'bgLight'     => '#f8f9fa', 
     'textColor'   => '#495057',
