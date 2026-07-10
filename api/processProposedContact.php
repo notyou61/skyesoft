@@ -1387,7 +1387,11 @@ $aiNarrativeResult = buildOperationalNarratives($narrativeContext);
 // Extract the standalone Content Line
 $contentLine = $aiNarrativeResult['contentLine'] ?? 'Proposal Information Update';
 
-// Format the structural array to map seamlessly with your existing framework
+// =====================================================
+// AI Content Line & Narrative Builder Injection
+// =====================================================
+
+// 1. Format the structural narratives array with the computed theme nested directly inside it
 $narratives = [
     'contentLine'=> $contentLine, 
     'ui'         => $aiNarrativeResult['decision'][0] ?? 'Proposal processing routing initiated.',
@@ -1397,17 +1401,19 @@ $narratives = [
     'review'     => $aiNarrativeResult['review'] ?? [],
     'info'       => $aiNarrativeResult['informational'] ?? [],
     
-    // 🌟 THE DYNAMIC PASS-THROUGH: Map it here so your downstream functions pick it up automatically!
+    // 🌟 NEST DIRECTLY INSIDE NARRATIVES SO THE TEMPLATE ENGINE LOADS IT SUCCESSFULLY
     'theme'      => $uiState['theme']
 ];
 
-// 🌟 INJECT DIRECTLY INTO THE ACTIVE CANONICAL DATA STRUCTURES BELOW IT
+// 2. 🌟 THE FIX: Inject the updated narratives array straight back into the canonical $data structure
 if (isset($data) && is_array($data)) {
-    $data['theme'] = $uiState['theme'];
+    $data['narratives'] = $narratives;
+    $data['theme']      = $uiState['theme']; // Backup top-level reference
 }
 
 if (isset($proposal) && is_array($proposal)) {
-    $proposal['theme'] = $uiState['theme'];
+    $proposal['narratives'] = $narratives;
+    $proposal['theme']      = $uiState['theme'];
 }
 
 error_log("[PPC][SECTION-14] AI Narrative Generation complete → Content Line: '{$contentLine}'");
