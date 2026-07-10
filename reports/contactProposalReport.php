@@ -314,7 +314,7 @@ function buildParcelSummarySection(array $proposal): string
 
 function buildParcelMapSection(array $proposal): string
 {
-    // 🌟 Using a structural table block to enforce page-break locks and match the Page 2 layout perfectly
+    // Enforce page-break locks and match the Page 2 layout perfectly
     $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
     $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
 
@@ -323,13 +323,33 @@ function buildParcelMapSection(array $proposal): string
     $path = $proposal['reportArtifacts']['parcelmap'] ?? null;
     $url  = $proposal['reportArtifacts']['parcelmapUrl'] ?? null;
     
+    // Fallback: If absolute file path checks fail due to permissions, try using the URL directly or base64 stream
+    $displayUrl = null;
     if ($path && file_exists($path)) {
-        // 🌟 MATCHING LAYOUT REAL-ESTATE: Force 100% width and brand-matching border
+        $displayUrl = htmlspecialchars($url ?: $path);
+    } elseif (!empty($url)) {
+        // Trust the URL string parsed out by getProposalData if it exists
+        $displayUrl = htmlspecialchars($url);
+    } else {
+        // Resolve path dynamically using proposalId from the root of input payload
+        $proposalId = $proposal['proposalId'] ?? null;
+        if ($proposalId) {
+            $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts/';
+            $pattern = $artifactsDir . 'TMP-IMG-PAR-' . str_pad((string)$proposalId, 6, '0', STR_PAD_LEFT) . '-*.png';
+            $matches = glob($pattern);
+            if (!empty($matches) && file_exists($matches[0])) {
+                $displayUrl = 'https://skyelighting.com/skyesoft/artifacts/' . basename($matches[0]);
+            }
+        }
+    }
+    
+    if ($displayUrl) {
+        // MATCHING LAYOUT REAL-ESTATE: Force 100% width and brand-matching border
         $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
-        $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Parcel Plat Map">';
+        $html .= '<img src="' . $displayUrl . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Parcel Plat Map">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1;">📍 Parcel plat map artifact unavailable</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1; margin-top: 12px;">📍 Parcel plat map artifact unavailable</div>';
     }
     
     $html .= '</td></tr>';
@@ -501,7 +521,14 @@ function getProposalData(array $input): array
     $location = $data['location'] ?? [];
     $artifacts = $input['reportArtifacts'] ?? $data['reportArtifacts'] ?? [];
     
-    // ... Keep any existing local variable asset resolution logic here unchanged ($rawStreet, $urlStreet, etc.) ...
+    // 🌟 LOCAL VARIABLE ASSET RESOLUTION (Preserved & Cleaned)
+    $rawStreet = $artifacts['streetview'] ?? null;
+    $rawSat    = $artifacts['satellite'] ?? null;
+    $rawParcel = $artifacts['parcelmap'] ?? null;
+    
+    $urlStreet = $rawStreet ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawStreet) : null;
+    $urlSat    = $rawSat ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawSat) : null;
+    $urlParcel = $rawParcel ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawParcel) : null;
 
     // 🌟 ENHANCED THEME EXTRACTION - covers all injection paths from processProposedContact
     $theme = $input['theme'] 
@@ -512,6 +539,8 @@ function getProposalData(array $input): array
         ?? [];
 
     return [
+        // 🌟 CRITICAL ROOT-LEVEL PAYLOAD ANCHORS
+        'proposalId'           => $input['proposalId'] ?? $data['proposalId'] ?? $input['activitySessionId'] ?? null,
         'entityName'           => $entity['entityName'] ?? $data['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
         'contactName'          => isset($contact['contactFirstName']) ? trim(($contact['contactFirstName'] ?? '') . ' ' . ($contact['contactLastName'] ?? '')) : ($data['contactName'] ?? $input['contactName'] ?? 'Unknown Contact'),
         'contactTitle'         => $contact['contactTitle'] ?? $data['contactTitle'] ?? $input['contactTitle'] ?? '',
@@ -529,7 +558,7 @@ function getProposalData(array $input): array
         'proposalCode'         => $data['proposalCode'] ?? $input['proposalCode'] ?? $data['pc_code'] ?? $input['pc_code'] ?? '',
         'parcelDetails'        => $location['parcelDetails'] ?? $data['parcelDetails'] ?? $input['parcelDetails'] ?? [],
         'narratives'           => $input['narratives'] ?? $data['narratives'] ?? [],
-        'theme'                => $theme,  // ← CRITICAL: Explicit top-level theme payload anchor
+        'theme'                => $theme,  // ← Explicit top-level theme payload anchor
         
         // System Status
         'status'               => $input['status'] ?? $data['status'] ?? 'proposed',
