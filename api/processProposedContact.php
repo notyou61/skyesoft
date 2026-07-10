@@ -1271,15 +1271,31 @@ if (empty($pc) && ($uiState['proposalStatus'] === 'existing' || $uiState['propos
 }
 
 switch ($pc) {
+    // =====================================================
+    // PC-0 — Existing Record
+    // =====================================================
     case 'PC-0':
+        $badgeText   = 'EXISTING RECORD';
+        $bgColor     = '#17a2b8'; // Info Teal
+        $bgLight     = 'rgba(23,162,184,.12)'; 
+        $textColor   = '#117a8b';
+        $borderColor = 'rgba(23,162,184,.25)';
+        break;
+
+    // =====================================================
+    // PC-1 — New Entity + Location + Contact
+    // =====================================================
     case 'PC-1':
-        $badgeText   = ($pc === 'PC-0') ? 'EXISTING RECORD' : 'READY TO CREATE';
+        $badgeText   = 'READY TO CREATE';
         $bgColor     = '#198754'; // Emerald Success Green
         $bgLight     = '#e8f5e9'; 
         $textColor   = '#198754';
         $borderColor = '#a3cfbb';
         break;
 
+    // =====================================================
+    // PC-2 — Existing Entity / New Location
+    // =====================================================
     case 'PC-2':
         $badgeText   = 'NEW LOCATION';
         $bgColor     = '#0dcaf0'; // Info Cyan
@@ -1288,6 +1304,9 @@ switch ($pc) {
         $borderColor = '#9eeaf9';
         break;
 
+    // =====================================================
+    // PC-3 — Existing Location / New Contact
+    // =====================================================
     case 'PC-3':
         $badgeText   = 'NEW CONTACT';
         $bgColor     = '#6f42c1'; // Purple
@@ -1296,6 +1315,9 @@ switch ($pc) {
         $borderColor = '#e1bee7';
         break;
 
+    // =====================================================
+    // PC-4 / PC-5 — Link & Map Location / New Location Only
+    // =====================================================
     case 'PC-4':
     case 'PC-5':
         $badgeText   = ($pc === 'PC-4') ? 'LINK & MAP LOCATION' : 'NEW LOCATION ONLY';
@@ -1335,13 +1357,21 @@ if (!empty($rsList) && !in_array('RS-0', $rsList)) {
     }
 }
 
-// Inject theme properties directly into UI State
+// 3. Inject Completed Presentation Model directly into UI State
 $uiState['theme'] = [
+    // Classification Context
+    'pc'          => $pc,
+    'rs'          => $rsList,
+
+    // Presentation Specs
     'badgeText'   => $badgeText,
     'bgColor'     => $bgColor,
     'bgLight'     => $bgLight,
     'textColor'   => $textColor,
-    'borderColor' => $borderColor
+    'borderColor' => $borderColor,
+
+    // Component Variant UI Hook
+    'variant'     => strtolower($pc ?? 'default')
 ];
 
 // =====================================================
