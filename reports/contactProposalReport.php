@@ -3,14 +3,14 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — contactProposalReport.php
 // Dynamic Foldable Proposal Report
-// Version: 2.8.1 (Table Stripes, Page Break Lock & Entity Fixed)
+// Version: 2.8.2 (Symmetrical Top Baselines & Structural Locking)
 // =============================================
 
 #region SECTION 00 - Main Report Generator
 if (function_exists('opcache_invalidate')) {
     opcache_invalidate(__FILE__, true);
 }
-error_log("=== contactProposalReport.php FULLY RELOADED (Dynamic v2.8.1) at " . date('H:i:s') . " ===");
+error_log("=== contactProposalReport.php FULLY RELOADED (Dynamic v2.8.2) at " . date('H:i:s') . " ===");
 
 function generateContactProposalReport(array $input): array
 {
@@ -34,8 +34,8 @@ function generateContactProposalReport(array $input): array
         'reportArtifacts' => $proposal['reportArtifacts'] ?? [],
         'reportMeta'      => [
             'generated_at' => date('Y-m-d H:i:s'),
-            'proposal_id'  => $input['proposalId'] ?? $input['activitySessionId'] ?? null,
-            'pc_code'      => $proposal['proposalCode'] ?? '', // 🌟 FIXED: Tracks against the unified 'proposalCode' key
+            'proposal_id'  => $proposal['proposalId'] ?? null,
+            'pc_code'      => $proposal['proposalCode'] ?? '',
         ]
     ];
 }
@@ -112,15 +112,11 @@ function buildContactProposalBody(array $proposal): string
     // Interactive Street View Imagery
     $html .= buildStreetViewSection($proposal);
        
-    // 🌟 Official parcel evidence: Plat Map Artifact Container
-    $html .= '<div class="parcel-map-block-wrapper" style="width: 100%; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">';
+    // Official parcel evidence: Plat Map Artifact Container
     $html .= buildParcelMapSection($proposal);
-    $html .= '</div>';
     
-    // 🌟 Supporting parcel data: Details Table Block Container
-    $html .= '<div class="parcel-detail-block-wrapper" style="width: 100%; margin-top: 4px; page-break-inside: avoid; break-inside: avoid;">';
+    // Supporting parcel data: Details Table Block Container
     $html .= buildParcelDetailSection($proposal);
-    $html .= '</div>';
     
     // Final Decision: Governance narrative block
     $html .= buildGovernanceSection($proposal);
@@ -133,7 +129,7 @@ function buildContactProposalBody(array $proposal): string
 function buildEntitySection(array $proposal): string
 {
     $html = buildSectionHeader('Entity Information', 'property.png');
-    $html .= '<div class="tableWrapper">'; // 🌟 Added wrap
+    $html .= '<div class="tableWrapper">'; 
     $html .= '<table class="dataTable">';
     $html .= '<tr><th>Entity Name</th><td>' . htmlspecialchars($proposal['entityName'] ?? 'N/A') . '</td></tr>';
     $html .= '</table>';
@@ -144,7 +140,7 @@ function buildEntitySection(array $proposal): string
 function buildContactSection(array $proposal): string
 {
     $html = buildSectionHeader('Contact Information', 'users.png');
-    $html .= '<div class="tableWrapper">'; // 🌟 Added wrap
+    $html .= '<div class="tableWrapper">'; 
     $html .= '<table class="dataTable">';
     $html .= '<tr><th>Contact Name</th><td>' . htmlspecialchars($proposal['contactName'] ?? 'N/A') . '</td></tr>';
     $html .= '<tr><th>Title</th><td>' . htmlspecialchars($proposal['contactTitle'] ?? '—') . '</td></tr>';
@@ -157,7 +153,6 @@ function buildContactSection(array $proposal): string
 
 function buildLocationSection(array $proposal): string
 {
-    // Extract Verification details for inline integration
     $placeName    = htmlspecialchars($proposal['reportArtifacts']['place_details']['name'] ?? $proposal['entityName'] ?? 'N/A');
     $placeRating  = htmlspecialchars($proposal['reportArtifacts']['place_details']['rating'] ?? '—');
     $placeReviews = htmlspecialchars((string)($proposal['reportArtifacts']['place_details']['user_ratings_total'] ?? ''));
@@ -181,7 +176,6 @@ function buildLocationSection(array $proposal): string
     $html .= '<tr><th>Jurisdiction</th><td>' . htmlspecialchars($proposal['locationJurisdiction'] ?? '—') . '</td></tr>';
     $html .= '<tr><th>Place ID</th><td>' . htmlspecialchars($placeId ?: 'N/A') . '</td></tr>';
     
-    // 🌟 INTEGRATED: Google Verification Fields appended cleanly to the matching Location set
     $html .= '<tr><th>Verification Name</th><td>' . $placeName . '</td></tr>';
     $html .= '<tr><th>Google Rating</th><td>' . $ratingString . '</td></tr>';
     $html .= '<tr><th>Coordinates</th><td>Lat: ' . $latValue . ' | Lng: ' . $lngValue . '</td></tr>';
@@ -197,11 +191,10 @@ function buildLocationSection(array $proposal): string
 
 function buildSatelliteSection(array $proposal): string
 {
-    // 🌟 Using a structural table block to enforce page-break locks across all mPDF engine variants
+    // 🌟 Enforce structured table locks to lock symmetrical top baseline break coordinates
     $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
     $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
     
-    // Inject Section Header inside the locked cell block
     $html .= buildSectionHeader('Location Overview — Satellite Context', 'pin.png');
     
     $path = $proposal['reportArtifacts']['satellite'] ?? null;
@@ -209,7 +202,7 @@ function buildSatelliteSection(array $proposal): string
     
     if ($path && file_exists($path)) {
         $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
-        $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Satellite View">';
+        $html .= '<img src="' . htmlspecialchars($url ?: $path) . '" width="100%" style="border: 1.5px solid #14377C; border-radius: 4px;" alt="Satellite View">';
         $html .= '</div>';
     } else {
         $lat = $proposal['latitude'] ?? null;
@@ -218,30 +211,31 @@ function buildSatelliteSection(array $proposal): string
         if ($googleKey && $lat && $lng) {
             $staticUrl = "https://maps.googleapis.com/maps/api/staticmap?center={$lat},{$lng}&zoom=18&size=1024x576&maptype=satellite&markers=color:red%7C{$lat},{$lng}&key={$googleKey}";
             $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
-            $html .= '<img src="' . htmlspecialchars($staticUrl) . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Satellite View Fallback">';
+            $html .= '<img src="' . htmlspecialchars($staticUrl) . '" width="100%" style="border: 1.5px solid #14377C; border-radius: 4px;" alt="Satellite View Fallback">';
             $html .= '</div>';
         } else {
-            $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1;">📍 Satellite imagery unavailable</div>';
+            $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1; margin-top: 12px;">📍 Satellite imagery unavailable</div>';
         }
     }
     
     $html .= '</td></tr>';
     $html .= '</table>';
     
-    // Add margin buffer spacing after the locked table element to clean up layout flow
+    // Standard margin structural clear
     $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     
     return $html;
 }
+
 function buildStreetViewSection(array $proposal): string
 {
-    // 🌟 RESET: Dropped structural tables completely. Using modern block containers to match your UX design.
-    $html = '<div class="proposal-section" style="width: 100%; margin-bottom: 14px; page-break-inside: avoid; break-inside: avoid; display: block; clear: both;">';
+    // 🌟 FIXED: Converted from a generic div block to an identical structural lock table to secure baseline alignment harmony
+    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
+    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
     
-    // Inject Section Header cleanly into the standard document flow
     $html .= buildSectionHeader('Street View Verification', 'property.png');
     
-    $proposalId = $proposal['proposalCode'] ?? $proposal['proposalId'] ?? null;
+    $proposalId = $proposal['proposalId'] ?? null;
     $base64Data = null;
     $mimeType = 'image/jpeg';
     
@@ -271,35 +265,40 @@ function buildStreetViewSection(array $proposal): string
         }
     }
     
-    // RENDER IMAGE WITH SAME REAL-ESTATE AS THE SATELLITE CARD
     if ($base64Data !== null) {
-        $html .= '<div style="text-align: center; margin: 10px 0 4px 0; width: 100%; clear: both; display: block;">';
-        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" width="100%" style="border: 1.5px solid #14377C; border-radius: 4px; display: block;" alt="Street View">';
+        $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
+        $html .= '<img src="data:' . $mimeType . ';base64,' . $base64Data . '" width="100%" style="border: 1.5px solid #14377C; border-radius: 4px;" alt="Street View">';
         $html .= '</div>';
     } else {
-        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1; margin-top: 10px; clear: both;">📍 Street View unavailable</div>';
+        $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1; margin-top: 12px;">📍 Street View unavailable</div>';
     }
     
-    $html .= '</div>'; // Safely closes the standalone structural container
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    
+    // Standard margin structural clear
+    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     
     return $html;
 }
 
 function buildParcelSummarySection(array $proposal): string
 {
-    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 24px; width: 100%;">';
+    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
+    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
     $html .= buildSectionHeader('Parcel Candidates – Summary', 'compass.png');
     $html .= '<div class="parcelSummaryBlock" style="padding:12px; line-height:1.4; font-family: Arial, sans-serif; font-size:11px;">';
     $html .= 'Multiple parcel candidates exist at this address.<br><br>';
     $html .= 'Review and selection is required before proceeding.';
     $html .= '</div>';
-    $html .= '</div>';
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     return $html;
 }
 
 function buildParcelMapSection(array $proposal): string
 {
-    // Enforce page-break locks and match the Page 2 layout perfectly
     $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
     $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
 
@@ -308,15 +307,12 @@ function buildParcelMapSection(array $proposal): string
     $path = $proposal['reportArtifacts']['parcelmap'] ?? null;
     $url  = $proposal['reportArtifacts']['parcelmapUrl'] ?? null;
     
-    // Fallback: If absolute file path checks fail due to permissions, try using the URL directly or base64 stream
     $displayUrl = null;
     if ($path && file_exists($path)) {
         $displayUrl = htmlspecialchars($url ?: $path);
     } elseif (!empty($url)) {
-        // Trust the URL string parsed out by getProposalData if it exists
         $displayUrl = htmlspecialchars($url);
     } else {
-        // Resolve path dynamically using proposalId from the root of input payload
         $proposalId = $proposal['proposalId'] ?? null;
         if ($proposalId) {
             $artifactsDir = '/home/notyou64/public_html/skyesoft/artifacts/';
@@ -329,9 +325,8 @@ function buildParcelMapSection(array $proposal): string
     }
     
     if ($displayUrl) {
-        // MATCHING LAYOUT REAL-ESTATE: Force 100% width and brand-matching border
         $html .= '<div style="text-align: center; margin: 12px 0 4px 0; width: 100%;">';
-        $html .= '<img src="' . $displayUrl . '" width="100%" style="border: 1.5px solid #1a365d; border-radius: 4px;" alt="Parcel Plat Map">';
+        $html .= '<img src="' . $displayUrl . '" width="100%" style="border: 1.5px solid #14377C; border-radius: 4px;" alt="Parcel Plat Map">';
         $html .= '</div>';
     } else {
         $html .= '<div class="image-placeholder" style="min-height:260px; padding-top:20px; font-family: Arial, sans-serif; font-size:11px; text-align:center; color:#718096; background:#f8fafc; border:1px dashed #cbd5e1; margin-top: 12px;">📍 Parcel plat map artifact unavailable</div>';
@@ -340,7 +335,7 @@ function buildParcelMapSection(array $proposal): string
     $html .= '</td></tr>';
     $html .= '</table>';
     
-    // Smooth trail margin out to the next block baseline bounds
+    // Standard margin structural clear
     $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     
     return $html;
@@ -353,9 +348,10 @@ function buildParcelDetailSection(array $proposal): string
         return '';
     }
 
-    $html = '<div class="detail-section-container" style="width: 100%; display: block; clear: both;">';
+    // 🌟 FIXED: Converted container to identical structural lock table layout format
+    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
+    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
     
-    // 🌟 FIXED: Reverted to local resource string filename to resolve the missing icon
     $html .= buildSectionHeader('Parcel Candidates – Detail', 'folder.png');
     
     foreach ($parcels as $index => $p) {
@@ -371,7 +367,7 @@ function buildParcelDetailSection(array $proposal): string
         $cleanApnForUrl = str_replace('-', '', $apn);
         $assessorUrl    = "https://mcassessor.maricopa.gov/mcs.php?q=" . urlencode($cleanApnForUrl);
 
-        $html .= '<table class="dataTable" style="width: 100%; margin-top: 6px; margin-bottom: 14px; border-collapse: collapse; page-break-inside: avoid; break-inside: avoid;">';
+        $html .= '<table class="dataTable" style="width: 100%; margin-top: 12px; margin-bottom: 4px; border-collapse: collapse; page-break-inside: avoid; break-inside: avoid;">';
         $html .= '<thead>
                     <tr>
                         <th colspan="2" style="background-color: #14377C; color: #ffffff; text-align: left; padding: 7px 10px; font-weight: bold;">
@@ -410,7 +406,12 @@ function buildParcelDetailSection(array $proposal): string
         $html .= '</table>';
     }
     
-    $html .= '</div>';
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    
+    // Standard margin structural clear
+    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
+    
     return $html;
 }
 
@@ -418,13 +419,19 @@ function buildGovernanceSection(array $proposal): string
 {
     $narrative = $proposal['governanceNarrative'] ?? 'Governance review pending.';
     
-    $html = '<div class="proposal-section" style="page-break-inside: avoid; break-inside: avoid; width: 100%; margin-top: 14px; display: block; clear: both;">';
+    // 🌟 FIXED: Converted container to structural lock table layout format
+    $html = '<table class="section-lock-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0; page-break-inside: avoid; break-inside: avoid;">';
+    $html .= '<tr><td style="padding: 0; margin: 0; border: none;">';
     
-    // 🌟 FIXED: Passed clear literal ampersand title to prevent double-escaping glitches
     $html .= buildSectionHeader('Governance & Operational Narrative', 'scales.png');
     
-    $html .= '<div class="highlight" style="font-family: Arial, sans-serif; background-color: #ffffff; border-left: 4px solid #14377C; padding: 14px; font-size: 10.5px; line-height: 1.6; text-align: justify; color: #2d3748; margin-top: 10px;">' . nl2br(htmlspecialchars($narrative)) . '</div>';
-    $html .= '</div>';
+    $html .= '<div class="highlight" style="font-family: Arial, sans-serif; background-color: #ffffff; border-left: 4px solid #14377C; padding: 14px; font-size: 10.5px; line-height: 1.6; text-align: justify; color: #2d3748; margin-top: 12px;">' . nl2br(htmlspecialchars($narrative)) . '</div>';
+    
+    $html .= '</td></tr>';
+    $html .= '</table>';
+    
+    // Standard margin structural clear
+    $html .= '<div style="margin-bottom: 24px; font-size: 1px; line-height: 1px;">&nbsp;</div>';
     
     return $html;
 }
@@ -433,12 +440,11 @@ function buildGovernanceSection(array $proposal): string
 #region SECTION 04 - Helpers
 function buildSectionHeader(string $title, string $icon = 'clipboard.png'): string
 {
-    // Ensure titles bypass internal double escaping loops safely
     return '
-    <table class="sectionHeaderTable" style="width:100%; margin-bottom:8px; border-bottom: 2px solid #1a365d; font-family: Arial, sans-serif;">
+    <table class="sectionHeaderTable" style="width:100%; margin-bottom:8px; border-bottom: 2px solid #14377C; font-family: Arial, sans-serif;">
         <tr>
             <td class="sectionIconCell" style="width:24px; padding:4px 0;"><img src="https://skyelighting.com/skyesoft/assets/images/icons/' . htmlspecialchars($icon) . '" class="sectionIcon" style="width:16px; height:16px; display:block;"></td>
-            <td class="sectionTitleCell" style="padding:4px 6px;"><div class="sectionTitle" style="font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; color: #1a365d; text-transform: uppercase; letter-spacing: 0.5px;">' . htmlspecialchars($title) . '</div></td>
+            <td class="sectionTitleCell" style="padding:4px 6px;"><div class="sectionTitle" style="font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; color: #14377C; text-transform: uppercase; letter-spacing: 0.5px;">' . htmlspecialchars($title) . '</div></td>
         </tr>
     </table>';
 }
@@ -447,13 +453,11 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // 1. 🛡️ Target the precise theme array context source cleanly
     $themeSource = $proposal['theme'] 
     ?? $proposal['narratives']['theme'] 
     ?? $proposal['ui']['theme'] 
     ?? $proposal;
     
-    // Normalize keys to lowercase to completely eliminate case-sensitivity bugs dynamically
     $theme = [];
     if (is_array($themeSource)) {
         foreach ($themeSource as $key => $value) {
@@ -461,7 +465,6 @@ function generateSummarySection(array $proposal): string
         }
     }
 
-    // 2. Extract the Summary Narrative text block
     $summary = 'Proposal evaluation sequence completed.';
     if (!empty($proposal['narratives'])) {
         $narratives = $proposal['narratives'];
@@ -472,7 +475,6 @@ function generateSummarySection(array $proposal): string
         $summary = $proposal['governanceNarrative'] ?? $proposal['summary'] ?? $summary;
     }
     
-    // 3. Render Component using dynamic, pass-through lookups with strict fallback protections
     $html = '<div class="page-content-wrapper" style="padding-top: 10px; position: relative; clear: both;">';
     $html .= buildSectionHeader('Proposal Summary', 'clipboard.png');
     
@@ -506,7 +508,6 @@ function getProposalData(array $input): array
     $location = $data['location'] ?? [];
     $artifacts = $input['reportArtifacts'] ?? $data['reportArtifacts'] ?? [];
     
-    // 🌟 LOCAL VARIABLE ASSET RESOLUTION (Preserved & Cleaned)
     $rawStreet = $artifacts['streetview'] ?? null;
     $rawSat    = $artifacts['satellite'] ?? null;
     $rawParcel = $artifacts['parcelmap'] ?? null;
@@ -515,7 +516,6 @@ function getProposalData(array $input): array
     $urlSat    = $rawSat ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawSat) : null;
     $urlParcel = $rawParcel ? str_replace('/home/notyou64/public_html', 'https://skyelighting.com', $rawParcel) : null;
 
-    // 🌟 ENHANCED THEME EXTRACTION - covers all injection paths from processProposedContact
     $theme = $input['theme'] 
         ?? $data['theme'] 
         ?? $input['narratives']['theme'] 
@@ -524,7 +524,6 @@ function getProposalData(array $input): array
         ?? [];
 
     return [
-        // 🌟 CRITICAL ROOT-LEVEL PAYLOAD ANCHORS
         'proposalId'           => $input['proposalId'] ?? $data['proposalId'] ?? $input['activitySessionId'] ?? null,
         'entityName'           => $entity['entityName'] ?? $data['entityName'] ?? $input['entityName'] ?? 'Unknown Entity',
         'contactName'          => isset($contact['contactFirstName']) ? trim(($contact['contactFirstName'] ?? '') . ' ' . ($contact['contactLastName'] ?? '')) : ($data['contactName'] ?? $input['contactName'] ?? 'Unknown Contact'),
@@ -543,9 +542,8 @@ function getProposalData(array $input): array
         'proposalCode'         => $data['proposalCode'] ?? $input['proposalCode'] ?? $data['pc_code'] ?? $input['pc_code'] ?? '',
         'parcelDetails'        => $location['parcelDetails'] ?? $data['parcelDetails'] ?? $input['parcelDetails'] ?? [],
         'narratives'           => $input['narratives'] ?? $data['narratives'] ?? [],
-        'theme'                => $theme,  // ← Explicit top-level theme payload anchor
+        'theme'                => $theme,
         
-        // System Status
         'status'               => $input['status'] ?? $data['status'] ?? 'proposed',
         'ui'                   => $input['ui'] ?? $data['ui'] ?? [],
         'proposalStatus'       => $input['ui']['proposalStatus'] ?? $data['ui']['proposalStatus'] ?? 'existing',
@@ -582,7 +580,6 @@ function normalizeProposalData(array $input): array
         'pc_code'              => $input['proposalCode'] ?? $input['pc_code'] ?? '',
         'parcelDetails'        => $input['parcelDetails'] ?? [],
         
-        // 🌟 Pass-through fields kept intact here as well
         'status'               => $input['status'] ?? 'proposed',
         'ui'                   => $input['ui'] ?? [],
         'proposalStatus'       => $input['ui']['proposalStatus'] ?? $input['proposalStatus'] ?? 'existing',
