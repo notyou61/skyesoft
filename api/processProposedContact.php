@@ -1401,8 +1401,12 @@ $narratives = [
     'theme'      => $uiState['theme']
 ];
 
-// 🌟 INJECT DIRECTLY INTO THE ACTIVE PROPOSAL TARGET WRAPPER BELOW IT
-if (isset($proposal)) {
+// 🌟 INJECT DIRECTLY INTO THE ACTIVE CANONICAL DATA STRUCTURES BELOW IT
+if (isset($data) && is_array($data)) {
+    $data['theme'] = $uiState['theme'];
+}
+
+if (isset($proposal) && is_array($proposal)) {
     $proposal['theme'] = $uiState['theme'];
 }
 
