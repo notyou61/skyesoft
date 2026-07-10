@@ -111,14 +111,7 @@ function buildContactProposalBody(array $proposal): string
     
     // Interactive Street View Imagery
     $html .= buildStreetViewSection($proposal);
-    
-    // =========================================================================
-    // RESTORED: Isolate the Plat Map inside its own clean structural container
-    // =========================================================================
-    $html .= '<div class="parcel-map-block-wrapper" style="width: 100%; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">';
-    $html .= buildParcelMapSection($proposal);
-    $html .= '</div>';
-    
+       
     // 🌟 FIX: Isolate the Detail Table completely into its own distinct, un-nested block container
     $html .= '<div class="parcel-detail-block-wrapper" style="width: 100%; margin-top: 4px; page-break-inside: avoid; break-inside: avoid;">';
     $html .= buildParcelDetailSection($proposal);
