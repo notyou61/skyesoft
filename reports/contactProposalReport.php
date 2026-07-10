@@ -91,7 +91,7 @@ function buildContactProposalBody(array $proposal): string
         }
     </style>';
     
-    // Card 1: Entity Information Block (Using the new wrapper pattern)
+    // Card 1: Entity Information Block
     $html .= '<div class="proposal-section" style="page-break-inside: avoid; margin-bottom: 10px; width: 100%;">';
     $html .= buildEntitySection($proposal);
     $html .= '</div>';
@@ -106,31 +106,23 @@ function buildContactProposalBody(array $proposal): string
     $html .= buildLocationSection($proposal);
     $html .= '</div>';
     
-    // Map Context Group (Satellite overview) — Locked inside a structurally complete single container
+    // Map Context Group (Satellite overview)
     $html .= buildSatelliteSection($proposal);
     
     // Interactive Street View Imagery
     $html .= buildStreetViewSection($proposal);
        
-    // 🌟 FIX: Isolate the Detail Table completely into its own distinct, un-nested block container
-    $html .= '<div class="parcel-detail-block-wrapper" style="width: 100%; margin-top: 4px; page-break-inside: avoid; break-inside: avoid;">';
-    $html .= buildParcelDetailSection($proposal);
-    $html .= '</div>';
-    
-    // Parcel Overviews & Plat Map matching
-    //$html .= buildParcelSummarySection($proposal);
-    
-    // 🌟 FIX: Isolate the Plat Map inside its own clean structural section container block
+    // 🌟 Official parcel evidence: Plat Map Artifact Container
     $html .= '<div class="parcel-map-block-wrapper" style="width: 100%; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid;">';
     $html .= buildParcelMapSection($proposal);
     $html .= '</div>';
     
-    // 🌟 FIX: Isolate the Detail Table completely into its own distinct, un-nested block container
+    // 🌟 Supporting parcel data: Details Table Block Container
     $html .= '<div class="parcel-detail-block-wrapper" style="width: 100%; margin-top: 4px; page-break-inside: avoid; break-inside: avoid;">';
     $html .= buildParcelDetailSection($proposal);
     $html .= '</div>';
     
-    // Governance narrative block
+    // Final Decision: Governance narrative block
     $html .= buildGovernanceSection($proposal);
     
     return $html;
