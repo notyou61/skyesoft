@@ -1267,9 +1267,9 @@ $pcmMatrix = [
     'PC-0' => [
         'badgeText'   => 'EXISTING RECORD',
         'bgColor'     => '#17a2b8', // Info Teal
-        'bgLight'     => 'rgba(23,162,184,.12)', 
+        'bgLight'     => '#eef9fa', // 🌟 Fixed: Solid flat Hex background for PDF engine parsing safety
         'textColor'   => '#117a8b',
-        'borderColor' => 'rgba(23,162,184,.25)'
+        'borderColor' => '#cbeaf0'  // 🌟 Fixed: Solid flat Hex border
     ],
     'PC-1' => [
         'badgeText'   => 'READY TO CREATE',
@@ -1309,41 +1309,11 @@ $pcmMatrix = [
 ];
 
 $rsMatrix = [
-    'RS-3' => [
-        'badgeText'   => 'INCOMPLETE',
-        'bgColor'     => '#ffc107', // Warning Amber
-        'bgLight'     => '#fff9db',
-        'textColor'   => '#664d03',
-        'borderColor' => '#ffecb5'
-    ],
-    'RS-5' => [
-        'badgeText'   => 'DUPLICATE',
-        'bgColor'     => '#dc3545', // Danger Red
-        'bgLight'     => '#f8d7da',
-        'textColor'   => '#842029',
-        'borderColor' => '#f5c2c7'
-    ],
-    'RS-6' => [
-        'badgeText'   => 'REVIEW REQUIRED',
-        'bgColor'     => '#fd7e14', // Warning Orange
-        'bgLight'     => '#fff3cd',
-        'textColor'   => '#b95000',
-        'borderColor' => '#ffe69c'
-    ],
-    'RS-7' => [
-        'badgeText'   => 'PARCEL UNRESOLVED',
-        'bgColor'     => '#dc3545', // Danger Red
-        'bgLight'     => '#f8d7da',
-        'textColor'   => '#842029',
-        'borderColor' => '#f5c2c7'
-    ],
-    'RS-8' => [
-        'badgeText'   => 'LOCATION INVALID',
-        'bgColor'     => '#dc3545', // Danger Red
-        'bgLight'     => '#f8d7da',
-        'textColor'   => '#842029',
-        'borderColor' => '#f5c2c7'
-    ]
+    'RS-3' => ['badgeText' => 'INCOMPLETE', 'bgColor' => '#ffc107', 'bgLight' => '#fff9db', 'textColor' => '#664d03', 'borderColor' => '#ffecb5'],
+    'RS-5' => ['badgeText' => 'DUPLICATE', 'bgColor' => '#dc3545', 'bgLight' => '#f8d7da', 'textColor' => '#842029', 'borderColor' => '#f5c2c7'],
+    'RS-6' => ['badgeText' => 'REVIEW REQUIRED', 'bgColor' => '#fd7e14', 'bgLight' => '#fff3cd', 'textColor' => '#b95000', 'borderColor' => '#ffe69c'],
+    'RS-7' => ['badgeText' => 'PARCEL UNRESOLVED', 'bgColor' => '#dc3545', 'bgLight' => '#f8d7da', 'textColor' => '#842029', 'borderColor' => '#f5c2c7'],
+    'RS-8' => ['badgeText' => 'LOCATION INVALID', 'bgColor' => '#dc3545', 'bgLight' => '#f8d7da', 'textColor' => '#842029', 'borderColor' => '#f5c2c7']
 ];
 
 // 1. Establish Baseline Proposal Classification Mode
@@ -1365,7 +1335,7 @@ if (!empty($rsList) && !in_array('RS-0', $rsList)) {
     foreach (['RS-3', 'RS-5', 'RS-6', 'RS-7', 'RS-8'] as $rsKey) {
         if (in_array($rsKey, $rsList) && isset($rsMatrix[$rsKey])) {
             $theme = $rsMatrix[$rsKey];
-            break; // First match wins based on priority hierarchy sequence
+            break; 
         }
     }
 }
@@ -1373,14 +1343,18 @@ if (!empty($rsList) && !in_array('RS-0', $rsList)) {
 // 3. Inject Completed Presentation Model directly into UI State
 $uiState['theme'] = [
     'pc'          => $pc,
-    'rs'          => $rsList ?? [],
+    'rs'          => $rsList,
     'badgeText'   => $theme['badgeText'],
     'bgColor'     => $theme['bgColor'],
     'bgLight'     => $theme['bgLight'],
     'textColor'   => $theme['textColor'],
     'borderColor' => $theme['borderColor'],
-    'variant'     => strtolower($pc ?? 'default')
+    'variant'     => strtolower($pc ?: 'default')
 ];
+
+// 🌟 CRITICAL FIX: Synchronize tracking variables back into parent $pcm wrapper for context consistency
+$pcm['pc'] = $pc;
+$pcm['rs'] = $rsList;
 
 // =====================================================
 // AI Content Line & Narrative Builder Injection
@@ -1394,7 +1368,7 @@ $narrativeContext = [
     'databaseResolution' => $databaseResolution ?? [],
     'governance'         => $governance ?? [],
     
-    // 🌟 Explicitly flattened keys matching the prompt definitions exactly
+    // Explicitly flattened keys matching the prompt definitions exactly
     'contactFirstName'   => $data['contact']['contactFirstName'] ?? '',
     'contactLastName'    => $data['contact']['contactLastName'] ?? '',
     'entityName'         => $data['entity']['entityName'] ?? '',
@@ -1421,7 +1395,10 @@ $narratives = [
     'decisions'  => $aiNarrativeResult['decision'] ?? [],
     'blocking'   => $aiNarrativeResult['blocking'] ?? [],
     'review'     => $aiNarrativeResult['review'] ?? [],
-    'info'       => $aiNarrativeResult['informational'] ?? []
+    'info'       => $aiNarrativeResult['informational'] ?? [],
+    
+    // 🌟 CRITICAL LINK: Bridge the UI State Theme directly into the output payload data wrapper to ensure it's DRY
+    'theme'      => $uiState['theme']
 ];
 
 error_log("[PPC][SECTION-14] AI Narrative Generation complete → Content Line: '{$contentLine}'");
