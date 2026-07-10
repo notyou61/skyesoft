@@ -1138,6 +1138,10 @@ $pcm = [
     'rs' => $pcm['rs']
 ];
 
+// 🌟 UNPACK FOR DOWNSTREAM MATRIX AND UI STATE PIPELINE
+$pc     = $pcm['pc'];
+$rsList = $pcm['rs'];
+
 error_log('[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] . ' | RS=[' . implode(', ', $pcm['rs']) . '] | Blocks=' . ($blocksCommit ? 'YES' : 'NO'));
 
 // Generates a 6-digit numeric sequence (e.g., using microseconds part or a random pad)
