@@ -1397,9 +1397,14 @@ $narratives = [
     'review'     => $aiNarrativeResult['review'] ?? [],
     'info'       => $aiNarrativeResult['informational'] ?? [],
     
-    // 🌟 CRITICAL LINK: Bridge the UI State Theme directly into the output payload data wrapper to ensure it's DRY
+    // 🌟 THE DYNAMIC PASS-THROUGH: Map it here so your downstream functions pick it up automatically!
     'theme'      => $uiState['theme']
 ];
+
+// 🌟 INJECT DIRECTLY INTO THE ACTIVE PROPOSAL TARGET WRAPPER BELOW IT
+if (isset($proposal)) {
+    $proposal['theme'] = $uiState['theme'];
+}
 
 error_log("[PPC][SECTION-14] AI Narrative Generation complete → Content Line: '{$contentLine}'");
 
