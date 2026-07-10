@@ -429,14 +429,21 @@ function buildSectionHeader(string $title, string $icon = 'clipboard.png'): stri
 #region SECTION 05 - Summary
 function generateSummarySection(array $proposal): string
 {
-    // 1. Bulletproof Extraction checking deep matrix paths or top-level array directly
-    $themeSource = $proposal['ui']['theme'] ?? $proposal['theme'] ?? $proposal;
+    // 1. 🛡️ Deep-Scan Extraction Layer (Handles flat JSON payloads or nested wrappers)
+    if (isset($proposal['ui']['theme']) && is_array($proposal['ui']['theme'])) {
+        $themeSource = $proposal['ui']['theme'];
+    } elseif (isset($proposal['theme']) && is_array($proposal['theme'])) {
+        $themeSource = $proposal['theme'];
+    } else {
+        $themeSource = $proposal; // Direct fallback to root array scope for flat JSON
+    }
 
-    $badgeText   = $themeSource['badgeText']   ?? 'REVIEW STATE';
-    $bgColor     = $themeSource['bgColor']     ?? '#6c757d'; 
-    $bgLight     = $themeSource['bgLight']     ?? '#f8f9fa'; 
-    $textColor   = $themeSource['textColor']   ?? '#495057';
-    $borderColor = $themeSource['borderColor'] ?? '#dee2e6';
+    // Extract styles with case-insensitive resilience to catch variations immediately
+    $badgeText   = $themeSource['badgeText']   ?? $themeSource['badgetext']   ?? 'REVIEW STATE';
+    $bgColor     = $themeSource['bgColor']     ?? $themeSource['bgcolor']     ?? '#6c757d'; 
+    $bgLight     = $themeSource['bgLight']     ?? $themeSource['bglight']     ?? '#f8f9fa'; 
+    $textColor   = $themeSource['textColor']   ?? $themeSource['textcolor']   ?? '#495057';
+    $borderColor = $themeSource['borderColor'] ?? $themeSource['bordercolor'] ?? '#dee2e6';
 
     // 2. Safe extraction of the Narrative text description block
     $summary = 'Proposal evaluation sequence completed.';
