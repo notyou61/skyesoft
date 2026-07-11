@@ -1116,6 +1116,24 @@ if ($isExplicitLocationOnlyIntent === true) {
 }
 
 // =====================================================
+// 🌟 DYNAMIC TEXT OVERRIDES FOR PC-6 LIFECYCLES
+// =====================================================
+if ($pcm['pc'] === 'PC-6') {
+    // 1. Correct the high-level description line
+    $fullName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
+    $entityName = $data['entity']['entityName'] ?? 'Existing Entity';
+    $narratives['contentLine'] = "Contact Succession Proposal for {$fullName} at {$entityName}";
+    
+    // 2. Overwrite the generic fallback UI text with explicit succession language
+    $successionNarrative = "The proposal will retire the existing contact record, create a replacement contact associated with the new location, and preserve historical relationships with prior operational records.";
+    $narratives['ui'] = $successionNarrative;
+    $narratives['decisions'] = [$successionNarrative];
+    
+    // 3. Clear out the contradictory "unresolved" warning since a new location is expected behavior
+    $narratives['review'] = []; 
+}
+
+// =====================================================
 // GOVERNANCE — RS Rules
 // =====================================================
 
@@ -1591,6 +1609,25 @@ $proposalSnapshot['snapshotPath'] = $snapshotPath;
 #endregion
 
 #region SECTION 16 — Final Output Builder
+
+// =====================================================
+// 🌟 DYNAMIC TEXT OVERRIDES FOR PC-6 LIFECYCLES (Catch-All Sanitization)
+// =====================================================
+if (($pcm['pc'] ?? '') === 'PC-6') {
+    $fullName   = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
+    $entityName = $data['entity']['entityName'] ?? 'Existing Entity';
+    
+    // 1. Correct the high-level description line
+    $narratives['contentLine'] = "Contact Succession Proposal for {$fullName} at {$entityName}";
+    
+    // 2. Overwrite the generic fallback UI text with explicit succession language
+    $successionNarrative = "The proposal will retire the existing contact record, create a replacement contact associated with the new location, and preserve historical relationships with prior operational records.";
+    $narratives['ui']        = $successionNarrative;
+    $narratives['decisions'] = [$successionNarrative];
+    
+    // 3. Clear out the contradictory "unresolved" warning since a new location is expected behavior
+    $narratives['review']    = []; 
+}
 
 // =====================================================
 // 🔐 SECURE KEY PROJECTION FOR WORKSPACE AUTO-CHAINING
