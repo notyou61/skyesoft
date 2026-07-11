@@ -1029,17 +1029,27 @@ if ($pdo) {
     // 3. Contact Resolution
     $databaseResolution['contact'] = evaluateDuplicate($parsed, $pdo);
 
-    // 🌟 NEW: PC-6 Succession Evaluation
-    // Check if the contact exists, but belongs to a different location than the proposal targets
+    // ====================================================================
+    // 🌟 FIXED: PC-6 Succession Evaluation (Key-Drift & Brand New Location Patch)
+    // ====================================================================
     $contactStatus = $databaseResolution['contact']['status'] ?? 'none';
     
     if ($contactStatus === 'exact') {
-        $existingContactLocationId = $databaseResolution['contact']['location_id'] ?? null;
-        $proposedLocationId        = $databaseResolution['location']['location_id'] ?? null;
+        // Accommodate case variation (camelCase coming from JSON streams vs snake_case from direct DB schemas)
+        $existingContactLocationId = $databaseResolution['contact']['locationId'] 
+            ?? $databaseResolution['contact']['location_id'] 
+            ?? null;
+            
+        $proposedLocationId = $databaseResolution['location']['locationId'] 
+            ?? $databaseResolution['location']['location_id'] 
+            ?? null;
+            
+        $locationStatus = $databaseResolution['location']['status'] ?? 'none';
 
-        // If the contact matches exactly, but the location IDs don't match (or proposed is a brand new location), 
-        // flag it as a location transfer to activate the PC-6 Succession Lifecycle.
-        if (!empty($existingContactLocationId) && $existingContactLocationId !== $proposedLocationId) {
+        // An asset transfer (PC-6) is triggered if:
+        // 1. The contact currently belongs to an existing canonical location ID...
+        // 2. AND either the target location is completely new ('none') OR maps to a different record entirely.
+        if ($existingContactLocationId && ($locationStatus === 'none' || $existingContactLocationId != $proposedLocationId)) {
             $databaseResolution['contact']['isLocationTransfer'] = true;
         } else {
             $databaseResolution['contact']['isLocationTransfer'] = false;
@@ -1048,10 +1058,10 @@ if ($pdo) {
         $databaseResolution['contact']['isLocationTransfer'] = false;
     }
 
-    error_log('[PPC][SECTION-10] Database resolution complete (Succession evaluated)');
+    error_log('[PPC][SECTION-11] Database resolution complete (Succession evaluated)');
 
 } else {
-    error_log('[PPC][SECTION-10] No PDO connection — skipping DB resolution');
+    error_log('[PPC][SECTION-11] No PDO connection — skipping DB resolution');
 }
 
 #endregion
