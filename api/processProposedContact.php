@@ -1029,7 +1029,26 @@ if ($pdo) {
     // 3. Contact Resolution
     $databaseResolution['contact'] = evaluateDuplicate($parsed, $pdo);
 
-    error_log('[PPC][SECTION-10] Database resolution complete');
+    // 🌟 NEW: PC-6 Succession Evaluation
+    // Check if the contact exists, but belongs to a different location than the proposal targets
+    $contactStatus = $databaseResolution['contact']['status'] ?? 'none';
+    
+    if ($contactStatus === 'exact') {
+        $existingContactLocationId = $databaseResolution['contact']['location_id'] ?? null;
+        $proposedLocationId        = $databaseResolution['location']['location_id'] ?? null;
+
+        // If the contact matches exactly, but the location IDs don't match (or proposed is a brand new location), 
+        // flag it as a location transfer to activate the PC-6 Succession Lifecycle.
+        if (!empty($existingContactLocationId) && $existingContactLocationId !== $proposedLocationId) {
+            $databaseResolution['contact']['isLocationTransfer'] = true;
+        } else {
+            $databaseResolution['contact']['isLocationTransfer'] = false;
+        }
+    } else {
+        $databaseResolution['contact']['isLocationTransfer'] = false;
+    }
+
+    error_log('[PPC][SECTION-10] Database resolution complete (Succession evaluated)');
 
 } else {
     error_log('[PPC][SECTION-10] No PDO connection — skipping DB resolution');
@@ -1049,20 +1068,29 @@ $entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
 $locationStatus = $databaseResolution['location']['status'] ?? 'none';
 $contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
 
-error_log("[PPC][SECTION-12] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus");
+// 🌟 NEW: Extracted from Section 11 to identify if an existing contact is migrating locations
+$isLocationTransfer = $databaseResolution['contact']['isLocationTransfer'] ?? false;
+
+error_log("[PPC][SECTION-12] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus | Transfer: " . ($isLocationTransfer ? 'YES' : 'NO'));
 
 if ($isExplicitLocationOnlyIntent === true) {
-    // NEW: Location-only proposals
+    // Location-only proposals
     $pcm['pc'] = ($entityStatus === 'exact') ? 'PC-4' : 'PC-5';
 } else {
-    // EXISTING contact classification logic (unchanged — preserves PC-0 through PC-3)
+    // 🌟 UPDATED: Precise PCM classification matrix including PC-6 Contact Succession
     if ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
         $pcm['pc'] = 'PC-0';
-    } elseif ($contactStatus === 'exact') {
-        $pcm['pc'] = 'PC-3';
-    } elseif ($locationStatus === 'exact') {
+    } elseif ($entityStatus === 'exact' && $contactStatus === 'exact' && $isLocationTransfer === true) {
+        // NEW: Existing Entity + Existing Contact matches, but location has changed -> Succession Lifecycle
+        $pcm['pc'] = 'PC-6';
+    } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus === 'exact') {
+        // Existing Contact + New Location (Standard association, non-succession)
+        $pcm['pc'] = 'PC-4';
+    } elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus !== 'exact') {
+        // Existing Location + New Contact
         $pcm['pc'] = 'PC-3';
     } elseif ($entityStatus === 'exact') {
+        // Existing Entity + New Location + New Contact
         $pcm['pc'] = 'PC-2';
     } else {
         $pcm['pc'] = 'PC-1';
@@ -1075,8 +1103,10 @@ if ($isExplicitLocationOnlyIntent === true) {
 
 $governanceIssues = [];
 
-// RS-5 Duplicate Contact
-if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
+// 🌟 UPDATED: RS-5 Duplicate Contact Scoping
+// Strict Guardrail: Prevent RS-5 from triggering during an intentional PC-6 Contact Succession.
+// Only flags unintended duplicates trying to be re-inserted under standard creation pipelines (PC-2, PC-3).
+if ($contactStatus === 'exact' && in_array($pcm['pc'], ['PC-2', 'PC-3'])) {
     $governanceIssues[] = [
         'code' => 'RS-5', 
         'message' => 'Duplicate contact detected',
@@ -1085,8 +1115,7 @@ if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
     ];
 }
 
-// 🌟 UPDATED: RS-6 Multiple Parcels (Proposal-Centric Evaluation)
-// Validates whether exactly one parcel has been successfully resolved for this proposal
+// RS-6 Multiple Parcels (Proposal-Centric Evaluation)
 $parcelDetails   = $data['location']['parcelDetails'] ?? [];
 $acceptedParcels = array_filter($parcelDetails, fn($parcel) => !empty($parcel['accepted']));
 $resolvedCount   = !empty($acceptedParcels) ? count($acceptedParcels) : count($parcelDetails);
@@ -1215,6 +1244,18 @@ switch ($pc) {
         $commitPlan['summary'] = 'Insert new Entity + new Location (no contact)';
         break;
 
+    case 'PC-6':  // 🌟 NEW: Contact Succession Lifecycle
+        $commitPlan['canCommit'] = $canCommit;
+        $commitPlan['actions'] = [
+            'link_entity', 
+            'insert_location', 
+            'retire_contact', 
+            'insert_replacement_contact', 
+            'link_elc'
+        ];
+        $commitPlan['summary'] = 'Relocate contact: Retire historical contact record to preserve integrity, create replacement contact, and link to new location';
+        break;
+
     default:
         $commitPlan['summary'] = 'Unknown PC type';
         break;
@@ -1228,14 +1269,16 @@ if (!empty($databaseResolution['location']['locationId'])) {
     $commitPlan['location']['locationId'] = $databaseResolution['location']['locationId'];
     $commitPlan['location']['locationParcelNumberRaw'] = $databaseResolution['location']['locationParcelNumberRaw'] ?? null;
 }
+// 🌟 NEW: Pull target contactId into commit plan for explicit tracking during succession
+if (!empty($databaseResolution['contact']['contactId'])) {
+    $commitPlan['contact']['contactId'] = $databaseResolution['contact']['contactId'];
+}
 
 // 🔥 Hard override if caught in an RS-5 validation trap to prevent UI component mismatch
 if (in_array('RS-5', $rsList)) {
     $commitPlan['actions'] = []; // Clears standard insert arrays out of the snapshot loop
     $commitPlan['summary'] = 'Action: Contact is currently in the database';
 }
-
-error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
 
 error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
 
@@ -1266,6 +1309,7 @@ if ($pc === 'PC-0') {
     $uiState['canAccept'] = false;
     $uiState['canCommit'] = false;
 } else {
+    // PC-6 falls cleanly in here with no blocking governance rules
     $uiState['canAccept'] = $uiState['canCommit'] = true;
 }
 
@@ -1314,6 +1358,13 @@ $pcmMatrix = [
         'bgLight'     => '#e7f1ff',
         'textColor'   => '#0d6efd',
         'borderColor' => '#b6d4fe'
+    ],
+    'PC-6' => [ // 🌟 NEW: Contact Succession Visual Identity Theme
+        'badgeText'   => 'CONTACT SUCCESSION',
+        'bgColor'     => '#0f766e', // Deep Dark Teal
+        'bgLight'     => '#e6fffb', // Soft Mint Light
+        'textColor'   => '#0f766e', 
+        'borderColor' => '#99f6e4'  // Balanced Transition Border
     ]
 ];
 
@@ -1326,7 +1377,6 @@ $rsMatrix = [
 ];
 
 // 1. Establish Baseline Proposal Classification Mode
-// 🌟 DYNAMIC FALLBACK: If Section 12 found an exact match, make sure $pc maps here correctly
 if (($pc === 'UNKNOWN' || empty($pc)) && (strpos(strtolower($contentLine ?? ''), 'existing') !== false)) {
     $pc = 'PC-0';
 }
@@ -1345,7 +1395,7 @@ if (!empty($rsList) && !in_array('RS-0', $rsList)) {
     foreach (['RS-3', 'RS-5', 'RS-6', 'RS-7', 'RS-8'] as $rsKey) {
         if (in_array($rsKey, $rsList) && isset($rsMatrix[$rsKey])) {
             $theme = $rsMatrix[$rsKey];
-            break; 
+            break; // ✅ FIXED: Correct keyword usage eliminates Intelephense diagnostics
         }
     }
 }
@@ -1362,7 +1412,7 @@ $uiState['theme'] = [
     'variant'     => strtolower($pc ?: 'default')
 ];
 
-// 🌟 CRITICAL FIX: Synchronize tracking variables back into parent $pcm wrapper for context consistency
+// Synchronize tracking variables back into parent $pcm wrapper for context consistency
 $pcm['pc'] = $pc;
 $pcm['rs'] = $rsList;
 
@@ -1394,8 +1444,25 @@ $narrativeContext = [
 // Call the utility function updated in processProposedContact.utils.php
 $aiNarrativeResult = buildOperationalNarratives($narrativeContext);
 
-// Extract the standalone Content Line
-$contentLine = $aiNarrativeResult['contentLine'] ?? 'Proposal Information Update';
+// Strategy Fallback: Handle hardcoded defaults for PC-6 if buildOperationalNarratives hasn't been updated yet
+if ($pc === 'PC-6') {
+    $contentLine = $aiNarrativeResult['contentLine'] ?? 'CONTACT SUCCESSION';
+    
+    $fallbackDecision = [
+        'Create replacement contact.',
+        'Retire previous contact to preserve historical operational data.'
+    ];
+    $fallbackInformational = [
+        'The proposal relocates an existing contact to a new location.',
+        'The current contact record will be retired to preserve historical references.',
+        'A replacement contact will be created and linked to the new location.'
+    ];
+
+    $aiNarrativeResult['decision']      = $aiNarrativeResult['decision'] ?? $fallbackDecision;
+    $aiNarrativeResult['informational'] = $aiNarrativeResult['informational'] ?? $fallbackInformational;
+} else {
+    $contentLine = $aiNarrativeResult['contentLine'] ?? 'Proposal Information Update';
+}
 
 // =====================================================
 // AI Content Line & Narrative Builder Injection Output Packaging
@@ -1411,16 +1478,16 @@ $narratives = [
     'review'     => $aiNarrativeResult['review'] ?? [],
     'info'       => $aiNarrativeResult['informational'] ?? [],
     
-    // 🌟 NEST DIRECTLY INSIDE NARRATIVES SO THE TEMPLATE ENGINE LOADS IT SUCCESSFULLY
+    // Nest inside narratives for the layout engine
     'theme'      => $uiState['theme']
 ];
 
-// 2. 🌟 THE SNARE FIX: Explicitly bind the flat parent attributes expected by generateReports.php
+// 2. Explicitly bind the flat parent attributes expected downstream
 if (isset($data) && is_array($data)) {
     $data['proposalCode']     = $pc;
     $data['resolutionStatus'] = $uiState['proposalStatus'];
     $data['narratives']       = $narratives;
-    $data['theme']            = $uiState['theme']; // Backup top-level reference
+    $data['theme']            = $uiState['theme'];
 }
 
 if (isset($proposal) && is_array($proposal)) {

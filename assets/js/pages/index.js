@@ -409,7 +409,45 @@ window.SkyIndex = {
             isThinking ? 'ON → ⏳ Thinking…' : 'OFF → renderFooterStatus()'
         );
 
+        // Dynamic PC-6 UI Lifecycles
+        if (isThinking) {
+            this.renderHourglassProcessingState();
+        } else {
+            this.replaceHourglassProcessingWithResult();
+        }
+
         this.renderFooterStatus();
+    },
+    // #endregion
+
+    // #region ⏳ PC-6 Hourglass Processing Layer
+    renderHourglassProcessingState() {
+        const output = this.getOutputHost();
+        if (!output) return;
+
+        // Clean up any stray occurrences first
+        document.querySelectorAll('#hourglassProcessing').forEach(el => el.remove());
+
+        const processing = document.createElement('div');
+        processing.id = 'hourglassProcessing';
+        processing.className = 'commandLine system processing';
+        processing.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">⏳</span>
+                <div>
+                    <strong>⌛ Syncing Dynamic Stream Framework...</strong><br>
+                    <span style="font-size: 0.92em;">Establishing secure pipeline • Syncing live telemetry records • Refreshing UI projection matrices</span>
+                </div>
+            </div>
+        `;
+        output.appendChild(processing);
+        this.scrollOutputToBottom(output);
+        this._currentHourglassProcessingEl = processing;
+    },
+
+    replaceHourglassProcessingWithResult() {
+        document.querySelectorAll('#hourglassProcessing').forEach(el => el.remove());
+        this._currentHourglassProcessingEl = null;
     },
     // #endregion
 
@@ -2295,6 +2333,21 @@ window.SkyIndex = {
                 btnDisabled: false,
                 btnHandler: 'SkyIndex.acceptEditedProposal()'
             },
+            'PC-6': {
+                borderLeft: '#28a745',
+                badge: 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);',
+                summaryBg: 'rgba(40, 167, 69, 0.03)',
+                summaryBorder: 'rgba(40, 167, 69, 0.15)',
+                summaryText: '#1e7e34',
+                icon: '⏳',
+                baseTitle: 'Location Proposal',
+                subtitle: 'Select parcel for proposed location',
+                btnClass: 'btn-success',
+                btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
+                btnText: '✔ Accept &amp; Save',
+                btnDisabled: false,
+                btnHandler: 'SkyIndex.acceptEditedProposal()'
+            },
             'RS-3': {
                 borderLeft: '#ffc107',
                 badge: 'background: rgba(255, 193, 7, 0.15); color: #b58100; border: 1px solid rgba(255, 193, 7, 0.3);',
@@ -2373,14 +2426,14 @@ window.SkyIndex = {
         };
 
         const theme = THEMES[activeStatusKey] || {
-            borderLeft: '#6c757d',
-            badge: 'background: #e9ecef; color: #495057; border: 1px solid #ced4da;',
-            summaryBg: '#fafafa',
-            summaryBorder: '#eee',
-            summaryText: '#333',
-            icon: '📋',
-            baseTitle: 'Proposed Record',
-            subtitle: 'Evaluating entry logic and transaction properties',
+            borderLeft: '#28a745',
+            badge: 'background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2);',
+            summaryBg: 'rgba(40, 167, 69, 0.03)',
+            summaryBorder: 'rgba(40, 167, 69, 0.15)',
+            summaryText: '#1e7e34',
+            icon: '⏳',
+            baseTitle: 'Location Proposal',
+            subtitle: 'Select parcel for proposed location',
             btnClass: 'btn-success',
             btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
             btnText: '✔ Accept &amp; Save',
