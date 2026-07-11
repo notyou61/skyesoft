@@ -1288,7 +1288,7 @@ $pcmMatrix = [
         'borderColor' => '#a3cfbb'
     ],
     'PC-2' => [
-        'badgeText'   => 'NEW LOCATION',
+        'badgeText'   => 'NEW LOCATION & CONTACT',
         'bgColor'     => '#0dcaf0', // Info Cyan
         'bgLight'     => '#e0f7fa', 
         'textColor'   => '#0a58ca',
