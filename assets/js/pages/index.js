@@ -2446,19 +2446,20 @@ window.SkyIndex = {
         let computedSubtitle = theme.subtitle;
 
         // =====================================================
-        // 1 & 2. Title & Subtitle Matrix Extensions
+        // 1 & 2. Title & Subtitle Matrix Extensions (Prioritized)
         // =====================================================
-        if (activeStatusKey.startsWith('RS-')) {
+        if (activeStatusKey === 'PC-6' || theme.pc === 'PC-6') {
+            // ⏳ Absolute Priority: Refine baseline titles to reflect the true Succession workflow
+            computedTitle = 'Contact Succession Proposal';
+            computedSubtitle = 'Relocate an existing contact while preserving historical records';
+            
+        } else if (activeStatusKey.startsWith('RS-')) {
             const displayKind = proposalKind === 'location' ? 'Location Proposal' : 'Contact Proposal';
             computedTitle = `${displayKind} — ${theme.baseTitle}`;
             
             if (activeStatusKey === 'RS-3') {
                 computedSubtitle = `${displayKind} Incomplete — Missing required fields`;
             }
-        } else if (activeStatusKey === 'PC-6') {
-            // Refine baseline location titles to reflect the true Succession workflow
-            computedTitle = 'Contact Succession Proposal';
-            computedSubtitle = 'Relocate an existing contact while preserving historical records';
         }
 
         // 4. Normalized String Compilation Handlers
