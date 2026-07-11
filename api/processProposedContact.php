@@ -1085,8 +1085,17 @@ if ($contactStatus === 'exact' && $pcm['pc'] !== 'PC-0') {
     ];
 }
 
-// RS-6 Multiple Parcels
-if ($locationStatus !== 'exact' && (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1)) {
+// 🌟 UPDATED: RS-6 Multiple Parcels (Proposal-Centric Evaluation)
+// Validates whether exactly one parcel has been successfully resolved for this proposal
+$parcelDetails   = $data['location']['parcelDetails'] ?? [];
+$acceptedParcels = array_filter($parcelDetails, fn($parcel) => !empty($parcel['accepted']));
+$resolvedCount   = !empty($acceptedParcels) ? count($acceptedParcels) : count($parcelDetails);
+
+if (
+    $locationStatus !== 'exact' && 
+    (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1) &&
+    $resolvedCount !== 1
+) {
     $governanceIssues[] = [
         'code' => 'RS-6',
         'message' => 'Multiple parcels found for this address - selection required',
