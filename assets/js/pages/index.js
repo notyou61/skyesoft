@@ -2340,8 +2340,8 @@ window.SkyIndex = {
                 summaryBorder: 'rgba(40, 167, 69, 0.15)',
                 summaryText: '#1e7e34',
                 icon: '⏳',
-                baseTitle: 'Location Proposal',
-                subtitle: 'Select parcel for proposed location',
+                baseTitle: 'Contact Relocation Proposal', // 1. Refined Title
+                subtitle: 'Relocate an existing contact while preserving historical records', // 2. Refined Subtitle
                 btnClass: 'btn-success',
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
                 btnText: '✔ Accept &amp; Save',
@@ -2445,6 +2445,9 @@ window.SkyIndex = {
         let computedTitle = theme.baseTitle;
         let computedSubtitle = theme.subtitle;
 
+        // =====================================================
+        // 1 & 2. Title & Subtitle Matrix Extensions
+        // =====================================================
         if (activeStatusKey.startsWith('RS-')) {
             const displayKind = proposalKind === 'location' ? 'Location Proposal' : 'Contact Proposal';
             computedTitle = `${displayKind} — ${theme.baseTitle}`;
@@ -2452,6 +2455,10 @@ window.SkyIndex = {
             if (activeStatusKey === 'RS-3') {
                 computedSubtitle = `${displayKind} Incomplete — Missing required fields`;
             }
+        } else if (activeStatusKey === 'PC-6') {
+            // Refine baseline location titles to reflect the true Succession workflow
+            computedTitle = 'Contact Succession Proposal';
+            computedSubtitle = 'Relocate an existing contact while preserving historical records';
         }
 
         // 4. Normalized String Compilation Handlers
@@ -2474,13 +2481,18 @@ window.SkyIndex = {
         const displayPhone = contact.contactPrimaryPhone || contact.primaryPhone || '';
         const displayEmail = contact.contactEmail || contact.email || '';
 
-        // 5. Extract Operational Intent Checklists
+        // =====================================================
+        // 3. Operational Intent Checklist ("Creates" Section)
+        // =====================================================
         let commitPlanMarkup = '';
         const actions = commit.actions || [];
         const hasActions = actions.length > 0;
         
         if (activeStatusKey === 'PC-0') {
             commitPlanMarkup = `<span style="color:#6c757d;">No structural changes required</span>`;
+        } else if (activeStatusKey === 'PC-6') {
+            // 🌟 Clear, explicit multi-asset impact visualization for Succession Lifecycles
+            commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Creates:</span> <span style="font-family: monospace; color: #28a745; font-weight: bold;">✓ Location &nbsp; ✓ Replacement Contact &nbsp; ✓ Historical Archive</span>`;
         } else if (hasActions || commit.createEntity || commit.createLocation || commit.createContact) {
             const checklist = [];
             if (actions.includes('insert_entity') || commit.createEntity) checklist.push('✓ Entity');
@@ -2491,13 +2503,14 @@ window.SkyIndex = {
             commitPlanMarkup = `<span style="color: #666; font-weight: 500; margin-right: 4px;">Action:</span> <span style="color: #444;">${computedSubtitle}</span>`;
         }
 
-        // 6. Extraction for Dynamic Summary / Required Correction Panes
+        // =====================================================
+        // 4 & 5. Summary / Narrative Routing Overrides
+        // =====================================================
         let summaryHeading = 'Proposal Summary';
         let summaryContent = '';
 
         if (activeStatusKey === 'RS-3') {
             summaryHeading = 'Required Corrections';
-            // Fallback cleanly to string patterns if message block strings have escaped elements
             const rawMsg = payload.message || '';
             summaryContent = rawMsg.replace(/Proposal is incomplete\.\s*/gi, '').trim();
             if (!summaryContent) {
@@ -2506,6 +2519,10 @@ window.SkyIndex = {
         } else if (activeStatusKey === 'RS-5') {
             summaryHeading = 'Duplicate Record Profile';
             summaryContent = 'An existing contact already matches the submitted information. Review the existing record before creating another contact.';
+        } else if (activeStatusKey === 'PC-6') {
+            // 🌟 Hard override to completely decouple from generic PC-3 narratives
+            summaryHeading = 'Proposal Summary';
+            summaryContent = 'The proposal will retire the existing contact record, create a replacement contact associated with the new location, and preserve historical relationships with prior operational records.';
         } else {
             summaryContent = payload.narratives?.ui || payload.governance?.reason || payload.message || 'Proposal parsing complete.';
         }

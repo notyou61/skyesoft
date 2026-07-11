@@ -1084,25 +1084,33 @@ $isLocationTransfer = $databaseResolution['contact']['isLocationTransfer'] ?? fa
 error_log("[PPC][SECTION-12] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus | Transfer: " . ($isLocationTransfer ? 'YES' : 'NO'));
 
 if ($isExplicitLocationOnlyIntent === true) {
-    // Location-only proposals
+    // Location-only proposals (explicitly requested by intake stream)
     $pcm['pc'] = ($entityStatus === 'exact') ? 'PC-4' : 'PC-5';
 } else {
-    // 🌟 UPDATED: Precise PCM classification matrix including PC-6 Contact Succession
+    // 🌟 REMADE: Strict deterministic PCM classification matrix
     if ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
+        // Passive Verification: Graph perfectly matches existing records
         $pcm['pc'] = 'PC-0';
+        
     } elseif ($entityStatus === 'exact' && $contactStatus === 'exact' && $isLocationTransfer === true) {
-        // NEW: Existing Entity + Existing Contact matches, but location has changed -> Succession Lifecycle
+        // ⏳ CONTACT SUCCESSION: Existing contact relocating to a brand new or alternate location asset
         $pcm['pc'] = 'PC-6';
-    } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus === 'exact') {
-        // Existing Contact + New Location (Standard association, non-succession)
-        $pcm['pc'] = 'PC-4';
+        
     } elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus !== 'exact') {
-        // Existing Location + New Contact
+        // Entity Expansion: Appending a brand new contact face to an existing operational facility
         $pcm['pc'] = 'PC-3';
-    } elseif ($entityStatus === 'exact') {
-        // Existing Entity + New Location + New Contact
+        
+    } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus !== 'exact') {
+        // Entity Expansion: Appending both a brand new location and a new contact to a known entity
         $pcm['pc'] = 'PC-2';
+        
+    } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus === 'exact') {
+        // Catch-all safety: If contact matches exactly but location is new, it MUST be a transfer (PC-6).
+        // Forcing fallback to PC-6 prevents accidental routing into the location-only (PC-4) track.
+        $pcm['pc'] = 'PC-6';
+        
     } else {
+        // Complete Ingestion: Entirely new topology graph node
         $pcm['pc'] = 'PC-1';
     }
 }
