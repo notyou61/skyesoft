@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 // Skyesoft — authFunctions.php
 // Shared Authentication Utilities (SSE SAFE)
-// Version: 1.4.0
+// Version: 1.4.1
 // ======================================================================
 
 // 🔗 Dependencies (explicit + safe)
@@ -102,13 +102,19 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
 }
 
 // ─────────────────────────────────────────
-// 📜 AUTH ACTION LOGGER - FIXED (No undefined constants)
+// 📜 AUTH ACTION LOGGER
 // ─────────────────────────────────────────
 // 🔐 logAuthAction() — Adapter to new action system
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
 {
-    try {
+    // 🧹 CRITICAL FIX: Intercept logout instantly at entry point.
+    // This executes before any session modifications or database writes drop context.
+    if ($actionKey === 'auth.logout') {
+        error_log("[Auth Engine] Intercepted explicit logout event. Instigating workspace cleanup for Contact ID: " . ($contactId ?? 'unknown'));
+        clearUserWorkspaceArtifacts($contactId);
+    }
 
+    try {
         // --- Map OLD keys → NEW actionNames
         $actionName = match ($actionKey) {
             'auth.login'       => 'auth.session.login',
@@ -144,11 +150,6 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
             'lat'        => $meta['latitude']  ?? null,
             'lng'        => $meta['longitude'] ?? null
         ]);
-
-        // 🧹 Hook: If this action is an explicit logout, invoke immediate ephemeral cleanup
-        if ($actionKey === 'auth.logout') {
-            clearUserWorkspaceArtifacts($contactId);
-        }
 
     } catch (Throwable $e) {
         error_log('[logAuthAction ERROR] ' . $e->getMessage());
