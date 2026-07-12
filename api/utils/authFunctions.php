@@ -4,6 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 // Skyesoft — authFunctions.php
 // Shared Authentication Utilities (SSE SAFE)
+// Version: 1.4.0
 // ======================================================================
 
 // 🔗 Dependencies (explicit + safe)
@@ -40,6 +41,64 @@ function updateLastActivity(): void
     }
 
     session_write_close();
+}
+
+// ─────────────────────────────────────────
+// 🧹 WORKSPACE GOVERNANCE HELPER
+// ─────────────────────────────────────────
+
+/**
+ * Fulfills Codex Workspace Governance rules during explicit auth lifecycle transitions.
+ * Locates and destroys lingering TMP workspace artifacts belonging specifically
+ * to the authenticated contact without altering permanent records (REC/PER).
+ */
+function clearUserWorkspaceArtifacts(?int $contactId = null): void
+{
+    // If no explicit ID passed, look into active session state
+    if ($contactId === null) {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        $contactId = isset($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : 0;
+    }
+
+    // Stop safely when no authenticated context can be derived
+    if ($contactId <= 0) {
+        error_log('[AUTH WORKSPACE CLEANUP] Skipped — contact context unavailable.');
+        return;
+    }
+
+    // Resolve common shared artifacts folder via parent directory tree mapping
+    $artifactDir = dirname(__DIR__) . '/artifacts';
+
+    if (!is_dir($artifactDir)) {
+        error_log("[AUTH WORKSPACE CLEANUP] Aborted — directory not found: {$artifactDir}");
+        return;
+    }
+
+    // Format contact segment constraint string (e.g., 017)
+    $contactSegment = str_pad((string)$contactId, 3, '0', STR_PAD_LEFT);
+
+    // Filter directory targeting specifically this user's ephemeral TMP records
+    $pattern = $artifactDir . "/TMP-*-*-*-{$contactSegment}-*.*";
+    $files = glob($pattern) ?: [];
+    $deleted = 0;
+    $failed = 0;
+
+    foreach ($files as $file) {
+        if (!is_file($file)) {
+            continue;
+        }
+
+        if (unlink($file)) {
+            $deleted++;
+        } else {
+            $failed++;
+            error_log("[AUTH WORKSPACE CLEANUP] Failed to remove asset file: {$file}");
+        }
+    }
+
+    error_log("[AUTH WORKSPACE CLEANUP] Cleared Ephemeral Workspace for Contact {$contactId} — Removed={$deleted} | Blocked={$failed}");
 }
 
 // ─────────────────────────────────────────
@@ -86,14 +145,19 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
             'lng'        => $meta['longitude'] ?? null
         ]);
 
+        // 🧹 Hook: If this action is an explicit logout, invoke immediate ephemeral cleanup
+        if ($actionKey === 'auth.logout') {
+            clearUserWorkspaceArtifacts($contactId);
+        }
+
     } catch (Throwable $e) {
         error_log('[logAuthAction ERROR] ' . $e->getMessage());
     }
 }
 
 // 🔐 logAction() — Core logger (from actionLogger.php, adapted for auth)
-function getContactName($contactId): array {
-    // Accept string/int/null and sanitize
+function getContactName(mixed $contactId): array {
+    // Accept string/int/null/bool and sanitize
     if ($contactId === null || $contactId === '' || $contactId === false || $contactId === 'null') {
         return ['firstName' => null, 'lastName' => null];
     }
