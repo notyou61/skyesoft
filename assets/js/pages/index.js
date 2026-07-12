@@ -2903,8 +2903,8 @@ window.SkyIndex = {
 
     // #endregion
 
-    // #region 📇 Proposal Action Handler + Accept Flow
-    handleProposalAction(action) {
+// #region 📇 Proposal Action Handler + Accept Flow
+    async handleProposalAction(action) {
         if (!this.currentProposal) {
             this.appendSystemLine('⚠️ No active proposal found.', 'warning');
             return;
@@ -2912,8 +2912,56 @@ window.SkyIndex = {
 
         switch (action) {
             case 'decline':
-                this.appendSystemLine('❌ Contact proposal declined.', 'system');
-                this.currentProposal = null;
+                // 1️⃣ Defensive check before clearing out live un-persisted session data
+                if (!confirm('Are you sure you want to decline this proposal? This will clear all un-persisted session files.')) {
+                    return;
+                }
+
+                this.setThinking(true);
+                this.appendSystemLine('❌ Declining contact proposal and purging workspace assets...', 'system');
+
+                try {
+                    // 2️⃣ Network trip to processProposedContact.php
+                    const res = await fetch('api/processProposedContact.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            action: 'decline',
+                            source: 'ui_dashboard',
+                            activitySessionId: this.getActivitySessionId()
+                        })
+                    });
+
+                    let result;
+                    const text = await res.text();
+                    try {
+                        result = JSON.parse(text);
+                    } catch (e) {
+                        console.error('[Decline JSON Parse Fail]', text);
+                        throw new Error('Server returned an invalid payload structure.');
+                    }
+
+                    if (result && result.success === true) {
+                        this.appendSystemLine('🟢 Proposal declined successfully. Ephemeral files retired.', 'success');
+                        
+                        // Clear runtime local reference state
+                        this.currentProposal = null;
+
+                        // Optional UI cleanup matching your layout
+                        if (typeof this.clearOutput === 'function') {
+                            setTimeout(() => this.clearOutput(), 1200);
+                        }
+                    } else {
+                        throw new Error(result.error || result.message || 'Unknown decline failure.');
+                    }
+
+                } catch (err) {
+                    console.error('[Decline Contact Error]', err);
+                    this.appendSystemLine(`❌ Decline routine failed: ${err.message}`, 'error');
+                } finally {
+                    this.setThinking(false);
+                }
                 break;
 
             case 'edit':
@@ -2966,6 +3014,7 @@ window.SkyIndex = {
             // --------------------------------------------------
             // 📡 Send to backend
             // --------------------------------------------------
+            this.setThinking(true);
             const res = await fetch('/skyesoft/api/createContact.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3039,6 +3088,8 @@ window.SkyIndex = {
                 '❌ Failed to save contact. Check connection or server.',
                 'error'
             );
+        } finally {
+            this.setThinking(false);
         }
     },
 
