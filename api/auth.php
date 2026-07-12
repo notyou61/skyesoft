@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — auth.php
-// Version: 1.3.2
+// Version: 1.3.1
 // Session-Authoritative Identity (activitySessionId)
 // ======================================================================
 
@@ -125,11 +125,26 @@ if ($input['action'] === 'login') {
         $_SESSION['lastLongitude'] = (float)$input['longitude'];
     }
 
-    // 🔥 LOG ACTION VIA ADAPTER SYSTEM
-    logAuthAction($pdo, 'auth.login', (int)$user['contactId'], [
-        'latitude'  => $input['latitude'] ?? null,
-        'longitude' => $input['longitude'] ?? null,
-        'username'  => $username
+    // 🔥 LOG ACTION
+    logAction($pdo, [
+        'actionName' => 'auth.session.login',
+        'contactId'  => $user['contactId'],
+        'intent'     => 'ui_login',
+        'prompt'     => $username,
+        'response'   => 'login_success',
+        'confidence' => 1.00,
+        'lat'        => $input['latitude'] ?? null,
+        'lng'        => $input['longitude'] ?? null,
+
+        // Structured data (optional but useful)
+        'actionPayloadData' => [
+            'username' => $username,
+            'contactId' => $user['contactId']
+        ],
+        'actionResponseData' => [
+            'status' => 'success',
+            'username' => $user['contactEmail']
+        ]
     ]);
 
     echo json_encode([
@@ -144,30 +159,36 @@ if ($input['action'] === 'login') {
 
 if ($input['action'] === 'logout') {
 
-    $pdo = getPDO(); // 🔥 ensure DB exists
+    $pdo = getPDO(); // 🔥 ensure DB exists (safe even if already set)
 
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
 
-    $contactId = isset($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : null;
+    $contactId = $_SESSION['contactId'] ?? null;
 
-    // ⚡ FIXED: Route through logAuthAction to trigger clearUserWorkspaceArtifacts()!
-    logAuthAction($pdo, 'auth.logout', $contactId, [
-        'actionOrigin' => $input['actionOrigin'] ?? 'ui_logout',
-        'latitude'     => $_SESSION['lastLatitude'] ?? null,
-        'longitude'    => $_SESSION['lastLongitude'] ?? null
+    // 🔥 LOG ACTION (BEFORE DESTROY)
+    logAction($pdo, [
+        'actionName' => 'auth.session.logout',
+        'contactId'  => $contactId,
+        'intent'     => 'ui_logout',
+        'prompt'     => 'logout',
+        'response'   => 'logout_success',
+        'confidence' => 1.00,
+        'lat'        => $_SESSION['lastLatitude'] ?? null,      // ← Optional: last known
+        'lng'        => $_SESSION['lastLongitude'] ?? null,     // ← Optional: last known
+
+        // Structured data
+        'actionPayloadData' => [
+            'contactId' => $contactId
+        ],
+        'actionResponseData' => [
+            'status' => 'success'
+        ]
     ]);
 
-    // Destroy session cleanly
+    // Destroy session
     $_SESSION = [];
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"],
-            $params["secure"], $params["httponly"]
-        );
-    }
     session_destroy();
 
     echo json_encode([
