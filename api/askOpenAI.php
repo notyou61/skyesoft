@@ -1149,14 +1149,16 @@ function cleanupTemporaryArtifacts(): void
 
 #endregion
 
-#region SECTION 8 — Workflow Handlers
+#region SECTION 8 — Runtime Workflow Engine
 
 $response = null;
 $narrativeGenerated = false;
 $reportPath = null;
 $role = "askOpenAI";
 
-// Early parameter normalization ensures downstream heuristics evaluate reliably
+// =====================================================================
+// PHASE 1 — Normalize Request
+// =====================================================================
 $query = $query 
     ?? $input["userQuery"] 
     ?? $input["query"] 
@@ -1164,34 +1166,67 @@ $query = $query
     ?? $_GET["userQuery"] 
     ?? ($argv[3] ?? null);
 
-// =====================================================
-// 📇 CONTACT PROPOSAL ROUTING BRIDGE (MAX FORCE)
-// =====================================================
+// =====================================================================
+// PHASE 2 — Detect Intent
+// =====================================================================
+$detectedIntent = "skyebot"; // Fallback default intent
+
+// Heuristic configurations for Contact Signature checks
 $lowerQuery = strtolower(trim($query ?? ''));
 $hasEmail   = preg_match('/@\S+\.\S{2,}/', $query ?? '');
 $hasPhone   = preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '');
 $lineCount  = substr_count($query ?? '', "\n") + 1;
-
-// Light structural signature check: needs an email, a phone, and a block of text
 $isContactSignature = $hasEmail && $hasPhone && $lineCount >= 3;
 
-error_log("[CONTACT BRIDGE] Evaluation Signature:");
-error_log("  -> Email Found: " . ($hasEmail ? 'YES' : 'NO'));
-error_log("  -> Phone Found: " . ($hasPhone ? 'YES' : 'NO'));
-error_log("  -> Line Count:  " . $lineCount);
-error_log("  -> Is Signature Block: " . ($isContactSignature ? 'YES' : 'NO'));
+// Heuristic configurations for Property/Parcel checks
+$isContactStructure = ($hasEmail || $hasPhone) && ($lineCount >= 1);
 
-// Route explicitly via frontend type OR implicitly via structural match
 if (($type === "contact_proposal") || $isContactSignature) {
-    error_log("[askOpenAI] MAX FORCE CONTACT_PROPOSAL triggered");
+    $detectedIntent = "contact_proposal";
+} elseif ($type === "narrative") {
+    $detectedIntent = "narrative";
+} elseif ($type === "proposalNarrative") {
+    $detectedIntent = "proposalNarrative";
+} elseif (!$isContactStructure && 
+    ($type === "property_review" || 
+     (isset($input['intent']) && $input['intent'] === 'property_review') || 
+     str_contains(strtolower($query ?? ''), "property review") || 
+     str_contains(strtolower($query ?? ''), "parcel review") || 
+     preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query ?? ''))) {
+    
+    $detectedIntent = "property_review";
+}
 
-    // 🧹 Clean obsolete temporary artifacts before new file generation begins
+error_log("[Workflow Engine] Evaluated Intent: " . strtoupper($detectedIntent));
+
+// =====================================================
+// PHASE 3 — Initialize Runtime Workspace
+// =====================================================
+$createsArtifacts = in_array($detectedIntent, [
+    "contact_proposal",
+    "property_review",
+    "location_proposal",
+    "parcel_review",
+    "street_view",
+    "sign_survey"
+], true);
+
+if ($createsArtifacts) {
+    error_log("[Workflow Engine] Ephemeral workspace initialization requested. Triggering cleanup.");
     cleanupTemporaryArtifacts();
+}
+
+// =====================================================
+// PHASE 4 — Dispatch Workflow
+// =====================================================
+
+// 📇 Workflow Branch: Contact Proposal
+if ($detectedIntent === "contact_proposal") {
+    error_log("[askOpenAI] Dispatching CONTACT_PROPOSAL track");
 
     $sessionContactId = $_SESSION["contactId"] ?? null;
     $activitySessionId = $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id());
 
-    // Prepare payload for logging + forwarding
     $payload = [
         'input'              => $query,
         'activitySessionId'  => $activitySessionId,
@@ -1211,8 +1246,8 @@ if (($type === "contact_proposal") || $isContactSignature) {
             'activitySessionId' => $activitySessionId,
             'actionTypeId'      => 3,
             'origin'            => ACTION_ORIGIN_USER,
-            'actionPayloadData' => $payload,                    // ← FULL PAYLOAD
-            'actionResponseData'=> null                         // will be updated after call
+            'actionPayloadData' => $payload,
+            'actionResponseData'=> null
         ], $db);
     } catch (Throwable $e) {
         error_log('[actions] contact logging failed: ' . $e->getMessage());
@@ -1220,7 +1255,6 @@ if (($type === "contact_proposal") || $isContactSignature) {
 
     session_write_close();
 
-    // Forward to dedicated processor
     $ch = curl_init('https://skyelighting.com/skyesoft/api/processProposedContact.php');
     curl_setopt_array($ch, [
         CURLOPT_POST            => true,
@@ -1240,22 +1274,12 @@ if (($type === "contact_proposal") || $isContactSignature) {
         exit;
     }
 
-    // Update action log with real response data
-    try {
-        $responseData = json_decode($proposalResponse, true) ?? ['raw' => $proposalResponse];
-    } catch (Throwable $e) {
-        error_log("[askOpenAI] Failed to decode proposal response for logging: " . $e->getMessage());
-    }
-
     echo $proposalResponse;
     exit;
 }
 
-// =====================================================
-// 1. Narrative Generation (Audit / Report Summaries)
-// =====================================================
-if ($type === "narrative") {
-    // 🧾 Resolve task input
+// 🧾 Workflow Branch: Narrative Generation (Audit / Report Summaries)
+if ($detectedIntent === "narrative") {
     $task = $_GET["task"] ?? ($argv[3] ?? null);
     if (!$task) {
         aiFail("task required for narrative generation.");
@@ -1264,18 +1288,17 @@ if ($type === "narrative") {
     if (!file_exists($reportPath)) {
         aiFail("Report not found: {$reportPath}");
     }
-    // 📥 Load report
+    
     $report = json_decode(file_get_contents($reportPath), true);
     if (!is_array($report)) {
         aiFail("Invalid report JSON.");
     }
-    // 🧠 Build audit facts
+    
     $auditFacts = $report["auditFacts"] ?? buildAuditFacts($report);
     $auditFactsJson = json_encode($auditFacts, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    // 🗓 Metadata
     $date   = date("Y-m-d", $report["timestamp"] ?? time());
     $codexV = getCodexVersion();
-    // 🤖 Prompt Construction
+    
     $basePrompt = <<<PROMPT
 This is a pre-System Initialization Standard (SIS) audit narrative.
 All findings are informational and non-binding.
@@ -1297,9 +1320,8 @@ Date: {$date}. Codex v{$codexV}.
 Audit Facts (JSON):
 {$auditFactsJson}
 PROMPT;
-    // 🚀 AI Execution
+    
     $response = callOpenAI(injectStandingOrders($basePrompt), $apiKey);
-    // 💾 Persist Narrative
     if ($response) {
         $report["narrative"] = trim($response);
         file_put_contents($reportPath, json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
@@ -1307,32 +1329,26 @@ PROMPT;
     }
 }
 
-// =====================================================
-// 2. Proposed Contact Report Summary Narrative
-// =====================================================
-if ($type === "proposalNarrative") {
-    error_log("[proposalNarrative] TYPE DETECTED - Starting processing");
-    // 📥 Resolve proposal payload
+// 📦 Workflow Branch: Proposed Contact Report Summary Narrative
+if ($detectedIntent === "proposalNarrative") {
+    error_log("[proposalNarrative] Starting processing");
     $proposalData = $input["proposalData"] ?? null;
     if (!$proposalData || !is_array($proposalData)) {
         aiFail("proposalData required for proposalNarrative.");
     }
-    // 📥 Resolve prompt file
+    
     $promptFile = $input["promptFile"] ?? "proposedContactReportSummary.prompt";
     $promptPath = "$root/codex/prompts/{$promptFile}";
-    error_log("[proposalNarrative] Prompt Path: " . $promptPath);
     if (!file_exists($promptPath)) {
         aiFail("Prompt file not found: {$promptPath}");
     }
-    // 📄 Load prompt template
+    
     $basePrompt = file_get_contents($promptPath);
-    error_log("[proposalNarrative] Prompt Length: " . strlen($basePrompt));
     if (!$basePrompt) {
         aiFail("Failed to load prompt file.");
     }
-    // 📦 Proposal JSON
+    
     $proposalJson = json_encode($proposalData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    // 🧠 Final Prompt Construction
     $finalPrompt = <<<PROMPT
 {$basePrompt}
 
@@ -1356,49 +1372,22 @@ Do NOT:
 
 Professional operational tone only.
 PROMPT;
-    error_log("[proposalNarrative] Generating narrative...");
-    // 🚀 AI Execution
+    
     $response = callOpenAI(injectStandingOrders($finalPrompt), $apiKey);
-    error_log("[proposalNarrative] RAW RESPONSE: " . print_r($response, true));
-    // ✅ Validate & Normalize Response
     if (!$response || trim($response) === '') {
         aiFail("AI narrative generation failed - empty response from OpenAI");
     }
     $cleanNarrative = trim($response);
-    error_log("[proposalNarrative] SUCCESS - Narrative length: " . strlen($cleanNarrative));
-    // 📤 Return JSON
+    
     echo json_encode(["success" => true, "summaryNarrative" => $cleanNarrative], JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-// =====================================================
-// 3. Property Review Handler (Compatibility Bridge)
-// =====================================================
-error_log("[PROPERTY_REVIEW DEBUG] === START ===");
-error_log("[PROPERTY_REVIEW DEBUG] Intent var: " . ($intent ?? 'NULL'));
-error_log("[PROPERTY_REVIEW DEBUG] Input intent: " . ($input['intent'] ?? 'NULL'));
-error_log("[PROPERTY_REVIEW DEBUG] Query length: " . strlen($query ?? ''));
-
-// Heuristic to avoid treating contact signatures as property reviews
-$isContactStructure = (
-    preg_match('/@\S+\.\S{2,}/', $query ?? '') || 
-    preg_match('/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/', $query ?? '') 
-) && (substr_count($query ?? '', "\n") >= 1);
-
-if (!$isContactStructure && 
-    ($type === "property_review" || 
-     (isset($input['intent']) && $input['intent'] === 'property_review') || 
-     str_contains(strtolower($query ?? ''), "property review") || 
-     str_contains(strtolower($query ?? ''), "parcel review") || 
-     preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query ?? ''))) {
-
-    error_log("[property_review] HANDLER TRIGGERED SUCCESSFULLY");
-
-    // 🧹 Clean obsolete temporary artifacts before running spatial and map lookups
-    cleanupTemporaryArtifacts();
+// 🌐 Workflow Branch: Property Review (Compatibility Bridge)
+if ($detectedIntent === "property_review") {
+    error_log("[property_review] Dispatching PROPERTY_REVIEW track");
 
     $addressToReview = trim($query ?? '');
-
     if (empty($addressToReview)) {
         echo json_encode(['success' => false, 'error' => 'No address provided for review']);
         exit;
@@ -1411,15 +1400,13 @@ if (!$isContactStructure &&
         echo json_encode($resolutionData);
         exit;
     }
-    // Ensure user-facing summary uses current terminology
+    
     if (empty($resolutionData['summary'])) {
         $resolutionData['summary'] = "Skyesoft completed property review for " . htmlspecialchars($addressToReview) . ".";
     }
-    // Logging block
-    error_log("[DEBUG] Attempting to log property review. Has \$db? " . (isset($db) ? 'YES' : 'NO'));
+    
     if (isset($db) && $db instanceof PDO) {
         require_once __DIR__ . '/utils/actions.php';
-        error_log("[DEBUG] Calling insertActionPrompt with actionTypeId=12");
         $actionId = insertActionPrompt([
             'actionTypeId'      => 12,
             'contactId'         => $_SESSION['contactId'] ?? 0,
@@ -1434,16 +1421,18 @@ if (!$isContactStructure &&
             'origin'            => 1,
             'createdUnixTime'   => time(),
         ], $db);
-        error_log("[DEBUG] insertActionPrompt completed | actionId=$actionId");
         $resolutionData['actionId'] = $actionId;
-    } else {
-        error_log('[property_review] Logging SKIPPED - $db not available');
     }
+    
     echo json_encode($resolutionData, JSON_UNESCAPED_SLASHES);
     exit;
-} else {
-    error_log("[PROPERTY_REVIEW DEBUG] Condition NOT met - falling through");
 }
+
+// =====================================================================
+// PHASE 5 — Return Response (Fallback Core Path)
+// =====================================================================
+// If execution reaches this point, the query is a general conversational request.
+// It continues directly down to Section 9 to use standard OpenAI semantic compilation.
 
 #endregion
 
