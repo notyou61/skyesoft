@@ -1199,9 +1199,9 @@ if (($type === "contact_proposal") || $isContactSignature) {
 
 error_log("[Workflow Engine] Evaluated Intent: " . strtoupper($detectedIntent));
 
-// =====================================================
+// =====================================================================
 // PHASE 3 — Initialize Runtime Workspace
-// =====================================================
+// =====================================================================
 $createsArtifacts = in_array($detectedIntent, [
     "contact_proposal",
     "property_review",
@@ -1211,14 +1211,15 @@ $createsArtifacts = in_array($detectedIntent, [
     "sign_survey"
 ], true);
 
+// If an artifact-producing workflow is starting, it explicitly retires previous temporary workspaces
 if ($createsArtifacts) {
-    error_log("[Workflow Engine] Ephemeral workspace initialization requested. Triggering cleanup.");
+    error_log("[Workflow Engine] Ephemeral workspace initialization requested via new action track.");
     cleanupTemporaryArtifacts();
 }
 
-// =====================================================
+// =====================================================================
 // PHASE 4 — Dispatch Workflow
-// =====================================================
+// =====================================================================
 
 // 📇 Workflow Branch: Contact Proposal
 if ($detectedIntent === "contact_proposal") {
@@ -1417,7 +1418,7 @@ if ($detectedIntent === "property_review") {
             'intent'            => 'property.review',
             'intentConfidence'  => 0.90,
             'latitude'          => $resolutionData['google']['latitude'] ?? null,
-            'longitude'         => $resolutionData['google']['longitude'] ?? null,
+            'longitude' => $resolutionData['google']['longitude'] ?? null,
             'origin'            => 1,
             'createdUnixTime'   => time(),
         ], $db);
@@ -1431,8 +1432,14 @@ if ($detectedIntent === "property_review") {
 // =====================================================================
 // PHASE 5 — Return Response (Fallback Core Path)
 // =====================================================================
-// If execution reaches this point, the query is a general conversational request.
-// It continues directly down to Section 9 to use standard OpenAI semantic compilation.
+// Any action running down this core conversational pathway represents a 
+// non-acceptance/diversion path. Per Codex workspace governance guidelines, 
+// this counts as an implicit rejection of any active proposal workspace state.
+// We execute a tenant-safe purge of this contact's active TMP workspace files.
+if ($detectedIntent === "skyebot") {
+    error_log("[Workflow Engine] Non-acceptance conversation path hit. Invoking contact workspace cleanup.");
+    cleanupTemporaryArtifacts();
+}
 
 #endregion
 
