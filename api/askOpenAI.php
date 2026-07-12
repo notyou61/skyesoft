@@ -1095,23 +1095,56 @@ PROMPT;
 #region SECTION 7A — Temporary Artifact Cleanup
 
 /**
- * Sweeps the artifacts working directory to drop depreciated TMP files.
- * Leaves canonical permanent assets (PER-*) untouched.
+ * Removes deprecated TMP artifacts belonging to the authenticated contact.
+ * Leaves other users' TMP files and all permanent artifacts untouched.
  */
 function cleanupTemporaryArtifacts(): void
 {
-    $artifactDir = __DIR__ . '/artifacts';
+    // Resolve shared artifacts directory (/skyesoft/artifacts)
+    $artifactDir = dirname(__DIR__) . '/artifacts';
 
-    if (!is_dir($artifactDir)) {
+    // Resolve authenticated Contact ID
+    $contactId = (int)($_SESSION['contactId'] ?? 0);
+
+    // Stop safely when no authenticated contact is available
+    if ($contactId <= 0) {
+        error_log('[ARTIFACT CLEANUP] Skipped — authenticated contactId unavailable.');
         return;
     }
 
-    // Target only transient working assets
-    foreach (glob($artifactDir . '/TMP-*') as $file) {
-        if (is_file($file)) {
-            @unlink($file);
+    // Confirm artifact workspace exists
+    if (!is_dir($artifactDir)) {
+        error_log("[ARTIFACT CLEANUP] Directory not found: {$artifactDir}");
+        return;
+    }
+
+    // Format Contact ID to match filename segment (001, 017, 248)
+    $contactSegment = str_pad((string)$contactId, 3, '0', STR_PAD_LEFT);
+
+    // Match only this contact's temporary artifacts
+    $pattern = $artifactDir . "/TMP-*-*-*-{$contactSegment}-*.*";
+    $files = glob($pattern) ?: [];
+    $deleted = 0;
+    $failed = 0;
+
+    foreach ($files as $file) {
+        // File check
+        if (!is_file($file)) {
+            continue;
+        }
+
+        // Delete artifact
+        if (unlink($file)) {
+            $deleted++;
+        } else {
+            $failed++;
+            error_log("[ARTIFACT CLEANUP] Failed to delete: {$file}");
         }
     }
+
+    error_log(
+        "[ARTIFACT CLEANUP] Contact {$contactId} — Deleted={$deleted} | Failed={$failed}"
+    );
 }
 
 #endregion

@@ -1118,6 +1118,24 @@
                     "MIS ensures Codex integrity is cryptographically verifiable."
                 ]
             },
+            "proposalWorkspace": {
+                "title": {
+                    "icon": 42,
+                    "text": "Proposal Workspace Governance"
+                },
+                "directive": "Skyesoft maintains a single active proposal workspace for each authenticated user.",
+                "rules": [
+                    "Only one proposal may exist in the active runtime workspace for an authenticated user at any time.",
+                    "Beginning any new proposal or artifact-generating action automatically retires the authenticated user's current proposal.",
+                    "A retired proposal remains permanently recoverable through the Action History.",
+                    "Retiring a proposal permanently removes all TMP artifacts belonging to the authenticated user.",
+                    "TMP artifacts are considered deprecated immediately upon proposal retirement.",
+                    "Permanent artifacts (REC) shall never be removed by runtime cleanup operations.",
+                    "Accepting a proposal promotes its TMP artifacts into permanent REC artifacts.",
+                    "Rejecting a proposal, whether explicitly or implicitly by initiating another action, shall clear the active proposal workspace.",
+                    "The runtime workspace is ephemeral and shall never contain more than one active proposal for the authenticated user."
+                ]
+            },
             "repositoryInventoryStandard": {
                 "title": {
                     "icon": 67,
