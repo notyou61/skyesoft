@@ -2612,7 +2612,7 @@ window.SkyIndex = {
                         <button class="btn btn-secondary" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #6c757d; color: #fff; border: 1px solid #545b62;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
                         <button class="btn btn-danger" 
                                 style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff; border: 1px solid #bd2130;" 
-                                onclick="app.handleProposalAction('decline')" 
+                                onclick="SkyIndex.handleProposalAction('decline')" 
                                 fdprocessedid="4ms2ps">
                             ✕ Decline
                         </button>
