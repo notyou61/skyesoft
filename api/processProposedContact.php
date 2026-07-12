@@ -85,7 +85,7 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     $fullName       = trim($firstName . ' ' . $lastName);
     $displaySubject = !empty($fullName) ? "{$fullName} ({$entityName})" : $entityName;
 
-    // 1️⃣ Audit Log Generation: Insert Action Type ID 10
+    // 1️⃣ Audit Log Generation: Insert Action Type ID 10 (Corrected Schema Layout)
     if ($pdo) {
         try {
             $actionPayload = [
@@ -95,17 +95,17 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 'requestId'         => $context['requestId'] ?? uniqid('ppc_dec_', true)
             ];
 
+            // 🌟 Removed 'origin' column and its corresponding '1' bound value
             $stmt = $pdo->prepare("
                 INSERT INTO tblActions (
-                    intent, intentConfidence, actionTypeId, origin, 
+                    intent, intentConfidence, actionTypeId, 
                     activitySessionId, promptText, responseText, actionPayloadData
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 'contact_proposal_decline',
                 1.00,
                 10, // Canonical Action Type ID 10 (Decline/Purge)
-                1,  // ACTION_ORIGIN_USER
                 $context['activitySessionId'],
                 "Decline proposal for {$displaySubject}",
                 "proposal_declined_and_purged",
