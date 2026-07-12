@@ -4362,8 +4362,6 @@ window.SkyIndex = {
 };
 // #endregion
 
-// #endregion
-
 // #region 🗺️ Google Maps Dual View Initializer (Map + Street View)
 let map, panorama;
 
