@@ -2903,7 +2903,7 @@ window.SkyIndex = {
 
     // #endregion
 
-// #region 📇 Proposal Action Handler + Accept Flow
+    // #region 📇 Proposal Action Handler + Accept Flow
     async handleProposalAction(action) {
         if (!this.currentProposal) {
             this.appendSystemLine('⚠️ No active proposal found.', 'warning');
@@ -2912,16 +2912,13 @@ window.SkyIndex = {
 
         switch (action) {
             case 'decline':
-                // 1️⃣ Defensive check before clearing out live un-persisted session data
                 if (!confirm('Are you sure you want to decline this proposal? This will clear all un-persisted session files.')) {
                     return;
                 }
 
                 this.setThinking(true);
-                this.appendSystemLine('❌ Declining contact proposal and purging workspace assets...', 'system');
 
                 try {
-                    // 2️⃣ Network trip to processProposedContact.php
                     const res = await fetch('api/processProposedContact.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2929,36 +2926,32 @@ window.SkyIndex = {
                         body: JSON.stringify({
                             action: 'decline',
                             source: 'ui_dashboard',
-                            activitySessionId: this.getActivitySessionId()
+                            activitySessionId: this.getActivitySessionId(),
+                            // Include metadata context so backend can build contextual narrative string strings instantly
+                            entityName: this.currentProposal?.parsed?.entity?.name || '',
+                            data: this.currentProposal?.parsed || null
                         })
                     });
 
-                    let result;
                     const text = await res.text();
-                    try {
-                        result = JSON.parse(text);
-                    } catch (e) {
-                        console.error('[Decline JSON Parse Fail]', text);
-                        throw new Error('Server returned an invalid payload structure.');
-                    }
+                    let result = JSON.parse(text);
 
                     if (result && result.success === true) {
-                        this.appendSystemLine('🟢 Proposal declined successfully. Ephemeral files retired.', 'success');
-                        
-                        // Clear runtime local reference state
+                        // Clear runtime local object track completely
                         this.currentProposal = null;
 
-                        // Optional UI cleanup matching your layout
+                        // Renders "❌ Blah, blah, blah was declined..." line to screen
+                        this.appendSystemLine(result.message || '❌ Proposal declined.', 'system');
+                        
                         if (typeof this.clearOutput === 'function') {
-                            setTimeout(() => this.clearOutput(), 1200);
+                            this.clearOutput();
                         }
                     } else {
-                        throw new Error(result.error || result.message || 'Unknown decline failure.');
+                        throw new Error(result.error || 'Unknown infrastructure degradation.');
                     }
-
                 } catch (err) {
                     console.error('[Decline Contact Error]', err);
-                    this.appendSystemLine(`❌ Decline routine failed: ${err.message}`, 'error');
+                    this.appendSystemLine(`❌ Decline action failed: ${err.message}`, 'error');
                 } finally {
                     this.setThinking(false);
                 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 /**
  * Skyesoft — processProposedContact.php
  * Main Orchestration + Proposal Report Generation
- * Version: 1.6.2
- * Last Updated: 2026-07-02
+ * Version: 1.6.3
+ * Last Updated: 2026-07-12
  */
 
 #region SECTION 00 — Bootstrap & Request Initialization
@@ -37,8 +37,13 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/utils/processProposedContact.utils.php';
 require_once __DIR__ . '/askOpenAI.php';
+require_once __DIR__ . '/utils/envLoader.php'; // Moved up for safe early bootstrap
+require_once __DIR__ . '/dbConnect.php';      // Moved up for safe intercept logging
 
-error_log('[PPC][SECTION-00] Bootstrap complete');
+// Initialize environment variables immediately so db handles have context
+skyesoftLoadEnv();
+
+error_log('[PPC][SECTION-00] Bootstrap and Environment complete');
 
 // =====================================================
 // REQUEST CONTEXT
@@ -61,6 +66,99 @@ $inputData = json_decode($rawJson, true);
 
 if (!is_array($inputData)) {
     $inputData = [];
+}
+
+// =====================================================
+// 🚨 INTERCEPT ROUTE: PROPOSAL DECLINE WORKFLOW
+// =====================================================
+if (isset($inputData['action']) && $inputData['action'] === 'decline') {
+    $context['activitySessionId'] = trim($inputData['activitySessionId'] ?? '');
+    
+    error_log('[PPC][INTERCEPT] Decline action requested for Session: ' . $context['activitySessionId']);
+    
+    $pdo = getPDO() ?? null;
+    
+    // Extract naming attributes for custom UI surface message narrative
+    $entityName     = trim($inputData['entityName'] ?? $inputData['data']['entity']['entityName'] ?? 'The contact proposal');
+    $firstName      = trim($inputData['data']['contact']['contactFirstName'] ?? '');
+    $lastName       = trim($inputData['data']['contact']['contactLastName'] ?? '');
+    $fullName       = trim($firstName . ' ' . $lastName);
+    $displaySubject = !empty($fullName) ? "{$fullName} ({$entityName})" : $entityName;
+
+    // 1️⃣ Audit Log Generation: Insert Action Type ID 10
+    if ($pdo) {
+        try {
+            $actionPayload = [
+                'action'            => 'decline',
+                'source'            => $inputData['source'] ?? 'ui_dashboard',
+                'activitySessionId' => $context['activitySessionId'],
+                'requestId'         => $context['requestId'] ?? uniqid('ppc_dec_', true)
+            ];
+
+            $stmt = $pdo->prepare("
+                INSERT INTO tblActions (
+                    intent, intentConfidence, actionTypeId, origin, 
+                    activitySessionId, promptText, responseText, actionPayloadData
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                'contact_proposal_decline',
+                1.00,
+                10, // Canonical Action Type ID 10 (Decline/Purge)
+                1,  // ACTION_ORIGIN_USER
+                $context['activitySessionId'],
+                "Decline proposal for {$displaySubject}",
+                "proposal_declined_and_purged",
+                json_encode($actionPayload, JSON_UNESCAPED_SLASHES)
+            ]);
+            error_log('[PPC][ACTION-LOG] ✅ Decline tracked under Action Type 10.');
+        } catch (Throwable $e) {
+            error_log('[PPC][ACTION-LOG] ❌ Failed to write decline action: ' . $e->getMessage());
+        }
+    }
+
+    // 2️⃣ Delete Runtime Ephemeral Artifacts & TMP Snapshot Files
+    $purgedCount = 0;
+    $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
+    $targetProposalId = trim($inputData['proposalId'] ?? '');
+
+    if (is_dir($snapshotDir)) {
+        // Path A: Targeted delete if a specific proposal ID was supplied
+        if (!empty($targetProposalId)) {
+            $targetedPath = $snapshotDir . "/{$targetProposalId}.json";
+            if (is_file($targetedPath)) {
+                @unlink($targetedPath);
+                $purgedCount++;
+            }
+        }
+
+        // Path B: Comprehensive Session Scrubbing safety sweep
+        if (!empty($context['activitySessionId'])) {
+            $files = scandir($snapshotDir);
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') continue;
+                
+                $filePath = $snapshotDir . '/' . $file;
+                if (is_file($filePath) && pathinfo($filePath, PATHINFO_EXTENSION) === 'json') {
+                    $content = file_get_contents($filePath);
+                    if ($content && strpos($content, $context['activitySessionId']) !== false) {
+                        @unlink($filePath);
+                        $purgedCount++;
+                    }
+                }
+            }
+        }
+    }
+    error_log("[PPC][PURGE] Cleaned up {$purgedCount} ephemeral workspace assets.");
+
+    // 3️⃣ Final Output Response (Delivers custom dynamic string to surface area context)
+    echo json_encode([
+        'success'           => true,
+        'status'            => 'declined',
+        'activitySessionId' => $context['activitySessionId'],
+        'message'           => "❌ {$displaySubject} was declined. Session artifacts have been purged from the workspace scratchpad."
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
 // =====================================================
@@ -104,15 +202,10 @@ if (!empty($inputData)) {
 
 #region SECTION 01 — Runtime Services
 
-require_once __DIR__ . '/dbConnect.php';
-require_once __DIR__ . '/utils/envLoader.php';
-
-skyesoftLoadEnv();
-
+// Re-fetch the PDO global instance smoothly since environment boot completed in Section 00
 $pdo = getPDO() ?? null;
 
-error_log('[PPC] Runtime services loaded');
-
+error_log('[PPC] Runtime services verified');
 
 #endregion
 
