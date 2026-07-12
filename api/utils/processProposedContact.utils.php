@@ -1260,32 +1260,92 @@ function evaluateEntityDuplicate(array $parsed, PDO &$pdo): array
 }
 
 // * Generates a standard-compliant filename according to Universal Artifact Standard rules.
-function generateArtifactFilename(string $classification, string $purpose, string $objectId, string $mediaType, string $sequence, string $extension = 'jpg'): string {
-    // 1. Classification (CCC) - Expects TMP, REC, or SYS
+function generateArtifactFilename(
+    string $classification,
+    string $purpose,
+    string $objectId,
+    string $mediaType,
+    string $sequence,
+    string $extension = 'jpg'
+): string {
+
+    // =====================================================
+    // 1. Classification (CCC)
+    // =====================================================
     $ccc = strtoupper(substr(trim($classification), 0, 3));
 
-    // 2. Media Type (MMM) - Fixed-width formatting uppercase 3 chars
+    // =====================================================
+    // 2. Media Type (MMM)
+    // =====================================================
     $mmm = strtoupper(substr(trim($mediaType), 0, 3));
 
-    // 3. Artifact Purpose (PPP) - Strict 3-character uppercase enforcement matching registry
+    // =====================================================
+    // 3. Artifact Purpose (PPP)
+    // =====================================================
     $ppp = strtoupper(substr(trim($purpose), 0, 3));
 
-    // 4. Object Identifier (OOOOOO) - Extract numeric digits or pad to exactly 6 characters
+    // =====================================================
+    // 4. Object Identifier (OOOOOO)
+    // =====================================================
     $cleanId = trim($objectId);
+
     if (preg_match('/(?:[A-Z]{3}-)?([0-9]+)$/i', $cleanId, $matches)) {
         $oooooo = str_pad($matches[1], 6, '0', STR_PAD_LEFT);
     } else {
-        $oooooo = str_pad(preg_replace('/[^0-9]/', '', $cleanId), 6, '0', STR_PAD_LEFT);
+        $oooooo = str_pad(
+            preg_replace('/[^0-9]/', '', $cleanId),
+            6,
+            '0',
+            STR_PAD_LEFT
+        );
     }
+
     if (empty($oooooo) || strlen($oooooo) > 6) {
         $oooooo = '000000';
     }
 
-    $uuu = '000';
-    $tttttttttt = (string)time();
-    $sss = str_pad(preg_replace('/[^0-9]/', '', $sequence), 3, '0', STR_PAD_LEFT);
+    // =====================================================
+    // 5. Authenticated Contact ID (UUU)
+    // Retrieved from the active Skyesoft session.
+    // =====================================================
+    $contactId = $_SESSION['contactId'] ?? 0;
 
-    return sprintf('%s-%s-%s-%s-%s-%s-%s.%s', $ccc, $mmm, $ppp, $oooooo, $uuu, $tttttttttt, $sss, strtolower($extension));
+    $uuu = str_pad(
+        (string)$contactId,
+        3,
+        '0',
+        STR_PAD_LEFT
+    );
+
+    // =====================================================
+    // 6. Unix Timestamp (TTTTTTTTTT)
+    // =====================================================
+    $tttttttttt = (string)time();
+
+    // =====================================================
+    // 7. Sequence Number (SSS)
+    // =====================================================
+    $sss = str_pad(
+        preg_replace('/[^0-9]/', '', $sequence),
+        3,
+        '0',
+        STR_PAD_LEFT
+    );
+
+    // =====================================================
+    // Final Filename
+    // =====================================================
+    return sprintf(
+        '%s-%s-%s-%s-%s-%s-%s.%s',
+        $ccc,
+        $mmm,
+        $ppp,
+        $oooooo,
+        $uuu,
+        $tttttttttt,
+        $sss,
+        strtolower($extension)
+    );
 }
 
 // Infer Street View Heading based on address (simple heuristic)
