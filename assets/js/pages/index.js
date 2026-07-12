@@ -2610,7 +2610,12 @@ window.SkyIndex = {
                             ${theme.btnText}
                         </button>
                         <button class="btn btn-secondary" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #6c757d; color: #fff; border: 1px solid #545b62;" onclick="SkyIndex.revalidateProposal()">↻ Revalidate</button>
-                        <button class="btn btn-danger" style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff; border: 1px solid #bd2130;" onclick="SkyIndex.handleProposalAction('decline')">✕ Decline</button>
+                        <button class="btn btn-danger" 
+                                style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff; border: 1px solid #bd2130;" 
+                                onclick="app.handleProposalAction('decline')" 
+                                fdprocessedid="4ms2ps">
+                            ✕ Decline
+                        </button>
                     </div>
 
                 </div>
@@ -2904,7 +2909,7 @@ window.SkyIndex = {
     // #endregion
 
     // #region 📇 Proposal Action Handler + Accept Flow
-    async handleProposalAction(action) {
+    async handleProposalAction(action, targetProposalId = null, directEntityName = null) {
         if (!this.currentProposal) {
             this.appendSystemLine('⚠️ No active proposal found.', 'warning');
             return;
@@ -2926,9 +2931,9 @@ window.SkyIndex = {
                         body: JSON.stringify({
                             action: 'decline',
                             source: 'ui_dashboard',
-                            activitySessionId: this.getActivitySessionId(),
-                            // Include metadata context so backend can build contextual narrative string strings instantly
-                            entityName: this.currentProposal?.parsed?.entity?.name || '',
+                            activitySessionId: this.getActivitySessionId() || 'system_fallback_override',
+                            proposalId: targetProposalId || this.currentProposal?.id || '',
+                            entityName: directEntityName || this.currentProposal?.parsed?.entity?.name || '',
                             data: this.currentProposal?.parsed || null
                         })
                     });
@@ -2937,17 +2942,14 @@ window.SkyIndex = {
                     let result = JSON.parse(text);
 
                     if (result && result.success === true) {
-                        // Clear runtime local object track completely
                         this.currentProposal = null;
-
-                        // Renders "❌ Blah, blah, blah was declined..." line to screen
                         this.appendSystemLine(result.message || '❌ Proposal declined.', 'system');
                         
                         if (typeof this.clearOutput === 'function') {
                             this.clearOutput();
                         }
                     } else {
-                        throw new Error(result.error || 'Unknown infrastructure degradation.');
+                        throw new Error(result.error || 'Unknown backend validation block.');
                     }
                 } catch (err) {
                     console.error('[Decline Contact Error]', err);
