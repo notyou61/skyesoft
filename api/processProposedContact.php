@@ -73,17 +73,24 @@ if (!is_array($inputData)) {
 // =====================================================
 if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     $context['activitySessionId'] = trim($inputData['activitySessionId'] ?? '');
+    $targetProposalId = trim($inputData['proposalId'] ?? '');
     
     error_log('[PPC][INTERCEPT] Decline action requested for Session: ' . $context['activitySessionId']);
     
     $pdo = getPDO() ?? null;
     
     // Extract naming attributes for custom UI surface message narrative
-    $entityName     = trim($inputData['entityName'] ?? $inputData['data']['entity']['entityName'] ?? 'The contact proposal');
+    $entityName     = trim($inputData['entityName'] ?? $inputData['data']['entity']['entityName'] ?? '');
     $firstName      = trim($inputData['data']['contact']['contactFirstName'] ?? '');
     $lastName       = trim($inputData['data']['contact']['contactLastName'] ?? '');
     $fullName       = trim($firstName . ' ' . $lastName);
-    $displaySubject = !empty($fullName) ? "{$fullName} ({$entityName})" : $entityName;
+    
+    // Fallback: If payload details are completely missing, extract naming via the ID framework token context
+    if (empty($entityName) && empty($fullName)) {
+        $displaySubject = !empty($targetProposalId) ? "Proposal #{$targetProposalId}" : "The contact proposal";
+    } else {
+        $displaySubject = !empty($fullName) ? "{$fullName} ({$entityName})" : $entityName;
+    }
 
     // 1️⃣ Audit Log Generation: Insert Action Type ID 10 (Foreign Key Aligned)
     if ($pdo) {
@@ -92,10 +99,11 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 'action'            => 'decline',
                 'source'            => $inputData['source'] ?? 'ui_dashboard',
                 'activitySessionId' => $context['activitySessionId'],
-                'requestId'         => $context['requestId'] ?? uniqid('ppc_dec_', true)
+                'requestId'         => $context['requestId'] ?? uniqid('ppc_dec_', true),
+                'proposalId'        => $targetProposalId
             ];
 
-            // 🌟 Capture from session fallback to keep foreign key constraint satisfied
+            // Capture from session fallback to keep foreign key constraint satisfied
             $contactId = !empty($inputData['data']['contact']['contactId']) 
                 ? (int)$inputData['data']['contact']['contactId'] 
                 : ($_SESSION['contactId'] ?? null);
@@ -125,7 +133,6 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     // 2️⃣ Delete Runtime Ephemeral Artifacts & TMP Snapshot Files
     $purgedCount = 0;
     $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
-    $targetProposalId = trim($inputData['proposalId'] ?? '');
 
     if (is_dir($snapshotDir)) {
         // Path A: Targeted delete if a specific proposal ID was supplied
@@ -138,7 +145,7 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
         }
 
         // Path B: Comprehensive Session Scrubbing safety sweep
-        if (!empty($context['activitySessionId'])) {
+        if (!empty($context['activitySessionId']) && $context['activitySessionId'] !== 'no_session') {
             $files = scandir($snapshotDir);
             foreach ($files as $file) {
                 if ($file === '.' || $file === '..') continue;
@@ -154,9 +161,28 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
             }
         }
     }
+
+    // 3️⃣ NEW: Purge Media Artifact Images (Plat maps, street views, satellite cards)
+    $artifactsDir = __DIR__ . '/artifacts'; // Maps cleanly to your skyesoft/artifacts folder context
+    if (is_dir($artifactsDir) && !empty($targetProposalId)) {
+        $artifacts = scandir($artifactsDir);
+        foreach ($artifacts as $artifactFile) {
+            if ($artifactFile === '.' || $artifactFile === '..') continue;
+
+            // Target files containing "TMP-IMG-" and your dynamic proposal number snippet layout
+            if (strpos($artifactFile, 'TMP-IMG-') !== false && strpos($artifactFile, $targetProposalId) !== false) {
+                $artifactPath = $artifactsDir . '/' . $artifactFile;
+                if (is_file($artifactPath)) {
+                    @unlink($artifactPath);
+                    $purgedCount++;
+                }
+            }
+        }
+    }
+    
     error_log("[PPC][PURGE] Cleaned up {$purgedCount} ephemeral workspace assets.");
 
-    // 3️⃣ Final Output Response (Delivers custom dynamic string to surface area context)
+    // 4️⃣ Final Output Response (Delivers custom dynamic string to surface area context)
     echo json_encode([
         'success'           => true,
         'status'            => 'declined',
