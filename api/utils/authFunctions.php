@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 // Skyesoft — authFunctions.php
 // Shared Authentication Utilities (SSE SAFE)
-// Version: 1.4.1
+// Version: 1.4.2
 // ======================================================================
 
 // 🔗 Dependencies (explicit + safe)
@@ -54,17 +54,17 @@ function updateLastActivity(): void
  */
 function clearUserWorkspaceArtifacts(?int $contactId = null): void
 {
-    // If no explicit ID passed, look into active session state
-    if ($contactId === null) {
+    // --- CRITICAL BACKUP: If parameter context is missing or invalid, fallback to live session check
+    if ($contactId === null || $contactId <= 0) {
         if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
+            @session_start();
         }
         $contactId = isset($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : 0;
     }
 
-    // Stop safely when no authenticated context can be derived
+    // Stop safely when no authenticated context can be derived via parameter or session state
     if ($contactId <= 0) {
-        error_log('[AUTH WORKSPACE CLEANUP] Skipped — contact context unavailable.');
+        error_log('[AUTH WORKSPACE CLEANUP] Skipped — contact identity context completely unavailable.');
         return;
     }
 
@@ -98,7 +98,7 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
         }
     }
 
-    error_log("[AUTH WORKSPACE CLEANUP] Cleared Ephemeral Workspace for Contact {$contactId} — Removed={$deleted} | Blocked={$failed}");
+    error_log("[AUTH WORKSPACE CLEANUP] Executed — Contact ID: {$contactId} | Removed={$deleted} | Blocked={$failed}");
 }
 
 // ─────────────────────────────────────────
@@ -110,7 +110,7 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
     // 🧹 CRITICAL FIX: Intercept logout instantly at entry point.
     // This executes before any session modifications or database writes drop context.
     if ($actionKey === 'auth.logout') {
-        error_log("[Auth Engine] Intercepted explicit logout event. Instigating workspace cleanup for Contact ID: " . ($contactId ?? 'unknown'));
+        error_log("[Auth Engine] Intercepted explicit logout event. Instigating workspace cleanup.");
         clearUserWorkspaceArtifacts($contactId);
     }
 
