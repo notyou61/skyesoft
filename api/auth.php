@@ -159,36 +159,30 @@ if ($input['action'] === 'login') {
 
 if ($input['action'] === 'logout') {
 
-    $pdo = getPDO(); // 🔥 ensure DB exists (safe even if already set)
+    $pdo = getPDO(); // Ensure DB connection exists
 
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
 
-    $contactId = $_SESSION['contactId'] ?? null;
+    $contactId = isset($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : null;
 
-    // 🔥 LOG ACTION (BEFORE DESTROY)
-    logAction($pdo, [
-        'actionName' => 'auth.session.logout',
-        'contactId'  => $contactId,
-        'intent'     => 'ui_logout',
-        'prompt'     => 'logout',
-        'response'   => 'logout_success',
-        'confidence' => 1.00,
-        'lat'        => $_SESSION['lastLatitude'] ?? null,      // ← Optional: last known
-        'lng'        => $_SESSION['lastLongitude'] ?? null,     // ← Optional: last known
-
-        // Structured data
-        'actionPayloadData' => [
-            'contactId' => $contactId
-        ],
-        'actionResponseData' => [
-            'status' => 'success'
-        ]
+    // ⚡ FIX: Use logAuthAction() instead of logAction() to trigger the intercept loop
+    logAuthAction($pdo, 'auth.logout', $contactId, [
+        'actionOrigin' => $input['actionOrigin'] ?? 'ui_logout',
+        'latitude'     => $_SESSION['lastLatitude'] ?? null,
+        'longitude'    => $_SESSION['lastLongitude'] ?? null
     ]);
 
     // Destroy session
     $_SESSION = [];
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
     session_destroy();
 
     echo json_encode([

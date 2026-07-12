@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 // Skyesoft — authFunctions.php
 // Shared Authentication Utilities (SSE SAFE)
-// Version: 1.4.2
+// Version: 1.4.3
 // ======================================================================
 
 // 🔗 Dependencies (explicit + safe)
@@ -68,8 +68,14 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
         return;
     }
 
-    // Resolve common shared artifacts folder via parent directory tree mapping
-    $artifactDir = dirname(__DIR__) . '/artifacts';
+    // 🔍 FIX: Robust multi-depth lookup path to accurately target the active artifacts directory.
+    // If authFunctions.php sits inside /utils/, going up 2 levels reaches the core root folder.
+    $artifactDir = dirname(__DIR__, 2) . '/artifacts';
+
+    // Backup check: If the directory is not found, fallback to 1-level directory mapping
+    if (!is_dir($artifactDir)) {
+        $artifactDir = dirname(__DIR__) . '/artifacts';
+    }
 
     if (!is_dir($artifactDir)) {
         error_log("[AUTH WORKSPACE CLEANUP] Aborted — directory not found: {$artifactDir}");
@@ -98,7 +104,7 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
         }
     }
 
-    error_log("[AUTH WORKSPACE CLEANUP] Executed — Contact ID: {$contactId} | Removed={$deleted} | Blocked={$failed}");
+    error_log("[AUTH WORKSPACE CLEANUP] Executed — Contact ID: {$contactId} | Target Dir: {$artifactDir} | Removed={$deleted} | Blocked={$failed}");
 }
 
 // ─────────────────────────────────────────
