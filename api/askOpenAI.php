@@ -1092,6 +1092,30 @@ PROMPT;
 
 #endregion
 
+#region SECTION 7A — Temporary Artifact Cleanup
+
+/**
+ * Sweeps the artifacts working directory to drop depreciated TMP files.
+ * Leaves canonical permanent assets (PER-*) untouched.
+ */
+function cleanupTemporaryArtifacts(): void
+{
+    $artifactDir = __DIR__ . '/artifacts';
+
+    if (!is_dir($artifactDir)) {
+        return;
+    }
+
+    // Target only transient working assets
+    foreach (glob($artifactDir . '/TMP-*') as $file) {
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
+}
+
+#endregion
+
 #region SECTION 8 — Workflow Handlers
 
 $response = null;
@@ -1127,6 +1151,9 @@ error_log("  -> Is Signature Block: " . ($isContactSignature ? 'YES' : 'NO'));
 // Route explicitly via frontend type OR implicitly via structural match
 if (($type === "contact_proposal") || $isContactSignature) {
     error_log("[askOpenAI] MAX FORCE CONTACT_PROPOSAL triggered");
+
+    // 🧹 Clean obsolete temporary artifacts before new file generation begins
+    cleanupTemporaryArtifacts();
 
     $sessionContactId = $_SESSION["contactId"] ?? null;
     $activitySessionId = $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id());
@@ -1333,6 +1360,9 @@ if (!$isContactStructure &&
      preg_match('/\b\d{1,5}\s+[A-Za-z]/', $query ?? ''))) {
 
     error_log("[property_review] HANDLER TRIGGERED SUCCESSFULLY");
+
+    // 🧹 Clean obsolete temporary artifacts before running spatial and map lookups
+    cleanupTemporaryArtifacts();
 
     $addressToReview = trim($query ?? '');
 
