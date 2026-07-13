@@ -3,15 +3,15 @@ declare(strict_types=1);
 
 /**
  * Test Harness for commitProposal.php
- * Creates a mock snapshot and calls the commit engine.
+ * Creates mock snapshot + calls live endpoint
  */
 
 session_start();
-$_SESSION['contactId'] = 999; // Mock logged-in actor
+$_SESSION['contactId'] = 999; // Mock actor
 
 // ====================== CONFIG ======================
-$proposalId   = "PROP-123456";
-$baseUrl      = 'http://localhost/skyesoft/api/commitProposal.php';   // ← CHANGE THIS TO YOUR ACTUAL URL
+$proposalId   = "823722";                                      // Use the real ID from your snapshot
+$baseUrl      = 'https://www.skyelighting.com/skyesoft/api/commitProposal.php';
 $snapshotDir  = __DIR__ . '/../data/runtimeEphemeral/proposals';
 // ===================================================
 
@@ -19,7 +19,7 @@ if (!is_dir($snapshotDir)) {
     mkdir($snapshotDir, 0777, true);
 }
 
-// === Create Rich Mock Snapshot ===
+// === Create / Overwrite Mock Snapshot ===
 $mockSnapshot = [
     'proposalId'        => $proposalId,
     'activitySessionId' => 'SESS-ABC-789',
@@ -61,11 +61,11 @@ $mockSnapshot = [
 $snapshotPath = "{$snapshotDir}/{$proposalId}.json";
 file_put_contents($snapshotPath, json_encode($mockSnapshot, JSON_PRETTY_PRINT));
 
-echo "✓ Mock snapshot created: {$proposalId}.json\n";
+echo "✓ Mock snapshot created/updated: {$proposalId}.json\n";
 echo "  Path: {$snapshotPath}\n\n";
 
-// === Execute Commit Engine ===
-echo "Calling commitProposal.php...\n";
+// === Call Live Endpoint ===
+echo "Calling commitProposal.php on live server...\n";
 
 $payload = json_encode([
     'proposalId' => $proposalId,
@@ -85,18 +85,17 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $error    = curl_error($ch);
 curl_close($ch);
 
-echo "HTTP Status: {$httpCode}\n";
+echo "\nHTTP Status: {$httpCode}\n";
 
 if ($error) {
     echo "cURL Error: {$error}\n";
 } else {
-    echo "Response:\n";
-    echo $output . "\n";
-    
-    // Pretty-print JSON response if possible
+    echo "Raw Response:\n";
+    echo $output . "\n\n";
+
     $json = json_decode($output, true);
     if (json_last_error() === JSON_ERROR_NONE) {
-        echo "\nFormatted Response:\n";
+        echo "Formatted Response:\n";
         print_r($json);
     }
 }

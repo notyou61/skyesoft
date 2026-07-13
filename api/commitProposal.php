@@ -244,12 +244,18 @@ echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 function insertEntity(PDO $db, array $data): int 
 {
-    $stmt = $db->prepare("INSERT INTO tblEntities (entityName, entityNameRaw) VALUES (?, ?)");
-    $stmt->execute([
-        $data['entityName'] ?? '',
-        $data['entityNameRaw'] ?? ''
-    ]);
-    return (int)$db->lastInsertId();
+    $entityName = $data['entityName'] ?? $data['entityNameRaw'] ?? '';
+
+    $stmt = $db->prepare("INSERT INTO tblEntities (entityName) VALUES (?)");
+    $stmt->execute([$entityName]);
+
+    $newId = (int)$db->lastInsertId();
+
+    if ($newId <= 0) {
+        throw new RuntimeException('Entity insert failed.');
+    }
+
+    return $newId;
 }
 
 function insertLocation(PDO $db, array $data, int $entityId): int
