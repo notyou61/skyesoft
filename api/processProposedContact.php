@@ -163,7 +163,7 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     }
 
     // 3️⃣ NEW: Purge Media Artifact Images (Plat maps, street views, satellite cards)
-    $artifactsDir = __DIR__ . '/artifacts'; // Maps cleanly to your skyesoft/artifacts folder context
+    $artifactsDir = __DIR__ . '/../artifacts'; // ✅ Correctly steps up one level to the root artifacts folder
     if (is_dir($artifactsDir) && !empty($targetProposalId)) {
         $artifacts = scandir($artifactsDir);
         foreach ($artifacts as $artifactFile) {
