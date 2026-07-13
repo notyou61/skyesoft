@@ -79,6 +79,9 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     
     $pdo = getPDO() ?? null;
     
+    // 🌟 Initialize baseline variable early to clear Intelephense diagnostic warning
+    $displaySubject = ''; 
+    
     // Extract naming attributes for custom UI surface message narrative
     $entityName     = trim($inputData['entityName'] ?? $inputData['data']['entity']['entityName'] ?? '');
     $firstName      = trim($inputData['data']['contact']['contactFirstName'] ?? '');
