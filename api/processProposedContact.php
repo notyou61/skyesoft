@@ -77,12 +77,18 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
 
     $targetProposalId = trim($inputData['proposalId'] ?? '');
     
-    // 1️⃣ Hydrate missing session keys by inspecting the fallback global records if needed
+    // 1️⃣ Hydrate session keys, explicitly treating literal 'no_session' as empty
     $activitySessionId = trim($inputData['activitySessionId'] ?? '');
-    if ((empty($activitySessionId) || $activitySessionId === 'no_session' || $activitySessionId === 'system_fallback_override')) {
+    if ($activitySessionId === 'no_session') {
+        $activitySessionId = '';
+    }
+    
+    // If frontend sent 'no_session' or nothing, fetch from the native PHP session context
+    if (empty($activitySessionId) && !empty($targetProposalId)) {
         $activitySessionId = $_SESSION['activitySessionId'] ?? '';
     }
     
+    // Final defensive fallback if it's still completely vacant
     if (empty($activitySessionId)) {
         $activitySessionId = !empty($targetProposalId) ? "sess_fallback_prop_{$targetProposalId}" : 'system_fallback_override';
     }
