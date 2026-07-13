@@ -47,7 +47,7 @@ if (!$db) {
     exit;
 }
 
-$actorContactId = (int)($_SESSION['contactId'] ?? 0);
+$actorContactId = (int)($_SESSION['contactId'] ?? 1);   // fallback to real contact
 
 #endregion
 
