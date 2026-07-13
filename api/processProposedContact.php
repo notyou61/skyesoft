@@ -115,7 +115,6 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     } elseif (!empty($incomingSession)) {
         $finalSessionId = $incomingSession;
     } else {
-        // Fail loudly — no silent fallbacks
         error_log('[PPC][INTERCEPT] CRITICAL: Unable to resolve activitySessionId for decline');
         echo json_encode([
             'success' => false,
@@ -140,6 +139,66 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
         ? "{$fullName} ({$entityName})"
         : (!empty($entityName) ? $entityName : "Proposal #{$targetProposalId}");
 
+    // ── PURGE OPERATIONS ──
+    $purgedSnapshots = 0;
+    $purgedArtifacts = 0;
+
+    // 1. Purge Proposal Snapshot(s)
+    if (is_dir($snapshotDir)) {
+        if (!empty($targetProposalId)) {
+            $targetedPath = $snapshotDir . "/{$targetProposalId}.json";
+            if (is_file($targetedPath)) {
+                @unlink($targetedPath);
+                $purgedSnapshots++;
+            }
+        }
+
+        // Purge any other snapshots tied to this session
+        if (!empty($context['activitySessionId'])) {
+            $files = scandir($snapshotDir);
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') continue;
+                $filePath = $snapshotDir . '/' . $file;
+                if (is_file($filePath) && pathinfo($filePath, PATHINFO_EXTENSION) === 'json') {
+                    $content = file_get_contents($filePath);
+                    if ($content && strpos($content, $context['activitySessionId']) !== false) {
+                        @unlink($filePath);
+                        $purgedSnapshots++;
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Purge Media Artifacts (TMP-IMG- files)
+    $artifactsDir = __DIR__ . '/../artifacts';
+    if (is_dir($artifactsDir) && !empty($targetProposalId)) {
+        $artifacts = scandir($artifactsDir);
+        foreach ($artifacts as $artifactFile) {
+            if ($artifactFile === '.' || $artifactFile === '..') continue;
+            if (strpos($artifactFile, 'TMP-IMG-') !== false && strpos($artifactFile, $targetProposalId) !== false) {
+                $artifactPath = $artifactsDir . '/' . $artifactFile;
+                if (is_file($artifactPath)) {
+                    @unlink($artifactPath);
+                    $purgedArtifacts++;
+                }
+            }
+        }
+    }
+
+    error_log("[PPC][PURGE] Snapshots: {$purgedSnapshots} | Artifacts: {$purgedArtifacts}");
+
+    // ── CANONICAL RESPONSE ──
+    $response = [
+        'success'           => true,
+        'status'            => 'declined',
+        'proposalId'        => $targetProposalId,
+        'activitySessionId' => $context['activitySessionId'],
+        'purgedSnapshots'   => $purgedSnapshots,
+        'purgedArtifacts'   => $purgedArtifacts,
+        'message'           => "❌ {$displaySubject} was declined. Session artifacts have been purged."
+    ];
+
     // ── Audit Log (Action Type 10) ──
     if ($pdo) {
         try {
@@ -151,7 +210,6 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 'proposalId'        => $targetProposalId
             ];
 
-            // Prefer payload, then authenticated session, then null
             $contactId = $inputData['data']['contact']['contactId']
                 ?? $_SESSION['contactId']
                 ?? null;
@@ -161,7 +219,7 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                     contactId, actionTypeId, actionUnix, activitySessionId,
                     promptText, responseText, actionPayloadData, actionResponseData,
                     intent, intentConfidence, ipAddress, latitude, longitude, userAgent
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             $stmt->execute([
@@ -172,6 +230,7 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 "Decline proposal for {$displaySubject}",
                 "proposal_declined_and_purged",
                 json_encode($actionPayload, JSON_UNESCAPED_SLASHES),
+                json_encode($response, JSON_UNESCAPED_SLASHES),   // Full response stored
                 'contact_proposal_decline',
                 1.00,
                 $_SERVER['REMOTE_ADDR'] ?? null,
@@ -180,21 +239,14 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 $_SERVER['HTTP_USER_AGENT'] ?? null
             ]);
 
-            error_log('[PPC][ACTION-LOG] ✅ Decline tracked (Action Type 10)');
+            error_log('[PPC][ACTION-LOG] ✅ Decline tracked (Action Type 10) with full response');
         } catch (Throwable $e) {
             error_log('[PPC][ACTION-LOG] ❌ Decline log failed: ' . $e->getMessage());
         }
     }
 
-    // [Your existing purge logic for snapshots and artifacts goes here...]
-
-    echo json_encode([
-        'success'           => true,
-        'status'            => 'declined',
-        'activitySessionId' => $context['activitySessionId'],
-        'message'           => "❌ {$displaySubject} was declined. Session artifacts have been purged."
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
+    // Return the exact same response recorded in the audit log
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
