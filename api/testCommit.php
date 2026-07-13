@@ -1,18 +1,27 @@
 <?php
 declare(strict_types=1);
 
-// 1. Mock the Session Context
-session_start();
-$_SESSION['contactId'] = 999; // Mock Actor
+/**
+ * Test Harness for commitProposal.php
+ * Creates a mock snapshot and calls the commit engine.
+ */
 
-// 2. Generate a Mock Ephemeral Snapshot File
-$proposalId = "PROP-123456";
-$snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
+session_start();
+$_SESSION['contactId'] = 999; // Mock logged-in actor
+
+// ====================== CONFIG ======================
+$proposalId   = "PROP-123456";
+$baseUrl      = 'http://localhost/skyesoft/api/commitProposal.php';   // ← CHANGE THIS TO YOUR ACTUAL URL
+$snapshotDir  = __DIR__ . '/../data/runtimeEphemeral/proposals';
+// ===================================================
+
 if (!is_dir($snapshotDir)) {
     mkdir($snapshotDir, 0777, true);
 }
 
+// === Create Rich Mock Snapshot ===
 $mockSnapshot = [
+    'proposalId'        => $proposalId,
     'activitySessionId' => 'SESS-ABC-789',
     'pcm' => [
         'pc' => 'PC-1',
@@ -20,53 +29,74 @@ $mockSnapshot = [
     ],
     'commitPlan' => [
         'canCommit' => true,
-        'actions' => ['insert_entity', 'insert_location', 'insert_contact']
+        'actions'   => ['insert_entity', 'insert_location', 'insert_contact']
     ],
     'data' => [
-        'entity' => ['entityName' => 'Test Corp', 'entityNameRaw' => 'Test Corp, LLC'],
+        'entity' => [
+            'entityName'    => 'Test Corp',
+            'entityNameRaw' => 'Test Corp, LLC'
+        ],
         'location' => [
-            'locationName' => 'HQ',
+            'locationName'    => 'HQ',
             'locationAddress' => '123 Test St',
-            'locationCity' => 'Phoenix',
-            'locationState' => 'AZ',
-            'locationZip' => '85001',
-            'parcelDetails' => [['parcelNumber' => '111-22-333']]
+            'locationCity'    => 'Phoenix',
+            'locationState'   => 'AZ',
+            'locationZip'     => '85001',
+            'parcelDetails'   => [['parcelNumber' => '111-22-333']]
         ],
         'contact' => [
             'contactFirstName' => 'Jane',
-            'contactLastName' => 'Doe',
-            'contactEmail' => 'jane.doe@example.com'
+            'contactLastName'  => 'Doe',
+            'contactEmail'     => 'jane.doe@example.com'
         ]
     ],
     'databaseResolution' => [
-        'entity' => ['entityId' => null],
+        'entity'   => ['entityId' => null],
         'location' => ['locationId' => null],
-        'contact' => ['contactId' => null]
+        'contact'  => ['contactId' => null]
     ],
     'reportArtifacts' => []
 ];
 
-file_put_contents("{$snapshotDir}/{$proposalId}.json", json_encode($mockSnapshot));
-echo "✓ Ephemeral proposal snapshot created.\n";
+$snapshotPath = "{$snapshotDir}/{$proposalId}.json";
+file_put_contents($snapshotPath, json_encode($mockSnapshot, JSON_PRETTY_PRINT));
 
-// 3. Execute the endpoint using an internal sub-request or curl simulation
-echo "Executing commit Proposal engine...\n\n";
+echo "✓ Mock snapshot created: {$proposalId}.json\n";
+echo "  Path: {$snapshotPath}\n\n";
 
-$ch = curl_init('http://localhost/path/to/commitProposal.php'); // Update this path to your local address
+// === Execute Commit Engine ===
+echo "Calling commitProposal.php...\n";
+
+$payload = json_encode([
+    'proposalId' => $proposalId,
+    'actionId'   => null
+]);
+
+$ch = curl_init($baseUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    'proposalId' => $proposalId,
-    'actionId' => null
-]));
+curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+curl_setopt($ch, CURLOPT_COOKIE, session_name() . '=' . session_id());
+curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
-// Set session cookie if testing directly over local HTTP server
-$cookieString = session_name() . '=' . session_id();
-curl_setopt($ch, CURLOPT_COOKIE, $cookieString);
-
-$output = curl_exec($ch);
+$output   = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$error    = curl_error($ch);
 curl_close($ch);
 
-echo "Response from Engine:\n";
-echo $output . "\n";
+echo "HTTP Status: {$httpCode}\n";
+
+if ($error) {
+    echo "cURL Error: {$error}\n";
+} else {
+    echo "Response:\n";
+    echo $output . "\n";
+    
+    // Pretty-print JSON response if possible
+    $json = json_decode($output, true);
+    if (json_last_error() === JSON_ERROR_NONE) {
+        echo "\nFormatted Response:\n";
+        print_r($json);
+    }
+}
