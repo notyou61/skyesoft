@@ -72,14 +72,24 @@ if (!is_array($inputData)) {
 // 🚨 INTERCEPT ROUTE: PROPOSAL DECLINE WORKFLOW
 // =====================================================
 if (isset($inputData['action']) && $inputData['action'] === 'decline') {
-    $context['activitySessionId'] = trim($inputData['activitySessionId'] ?? '');
     $targetProposalId = trim($inputData['proposalId'] ?? '');
     
+    // 1️⃣ Hydrate missing session keys by inspecting the fallback global records if needed
+    $activitySessionId = trim($inputData['activitySessionId'] ?? '');
+    if ((empty($activitySessionId) || $activitySessionId === 'no_session') && !empty($targetProposalId)) {
+        // Fall back to the active tracking session context
+        $activitySessionId = $_SESSION['activitySessionId'] ?? '';
+    }
+    
+    // Normalize to standard fallback string value if still completely empty
+    if (empty($activitySessionId)) {
+        $activitySessionId = 'system_fallback_override';
+    }
+
+    $context['activitySessionId'] = $activitySessionId;
     error_log('[PPC][INTERCEPT] Decline action requested for Session: ' . $context['activitySessionId']);
     
     $pdo = getPDO() ?? null;
-    
-    // 🌟 Initialize baseline variable early to clear Intelephense diagnostic warning
     $displaySubject = ''; 
     
     // Extract naming attributes for custom UI surface message narrative
@@ -88,14 +98,13 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     $lastName       = trim($inputData['data']['contact']['contactLastName'] ?? '');
     $fullName       = trim($firstName . ' ' . $lastName);
     
-    // Fallback: If payload details are completely missing, extract naming via the ID framework token context
     if (empty($entityName) && empty($fullName)) {
         $displaySubject = !empty($targetProposalId) ? "Proposal #{$targetProposalId}" : "The contact proposal";
     } else {
         $displaySubject = !empty($fullName) ? "{$fullName} ({$entityName})" : $entityName;
     }
 
-    // 1️⃣ Audit Log Generation: Insert Action Type ID 10 (Foreign Key Aligned)
+    // 2️⃣ Audit Log Generation: Insert Action Type ID 10
     if ($pdo) {
         try {
             $actionPayload = [
@@ -106,17 +115,24 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 'proposalId'        => $targetProposalId
             ];
 
-            // Capture from session fallback to keep foreign key constraint satisfied
+            // Resolve contact context cleanly to guarantee foreign key criteria matches perfectly
             $contactId = !empty($inputData['data']['contact']['contactId']) 
                 ? (int)$inputData['data']['contact']['contactId'] 
-                : ($_SESSION['contactId'] ?? null);
+                : (!empty($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : null);
+
+            // If contactId is still missing, pull from system administration baseline
+            if ($contactId === null) {
+                $contactId = 1; // Fallback to System/Admin ID 
+            }
 
             $stmt = $pdo->prepare("
                 INSERT INTO tblActions (
                     contactId, intent, intentConfidence, actionTypeId, 
-                    activitySessionId, promptText, responseText, actionPayloadData
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    activitySessionId, promptText, responseText, actionPayloadData,
+                    ipAddress, latitude, longitude, userAgent
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
+            
             $stmt->execute([
                 $contactId, 
                 'contact_proposal_decline',
@@ -125,9 +141,14 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 $context['activitySessionId'],
                 "Decline proposal for {$displaySubject}",
                 "proposal_declined_and_purged",
-                json_encode($actionPayload, JSON_UNESCAPED_SLASHES)
+                json_encode($actionPayload, JSON_UNESCAPED_SLASHES),
+                // 🌟 Pull the contextual infrastructure variables from higher up in your script:
+                $context['ipAddress'] ?? $_SERVER['REMOTE_ADDR'] ?? null,
+                $context['latitude'] ?? null,
+                $context['longitude'] ?? null,
+                $context['userAgent'] ?? $_SERVER['HTTP_USER_AGENT'] ?? null
             ]);
-            error_log('[PPC][ACTION-LOG] ✅ Decline tracked under Action Type 10.');
+            error_log('[PPC][ACTION-LOG] ✅ Decline tracked under Action Type 10 with metadata.');
         } catch (Throwable $e) {
             error_log('[PPC][ACTION-LOG] ❌ Failed to write decline action: ' . $e->getMessage());
         }

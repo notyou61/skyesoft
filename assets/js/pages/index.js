@@ -2932,10 +2932,11 @@ window.SkyIndex = {
                         body: JSON.stringify({
                             action: 'decline',
                             source: 'ui_dashboard',
-                            activitySessionId: this.getActivitySessionId() || 'system_fallback_override',
-                            proposalId: targetProposalId || this.currentProposal?.id || '',
-                            entityName: directEntityName || this.currentProposal?.parsed?.entity?.name || '',
-                            data: this.currentProposal?.parsed || null
+                            // 🌟 Ensure this evaluates cleanly to your true active state session id
+                            activitySessionId: SkyIndex.currentProposal?.activitySessionId || this.activitySessionId || '', 
+                            proposalId: targetProposalId || '',
+                            entityName: directEntityName || '',
+                            data: SkyIndex.currentProposal?.data || null
                         })
                     });
 
