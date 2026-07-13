@@ -50,10 +50,10 @@ error_log('[PPC][SECTION-00] Bootstrap and Environment complete');
 // =====================================================
 
 $context = [
-    'requestId'        => uniqid('ppc_', true),
-    'startedAt'        => microtime(true),
-    'activitySessionId'=> '',
-    'version'          => '2.1.0'   // bumped for parser dispatch
+    'requestId'         => uniqid('ppc_', true),
+    'startedAt'         => microtime(true),
+    'activitySessionId' => '',
+    'version'           => '2.1.0'   // bumped for parser dispatch
 ];
 
 // =====================================================
@@ -61,7 +61,6 @@ $context = [
 // =====================================================
 
 $rawJson = file_get_contents('php://input');
-
 $inputData = json_decode($rawJson, true);
 
 if (!is_array($inputData)) {
@@ -72,18 +71,20 @@ if (!is_array($inputData)) {
 // 🚨 INTERCEPT ROUTE: PROPOSAL DECLINE WORKFLOW
 // =====================================================
 if (isset($inputData['action']) && $inputData['action'] === 'decline') {
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_start();
+    }
+
     $targetProposalId = trim($inputData['proposalId'] ?? '');
     
     // 1️⃣ Hydrate missing session keys by inspecting the fallback global records if needed
     $activitySessionId = trim($inputData['activitySessionId'] ?? '');
-    if ((empty($activitySessionId) || $activitySessionId === 'no_session') && !empty($targetProposalId)) {
-        // Fall back to the active tracking session context
+    if ((empty($activitySessionId) || $activitySessionId === 'no_session' || $activitySessionId === 'system_fallback_override')) {
         $activitySessionId = $_SESSION['activitySessionId'] ?? '';
     }
     
-    // Normalize to standard fallback string value if still completely empty
     if (empty($activitySessionId)) {
-        $activitySessionId = 'system_fallback_override';
+        $activitySessionId = !empty($targetProposalId) ? "sess_fallback_prop_{$targetProposalId}" : 'system_fallback_override';
     }
 
     $context['activitySessionId'] = $activitySessionId;
@@ -91,7 +92,23 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     
     $pdo = getPDO() ?? null;
     $displaySubject = ''; 
+    $lat = null;
+    $lon = null;
     
+    // 📍 COORD EXTRACTION: Read the ephemeral snapshot BEFORE we delete it from the drive
+    $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
+    if (!empty($targetProposalId) && is_dir($snapshotDir)) {
+        $targetedSnapshotPath = $snapshotDir . "/{$targetProposalId}.json";
+        if (is_file($targetedSnapshotPath)) {
+            $snapshotRaw = file_get_contents($targetedSnapshotPath);
+            if ($snapshotRaw) {
+                $snapshotData = json_decode($snapshotRaw, true);
+                $lat = $snapshotData['data']['location']['locationLatitude'] ?? $snapshotData['location']['latitude'] ?? null;
+                $lon = $snapshotData['data']['location']['locationLongitude'] ?? $snapshotData['location']['longitude'] ?? null;
+            }
+        }
+    }
+
     // Extract naming attributes for custom UI surface message narrative
     $entityName     = trim($inputData['entityName'] ?? $inputData['data']['entity']['entityName'] ?? '');
     $firstName      = trim($inputData['data']['contact']['contactFirstName'] ?? '');
@@ -115,51 +132,43 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 'proposalId'        => $targetProposalId
             ];
 
-            // Resolve contact context cleanly to guarantee foreign key criteria matches perfectly
             $contactId = !empty($inputData['data']['contact']['contactId']) 
                 ? (int)$inputData['data']['contact']['contactId'] 
-                : (!empty($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : null);
-
-            // If contactId is still missing, pull from system administration baseline
-            if ($contactId === null) {
-                $contactId = 1; // Fallback to System/Admin ID 
-            }
+                : (!empty($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : 1);
 
             $stmt = $pdo->prepare("
                 INSERT INTO tblActions (
-                    contactId, intent, intentConfidence, actionTypeId, 
-                    activitySessionId, promptText, responseText, actionPayloadData,
-                    ipAddress, latitude, longitude, userAgent
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    contactId, actionTypeId, actionUnix, activitySessionId, 
+                    promptText, responseText, actionPayloadData, actionResponseData,
+                    intent, intentConfidence, ipAddress, latitude, longitude, userAgent
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)
             ");
             
             $stmt->execute([
                 $contactId, 
-                'contact_proposal_decline',
-                1.00,
-                10, // Canonical Action Type ID 10 (Decline/Purge)
+                10, // actionTypeId
+                time(), // ✅ Generates real-time UNIX timestamp
                 $context['activitySessionId'],
                 "Decline proposal for {$displaySubject}",
                 "proposal_declined_and_purged",
                 json_encode($actionPayload, JSON_UNESCAPED_SLASHES),
-                // 🌟 Pull the contextual infrastructure variables from higher up in your script:
-                $context['ipAddress'] ?? $_SERVER['REMOTE_ADDR'] ?? null,
-                $context['latitude'] ?? null,
-                $context['longitude'] ?? null,
-                $context['userAgent'] ?? $_SERVER['HTTP_USER_AGENT'] ?? null
+                'contact_proposal_decline', // intent
+                1.00, // intentConfidence
+                $_SERVER['REMOTE_ADDR'] ?? null, // ipAddress
+                $lat, // ✅ Extracted coordinate latitude
+                $lon, // ✅ Extracted coordinate longitude
+                $_SERVER['HTTP_USER_AGENT'] ?? null // userAgent
             ]);
-            error_log('[PPC][ACTION-LOG] ✅ Decline tracked under Action Type 10 with metadata.');
+            error_log('[PPC][ACTION-LOG] ✅ Decline tracked under Action Type 10 with full metadata.');
         } catch (Throwable $e) {
             error_log('[PPC][ACTION-LOG] ❌ Failed to write decline action: ' . $e->getMessage());
         }
     }
 
-    // 2️⃣ Delete Runtime Ephemeral Artifacts & TMP Snapshot Files
+    // 3️⃣ Delete Runtime Ephemeral Artifacts & TMP Snapshot Files
     $purgedCount = 0;
-    $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
 
     if (is_dir($snapshotDir)) {
-        // Path A: Targeted delete if a specific proposal ID was supplied
         if (!empty($targetProposalId)) {
             $targetedPath = $snapshotDir . "/{$targetProposalId}.json";
             if (is_file($targetedPath)) {
@@ -168,7 +177,6 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
             }
         }
 
-        // Path B: Comprehensive Session Scrubbing safety sweep
         if (!empty($context['activitySessionId']) && $context['activitySessionId'] !== 'no_session') {
             $files = scandir($snapshotDir);
             foreach ($files as $file) {
@@ -186,14 +194,13 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
         }
     }
 
-    // 3️⃣ NEW: Purge Media Artifact Images (Plat maps, street views, satellite cards)
-    $artifactsDir = __DIR__ . '/../artifacts'; // ✅ Correctly steps up one level to the root artifacts folder
+    // 4️⃣ Purge Media Artifact Images (Plat maps, street views, satellite cards)
+    $artifactsDir = __DIR__ . '/../artifacts'; 
     if (is_dir($artifactsDir) && !empty($targetProposalId)) {
         $artifacts = scandir($artifactsDir);
         foreach ($artifacts as $artifactFile) {
             if ($artifactFile === '.' || $artifactFile === '..') continue;
 
-            // Target files containing "TMP-IMG-" and your dynamic proposal number snippet layout
             if (strpos($artifactFile, 'TMP-IMG-') !== false && strpos($artifactFile, $targetProposalId) !== false) {
                 $artifactPath = $artifactsDir . '/' . $artifactFile;
                 if (is_file($artifactPath)) {
@@ -206,7 +213,7 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     
     error_log("[PPC][PURGE] Cleaned up {$purgedCount} ephemeral workspace assets.");
 
-    // 4️⃣ Final Output Response (Delivers custom dynamic string to surface area context)
+    // 5️⃣ Final Output Response
     echo json_encode([
         'success'           => true,
         'status'            => 'declined',
