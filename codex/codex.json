@@ -765,9 +765,9 @@
                         "CCC": "Artifact Classification (TMP, REC, SYS)",
                         "MMM": "Media Type (IMG, PDF, DOC, DAT, VID, AUD)",
                         "PPP": "Artifact Purpose",
-                        "OOOOOO": "Six-digit Object Identifier (Work Order Number or 000000 when not assigned)",
-                        "UUU": "Three-digit User Identifier",
-                        "TTTTTTTTTT": "Ten-digit Unix Timestamp",
+                        "OOOOOO": "Six-digit Governing Object Identifier. During proposal workflows this shall be the Proposal ID. Upon acceptance, the identifier shall be updated to the primary key of the permanent business record governing the artifact (e.g., ContactID, LocationID, EntityID, OrderID, ApplicationID, WorkOrderID). Use 000000 only when no governing object has yet been assigned.",
+                        "UUU": "Three-digit User Identifier (Contact ID of the operator who created the artifact)",
+                        "TTTTTTTTTT": "Ten-digit Unix Timestamp representing the artifact creation time",
                         "SSS": "Three-digit Sequence Number"
                     },
                     "rules": [
