@@ -2613,7 +2613,7 @@ window.SkyIndex = {
                         
                         <button class="btn btn-danger" 
                                 style="flex: 1; padding: 4px 10px; font-size: 0.85em; background: #dc3545; color: #fff; border: 1px solid #bd2130;" 
-                                onclick="SkyIndex.handleProposalAction('decline', '${SkyIndex.currentProposal?.id || ''}', '${(SkyIndex.currentProposal?.parsed?.entity?.name || '').replace(/'/g, "\\'")}')" 
+                                onclick="SkyIndex.handleProposalAction('decline', '${payload.proposalId || ''}', '${(entity.entityName || '').replace(/'/g, "\\'")}')" 
                                 fdprocessedid="4ms2ps">
                             ✕ Decline
                         </button>
