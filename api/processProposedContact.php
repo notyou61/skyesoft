@@ -127,12 +127,10 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
         $finalSessionId = !empty($targetProposalId) ? "sess_fallback_prop_{$targetProposalId}" : 'system_fallback_override';
     }
 
-    // 🌟 FORCE-OVERWRITE THE SOURCE ARRAY: This eliminates downstream leaks completely!
+    // 🌟 FORCE-OVERWRITE THE SOURCE ARRAY & SCOPES: This completely eliminates downstream leaks!
     $inputData['activitySessionId'] = $finalSessionId;
-
-    // Explicitly bind to BOTH track signatures to guarantee absolute cross-scope query safety
-    $activitySessionId = $finalSessionId;
-    $context['activitySessionId'] = $finalSessionId;
+    $activitySessionId              = $finalSessionId;
+    $context['activitySessionId']   = $finalSessionId;
     
     error_log('[PPC][INTERCEPT] Decline action requested for Session: ' . $context['activitySessionId']);
 
