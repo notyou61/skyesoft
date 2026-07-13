@@ -236,15 +236,17 @@ function insertEntity(PDO $db, array $data): int
         INSERT INTO tblEntities (
             entityName,
             entityLegalName,
+            entityNormalizedName,
             entityType,
             entityDate
-        ) VALUES (?, ?, ?, UNIX_TIMESTAMP())
+        ) VALUES (?, ?, ?, ?, UNIX_TIMESTAMP())
     ");
 
     $stmt->execute([
         $entityName,
-        $entityName,           // Default legal name same as entity name
-        'company',             // Default type
+        $entityName,
+        strtolower($entityName),
+        'company'
     ]);
 
     $newId = (int)$db->lastInsertId();
@@ -265,6 +267,7 @@ function insertLocation(PDO $db, array $data, int $entityId): int
             locationEntityId,
             locationName,
             locationAddress,
+            locationAddressSuite,
             locationCity,
             locationState,
             locationZip,
@@ -275,14 +278,18 @@ function insertLocation(PDO $db, array $data, int $entityId): int
             locationCountyFips,
             locationJurisdiction,
             locationParcelNumber,
+            locationParcelNumberRaw,
+            locationHasMultipleParcels,
+            locationParcelCount,
             locationDate
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())
     ");
 
     $stmt->execute([
         $entityId,
         $data['locationName'] ?? '',
         $data['locationAddress'] ?? '',
+        $data['locationSuite'] ?? '',
         $data['locationCity'] ?? '',
         $data['locationState'] ?? '',
         $data['locationZip'] ?? '',
@@ -292,7 +299,10 @@ function insertLocation(PDO $db, array $data, int $entityId): int
         $data['locationCounty'] ?? null,
         $data['locationCountyFips'] ?? null,
         $data['jurisdictionName'] ?? null,
-        $parcel['parcelNumber'] ?? null
+        $parcel['parcelNumber'] ?? null,
+        $parcel['parcelNumber'] ?? null,
+        $data['hasMultipleParcels'] ? 1 : 0,
+        $data['parcelCount'] ?? 1
     ]);
 
     $locationId = (int)$db->lastInsertId();
@@ -301,11 +311,48 @@ function insertLocation(PDO $db, array $data, int $entityId): int
         throw new RuntimeException('Location insert failed.');
     }
 
+    // Populate Parcel Details
+    if (!empty($parcel['parcelNumber'])) {
+        $stmt = $db->prepare("
+            INSERT INTO tblLocationParcelDetails (
+                locationId,
+                apnRaw,
+                ownerName,
+                subdivision,
+                lotSize,
+                yearBuilt,
+                zoningCode,
+                zoningDescription,
+                zoningSource,
+                source,
+                confidence,
+                createdAt,
+                updatedAt
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
+        ");
+
+        $stmt->execute([
+            $locationId,
+            $parcel['parcelNumber'],
+            $parcel['ownerName'] ?? null,
+            $parcel['subdivision'] ?? null,
+            $parcel['lotSizeSqFt'] ?? null,
+            $parcel['constructionYear'] ?? null,
+            null, // zoningCode
+            null, // zoningDescription
+            'maricopa_assessor',
+            'parcel_resolution',
+            95
+        ]);
+    }
+
     return $locationId;
 }
 
 function insertContact(PDO $db, array $data, int $entityId, int $locationId): int
 {
+    $email = trim($data['contactEmail'] ?? '');
+
     $stmt = $db->prepare("
         INSERT INTO tblContacts (
             contactEntityId,
@@ -315,9 +362,13 @@ function insertContact(PDO $db, array $data, int $entityId, int $locationId): in
             contactLastName,
             contactTitle,
             contactPrimaryPhone,
+            contactPrimaryPhoneRaw,
             contactEmail,
-            contactDate
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())
+            contactEmailNormalized,
+            isActive,
+            contactDate,
+            contactCreatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
     ");
 
     $stmt->execute([
@@ -328,7 +379,9 @@ function insertContact(PDO $db, array $data, int $entityId, int $locationId): in
         $data['contactLastName'] ?? '',
         $data['contactTitle'] ?? null,
         $data['contactPrimaryPhone'] ?? null,
-        strtolower(trim($data['contactEmail'] ?? ''))
+        $data['contactPrimaryPhoneRaw'] ?? null,
+        $email,
+        $email ? strtolower($email) : null
     ]);
 
     $contactId = (int)$db->lastInsertId();
