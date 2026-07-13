@@ -1,0 +1,248 @@
+{
+    "proposalId": "823722",
+    "contentLine": "New Contact Proposal for John Anderson at Anderson Sign Group (Scottsdale, AZ)",
+    "generatedAt": "2026-07-13T15:56:16+00:00",
+    "version": "1.9.0",
+    "activitySessionId": "56a9827730342fcacf60c2bfdc281fa4",
+    "rawInput": "John Anderson\nPresident\nAnderson Sign Group\n\n18291 N Pima Rd A100\nScottsdale, AZ 85255\n\n(480) 555-0123\njohn.anderson@andersonsigngroup.com",
+    "proposalStatus": "proposed",
+    "parsed": {
+        "entity": {
+            "name": "Anderson Sign Group",
+            "entityName": "Anderson Sign Group"
+        },
+        "contact": {
+            "firstName": "John",
+            "lastName": "Anderson",
+            "salutation": "Mr",
+            "title": "President",
+            "primaryPhone": "(480) 555-0123",
+            "email": "john.anderson@andersonsigngroup.com",
+            "primaryPhoneRaw": "(480) 555-0123",
+            "salutationInferred": true,
+            "primaryPhoneDigits": "4805550123",
+            "contactFirstName": "John",
+            "contactLastName": "Anderson",
+            "contactSalutation": "Mr",
+            "contactTitle": "President",
+            "contactPrimaryPhone": "(480) 555-0123",
+            "contactEmail": "john.anderson@andersonsigngroup.com"
+        },
+        "location": {
+            "address": "18291 N Pima Rd A100",
+            "city": "Scottsdale",
+            "state": "AZ",
+            "zip": "85255",
+            "suite": "",
+            "locationName": "",
+            "locationAddress": "18291 N Pima Rd A100",
+            "locationCity": "Scottsdale",
+            "locationState": "AZ",
+            "locationZip": "85255",
+            "locationSuite": ""
+        }
+    },
+    "data": {
+        "entity": {
+            "entityName": "Anderson Sign Group",
+            "entityNameRaw": "Anderson Sign Group"
+        },
+        "contact": {
+            "contactSalutation": "Mr",
+            "contactFirstName": "John",
+            "contactLastName": "Anderson",
+            "contactTitle": "President",
+            "contactPrimaryPhone": "(480) 555-0123",
+            "contactPrimaryPhoneRaw": "(480) 555-0123",
+            "contactEmail": "john.anderson@andersonsigngroup.com",
+            "contactEmailNormalized": "john.anderson@andersonsigngroup.com",
+            "salutationInferred": true
+        },
+        "location": {
+            "locationName": "",
+            "locationNameConfirmed": false,
+            "locationNameInferred": false,
+            "locationNameSource": "location_parser",
+            "locationAddress": "18291 N Pima Rd A100",
+            "locationCity": "Scottsdale",
+            "locationState": "AZ",
+            "locationZip": "85255",
+            "locationAddressRaw": "18291 N Pima Rd A100, Scottsdale, AZ 85255",
+            "locationPlaceId": "ChIJPZIYqHZ2K4cRq34GmS2VUuI",
+            "locationLatitude": 33.653808,
+            "locationLongitude": -111.8867,
+            "locationValidated": true,
+            "locationCounty": "Maricopa",
+            "locationCensusValidated": true,
+            "locationCountyFips": "013",
+            "locationCountyGeoId": "04013",
+            "parcelDetails": [
+                {
+                    "parcelNumber": "21711855",
+                    "ownerName": "DC RANCH CROSSING ASSOCIATES LLC",
+                    "siteAddress": "18251 N PIMA RD  125 SCOTTSDALE  85255",
+                    "city": "SCOTTSDALE",
+                    "jurisdiction": "SCOTTSDALE",
+                    "source": "arcgis_coordinate",
+                    "assessor": {
+                        "detail": {
+                            "PropertyType": "Commercial",
+                            "LotSize": "281205",
+                            "ConstructionYear": null,
+                            "PUC": null,
+                            "Subdivision": null,
+                            "MCR": "99340",
+                            "STR": null
+                        },
+                        "mapId": "779310201",
+                        "mapUrl": "https://mcassessor.maricopa.gov/getmapid/779310201/",
+                        "mapImage": null,
+                        "mapPdf": null,
+                        "lastRetrieved": null,
+                        "status": "resolved"
+                    },
+                    "ownerMailingAddress": "1860 ALA MOANA BLVD, HONOLULU, HI 96815",
+                    "lastSaleDate": "06/01/2016",
+                    "lastSalePrice": "28980000",
+                    "propertyType": "Commercial",
+                    "lotSizeSqFt": "281205",
+                    "constructionYear": null,
+                    "puc": null,
+                    "subdivision": null,
+                    "mcrNumber": "99340",
+                    "str": null
+                }
+            ],
+            "parcelCount": 1,
+            "jurisdictionName": "Scottsdale",
+            "jurisdictionType": "City",
+            "hasMultipleParcels": false
+        },
+        "rawInput": {
+            "original": "John Anderson\nPresident\nAnderson Sign Group\n\n18291 N Pima Rd A100\nScottsdale, AZ 85255\n\n(480) 555-0123\njohn.anderson@andersonsigngroup.com",
+            "source": "skyebot_prompt",
+            "type": "signature"
+        },
+        "proposalCode": "PC-1",
+        "resolutionStatus": "proposed",
+        "narratives": {
+            "contentLine": "New Contact Proposal for John Anderson at Anderson Sign Group (Scottsdale, AZ)",
+            "ui": "The proposal is operationally eligible for insertion as a new contact associated with a new entity.",
+            "report": "All current operational validation requirements were satisfied.",
+            "decisions": [
+                "The proposal is operationally eligible for insertion as a new contact associated with a new entity."
+            ],
+            "blocking": [],
+            "review": [],
+            "info": [
+                "All current operational validation requirements were satisfied."
+            ],
+            "theme": {
+                "pc": "PC-1",
+                "rs": [
+                    "RS-0"
+                ],
+                "badgeText": "READY TO CREATE",
+                "bgColor": "#198754",
+                "bgLight": "#e8f5e9",
+                "textColor": "#198754",
+                "borderColor": "#a3cfbb",
+                "variant": "pc-1"
+            }
+        },
+        "theme": {
+            "pc": "PC-1",
+            "rs": [
+                "RS-0"
+            ],
+            "badgeText": "READY TO CREATE",
+            "bgColor": "#198754",
+            "bgLight": "#e8f5e9",
+            "textColor": "#198754",
+            "borderColor": "#a3cfbb",
+            "variant": "pc-1"
+        }
+    },
+    "meta": {
+        "hasMultipleParcels": false,
+        "parcelCount": 1,
+        "censusValidated": true,
+        "googleValidated": true
+    },
+    "pcm": {
+        "pc": "PC-1",
+        "rs": [
+            "RS-0"
+        ]
+    },
+    "locationValidation": [],
+    "resolution": {
+        "entity": {
+            "status": "none",
+            "entityId": null,
+            "matchType": null,
+            "confidence": 0
+        },
+        "location": {
+            "status": "new_entity",
+            "entityId": null
+        },
+        "contact": {
+            "status": "none",
+            "contactId": null,
+            "entityId": null,
+            "locationId": null,
+            "matchType": null,
+            "isLocationTransfer": false
+        }
+    },
+    "persistence": {
+        "canCommit": true,
+        "entity": [],
+        "location": [],
+        "contact": [],
+        "actions": [
+            "insert_entity",
+            "insert_location",
+            "insert_contact",
+            "link_elc"
+        ],
+        "summary": "Insert new Entity, Location, Contact and establish relationships"
+    },
+    "status": "review",
+    "reportStatus": "pending",
+    "governance": {
+        "blockingIssues": []
+    },
+    "narratives": {
+        "contentLine": "New Contact Proposal for John Anderson at Anderson Sign Group (Scottsdale, AZ)",
+        "ui": "The proposal is operationally eligible for insertion as a new contact associated with a new entity.",
+        "report": "All current operational validation requirements were satisfied.",
+        "decisions": [
+            "The proposal is operationally eligible for insertion as a new contact associated with a new entity."
+        ],
+        "blocking": [],
+        "review": [],
+        "info": [
+            "All current operational validation requirements were satisfied."
+        ],
+        "theme": {
+            "pc": "PC-1",
+            "rs": [
+                "RS-0"
+            ],
+            "badgeText": "READY TO CREATE",
+            "bgColor": "#198754",
+            "bgLight": "#e8f5e9",
+            "textColor": "#198754",
+            "borderColor": "#a3cfbb",
+            "variant": "pc-1"
+        }
+    },
+    "artifactRegistry": {
+        "parcelImages": [],
+        "satelliteView": null,
+        "streetView": null,
+        "pdfReport": null
+    }
+}

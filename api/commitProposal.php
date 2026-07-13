@@ -131,9 +131,9 @@ $response = [
 try {
     $db->beginTransaction();
 
-    $entityId   = $snapshot['databaseResolution']['entity']['entityId'] ?? null;
-    $locationId = $snapshot['databaseResolution']['location']['locationId'] ?? null;
-    $contactId  = $snapshot['databaseResolution']['contact']['contactId'] ?? null;
+    $entityId   = null;
+    $locationId = null;
+    $contactId  = null;
 
     foreach ($actions as $action) {
         switch ($action) {
@@ -151,9 +151,7 @@ try {
                 break;
 
             case 'retire_contact':
-                if ($contactId) {
-                    retireContact($db, (int)$contactId);
-                }
+                if ($contactId) retireContact($db, (int)$contactId);
                 break;
 
             case 'link_entity':
@@ -163,20 +161,15 @@ try {
             case 'link_location':
                 $locationId = (int)($commitPlan['location']['locationId'] ?? $snapshot['databaseResolution']['location']['locationId'] ?? 0);
                 break;
-
-            case 'link_elc':
-            case 'link_existing_elc':
-                // Relational join logic placeholder for future expansion
-                break;
         }
     }
 
-    $governingObjectId = in_array($pc, ['PC-4', 'PC-5'], true) ? (int)$locationId : (int)$contactId;
+    $governingObjectId = in_array($pc, ['PC-4','PC-5'], true) ? (int)$locationId : (int)$contactId;
 
     $reportArtifacts = $snapshot['reportArtifacts'] ?? $snapshot['artifactRegistry'] ?? [];
     $promotedArtifacts = promoteArtifacts($proposalId, $governingObjectId, $reportArtifacts, $artifactMoves);
 
-    // Audit Log — Full request/response symmetry
+    // Audit Log
     $actionPayload = [
         'proposalId' => $proposalId,
         'actionId'   => $actionId,
@@ -184,12 +177,12 @@ try {
     ];
 
     $finalResponseData = [
-        'success'    => true,
-        'contactId'  => $contactId,
-        'entityId'   => $entityId,
-        'locationId' => $locationId,
-        'artifacts'  => $promotedArtifacts,
-        'proposalId' => $proposalId
+        'success'     => true,
+        'contactId'   => $contactId,
+        'entityId'    => $entityId,
+        'locationId'  => $locationId,
+        'artifacts'   => $promotedArtifacts,
+        'proposalId'  => $proposalId
     ];
 
     $stmt = $db->prepare("
@@ -201,7 +194,7 @@ try {
 
     $stmt->execute([
         $actorContactId,
-        14, // Commit Success
+        14,
         time(),
         $snapshot['activitySessionId'] ?? '',
         "Committed Proposal #{$proposalId}",
@@ -212,25 +205,18 @@ try {
 
     $db->commit();
 
-    // Cleanup ephemeral workspace
+    // Cleanup
     $snapshotPath = __DIR__ . "/../data/runtimeEphemeral/proposals/{$proposalId}.json";
-    if (is_file($snapshotPath)) {
-        @unlink($snapshotPath);
-    }
+    if (is_file($snapshotPath)) @unlink($snapshotPath);
 
     $response = array_merge($response, $finalResponseData);
     $response['message'] = 'Data successfully synchronized into records.';
 
 } catch (Throwable $e) {
-    if ($db->inTransaction()) {
-        $db->rollBack();
-    }
+    if ($db->inTransaction()) $db->rollBack();
 
-    // Filesystem rollback
     foreach (array_reverse($artifactMoves) as $move) {
-        if (is_file($move['to'])) {
-            @rename($move['to'], $move['from']);
-        }
+        if (is_file($move['to'])) @rename($move['to'], $move['from']);
     }
 
     $response['error'] = 'Commit processing failed: ' . $e->getMessage();
@@ -246,8 +232,20 @@ function insertEntity(PDO $db, array $data): int
 {
     $entityName = $data['entityName'] ?? $data['entityNameRaw'] ?? '';
 
-    $stmt = $db->prepare("INSERT INTO tblEntities (entityName) VALUES (?)");
-    $stmt->execute([$entityName]);
+    $stmt = $db->prepare("
+        INSERT INTO tblEntities (
+            entityName,
+            entityLegalName,
+            entityType,
+            entityDate
+        ) VALUES (?, ?, ?, UNIX_TIMESTAMP())
+    ");
+
+    $stmt->execute([
+        $entityName,
+        $entityName,           // Default legal name same as entity name
+        'company',             // Default type
+    ]);
 
     $newId = (int)$db->lastInsertId();
 
@@ -391,7 +389,6 @@ function promoteArtifacts(string $proposalId, int $governingObjectId, array $art
             throw new RuntimeException("Artifact promotion failed: {$filename}");
         }
 
-        // Track successful filesystem execution for safety rollbacks
         $artifactMoves[] = [
             'from' => $sourceFile,
             'to'   => $targetFile
