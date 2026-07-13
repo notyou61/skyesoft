@@ -96,45 +96,42 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 $lat = $snapshotData['data']['location']['locationLatitude'] ?? $snapshotData['location']['latitude'] ?? null;
                 $lon = $snapshotData['data']['location']['locationLongitude'] ?? $snapshotData['location']['longitude'] ?? null;
                 
-                // Extract the authentic session token saved during the generation phase
-                $cachedSessionId = trim($snapshotData['activitySessionId'] ?? $snapshotData['data']['activitySessionId'] ?? '');
+                // Extract the authentic session token by checking all potential layout variations
+                $cachedSessionId = trim(
+                    $snapshotData['activitySessionId'] 
+                    ?? $snapshotData['data']['activitySessionId'] 
+                    ?? $snapshotData['context']['activitySessionId'] 
+                    ?? ''
+                );
             }
         }
     }
 
-    // 1️⃣ Hydrate session keys, checking the workspace snapshot file first to overwrite client gaps
-    $activitySessionId = trim($inputData['activitySessionId'] ?? '');
-    if ($activitySessionId === 'no_session' || empty($activitySessionId)) {
-        // Look inside the ephemeral JSON metadata file, then check native PHP session globals
-        $activitySessionId = !empty($cachedSessionId) ? $cachedSessionId : ($_SESSION['activitySessionId'] ?? '');
+    // 1️⃣ Hydrate session keys, explicitly bypassing 'no_session' literals
+    $incomingSession = trim($inputData['activitySessionId'] ?? '');
+    if ($incomingSession === 'no_session') {
+        $incomingSession = '';
     }
     
-    // Final defensive fallback if it's still completely vacant
-    if (empty($activitySessionId)) {
-        $activitySessionId = !empty($targetProposalId) ? "sess_fallback_prop_{$targetProposalId}" : 'system_fallback_override';
+    // Fallback hierarchy: 1. Clean incoming data -> 2. File Snapshot -> 3. Native Active PHP Session
+    if (!empty($incomingSession)) {
+        $finalSessionId = $incomingSession;
+    } elseif (!empty($cachedSessionId)) {
+        $finalSessionId = $cachedSessionId;
+    } else {
+        $finalSessionId = $_SESSION['activitySessionId'] ?? '';
+    }
+    
+    // Final defensive fallback if all else fails (Ensures field is NEVER an empty string)
+    if (empty($finalSessionId)) {
+        $finalSessionId = !empty($targetProposalId) ? "sess_fallback_prop_{$targetProposalId}" : 'system_fallback_override';
     }
 
-    $context['activitySessionId'] = $activitySessionId;
+    // Explicitly bind to BOTH track signatures to guarantee absolute cross-scope query safety
+    $activitySessionId = $finalSessionId;
+    $context['activitySessionId'] = $finalSessionId;
+    
     error_log('[PPC][INTERCEPT] Decline action requested for Session: ' . $context['activitySessionId']);
-    
-    $pdo = getPDO() ?? null;
-    $displaySubject = ''; 
-    $lat = null;
-    $lon = null;
-    
-    // 📍 COORD EXTRACTION: Read the ephemeral snapshot BEFORE we delete it from the drive
-    $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
-    if (!empty($targetProposalId) && is_dir($snapshotDir)) {
-        $targetedSnapshotPath = $snapshotDir . "/{$targetProposalId}.json";
-        if (is_file($targetedSnapshotPath)) {
-            $snapshotRaw = file_get_contents($targetedSnapshotPath);
-            if ($snapshotRaw) {
-                $snapshotData = json_decode($snapshotRaw, true);
-                $lat = $snapshotData['data']['location']['locationLatitude'] ?? $snapshotData['location']['latitude'] ?? null;
-                $lon = $snapshotData['data']['location']['locationLongitude'] ?? $snapshotData['location']['longitude'] ?? null;
-            }
-        }
-    }
 
     // Extract naming attributes for custom UI surface message narrative
     $entityName     = trim($inputData['entityName'] ?? $inputData['data']['entity']['entityName'] ?? '');
@@ -175,7 +172,7 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 $contactId, 
                 10, // actionTypeId
                 time(), // ✅ Generates real-time UNIX timestamp
-                $context['activitySessionId'],
+                $context['activitySessionId'], // ✅ Explicit session data pointer
                 "Decline proposal for {$displaySubject}",
                 "proposal_declined_and_purged",
                 json_encode($actionPayload, JSON_UNESCAPED_SLASHES),
