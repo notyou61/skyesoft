@@ -77,15 +77,36 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
 
     $targetProposalId = trim($inputData['proposalId'] ?? '');
     
-    // 1️⃣ Hydrate session keys, explicitly treating literal 'no_session' as empty
-    $activitySessionId = trim($inputData['activitySessionId'] ?? '');
-    if ($activitySessionId === 'no_session') {
-        $activitySessionId = '';
-    }
+    $pdo = getPDO() ?? null;
+    $displaySubject = ''; 
+    $lat = null;
+    $lon = null;
+    $cachedSessionId = ''; 
     
-    // If frontend sent 'no_session' or nothing, fetch from the native PHP session context
-    if (empty($activitySessionId) && !empty($targetProposalId)) {
-        $activitySessionId = $_SESSION['activitySessionId'] ?? '';
+    // 📍 WORKSPACE DEEP SCRUB: Read the ephemeral snapshot BEFORE we delete it from the drive
+    $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
+    if (!empty($targetProposalId) && is_dir($snapshotDir)) {
+        $targetedSnapshotPath = $snapshotDir . "/{$targetProposalId}.json";
+        if (is_file($targetedSnapshotPath)) {
+            $snapshotRaw = file_get_contents($targetedSnapshotPath);
+            if ($snapshotRaw) {
+                $snapshotData = json_decode($snapshotRaw, true);
+                
+                // Extract cached geometry details
+                $lat = $snapshotData['data']['location']['locationLatitude'] ?? $snapshotData['location']['latitude'] ?? null;
+                $lon = $snapshotData['data']['location']['locationLongitude'] ?? $snapshotData['location']['longitude'] ?? null;
+                
+                // Extract the authentic session token saved during the generation phase
+                $cachedSessionId = trim($snapshotData['activitySessionId'] ?? $snapshotData['data']['activitySessionId'] ?? '');
+            }
+        }
+    }
+
+    // 1️⃣ Hydrate session keys, checking the workspace snapshot file first to overwrite client gaps
+    $activitySessionId = trim($inputData['activitySessionId'] ?? '');
+    if ($activitySessionId === 'no_session' || empty($activitySessionId)) {
+        // Look inside the ephemeral JSON metadata file, then check native PHP session globals
+        $activitySessionId = !empty($cachedSessionId) ? $cachedSessionId : ($_SESSION['activitySessionId'] ?? '');
     }
     
     // Final defensive fallback if it's still completely vacant
