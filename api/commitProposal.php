@@ -181,6 +181,8 @@ try {
     $governingObjectId = in_array($pc, ['PC-4','PC-5'], true) ? (int)$locationId : (int)$contactId;
 
     $reportArtifacts = $snapshot['reportArtifacts'] ?? $snapshot['artifactRegistry'] ?? [];
+    error_log("[COMMIT] Report Artifacts count: " . count($reportArtifacts));
+    error_log("[COMMIT] Report Artifacts: " . json_encode($reportArtifacts));
     $promotedArtifacts = promoteArtifacts($proposalId, $governingObjectId, $reportArtifacts, $artifactMoves);
 
     // Audit Log
@@ -241,7 +243,7 @@ echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 #endregion
 
-#region SECTION 99 — Single Responsibility Insertion Units
+#region SECTION 05 — Single Responsibility Insertion Units
 
 function insertEntity(PDO $db, array $data): int 
 {
