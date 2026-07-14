@@ -355,8 +355,8 @@ function insertLocation(PDO $db, array $data, int $entityId): int
             $parcel['subdivision'] ?? null,
             $parcel['lotSizeSqFt'] ?? null,
             $parcel['constructionYear'] ?? null,
-            null, // zoningCode
-            null, // zoningDescription
+            $parcel['zoningCode'] ?? null,           // ← Improved
+            $parcel['zoningDescription'] ?? null,    // ← Improved
             'maricopa_assessor',
             'parcel_resolution',
             95
@@ -437,11 +437,13 @@ function promoteArtifacts(string $proposalId, int $governingObjectId, array $art
             continue;
         }
 
+        // For location-based artifacts (street view, parcel map, satellite), use Location ID
+        // For contact-specific artifacts, use Contact ID
         $newName = sprintf(
             'REC-%s-%s-%s-%s-%s-%s.%s',
             $matches[1],
             $matches[2],
-            $recordSegment,
+            $recordSegment,           // This is the governing object ID (Location ID for maps)
             $matches[3],
             $matches[4],
             $matches[5],
