@@ -345,7 +345,7 @@ error_log("[PPC] Fallback Parser → Name: '{$fallbackFirstName} {$fallbackLastN
 
 #endregion
 
-#region SECTION 02.5 — Proposal Parser Dispatch (Architectural Branch Point)
+#region SECTION 03 — Proposal Parser Dispatch (Architectural Branch Point)
 
 $proposalType = $proposalType ?? 'contact';   // Set in Section 00
 
@@ -835,6 +835,8 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
 // =====================================================
 error_log('[PPC][ACTION-LOG] Starting action insert (post-enrichment)');
 
+$actionId = null;
+
 try {
     $actionPayload = [
         'input'              => $rawInputOriginal,
@@ -862,9 +864,7 @@ try {
         'actionResponseData'=> null
     ], $pdo);
 
-    error_log("[PPC][ACTION-LOG] ✅ Success - ActionID: " . ($actionId ?? 'NULL') .
-              " | Lat: " . ($data['location']['locationLatitude'] ?? 'NULL') .
-              " | Lon: " . ($data['location']['locationLongitude'] ?? 'NULL'));
+    error_log("[PPC][ACTION-LOG] ✅ Success - ActionID: " . ($actionId ?? 'NULL'));
 
     $_SESSION['lastContactProposalActionId'] = $actionId;
 
@@ -1718,78 +1718,7 @@ error_log("[PPC][SECTION-14] AI Narrative Generation complete → Content Line: 
 
 #endregion
 
-#region SECTION 15 — Proposal Snapshot Creation
-
-// =====================================================
-// Prepare Snapshot Matching Utility Architecture
-// =====================================================
-$proposalSnapshot = [
-    'proposalId'        => $proposalId,
-    'contentLine'       => $contentLine ?? 'Proposal Information Update', 
-    'generatedAt'       => date('c'),
-    'version'           => '1.9.0',
-    'activitySessionId' => $context['activitySessionId'] ?? '',
-    'rawInput'          => $rawInput ?? '',
-    'proposalStatus'    => 'proposed',
-    
-    'parsed'            => $parsed ?? [],
-    'data'              => $data ?? [],
-    'meta'              => [
-        'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
-        'parcelCount'        => $data['location']['parcelCount'] ?? 0,
-        'censusValidated'    => $data['location']['locationCensusValidated'] ?? false,
-        'googleValidated'    => $data['location']['locationValidated'] ?? false
-    ],
-    
-    'pcm'               => [
-        'pc' => ($pcm['pc'] ?? null),
-        'rs' => ($pcm['rs'] ?? [])
-    ],
-    'locationValidation'=> $locationValidation ?? [],
-    'resolution'        => $databaseResolution ?? [],
-    'persistence'       => $commitPlan ?? [],
-    
-    'status'            => ($pcm['readyForCommit'] ?? false) ? 'ready' : 'review',
-    'reportStatus'      => 'pending',
-    
-    'governance'        => $governance ?? ['blockingIssues' => []],
-    'narratives'        => $narratives ?? [],
-    
-    'artifactRegistry'  => [
-        'parcelImages'  => $parcelImages ?? [],
-        'satelliteView' => null,
-        'streetView'    => null,
-        'pdfReport'     => null
-    ]
-];
-
-// =====================================================
-// Save Snapshot to Disk
-// =====================================================
-$snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
-if (!is_dir($snapshotDir)) {
-    mkdir($snapshotDir, 0755, true);
-}
-
-$snapshotPath = $snapshotDir . "/{$proposalId}.json";
-
-$written = file_put_contents(
-    $snapshotPath,
-    json_encode($proposalSnapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-);
-
-if ($written !== false) {
-    error_log("[PPC][SECTION-15] ✅ Snapshot saved with Content Line: {$proposalId}.json");
-} else {
-    error_log("[PPC][SECTION-15] ❌ Failed to save snapshot");
-}
-
-// Attach path reference
-$proposalSnapshot['snapshotPath'] = $snapshotPath;
-
-#endregion
-
-#region SECTION 16 — Final Output Builder
+#region SECTION 15 — Final Output Builder
 
 // =====================================================
 // 🌟 DYNAMIC TEXT OVERRIDES FOR PC-6 LIFECYCLES (Catch-All Sanitization)
@@ -1840,6 +1769,7 @@ if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
             'success'           => true,
             'status'            => 'proposed',
             'proposalId'        => $proposalId,
+            'proposalActionId'  => $actionId ?? $_SESSION['lastContactProposalActionId'] ?? null,   // ← Add this
             'proposalKind'      => $proposalType ?? 'contact',
             'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'),
             'data'              => $data ?? [],
@@ -1883,6 +1813,7 @@ echo json_encode([
     'success'           => true,
     'status'            => 'proposed',
     'proposalId'        => $proposalId,
+    'proposalActionId'  => $actionId ?? $_SESSION['lastContactProposalActionId'] ?? null,   // ← Add this
     'proposalKind'      => $proposalType ?? 'contact',
     'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'),
     'activitySessionId' => $context['activitySessionId'] ?? '',

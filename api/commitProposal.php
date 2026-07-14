@@ -5,9 +5,9 @@ declare(strict_types=1);
  * Skyesoft — commitProposal.php
  * Deterministic Commit Engine Layer
  * 
- * File Version:     1.2.0
+ * File Version:     1.3.0
  * Schema Version:   2.1.1
- * Last Updated:     2026-07-13
+ * Last Updated:     2026-07-14
  */
 
 #region SECTION 00 — Bootstrap & Request Initialization
@@ -33,8 +33,8 @@ if (session_status() === PHP_SESSION_NONE) {
 $rawJson = file_get_contents('php://input');
 $inputData = json_decode($rawJson, true) ?? [];
 
-$proposalId = trim((string)($inputData['proposalId'] ?? ''));
-$actionId   = isset($inputData['actionId']) ? (int)$inputData['actionId'] : null;
+$proposalId       = trim((string)($inputData['proposalId'] ?? ''));
+$proposalActionId = isset($inputData['proposalActionId']) ? (int)$inputData['proposalActionId'] : null;
 
 if (empty($proposalId)) {
     echo json_encode(['success' => false, 'error' => 'Missing proposalId']);
@@ -47,7 +47,7 @@ if (!$db) {
     exit;
 }
 
-$actorContactId = (int)($_SESSION['contactId'] ?? 1);   // fallback to real contact
+$actorContactId = (int)($_SESSION['contactId'] ?? 1);
 
 #endregion
 
@@ -55,26 +55,40 @@ $actorContactId = (int)($_SESSION['contactId'] ?? 1);   // fallback to real cont
 
 $snapshot = null;
 
-// Prefer authoritative actionResponseData from audit trail first
-if ($actionId !== null) {
+// 1. Primary: Load from originating Action row (preferred)
+if ($proposalActionId !== null) {
     $stmt = $db->prepare("SELECT actionResponseData FROM tblActions WHERE actionId = ?");
-    $stmt->execute([$actionId]);
+    $stmt->execute([$proposalActionId]);
     $dbRow = $stmt->fetchColumn();
     if ($dbRow) {
         $snapshot = json_decode($dbRow, true);
+        error_log("[COMMIT] Loaded from Action row (ID: $proposalActionId)");
     }
 }
 
-// Fallback to ephemeral workspace snapshot
+// 2. Fallback: Ephemeral snapshot file (for transition period)
 if (!$snapshot) {
-    $snapshotPath = __DIR__ . "/../data/runtimeEphemeral/proposals/{$proposalId}.json";
-    if (is_file($snapshotPath)) {
-        $snapshot = json_decode(file_get_contents($snapshotPath), true);
+    $cleanId = preg_replace('/^PROP-?/', '', $proposalId);
+    $candidates = [
+        __DIR__ . "/../data/runtimeEphemeral/proposals/{$proposalId}.json",
+        __DIR__ . "/../data/runtimeEphemeral/proposals/{$cleanId}.json"
+    ];
+
+    foreach ($candidates as $path) {
+        if (is_file($path)) {
+            $snapshot = json_decode(file_get_contents($path), true);
+            error_log("[COMMIT] Loaded from filesystem: $path");
+            break;
+        }
     }
 }
 
 if (!$snapshot) {
-    echo json_encode(['success' => false, 'error' => 'Proposal metadata could not be resolved']);
+    error_log("[COMMIT] CRITICAL: Could not load proposal metadata for ID: $proposalId");
+    echo json_encode([
+        'success' => false, 
+        'error' => 'Proposal metadata could not be resolved'
+    ]);
     exit;
 }
 
@@ -171,18 +185,19 @@ try {
 
     // Audit Log
     $actionPayload = [
-        'proposalId' => $proposalId,
-        'actionId'   => $actionId,
-        'pc'         => $pc
+        'proposalId'       => $proposalId,
+        'proposalActionId' => $proposalActionId,
+        'pc'               => $pc
     ];
 
     $finalResponseData = [
-        'success'     => true,
-        'contactId'   => $contactId,
-        'entityId'    => $entityId,
-        'locationId'  => $locationId,
-        'artifacts'   => $promotedArtifacts,
-        'proposalId'  => $proposalId
+        'success'          => true,
+        'contactId'        => $contactId,
+        'entityId'         => $entityId,
+        'locationId'       => $locationId,
+        'artifacts'        => $promotedArtifacts,
+        'proposalId'       => $proposalId,
+        'proposalActionId' => $proposalActionId
     ];
 
     $stmt = $db->prepare("
