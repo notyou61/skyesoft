@@ -710,11 +710,11 @@
                 "type": "Structural Standard",
                 "preamble": {
                     "icon": 0,
-                    "text": "The Repository & Artifact Standard defines the canonical filesystem structure, artifact governance model, retention classifications, and naming architecture of Skyesoft. All folders, files, generated artifacts, evidence records, reports, images, documents, and system outputs exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity prevents drift, eliminates ambiguity, enforces governance, and ensures long-term maintainability. No file, directory, or artifact may exist outside this standard without explicit Codex authorization."
+                    "text": "The Repository & Artifact Standard defines the canonical filesystem structure, artifact governance model, retention classifications, naming architecture, and lifecycle rules of Skyesoft. All folders, files, generated artifacts, evidence records, reports, images, documents, and system outputs exist to support the Codex, SSE, unified UI, and Skyebot. Uniformity prevents drift, eliminates ambiguity, enforces governance, and ensures long-term maintainability. No file, directory, or artifact may exist outside this standard without explicit Codex authorization."
                 },
                 "purpose": {
                     "icon": 6,
-                    "text": "Provide a unified governance model for repository structure, artifact storage, retention classification, file naming, and long-term record management."
+                    "text": "Provide a unified, deterministic governance model for repository structure, artifact storage, retention classification, file naming, and long-term record management."
                 },
                 "artifactLifecycle": {
                     "title": {
@@ -726,7 +726,7 @@
                         {
                             "code": "TMP",
                             "name": "Temporary Artifact",
-                            "description": "Regeneratable artifacts that are not business records and may be purged."
+                            "description": "Regeneratable artifacts that are not business records and may be purged after promotion or expiration."
                         },
                         {
                             "code": "REC",
@@ -745,7 +745,7 @@
                         "icon": 28,
                         "text": "Artifact Repository"
                     },
-                    "directive": "Artifacts shall be stored in the canonical artifact repository.",
+                    "directive": "All artifacts shall be stored in the canonical artifact repository.",
                     "rules": [
                         "Artifacts shall not be organized into project-specific directory trees.",
                         "Artifact identity shall be determined by filename and metadata.",
@@ -764,15 +764,14 @@
                     "segments": {
                         "CCC": "Artifact Classification (TMP, REC, SYS)",
                         "MMM": "Media Type (IMG, PDF, DOC, DAT, VID, AUD)",
-                        "PPP": "Artifact Purpose",
-                        "OOOOOO": "Six-digit Governing Object Identifier. During proposal workflows this shall be the Proposal ID. Upon acceptance, the identifier shall be updated to the primary key of the permanent business record governing the artifact (e.g., ContactID, LocationID, EntityID, OrderID, ApplicationID, WorkOrderID). Use 000000 only when no governing object has yet been assigned.",
+                        "PPP": "Artifact Purpose (STR=StreetView, PAR=ParcelMap, SAT=Satellite, etc.)",
+                        "OOOOOO": "Six-digit Governing Object Identifier. During proposal workflows this shall be the Proposal ID. Upon acceptance, the identifier shall be updated to the primary key of the permanent business record governing the artifact (e.g., ContactID, LocationID, EntityID, OrderID). Use 000000 only when no governing object has yet been assigned.",
                         "UUU": "Three-digit User Identifier (Contact ID of the operator who created the artifact)",
                         "TTTTTTTTTT": "Ten-digit Unix Timestamp representing the artifact creation time",
                         "SSS": "Three-digit Sequence Number"
                     },
                     "rules": [
-                        "All filename segments shall use fixed-width formatting.",
-                        "Leading zeros shall be used when required.",
+                        "All filename segments shall use fixed-width formatting with leading zeros.",
                         "File extensions must remain lowercase.",
                         "Unix timestamps are mandatory.",
                         "Sequence numbers are mandatory.",
