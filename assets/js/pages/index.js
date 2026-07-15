@@ -3017,6 +3017,7 @@ window.SkyIndex = {
             this.setThinking(false);
         }
     },
+    // #endregion
 
     // #region Transform Proposal Card to Accepted State
     transformProposalToAcceptedCard: function(result) {
