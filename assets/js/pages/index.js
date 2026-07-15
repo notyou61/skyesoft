@@ -18,6 +18,8 @@
 //
 // ======================================================================
 
+console.log('[SkyIndex] acceptProposedContact loaded:', typeof SkyIndex.acceptProposedContact);
+
 // #region 📦 Canonical Domain Surface Dependencies
 import { adaptStreamedDomain } from '/skyesoft/assets/js/domainAdapter.js';
 import { renderOutline } from '/skyesoft/assets/js/outlineRenderer.js';
@@ -4317,6 +4319,51 @@ window.SkyIndex = {
 
 };
 // #endregion
+
+SkyIndex.acceptProposedContact = async function() {
+
+    const prop = this.currentProposal;
+    if (!prop || !prop.proposalId || !prop.proposalActionId) {
+        this.appendSystemLine('❌ No active proposal or missing Action ID.', 'error');
+        return;
+    }
+
+    this.appendSystemLine(`💾 Committing proposal ${prop.proposalId}...`, 'system');
+    this.setThinking(true);
+
+    try {
+        const res = await fetch('/skyesoft/api/commitProposal.php', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                proposalId: prop.proposalId,
+                proposalActionId: prop.proposalActionId
+            })
+        });
+
+        const result = await res.json();
+
+        if (result.success === true) {
+            this.appendSystemLine('✅ Proposal committed successfully.', 'success');
+
+            if (result.contactId)  this.appendSystemLine(`📇 New Contact ID: ${result.contactId}`);
+            if (result.entityId)   this.appendSystemLine(`🏢 New Entity ID: ${result.entityId}`);
+            if (result.locationId) this.appendSystemLine(`📍 New Location ID: ${result.locationId}`);
+
+            this.currentProposal = null;
+
+        } else {
+            this.appendSystemLine(`❌ Commit failed: ${result.error || 'Unknown error'}`, 'error');
+        }
+
+    } catch (err) {
+        console.error('[Commit Error]', err);
+        this.appendSystemLine('❌ Commit request failed.', 'error');
+    } finally {
+        this.setThinking(false);
+    }
+};
 
 // #region 🗺️ Google Maps Dual View Initializer (Map + Street View)
 let map, panorama;
