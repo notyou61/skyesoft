@@ -2269,9 +2269,9 @@ window.SkyIndex = {
                 subtitle: 'Create new Entity, Location and Contact',
                 btnClass: 'btn-success',
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
-                btnText: '✔ Accept &amp; Save',
+                btnText: '✔ Accept &amp; Commit',
                 btnDisabled: false,
-                btnHandler: 'SkyIndex.acceptEditedProposal()'
+                btnHandler: 'SkyIndex.acceptProposedContact()'   // ← Updated
             },
             'PC-2': {
                 borderLeft: '#28a745',
@@ -2964,18 +2964,17 @@ window.SkyIndex = {
                 break;
 
             case 'accept':
-                this.commitCurrentProposal();   // ← Updated to use commit engine
+                this.acceptProposedContact();   // ← Single canonical handler
                 break;
 
             default:
                 console.warn('[Proposal] Unknown action:', action);
         }
     },
-
     // #endregion
 
-    // #region 📤 Commit Proposal Action
-    commitCurrentProposal: async function() {
+    // #region 📤 Accept & Commit Proposal (Canonical)
+    acceptProposedContact: async function() {
 
         const prop = this.currentProposal;
         if (!prop || !prop.proposalId || !prop.proposalActionId) {
@@ -3006,7 +3005,6 @@ window.SkyIndex = {
                 if (result.entityId)   this.appendSystemLine(`🏢 New Entity ID: ${result.entityId}`);
                 if (result.locationId) this.appendSystemLine(`📍 New Location ID: ${result.locationId}`);
 
-                // Clear proposal state
                 this.currentProposal = null;
 
             } else {
