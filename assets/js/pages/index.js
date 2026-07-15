@@ -2984,7 +2984,6 @@ window.SkyIndex = {
             return;
         }
 
-        this.appendSystemLine(`💾 Committing proposal ${prop.proposalId}...`, 'system');
         this.setThinking(true);
 
         try {
@@ -3001,12 +3000,10 @@ window.SkyIndex = {
             const result = await res.json();
 
             if (result.success === true) {
-                this.appendSystemLine('✅ Proposal committed successfully.', 'success');
+                // Transform proposal card to accepted state
+                this.transformProposalToAcceptedCard(result);
 
-                if (result.contactId)  this.appendSystemLine(`📇 New Contact ID: ${result.contactId}`);
-                if (result.entityId)   this.appendSystemLine(`🏢 New Entity ID: ${result.entityId}`);
-                if (result.locationId) this.appendSystemLine(`📍 New Location ID: ${result.locationId}`);
-
+                // Clear proposal state
                 this.currentProposal = null;
 
             } else {
@@ -3019,6 +3016,37 @@ window.SkyIndex = {
         } finally {
             this.setThinking(false);
         }
+    },
+
+    // #region Transform Proposal Card to Accepted State
+    transformProposalToAcceptedCard: function(result) {
+        const card = document.querySelector('.proposed-identity-card'); // adjust selector to match your card
+        if (!card) return;
+
+        card.style.borderLeftColor = '#28a745';
+        card.classList.add('accepted');
+
+        // Update header
+        const header = card.querySelector('.proposed-header');
+        if (header) header.innerHTML = `✅ Created New ELC Record`;
+
+        // Update summary
+        const summary = card.querySelector('.proposal-summary');
+        if (summary) {
+            summary.innerHTML = `
+                <strong>New ELC Summary:</strong><br>
+                Added new entity, location and contact to the database.
+            `;
+        }
+
+        // Disable buttons
+        const buttons = card.querySelectorAll('button');
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+        });
+
+        this.appendSystemLine('✅ New ELC record created successfully.', 'success');
     },
     // #endregion
     
@@ -4319,51 +4347,6 @@ window.SkyIndex = {
 
 };
 // #endregion
-
-SkyIndex.acceptProposedContact = async function() {
-
-    const prop = this.currentProposal;
-    if (!prop || !prop.proposalId || !prop.proposalActionId) {
-        this.appendSystemLine('❌ No active proposal or missing Action ID.', 'error');
-        return;
-    }
-
-    this.appendSystemLine(`💾 Committing proposal ${prop.proposalId}...`, 'system');
-    this.setThinking(true);
-
-    try {
-        const res = await fetch('/skyesoft/api/commitProposal.php', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                proposalId: prop.proposalId,
-                proposalActionId: prop.proposalActionId
-            })
-        });
-
-        const result = await res.json();
-
-        if (result.success === true) {
-            this.appendSystemLine('✅ Proposal committed successfully.', 'success');
-
-            if (result.contactId)  this.appendSystemLine(`📇 New Contact ID: ${result.contactId}`);
-            if (result.entityId)   this.appendSystemLine(`🏢 New Entity ID: ${result.entityId}`);
-            if (result.locationId) this.appendSystemLine(`📍 New Location ID: ${result.locationId}`);
-
-            this.currentProposal = null;
-
-        } else {
-            this.appendSystemLine(`❌ Commit failed: ${result.error || 'Unknown error'}`, 'error');
-        }
-
-    } catch (err) {
-        console.error('[Commit Error]', err);
-        this.appendSystemLine('❌ Commit request failed.', 'error');
-    } finally {
-        this.setThinking(false);
-    }
-};
 
 // #region 🗺️ Google Maps Dual View Initializer (Map + Street View)
 let map, panorama;
