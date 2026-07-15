@@ -152,7 +152,11 @@ try {
     foreach ($actions as $action) {
         switch ($action) {
             case 'insert_entity':
-                $entityId = insertEntity($db, $payload['entity'] ?? []);
+                $entityId = insertEntity(
+                    $db, 
+                    $payload['entity'] ?? [], 
+                    $payload['location'] ?? []
+                );
                 break;
 
             case 'insert_location':
@@ -245,39 +249,61 @@ echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 #region SECTION 05 — Single Responsibility Insertion Units
 
-function insertEntity(PDO $db, array $data): int 
+function insertEntity(PDO $db, array $entityData, array $locationData): int
 {
-    $entityName = $data['entityName'] ?? $data['entityNameRaw'] ?? '';
+    // Entity Name
+    $entityName = trim(
+        (string)(
+            $entityData['entityName']
+            ?? $entityData['entityNameRaw']
+            ?? ''
+        )
+    );
+
+    // Entity State
+    // Current proposal classes assume:
+    // Entity Location == Contact Location.
+    $entityState = strtoupper(trim(
+        (string)(
+            $locationData['locationState']
+            ?? ''
+        )
+    ));
 
     $stmt = $db->prepare("
         INSERT INTO tblEntities (
             entityName,
             entityLegalName,
             entityNormalizedName,
+            entityState,
             entityType,
             entityDate
-        ) VALUES (?, ?, ?, ?, UNIX_TIMESTAMP())
+        ) VALUES (?, ?, ?, ?, ?, UNIX_TIMESTAMP())
     ");
 
     $stmt->execute([
         $entityName,
         $entityName,
         strtolower($entityName),
+        $entityState !== '' ? $entityState : null,
         'company'
     ]);
 
-    $newId = (int)$db->lastInsertId();
+    $entityId = (int)$db->lastInsertId();
 
-    if ($newId <= 0) {
+    if ($entityId <= 0) {
         throw new RuntimeException('Entity insert failed.');
     }
 
-    return $newId;
+    return $entityId;
 }
 
-function insertLocation(PDO $db, array $data, int $entityId): int
+function insertLocation(PDO $db, array $locationData, int $entityId): int
 {
-    $parcel = $data['parcelDetails'][0] ?? [];
+    // Accepted Parcel
+    // Current proposal classes resolve a single accepted parcel.
+    // Future proposal classes may explicitly identify the accepted parcel.
+    $acceptedParcel = $locationData['parcelDetails'][0] ?? [];
 
     $stmt = $db->prepare("
         INSERT INTO tblLocations (
@@ -304,22 +330,22 @@ function insertLocation(PDO $db, array $data, int $entityId): int
 
     $stmt->execute([
         $entityId,
-        $data['locationName'] ?? '',
-        $data['locationAddress'] ?? '',
-        $data['locationSuite'] ?? '',
-        $data['locationCity'] ?? '',
-        $data['locationState'] ?? '',
-        $data['locationZip'] ?? '',
-        $data['locationPlaceId'] ?? null,
-        $data['locationLatitude'] ?? null,
-        $data['locationLongitude'] ?? null,
-        $data['locationCounty'] ?? null,
-        $data['locationCountyFips'] ?? null,
-        $data['jurisdictionName'] ?? null,
-        $parcel['parcelNumber'] ?? null,
-        $parcel['parcelNumber'] ?? null,
-        $data['hasMultipleParcels'] ? 1 : 0,
-        $data['parcelCount'] ?? 1
+        $locationData['locationName'] ?? '',
+        $locationData['locationAddress'] ?? '',
+        $locationData['locationSuite'] ?? '',
+        $locationData['locationCity'] ?? '',
+        $locationData['locationState'] ?? '',
+        $locationData['locationZip'] ?? '',
+        $locationData['locationPlaceId'] ?? null,
+        $locationData['locationLatitude'] ?? null,
+        $locationData['locationLongitude'] ?? null,
+        $locationData['locationCounty'] ?? null,
+        $locationData['locationCountyFips'] ?? null,
+        $locationData['jurisdictionName'] ?? null,
+        $acceptedParcel['parcelNumber'] ?? null,
+        $acceptedParcel['parcelNumber'] ?? null,
+        ($locationData['hasMultipleParcels'] ?? false) ? 1 : 0,
+        $locationData['parcelCount'] ?? 1
     ]);
 
     $locationId = (int)$db->lastInsertId();
@@ -329,7 +355,7 @@ function insertLocation(PDO $db, array $data, int $entityId): int
     }
 
     // Populate Parcel Details
-    if (!empty($parcel['parcelNumber'])) {
+    if (!empty($acceptedParcel['parcelNumber'])) {
         $stmt = $db->prepare("
             INSERT INTO tblLocationParcelDetails (
                 locationId,
@@ -350,13 +376,13 @@ function insertLocation(PDO $db, array $data, int $entityId): int
 
         $stmt->execute([
             $locationId,
-            $parcel['parcelNumber'],
-            $parcel['ownerName'] ?? null,
-            $parcel['subdivision'] ?? null,
-            $parcel['lotSizeSqFt'] ?? null,
-            $parcel['constructionYear'] ?? null,
-            $parcel['zoningCode'] ?? null,           // ← Improved
-            $parcel['zoningDescription'] ?? null,    // ← Improved
+            $acceptedParcel['parcelNumber'],
+            $acceptedParcel['ownerName'] ?? null,
+            $acceptedParcel['subdivision'] ?? null,
+            $acceptedParcel['lotSizeSqFt'] ?? null,
+            $acceptedParcel['constructionYear'] ?? null,
+            $acceptedParcel['zoningCode'] ?? null,
+            $acceptedParcel['zoningDescription'] ?? null,
             'maricopa_assessor',
             'parcel_resolution',
             95
@@ -366,9 +392,10 @@ function insertLocation(PDO $db, array $data, int $entityId): int
     return $locationId;
 }
 
-function insertContact(PDO $db, array $data, int $entityId, int $locationId): int
+function insertContact(PDO $db, array $contactData, int $entityId, int $locationId): int
 {
-    $email = trim($data['contactEmail'] ?? '');
+    // Contact Email
+    $email = trim((string)($contactData['contactEmail'] ?? ''));
 
     $stmt = $db->prepare("
         INSERT INTO tblContacts (
@@ -391,12 +418,12 @@ function insertContact(PDO $db, array $data, int $entityId, int $locationId): in
     $stmt->execute([
         $entityId,
         $locationId,
-        $data['contactSalutation'] ?? null,
-        $data['contactFirstName'] ?? '',
-        $data['contactLastName'] ?? '',
-        $data['contactTitle'] ?? null,
-        $data['contactPrimaryPhone'] ?? null,
-        $data['contactPrimaryPhoneRaw'] ?? null,
+        $contactData['contactSalutation'] ?? null,
+        $contactData['contactFirstName'] ?? '',
+        $contactData['contactLastName'] ?? '',
+        $contactData['contactTitle'] ?? null,
+        $contactData['contactPrimaryPhone'] ?? null,
+        $contactData['contactPrimaryPhoneRaw'] ?? null,
         $email,
         $email ? strtolower($email) : null
     ]);
@@ -422,7 +449,16 @@ function promoteArtifacts(string $proposalId, int $governingObjectId, array $art
     $artifactsDir = __DIR__ . '/../artifacts';
 
     $proposalSegment = str_pad(preg_replace('/[^0-9]/', '', $proposalId), 6, '0', STR_PAD_LEFT);
-    $recordSegment   = str_pad((string)$governingObjectId, 6, '0', STR_PAD_LEFT);
+    
+    // Governing Object Identifier
+    // Current PC-1 promotes location artifacts using the
+    // governing record associated with the proposal.
+    $recordSegment = str_pad(
+        (string)$governingObjectId,
+        6,
+        '0',
+        STR_PAD_LEFT
+    );
 
     foreach ($artifacts as $key => $tempPath) {
         if (!is_string($tempPath) || trim($tempPath) === '') {
