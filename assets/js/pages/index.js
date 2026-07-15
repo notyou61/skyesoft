@@ -2932,16 +2932,14 @@ window.SkyIndex = {
                         body: JSON.stringify({
                             action: 'decline',
                             source: 'ui_dashboard',
-                            // 🌟 Ensure this evaluates cleanly to your true active state session id
-                            activitySessionId: SkyIndex.currentProposal?.activitySessionId || this.activitySessionId || '', 
-                            proposalId: targetProposalId || '',
+                            activitySessionId: this.currentProposal?.activitySessionId || this.getActivitySessionId() || '',
+                            proposalId: targetProposalId || this.currentProposal?.proposalId || '',
                             entityName: directEntityName || '',
-                            data: SkyIndex.currentProposal?.data || null
+                            data: this.currentProposal?.data || null
                         })
                     });
 
-                    const text = await res.text();
-                    let result = JSON.parse(text);
+                    const result = await res.json();
 
                     if (result && result.success === true) {
                         this.currentProposal = null;
@@ -2963,11 +2961,10 @@ window.SkyIndex = {
 
             case 'edit':
                 this.appendSystemLine('✏️ Edit mode coming soon...', 'system');
-                // Future: this.renderEditableProposal();
                 break;
 
             case 'accept':
-                this.acceptProposedContact();
+                this.commitCurrentProposal();   // ← Updated to use commit engine
                 break;
 
             default:
@@ -2975,143 +2972,56 @@ window.SkyIndex = {
         }
     },
 
-    async acceptProposedContact() {
+    // #endregion
+
+    // #region 📤 Commit Proposal Action
+    commitCurrentProposal: async function() {
+
         const prop = this.currentProposal;
-        if (!prop?.parsed) {
-            this.appendSystemLine('⚠️ No proposal data to save.', 'error');
+        if (!prop || !prop.proposalId || !prop.proposalActionId) {
+            this.appendSystemLine('❌ No active proposal or missing Action ID.', 'error');
             return;
         }
 
-        this.appendSystemLine('💾 Saving contact...', 'system');
+        this.appendSystemLine(`💾 Committing proposal ${prop.proposalId}...`, 'system');
+        this.setThinking(true);
 
         try {
-            // --------------------------------------------------
-            // 🔹 Map proposal → DB schema
-            // --------------------------------------------------
-            const payload = this.mapProposalToDBSchema(prop.parsed);
-
-            // --------------------------------------------------
-            // 🚨 Required field validation (client-side guard)
-            // --------------------------------------------------
-            const missing = [];
-
-            if (!payload.contactFirstName)  missing.push('First Name');
-            if (!payload.contactLastName)   missing.push('Last Name');
-            if (!payload.contactPrimaryPhone) missing.push('Phone');
-            if (!payload.contactEmail)      missing.push('Email');
-
-            if (missing.length) {
-                this.appendSystemLine(
-                    `⚠️ Missing required fields: ${missing.join(', ')}`,
-                    'warning'
-                );
-                return;
-            }
-
-            // --------------------------------------------------
-            // 📡 Send to backend
-            // --------------------------------------------------
-            this.setThinking(true);
-            const res = await fetch('/skyesoft/api/createContact.php', {
+            const res = await fetch('/skyesoft/api/commitProposal.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ...payload,
-                    activitySessionId: this.getActivitySessionId()
+                    proposalId: prop.proposalId,
+                    proposalActionId: prop.proposalActionId
                 })
             });
 
-            // --------------------------------------------------
-            // 🔍 Safe JSON parsing (prevents "<" crash)
-            // --------------------------------------------------
-            let result;
-            const text = await res.text();
+            const result = await res.json();
 
-            try {
-                result = JSON.parse(text);
-            } catch (e) {
-                console.error('[Invalid JSON Response]', text);
-                this.appendSystemLine('❌ Server returned invalid response.', 'error');
-                return;
-            }
-
-            // --------------------------------------------------
-            // ✅ Success handling
-            // --------------------------------------------------
             if (result.success === true) {
+                this.appendSystemLine('✅ Proposal committed successfully.', 'success');
 
-                this.appendSystemLine('✔ Contact Created', 'success');
-
-                this.renderContactResult(result);
+                if (result.contactId)  this.appendSystemLine(`📇 New Contact ID: ${result.contactId}`);
+                if (result.entityId)   this.appendSystemLine(`🏢 New Entity ID: ${result.entityId}`);
+                if (result.locationId) this.appendSystemLine(`📍 New Location ID: ${result.locationId}`);
 
                 // Clear proposal state
                 this.currentProposal = null;
 
-                // Track last contact
-                if (result.contact?.contactId) {
-                    this.lastContactId = result.contact.contactId;
-                }
-
-                return;
+            } else {
+                this.appendSystemLine(`❌ Commit failed: ${result.error || 'Unknown error'}`, 'error');
             }
-
-            // --------------------------------------------------
-            // ⚠️ Known failure responses
-            // --------------------------------------------------
-            if (result.status === 'resolved_duplicate') {
-                this.renderContactResult(result);
-                this.currentProposal = null;
-                return;
-            }
-
-            if (result.status === 'reject') {
-                this.appendSystemLine(`⚠️ ${result.reason || 'Rejected'}`, 'warning');
-                return;
-            }
-
-            // --------------------------------------------------
-            // ❌ Generic failure
-            // --------------------------------------------------
-            this.appendSystemLine(
-                `❌ ${result.message || 'Save failed'}`,
-                'error'
-            );
 
         } catch (err) {
-            console.error('[Accept Contact Error]', err);
-
-            this.appendSystemLine(
-                '❌ Failed to save contact. Check connection or server.',
-                'error'
-            );
+            console.error('[Commit Error]', err);
+            this.appendSystemLine('❌ Commit request failed.', 'error');
         } finally {
             this.setThinking(false);
         }
     },
-
-    mapProposalToDBSchema(parsed) {
-        const c = parsed.contact || {};
-        const e = parsed.entity || {};
-        const l = parsed.location || {};
-
-        return {
-            contactFirstName:    c.firstName,
-            contactLastName:     c.lastName,
-            contactSalutation: c.salutation || null,
-            contactSalutationInferred: c.salutationInferred ?? null,
-            contactTitle:        c.title,
-            contactPrimaryPhone: c.primaryPhone,
-            contactEmail:        c.email,
-            entityName:          e.name,
-            locationAddress:     l.address,
-            locationCity:        l.city,
-            locationState:       (l.state || 'AZ').toUpperCase(),
-            locationZip:         l.zip,
-        };
-    },
     // #endregion
-
+    
     // #region 📇 Contact Proposal Pipeline (Client)
 
     // ───────────────────────────────────────────────
