@@ -296,10 +296,6 @@ function insertEntity(
         $entityNote .= "\n\nSummary:\n{$contentLine}";
     }
 
-    if ($contentLine !== '') {
-        $entityNote .= "\n\nSummary:\n{$contentLine}";
-    }
-
     $stmt = $db->prepare("
         INSERT INTO tblEntities (
             entityName,
