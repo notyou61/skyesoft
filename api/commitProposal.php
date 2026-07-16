@@ -92,10 +92,16 @@ if (!$snapshot) {
     exit;
 }
 
-// === DIAGNOSTIC: Verify activitySessionId in source snapshot ===
+// === ROBUST activitySessionId Resolution + Diagnostic ===
+$activitySessionId = trim((string)(
+    $snapshot['activitySessionId']
+    ?? $snapshot['context']['activitySessionId'] ?? ''
+    ?? $_SESSION['activitySessionId'] ?? ''
+    ?? ''
+));
+
 error_log('[COMMIT] Loaded Snapshot Keys: ' . implode(', ', array_keys($snapshot)));
-error_log('[COMMIT] Snapshot Activity Session: ' . ($snapshot['activitySessionId'] ?? '[MISSING]'));
-error_log('[COMMIT] Snapshot PCM: ' . json_encode($snapshot['pcm'] ?? []));
+error_log('[COMMIT] Resolved activitySessionId for commit: ' . ($activitySessionId ?: '[STILL MISSING]'));
 
 #endregion
 
@@ -223,22 +229,14 @@ try {
 
     // Robust coordinate lookup + explicit type
     $latitude  = $snapshot['data']['location']['locationLatitude']  ?? 
-                 $payload['location']['locationLatitude'] ?? null;
+                $payload['location']['locationLatitude'] ?? null;
     $longitude = $snapshot['data']['location']['locationLongitude'] ?? 
-                 $payload['location']['locationLongitude'] ?? null;
+                $payload['location']['locationLongitude'] ?? null;
 
     if ($latitude !== null)  $latitude  = (float)$latitude;
     if ($longitude !== null) $longitude = (float)$longitude;
 
-    // activitySessionId is never NULL — falls back to empty string for deterministic audit trail
-    $activitySessionId = trim(
-        (string)(
-            $snapshot['activitySessionId']
-            ?? $activitySessionId   // fallback if already set upstream
-            ?? ''
-        )
-    );
-
+    // Use the robust session ID resolved in SECTION 02
     $ipAddress         = $snapshot['ipAddress'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
     $userAgent         = $snapshot['userAgent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? null);
 
@@ -254,7 +252,7 @@ try {
         $entityName ?: 'Unknown Entity'
     );
 
-    // Temporary diagnostics (remove after verification)
+    // Temporary diagnostics
     error_log('[COMMIT] Audit Context - Session: ' . $activitySessionId);
     error_log('[COMMIT] Audit Context - Prompt: ' . $promptText);
     error_log('[COMMIT] Audit Context - Location: ' . json_encode(['lat' => $latitude, 'lng' => $longitude]));
