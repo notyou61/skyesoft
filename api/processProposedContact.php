@@ -889,99 +889,17 @@ $data['location']['locationCountyGeoId'] = $censusResult['countyGeoId'] ?? null;
 
 if ($data['location']['locationCensusValidated']) {
     error_log(
-        '[PPC][SECTION-08] ✅ Census county resolved: ' .
+        '[PPC][SECTION-09] ✅ Census county resolved: ' .
         ($data['location']['locationCounty'] ?? 'N/A') .
         ' | FIPS: ' . ($data['location']['locationCountyFips'] ?? 'N/A') .
         ' | GEOID: ' . ($data['location']['locationCountyGeoId'] ?? 'N/A')
     );
 } else {
     error_log(
-        '[PPC][SECTION-08] ❌ Census validation failed: ' . 
+        '[PPC][SECTION-09] ❌ Census validation failed: ' . 
         ($censusResult['reason'] ?? 'Unknown reason') .
         ' | Retaining Baseline County: ' . ($data['location']['locationCounty'] ?? 'None')
     );
-}
-
-// =====================================================================
-// GEOGRAPHIC GOVERNANCE GATE (Maricopa County Parcel Protection)
-// =====================================================================
-$resolvedCounty          = strtolower($data['location']['locationCounty'] ?? '');
-$locationValidated       = $data['location']['locationValidated'] ?? false;
-$locationCensusValidated = $data['location']['locationCensusValidated'] ?? false;
-
-if ($resolvedCounty === 'maricopa' && $locationValidated && !$locationCensusValidated) {
-    error_log('[PPC][GOVERNANCE] CRITICAL: Maricopa County property address could not be validated by Census. Threat of unrelated parcel assignment detected. Early exiting with RS-8.');
-
-    $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
-    
-    echo json_encode([
-        'success'           => true,
-        'status'            => 'incomplete',
-        'proposalId'        => $proposalId,
-        'activitySessionId' => $context['activitySessionId'] ?? '',
-        'data' => [
-            'entity'   => $parsed['entity'] ?? [],
-            'contact'  => $parsed['contact'] ?? [],
-            'location' => $data['location'] ?? []
-        ],
-        'databaseResolution' => [
-            'entity'   => null,
-            'location' => null,
-            'contact'  => null
-        ],
-        'pcm' => [
-            'pc' => 'PC-2', 
-            'rs' => ['RS-8']
-        ],
-        'commitPlan' => [
-            'canCommit' => false,
-            'entity'    => [],
-            'location'  => [],
-            'contact'   => [],
-            'actions'   => [],
-            'summary'   => 'Location validation failed.'
-        ],
-        'ui' => [
-            'proposalStatus' => 'incomplete',
-            'canAccept'      => false,
-            'canReject'      => true,
-            'canEdit'        => true,
-            'canCommit'      => false
-        ],
-        'governance' => [
-            'blockingIssues' => [
-                [
-                    'code'    => 'RS-8',
-                    'message' => 'Maricopa County location could not be validated by Census.',
-                    'details' => [
-                        'county' => 'maricopa',
-                        'googleValidated' => true,
-                        'censusValidated' => false
-                    ]
-                ]
-            ],
-            'resolution_status' => 'RS-8',
-            'reason'            => 'Maricopa County location could not be validated by Census.'
-        ],
-        'narratives' => [
-            'ui'     => "Locations within Maricopa County require explicit validation by federal census records to prevent inaccurate parcel mapping. Please provide a verified address.",
-            'report' => "Maricopa County address failed federal Census validation."
-        ],
-        'meta' => [
-            'hasMultipleParcels' => false,
-            'parcelCount'        => 0,
-            'censusValidated'    => false,
-            'googleValidated'    => true,
-            'searchAddress'      => $searchAddress ?? ''
-        ],
-        'rawInput' => [
-            'original' => $rawInputOriginal ?? '',
-            'type'     => 'signature',
-            'source'   => 'skyebot_prompt'
-        ]
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-    exit;
 }
 
 #endregion
@@ -1012,10 +930,6 @@ $data['location']['jurisdictionType'] =
 
 $data['location']['hasMultipleParcels'] =
     ($data['location']['parcelCount'] > 1);
-
-// NEW DIAGNOSTIC
-error_log('[PPC][SECTION-10] After parcelResult → JurisdictionType=' . 
-    json_encode($data['location']['jurisdictionType']));
 
 // =====================================================
 // ENRICH EACH PARCEL WITH DETAILED ASSESSOR DATA + MAP ID
@@ -1188,6 +1102,111 @@ error_log(
     ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL') .
     ' | Type=' . ($data['location']['jurisdictionType'] ?? 'NULL')
 );
+
+// =====================================================================
+// GEOGRAPHIC GOVERNANCE GATE (After Parcel Resolution)
+// =====================================================================
+$resolvedCounty          = strtolower($data['location']['locationCounty'] ?? '');
+$locationValidated       = $data['location']['locationValidated'] ?? false;
+$locationCensusValidated = $data['location']['locationCensusValidated'] ?? false;
+$parcelCount             = $data['location']['parcelCount'] ?? 0;
+
+// Combined validation log for easy debugging
+error_log(sprintf(
+    '[PPC][VALIDATION] Google=%s | Census=%s | Parcels=%d | County=%s',
+    $locationValidated ? 'PASS' : 'FAIL',
+    $locationCensusValidated ? 'PASS' : 'FAIL',
+    $parcelCount,
+    $resolvedCounty
+));
+
+if (!$locationValidated) {
+    error_log('[PPC][GOVERNANCE] Google validation failed → RS-8');
+    $rsCode = 'RS-8';
+} elseif (
+    $resolvedCounty === 'maricopa' &&
+    !$locationCensusValidated &&
+    $parcelCount === 0
+) {
+    error_log('[PPC][GOVERNANCE] Maricopa: Google OK but no parcel + Census failed → RS-8');
+    $rsCode = 'RS-8';
+} else {
+    $rsCode = null; // continue normally
+}
+
+if ($rsCode === 'RS-8') {
+    $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
+    
+    echo json_encode([
+        'success'           => true,
+        'status'            => 'incomplete',
+        'proposalId'        => $proposalId,
+        'activitySessionId' => $context['activitySessionId'] ?? '',
+        'data' => [
+            'entity'   => $parsed['entity'] ?? [],
+            'contact'  => $parsed['contact'] ?? [],
+            'location' => $data['location'] ?? []
+        ],
+        'databaseResolution' => [
+            'entity'   => null,
+            'location' => null,
+            'contact'  => null
+        ],
+        'pcm' => [
+            'pc' => $pcm['pc'] ?? 'PC-1', 
+            'rs' => ['RS-8']
+        ],
+        'commitPlan' => [
+            'canCommit' => false,
+            'entity'    => [],
+            'location'  => [],
+            'contact'   => [],
+            'actions'   => [],
+            'summary'   => 'Location validation failed.'
+        ],
+        'ui' => [
+            'proposalStatus' => 'incomplete',
+            'canAccept'      => false,
+            'canReject'      => true,
+            'canEdit'        => true,
+            'canCommit'      => false
+        ],
+        'governance' => [
+            'blockingIssues' => [
+                [
+                    'code'    => 'RS-8',
+                    'message' => 'The address could not be validated after exhausting all available geographic sources.',
+                    'details' => [
+                        'county' => 'maricopa',
+                        'googleValidated' => $locationValidated,
+                        'censusValidated' => $locationCensusValidated,
+                        'parcelCount'     => $parcelCount
+                    ]
+                ]
+            ],
+            'resolution_status' => 'RS-8',
+            'reason'            => 'Exhausted Google + Parcel + Census validation.'
+        ],
+        'narratives' => [
+            'ui'     => "The address could not be verified using Google's location services, parcel records, or Census validation. Please provide a more precise address.",
+            'report' => "Address failed validation across Google, Parcel, and Census sources."
+        ],
+        'meta' => [
+            'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
+            'parcelCount'        => $parcelCount,
+            'censusValidated'    => $locationCensusValidated,
+            'googleValidated'    => $locationValidated,
+            'searchAddress'      => $searchAddress ?? ''
+        ],
+        'rawInput' => [
+            'original' => $rawInputOriginal ?? '',
+            'type'     => 'signature',
+            'source'   => 'skyebot_prompt'
+        ]
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+    exit;
+}
 
 #endregion
 
