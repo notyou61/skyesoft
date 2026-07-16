@@ -54,53 +54,130 @@ $actorContactId = (int)($_SESSION['contactId'] ?? 1);
 #region SECTION 02 — Load Snapshot Context
 
 $snapshot = null;
+$originatingActivitySessionId = '';
 
-// 1. Primary: Load from originating Action row (preferred)
-if ($proposalActionId !== null) {
-    $stmt = $db->prepare("SELECT actionResponseData FROM tblActions WHERE actionId = ?");
+// =====================================================
+// Primary Source — Originating Proposal Action
+// =====================================================
+if ($proposalActionId !== null && $proposalActionId > 0) {
+    $stmt = $db->prepare("
+        SELECT
+            actionResponseData,
+            activitySessionId
+        FROM tblActions
+        WHERE actionId = ?
+        LIMIT 1
+    ");
+
     $stmt->execute([$proposalActionId]);
-    $dbRow = $stmt->fetchColumn();
-    if ($dbRow) {
-        $snapshot = json_decode($dbRow, true);
-        error_log("[COMMIT] Loaded from Action row (ID: $proposalActionId)");
+    $actionRow = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($actionRow) {
+        $snapshot = json_decode(
+            (string)($actionRow['actionResponseData'] ?? ''),
+            true
+        );
+
+        $originatingActivitySessionId = trim(
+            (string)($actionRow['activitySessionId'] ?? '')
+        );
+
+        error_log(
+            "[COMMIT] Loaded originating Action row " .
+            "(ID: {$proposalActionId})"
+        );
     }
 }
 
-// 2. Fallback: Ephemeral snapshot file
+// =====================================================
+// Transitional Fallback — Ephemeral Snapshot
+// =====================================================
 if (!$snapshot) {
     $cleanId = preg_replace('/^PROP-?/', '', $proposalId);
+
     $candidates = [
         __DIR__ . "/../data/runtimeEphemeral/proposals/{$proposalId}.json",
         __DIR__ . "/../data/runtimeEphemeral/proposals/{$cleanId}.json"
     ];
 
     foreach ($candidates as $path) {
-        if (is_file($path)) {
-            $snapshot = json_decode(file_get_contents($path), true);
-            error_log("[COMMIT] Loaded from filesystem: $path");
+        if (!is_file($path)) {
+            continue;
+        }
+
+        $snapshot = json_decode(
+            (string)file_get_contents($path),
+            true
+        );
+
+        if (is_array($snapshot)) {
+            error_log("[COMMIT] Loaded snapshot from filesystem: {$path}");
             break;
         }
+
+        $snapshot = null;
     }
 }
 
-if (!$snapshot) {
-    error_log("[COMMIT] CRITICAL: Could not load proposal metadata for ID: $proposalId");
-    echo json_encode(['success' => false, 'error' => 'Proposal metadata could not be resolved']);
+if (!$snapshot || !is_array($snapshot)) {
+    error_log(
+        "[COMMIT] CRITICAL: Proposal metadata could not be resolved " .
+        "for Proposal ID {$proposalId}"
+    );
+
+    echo json_encode([
+        'success' => false,
+        'error'   => 'Proposal metadata could not be resolved'
+    ]);
+
     exit;
 }
 
-// === ROBUST activitySessionId Resolution ===
-$activitySessionId = trim((string)(
-    $snapshot['activitySessionId']
-    ?? $snapshot['context']['activitySessionId'] ?? ''
-    ?? $snapshot['pcm']['activitySessionId'] ?? ''
-    ?? $_SESSION['activitySessionId'] ?? ''
-    ?? $inputData['activitySessionId'] ?? ''
-    ?? ''
-));
+// =====================================================
+// Canonical Activity Session Resolution
+// =====================================================
+$sessionCandidates = [
+    $originatingActivitySessionId,
+    trim((string)($snapshot['activitySessionId'] ?? '')),
+    trim((string)($snapshot['context']['activitySessionId'] ?? '')),
+    trim((string)($inputData['activitySessionId'] ?? '')),
+    trim((string)($_SESSION['activitySessionId'] ?? '')),
+    session_id()
+];
 
-error_log('[COMMIT] Loaded Snapshot Keys: ' . implode(', ', array_keys($snapshot)));
-error_log('[COMMIT] Resolved activitySessionId for commit: ' . ($activitySessionId ?: '[STILL MISSING]'));
+$activitySessionId = '';
+
+foreach ($sessionCandidates as $candidate) {
+    if ($candidate !== '' && $candidate !== 'no_session') {
+        $activitySessionId = $candidate;
+        break;
+    }
+}
+
+// Activity session is mandatory for commitment.
+if ($activitySessionId === '') {
+    error_log(
+        '[COMMIT] CRITICAL: Unable to resolve activitySessionId ' .
+        "for Proposal Action {$proposalActionId}"
+    );
+
+    echo json_encode([
+        'success' => false,
+        'error'   => 'Proposal activity session could not be resolved'
+    ]);
+
+    exit;
+}
+
+error_log(
+    '[COMMIT] Snapshot keys: ' .
+    implode(', ', array_keys($snapshot))
+);
+
+error_log(
+    '[COMMIT] Resolved activitySessionId: ' .
+    $activitySessionId
+);
 
 #endregion
 
