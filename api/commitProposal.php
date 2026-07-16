@@ -134,9 +134,9 @@ if (empty($actions)) {
 #region SECTION 04 — Execution Engine & Orchestration
 
 # ─────────────────────────────────────────────────────────────
-# Commit Audit Record Enhancement (Phase 2)
-# The Action Type 14 record is now the canonical, self-contained
-# audit receipt for every proposal commit...
+# Commit Audit Record Enhancement (Phase 2 — Refined)
+# Fully self-contained Action Type 14 audit receipt with
+# centralized audit context and dedicated tblActions columns.
 # ─────────────────────────────────────────────────────────────
 
 $artifactMoves = [];
@@ -195,14 +195,13 @@ try {
 
     $reportArtifacts = $snapshot['reportArtifacts'] ?? $snapshot['artifactRegistry'] ?? [];
     error_log("[COMMIT] Report Artifacts count: " . count($reportArtifacts));
-
     $promotedArtifacts = promoteArtifacts($proposalId, $governingObjectId, $reportArtifacts, $artifactMoves);
 
     // =====================================================
-    // Commit Audit Initialization + Diagnostics
+    // Commit Audit Context Initialization
     // =====================================================
-    error_log('[COMMIT] Payload Location: ' . json_encode($payload['location'] ?? []));
-    error_log('[COMMIT] Snapshot Data Location: ' . json_encode($snapshot['data']['location'] ?? []));
+    // All execution context and audit values resolved once here.
+    // This ensures tblActions columns and JSON payload stay in sync.
 
     $entityName = trim(
         (string)(
@@ -212,22 +211,36 @@ try {
         )
     );
 
-    $contactName = trim(
-        ($payload['contact']['contactFirstName'] ?? '') .
-        ' ' .
-        ($payload['contact']['contactLastName'] ?? '')
-    );
+    $contactName = trim(sprintf(
+        '%s %s',
+        $payload['contact']['contactFirstName'] ?? '',
+        $payload['contact']['contactLastName'] ?? ''
+    ));
 
-    // Robust latitude/longitude lookup — prefers canonical snapshot
+    // Robust coordinate lookup (canonical snapshot preferred) + explicit type
     $latitude  = $snapshot['data']['location']['locationLatitude']  ?? 
                  $payload['location']['locationLatitude'] ?? null;
     $longitude = $snapshot['data']['location']['locationLongitude'] ?? 
                  $payload['location']['locationLongitude'] ?? null;
 
-    $actionOrigin     = 0;
-    $intent           = 'proposal_commit';
-    $intentConfidence = 1.0000;
-    $actionUnix       = time();
+    if ($latitude !== null)  $latitude  = (float)$latitude;
+    if ($longitude !== null) $longitude = (float)$longitude;
+
+    $activitySessionId = $snapshot['activitySessionId'] ?? null;
+    $ipAddress         = $snapshot['ipAddress'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
+    $userAgent         = $snapshot['userAgent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? null);
+
+    $actionOrigin      = 0;
+    $intent            = 'proposal_commit';
+    $intentConfidence  = 1.0000;
+    $actionUnix        = time();
+
+    // Temporary diagnostics (remove or wrap in debug flag after verification)
+    error_log('[COMMIT] Audit Context - Session: ' . ($activitySessionId ?? 'NULL'));
+    error_log('[COMMIT] Audit Context - Location: ' . json_encode([
+        'lat' => $latitude,
+        'lng' => $longitude
+    ]));
 
     // ─────────────────────────────────────────────────────────────
     // Build self-contained Commit Audit Record
@@ -266,17 +279,18 @@ try {
 
     $stmt = $db->prepare("
         INSERT INTO tblActions (
-            contactId, actionTypeId, actionUnix, activitySessionId, 
+            contactId, actionTypeId, actionUnix, activitySessionId,
             promptText, responseText, actionPayloadData, actionResponseData,
-            actionOrigin, intent, intentConfidence, ipAddress, userAgent
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            actionOrigin, intent, intentConfidence,
+            latitude, longitude, ipAddress, userAgent
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     $stmt->execute([
         $actorContactId,
         14,
         $actionUnix,
-        $snapshot['activitySessionId'] ?? '',
+        $activitySessionId,
         "Committed Proposal #{$proposalId}",
         "proposal_committed_successfully",
         json_encode($actionPayload, JSON_UNESCAPED_SLASHES),
@@ -284,8 +298,10 @@ try {
         $actionOrigin,
         $intent,
         $intentConfidence,
-        $snapshot['ipAddress'] ?? $_SERVER['REMOTE_ADDR'] ?? '',
-        $snapshot['userAgent'] ?? $_SERVER['HTTP_USER_AGENT'] ?? ''
+        $latitude,
+        $longitude,
+        $ipAddress,
+        $userAgent
     ]);
 
     $db->commit();
