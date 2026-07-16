@@ -152,16 +152,15 @@ try {
     foreach ($actions as $action) {
         switch ($action) {
 
-            case 'insert_entity':
-                $entityId = insertEntity(
-                    $db,
-                    $payload['entity'] ?? [],
-                    $payload['location'] ?? [],
-                    $snapshot['narratives'] ?? [],
-                    (int)$proposalActionId,
-                    0 // Commit Action ID unknown until audit record is inserted.
-                );
-                break;
+        case 'insert_entity':
+            $entityId = insertEntity(
+                $db,
+                $payload['entity'] ?? [],
+                $payload['location'] ?? [],
+                $snapshot['narratives'] ?? [],
+                (int)$proposalActionId
+            );
+            break;
 
             case 'insert_location':
                 $locationId = insertLocation($db, $payload['location'] ?? [], (int)$entityId);
@@ -258,8 +257,7 @@ function insertEntity(
     array $entityData,
     array $locationData,
     array $narrativeData,
-    int $proposalActionId,
-    int $commitActionId
+    int $proposalActionId
 ): int
 {
     // Entity Name
@@ -292,8 +290,11 @@ function insertEntity(
     // Entity Note
     $entityNote =
         "Skyesoft Record Provenance\n\n" .
-        "Originating Proposal Action : #{$proposalActionId}\n" .
-        "Commit Action               : #{$commitActionId}";
+        "Originating Proposal Action : #{$proposalActionId}";
+
+    if ($contentLine !== '') {
+        $entityNote .= "\n\nSummary:\n{$contentLine}";
+    }
 
     if ($contentLine !== '') {
         $entityNote .= "\n\nSummary:\n{$contentLine}";
