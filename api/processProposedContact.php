@@ -920,7 +920,7 @@ $data['location']['parcelDetails'] =
     $parcelResult['parcelDetails'] ?? [];
 
 $data['location']['parcelCount'] =
-    $parcelResult['parcelCount'] ?? 0;
+    count($data['location']['parcelDetails']);   // Canonical count from array
 
 $data['location']['jurisdictionName'] =
     $parcelResult['jurisdictionName'] ?? null;
@@ -994,30 +994,16 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         $detailData = json_decode($detailResponse, true);
 
         if (is_array($detailData)) {
-            // 1. Owner & Mailing Mapping
-            $ownerData = $detailData['Owner'] ?? [];
-            if (is_array($ownerData)) {
-                $parcel['ownerMailingAddress'] = $ownerData['FullMailingAddress'] 
-                    ?? (!empty($ownerData['MailingAddress1']) ? trim(($ownerData['MailingAddress1'] ?? '') . ', ' . ($ownerData['MailingCity'] ?? '') . ', ' . ($ownerData['MailingState'] ?? '') . ' ' . ($ownerData['MailingZip'] ?? '')) : null);
-                
-                $parcel['lastSaleDate']  = $ownerData['SaleDate'] ?? null;
-                $parcel['lastSalePrice'] = $ownerData['SalePrice'] ?? null;
-            } else {
-                $parcel['ownerMailingAddress'] = null;
-                $parcel['lastSaleDate']  = null;
-                $parcel['lastSalePrice'] = null;
-            }
+            // Normalize to "N/A" for fields the assessor does not provide
+            $parcel['propertyType']     = $detailData['PropertyType']     ?? 'N/A';
+            $parcel['lotSizeSqFt']      = $detailData['LotSize']          ?? 'N/A';
+            $parcel['constructionYear'] = $detailData['ConstructionYear'] ?? 'N/A';
+            $parcel['puc']              = $detailData['PUC']              ?? 'N/A';
+            $parcel['subdivision']      = $detailData['Subdivision']      ?? 'N/A';
+            $parcel['mcrNumber']        = $detailData['MCR']              ?? 'N/A';
+            $parcel['str']              = $detailData['STR']              ?? 'N/A';
 
-            // 2. Map standard property info (No dynamic calculations or valuation loops)
-            $parcel['propertyType']     = $detailData['PropertyType'] ?? null;
-            $parcel['lotSizeSqFt']      = $detailData['LotSize'] ?? null;
-            $parcel['constructionYear'] = $detailData['ConstructionYear'] ?? null;
-            $parcel['puc']              = $detailData['PUC'] ?? null;
-            $parcel['subdivision']      = $detailData['Subdivision'] ?? null;
-            $parcel['mcrNumber']        = $detailData['MCR'] ?? null;
-            $parcel['str']              = $detailData['STR'] ?? null;
-
-            // Retain ONLY the lean metrics in the details object—all historical valuations stripped
+            // Retain ONLY the lean metrics in the details object
             $parcel['assessor']['detail'] = [
                 'PropertyType'     => $parcel['propertyType'],
                 'LotSize'          => $parcel['lotSizeSqFt'],
@@ -1054,7 +1040,6 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         $mapHttpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        // Track and audit response shapes safely
         error_log('[PPC][SECTION-10] MapID raw response for ' . $apn . ': ' . substr((string)$mapMetaResponse, 0, 500));
 
         if ($mapHttpCode === 200 && $mapMetaResponse !== false) {
@@ -1102,6 +1087,8 @@ error_log(
     ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL') .
     ' | Type=' . ($data['location']['jurisdictionType'] ?? 'NULL')
 );
+
+// The rest of your governance gate (RS-8 logic) remains unchanged
 
 // =====================================================================
 // GEOGRAPHIC GOVERNANCE GATE (After Parcel Resolution)
