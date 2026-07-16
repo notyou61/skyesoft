@@ -505,11 +505,53 @@ function insertEntity(
 
 function insertLocation(PDO $db, array $locationData, int $entityId): int
 {
-    // Accepted Parcel
-    // Current proposal classes resolve a single accepted parcel.
-    // Future proposal classes may explicitly identify the accepted parcel.
+    // Accepted Parcel (for reference)
     $acceptedParcel = $locationData['parcelDetails'][0] ?? [];
 
+    // =====================================================
+    // locationName — Human-readable identifier
+    // =====================================================
+    $locationName = trim((string)($locationData['locationName'] ?? ''));
+
+    if ($locationName === '') {
+        // Auto-generate: "Entity Name - City"
+        $entityName = trim((string)(
+            $locationData['entityName'] 
+            ?? $locationData['entity']['entityName'] 
+            ?? ''
+        ));
+
+        $city = trim((string)($locationData['locationCity'] ?? ''));
+
+        if ($entityName !== '' && $city !== '') {
+            $locationName = $entityName . ' - ' . $city;
+        } elseif ($entityName !== '') {
+            $locationName = $entityName . ' Location';
+        } else {
+            $locationName = 'New Location';
+        }
+    }
+
+    // =====================================================
+    // locationNote — Provenance (consistent with entityNote)
+    // =====================================================
+    $contentLine = trim((string)(
+        $locationData['narratives']['contentLine'] 
+        ?? $locationData['summary'] 
+        ?? ''
+    ));
+
+    $locationNote = 
+        "Skyesoft Record Provenance\n\n" .
+        "Originating Proposal Action : #" . ($locationData['proposalActionId'] ?? 'Unknown');
+
+    if ($contentLine !== '') {
+        $locationNote .= "\n\nSummary:\n" . $contentLine;
+    }
+
+    // =====================================================
+    // INSERT
+    // =====================================================
     $stmt = $db->prepare("
         INSERT INTO tblLocations (
             locationEntityId,
@@ -529,13 +571,14 @@ function insertLocation(PDO $db, array $locationData, int $entityId): int
             locationParcelNumberRaw,
             locationHasMultipleParcels,
             locationParcelCount,
+            locationNote,
             locationDate
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())
     ");
 
     $stmt->execute([
         $entityId,
-        $locationData['locationName'] ?? '',
+        $locationName,
         $locationData['locationAddress'] ?? '',
         $locationData['locationSuite'] ?? '',
         $locationData['locationCity'] ?? '',
@@ -550,7 +593,8 @@ function insertLocation(PDO $db, array $locationData, int $entityId): int
         $acceptedParcel['parcelNumber'] ?? null,
         $acceptedParcel['parcelNumber'] ?? null,
         ($locationData['hasMultipleParcels'] ?? false) ? 1 : 0,
-        $locationData['parcelCount'] ?? 1
+        $locationData['parcelCount'] ?? 1,
+        $locationNote
     ]);
 
     $locationId = (int)$db->lastInsertId();
@@ -559,7 +603,7 @@ function insertLocation(PDO $db, array $locationData, int $entityId): int
         throw new RuntimeException('Location insert failed.');
     }
 
-    // Populate Parcel Details
+    // Populate Parcel Details (unchanged)
     if (!empty($acceptedParcel['parcelNumber'])) {
         $stmt = $db->prepare("
             INSERT INTO tblLocationParcelDetails (
