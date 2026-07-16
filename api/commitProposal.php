@@ -133,6 +133,19 @@ if (empty($actions)) {
 
 #region SECTION 04 — Execution Engine & Orchestration
 
+# ─────────────────────────────────────────────────────────────
+# Commit Audit Record Enhancement (Phase 2)
+# The Action Type 14 record is now the canonical, self-contained
+# audit receipt for every proposal commit. It answers:
+#   • What proposal was committed?
+#   • Why was it accepted? (intent, origin, parser, plan)
+#   • What deterministic actions were executed?
+#   • What permanent ELC records were created?
+#   • What artifacts were promoted?
+#   • Execution context (when, by whom, from where)
+# No extra joins required for future audits.
+# ─────────────────────────────────────────────────────────────
+
 $artifactMoves = [];
 $response = [
     'success'    => false,
@@ -162,26 +175,26 @@ try {
             );
             break;
 
-            case 'insert_location':
-                $locationId = insertLocation($db, $payload['location'] ?? [], (int)$entityId);
-                break;
+        case 'insert_location':
+            $locationId = insertLocation($db, $payload['location'] ?? [], (int)$entityId);
+            break;
 
-            case 'insert_contact':
-            case 'insert_replacement_contact':
-                $contactId = insertContact($db, $payload['contact'] ?? [], (int)$entityId, (int)$locationId);
-                break;
+        case 'insert_contact':
+        case 'insert_replacement_contact':
+            $contactId = insertContact($db, $payload['contact'] ?? [], (int)$entityId, (int)$locationId);
+            break;
 
-            case 'retire_contact':
-                if ($contactId) retireContact($db, (int)$contactId);
-                break;
+        case 'retire_contact':
+            if ($contactId) retireContact($db, (int)$contactId);
+            break;
 
-            case 'link_entity':
-                $entityId = (int)($commitPlan['entity']['entityId'] ?? $snapshot['databaseResolution']['entity']['entityId'] ?? 0);
-                break;
+        case 'link_entity':
+            $entityId = (int)($commitPlan['entity']['entityId'] ?? $snapshot['databaseResolution']['entity']['entityId'] ?? 0);
+            break;
 
-            case 'link_location':
-                $locationId = (int)($commitPlan['location']['locationId'] ?? $snapshot['databaseResolution']['location']['locationId'] ?? 0);
-                break;
+        case 'link_location':
+            $locationId = (int)($commitPlan['location']['locationId'] ?? $snapshot['databaseResolution']['location']['locationId'] ?? 0);
+            break;
         }
     }
 
@@ -192,39 +205,91 @@ try {
     error_log("[COMMIT] Report Artifacts: " . json_encode($reportArtifacts));
     $promotedArtifacts = promoteArtifacts($proposalId, $governingObjectId, $reportArtifacts, $artifactMoves);
 
-    // Audit Log
+    // =====================================================
+    // Commit Audit Initialization
+    // =====================================================
+    // All audit values are resolved here before persistence.
+    // Only deterministic data is used.
+
+    $entityName = trim(
+        (string)(
+            $payload['entity']['entityName']
+            ?? $payload['entity']['entityNameRaw']
+            ?? ''
+        )
+    );
+
+    $contactName = trim(
+        ($payload['contact']['contactFirstName'] ?? '') .
+        ' ' .
+        ($payload['contact']['contactLastName'] ?? '')
+    );
+
+    $latitude  = $payload['location']['locationLatitude'] ?? null;
+    $longitude = $payload['location']['locationLongitude'] ?? null;
+
+    $actionOrigin     = 0;           // Commit originates from the engine
+    $intent           = 'proposal_commit';
+    $intentConfidence = 1.0000;
+    $actionUnix       = time();
+
+    // ─────────────────────────────────────────────────────────────
+    // Build self-contained Commit Audit Record
+    // ─────────────────────────────────────────────────────────────
     $actionPayload = [
         'proposalId'       => $proposalId,
         'proposalActionId' => $proposalActionId,
-        'pc'               => $pc
+        'proposalKind'     => $snapshot['proposalKind'] ?? 'contact',
+        'proposalParser'   => $snapshot['proposalParser'] ?? 'contact',
+        'pc'               => $pc,
+        'rs'               => $snapshot['pcm']['rs'] ?? [],
+        'commitPlan'       => $actions
     ];
 
     $finalResponseData = [
-        'success'          => true,
-        'contactId'        => $contactId,
-        'entityId'         => $entityId,
-        'locationId'       => $locationId,
-        'artifacts'        => $promotedArtifacts,
-        'proposalId'       => $proposalId,
-        'proposalActionId' => $proposalActionId
+        'success'             => true,
+        'proposalId'          => $proposalId,
+        'proposalActionId'    => $proposalActionId,
+        'pc'                  => $pc,
+        'actionUnix'          => $actionUnix,
+
+        'entityId'            => $entityId,
+        'locationId'          => $locationId,
+        'contactId'           => $contactId,
+
+        'entityName'          => $entityName,
+        'contactName'         => $contactName,
+
+        'latitude'            => $latitude,
+        'longitude'           => $longitude,
+
+        'artifacts'           => $promotedArtifacts ?? [],
+        'governingObjectId'   => $governingObjectId,
+        'governingObjectType' => in_array($pc, ['PC-4','PC-5'], true) ? 'location' : 'contact'
     ];
 
     $stmt = $db->prepare("
         INSERT INTO tblActions (
             contactId, actionTypeId, actionUnix, activitySessionId, 
-            promptText, responseText, actionPayloadData, actionResponseData
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            promptText, responseText, actionPayloadData, actionResponseData,
+            actionOrigin, intent, intentConfidence, ipAddress, userAgent
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     $stmt->execute([
         $actorContactId,
         14,
-        time(),
+        $actionUnix,
         $snapshot['activitySessionId'] ?? '',
         "Committed Proposal #{$proposalId}",
         "proposal_committed_successfully",
         json_encode($actionPayload, JSON_UNESCAPED_SLASHES),
-        json_encode($finalResponseData, JSON_UNESCAPED_SLASHES)
+        json_encode($finalResponseData, JSON_UNESCAPED_SLASHES),
+        $actionOrigin,
+        $intent,
+        $intentConfidence,
+        $snapshot['ipAddress'] ?? $_SERVER['REMOTE_ADDR'] ?? '',
+        $snapshot['userAgent'] ?? $_SERVER['HTTP_USER_AGENT'] ?? ''
     ]);
 
     $db->commit();
