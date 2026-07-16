@@ -256,7 +256,14 @@ try {
             break;
 
         case 'insert_location':
-            $locationId = insertLocation($db, $payload['location'] ?? [], (int)$entityId);
+            $locationId = insertLocation(
+                $db,
+                $payload['location'] ?? [],
+                $payload['entity'] ?? [],
+                $snapshot['narratives'] ?? [],
+                (int)$entityId,
+                (int)$proposalActionId
+            );
             break;
 
         case 'insert_contact':
@@ -503,32 +510,53 @@ function insertEntity(
     return $entityId;
 }
 
-function insertLocation(PDO $db, array $locationData, int $entityId): int
+function insertLocation(
+    PDO $db, 
+    array $locationData, 
+    array $entityData, 
+    array $narrativeData, 
+    int $entityId,
+    int $proposalActionId
+): int
 {
     // Accepted Parcel (for reference)
     $acceptedParcel = $locationData['parcelDetails'][0] ?? [];
 
     // =====================================================
-    // locationName — Human-readable identifier
+    // locationName — Prioritized meaningful name
     // =====================================================
     $locationName = trim((string)($locationData['locationName'] ?? ''));
 
     if ($locationName === '') {
-        // Auto-generate: "Entity Name - City"
-        $entityName = trim((string)(
-            $locationData['entityName'] 
-            ?? $locationData['entity']['entityName'] 
+        // 1. Try Google Place / Location Name
+        $locationName = trim((string)(
+            $locationData['locationPlaceName'] 
+            ?? $locationData['name'] 
             ?? ''
         ));
 
-        $city = trim((string)($locationData['locationCity'] ?? ''));
+        // 2. Fallback: Entity - Address (best for uniqueness)
+        if ($locationName === '') {
+            $entityName = trim((string)(
+                $entityData['entityName']
+                ?? $entityData['entityNameRaw']
+                ?? $locationData['entityName']
+                ?? ''
+            ));
 
-        if ($entityName !== '' && $city !== '') {
-            $locationName = $entityName . ' - ' . $city;
-        } elseif ($entityName !== '') {
-            $locationName = $entityName . ' Location';
-        } else {
-            $locationName = 'New Location';
+            $address = trim((string)(
+                $locationData['locationAddress'] 
+                ?? $locationData['address'] 
+                ?? ''
+            ));
+
+            if ($entityName !== '' && $address !== '') {
+                $locationName = $entityName . ' - ' . $address;
+            } elseif ($entityName !== '') {
+                $locationName = $entityName . ' Location';
+            } else {
+                $locationName = 'New Location';
+            }
         }
     }
 
@@ -536,14 +564,14 @@ function insertLocation(PDO $db, array $locationData, int $entityId): int
     // locationNote — Provenance (consistent with entityNote)
     // =====================================================
     $contentLine = trim((string)(
-        $locationData['narratives']['contentLine'] 
+        $narrativeData['contentLine'] 
         ?? $locationData['summary'] 
         ?? ''
     ));
 
     $locationNote = 
         "Skyesoft Record Provenance\n\n" .
-        "Originating Proposal Action : #" . ($locationData['proposalActionId'] ?? 'Unknown');
+        "Originating Proposal Action : #" . $proposalActionId;
 
     if ($contentLine !== '') {
         $locationNote .= "\n\nSummary:\n" . $contentLine;
