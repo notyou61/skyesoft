@@ -151,15 +151,17 @@ try {
 
     foreach ($actions as $action) {
         switch ($action) {
-        case 'insert_entity':
-            $entityId = insertEntity(
-                $db,
-                $payload['entity'] ?? [],
-                $payload['location'] ?? [],
-                $snapshot['narratives'] ?? [],
-                $proposalId
-            );
-            break;
+
+            case 'insert_entity':
+                $entityId = insertEntity(
+                    $db,
+                    $payload['entity'] ?? [],
+                    $payload['location'] ?? [],
+                    $snapshot['narratives'] ?? [],
+                    (int)$proposalActionId,
+                    0 // Commit Action ID unknown until audit record is inserted.
+                );
+                break;
 
             case 'insert_location':
                 $locationId = insertLocation($db, $payload['location'] ?? [], (int)$entityId);
@@ -256,8 +258,10 @@ function insertEntity(
     array $entityData,
     array $locationData,
     array $narrativeData,
-    string $proposalId
-): int {
+    int $proposalActionId,
+    int $commitActionId
+): int
+{
     // Entity Name
     $entityName = trim(
         (string)(
@@ -286,10 +290,13 @@ function insertEntity(
     );
 
     // Entity Note
-    $entityNote = "Created from accepted Proposal #{$proposalId}.";
+    $entityNote =
+        "Skyesoft Record Provenance\n\n" .
+        "Originating Proposal Action : #{$proposalActionId}\n" .
+        "Commit Action               : #{$commitActionId}";
 
     if ($contentLine !== '') {
-        $entityNote .= " {$contentLine}";
+        $entityNote .= "\n\nSummary:\n{$contentLine}";
     }
 
     $stmt = $db->prepare("
