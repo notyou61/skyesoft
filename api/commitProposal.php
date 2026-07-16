@@ -66,7 +66,7 @@ if ($proposalActionId !== null) {
     }
 }
 
-// 2. Fallback: Ephemeral snapshot file (for transition period)
+// 2. Fallback: Ephemeral snapshot file
 if (!$snapshot) {
     $cleanId = preg_replace('/^PROP-?/', '', $proposalId);
     $candidates = [
@@ -85,18 +85,17 @@ if (!$snapshot) {
 
 if (!$snapshot) {
     error_log("[COMMIT] CRITICAL: Could not load proposal metadata for ID: $proposalId");
-    echo json_encode([
-        'success' => false, 
-        'error' => 'Proposal metadata could not be resolved'
-    ]);
+    echo json_encode(['success' => false, 'error' => 'Proposal metadata could not be resolved']);
     exit;
 }
 
-// === ROBUST activitySessionId Resolution + Diagnostic ===
+// === ROBUST activitySessionId Resolution ===
 $activitySessionId = trim((string)(
     $snapshot['activitySessionId']
     ?? $snapshot['context']['activitySessionId'] ?? ''
+    ?? $snapshot['pcm']['activitySessionId'] ?? ''
     ?? $_SESSION['activitySessionId'] ?? ''
+    ?? $inputData['activitySessionId'] ?? ''
     ?? ''
 ));
 
