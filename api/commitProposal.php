@@ -92,6 +92,11 @@ if (!$snapshot) {
     exit;
 }
 
+// === DIAGNOSTIC: Verify activitySessionId in source snapshot ===
+error_log('[COMMIT] Loaded Snapshot Keys: ' . implode(', ', array_keys($snapshot)));
+error_log('[COMMIT] Snapshot Activity Session: ' . ($snapshot['activitySessionId'] ?? '[MISSING]'));
+error_log('[COMMIT] Snapshot PCM: ' . json_encode($snapshot['pcm'] ?? []));
+
 #endregion
 
 #region SECTION 03 — Governance Validation Gates
