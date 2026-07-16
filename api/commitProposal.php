@@ -136,14 +136,7 @@ if (empty($actions)) {
 # ─────────────────────────────────────────────────────────────
 # Commit Audit Record Enhancement (Phase 2)
 # The Action Type 14 record is now the canonical, self-contained
-# audit receipt for every proposal commit. It answers:
-#   • What proposal was committed?
-#   • Why was it accepted? (intent, origin, parser, plan)
-#   • What deterministic actions were executed?
-#   • What permanent ELC records were created?
-#   • What artifacts were promoted?
-#   • Execution context (when, by whom, from where)
-# No extra joins required for future audits.
+# audit receipt for every proposal commit...
 # ─────────────────────────────────────────────────────────────
 
 $artifactMoves = [];
@@ -202,14 +195,14 @@ try {
 
     $reportArtifacts = $snapshot['reportArtifacts'] ?? $snapshot['artifactRegistry'] ?? [];
     error_log("[COMMIT] Report Artifacts count: " . count($reportArtifacts));
-    error_log("[COMMIT] Report Artifacts: " . json_encode($reportArtifacts));
+
     $promotedArtifacts = promoteArtifacts($proposalId, $governingObjectId, $reportArtifacts, $artifactMoves);
 
     // =====================================================
-    // Commit Audit Initialization
+    // Commit Audit Initialization + Diagnostics
     // =====================================================
-    // All audit values are resolved here before persistence.
-    // Only deterministic data is used.
+    error_log('[COMMIT] Payload Location: ' . json_encode($payload['location'] ?? []));
+    error_log('[COMMIT] Snapshot Data Location: ' . json_encode($snapshot['data']['location'] ?? []));
 
     $entityName = trim(
         (string)(
@@ -225,10 +218,13 @@ try {
         ($payload['contact']['contactLastName'] ?? '')
     );
 
-    $latitude  = $payload['location']['locationLatitude'] ?? null;
-    $longitude = $payload['location']['locationLongitude'] ?? null;
+    // Robust latitude/longitude lookup — prefers canonical snapshot
+    $latitude  = $snapshot['data']['location']['locationLatitude']  ?? 
+                 $payload['location']['locationLatitude'] ?? null;
+    $longitude = $snapshot['data']['location']['locationLongitude'] ?? 
+                 $payload['location']['locationLongitude'] ?? null;
 
-    $actionOrigin     = 0;           // Commit originates from the engine
+    $actionOrigin     = 0;
     $intent           = 'proposal_commit';
     $intentConfidence = 1.0000;
     $actionUnix       = time();
