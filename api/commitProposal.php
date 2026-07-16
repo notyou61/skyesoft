@@ -136,7 +136,7 @@ if (empty($actions)) {
 # ─────────────────────────────────────────────────────────────
 # Commit Audit Record Enhancement (Phase 2 — Refined)
 # Fully self-contained Action Type 14 audit receipt with
-# centralized audit context and dedicated tblActions columns.
+# centralized audit context and human-readable promptText.
 # ─────────────────────────────────────────────────────────────
 
 $artifactMoves = [];
@@ -201,7 +201,6 @@ try {
     // Commit Audit Context Initialization
     // =====================================================
     // All execution context and audit values resolved once here.
-    // This ensures tblActions columns and JSON payload stay in sync.
 
     $entityName = trim(
         (string)(
@@ -217,7 +216,7 @@ try {
         $payload['contact']['contactLastName'] ?? ''
     ));
 
-    // Robust coordinate lookup (canonical snapshot preferred) + explicit type
+    // Robust coordinate lookup + explicit type
     $latitude  = $snapshot['data']['location']['locationLatitude']  ?? 
                  $payload['location']['locationLatitude'] ?? null;
     $longitude = $snapshot['data']['location']['locationLongitude'] ?? 
@@ -226,7 +225,15 @@ try {
     if ($latitude !== null)  $latitude  = (float)$latitude;
     if ($longitude !== null) $longitude = (float)$longitude;
 
-    $activitySessionId = $snapshot['activitySessionId'] ?? null;
+    // activitySessionId is never NULL — falls back to empty string for deterministic audit trail
+    $activitySessionId = trim(
+        (string)(
+            $snapshot['activitySessionId']
+            ?? $activitySessionId   // fallback if already set upstream
+            ?? ''
+        )
+    );
+
     $ipAddress         = $snapshot['ipAddress'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
     $userAgent         = $snapshot['userAgent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? null);
 
@@ -235,12 +242,17 @@ try {
     $intentConfidence  = 1.0000;
     $actionUnix        = time();
 
-    // Temporary diagnostics (remove or wrap in debug flag after verification)
-    error_log('[COMMIT] Audit Context - Session: ' . ($activitySessionId ?? 'NULL'));
-    error_log('[COMMIT] Audit Context - Location: ' . json_encode([
-        'lat' => $latitude,
-        'lng' => $longitude
-    ]));
+    // Human-readable prompt for the audit log
+    $promptText = sprintf(
+        'Accepted proposal for %s (%s)',
+        $contactName,
+        $entityName ?: 'Unknown Entity'
+    );
+
+    // Temporary diagnostics (remove after verification)
+    error_log('[COMMIT] Audit Context - Session: ' . $activitySessionId);
+    error_log('[COMMIT] Audit Context - Prompt: ' . $promptText);
+    error_log('[COMMIT] Audit Context - Location: ' . json_encode(['lat' => $latitude, 'lng' => $longitude]));
 
     // ─────────────────────────────────────────────────────────────
     // Build self-contained Commit Audit Record
@@ -291,7 +303,7 @@ try {
         14,
         $actionUnix,
         $activitySessionId,
-        "Committed Proposal #{$proposalId}",
+        $promptText,
         "proposal_committed_successfully",
         json_encode($actionPayload, JSON_UNESCAPED_SLASHES),
         json_encode($finalResponseData, JSON_UNESCAPED_SLASHES),
