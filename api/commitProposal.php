@@ -151,13 +151,15 @@ try {
 
     foreach ($actions as $action) {
         switch ($action) {
-            case 'insert_entity':
-                $entityId = insertEntity(
-                    $db, 
-                    $payload['entity'] ?? [], 
-                    $payload['location'] ?? []
-                );
-                break;
+        case 'insert_entity':
+            $entityId = insertEntity(
+                $db,
+                $payload['entity'] ?? [],
+                $payload['location'] ?? [],
+                $snapshot['narratives'] ?? [],
+                $proposalId
+            );
+            break;
 
             case 'insert_location':
                 $locationId = insertLocation($db, $payload['location'] ?? [], (int)$entityId);
@@ -249,8 +251,13 @@ echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 #region SECTION 05 — Single Responsibility Insertion Units
 
-function insertEntity(PDO $db, array $entityData, array $locationData): int
-{
+function insertEntity(
+    PDO $db,
+    array $entityData,
+    array $locationData,
+    array $narrativeData,
+    string $proposalId
+): int {
     // Entity Name
     $entityName = trim(
         (string)(
@@ -270,15 +277,37 @@ function insertEntity(PDO $db, array $entityData, array $locationData): int
         )
     ));
 
+    // Entity Narrative
+    $contentLine = trim(
+        (string)(
+            $narrativeData['contentLine']
+            ?? ''
+        )
+    );
+
+    // Entity Note
+    $entityNote = "Created from accepted Proposal #{$proposalId}.";
+
+    if ($contentLine !== '') {
+        $entityNote .= " {$contentLine}";
+    }
+
     $stmt = $db->prepare("
         INSERT INTO tblEntities (
             entityName,
             entityLegalName,
             entityNormalizedName,
             entityState,
+            entityStatus,
+            entityIsVerified,
+            entityVerificationSource,
+            entityVerifiedUnix,
             entityType,
+            entityNote,
             entityDate
-        ) VALUES (?, ?, ?, ?, ?, UNIX_TIMESTAMP())
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), ?, ?, UNIX_TIMESTAMP()
+        )
     ");
 
     $stmt->execute([
@@ -286,7 +315,11 @@ function insertEntity(PDO $db, array $entityData, array $locationData): int
         $entityName,
         strtolower($entityName),
         $entityState !== '' ? $entityState : null,
-        'company'
+        'Active',
+        1,
+        'Skyesoft Proposal',
+        'company',
+        $entityNote
     ]);
 
     $entityId = (int)$db->lastInsertId();
