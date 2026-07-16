@@ -268,7 +268,14 @@ try {
 
         case 'insert_contact':
         case 'insert_replacement_contact':
-            $contactId = insertContact($db, $payload['contact'] ?? [], (int)$entityId, (int)$locationId);
+            $contactId = insertContact(
+                $db,
+                $payload['contact'] ?? [],
+                $snapshot['narratives'] ?? [],
+                (int)$entityId,
+                (int)$locationId,
+                (int)$proposalActionId
+            );
             break;
 
         case 'retire_contact':
@@ -669,10 +676,33 @@ function insertLocation(
     return $locationId;
 }
 
-function insertContact(PDO $db, array $contactData, int $entityId, int $locationId): int
+function insertContact(
+    PDO $db, 
+    array $contactData, 
+    array $narrativeData, 
+    int $entityId, 
+    int $locationId,
+    int $proposalActionId
+): int
 {
     // Contact Email
     $email = trim((string)($contactData['contactEmail'] ?? ''));
+
+    // =====================================================
+    // Contact Note — Provenance (consistent pattern)
+    // =====================================================
+    $contentLine = trim((string)(
+        $narrativeData['contentLine'] 
+        ?? ''
+    ));
+
+    $contactNote = 
+        "Skyesoft Record Provenance\n\n" .
+        "Originating Proposal Action : #" . $proposalActionId;
+
+    if ($contentLine !== '') {
+        $contactNote .= "\n\nSummary:\n" . $contentLine;
+    }
 
     $stmt = $db->prepare("
         INSERT INTO tblContacts (
@@ -686,10 +716,12 @@ function insertContact(PDO $db, array $contactData, int $entityId, int $location
             contactPrimaryPhoneRaw,
             contactEmail,
             contactEmailNormalized,
+            contactNote,
             isActive,
             contactDate,
-            contactCreatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
+            contactCreatedAt,
+            contactUpdatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
     ");
 
     $stmt->execute([
@@ -702,7 +734,8 @@ function insertContact(PDO $db, array $contactData, int $entityId, int $location
         $contactData['contactPrimaryPhone'] ?? null,
         $contactData['contactPrimaryPhoneRaw'] ?? null,
         $email,
-        $email ? strtolower($email) : null
+        $email ? strtolower($email) : null,
+        $contactNote
     ]);
 
     $contactId = (int)$db->lastInsertId();
