@@ -18,8 +18,6 @@
 //
 // ======================================================================
 
-console.log('[SkyIndex] acceptProposedContact loaded:', typeof SkyIndex.acceptProposedContact);
-
 // #region 📦 Canonical Domain Surface Dependencies
 import { adaptStreamedDomain } from '/skyesoft/assets/js/domainAdapter.js';
 import { renderOutline } from '/skyesoft/assets/js/outlineRenderer.js';
