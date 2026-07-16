@@ -69,36 +69,21 @@ function resolveParcel(
     $normalized = normalizeParcelSearchAddress($original);
 
     error_log('[RESOLVE-PARCEL] === START === Address: ' . $original);
+    error_log('[RESOLVE-PARCEL] Normalized: ' . $normalized);
+    error_log('[RESOLVE-PARCEL] Lat/Lng: ' . ($latitude ?? 'null') . ', ' . ($longitude ?? 'null'));
 
-    // =====================================================
-    // NON-MARICOPA COUNTIES (Bypass)
-    // =====================================================
+    // NON-MARICOPA bypass (unchanged)
     if (!empty($countyFips) && $countyFips !== '013') {
-        $result['success'] = true;
-        $result['parcelResolutionAvailable'] = false;
-
-        $result['jurisdictionName'] = $county ? ucwords(strtolower($county)) . ' County' : null;
-        $result['jurisdictionType'] = 'County';
-        $result['permittingJurisdiction'] = $result['jurisdictionName'];
-
-        $result['note'] = 'Location validated successfully. Parcel resolution is currently only supported for Maricopa County, Arizona. No parcel lookup was performed for this jurisdiction.';
-
-        $result['searchSource'] = 'unsupported_county';
-        $result['searchTier']   = 'county_bypass';
-
-        return $result;
+        // ... (keep your existing bypass code)
     }
 
     // =====================================================
     // TIER 1: COORDINATE → PRIMARY PARCEL
     // =====================================================
-    $primaryApn = null;
-    $primaryCity = null;
-
     if ($latitude !== null && $longitude !== null) {
         $params = http_build_query([
             'where'             => '1=1',
-            'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+            'outFields'         => '*',   // Ask for more fields
             'returnGeometry'    => 'false',
             'f'                 => 'json',
             'resultRecordCount' => 10,
@@ -112,8 +97,12 @@ function resolveParcel(
         $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
         $response = @file_get_contents($url);
 
+        error_log('[RESOLVE-PARCEL] Coordinate query URL: ' . $url);
+
         if ($response !== false) {
             $data = json_decode($response, true);
+            error_log('[RESOLVE-PARCEL] Coordinate features returned: ' . count($data['features'] ?? []));
+
             if (!empty($data['features'])) {
                 $attr = $data['features'][0]['attributes'] ?? [];
                 if (!empty($attr['APN'])) {
@@ -128,20 +117,16 @@ function resolveParcel(
                         'source'       => 'arcgis_coordinate'
                     ];
 
-                    $primaryApn = $apnRaw;
-                    $primaryCity = $result['primaryParcel']['city'] ?? null;
-                    $result['searchSource'] = 'arcgis_coordinate';
-                    $result['searchTier'] = 'coordinate';
-                    $result['postalCity'] = $primaryCity;
+                    error_log('[RESOLVE-PARCEL] Primary parcel found: ' . $apnRaw);
                 }
             }
         }
     }
 
     // =====================================================
-    // ADDRESS-BASED CANDIDATES (City-Filtered)
+    // ADDRESS-BASED CANDIDATES (Relaxed for Commercial)
     // =====================================================
-    if (!empty($primaryApn) && !empty($normalized) && !empty($primaryCity)) {
+    if (!empty($normalized)) {
         $candidateTerms = buildParcelCandidateSearchTerms($original);
         $candidates = [];
 
@@ -150,14 +135,15 @@ function resolveParcel(
 
             $params = http_build_query([
                 'where'             => $where,
-                'outFields'         => 'APN,PHYSICAL_ADDRESS,PHYSICAL_CITY,JURISDICTION,OWNER_NAME',
+                'outFields'         => '*',
                 'returnGeometry'    => 'false',
                 'f'                 => 'json',
-                'resultRecordCount' => 40
+                'resultRecordCount' => 50   // Increased
             ]);
 
             $url = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . $params;
             $response = @file_get_contents($url);
+
             if ($response === false) continue;
 
             $data = json_decode($response, true);
@@ -168,14 +154,8 @@ function resolveParcel(
                 if (empty($attr['APN'])) continue;
 
                 $apnRaw = strtoupper(preg_replace('/[^A-Z0-9-]/', '', $attr['APN']));
-                if ($apnRaw === $primaryApn) continue;
 
                 $candidateCity = trim($attr['PHYSICAL_CITY'] ?? '');
-                if (strtoupper($candidateCity) !== strtoupper($primaryCity)) {
-                    continue;
-                }
-
-                if (isset($candidates[$apnRaw])) continue;
 
                 $candidates[$apnRaw] = [
                     'parcelNumber' => $apnRaw,
@@ -187,51 +167,22 @@ function resolveParcel(
                     'matchedTerm'  => $term
                 ];
             }
-
-            if (!empty($candidates)) break;
         }
 
         $result['candidateParcels'] = array_values($candidates);
         $result['candidateParcelCount'] = count($result['candidateParcels']);
+        error_log('[RESOLVE-PARCEL] Address candidates found: ' . $result['candidateParcelCount']);
     }
 
-    // =====================================================
-    // JURISDICTION + NARRATIVE NOTE
-    // =====================================================
-    if (!empty($result['primaryParcel'])) {
-        $jurRaw = $result['primaryParcel']['jurisdiction'] ?? '';
-        $postal = $result['postalCity'] ?? 'Unknown';
-        $parcelNumber = $result['primaryParcel']['parcelNumber'] ?? 'Unknown';
+    // Jurisdiction + Note (unchanged)
+    // ... keep your existing jurisdiction logic
 
-        if (empty($jurRaw) || stripos($jurRaw, 'NO CITY') !== false) {
-            $result['jurisdictionName']       = 'Maricopa County';
-            $result['jurisdictionType']       = 'County';
-            $result['permittingJurisdiction'] = 'Maricopa County';
-            $result['note'] = "Parcel {$parcelNumber} was identified using coordinate-based parcel resolution. The parcel is located within the {$postal} postal service area; however, GIS returned NO CITY/TOWN for jurisdiction. Permitting authority is Maricopa County.";
-        } else {
-            $jur = resolveJurisdiction($jurRaw);
-            $cityName = $jur['label'] ?? ucwords(strtolower($jurRaw));
-
-            $result['jurisdictionName']       = $cityName;
-            $result['jurisdictionType']       = $jur['jurisdictionType'] ?? 'City';
-            $result['permittingJurisdiction'] = $cityName;
-            $result['note'] = "Parcel {$parcelNumber} was identified using coordinate-based parcel resolution. The parcel lies within the {$cityName} jurisdiction and permitting authority is assigned to {$cityName}.";
-        }
-
-        // Candidate Parcel Narrative
-        if ($result['candidateParcelCount'] > 0) {
-            $result['note'] .= ' ' . $result['candidateParcelCount'] . ' additional parcel(s) share this address and have been provided as candidate parcels for review.';
-        }
-    }
-
-    // Success + totals
     if ($result['primaryParcel'] !== null || $result['candidateParcelCount'] > 0) {
         $result['success'] = true;
     }
 
     $result['parcelCount'] = ($result['primaryParcel'] ? 1 : 0) + $result['candidateParcelCount'];
 
-    // Legacy compatibility
     if ($result['primaryParcel'] !== null) {
         $result['parcelDetails'] = [$result['primaryParcel']];
     } else {

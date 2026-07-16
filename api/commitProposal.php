@@ -526,7 +526,7 @@ function insertLocation(
     int $proposalActionId
 ): int
 {
-    // Accepted Parcel (for reference)
+    // Accepted Parcel (primary source for assessor data)
     $acceptedParcel = $locationData['parcelDetails'][0] ?? [];
 
     // =====================================================
@@ -542,7 +542,7 @@ function insertLocation(
             ?? ''
         ));
 
-        // 2. Fallback: Entity - Address (best for uniqueness)
+        // 2. Fallback: Entity - Address
         if ($locationName === '') {
             $entityName = trim((string)(
                 $entityData['entityName']
@@ -568,7 +568,7 @@ function insertLocation(
     }
 
     // =====================================================
-    // locationNote — Provenance (consistent with entityNote)
+    // locationNote — Provenance
     // =====================================================
     $contentLine = trim((string)(
         $narrativeData['contentLine'] 
@@ -638,7 +638,9 @@ function insertLocation(
         throw new RuntimeException('Location insert failed.');
     }
 
-    // Populate Parcel Details (unchanged)
+    // =====================================================
+    // Populate Parcel Details with Assessor Data
+    // =====================================================
     if (!empty($acceptedParcel['parcelNumber'])) {
         $stmt = $db->prepare("
             INSERT INTO tblLocationParcelDetails (
@@ -648,6 +650,8 @@ function insertLocation(
                 subdivision,
                 lotSize,
                 yearBuilt,
+                puc,
+                mcrNumber,
                 zoningCode,
                 zoningDescription,
                 zoningSource,
@@ -655,18 +659,20 @@ function insertLocation(
                 confidence,
                 createdAt,
                 updatedAt
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
         ");
 
         $stmt->execute([
             $locationId,
             $acceptedParcel['parcelNumber'],
-            $acceptedParcel['ownerName'] ?? null,
-            $acceptedParcel['subdivision'] ?? null,
+            $acceptedParcel['ownerName'] ?? 'N/A',
+            $acceptedParcel['subdivision'] ?? 'N/A',
             $acceptedParcel['lotSizeSqFt'] ?? null,
             $acceptedParcel['constructionYear'] ?? null,
-            $acceptedParcel['zoningCode'] ?? null,
-            $acceptedParcel['zoningDescription'] ?? null,
+            $acceptedParcel['puc'] ?? null,
+            $acceptedParcel['mcrNumber'] ?? null,
+            $acceptedParcel['zoningCode'] ?? null,           // NULL = not yet resolved
+            $acceptedParcel['zoningDescription'] ?? null,    // NULL = not yet resolved
             'maricopa_assessor',
             'parcel_resolution',
             95
