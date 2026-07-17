@@ -937,12 +937,23 @@ $data['location']['hasMultipleParcels'] =
 
 $token = getenv('MARICOPA_COUNTY_API_KEY') ?: '';
 
+$httpHeaders = [
+    'Accept: application/json, text/plain, */*',
+    'Cache-Control: no-cache'
+];
+if ($token) {
+    $httpHeaders[] = 'Authorization: ' . trim($token);
+}
+
+// COMPLIANCE: Official documentation mandates User-Agent MUST be null/empty[cite: 1]
+$userAgent = ''; 
+
 foreach ($data['location']['parcelDetails'] as &$parcel) {
 
     $apn = $parcel['parcelNumber'] ?? null;
     if (!$apn) continue;
 
-    // Initialize
+    // Initialize the exact response structure
     $parcel['assessor'] = [
         'detail'        => null,
         'mapId'         => null,
@@ -953,21 +964,11 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         'status'        => 'pending'
     ];
 
-    $httpHeaders = [
-        'Accept: application/json, text/plain, */*',
-        'Cache-Control: no-cache'
-    ];
-    if ($token) {
-        $httpHeaders[] = 'Authorization: ' . trim($token);
-    }
-
-    $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-
     // -------------------------------------------------
-    // 1. CORE PARCEL
+    // 1. CORE PARCEL (Main Endpoint)[cite: 1]
     // -------------------------------------------------
     $coreUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
-    error_log('[PPC][SECTION-10] Calling CORE: ' . $coreUrl);
+    error_log('[PPC][SECTION-10] Calling COMPLIANT CORE: ' . $coreUrl);
 
     $ch = curl_init();
     curl_setopt_array($ch, [
@@ -986,10 +987,10 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     error_log('[PPC][SECTION-10] CORE keys: ' . implode(', ', array_keys($coreData)));
 
     // -------------------------------------------------
-    // 2. PROPERTY INFO
+    // 2. TEMPORARY PROPERTY INFO (Safety Net Fallback)[cite: 1]
     // -------------------------------------------------
     $propUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn) . '/propertyinfo';
-    error_log('[PPC][SECTION-10] Calling PROPERTYINFO: ' . $propUrl);
+    error_log('[PPC][SECTION-10] Calling PROPERTYINFO (Fallback): ' . $propUrl);
 
     $ch = curl_init();
     curl_setopt_array($ch, [
@@ -1006,32 +1007,9 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
 
     $propData = ($propHttpCode === 200 && $propResponse) ? (json_decode($propResponse, true) ?? []) : [];
     error_log('[PPC][SECTION-10] PROPERTYINFO keys: ' . implode(', ', array_keys($propData)));
-    error_log('[PPC][SECTION-10] PROPERTYINFO raw (first 1200 chars): ' . substr((string)$propResponse, 0, 1200));
 
     // -------------------------------------------------
-    // 3. OWNER DETAILS
-    // -------------------------------------------------
-    $ownerUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn) . '/owner-details';
-    error_log('[PPC][SECTION-10] Calling OWNER-DETAILS: ' . $ownerUrl);
-
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL            => $ownerUrl,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 12,
-        CURLOPT_USERAGENT      => $userAgent,
-        CURLOPT_HTTPHEADER     => $httpHeaders
-    ]);
-    $ownerResponse = curl_exec($ch);
-    $ownerHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    $ownerData = ($ownerHttpCode === 200 && $ownerResponse) ? (json_decode($ownerResponse, true) ?? []) : [];
-    error_log('[PPC][SECTION-10] OWNER-DETAILS keys: ' . implode(', ', array_keys($ownerData)));
-
-    // -------------------------------------------------
-    // SMART FIELD EXTRACTION
+    // SMART FIELD EXTRACTION WITH FALLBACKS
     // -------------------------------------------------
     $get = function(array $sources, array $possibleKeys, $default = 'N/A') {
         foreach ($sources as $src) {
@@ -1045,31 +1023,38 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         return $default;
     };
 
-    $parcel['propertyType']     = $get([$propData, $coreData], ['PropertyType', 'PROPERTY_TYPE', 'propertyType', 'Type']);
-    $parcel['lotSizeSqFt']      = $get([$propData, $coreData], ['LotSize', 'LOT_SIZE', 'LotSizeSqFt', 'lotSize']);
-    $parcel['constructionYear'] = $get([$propData, $coreData], ['ConstructionYear', 'CONSTRUCTION_YEAR', 'YearBuilt', 'YEAR_BUILT', 'constructionYear', 'Year Built']);
-    $parcel['puc']              = $get([$propData, $coreData], ['PUC', 'PropertyUseCode', 'PROPERTY_USE_CODE', 'puc']);
-    $parcel['subdivision']      = $get([$propData, $coreData], ['Subdivision', 'SUBDIVISION', 'subdivision', 'Subdiv']);
-    $parcel['mcrNumber']        = $get([$propData, $coreData], ['MCR', 'MCRNumber', 'mcrNumber', 'MCR #']);
-    $parcel['str']              = $get([$propData, $coreData], ['STR', 'SectionTownshipRange', 'S/T/R', 'str']);
-
-    // Owner Name – handle both string and full object
-    if (is_array($ownerData) && !empty($ownerData['Ownership'])) {
-        $parcel['ownerName'] = trim((string)$ownerData['Ownership']);
-    } elseif (is_array($ownerData) && !empty($ownerData['OwnerName'])) {
-        $parcel['ownerName'] = trim((string)$ownerData['OwnerName']);
-    } else {
-        $parcel['ownerName'] = $get([$ownerData, $coreData], ['OwnerName', 'OWNER_NAME', 'Owner', 'Ownership'], 'N/A');
+    // Parse identity details
+    $parcel['siteAddress']  = $get([$coreData], ['PropertyAddress', 'Address', 'situsAddress'], $parcel['siteAddress'] ?? 'N/A');
+    $parcel['city']         = $get([$coreData], ['City', 'PhysicalCity', 'PHYSICAL_CITY'], $parcel['city'] ?? 'N/A');
+    $parcel['jurisdiction'] = $get([$coreData], ['Jurisdiction', 'Municipality', 'City'], $parcel['jurisdiction'] ?? 'N/A');
+    
+    if (empty($parcel['source'])) {
+        $parcel['source'] = 'arcgis_coordinate';
     }
 
-    $parcel['ownerMailingAddress'] = $get([$ownerData, $coreData], [
-        'FullMailingAddress', 'MailingAddress', 'MAILING_ADDRESS'
-    ], 'N/A');
+    // Assessor Specific Details (Checks propertyinfo fallback data if core is missing it)
+    $parcel['propertyType']     = $get([$coreData, $propData], ['PropertyType', 'PROPERTY_TYPE', 'propertyType', 'Type']);
+    $parcel['lotSizeSqFt']      = $get([$coreData, $propData], ['LotSize', 'LOT_SIZE', 'LotSizeSqFt', 'lotSize']);
+    $parcel['constructionYear'] = $get([$coreData, $propData], ['ConstructionYear', 'CONSTRUCTION_YEAR', 'YearBuilt', 'YEAR_BUILT', 'constructionYear', 'Year Built']);
+    $parcel['puc']              = $get([$coreData, $propData], ['PUC', 'PropertyUseCode', 'PROPERTY_USE_CODE', 'puc']);
+    $parcel['subdivision']      = $get([$coreData, $propData], ['Subdivision', 'SUBDIVISION', 'subdivision', 'Subdiv']);
+    $parcel['mcrNumber']        = $get([$coreData, $propData], ['MCR', 'MCRNumber', 'mcrNumber', 'MCR #']);
+    $parcel['str']              = $get([$coreData, $propData], ['STR', 'SectionTownshipRange', 'S/T/R', 'str']);
 
-    $parcel['lastSaleDate']  = $get([$ownerData, $coreData], ['SaleDate', 'SALE_DATE'], null);
-    $parcel['lastSalePrice'] = $get([$ownerData, $coreData], ['SalePrice', 'SALE_PRICE'], null);
+    // Owner Data Structure Normalization
+    if (!empty($coreData['Ownership'])) {
+        $parcel['ownerName'] = trim((string)$coreData['Ownership']);
+    } elseif (!empty($coreData['OwnerName'])) {
+        $parcel['ownerName'] = trim((string)$coreData['OwnerName']);
+    } else {
+        $parcel['ownerName'] = $get([$coreData], ['OwnerName', 'OWNER_NAME', 'Owner', 'Ownership'], 'N/A');
+    }
 
-    // Assessor detail object
+    $parcel['ownerMailingAddress'] = $get([$coreData], ['FullMailingAddress', 'MailingAddress', 'MAILING_ADDRESS'], 'N/A');
+    $parcel['lastSaleDate']        = $get([$coreData], ['SaleDate', 'SALE_DATE'], null);
+    $parcel['lastSalePrice']       = $get([$coreData], ['SalePrice', 'SALE_PRICE'], null);
+
+    // Build the sub-level assessor details
     $parcel['assessor']['detail'] = [
         'PropertyType'     => $parcel['propertyType'],
         'LotSize'          => $parcel['lotSizeSqFt'],
@@ -1079,11 +1064,11 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         'MCR'              => $parcel['mcrNumber'],
         'STR'              => $parcel['str']
     ];
-    $parcel['assessor']['status'] = 'resolved';
+    $parcel['assessor']['status']        = 'resolved';
     $parcel['assessor']['lastRetrieved'] = date('c');
 
     // -------------------------------------------------
-    // MAP ID
+    // 3. MAP ID ENRICHMENT (Map Ferret endpoint)[cite: 1]
     // -------------------------------------------------
     if ($token) {
         $mapUrl = 'https://mcassessor.maricopa.gov/mapid/parcel/' . urlencode($apn);
@@ -1110,7 +1095,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
 
                 if ($mapId) {
                     $mapId = preg_replace('/\.pdf$/i', '', trim((string)$mapId));
-                    $parcel['assessor']['mapId'] = $mapId;
+                    $parcel['assessor']['mapId']  = $mapId;
                     $parcel['assessor']['mapUrl'] = 'https://mcassessor.maricopa.gov/getmapid/' . rawurlencode($mapId) . '/';
                 }
             }
@@ -1119,6 +1104,17 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
 }
 
 unset($parcel);
+
+// Fallback: Populate master location jurisdiction from first parsed parcel if null (Cleaned Case Formatting)
+if (empty($data['location']['jurisdictionName']) && !empty($data['location']['parcelDetails'])) {
+    $firstParcel = reset($data['location']['parcelDetails']);
+    $rawJur = trim($firstParcel['jurisdiction'] ?? '');
+
+    if ($rawJur !== '' && $rawJur !== 'N/A') {
+        $data['location']['jurisdictionName'] = ucwords(strtolower($rawJur));
+        $data['location']['jurisdictionType'] = 'City';
+    }
+}
 
 error_log(
     '[PPC][SECTION-10] Parcel resolution + enrichment complete. ' .
@@ -1135,7 +1131,6 @@ $locationValidated       = $data['location']['locationValidated'] ?? false;
 $locationCensusValidated = $data['location']['locationCensusValidated'] ?? false;
 $parcelCount             = $data['location']['parcelCount'] ?? 0;
 
-// Combined validation log
 error_log(sprintf(
     '[PPC][VALIDATION] Google=%s | Census=%s | Parcels=%d | County=%s',
     $locationValidated ? 'PASS' : 'FAIL',
