@@ -984,7 +984,9 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     curl_close($ch);
 
     $coreData = ($coreHttpCode === 200 && $coreResponse) ? (json_decode($coreResponse, true) ?? []) : [];
-    error_log('[PPC][SECTION-10] CORE keys: ' . implode(', ', array_keys($coreData)));
+    
+    // DEBUG LOG 1: Let's inspect the entire raw core payload
+    error_log('[PPC][DEBUG-CORE] RAW CORE PAYLOAD for ' . $apn . ': ' . json_encode($coreData, JSON_PRETTY_PRINT));
 
     // -------------------------------------------------
     // 2. TEMPORARY PROPERTY INFO (Safety Net Fallback)[cite: 1]
@@ -1006,7 +1008,9 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     curl_close($ch);
 
     $propData = ($propHttpCode === 200 && $propResponse) ? (json_decode($propResponse, true) ?? []) : [];
-    error_log('[PPC][SECTION-10] PROPERTYINFO keys: ' . implode(', ', array_keys($propData)));
+    
+    // DEBUG LOG 2: Let's inspect the entire raw propertyinfo payload
+    error_log('[PPC][DEBUG-PROP] RAW PROPERTYINFO PAYLOAD for ' . $apn . ': ' . json_encode($propData, JSON_PRETTY_PRINT));
 
     // -------------------------------------------------
     // SMART FIELD EXTRACTION WITH FALLBACKS
@@ -1041,18 +1045,18 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     $parcel['mcrNumber']        = $get([$coreData, $propData], ['MCR', 'MCRNumber', 'mcrNumber', 'MCR #']);
     $parcel['str']              = $get([$coreData, $propData], ['STR', 'SectionTownshipRange', 'S/T/R', 'str']);
 
-    // Owner Data Structure Normalization
-    if (!empty($coreData['Ownership'])) {
-        $parcel['ownerName'] = trim((string)$coreData['Ownership']);
-    } elseif (!empty($coreData['OwnerName'])) {
-        $parcel['ownerName'] = trim((string)$coreData['OwnerName']);
-    } else {
-        $parcel['ownerName'] = $get([$coreData], ['OwnerName', 'OWNER_NAME', 'Owner', 'Ownership'], 'N/A');
+    // Owner Data Structure Normalization (Handles nested ownerName object from core response)
+    $ownerSource = $coreData['ownerName'] ?? $coreData['OwnerName'] ?? $coreData['Ownership'] ?? $coreData;
+    
+    // Rename key to "ownerRecord" to clear confusion
+    $parcel['ownerRecord'] = $ownerSource;
+    if (isset($parcel['ownerName'])) {
+        unset($parcel['ownerName']); // Clean up old reference
     }
 
-    $parcel['ownerMailingAddress'] = $get([$coreData], ['FullMailingAddress', 'MailingAddress', 'MAILING_ADDRESS'], 'N/A');
-    $parcel['lastSaleDate']        = $get([$coreData], ['SaleDate', 'SALE_DATE'], null);
-    $parcel['lastSalePrice']       = $get([$coreData], ['SalePrice', 'SALE_PRICE'], null);
+    $parcel['ownerMailingAddress'] = $get([$ownerSource], ['FullMailingAddress', 'MailingAddress', 'MAILING_ADDRESS'], 'N/A');
+    $parcel['lastSaleDate']        = $get([$ownerSource], ['SaleDate', 'SALE_DATE'], null);
+    $parcel['lastSalePrice']       = $get([$ownerSource], ['SalePrice', 'SALE_PRICE'], null);
 
     // Build the sub-level assessor details
     $parcel['assessor']['detail'] = [
