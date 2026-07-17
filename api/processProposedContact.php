@@ -1477,7 +1477,7 @@ error_log(
 
 #endregion
 
-#region SECTION 10A — Jurisdictional Zoning Resolution
+#region SECTION 11 — Jurisdictional Zoning Resolution
 
 // =====================================================
 // SELECT GOVERNING PARCEL FOR ZONING
@@ -1690,7 +1690,7 @@ if ($rsCode === 'RS-8') {
 
 #endregion
 
-#region SECTION 11 — Database Resolution
+#region SECTION 12 — Database Resolution
 
 $databaseResolution = [
     'entity'   => null,
@@ -1746,7 +1746,7 @@ if ($pdo) {
 
 #endregion
 
-#region SECTION 12 — PCM Classification & Governance
+#region SECTION 13 — PCM Classification & Governance
 
 $isExplicitLocationOnlyIntent = $isExplicitLocationOnlyIntent ?? false;
 
@@ -1903,7 +1903,7 @@ $proposalId = str_pad((string)mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
 
 #endregion
 
-#region SECTION 13 — Commit Plan Builder
+#region SECTION 14 — Commit Plan Builder
 
 $commitPlan = [
     'canCommit' => false,
@@ -2000,7 +2000,7 @@ error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan
 
 #endregion
 
-#region SECTION 14 — Narrative Builder + UI State
+#region SECTION 15 — Narrative Builder + UI State
 
 // =====================================================
 // UI State Builder (Preserved Deterministic Rules)
@@ -2217,7 +2217,7 @@ error_log("[PPC][SECTION-14] AI Narrative Generation complete → Content Line: 
 
 #endregion
 
-#region SECTION 15 — Final Output Builder
+#region SECTION 16 — Final Output Builder
 
 // =====================================================
 // 🌟 DYNAMIC TEXT OVERRIDES FOR PC-6 LIFECYCLES (Catch-All Sanitization)
