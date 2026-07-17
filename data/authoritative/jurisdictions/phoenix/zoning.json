@@ -1,0 +1,107 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Phoenix",
+    "slug": "phoenix",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Phoenix Planning and Development Department",
+    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
+    "serviceUrl": "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer",
+    "layerId": 0,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZONING",
+      "LABEL1",
+      "GEN_ZONE",
+      "REDEFINE1",
+      "ORD_NUM",
+      "HISTORIC",
+      "TOD"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "LABEL1",
+      "ZONING"
+    ],
+    "zoningDescription": [
+      "GEN_ZONE"
+    ],
+    "caseNumber": [
+      "REDEFINE1"
+    ],
+    "ordinanceNumber": [
+      "ORD_NUM"
+    ],
+    "historic": [
+      "HISTORIC"
+    ],
+    "transitOrientedDevelopment": [
+      "TOD"
+    ]
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": false,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784271600,
+    "verifiedDate": "2026-07-17",
+    "verifiedBy": "Skyesoft",
+    "testCoordinate": {
+      "latitude": 33.4848523,
+      "longitude": -112.1288006,
+      "expectedZoningCode": "A-2",
+      "expectedZoningDescription": "Industrial"
+    }
+  },
+  "notes": [
+    "This configuration resolves current City of Phoenix zoning by coordinate.",
+    "LABEL1 is preferred because it preserves the complete published zoning label; ZONING is the fallback base zoning field.",
+    "GEN_ZONE is a generalized land-use description and does not replace ordinance interpretation.",
+    "A resolved zoning result supports permit research but does not replace confirmation by the City of Phoenix."
+  ]
+}
