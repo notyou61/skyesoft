@@ -932,7 +932,7 @@ $data['location']['hasMultipleParcels'] =
     ($data['location']['parcelCount'] > 1);
 
 // =====================================================
-// ENRICH EACH PARCEL WITH DETAILED ASSESSOR DATA + MAP ID
+// MARICOPA COUNTY ASSESSOR REQUEST CONFIGURATION
 // =====================================================
 
 $token = getenv('MARICOPA_COUNTY_API_KEY') ?: '';
@@ -941,34 +941,182 @@ $httpHeaders = [
     'Accept: application/json, text/plain, */*',
     'Cache-Control: no-cache'
 ];
-if ($token) {
+
+if ($token !== '') {
     $httpHeaders[] = 'Authorization: ' . trim($token);
 }
 
-// COMPLIANCE: Official documentation mandates User-Agent MUST be null/empty[cite: 1]
-$userAgent = ''; 
+// Maricopa County requires an empty User-Agent.
+$userAgent = '';
+
+// =====================================================
+// CANONICAL VALUE NORMALIZERS
+// =====================================================
+
+// Find first populated key (recursive API response search).
+$findValue = null;
+$findValue = function(array $sources, array $possibleKeys, $default = null) use (&$findValue) {
+    foreach ($sources as $source) {
+        if (!is_array($source)) {
+            continue;
+        }
+
+        foreach ($possibleKeys as $key) {
+            if (
+                array_key_exists($key, $source) &&
+                $source[$key] !== '' &&
+                $source[$key] !== null
+            ) {
+                return $source[$key];
+            }
+        }
+
+        foreach ($source as $value) {
+            if (!is_array($value)) {
+                continue;
+            }
+
+            $match = $findValue([$value], $possibleKeys, null);
+
+            if ($match !== null && $match !== '') {
+                return $match;
+            }
+        }
+    }
+
+    return $default;
+};
+
+// Normalize nullable text.
+$normalizeText = function($value): ?string {
+    if ($value === null || is_array($value) || is_object($value)) {
+        return null;
+    }
+
+    $normalizedValue = trim((string)$value);
+
+    if ($normalizedValue === '' || strtoupper($normalizedValue) === 'N/A') {
+        return null;
+    }
+
+    return $normalizedValue;
+};
+
+// Normalize nullable database integer.
+$normalizeInteger = function($value): ?int {
+    if ($value === null || is_array($value) || is_object($value)) {
+        return null;
+    }
+
+    if (is_int($value) || is_float($value)) {
+        return (int)round($value);
+    }
+
+    $normalizedValue = str_replace(',', '', trim((string)$value));
+
+    if ($normalizedValue === '' || !is_numeric($normalizedValue)) {
+        return null;
+    }
+
+    return (int)round((float)$normalizedValue);
+};
+
+// Build a readable owner mailing address.
+$buildMailingAddress = function(array $ownerRecord) use ($normalizeText): ?string {
+    $parts = [];
+
+    foreach (['MailingAddress1', 'MailingAddress2'] as $key) {
+        $value = $normalizeText($ownerRecord[$key] ?? null);
+
+        if ($value !== null) {
+            $parts[] = $value;
+        }
+    }
+
+    $city  = $normalizeText($ownerRecord['MailingCity'] ?? $ownerRecord['City'] ?? null);
+    $state = $normalizeText($ownerRecord['MailingState'] ?? $ownerRecord['State'] ?? null);
+    $zip   = $normalizeText($ownerRecord['MailingZip'] ?? $ownerRecord['Zip'] ?? null);
+
+    $cityStateZip = trim(
+        ($city ?? '') .
+        ($city !== null && $state !== null ? ', ' : '') .
+        ($state ?? '') .
+        (($city !== null || $state !== null) && $zip !== null ? ' ' : '') .
+        ($zip ?? '')
+    );
+
+    if ($cityStateZip !== '') {
+        $parts[] = $cityStateZip;
+    }
+
+    return !empty($parts) ? implode(', ', $parts) : null;
+};
+
+// =====================================================
+// ENRICH EACH PARCEL + BUILD PERSISTENCE-READY RECORD
+// =====================================================
 
 foreach ($data['location']['parcelDetails'] as &$parcel) {
+    $apn = $normalizeText(
+        $parcel['parcelNumber']
+        ?? $parcel['apnRaw']
+        ?? null
+    );
 
-    $apn = $parcel['parcelNumber'] ?? null;
-    if (!$apn) continue;
+    if ($apn === null) {
+        $parcel['assessor'] = [
+            'status'        => 'unresolved',
+            'lastRetrieved' => null,
+            'mapId'         => null,
+            'mapUrl'        => null,
+            'mapImage'      => null,
+            'mapPdf'        => null
+        ];
 
-    // Initialize the exact response structure
+        $parcel['parcelRecord'] = [
+            'parcelDetailsId'   => null,
+            'locationId'        => null,
+            'apnRaw'            => null,
+            'ownerName'         => null,
+            'subdivision'       => null,
+            'lotSize'           => null,
+            'yearBuilt'         => null,
+            'zoningCode'        => null,
+            'zoningDescription' => null,
+            'zoningSource'      => null,
+            'zoningVerifiedAt'  => null,
+            'source'            => null,
+            'confidence'        => 0,
+            'createdAt'         => time(),
+            'updatedAt'         => null
+        ];
+
+        continue;
+    }
+
+    $parcel['parcelNumber'] = $apn;
+
     $parcel['assessor'] = [
-        'detail'        => null,
+        'propertyType'  => null,
+        'puc'           => null,
+        'str'           => null,
+        'mcr'           => null,
         'mapId'         => null,
         'mapUrl'        => null,
         'mapImage'      => null,
         'mapPdf'        => null,
+        'lastSaleDate'  => null,
+        'lastSalePrice' => null,
         'lastRetrieved' => null,
         'status'        => 'pending'
     ];
 
     // -------------------------------------------------
-    // 1. CORE PARCEL (Main Endpoint)[cite: 1]
+    // 1. Core parcel endpoint
     // -------------------------------------------------
     $coreUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
-    error_log('[PPC][SECTION-10] Calling COMPLIANT CORE: ' . $coreUrl);
+
+    error_log('[PPC][SECTION-10] Calling CORE: ' . $coreUrl);
 
     $ch = curl_init();
     curl_setopt_array($ch, [
@@ -979,143 +1127,303 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         CURLOPT_USERAGENT      => $userAgent,
         CURLOPT_HTTPHEADER     => $httpHeaders
     ]);
+
     $coreResponse = curl_exec($ch);
-    $coreHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $coreHttpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $coreError    = curl_error($ch);
     curl_close($ch);
 
-    $coreData = ($coreHttpCode === 200 && $coreResponse) ? (json_decode($coreResponse, true) ?? []) : [];
-    
-    // DEBUG LOG 1: Let's inspect the entire raw core payload
-    error_log('[PPC][DEBUG-CORE] RAW CORE PAYLOAD for ' . $apn . ': ' . json_encode($coreData, JSON_PRETTY_PRINT));
+    $coreData = [];
+
+    if ($coreHttpCode === 200 && is_string($coreResponse) && $coreResponse !== '') {
+        $decodedCore = json_decode($coreResponse, true);
+        $coreData = is_array($decodedCore) ? $decodedCore : [];
+    }
+
+    if ($coreError !== '') {
+        error_log('[PPC][SECTION-10] CORE cURL error for ' . $apn . ': ' . $coreError);
+    }
 
     // -------------------------------------------------
-    // 2. TEMPORARY PROPERTY INFO (Safety Net Fallback)[cite: 1]
+    // 2. Property information fallback endpoint
     // -------------------------------------------------
-    $propUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn) . '/propertyinfo';
-    error_log('[PPC][SECTION-10] Calling PROPERTYINFO (Fallback): ' . $propUrl);
+    $propertyUrl =
+        'https://mcassessor.maricopa.gov/parcel/' .
+        urlencode($apn) .
+        '/propertyinfo';
+
+    error_log('[PPC][SECTION-10] Calling PROPERTYINFO: ' . $propertyUrl);
 
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL            => $propUrl,
+        CURLOPT_URL            => $propertyUrl,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT        => 12,
         CURLOPT_USERAGENT      => $userAgent,
         CURLOPT_HTTPHEADER     => $httpHeaders
     ]);
-    $propResponse = curl_exec($ch);
-    $propHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    $propertyResponse = curl_exec($ch);
+    $propertyHttpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $propertyError    = curl_error($ch);
     curl_close($ch);
 
-    $propData = ($propHttpCode === 200 && $propResponse) ? (json_decode($propResponse, true) ?? []) : [];
-    
-    // DEBUG LOG 2: Let's inspect the entire raw propertyinfo payload
-    error_log('[PPC][DEBUG-PROP] RAW PROPERTYINFO PAYLOAD for ' . $apn . ': ' . json_encode($propData, JSON_PRETTY_PRINT));
+    $propertyData = [];
+
+    if (
+        $propertyHttpCode === 200 &&
+        is_string($propertyResponse) &&
+        $propertyResponse !== ''
+    ) {
+        $decodedProperty = json_decode($propertyResponse, true);
+        $propertyData = is_array($decodedProperty) ? $decodedProperty : [];
+    }
+
+    if ($propertyError !== '') {
+        error_log('[PPC][SECTION-10] PROPERTYINFO cURL error for ' . $apn . ': ' . $propertyError);
+    }
+
+    // Retain raw responses for traceability and future mappings.
+    $parcel['assessor']['raw'] = [
+        'core'         => $coreData,
+        'propertyInfo' => $propertyData
+    ];
+
+    $lookupResolved = !empty($coreData) || !empty($propertyData);
+    $retrievedAt    = time();
 
     // -------------------------------------------------
-    // SMART FIELD EXTRACTION WITH FALLBACKS
+    // 3. Canonical location identity
     // -------------------------------------------------
-    $get = function(array $sources, array $possibleKeys, $default = 'N/A') {
-        foreach ($sources as $src) {
-            if (!is_array($src)) continue;
-            foreach ($possibleKeys as $key) {
-                if (isset($src[$key]) && $src[$key] !== '' && $src[$key] !== null) {
-                    return $src[$key];
-                }
-            }
-        }
-        return $default;
-    };
+    $parcel['siteAddress'] = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['PropertyAddress', 'Address', 'situsAddress'],
+        $parcel['siteAddress'] ?? null
+    ));
 
-    // Parse identity details
-    $parcel['siteAddress']  = $get([$coreData], ['PropertyAddress', 'Address', 'situsAddress'], $parcel['siteAddress'] ?? 'N/A');
-    $parcel['city']         = $get([$coreData], ['City', 'PhysicalCity', 'PHYSICAL_CITY'], $parcel['city'] ?? 'N/A');
-    $parcel['jurisdiction'] = $get([$coreData], ['Jurisdiction', 'Municipality', 'City'], $parcel['jurisdiction'] ?? 'N/A');
-    
+    $parcel['city'] = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['City', 'PhysicalCity', 'PHYSICAL_CITY'],
+        $parcel['city'] ?? null
+    ));
+
+    $parcel['jurisdiction'] = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['Jurisdiction', 'Municipality', 'City'],
+        $parcel['jurisdiction'] ?? null
+    ));
+
     if (empty($parcel['source'])) {
         $parcel['source'] = 'arcgis_coordinate';
     }
 
-    // Assessor Specific Details (Checks propertyinfo fallback data if core is missing it)
-    $parcel['propertyType']     = $get([$coreData, $propData], ['PropertyType', 'PROPERTY_TYPE', 'propertyType', 'Type']);
-    $parcel['lotSizeSqFt']      = $get([$coreData, $propData], ['LotSize', 'LOT_SIZE', 'LotSizeSqFt', 'lotSize']);
-    $parcel['constructionYear'] = $get([$coreData, $propData], ['ConstructionYear', 'CONSTRUCTION_YEAR', 'YearBuilt', 'YEAR_BUILT', 'constructionYear', 'Year Built']);
-    $parcel['puc']              = $get([$coreData, $propData], ['PUC', 'PropertyUseCode', 'PROPERTY_USE_CODE', 'puc']);
-    $parcel['subdivision']      = $get([$coreData, $propData], ['Subdivision', 'SUBDIVISION', 'subdivision', 'Subdiv']);
-    $parcel['mcrNumber']        = $get([$coreData, $propData], ['MCR', 'MCRNumber', 'mcrNumber', 'MCR #']);
-    $parcel['str']              = $get([$coreData, $propData], ['STR', 'SectionTownshipRange', 'S/T/R', 'str']);
+    // -------------------------------------------------
+    // 4. Canonical owner object
+    // -------------------------------------------------
+    $ownerRecord = $coreData['ownerName']
+        ?? $coreData['OwnerName']
+        ?? $propertyData['ownerName']
+        ?? $propertyData['OwnerName']
+        ?? [];
 
-    // Owner Data Structure Normalization (Handles nested ownerName object from core response)
-    $ownerSource = $coreData['ownerName'] ?? $coreData['OwnerName'] ?? $coreData['Ownership'] ?? $coreData;
-    
-    // Rename key to "ownerRecord" to clear confusion
-    $parcel['ownerRecord'] = $ownerSource;
-    if (isset($parcel['ownerName'])) {
-        unset($parcel['ownerName']); // Clean up old reference
+    if (!is_array($ownerRecord)) {
+        $ownerRecord = [
+            'Ownership' => $normalizeText($ownerRecord)
+        ];
     }
 
-    $parcel['ownerMailingAddress'] = $get([$ownerSource], ['FullMailingAddress', 'MailingAddress', 'MAILING_ADDRESS'], 'N/A');
-    $parcel['lastSaleDate']        = $get([$ownerSource], ['SaleDate', 'SALE_DATE'], null);
-    $parcel['lastSalePrice']       = $get([$ownerSource], ['SalePrice', 'SALE_PRICE'], null);
+    $ownerName = $normalizeText($findValue(
+        [$ownerRecord, $coreData, $propertyData],
+        ['Ownership', 'OwnerName', 'OWNER_NAME'],
+        null
+    ));
 
-    // Build the sub-level assessor details
-    $parcel['assessor']['detail'] = [
-        'PropertyType'     => $parcel['propertyType'],
-        'LotSize'          => $parcel['lotSizeSqFt'],
-        'ConstructionYear' => $parcel['constructionYear'],
-        'PUC'              => $parcel['puc'],
-        'Subdivision'      => $parcel['subdivision'],
-        'MCR'              => $parcel['mcrNumber'],
-        'STR'              => $parcel['str']
+    $ownerMailingAddress = $normalizeText($findValue(
+        [$ownerRecord],
+        ['FullMailingAddress', 'MailingAddress', 'MAILING_ADDRESS'],
+        null
+    ));
+
+    if ($ownerMailingAddress === null) {
+        $ownerMailingAddress = $buildMailingAddress($ownerRecord);
+    }
+
+    $parcel['owner'] = [
+        'name'           => $ownerName,
+        'mailingAddress' => $ownerMailingAddress,
+        'record'         => $ownerRecord
     ];
-    $parcel['assessor']['status']        = 'resolved';
-    $parcel['assessor']['lastRetrieved'] = date('c');
+
+    // Legacy scalar retained during downstream migration.
+    $parcel['ownerName'] = $ownerName;
 
     // -------------------------------------------------
-    // 3. MAP ID ENRICHMENT (Map Ferret endpoint)[cite: 1]
+    // 5. Assessor values
     // -------------------------------------------------
-    if ($token) {
-        $mapUrl = 'https://mcassessor.maricopa.gov/mapid/parcel/' . urlencode($apn);
+    $propertyType = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['PropertyType', 'PROPERTY_TYPE', 'propertyType', 'Type'],
+        null
+    ));
+
+    $subdivision = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['Subdivision', 'SUBDIVISION', 'subdivision', 'Subdiv'],
+        null
+    ));
+
+    $lotSize = $normalizeInteger($findValue(
+        [$coreData, $propertyData],
+        ['LotSize', 'LOT_SIZE', 'LotSizeSqFt', 'lotSize'],
+        null
+    ));
+
+    $yearBuilt = $normalizeInteger($findValue(
+        [$coreData, $propertyData],
+        [
+            'ConstructionYear',
+            'CONSTRUCTION_YEAR',
+            'YearBuilt',
+            'YEAR_BUILT',
+            'constructionYear',
+            'Year Built'
+        ],
+        null
+    ));
+
+    $parcel['assessor']['propertyType'] = $propertyType;
+    $parcel['assessor']['puc'] = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['PUC', 'PropertyUseCode', 'PROPERTY_USE_CODE', 'puc'],
+        null
+    ));
+    $parcel['assessor']['str'] = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['STR', 'SectionTownshipRange', 'S/T/R', 'str'],
+        null
+    ));
+    $parcel['assessor']['mcr'] = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['MCR', 'MCRNumber', 'mcrNumber', 'MCR #'],
+        null
+    ));
+    $parcel['assessor']['lastSaleDate'] = $normalizeText($findValue(
+        [$ownerRecord, $coreData, $propertyData],
+        ['SaleDate', 'SALE_DATE'],
+        null
+    ));
+    $parcel['assessor']['lastSalePrice'] = $findValue(
+        [$ownerRecord, $coreData, $propertyData],
+        ['SalePrice', 'SALE_PRICE'],
+        null
+    );
+    $parcel['assessor']['lastRetrieved'] = date('c', $retrievedAt);
+    $parcel['assessor']['status'] = $lookupResolved
+        ? 'resolved'
+        : 'unresolved';
+
+    // -------------------------------------------------
+    // 6. Persistence contract for tblLocationParcelDetails
+    // -------------------------------------------------
+    $parcel['parcelRecord'] = [
+        'parcelDetailsId'   => null,
+        'locationId'        => null,
+        'apnRaw'            => $apn,
+        'ownerName'         => $ownerName,
+        'subdivision'       => $subdivision,
+        'lotSize'           => $lotSize,
+        'yearBuilt'         => $yearBuilt,
+        'zoningCode'        => null,
+        'zoningDescription' => null,
+        'zoningSource'      => null,
+        'zoningVerifiedAt'  => null,
+        'source'            => 'maricopa_assessor',
+        'confidence'        => $lookupResolved ? 95 : 0,
+        'createdAt'         => $retrievedAt,
+        'updatedAt'         => null
+    ];
+
+    // -------------------------------------------------
+    // 7. Parcel map ID enrichment
+    // -------------------------------------------------
+    if ($token !== '') {
+        $mapLookupUrl =
+            'https://mcassessor.maricopa.gov/mapid/parcel/' .
+            urlencode($apn);
+
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL            => $mapUrl,
+            CURLOPT_URL            => $mapLookupUrl,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_TIMEOUT        => 10,
             CURLOPT_USERAGENT      => $userAgent,
             CURLOPT_HTTPHEADER     => $httpHeaders
         ]);
+
         $mapResponse = curl_exec($ch);
-        $mapHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $mapHttpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $mapError    = curl_error($ch);
         curl_close($ch);
 
-        if ($mapHttpCode === 200 && $mapResponse) {
+        if ($mapError !== '') {
+            error_log('[PPC][SECTION-10] MAPID cURL error for ' . $apn . ': ' . $mapError);
+        }
+
+        if ($mapHttpCode === 200 && is_string($mapResponse) && $mapResponse !== '') {
             $mapData = json_decode($mapResponse, true);
+
             if (is_array($mapData) && !empty($mapData[0])) {
                 $mapItem = $mapData[0];
-                $mapId = is_string($mapItem)
-                    ? preg_replace('/\.pdf$/i', '', trim($mapItem))
-                    : ($mapItem['FileName'] ?? $mapItem['fileName'] ?? $mapItem['mapId'] ?? null);
 
-                if ($mapId) {
-                    $mapId = preg_replace('/\.pdf$/i', '', trim((string)$mapId));
-                    $parcel['assessor']['mapId']  = $mapId;
-                    $parcel['assessor']['mapUrl'] = 'https://mcassessor.maricopa.gov/getmapid/' . rawurlencode($mapId) . '/';
+                $mapId = is_string($mapItem)
+                    ? $mapItem
+                    : (
+                        $mapItem['FileName']
+                        ?? $mapItem['fileName']
+                        ?? $mapItem['mapId']
+                        ?? null
+                    );
+
+                $mapId = $normalizeText($mapId);
+
+                if ($mapId !== null) {
+                    $mapId = preg_replace('/\.pdf$/i', '', $mapId);
+
+                    $parcel['assessor']['mapId'] = $mapId;
+                    $parcel['assessor']['mapUrl'] =
+                        'https://mcassessor.maricopa.gov/getmapid/' .
+                        rawurlencode($mapId) .
+                        '/';
                 }
             }
         }
     }
+
+    // Record readiness describes the JSON, not commit authorization.
+    $parcel['parcelRecordReady'] = (
+        $parcel['parcelRecord']['apnRaw'] !== null &&
+        $parcel['parcelRecord']['source'] !== null
+    );
 }
 
 unset($parcel);
 
-// Fallback: Populate master location jurisdiction from first parsed parcel if null (Cleaned Case Formatting)
-if (empty($data['location']['jurisdictionName']) && !empty($data['location']['parcelDetails'])) {
-    $firstParcel = reset($data['location']['parcelDetails']);
-    $rawJur = trim($firstParcel['jurisdiction'] ?? '');
+// =====================================================
+// MASTER LOCATION JURISDICTION FALLBACK
+// =====================================================
 
-    if ($rawJur !== '' && $rawJur !== 'N/A') {
-        $data['location']['jurisdictionName'] = ucwords(strtolower($rawJur));
+if (
+    empty($data['location']['jurisdictionName']) &&
+    !empty($data['location']['parcelDetails'])
+) {
+    $firstParcel = reset($data['location']['parcelDetails']);
+    $rawJurisdiction = trim((string)($firstParcel['jurisdiction'] ?? ''));
+
+    if ($rawJurisdiction !== '' && strtoupper($rawJurisdiction) !== 'N/A') {
+        $data['location']['jurisdictionName'] =
+            ucwords(strtolower($rawJurisdiction));
         $data['location']['jurisdictionType'] = 'City';
     }
 }
@@ -1127,13 +1435,19 @@ error_log(
     ' | Type=' . ($data['location']['jurisdictionType'] ?? 'NULL')
 );
 
-// =====================================================================
-// GEOGRAPHIC GOVERNANCE GATE (After Parcel Resolution)
-// =====================================================================
-$resolvedCounty          = strtolower($data['location']['locationCounty'] ?? '');
-$locationValidated       = $data['location']['locationValidated'] ?? false;
-$locationCensusValidated = $data['location']['locationCensusValidated'] ?? false;
-$parcelCount             = $data['location']['parcelCount'] ?? 0;
+// =====================================================
+// GEOGRAPHIC GOVERNANCE GATE
+// =====================================================
+
+$resolvedCounty = strtolower(
+    (string)($data['location']['locationCounty'] ?? '')
+);
+$locationValidated =
+    (bool)($data['location']['locationValidated'] ?? false);
+$locationCensusValidated =
+    (bool)($data['location']['locationCensusValidated'] ?? false);
+$parcelCount =
+    (int)($data['location']['parcelCount'] ?? 0);
 
 error_log(sprintf(
     '[PPC][VALIDATION] Google=%s | Census=%s | Parcels=%d | County=%s',
@@ -1158,8 +1472,9 @@ if (!$locationValidated) {
 }
 
 if ($rsCode === 'RS-8') {
-    $proposalId = $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
-    
+    $proposalId = $proposalId
+        ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
+
     echo json_encode([
         'success'           => true,
         'status'            => 'incomplete',
@@ -1176,7 +1491,7 @@ if ($rsCode === 'RS-8') {
             'contact'  => null
         ],
         'pcm' => [
-            'pc' => $pcm['pc'] ?? 'PC-1', 
+            'pc' => $pcm['pc'] ?? 'PC-1',
             'rs' => ['RS-8']
         ],
         'commitPlan' => [
@@ -1200,26 +1515,27 @@ if ($rsCode === 'RS-8') {
                     'code'    => 'RS-8',
                     'message' => 'The address could not be validated after exhausting all available geographic sources.',
                     'details' => [
-                        'county' => 'maricopa',
-                        'googleValidated' => $locationValidated,
-                        'censusValidated' => $locationCensusValidated,
-                        'parcelCount'     => $parcelCount
+                        'county'            => 'maricopa',
+                        'googleValidated'   => $locationValidated,
+                        'censusValidated'   => $locationCensusValidated,
+                        'parcelCount'       => $parcelCount
                     ]
                 ]
             ],
             'resolution_status' => 'RS-8',
-            'reason'            => 'Exhausted Google + Parcel + Census validation.'
+            'reason' => 'Exhausted Google + Parcel + Census validation.'
         ],
         'narratives' => [
-            'ui'     => "The address could not be verified using Google's location services, parcel records, or Census validation. Please provide a more precise address.",
-            'report' => "Address failed validation across Google, Parcel, and Census sources."
+            'ui' => "The address could not be verified using Google's location services, parcel records, or Census validation. Please provide a more precise address.",
+            'report' => 'Address failed validation across Google, Parcel, and Census sources.'
         ],
         'meta' => [
-            'hasMultipleParcels' => $data['location']['hasMultipleParcels'] ?? false,
-            'parcelCount'        => $parcelCount,
-            'censusValidated'    => $locationCensusValidated,
-            'googleValidated'    => $locationValidated,
-            'searchAddress'      => $searchAddress ?? ''
+            'hasMultipleParcels' =>
+                $data['location']['hasMultipleParcels'] ?? false,
+            'parcelCount'     => $parcelCount,
+            'censusValidated' => $locationCensusValidated,
+            'googleValidated' => $locationValidated,
+            'searchAddress'   => $searchAddress ?? ''
         ],
         'rawInput' => [
             'original' => $rawInputOriginal ?? '',
