@@ -1,0 +1,99 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Scottsdale",
+    "slug": "scottsdale",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Scottsdale GIS",
+    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
+    "serviceUrl": "https://maps.scottsdaleaz.gov/arcgis/rest/services/OpenData/MapServer",
+    "layerId": 24,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "full_zoning",
+      "comparable_zoning"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "full_zoning",
+      "comparable_zoning"
+    ],
+    "comparableZoningCode": [
+      "comparable_zoning"
+    ],
+    "zoningDescription": [],
+    "caseNumber": [],
+    "ordinanceNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": false,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784310059,
+    "verifiedDate": "2026-07-17",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "b79779cd29be4786906835daa7f4c748",
+    "testAddress": "14500 N Northsight Blvd, Scottsdale, AZ 85260",
+    "testCoordinate": {
+      "latitude": 33.617242990815,
+      "longitude": -111.898173285601,
+      "expectedZoningCode": "I-1 PCD",
+      "expectedComparableZoningCode": "I-1"
+    }
+  },
+  "notes": [
+    "This configuration resolves current City of Scottsdale zoning by coordinate.",
+    "full_zoning is preferred because it preserves the complete published zoning designation, including applicable planned-development or overlay designations.",
+    "comparable_zoning is the City's simplified comparable or base zoning designation and does not replace the complete full_zoning value.",
+    "The Scottsdale zoning layer does not publish a zoning-description, case-number, ordinance-number, historic, or transit-oriented-development attribute.",
+    "The City states that its zoning information is provided for general informational purposes and does not warrant its accuracy, completeness, or suitability for any purpose.",
+    "A resolved zoning result supports permit research but does not replace review of the Scottsdale Zoning Ordinance, applicable zoning cases, overlays, stipulations, or confirmation by the City of Scottsdale."
+  ]
+}
