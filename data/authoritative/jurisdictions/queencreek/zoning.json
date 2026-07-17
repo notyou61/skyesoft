@@ -15,9 +15,9 @@
     "status": "configured",
     "provider": "Town of Queen Creek Community Development Department",
     "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
-    "serviceUrl": "https://gis.queencreekaz.gov/arcgis/rest/services/Public/Zoning/MapServer",
+    "serviceUrl": "https://services3.arcgis.com/8mSg79X7H70p070n/arcgis/rest/services/Zoning_qc/FeatureServer",
     "layerId": 0,
-    "layerName": "Zoning",
+    "layerName": "Zoning_qc",
     "publicAccess": true,
     "authenticationRequired": false,
     "authoritative": true
