@@ -986,7 +986,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     error_log('[PPC][SECTION-10] CORE keys: ' . implode(', ', array_keys($coreData)));
 
     // -------------------------------------------------
-    // 2. PROPERTY INFO  ← this is the important one
+    // 2. PROPERTY INFO
     // -------------------------------------------------
     $propUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn) . '/propertyinfo';
     error_log('[PPC][SECTION-10] Calling PROPERTYINFO: ' . $propUrl);
@@ -1031,7 +1031,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     error_log('[PPC][SECTION-10] OWNER-DETAILS keys: ' . implode(', ', array_keys($ownerData)));
 
     // -------------------------------------------------
-    // SMART FIELD EXTRACTION (tries multiple key names)
+    // SMART FIELD EXTRACTION
     // -------------------------------------------------
     $get = function(array $sources, array $possibleKeys, $default = 'N/A') {
         foreach ($sources as $src) {
@@ -1046,18 +1046,28 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     };
 
     $parcel['propertyType']     = $get([$propData, $coreData], ['PropertyType', 'PROPERTY_TYPE', 'propertyType', 'Type']);
-    $parcel['lotSizeSqFt']      = $get([$propData, $coreData], ['LotSize', 'LOT_SIZE', 'LotSizeSqFt', 'lotSize', 'Lot Size (sq ft)']);
+    $parcel['lotSizeSqFt']      = $get([$propData, $coreData], ['LotSize', 'LOT_SIZE', 'LotSizeSqFt', 'lotSize']);
     $parcel['constructionYear'] = $get([$propData, $coreData], ['ConstructionYear', 'CONSTRUCTION_YEAR', 'YearBuilt', 'YEAR_BUILT', 'constructionYear', 'Year Built']);
     $parcel['puc']              = $get([$propData, $coreData], ['PUC', 'PropertyUseCode', 'PROPERTY_USE_CODE', 'puc']);
     $parcel['subdivision']      = $get([$propData, $coreData], ['Subdivision', 'SUBDIVISION', 'subdivision', 'Subdiv']);
     $parcel['mcrNumber']        = $get([$propData, $coreData], ['MCR', 'MCRNumber', 'mcrNumber', 'MCR #']);
     $parcel['str']              = $get([$propData, $coreData], ['STR', 'SectionTownshipRange', 'S/T/R', 'str']);
 
-    // Owner / Sale
-    $parcel['ownerName']            = $get([$ownerData, $coreData], ['OwnerName', 'OWNER_NAME', 'Owner', 'ownerName'], 'N/A');
-    $parcel['ownerMailingAddress']  = $get([$ownerData, $coreData], ['FullMailingAddress', 'MailingAddress', 'MAILING_ADDRESS'], 'N/A');
-    $parcel['lastSaleDate']         = $get([$ownerData, $coreData], ['SaleDate', 'SALE_DATE', 'lastSaleDate'], null);
-    $parcel['lastSalePrice']        = $get([$ownerData, $coreData], ['SalePrice', 'SALE_PRICE', 'lastSalePrice'], null);
+    // Owner Name – handle both string and full object
+    if (is_array($ownerData) && !empty($ownerData['Ownership'])) {
+        $parcel['ownerName'] = trim((string)$ownerData['Ownership']);
+    } elseif (is_array($ownerData) && !empty($ownerData['OwnerName'])) {
+        $parcel['ownerName'] = trim((string)$ownerData['OwnerName']);
+    } else {
+        $parcel['ownerName'] = $get([$ownerData, $coreData], ['OwnerName', 'OWNER_NAME', 'Owner', 'Ownership'], 'N/A');
+    }
+
+    $parcel['ownerMailingAddress'] = $get([$ownerData, $coreData], [
+        'FullMailingAddress', 'MailingAddress', 'MAILING_ADDRESS'
+    ], 'N/A');
+
+    $parcel['lastSaleDate']  = $get([$ownerData, $coreData], ['SaleDate', 'SALE_DATE'], null);
+    $parcel['lastSalePrice'] = $get([$ownerData, $coreData], ['SalePrice', 'SALE_PRICE'], null);
 
     // Assessor detail object
     $parcel['assessor']['detail'] = [
@@ -1113,7 +1123,8 @@ unset($parcel);
 error_log(
     '[PPC][SECTION-10] Parcel resolution + enrichment complete. ' .
     'Count=' . ($data['location']['parcelCount'] ?? 0) .
-    ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL')
+    ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL') .
+    ' | Type=' . ($data['location']['jurisdictionType'] ?? 'NULL')
 );
 
 // =====================================================================
@@ -1124,7 +1135,7 @@ $locationValidated       = $data['location']['locationValidated'] ?? false;
 $locationCensusValidated = $data['location']['locationCensusValidated'] ?? false;
 $parcelCount             = $data['location']['parcelCount'] ?? 0;
 
-// Combined validation log for easy debugging
+// Combined validation log
 error_log(sprintf(
     '[PPC][VALIDATION] Google=%s | Census=%s | Parcels=%d | County=%s',
     $locationValidated ? 'PASS' : 'FAIL',
@@ -1144,7 +1155,7 @@ if (!$locationValidated) {
     error_log('[PPC][GOVERNANCE] Maricopa: Google OK but no parcel + Census failed → RS-8');
     $rsCode = 'RS-8';
 } else {
-    $rsCode = null; // continue normally
+    $rsCode = null;
 }
 
 if ($rsCode === 'RS-8') {
