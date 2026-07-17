@@ -1046,19 +1046,19 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     // =====================================================
     // Merge all sources into canonical parcel fields
     // =====================================================
-    $parcel['propertyType']     = $propertyData['PropertyType']     ?? $coreData['PropertyType'] ?? 'N/A';
-    $parcel['lotSizeSqFt']      = $propertyData['LotSize']          ?? $coreData['LotSize'] ?? 'N/A';
+    $parcel['propertyType']     = $propertyData['PropertyType']     ?? $coreData['PropertyType']     ?? 'N/A';
+    $parcel['lotSizeSqFt']      = $propertyData['LotSize']          ?? $coreData['LotSize']          ?? 'N/A';
     $parcel['constructionYear'] = $propertyData['ConstructionYear'] ?? $coreData['ConstructionYear'] ?? 'N/A';
-    $parcel['puc']              = $propertyData['PUC']              ?? $coreData['PUC'] ?? 'N/A';
-    $parcel['subdivision']      = $propertyData['Subdivision']      ?? $coreData['Subdivision'] ?? 'N/A';
-    $parcel['mcrNumber']        = $propertyData['MCR']              ?? $coreData['MCR'] ?? 'N/A';
-    $parcel['str']              = $propertyData['STR']              ?? $coreData['STR'] ?? 'N/A';
+    $parcel['puc']              = $propertyData['PUC']              ?? $coreData['PUC']              ?? 'N/A';
+    $parcel['subdivision']      = $propertyData['Subdivision']      ?? $coreData['Subdivision']      ?? 'N/A';
+    $parcel['mcrNumber']        = $propertyData['MCR']              ?? $coreData['MCR']              ?? 'N/A';
+    $parcel['str']              = $propertyData['STR']              ?? $coreData['STR']              ?? 'N/A';
 
-    // Owner fields
+    // Owner fields (from owner-details or core)
     $parcel['ownerName'] = $ownerData['OwnerName'] ?? $coreData['OWNER_NAME'] ?? 'N/A';
     $parcel['ownerMailingAddress'] = $ownerData['FullMailingAddress'] ?? 'N/A';
-    $parcel['lastSaleDate']  = $ownerData['SaleDate'] ?? null;
-    $parcel['lastSalePrice'] = $ownerData['SalePrice'] ?? null;
+    $parcel['lastSaleDate']  = $ownerData['SaleDate'] ?? $coreData['SaleDate'] ?? null;
+    $parcel['lastSalePrice'] = $ownerData['SalePrice'] ?? $coreData['SalePrice'] ?? null;
 
     // Retain lean assessor detail
     $parcel['assessor']['detail'] = [
