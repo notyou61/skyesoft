@@ -931,6 +931,33 @@ $data['location']['jurisdictionType'] =
 $data['location']['hasMultipleParcels'] =
     ($data['location']['parcelCount'] > 1);
 
+#region SECTION 10 — Parcel Resolution + Enrichment
+
+require_once __DIR__ . '/utils/resolveParcel.php';
+
+$parcelResult = resolveParcel(
+    $data['location']['locationLatitude'] ?? null,
+    $data['location']['locationLongitude'] ?? null,
+    $data['location']['locationCounty'] ?? null,
+    $data['location']['locationCountyFips'] ?? null,
+    $searchAddress
+);
+
+$data['location']['parcelDetails'] =
+    $parcelResult['parcelDetails'] ?? [];
+
+$data['location']['parcelCount'] =
+    count($data['location']['parcelDetails']);
+
+$data['location']['jurisdictionName'] =
+    $parcelResult['jurisdictionName'] ?? null;
+
+$data['location']['jurisdictionType'] =
+    $parcelResult['jurisdictionType'] ?? null;
+
+$data['location']['hasMultipleParcels'] =
+    ($data['location']['parcelCount'] > 1);
+
 // =====================================================
 // ENRICH EACH PARCEL WITH DETAILED ASSESSOR DATA + MAP ID
 // =====================================================
@@ -970,7 +997,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
     // =====================================================
-    // FETCH STANDARD ASSESSOR DETAILS
+    // 1. CORE PARCEL DETAILS
     // =====================================================
     $detailUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
 
@@ -990,35 +1017,87 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     $detailHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
+    $coreData = [];
     if ($detailHttpCode === 200 && $detailResponse !== false) {
-        $detailData = json_decode($detailResponse, true);
-
-        if (is_array($detailData)) {
-            // Normalize to "N/A" for fields the assessor does not provide
-            $parcel['propertyType']     = $detailData['PropertyType']     ?? 'N/A';
-            $parcel['lotSizeSqFt']      = $detailData['LotSize']          ?? 'N/A';
-            $parcel['constructionYear'] = $detailData['ConstructionYear'] ?? 'N/A';
-            $parcel['puc']              = $detailData['PUC']              ?? 'N/A';
-            $parcel['subdivision']      = $detailData['Subdivision']      ?? 'N/A';
-            $parcel['mcrNumber']        = $detailData['MCR']              ?? 'N/A';
-            $parcel['str']              = $detailData['STR']              ?? 'N/A';
-
-            // Retain ONLY the lean metrics in the details object
-            $parcel['assessor']['detail'] = [
-                'PropertyType'     => $parcel['propertyType'],
-                'LotSize'          => $parcel['lotSizeSqFt'],
-                'ConstructionYear' => $parcel['constructionYear'],
-                'PUC'              => $parcel['puc'],
-                'Subdivision'      => $parcel['subdivision'],
-                'MCR'              => $parcel['mcrNumber'],
-                'STR'              => $parcel['str']
-            ];
-            $parcel['assessor']['status'] = 'resolved';
-        }
-    } else {
-        $parcel['assessor']['status'] = 'failed';
-        error_log('[PPC][SECTION-10] Failed to fetch standard details for parcel: ' . $apn . ' (HTTP ' . $detailHttpCode . ')');
+        $coreData = json_decode($detailResponse, true) ?? [];
     }
+
+    // =====================================================
+    // 2. PROPERTY INFO (richer fields)
+    // =====================================================
+    $propertyInfoUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn) . '/propertyinfo';
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $propertyInfoUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_USERAGENT      => $userAgent,
+        CURLOPT_HTTPHEADER     => $httpHeaders
+    ]);
+
+    $propertyResponse = curl_exec($ch);
+    $propertyHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $propertyData = [];
+    if ($propertyHttpCode === 200 && $propertyResponse !== false) {
+        $propertyData = json_decode($propertyResponse, true) ?? [];
+    }
+
+    // =====================================================
+    // 3. OWNER DETAILS
+    // =====================================================
+    $ownerUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn) . '/owner-details';
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $ownerUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_USERAGENT      => $userAgent,
+        CURLOPT_HTTPHEADER     => $httpHeaders
+    ]);
+
+    $ownerResponse = curl_exec($ch);
+    $ownerHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $ownerData = [];
+    if ($ownerHttpCode === 200 && $ownerResponse !== false) {
+        $ownerData = json_decode($ownerResponse, true) ?? [];
+    }
+
+    // =====================================================
+    // Merge all sources into canonical parcel fields
+    // =====================================================
+    $parcel['propertyType']     = $propertyData['PropertyType']     ?? $coreData['PropertyType'] ?? 'N/A';
+    $parcel['lotSizeSqFt']      = $propertyData['LotSize']          ?? $coreData['LotSize'] ?? 'N/A';
+    $parcel['constructionYear'] = $propertyData['ConstructionYear'] ?? $coreData['ConstructionYear'] ?? 'N/A';
+    $parcel['puc']              = $propertyData['PUC']              ?? $coreData['PUC'] ?? 'N/A';
+    $parcel['subdivision']      = $propertyData['Subdivision']      ?? $coreData['Subdivision'] ?? 'N/A';
+    $parcel['mcrNumber']        = $propertyData['MCR']              ?? $coreData['MCR'] ?? 'N/A';
+    $parcel['str']              = $propertyData['STR']              ?? $coreData['STR'] ?? 'N/A';
+
+    // Owner fields
+    $parcel['ownerName'] = $ownerData['OwnerName'] ?? $coreData['OWNER_NAME'] ?? 'N/A';
+    $parcel['ownerMailingAddress'] = $ownerData['FullMailingAddress'] ?? 'N/A';
+    $parcel['lastSaleDate']  = $ownerData['SaleDate'] ?? null;
+    $parcel['lastSalePrice'] = $ownerData['SalePrice'] ?? null;
+
+    // Retain lean assessor detail
+    $parcel['assessor']['detail'] = [
+        'PropertyType'     => $parcel['propertyType'],
+        'LotSize'          => $parcel['lotSizeSqFt'],
+        'ConstructionYear' => $parcel['constructionYear'],
+        'PUC'              => $parcel['puc'],
+        'Subdivision'      => $parcel['subdivision'],
+        'MCR'              => $parcel['mcrNumber'],
+        'STR'              => $parcel['str']
+    ];
+    $parcel['assessor']['status'] = 'resolved';
 
     // =====================================================
     // FETCH MAP ID & MAP URL
@@ -1087,8 +1166,6 @@ error_log(
     ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL') .
     ' | Type=' . ($data['location']['jurisdictionType'] ?? 'NULL')
 );
-
-// The rest of your governance gate (RS-8 logic) remains unchanged
 
 // =====================================================================
 // GEOGRAPHIC GOVERNANCE GATE (After Parcel Resolution)
