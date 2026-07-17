@@ -11,8 +11,8 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/api/utils/resolveZoning.php';
 
 // Queen Creek test coordinates from zoning.json
-$latitude = 33.248311;
-$longitude = -111.634122;
+$latitude = 33.248197;
+$longitude = -111.614224;
 $jurisdiction = 'Queen Creek';
 
 $result = resolveZoning($jurisdiction, $latitude, $longitude);
