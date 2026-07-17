@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Skyesoft — processProposedContact.php
  * Main Orchestration + Proposal Report Generation
  * 
- * File Version:     1.6.5
+ * File Version:     1.6.6
  * Schema Version:   2.1.1
  * Last Updated:     2026-07-17
  */
@@ -1380,21 +1380,92 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
 unset($parcel);
 
 // =====================================================
-// MASTER LOCATION JURISDICTION FALLBACK
+// CANONICAL JURISDICTION RESOLUTION
 // =====================================================
 
+$registryPath = __DIR__ . '/../data/authoritative/jurisdictionRegistry.json';
+$jurisdictionRegistry = [];
+
+if (is_file($registryPath)) {
+    $registryRaw = file_get_contents($registryPath);
+    $decodedRegistry = json_decode((string)$registryRaw, true);
+
+    if (is_array($decodedRegistry)) {
+        $jurisdictionRegistry = $decodedRegistry;
+    } else {
+        error_log(
+            '[PPC][SECTION-10] Invalid jurisdiction registry JSON: ' .
+            $registryPath
+        );
+    }
+} else {
+    error_log(
+        '[PPC][SECTION-10] Jurisdiction registry not found: ' .
+        $registryPath
+    );
+}
+
+$normalizeJurisdiction = static function ($value): string {
+    return preg_replace(
+        '/[^A-Z0-9]/',
+        '',
+        strtoupper(trim((string)$value))
+    ) ?? '';
+};
+
+$rawJurisdiction = trim(
+    (string)($data['location']['jurisdictionName'] ?? '')
+);
+
 if (
-    empty($data['location']['jurisdictionName']) &&
+    $rawJurisdiction === '' &&
     !empty($data['location']['parcelDetails'])
 ) {
     $firstParcel = reset($data['location']['parcelDetails']);
-    $rawJurisdiction = trim((string)($firstParcel['jurisdiction'] ?? ''));
 
-    if ($rawJurisdiction !== '' && strtoupper($rawJurisdiction) !== 'N/A') {
-        $data['location']['jurisdictionName'] =
-            ucwords(strtolower($rawJurisdiction));
-        $data['location']['jurisdictionType'] = 'City';
+    $rawJurisdiction = trim(
+        (string)($firstParcel['jurisdiction'] ?? '')
+    );
+}
+
+$registryMatch = null;
+$normalizedJurisdiction = $normalizeJurisdiction($rawJurisdiction);
+
+foreach ($jurisdictionRegistry as $registryKey => $registryEntry) {
+    if (!is_array($registryEntry)) {
+        continue;
     }
+
+    $candidates = array_merge(
+        [$registryKey, $registryEntry['label'] ?? ''],
+        $registryEntry['aliases'] ?? []
+    );
+
+    foreach ($candidates as $candidate) {
+        if (
+            $normalizedJurisdiction !== '' &&
+            $normalizeJurisdiction($candidate) === $normalizedJurisdiction
+        ) {
+            $registryMatch = $registryEntry;
+            break 2;
+        }
+    }
+}
+
+if ($registryMatch !== null) {
+    $data['location']['jurisdictionName'] =
+        $registryMatch['label'] ?? $rawJurisdiction;
+
+    $data['location']['jurisdictionType'] =
+        $registryMatch['jurisdictionType'] ?? null;
+} elseif (
+    $rawJurisdiction !== '' &&
+    strtoupper($rawJurisdiction) !== 'N/A'
+) {
+    $data['location']['jurisdictionName'] =
+        ucwords(strtolower($rawJurisdiction));
+
+    $data['location']['jurisdictionType'] = null;
 }
 
 error_log(
