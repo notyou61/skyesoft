@@ -920,33 +920,6 @@ $data['location']['parcelDetails'] =
     $parcelResult['parcelDetails'] ?? [];
 
 $data['location']['parcelCount'] =
-    count($data['location']['parcelDetails']);   // Canonical count from array
-
-$data['location']['jurisdictionName'] =
-    $parcelResult['jurisdictionName'] ?? null;
-
-$data['location']['jurisdictionType'] =
-    $parcelResult['jurisdictionType'] ?? null;
-
-$data['location']['hasMultipleParcels'] =
-    ($data['location']['parcelCount'] > 1);
-
-#region SECTION 10 — Parcel Resolution + Enrichment
-
-require_once __DIR__ . '/utils/resolveParcel.php';
-
-$parcelResult = resolveParcel(
-    $data['location']['locationLatitude'] ?? null,
-    $data['location']['locationLongitude'] ?? null,
-    $data['location']['locationCounty'] ?? null,
-    $data['location']['locationCountyFips'] ?? null,
-    $searchAddress
-);
-
-$data['location']['parcelDetails'] =
-    $parcelResult['parcelDetails'] ?? [];
-
-$data['location']['parcelCount'] =
     count($data['location']['parcelDetails']);
 
 $data['location']['jurisdictionName'] =
