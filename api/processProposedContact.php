@@ -5,9 +5,9 @@ declare(strict_types=1);
  * Skyesoft — processProposedContact.php
  * Main Orchestration + Proposal Report Generation
  * 
- * File Version:     1.6.4
+ * File Version:     1.6.5
  * Schema Version:   2.1.1
- * Last Updated:     2026-07-13
+ * Last Updated:     2026-07-17
  */
 
 #region SECTION 00 — Bootstrap & Request Initialization
@@ -907,6 +907,7 @@ if ($data['location']['locationCensusValidated']) {
 #region SECTION 10 — Parcel Resolution + Enrichment
 
 require_once __DIR__ . '/utils/resolveParcel.php';
+require_once __DIR__ . '/utils/resolveZoning.php';
 
 $parcelResult = resolveParcel(
     $data['location']['locationLatitude'] ?? null,
@@ -1097,18 +1098,10 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     $parcel['parcelNumber'] = $apn;
 
     $parcel['assessor'] = [
-        'propertyType'  => null,
-        'puc'           => null,
-        'str'           => null,
-        'mcr'           => null,
-        'mapId'         => null,
-        'mapUrl'        => null,
-        'mapImage'      => null,
-        'mapPdf'        => null,
-        'lastSaleDate'  => null,
-        'lastSalePrice' => null,
-        'lastRetrieved' => null,
-        'status'        => 'pending'
+        'propertyType' => null,
+        'mapId'        => null,
+        'mapUrl'       => null,
+        'status'       => 'pending'
     ];
 
     // -------------------------------------------------
@@ -1184,40 +1177,6 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         error_log('[PPC][SECTION-10] PROPERTYINFO cURL error for ' . $apn . ': ' . $propertyError);
     }
 
-    // Retain technical responses without embedded base64 sketch images.
-    $sanitizeAssessorResponse = function(array $response): array {
-        if (empty($response['Sketches']) || !is_array($response['Sketches'])) {
-            return $response;
-        }
-
-        $sketches = $response['Sketches'];
-        $sanitizedPages = [];
-
-        foreach (($sketches['Pages'] ?? []) as $page) {
-            if (!is_array($page)) {
-                continue;
-            }
-
-            $sanitizedPages[] = [
-                'PageNum'  => $page['PageNum'] ?? null,
-                'APN'      => $page['APN'] ?? null,
-                'hasImage' => !empty($page['Sketch'])
-            ];
-        }
-
-        $response['Sketches'] = [
-            'TotalPages' => $sketches['TotalPages'] ?? count($sanitizedPages),
-            'Pages'      => $sanitizedPages
-        ];
-
-        return $response;
-    };
-
-    $parcel['assessor']['raw'] = [
-        'core'         => $sanitizeAssessorResponse($coreData),
-        'propertyInfo' => $sanitizeAssessorResponse($propertyData)
-    ];
-
     $lookupResolved = !empty($coreData) || !empty($propertyData);
     $retrievedAt    = time();
 
@@ -1282,7 +1241,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     $parcel['owner'] = [
         'name'           => $ownerName,
         'mailingAddress' => $ownerMailingAddress,
-        'record'         => $ownerRecord
+        'inCareOf'       => $normalizeText($ownerRecord['InCareOf'] ?? null)
     ];
 
     // Legacy scalar retained during downstream migration.
@@ -1329,42 +1288,6 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     ));
 
     $parcel['assessor']['propertyType'] = $propertyType;
-    $parcel['assessor']['puc'] = $normalizeText($findValue(
-        [$coreData, $propertyData],
-        ['PUC', 'PropertyUseCode', 'PROPERTY_USE_CODE', 'puc'],
-        null
-    ));
-    $parcel['assessor']['str'] = $normalizeText($findValue(
-        [$coreData, $propertyData],
-        ['STR', 'SectionTownshipRange', 'S/T/R', 'str'],
-        null
-    ));
-    $parcel['assessor']['mcr'] = $normalizeText($findValue(
-        [$coreData, $propertyData],
-        ['MCR', 'MCRNumber', 'mcrNumber', 'MCR #'],
-        null
-    ));
-    $parcel['assessor']['lastSaleDate'] = $normalizeText($findValue(
-        [$ownerRecord, $coreData, $propertyData],
-        ['SaleDate', 'SALE_DATE'],
-        null
-    ));
-    $parcel['assessor']['lastSalePrice'] = $findValue(
-        [$ownerRecord, $coreData, $propertyData],
-        ['SalePrice', 'SALE_PRICE'],
-        null
-    );
-    $parcel['assessor']['legalDescription'] = $normalizeText($findValue(
-        [$coreData, $propertyData],
-        ['PropertyDescription', 'LegalDescription', 'LEGAL_DESCRIPTION'],
-        null
-    ));
-    $parcel['assessor']['taxArea'] = $normalizeText($findValue(
-        [$coreData, $propertyData],
-        ['TaxAreaCode', 'TAX_AREA_CODE'],
-        null
-    ));
-    $parcel['assessor']['lastRetrieved'] = date('c', $retrievedAt);
     $parcel['assessor']['status'] = $lookupResolved
         ? 'resolved'
         : 'unresolved';
@@ -1479,6 +1402,107 @@ error_log(
     'Count=' . ($data['location']['parcelCount'] ?? 0) .
     ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL') .
     ' | Type=' . ($data['location']['jurisdictionType'] ?? 'NULL')
+);
+
+#endregion
+
+#region SECTION 10A — Jurisdictional Zoning Resolution
+
+// =====================================================
+// SELECT GOVERNING PARCEL FOR ZONING
+// =====================================================
+
+$zoningParcelIndex = null;
+$parcelDetails = $data['location']['parcelDetails'] ?? [];
+
+foreach ($parcelDetails as $parcelIndex => $parcelCandidate) {
+    if (!empty($parcelCandidate['accepted'])) {
+        $zoningParcelIndex = $parcelIndex;
+        break;
+    }
+}
+
+// A single resolved parcel is deterministic without manual selection.
+if ($zoningParcelIndex === null && count($parcelDetails) === 1) {
+    $zoningParcelIndex = 0;
+}
+
+$zoningResult = [
+    'success'           => false,
+    'status'            => 'not_attempted',
+    'reason'            => 'parcel_not_deterministic',
+    'message'           => 'Zoning requires one resolved or accepted parcel.',
+    'zoningCode'        => null,
+    'zoningDescription' => null,
+    'zoningSource'      => null,
+    'zoningVerifiedAt'  => null,
+    'confidence'        => 0,
+    'requiresReview'    => true
+];
+
+if ($zoningParcelIndex !== null) {
+    $zoningParcel = $parcelDetails[$zoningParcelIndex];
+    $zoningApn = $zoningParcel['parcelRecord']['apnRaw']
+        ?? $zoningParcel['parcelNumber']
+        ?? null;
+
+    $zoningJurisdiction = $data['location']['jurisdictionName']
+        ?? $zoningParcel['jurisdiction']
+        ?? null;
+
+    $zoningResult = resolveZoning(
+        $zoningJurisdiction,
+        isset($data['location']['locationLatitude'])
+            ? (float)$data['location']['locationLatitude']
+            : null,
+        isset($data['location']['locationLongitude'])
+            ? (float)$data['location']['locationLongitude']
+            : null,
+        $zoningApn !== null ? (string)$zoningApn : null
+    );
+
+    $parcelDetails[$zoningParcelIndex]['zoning'] = [
+        'status'            => $zoningResult['status'] ?? 'unresolved',
+        'reason'            => $zoningResult['reason'] ?? null,
+        'message'           => $zoningResult['message'] ?? null,
+        'zoningCode'        => $zoningResult['zoningCode'] ?? null,
+        'zoningDescription' => $zoningResult['zoningDescription'] ?? null,
+        'zoningSource'      => $zoningResult['zoningSource'] ?? null,
+        'zoningVerifiedAt'  => $zoningResult['zoningVerifiedAt'] ?? null,
+        'confidence'        => (int)($zoningResult['confidence'] ?? 0),
+        'requiresReview'    => (bool)($zoningResult['requiresReview'] ?? true)
+    ];
+
+    // Only verified zoning values enter the persistence contract.
+    if (($zoningResult['status'] ?? null) === 'resolved') {
+        $parcelDetails[$zoningParcelIndex]['parcelRecord']['zoningCode'] =
+            $zoningResult['zoningCode'] ?? null;
+        $parcelDetails[$zoningParcelIndex]['parcelRecord']['zoningDescription'] =
+            $zoningResult['zoningDescription'] ?? null;
+        $parcelDetails[$zoningParcelIndex]['parcelRecord']['zoningSource'] =
+            $zoningResult['zoningSource'] ?? null;
+        $parcelDetails[$zoningParcelIndex]['parcelRecord']['zoningVerifiedAt'] =
+            $zoningResult['zoningVerifiedAt'] ?? null;
+    }
+}
+
+$data['location']['parcelDetails'] = $parcelDetails;
+$data['location']['zoning'] = [
+    'status'            => $zoningResult['status'] ?? 'unresolved',
+    'reason'            => $zoningResult['reason'] ?? null,
+    'zoningCode'        => $zoningResult['zoningCode'] ?? null,
+    'zoningDescription' => $zoningResult['zoningDescription'] ?? null,
+    'zoningSource'      => $zoningResult['zoningSource'] ?? null,
+    'zoningVerifiedAt'  => $zoningResult['zoningVerifiedAt'] ?? null,
+    'confidence'        => (int)($zoningResult['confidence'] ?? 0),
+    'requiresReview'    => (bool)($zoningResult['requiresReview'] ?? true)
+];
+
+error_log(
+    '[PPC][SECTION-10A] Zoning resolution complete. ' .
+    'Status=' . ($zoningResult['status'] ?? 'unknown') .
+    ' | Code=' . ($zoningResult['zoningCode'] ?? 'NULL') .
+    ' | Source=' . ($zoningResult['zoningSource'] ?? 'NULL')
 );
 
 // =====================================================
