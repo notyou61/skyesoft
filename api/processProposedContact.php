@@ -1184,10 +1184,38 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         error_log('[PPC][SECTION-10] PROPERTYINFO cURL error for ' . $apn . ': ' . $propertyError);
     }
 
-    // Retain raw responses for traceability and future mappings.
+    // Retain technical responses without embedded base64 sketch images.
+    $sanitizeAssessorResponse = function(array $response): array {
+        if (empty($response['Sketches']) || !is_array($response['Sketches'])) {
+            return $response;
+        }
+
+        $sketches = $response['Sketches'];
+        $sanitizedPages = [];
+
+        foreach (($sketches['Pages'] ?? []) as $page) {
+            if (!is_array($page)) {
+                continue;
+            }
+
+            $sanitizedPages[] = [
+                'PageNum'  => $page['PageNum'] ?? null,
+                'APN'      => $page['APN'] ?? null,
+                'hasImage' => !empty($page['Sketch'])
+            ];
+        }
+
+        $response['Sketches'] = [
+            'TotalPages' => $sketches['TotalPages'] ?? count($sanitizedPages),
+            'Pages'      => $sanitizedPages
+        ];
+
+        return $response;
+    };
+
     $parcel['assessor']['raw'] = [
-        'core'         => $coreData,
-        'propertyInfo' => $propertyData
+        'core'         => $sanitizeAssessorResponse($coreData),
+        'propertyInfo' => $sanitizeAssessorResponse($propertyData)
     ];
 
     $lookupResolved = !empty($coreData) || !empty($propertyData);
@@ -1221,8 +1249,10 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     // -------------------------------------------------
     // 4. Canonical owner object
     // -------------------------------------------------
-    $ownerRecord = $coreData['ownerName']
+    $ownerRecord = $coreData['Owner']
+        ?? $coreData['ownerName']
         ?? $coreData['OwnerName']
+        ?? $propertyData['Owner']
         ?? $propertyData['ownerName']
         ?? $propertyData['OwnerName']
         ?? [];
@@ -1269,7 +1299,13 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
 
     $subdivision = $normalizeText($findValue(
         [$coreData, $propertyData],
-        ['Subdivision', 'SUBDIVISION', 'subdivision', 'Subdiv'],
+        [
+            'SubdivisionName',
+            'Subdivision',
+            'SUBDIVISION',
+            'subdivision',
+            'Subdiv'
+        ],
         null
     ));
 
@@ -1318,6 +1354,16 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         ['SalePrice', 'SALE_PRICE'],
         null
     );
+    $parcel['assessor']['legalDescription'] = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['PropertyDescription', 'LegalDescription', 'LEGAL_DESCRIPTION'],
+        null
+    ));
+    $parcel['assessor']['taxArea'] = $normalizeText($findValue(
+        [$coreData, $propertyData],
+        ['TaxAreaCode', 'TAX_AREA_CODE'],
+        null
+    ));
     $parcel['assessor']['lastRetrieved'] = date('c', $retrievedAt);
     $parcel['assessor']['status'] = $lookupResolved
         ? 'resolved'
@@ -1404,7 +1450,7 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
     // Record readiness describes the JSON, not commit authorization.
     $parcel['parcelRecordReady'] = (
         $parcel['parcelRecord']['apnRaw'] !== null &&
-        $parcel['parcelRecord']['source'] !== null
+        $lookupResolved
     );
 }
 
