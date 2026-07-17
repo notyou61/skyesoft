@@ -940,14 +940,9 @@ $token = getenv('MARICOPA_COUNTY_API_KEY') ?: '';
 foreach ($data['location']['parcelDetails'] as &$parcel) {
 
     $apn = $parcel['parcelNumber'] ?? null;
+    if (!$apn) continue;
 
-    if (!$apn) {
-        continue;
-    }
-
-    // =====================================================
-    // INITIALIZE LEAN ASSESSOR METADATA
-    // =====================================================
+    // Initialize
     $parcel['assessor'] = [
         'detail'        => null,
         'mapId'         => null,
@@ -958,7 +953,6 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         'status'        => 'pending'
     ];
 
-    // Shared headers for the Maricopa County API
     $httpHeaders = [
         'Accept: application/json, text/plain, */*',
         'Cache-Control: no-cache'
@@ -969,98 +963,103 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
 
     $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-    // =====================================================
-    // 1. CORE PARCEL DETAILS
-    // =====================================================
-    $detailUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
-
-    error_log('[PPC][SECTION-10] Enriching parcel: ' . $apn);
-
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL            => $detailUrl,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 10,
-        CURLOPT_USERAGENT      => $userAgent,
-        CURLOPT_HTTPHEADER     => $httpHeaders
-    ]);
-
-    $detailResponse = curl_exec($ch);
-    $detailHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    $coreData = [];
-    if ($detailHttpCode === 200 && $detailResponse !== false) {
-        $coreData = json_decode($detailResponse, true) ?? [];
-    }
-
-    // =====================================================
-    // 2. PROPERTY INFO (richer fields)
-    // =====================================================
-    $propertyInfoUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn) . '/propertyinfo';
+    // -------------------------------------------------
+    // 1. CORE PARCEL
+    // -------------------------------------------------
+    $coreUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn);
+    error_log('[PPC][SECTION-10] Calling CORE: ' . $coreUrl);
 
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL            => $propertyInfoUrl,
+        CURLOPT_URL            => $coreUrl,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_TIMEOUT        => 12,
         CURLOPT_USERAGENT      => $userAgent,
         CURLOPT_HTTPHEADER     => $httpHeaders
     ]);
-
-    $propertyResponse = curl_exec($ch);
-    $propertyHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $coreResponse = curl_exec($ch);
+    $coreHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    $propertyData = [];
-    if ($propertyHttpCode === 200 && $propertyResponse !== false) {
-        $propertyData = json_decode($propertyResponse, true) ?? [];
-    }
+    $coreData = ($coreHttpCode === 200 && $coreResponse) ? (json_decode($coreResponse, true) ?? []) : [];
+    error_log('[PPC][SECTION-10] CORE keys: ' . implode(', ', array_keys($coreData)));
 
-    // =====================================================
+    // -------------------------------------------------
+    // 2. PROPERTY INFO  ← this is the important one
+    // -------------------------------------------------
+    $propUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn) . '/propertyinfo';
+    error_log('[PPC][SECTION-10] Calling PROPERTYINFO: ' . $propUrl);
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $propUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 12,
+        CURLOPT_USERAGENT      => $userAgent,
+        CURLOPT_HTTPHEADER     => $httpHeaders
+    ]);
+    $propResponse = curl_exec($ch);
+    $propHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $propData = ($propHttpCode === 200 && $propResponse) ? (json_decode($propResponse, true) ?? []) : [];
+    error_log('[PPC][SECTION-10] PROPERTYINFO keys: ' . implode(', ', array_keys($propData)));
+    error_log('[PPC][SECTION-10] PROPERTYINFO raw (first 1200 chars): ' . substr((string)$propResponse, 0, 1200));
+
+    // -------------------------------------------------
     // 3. OWNER DETAILS
-    // =====================================================
+    // -------------------------------------------------
     $ownerUrl = 'https://mcassessor.maricopa.gov/parcel/' . urlencode($apn) . '/owner-details';
+    error_log('[PPC][SECTION-10] Calling OWNER-DETAILS: ' . $ownerUrl);
 
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL            => $ownerUrl,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_TIMEOUT        => 12,
         CURLOPT_USERAGENT      => $userAgent,
         CURLOPT_HTTPHEADER     => $httpHeaders
     ]);
-
     $ownerResponse = curl_exec($ch);
     $ownerHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    $ownerData = [];
-    if ($ownerHttpCode === 200 && $ownerResponse !== false) {
-        $ownerData = json_decode($ownerResponse, true) ?? [];
-    }
+    $ownerData = ($ownerHttpCode === 200 && $ownerResponse) ? (json_decode($ownerResponse, true) ?? []) : [];
+    error_log('[PPC][SECTION-10] OWNER-DETAILS keys: ' . implode(', ', array_keys($ownerData)));
 
-    // =====================================================
-    // Merge all sources into canonical parcel fields
-    // =====================================================
-    $parcel['propertyType']     = $propertyData['PropertyType']     ?? $coreData['PropertyType']     ?? 'N/A';
-    $parcel['lotSizeSqFt']      = $propertyData['LotSize']          ?? $coreData['LotSize']          ?? 'N/A';
-    $parcel['constructionYear'] = $propertyData['ConstructionYear'] ?? $coreData['ConstructionYear'] ?? 'N/A';
-    $parcel['puc']              = $propertyData['PUC']              ?? $coreData['PUC']              ?? 'N/A';
-    $parcel['subdivision']      = $propertyData['Subdivision']      ?? $coreData['Subdivision']      ?? 'N/A';
-    $parcel['mcrNumber']        = $propertyData['MCR']              ?? $coreData['MCR']              ?? 'N/A';
-    $parcel['str']              = $propertyData['STR']              ?? $coreData['STR']              ?? 'N/A';
+    // -------------------------------------------------
+    // SMART FIELD EXTRACTION (tries multiple key names)
+    // -------------------------------------------------
+    $get = function(array $sources, array $possibleKeys, $default = 'N/A') {
+        foreach ($sources as $src) {
+            if (!is_array($src)) continue;
+            foreach ($possibleKeys as $key) {
+                if (isset($src[$key]) && $src[$key] !== '' && $src[$key] !== null) {
+                    return $src[$key];
+                }
+            }
+        }
+        return $default;
+    };
 
-    // Owner fields (from owner-details or core)
-    $parcel['ownerName'] = $ownerData['OwnerName'] ?? $coreData['OWNER_NAME'] ?? 'N/A';
-    $parcel['ownerMailingAddress'] = $ownerData['FullMailingAddress'] ?? 'N/A';
-    $parcel['lastSaleDate']  = $ownerData['SaleDate'] ?? $coreData['SaleDate'] ?? null;
-    $parcel['lastSalePrice'] = $ownerData['SalePrice'] ?? $coreData['SalePrice'] ?? null;
+    $parcel['propertyType']     = $get([$propData, $coreData], ['PropertyType', 'PROPERTY_TYPE', 'propertyType', 'Type']);
+    $parcel['lotSizeSqFt']      = $get([$propData, $coreData], ['LotSize', 'LOT_SIZE', 'LotSizeSqFt', 'lotSize', 'Lot Size (sq ft)']);
+    $parcel['constructionYear'] = $get([$propData, $coreData], ['ConstructionYear', 'CONSTRUCTION_YEAR', 'YearBuilt', 'YEAR_BUILT', 'constructionYear', 'Year Built']);
+    $parcel['puc']              = $get([$propData, $coreData], ['PUC', 'PropertyUseCode', 'PROPERTY_USE_CODE', 'puc']);
+    $parcel['subdivision']      = $get([$propData, $coreData], ['Subdivision', 'SUBDIVISION', 'subdivision', 'Subdiv']);
+    $parcel['mcrNumber']        = $get([$propData, $coreData], ['MCR', 'MCRNumber', 'mcrNumber', 'MCR #']);
+    $parcel['str']              = $get([$propData, $coreData], ['STR', 'SectionTownshipRange', 'S/T/R', 'str']);
 
-    // Retain lean assessor detail
+    // Owner / Sale
+    $parcel['ownerName']            = $get([$ownerData, $coreData], ['OwnerName', 'OWNER_NAME', 'Owner', 'ownerName'], 'N/A');
+    $parcel['ownerMailingAddress']  = $get([$ownerData, $coreData], ['FullMailingAddress', 'MailingAddress', 'MAILING_ADDRESS'], 'N/A');
+    $parcel['lastSaleDate']         = $get([$ownerData, $coreData], ['SaleDate', 'SALE_DATE', 'lastSaleDate'], null);
+    $parcel['lastSalePrice']        = $get([$ownerData, $coreData], ['SalePrice', 'SALE_PRICE', 'lastSalePrice'], null);
+
+    // Assessor detail object
     $parcel['assessor']['detail'] = [
         'PropertyType'     => $parcel['propertyType'],
         'LotSize'          => $parcel['lotSizeSqFt'],
@@ -1071,62 +1070,40 @@ foreach ($data['location']['parcelDetails'] as &$parcel) {
         'STR'              => $parcel['str']
     ];
     $parcel['assessor']['status'] = 'resolved';
+    $parcel['assessor']['lastRetrieved'] = date('c');
 
-    // =====================================================
-    // FETCH MAP ID & MAP URL
-    // =====================================================
+    // -------------------------------------------------
+    // MAP ID
+    // -------------------------------------------------
     if ($token) {
-        $mapMetaUrl = 'https://mcassessor.maricopa.gov/mapid/parcel/' . urlencode($apn);
-        
+        $mapUrl = 'https://mcassessor.maricopa.gov/mapid/parcel/' . urlencode($apn);
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL            => $mapMetaUrl,
+            CURLOPT_URL            => $mapUrl,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_TIMEOUT        => 10,
             CURLOPT_USERAGENT      => $userAgent,
             CURLOPT_HTTPHEADER     => $httpHeaders
         ]);
-
-        $mapMetaResponse = curl_exec($ch);
-        $mapHttpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $mapResponse = curl_exec($ch);
+        $mapHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        error_log('[PPC][SECTION-10] MapID raw response for ' . $apn . ': ' . substr((string)$mapMetaResponse, 0, 500));
+        if ($mapHttpCode === 200 && $mapResponse) {
+            $mapData = json_decode($mapResponse, true);
+            if (is_array($mapData) && !empty($mapData[0])) {
+                $mapItem = $mapData[0];
+                $mapId = is_string($mapItem)
+                    ? preg_replace('/\.pdf$/i', '', trim($mapItem))
+                    : ($mapItem['FileName'] ?? $mapItem['fileName'] ?? $mapItem['mapId'] ?? null);
 
-        if ($mapHttpCode === 200 && $mapMetaResponse !== false) {
-            $mapData = json_decode($mapMetaResponse, true);
-            
-            if (is_array($mapData)) {
-                $mapItem = $mapData[0] ?? null;
-
-                if (is_string($mapItem)) {
-                    $mapId = preg_replace('/\.pdf$/i', '', trim($mapItem));
-
+                if ($mapId) {
+                    $mapId = preg_replace('/\.pdf$/i', '', trim((string)$mapId));
                     $parcel['assessor']['mapId'] = $mapId;
-                    $parcel['assessor']['mapUrl'] =
-                        'https://mcassessor.maricopa.gov/getmapid/' .
-                        rawurlencode($mapId) .
-                        '/';
-                } elseif (is_array($mapItem)) {
-                    $mapId = $mapItem['FileName'] ?? $mapItem['fileName'] ?? $mapItem['filename'] ?? $mapItem['mapId'] ?? null;
-                    $mapId = $mapId ? preg_replace('/\.pdf$/i', '', trim((string)$mapId)) : null;
-
-                    $parcel['assessor']['mapId'] = $mapId;
-                    $parcel['assessor']['mapUrl'] =
-                        $mapItem['Url']
-                        ?? $mapItem['url']
-                        ?? (
-                            $mapId
-                                ? 'https://mcassessor.maricopa.gov/getmapid/' .
-                                rawurlencode($mapId) .
-                                '/'
-                                : null
-                        );
+                    $parcel['assessor']['mapUrl'] = 'https://mcassessor.maricopa.gov/getmapid/' . rawurlencode($mapId) . '/';
                 }
             }
-        } else {
-            error_log('[PPC][SECTION-10] MapID resolution failed for: ' . $apn . ' (HTTP ' . $mapHttpCode . ')');
         }
     }
 }
@@ -1136,8 +1113,7 @@ unset($parcel);
 error_log(
     '[PPC][SECTION-10] Parcel resolution + enrichment complete. ' .
     'Count=' . ($data['location']['parcelCount'] ?? 0) .
-    ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL') .
-    ' | Type=' . ($data['location']['jurisdictionType'] ?? 'NULL')
+    ' | Jurisdiction=' . ($data['location']['jurisdictionName'] ?? 'NULL')
 );
 
 // =====================================================================
