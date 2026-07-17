@@ -4,11 +4,11 @@ declare(strict_types=1);
 /**
  * Skyesoft — Jurisdictional Zoning Resolution Utility
  *
- * File Version:     1.0.0
+ * File Version:     1.1.0
  * Schema Version:   2.1.1
  * Last Updated:     2026-07-17
  *
- * Resolves base zoning through a verified jurisdiction source registry.
+ * Resolves base zoning through each jurisdiction's verified zoning.json.
  * Public ArcGIS FeatureServer and MapServer query layers are supported.
  */
 
@@ -21,7 +21,7 @@ declare(strict_types=1);
  * @param float|null  $latitude         WGS84 latitude.
  * @param float|null  $longitude        WGS84 longitude.
  * @param string|null $apnRaw           Assessor parcel number.
- * @param array       $options          Optional registry/path/timeout overrides.
+ * @param array       $options          Optional config/path/timeout overrides.
  */
 function resolveZoning(
     ?string $jurisdictionName,
@@ -31,12 +31,9 @@ function resolveZoning(
     array $options = []
 ): array {
     $startedAt = microtime(true);
-    $verifiedAt = time();
-
     $result = buildZoningResult([
         'jurisdictionName' => normalizeZoningText($jurisdictionName),
-        'apnRaw'           => normalizeZoningApn($apnRaw),
-        'zoningVerifiedAt' => $verifiedAt
+        'apnRaw'           => normalizeZoningApn($apnRaw)
     ]);
 
     if ($result['jurisdictionName'] === null) {
@@ -47,32 +44,28 @@ function resolveZoning(
         ]);
     }
 
-    $registryResult = loadZoningSourceRegistry($options);
+    $registryResult = loadJurisdictionZoningConfig(
+        $result['jurisdictionName'],
+        $options
+    );
 
     if (!$registryResult['success']) {
+        $configStatus = $registryResult['reason'] === 'zoning_config_missing'
+            ? 'not_configured'
+            : 'unavailable';
+
         return finalizeZoningResult($result, $startedAt, [
-            'status'  => 'unavailable',
+            'status'  => $configStatus,
             'reason'  => $registryResult['reason'],
             'message' => $registryResult['message']
         ]);
     }
 
-    $source = findZoningSource(
-        $registryResult['sources'],
-        $result['jurisdictionName']
-    );
-
-    if ($source === null) {
-        return finalizeZoningResult($result, $startedAt, [
-            'status'  => 'not_configured',
-            'reason'  => 'jurisdiction_source_not_configured',
-            'message' => 'No verified zoning source is configured for this jurisdiction.'
-        ]);
-    }
+    $source = $registryResult['source'];
 
     $result['provider'] = $source['provider'] ?? null;
     $result['queryMethod'] = $source['queryMethod'] ?? null;
-    $result['zoningSource'] = $source['sourceCode'] ?? null;
+    $result['zoningSource'] = $source['provider'] ?? null;
     $result['sourceUrl'] = $source['serviceUrl'] ?? null;
 
     if (($source['isActive'] ?? false) !== true) {
@@ -83,7 +76,7 @@ function resolveZoning(
         ]);
     }
 
-    $provider = strtolower(trim((string)($source['provider'] ?? '')));
+    $provider = strtolower(trim((string)($source['adapter'] ?? '')));
 
     if (!in_array($provider, ['arcgis_feature_service', 'arcgis_map_service'], true)) {
         return finalizeZoningResult($result, $startedAt, [
@@ -117,7 +110,7 @@ function resolveZoning(
     if ($featureCount === 0) {
         return finalizeZoningResult($result, $startedAt, [
             'status'       => 'unresolved',
-            'reason'       => 'no_zoning_feature_found',
+            'reason'       => 'no_zoning_feature_at_coordinate',
             'message'      => 'The official zoning source returned no zoning feature.',
             'responseTime' => $queryResult['responseTimeMs']
         ]);
@@ -162,7 +155,10 @@ function resolveZoning(
             : 'Base zoning resolved from the official jurisdiction source.',
         'zoningCode'        => $primaryFeature['zoningCode'],
         'zoningDescription' => $primaryFeature['zoningDescription'],
-        'confidence'        => $requiresReview ? 70 : 95,
+        'zoningVerifiedAt'  => time(),
+        'confidence'        => $requiresReview
+            ? 70
+            : (int)($source['successfulResultConfidence'] ?? 95),
         'requiresReview'    => $requiresReview,
         'candidateCount'    => count($normalizedFeatures),
         'candidates'        => $normalizedFeatures,
@@ -175,105 +171,138 @@ function resolveZoning(
 
 #endregion
 
-#region SECTION 01 — Registry Loading + Jurisdiction Matching
+#region SECTION 01 — Jurisdiction Configuration Loading
 
 /**
- * Load verified zoning sources.
- *
- * Registry default:
- * data/authoritative/zoningSourceRegistry.json
+ * Load and normalize one jurisdiction's verified zoning.json.
  */
-function loadZoningSourceRegistry(array $options = []): array {
-    if (!empty($options['registry']) && is_array($options['registry'])) {
+function loadJurisdictionZoningConfig(
+    string $jurisdictionName,
+    array $options = []
+): array {
+    $slug = normalizeZoningSlug($jurisdictionName);
+
+    if ($slug === '') {
         return [
-            'success' => true,
-            'sources' => $options['registry'],
-            'reason'  => null,
-            'message' => null
+            'success' => false,
+            'source'  => null,
+            'reason'  => 'invalid_jurisdiction_name',
+            'message' => 'The jurisdiction name could not be converted to a safe configuration path.'
         ];
     }
 
-    $registryPath = trim((string)(
-        $options['registryPath']
-        ?? __DIR__ . '/../../data/authoritative/zoningSourceRegistry.json'
+    if (!empty($options['config']) && is_array($options['config'])) {
+        $config = $options['config'];
+    } else {
+        $root = rtrim((string)(
+            $options['jurisdictionsPath']
+            ?? __DIR__ . '/../../data/authoritative/jurisdictions'
+        ), '/\\');
+        $configPath = !empty($options['configPath'])
+            ? trim((string)$options['configPath'])
+            : $root . DIRECTORY_SEPARATOR . $slug . DIRECTORY_SEPARATOR . 'zoning.json';
+
+        if ($configPath === '' || !is_file($configPath)) {
+            return [
+                'success' => false,
+                'source'  => null,
+                'reason'  => 'zoning_config_missing',
+                'message' => 'No zoning configuration is available for this jurisdiction.'
+            ];
+        }
+
+        $registryJson = @file_get_contents($configPath);
+
+        if (!is_string($registryJson) || trim($registryJson) === '') {
+            return [
+                'success' => false,
+                'source'  => null,
+                'reason'  => 'zoning_config_unreadable',
+                'message' => 'The jurisdiction zoning configuration could not be read.'
+            ];
+        }
+
+        $config = json_decode($registryJson, true);
+    }
+
+    if (!is_array($config)) {
+        return [
+            'success' => false,
+            'source'  => null,
+            'reason'  => 'zoning_config_invalid_json',
+            'message' => 'The jurisdiction zoning configuration contains invalid JSON.'
+        ];
+    }
+
+    $configuredSlug = normalizeZoningSlug((string)(
+        $config['jurisdiction']['slug']
+        ?? $config['jurisdiction']['label']
+        ?? ''
     ));
 
-    if ($registryPath === '' || !is_file($registryPath)) {
+    if ($configuredSlug === '' || $configuredSlug !== $slug) {
         return [
             'success' => false,
-            'sources' => [],
-            'reason'  => 'zoning_registry_missing',
-            'message' => 'The authoritative zoning source registry is unavailable.'
+            'source'  => null,
+            'reason'  => 'zoning_config_jurisdiction_mismatch',
+            'message' => 'The zoning configuration does not match the requested jurisdiction.'
         ];
     }
 
-    $registryJson = @file_get_contents($registryPath);
+    $service = is_array($config['service'] ?? null) ? $config['service'] : [];
+    $query = is_array($config['query'] ?? null) ? $config['query'] : [];
+    $mapping = is_array($config['fieldMapping'] ?? null)
+        ? $config['fieldMapping']
+        : [];
+    $validation = is_array($config['validation'] ?? null)
+        ? $config['validation']
+        : [];
 
-    if (!is_string($registryJson) || trim($registryJson) === '') {
+    $serviceUrl = rtrim(trim((string)($service['serviceUrl'] ?? '')), '/');
+    $layerId = $service['layerId'] ?? null;
+    $serviceType = strtoupper(trim((string)($service['serviceType'] ?? '')));
+
+    if ($serviceUrl === '' || !is_int($layerId) || $layerId < 0) {
         return [
             'success' => false,
-            'sources' => [],
-            'reason'  => 'zoning_registry_unreadable',
-            'message' => 'The authoritative zoning source registry could not be read.'
+            'source'  => null,
+            'reason'  => 'zoning_config_invalid',
+            'message' => 'The zoning configuration is missing a valid service URL or layer ID.'
         ];
     }
 
-    $registry = json_decode($registryJson, true);
+    $adapter = strpos($serviceType, 'MAP') !== false
+        ? 'arcgis_map_service'
+        : (strpos($serviceType, 'FEATURE') !== false
+            ? 'arcgis_feature_service'
+            : '');
 
-    if (!is_array($registry)) {
-        return [
-            'success' => false,
-            'sources' => [],
-            'reason'  => 'zoning_registry_invalid_json',
-            'message' => 'The authoritative zoning source registry contains invalid JSON.'
-        ];
-    }
-
-    $sources = $registry['sources'] ?? $registry;
-
-    if (!is_array($sources)) {
-        return [
-            'success' => false,
-            'sources' => [],
-            'reason'  => 'zoning_registry_invalid_shape',
-            'message' => 'The authoritative zoning source registry has an invalid structure.'
-        ];
-    }
-
-    return [
-        'success' => true,
-        'sources' => $sources,
-        'reason'  => null,
-        'message' => null
+    $source = [
+        'provider'                    => normalizeZoningText($service['provider'] ?? null),
+        'adapter'                     => $adapter,
+        'queryMethod'                 => strtolower((string)($query['method'] ?? 'point_intersection')),
+        'serviceUrl'                  => $serviceUrl . '/' . $layerId,
+        'isActive'                    => ($service['status'] ?? null) === 'configured',
+        'codeFields'                  => $mapping['zoningCode'] ?? [],
+        'descriptionFields'           => $mapping['zoningDescription'] ?? [],
+        'additionalFields'            => array_values(array_unique(array_merge(
+            normalizeZoningFieldList($query['outFields'] ?? []),
+            normalizeZoningFieldList($mapping['caseNumber'] ?? []),
+            normalizeZoningFieldList($mapping['ordinanceNumber'] ?? []),
+            normalizeZoningFieldList($mapping['historic'] ?? []),
+            normalizeZoningFieldList($mapping['transitOrientedDevelopment'] ?? [])
+        ))),
+        'resultRecordCount'           => (int)($query['resultRecordCount'] ?? 10),
+        'requestTimeout'              => (int)($query['timeoutSeconds'] ?? 5),
+        'where'                       => (string)($query['where'] ?? '1=1'),
+        'geometryType'                => (string)($query['geometryType'] ?? 'esriGeometryPoint'),
+        'spatialRel'                  => (string)($query['spatialRelationship'] ?? 'esriSpatialRelIntersects'),
+        'inSR'                        => (int)($query['inputSpatialReference'] ?? 4326),
+        'returnGeometry'              => (bool)($query['returnGeometry'] ?? false),
+        'successfulResultConfidence' => (int)($validation['successfulResultConfidence'] ?? 95)
     ];
-}
 
-/**
- * Match a jurisdiction using its primary name or aliases.
- */
-function findZoningSource(array $sources, string $jurisdictionName): ?array {
-    $target = normalizeZoningKey($jurisdictionName);
-
-    foreach ($sources as $source) {
-        if (!is_array($source)) {
-            continue;
-        }
-
-        $names = array_merge(
-            [(string)($source['jurisdictionName'] ?? '')],
-            is_array($source['aliases'] ?? null)
-                ? $source['aliases']
-                : []
-        );
-
-        foreach ($names as $name) {
-            if (normalizeZoningKey((string)$name) === $target) {
-                return $source;
-            }
-        }
-    }
-
-    return null;
+    return ['success' => true, 'source' => $source, 'reason' => null, 'message' => null];
 }
 
 #endregion
@@ -309,9 +338,9 @@ function queryArcGisZoningSource(
     $fieldNames = collectZoningOutFields($source);
 
     $params = [
-        'where'          => '1=1',
+        'where'          => (string)($source['where'] ?? '1=1'),
         'outFields'      => implode(',', $fieldNames),
-        'returnGeometry' => 'false',
+        'returnGeometry' => !empty($source['returnGeometry']) ? 'true' : 'false',
         'f'              => 'json',
         'resultRecordCount' => (int)($source['resultRecordCount'] ?? 10)
     ];
@@ -341,10 +370,13 @@ function queryArcGisZoningSource(
         }
 
         $params['geometry'] = $longitude . ',' . $latitude;
-        $params['geometryType'] = 'esriGeometryPoint';
-        $params['spatialRel'] = 'esriSpatialRelIntersects';
-        $params['inSR'] = 4326;
-        $params['outSR'] = 4326;
+        $params['geometryType'] = (string)(
+            $source['geometryType'] ?? 'esriGeometryPoint'
+        );
+        $params['spatialRel'] = (string)(
+            $source['spatialRel'] ?? 'esriSpatialRelIntersects'
+        );
+        $params['inSR'] = (int)($source['inSR'] ?? 4326);
     }
 
     $queryUrl = $serviceUrl . '/query?' . http_build_query(
@@ -650,6 +682,16 @@ function normalizeZoningKey(string $value): string {
     $value = preg_replace('/[^a-z0-9]+/', ' ', $value);
 
     return trim(preg_replace('/\s+/', ' ', $value));
+}
+
+/**
+ * Convert a jurisdiction label to its safe on-disk directory name.
+ */
+function normalizeZoningSlug(string $value): string {
+    $value = strtolower(trim($value));
+    $value = preg_replace('/[^a-z0-9]+/', '', $value);
+
+    return is_string($value) ? $value : '';
 }
 
 #endregion
