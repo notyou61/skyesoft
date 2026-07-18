@@ -1,0 +1,146 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Avondale",
+    "slug": "avondale",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Avondale Development Services Department",
+    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
+    "serviceUrl": "https://gisweb.avondaleaz.gov/server/rest/services/Planning/Zoning/MapServer",
+    "layerId": 6,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZONETYPE",
+      "ZONEDIST",
+      "CASENO",
+      "COMMONAME",
+      "SUBTYPE",
+      "DocLink",
+      "OrdinanceDocLink",
+      "AssociatedCASENOs",
+      "COMMENT",
+      "BUBBLE"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 45
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZONETYPE"
+    ],
+    "zoningDescription": [],
+    "zoningDistrictFamily": [
+      "ZONEDIST"
+    ],
+    "caseNumber": [
+      "CASENO"
+    ],
+    "commonName": [
+      "COMMONAME"
+    ],
+    "subtype": [
+      "SUBTYPE"
+    ],
+    "sourceDocumentUrl": [
+      "DocLink"
+    ],
+    "ordinanceDocumentUrl": [
+      "OrdinanceDocLink"
+    ],
+    "associatedCaseNumbers": [
+      "AssociatedCASENOs"
+    ],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "codedValueMappings": {
+    "ZONEDIST": {
+      "PAD": {
+        "zoningDescription": "Planned Area Development"
+      },
+      "COM": {
+        "zoningDescription": "Commercial"
+      },
+      "EMP": {
+        "zoningDescription": "Employment"
+      },
+      "RES": {
+        "zoningDescription": "Residential"
+      },
+      "SPE": {
+        "zoningDescription": "Specialty"
+      },
+      "UNK": {
+        "zoningDescription": "Uncategorized"
+      }
+    }
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784389794,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "00c66a3ef0fd4d63b9508a90c615d7de",
+    "sourceApplicationItemId": "7e0b4a5ca6b14733bd97a80ba943022e",
+    "testAddress": "11465 W Civic Center Dr, Avondale, AZ 85323",
+    "testCoordinate": {
+      "latitude": 33.444724019358,
+      "longitude": -112.304194854714,
+      "expectedZoningCode": "PAD",
+      "expectedZoningDescription": "Planned Area Development"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Avondale zoning by intersecting runtime coordinates with Layer 6 of the official public Planning/Zoning map service.",
+    "ZONETYPE is the published base zoning code; ZONEDIST is a separate coded district family and must not replace ZONETYPE.",
+    "The ZONEDIST coded-value domain is translated into its City-published district-family name for zoningDescription; it is not a complete description of every individual zoning code.",
+    "The configured test coordinate at Avondale City Hall resolves to PAD, Planned Area Development, with case PL-22-0316 and common name CIVIC CENTER.",
+    "CASENO, COMMONAME, SUBTYPE, DocLink, OrdinanceDocLink, and AssociatedCASENOs are retained when published because they may identify the controlling zoning action or supporting documents.",
+    "The public service is hosted by the City of Avondale and requires no authentication, but the endpoint has occasionally responded slowly; this jurisdiction therefore uses a 45-second request timeout.",
+    "A resolved zoning result supports permit research but does not replace review of applicable PAD narratives, zoning cases, ordinances, stipulations, overlays, or confirmation by the City of Avondale."
+  ]
+}
