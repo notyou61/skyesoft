@@ -4,12 +4,13 @@ declare(strict_types=1);
 /**
  * Skyesoft — Jurisdictional Zoning Resolution Utility
  *
- * File Version:     1.2.0
- * Schema Version:   2.1.1
+ * File Version:     1.3.2
+ * Schema Version:   2.2.0
  * Last Updated:     2026-07-18
  *
  * Resolves base zoning through each jurisdiction's verified zoning.json.
  * Public ArcGIS FeatureServer and MapServer query layers are supported.
+ * Enhanced with configurable HTTP client options for temperamental servers.
  */
 
 #region SECTION 00 — Public Resolver
@@ -100,7 +101,8 @@ function resolveZoning(
             'reason'       => $queryResult['reason'],
             'message'      => $queryResult['message'],
             'httpCode'     => $queryResult['httpCode'] ?? null,
-            'responseTime' => $queryResult['responseTimeMs'] ?? null
+            'responseTime' => $queryResult['responseTimeMs'] ?? null,
+            'attempts'     => $queryResult['attempts'] ?? 1
         ]);
     }
 
@@ -112,7 +114,8 @@ function resolveZoning(
             'status'       => 'unresolved',
             'reason'       => 'no_zoning_feature_at_coordinate',
             'message'      => 'The official zoning source returned no zoning feature.',
-            'responseTime' => $queryResult['responseTimeMs']
+            'responseTime' => $queryResult['responseTimeMs'],
+            'attempts'     => $queryResult['attempts'] ?? 1
         ]);
     }
 
@@ -139,7 +142,8 @@ function resolveZoning(
             'status'       => 'unresolved',
             'reason'       => 'zoning_fields_empty',
             'message'      => 'A zoning feature was found, but its configured zoning fields were empty.',
-            'responseTime' => $queryResult['responseTimeMs']
+            'responseTime' => $queryResult['responseTimeMs'],
+            'attempts'     => $queryResult['attempts'] ?? 1
         ]);
     }
 
@@ -165,7 +169,8 @@ function resolveZoning(
         'raw'               => [
             'attributes' => $primaryFeature['rawAttributes']
         ],
-        'responseTime'      => $queryResult['responseTimeMs']
+        'responseTime'      => $queryResult['responseTimeMs'],
+        'attempts'          => $queryResult['attempts'] ?? 1
     ]);
 }
 
@@ -251,6 +256,7 @@ function loadJurisdictionZoningConfig(
 
     $service = is_array($config['service'] ?? null) ? $config['service'] : [];
     $query = is_array($config['query'] ?? null) ? $config['query'] : [];
+    $http = is_array($config['http'] ?? null) ? $config['http'] : [];
     $mapping = is_array($config['fieldMapping'] ?? null)
         ? $config['fieldMapping']
         : [];
@@ -297,14 +303,35 @@ function loadJurisdictionZoningConfig(
             normalizeZoningFieldList($mapping['transitOrientedDevelopment'] ?? [])
         ))),
         'resultRecordCount'           => (int)($query['resultRecordCount'] ?? 10),
-        'requestTimeout'              => (int)($query['timeoutSeconds'] ?? 5),
         'where'                       => (string)($query['where'] ?? '1=1'),
         'geometryType'                => (string)($query['geometryType'] ?? 'esriGeometryPoint'),
         'spatialRel'                  => (string)($query['spatialRelationship'] ?? 'esriSpatialRelIntersects'),
         'inSR'                        => (int)($query['inputSpatialReference'] ?? 4326),
         'returnGeometry'              => (bool)($query['returnGeometry'] ?? false),
-        'successfulResultConfidence' => (int)($validation['successfulResultConfidence'] ?? 95)
+        'successfulResultConfidence' => (int)($validation['successfulResultConfidence'] ?? 95),
+        // HTTP transport configuration
+        'httpMethod'                  => strtoupper(trim((string)($http['method'] ?? 'GET'))),
+        'userAgent'                   => trim((string)($http['userAgent'] ?? 'Skyesoft-ZoningResolver/1.3 (+https://skyesoft.com)')),
+        'referer'                     => trim((string)($http['referer'] ?? '')),
+        'connectTimeout'              => (int)(
+            $http['connectTimeout']
+            ?? $query['connectTimeoutSeconds']
+            ?? 5
+        ),
+        'requestTimeout'              => (int)(
+            $http['requestTimeout']
+            ?? $query['timeoutSeconds']
+            ?? 5
+        ),
+        'maxAttempts'                 => max(1, min(5, (int)($http['maxAttempts'] ?? 1))),
+        'retryDelayMs'                => max(0, min(5000, (int)($http['retryDelayMs'] ?? 500))),
+        'retryOnStatuses'             => array_map('intval', (array)($http['retryOnStatuses'] ?? [408, 429, 500, 502, 503, 504])),
     ];
+
+    // Validate HTTP method
+    if (!in_array($source['httpMethod'], ['GET', 'POST'], true)) {
+        $source['httpMethod'] = 'GET';
+    }
 
     return ['success' => true, 'source' => $source, 'reason' => null, 'message' => null];
 }
@@ -314,7 +341,7 @@ function loadJurisdictionZoningConfig(
 #region SECTION 02 — ArcGIS Query Provider
 
 /**
- * Query one configured public ArcGIS zoning layer.
+ * Query one configured public ArcGIS zoning layer with retry support.
  */
 function queryArcGisZoningSource(
     array $source,
@@ -383,74 +410,137 @@ function queryArcGisZoningSource(
         $params['inSR'] = (int)($source['inSR'] ?? 4326);
     }
 
-    $queryUrl = $serviceUrl . '/query?' . http_build_query(
-        $params,
-        '',
-        '&',
-        PHP_QUERY_RFC3986
-    );
+    $baseQueryUrl = $serviceUrl . '/query';
+    $httpMethod = $source['httpMethod'] ?? 'GET';
+    $maxAttempts = $source['maxAttempts'] ?? 1;
+    $baseRetryDelayMs = $source['retryDelayMs'] ?? 500;
+    $retryOnStatuses = $source['retryOnStatuses'] ?? [408, 429, 500, 502, 503, 504];
 
-    $connectTimeout = max(1, min(10, (int)(
-        $options['connectTimeout']
-        ?? $source['connectTimeout']
-        ?? 2
-    )));
-    $requestTimeout = max(2, min(60, (int)(
-        $options['requestTimeout']
-        ?? $source['requestTimeout']
-        ?? 5
-    )));
+    $lastResponse = null;
+    $attemptLogs = [];
 
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL            => $queryUrl,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_CONNECTTIMEOUT => $connectTimeout,
-        CURLOPT_TIMEOUT        => $requestTimeout,
-        CURLOPT_HTTPHEADER     => [
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        $attemptStarted = microtime(true);
+
+        $queryUrl = $baseQueryUrl;
+        $postFields = null;
+
+        if ($httpMethod === 'POST') {
+            $postFields = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        } else {
+            $queryUrl .= '?' . http_build_query(
+                $params,
+                '',
+                '&',
+                PHP_QUERY_RFC3986
+            );
+        }
+
+        $headers = [
             'Accept: application/json',
             'Cache-Control: no-cache'
-        ]
-    ]);
+        ];
 
-    $response = curl_exec($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
+        if ($httpMethod === 'POST') {
+            $headers[] = 'Content-Type: application/x-www-form-urlencoded';
+        }
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $queryUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => max(1, min(30, (int)(
+                $options['connectTimeout'] ?? $source['connectTimeout'] ?? 5
+            ))),
+            CURLOPT_TIMEOUT        => max(5, min(60, (int)(
+                $options['requestTimeout'] ?? $source['requestTimeout'] ?? 5
+            ))),
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_USERAGENT      => $source['userAgent'] ?? 'Skyesoft-ZoningResolver/1.3',
+        ]);
+
+        if ($source['referer'] ?? '') {
+            curl_setopt($ch, CURLOPT_REFERER, $source['referer']);
+        }
+
+        if ($httpMethod === 'POST' && $postFields !== null) {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+        }
+
+        $response = curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        $curlErrno = curl_errno($ch);
+        curl_close($ch);
+
+        $attemptTimeMs = (int)round((microtime(true) - $attemptStarted) * 1000);
+        $attemptLogs[] = "Attempt $attempt/$maxAttempts: HTTP $httpCode, cURL errno $curlErrno, ${attemptTimeMs}ms";
+
+        $lastResponse = [
+            'response'   => $response,
+            'httpCode'   => $httpCode,
+            'curlError'  => $curlError,
+            'curlErrno'  => $curlErrno,
+            'attempt'    => $attempt
+        ];
+
+        $shouldRetry = false;
+
+        if ($response === false || $curlError !== '') {
+            $shouldRetry = in_array($curlErrno, [
+                CURLE_COULDNT_CONNECT,
+                CURLE_OPERATION_TIMEDOUT,
+                CURLE_RECV_ERROR,
+                CURLE_SEND_ERROR
+            ], true);
+        } elseif ($httpCode >= 400) {
+            $shouldRetry = in_array($httpCode, $retryOnStatuses, true);
+        }
+
+        if (!$shouldRetry || $attempt === $maxAttempts) {
+            break;
+        }
+
+        // Exponential backoff (capped)
+        $delayMs = min($baseRetryDelayMs * (2 ** ($attempt - 1)), 5000);
+        usleep($delayMs * 1000);
+    }
 
     $responseTimeMs = (int)round((microtime(true) - $startedAt) * 1000);
 
-    if ($response === false || $curlError !== '') {
-        error_log(
-            '[RESOLVE-ZONING] ArcGIS request failed: ' .
-            ($curlError !== '' ? $curlError : 'Unknown cURL error')
-        );
+    error_log('[RESOLVE-ZONING] ' . ($source['serviceUrl'] ?? 'UNKNOWN') .
+              ' | Attempts=' . $lastResponse['attempt'] .
+              ' | ' . implode(' | ', $attemptLogs));
 
+    if ($lastResponse['response'] === false || $lastResponse['curlError'] !== '') {
         return [
             'success'       => false,
             'status'        => 'unavailable',
             'reason'        => 'arcgis_request_failed',
-            'message'       => 'The official zoning service could not be reached.',
-            'httpCode'      => $httpCode,
+            'message'       => 'The official zoning service could not be reached after ' . $lastResponse['attempt'] . ' attempts.',
+            'httpCode'      => $lastResponse['httpCode'],
             'responseTimeMs'=> $responseTimeMs,
-            'features'      => []
+            'features'      => [],
+            'attempts'      => $lastResponse['attempt']
         ];
     }
 
-    if ($httpCode < 200 || $httpCode >= 300) {
+    if ($lastResponse['httpCode'] < 200 || $lastResponse['httpCode'] >= 300) {
         return [
             'success'       => false,
             'status'        => 'unavailable',
             'reason'        => 'arcgis_http_error',
-            'message'       => 'The official zoning service returned an HTTP error.',
-            'httpCode'      => $httpCode,
+            'message'       => 'The official zoning service returned an HTTP error after ' . $lastResponse['attempt'] . ' attempts.',
+            'httpCode'      => $lastResponse['httpCode'],
             'responseTimeMs'=> $responseTimeMs,
-            'features'      => []
+            'features'      => [],
+            'attempts'      => $lastResponse['attempt']
         ];
     }
 
-    $decoded = json_decode((string)$response, true);
+    $decoded = json_decode((string)$lastResponse['response'], true);
 
     if (!is_array($decoded)) {
         return [
@@ -458,9 +548,10 @@ function queryArcGisZoningSource(
             'status'        => 'unavailable',
             'reason'        => 'arcgis_invalid_json',
             'message'       => 'The official zoning service returned invalid JSON.',
-            'httpCode'      => $httpCode,
+            'httpCode'      => $lastResponse['httpCode'],
             'responseTimeMs'=> $responseTimeMs,
-            'features'      => []
+            'features'      => [],
+            'attempts'      => $lastResponse['attempt']
         ];
     }
 
@@ -475,9 +566,10 @@ function queryArcGisZoningSource(
             'status'        => 'unavailable',
             'reason'        => 'arcgis_service_error',
             'message'       => 'The official zoning service rejected the query.',
-            'httpCode'      => $httpCode,
+            'httpCode'      => $lastResponse['httpCode'],
             'responseTimeMs'=> $responseTimeMs,
-            'features'      => []
+            'features'      => [],
+            'attempts'      => $lastResponse['attempt']
         ];
     }
 
@@ -486,11 +578,12 @@ function queryArcGisZoningSource(
         'status'         => 'resolved',
         'reason'         => null,
         'message'        => null,
-        'httpCode'       => $httpCode,
+        'httpCode'       => $lastResponse['httpCode'],
         'responseTimeMs' => $responseTimeMs,
         'features'       => is_array($decoded['features'] ?? null)
             ? $decoded['features']
-            : []
+            : [],
+        'attempts'       => $lastResponse['attempt']
     ];
 }
 
@@ -536,10 +629,7 @@ function collectZoningOutFields(array $source): array {
 #endregion
 
 #region SECTION 03 — Feature Normalization
-
-/**
- * Normalize jurisdiction-specific fields into the Skyesoft contract.
- */
+// (unchanged from prior version)
 function normalizeZoningFeature(array $attributes, array $source): array {
     $codeFields = normalizeZoningFieldList($source['codeFields'] ?? []);
     $descriptionFields = normalizeZoningFieldList(
@@ -569,15 +659,6 @@ function normalizeZoningFeature(array $attributes, array $source): array {
     ];
 }
 
-/**
- * Normalize config-driven ArcGIS coded-value translations.
- *
- * Expected JSON shape:
- * codedValueMappings.FIELD.RAW_VALUE = {
- *   "zoningCode": "...",
- *   "zoningDescription": "..."
- * }
- */
 function normalizeZoningCodedValueMappings(mixed $mappings): array {
     if (!is_array($mappings)) {
         return [];
@@ -618,9 +699,6 @@ function normalizeZoningCodedValueMappings(mixed $mappings): array {
     return $normalized;
 }
 
-/**
- * Resolve a configured raw ArcGIS value to its zoning code and description.
- */
 function findZoningCodedValueMapping(
     array $attributes,
     array $mappings
@@ -678,7 +756,7 @@ function findZoningAttribute(array $attributes, array $possibleFields): ?string 
 #endregion
 
 #region SECTION 04 — Result + Value Helpers
-
+// (unchanged)
 function buildZoningResult(array $overrides = []): array {
     return array_merge([
         'success'           => false,
