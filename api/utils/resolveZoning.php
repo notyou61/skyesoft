@@ -4,9 +4,9 @@ declare(strict_types=1);
 /**
  * Skyesoft — Jurisdictional Zoning Resolution Utility
  *
- * File Version:     1.1.0
+ * File Version:     1.2.0
  * Schema Version:   2.1.1
- * Last Updated:     2026-07-17
+ * Last Updated:     2026-07-18
  *
  * Resolves base zoning through each jurisdiction's verified zoning.json.
  * Public ArcGIS FeatureServer and MapServer query layers are supported.
@@ -257,6 +257,9 @@ function loadJurisdictionZoningConfig(
     $validation = is_array($config['validation'] ?? null)
         ? $config['validation']
         : [];
+    $codedValueMappings = normalizeZoningCodedValueMappings(
+        $config['codedValueMappings'] ?? []
+    );
 
     $serviceUrl = rtrim(trim((string)($service['serviceUrl'] ?? '')), '/');
     $layerId = $service['layerId'] ?? null;
@@ -285,6 +288,7 @@ function loadJurisdictionZoningConfig(
         'isActive'                    => ($service['status'] ?? null) === 'configured',
         'codeFields'                  => $mapping['zoningCode'] ?? [],
         'descriptionFields'           => $mapping['zoningDescription'] ?? [],
+        'codedValueMappings'          => $codedValueMappings,
         'additionalFields'            => array_values(array_unique(array_merge(
             normalizeZoningFieldList($query['outFields'] ?? []),
             normalizeZoningFieldList($mapping['caseNumber'] ?? []),
@@ -386,12 +390,12 @@ function queryArcGisZoningSource(
         PHP_QUERY_RFC3986
     );
 
-    $connectTimeout = max(1, min(5, (int)(
+    $connectTimeout = max(1, min(10, (int)(
         $options['connectTimeout']
         ?? $source['connectTimeout']
         ?? 2
     )));
-    $requestTimeout = max(2, min(10, (int)(
+    $requestTimeout = max(2, min(60, (int)(
         $options['requestTimeout']
         ?? $source['requestTimeout']
         ?? 5
@@ -542,14 +546,102 @@ function normalizeZoningFeature(array $attributes, array $source): array {
         $source['descriptionFields'] ?? []
     );
 
+    $zoningCode = findZoningAttribute($attributes, $codeFields);
+    $zoningDescription = findZoningAttribute(
+        $attributes,
+        $descriptionFields
+    );
+    $codedValue = findZoningCodedValueMapping(
+        $attributes,
+        $source['codedValueMappings'] ?? []
+    );
+
+    if ($codedValue !== null) {
+        $zoningCode = $codedValue['zoningCode'] ?? $zoningCode;
+        $zoningDescription = $codedValue['zoningDescription']
+            ?? $zoningDescription;
+    }
+
     return [
-        'zoningCode'        => findZoningAttribute($attributes, $codeFields),
-        'zoningDescription' => findZoningAttribute(
-            $attributes,
-            $descriptionFields
-        ),
+        'zoningCode'        => $zoningCode,
+        'zoningDescription' => $zoningDescription,
         'rawAttributes'     => $attributes
     ];
+}
+
+/**
+ * Normalize config-driven ArcGIS coded-value translations.
+ *
+ * Expected JSON shape:
+ * codedValueMappings.FIELD.RAW_VALUE = {
+ *   "zoningCode": "...",
+ *   "zoningDescription": "..."
+ * }
+ */
+function normalizeZoningCodedValueMappings($mappings): array {
+    if (!is_array($mappings)) {
+        return [];
+    }
+
+    $normalized = [];
+
+    foreach ($mappings as $field => $values) {
+        $field = trim((string)$field);
+
+        if ($field === '' || !is_array($values)) {
+            continue;
+        }
+
+        foreach ($values as $rawValue => $translation) {
+            if (!is_array($translation)) {
+                continue;
+            }
+
+            $zoningCode = normalizeZoningText(
+                $translation['zoningCode'] ?? null
+            );
+            $zoningDescription = normalizeZoningText(
+                $translation['zoningDescription'] ?? null
+            );
+
+            if ($zoningCode === null && $zoningDescription === null) {
+                continue;
+            }
+
+            $normalized[$field][trim((string)$rawValue)] = [
+                'zoningCode'        => $zoningCode,
+                'zoningDescription' => $zoningDescription
+            ];
+        }
+    }
+
+    return $normalized;
+}
+
+/**
+ * Resolve a configured raw ArcGIS value to its zoning code and description.
+ */
+function findZoningCodedValueMapping(
+    array $attributes,
+    array $mappings
+): ?array {
+    foreach ($mappings as $field => $values) {
+        if (
+            !array_key_exists($field, $attributes) ||
+            $attributes[$field] === null ||
+            !is_array($values)
+        ) {
+            continue;
+        }
+
+        $rawValue = trim((string)$attributes[$field]);
+
+        if ($rawValue !== '' && isset($values[$rawValue])) {
+            return $values[$rawValue];
+        }
+    }
+
+    return null;
 }
 
 function normalizeZoningFieldList($fields): array {
