@@ -1,0 +1,200 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Goodyear",
+    "slug": "goodyear",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Goodyear Planning and Zoning Division",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://maps.goodyearaz.gov/server/rest/services/Obligations/FeatureServer",
+    "layerId": 3,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZoningType",
+      "PAD",
+      "Case_No",
+      "MAP_NO",
+      "ORD_NO",
+      "OpenTextURL",
+      "GYID"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 45
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZoningType"
+    ],
+    "zoningDescription": [],
+    "caseNumber": [
+      "Case_No"
+    ],
+    "ordinanceNumber": [
+      "ORD_NO"
+    ],
+    "sourceDocumentUrl": [
+      "OpenTextURL"
+    ],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "codedValueMappings": {
+    "ZoningType": {
+      "0": {
+        "zoningCode": "AG",
+        "zoningDescription": "Agricultural District"
+      },
+      "1": {
+        "zoningCode": "AU",
+        "zoningDescription": "Agricultural-Urban"
+      },
+      "2": {
+        "zoningCode": "C-O",
+        "zoningDescription": "Commercial Office"
+      },
+      "3": {
+        "zoningCode": "C-1",
+        "zoningDescription": "Neighborhood Commercial"
+      },
+      "4": {
+        "zoningCode": "C-2",
+        "zoningDescription": "General Commercial"
+      },
+      "5": {
+        "zoningCode": "BPD",
+        "zoningDescription": "Business District Park"
+      },
+      "6": {
+        "zoningCode": "I-1",
+        "zoningDescription": "Light Industrial Park"
+      },
+      "7": {
+        "zoningCode": "I-2",
+        "zoningDescription": "General Industrial Park"
+      },
+      "8": {
+        "zoningCode": "MF-12",
+        "zoningDescription": "Multi-Family Residential"
+      },
+      "9": {
+        "zoningCode": "MF-18",
+        "zoningDescription": "Multi-Family Residential"
+      },
+      "10": {
+        "zoningCode": "MF-24",
+        "zoningDescription": "Multi-Family Residential"
+      },
+      "11": {
+        "zoningCode": "MH/RVP",
+        "zoningDescription": "Manufactured Home or R.V. Park"
+      },
+      "12": {
+        "zoningCode": "MHS",
+        "zoningDescription": "Mobile Home Subdivision"
+      },
+      "13": {
+        "zoningCode": "PAD",
+        "zoningDescription": "Planned Area Development"
+      },
+      "14": {
+        "zoningCode": "R1-A",
+        "zoningDescription": "Single-Family Residential"
+      },
+      "15": {
+        "zoningCode": "R1-10",
+        "zoningDescription": "Single-Family Residential"
+      },
+      "16": {
+        "zoningCode": "R1-7",
+        "zoningDescription": "Single-Family Residential"
+      },
+      "17": {
+        "zoningCode": "R1-6",
+        "zoningDescription": "Single-Family Residential"
+      },
+      "18": {
+        "zoningCode": "R1-4",
+        "zoningDescription": "Single-Family Residential"
+      },
+      "19": {
+        "zoningCode": "R2",
+        "zoningDescription": "Two-Family Residential"
+      },
+      "20": {
+        "zoningCode": "PFD",
+        "zoningDescription": "Public Facilities District"
+      },
+      "21": {
+        "zoningCode": "PARK",
+        "zoningDescription": "Park"
+      }
+    }
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784389224,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "42529405852d48daae9e53b38910586b",
+    "testAddress": "1933 S Ballpark Way, Goodyear, AZ 85338",
+    "testCoordinate": {
+      "latitude": 33.428669322016,
+      "longitude": -112.390597105208,
+      "expectedZoningCode": "PAD",
+      "expectedZoningDescription": "Planned Area Development"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Goodyear zoning by intersecting runtime coordinates with Layer 3 of the official public Obligations feature service.",
+    "The official layer publishes ZoningType as an integer-coded domain; codedValueMappings translates every published domain value into its jurisdiction zoning code and description.",
+    "The configured test coordinate at Goodyear Ballpark resolves to coded value 13, PAD, Planned Area Development.",
+    "PAD is a separate raw attribute in this layer and is not the base zoning code; it contains an internal coded flag associated with planned-area records.",
+    "Case_No, MAP_NO, ORD_NO, OpenTextURL, and GYID are retained when published because they may identify the governing zoning action or source document.",
+    "Goodyear has approved a comprehensive Zoning Ordinance update scheduled to take effect August 5, 2026; the coded-value domain and this mapping must be reverified after that effective date.",
+    "A resolved zoning result supports permit research but does not replace review of applicable PAD documents, cases, ordinances, stipulations, overlays, or confirmation by the City of Goodyear."
+  ]
+}
