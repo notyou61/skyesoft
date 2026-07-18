@@ -1,0 +1,32 @@
+{
+  "jurisdiction": {
+    "slug": "apachejunction",
+    "label": "Apache Junction"
+  },
+  "service": {
+    "provider": "City of Apache Junction GIS Division",
+    "serviceUrl": "https://gis.apachejunctionaz.gov/server/rest/services/ZoningDistricts/MapServer",
+    "layerId": 0,
+    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
+    "status": "configured"
+  },
+  "query": {
+    "method": "point_intersection",
+    "outFields": ["ZoningLabel", "ZoningDescription", "Overlay", "Ordinance", "Notes"],
+    "timeoutSeconds": 10
+  },
+  "fieldMapping": {
+    "zoningCode": ["ZoningLabel"],
+    "zoningDescription": ["ZoningDescription"]
+  },
+  "http": {
+    "method": "POST",
+    "userAgent": "Skyesoft-ZoningResolver/1.3",
+    "referer": "https://gis.apachejunctionaz.gov/",
+    "connectTimeout": 10,
+    "requestTimeout": 30,
+    "maxAttempts": 3,
+    "retryDelayMs": 750,
+    "retryOnStatuses": [408, 429, 500, 502, 503, 504]
+  }
+}
