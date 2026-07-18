@@ -1,0 +1,136 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Surprise",
+    "slug": "surprise",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Surprise Community Development Department",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services.arcgis.com/rAkRDX3xCHZjZTGW/arcgis/rest/services/Surprise_Zoning/FeatureServer",
+    "layerId": 0,
+    "layerName": "DBO.Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "SUDC_ZONING_DISTRICT",
+      "DESCRIPTION",
+      "OLD_ZONE",
+      "Z_Class",
+      "UNDERLYING_ZONING",
+      "CHARACTER_PATTERN",
+      "ZONING_CASE",
+      "APPROVED_DOCS",
+      "ORDINANCE",
+      "LDO_SYMB",
+      "LDO_DIST_NAME",
+      "LANDUSE_SYMB",
+      "LANDUSE_DESCRIP",
+      "ZONING_STATUS",
+      "ACRES"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "SUDC_ZONING_DISTRICT",
+      "LDO_SYMB"
+    ],
+    "zoningDescription": [
+      "LDO_DIST_NAME",
+      "DESCRIPTION",
+      "LANDUSE_DESCRIP"
+    ],
+    "previousZoningCode": [
+      "OLD_ZONE"
+    ],
+    "underlyingZoningCode": [
+      "UNDERLYING_ZONING"
+    ],
+    "zoningClass": [
+      "Z_Class"
+    ],
+    "characterPattern": [
+      "CHARACTER_PATTERN"
+    ],
+    "caseNumber": [
+      "ZONING_CASE"
+    ],
+    "ordinanceNumber": [
+      "ORDINANCE"
+    ],
+    "sourceDocumentUrl": [
+      "APPROVED_DOCS"
+    ],
+    "zoningStatus": [
+      "ZONING_STATUS"
+    ],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784387691,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "8c43a7c06c5a42bf8baafe0ed8f7f975",
+    "testAddress": "15930 N Bullard Ave, Surprise, AZ 85374",
+    "testCoordinate": {
+      "latitude": 33.628606797954,
+      "longitude": -112.37708799186,
+      "expectedZoningCode": "RR",
+      "expectedZoningDescription": "Rural Residential"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Surprise current zoning by intersecting coordinates with Layer 0 of the official public Surprise Zoning feature service.",
+    "The service describes the dataset as current zoning approved by City Council and reports that it was updated June 18, 2026.",
+    "The configured test coordinate at Surprise Stadium resolves to RR, Rural Residential; the same record retains PAD - Orchards as OLD_ZONE.",
+    "SUDC_ZONING_DISTRICT is used as the primary zoning code with LDO_SYMB as a fallback; LDO_DIST_NAME is used as the primary published district description.",
+    "OLD_ZONE and UNDERLYING_ZONING are contextual fields and must not replace the current base zoning code.",
+    "ZONING_CASE, ORDINANCE, APPROVED_DOCS, and ZONING_STATUS are retained when published because they may identify governing approval documents or additional review requirements.",
+    "A resolved zoning result supports permit research but does not replace review of applicable PAD documents, cases, ordinances, stipulations, overlays, underlying zoning, or confirmation by the City of Surprise."
+  ]
+}
