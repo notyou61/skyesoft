@@ -1,0 +1,126 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Buckeye",
+    "slug": "buckeye",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Buckeye Development Services Department",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services1.arcgis.com/sixrqw8b8BHDvWq2/arcgis/rest/services/Zoning/FeatureServer",
+    "layerId": 0,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZoningPK",
+      "ZoningDistrictCode",
+      "ZoningDistrict",
+      "OrdinanceNumber",
+      "TrackingNumber",
+      "CaseNumber",
+      "ApprovalDate",
+      "HistoricZoning",
+      "Notes",
+      "EditedDate",
+      "Acres"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZoningDistrictCode"
+    ],
+    "zoningDescription": [
+      "ZoningDistrict"
+    ],
+    "zoningRecordId": [
+      "ZoningPK"
+    ],
+    "caseNumber": [
+      "CaseNumber"
+    ],
+    "trackingNumber": [
+      "TrackingNumber"
+    ],
+    "ordinanceNumber": [
+      "OrdinanceNumber"
+    ],
+    "approvalDate": [
+      "ApprovalDate"
+    ],
+    "historic": [
+      "HistoricZoning"
+    ],
+    "notes": [
+      "Notes"
+    ],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784390229,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "073eebbdec674fc1a4a538df6eaf81ea",
+    "testAddress": "530 E Monroe Ave, Buckeye, AZ 85326",
+    "testCoordinate": {
+      "latitude": 33.370813067709,
+      "longitude": -112.584004910935,
+      "expectedZoningCode": "CC",
+      "expectedZoningDescription": "Commercial Center"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Buckeye zoning by intersecting runtime coordinates with Layer 0 of the City's official public Zoning feature service.",
+    "The ArcGIS item is owned by CityofBuckeye, is publicly accessible, and is designated public authoritative by ArcGIS Online.",
+    "ZoningDistrictCode is the published base zoning code and ZoningDistrict is the corresponding published district name; no locally guessed code translation is required.",
+    "The configured test coordinate at Buckeye City Hall resolves to CC, Commercial Center, with ordinance 6-96.",
+    "ZoningPK, OrdinanceNumber, TrackingNumber, CaseNumber, ApprovalDate, HistoricZoning, Notes, EditedDate, and Acres are retained when published because they may provide relevant zoning history and source context.",
+    "The service description states that the data originated with the Maricopa County Assessor's Office and was modified by the City of Buckeye to fit the City's zoning schema and districts.",
+    "HistoricZoning is contextual and must not replace the current base zoning code.",
+    "A resolved zoning result supports permit research but does not replace review of applicable zoning cases, ordinances, planned-development documents, stipulations, overlays, or confirmation by the City of Buckeye."
+  ]
+}
