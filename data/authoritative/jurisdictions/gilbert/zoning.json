@@ -1,0 +1,97 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Gilbert",
+    "slug": "gilbert",
+    "jurisdictionType": "Town",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "Town of Gilbert Planning Department",
+    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
+    "serviceUrl": "https://maps.gilbertaz.gov/arcgis/rest/services/OD/Growth_Development_Maps_1/MapServer",
+    "layerId": 8,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZCODE",
+      "Description"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 15
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZCODE"
+    ],
+    "zoningDescription": [
+      "Description"
+    ],
+    "caseNumber": [],
+    "ordinanceNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784386932,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "6c029595e1104f299af3a97c511e2019",
+    "testAddress": "2218 E Williams Field Rd, Gilbert, AZ 85295",
+    "testCoordinate": {
+      "latitude": 33.308949132128,
+      "longitude": -111.742410115778,
+      "expectedZoningCode": "RC",
+      "expectedZoningDescription": "Regional Commercial"
+    }
+  },
+  "notes": [
+    "This configuration resolves Town of Gilbert base zoning by intersecting coordinates with Layer 8 of the official Growth and Development map service.",
+    "The configured test coordinate at SanTan Village resolves to RC, Regional Commercial, in the official Town of Gilbert zoning dataset.",
+    "The test result was independently confirmed on July 18, 2026 against the GeoJSON export supplied by Gilbert's official Open Data portal because the municipal ArcGIS query endpoint was temporarily returning HTTP 502 during verification.",
+    "The official layer publishes ZCODE and Description only; it does not expose zoning cases, ordinances, overlays, or stipulations.",
+    "The Town states that electronic copies of the Official Zoning Map are not certified as true and correct, and the Zoning Administrator determines uncertain district boundaries.",
+    "A resolved zoning result supports permit research but does not replace review of applicable zoning cases, overlays, ordinances, stipulations, planned-area documents, or confirmation by the Town of Gilbert."
+  ]
+}
