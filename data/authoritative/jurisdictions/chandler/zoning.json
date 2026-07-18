@@ -1,0 +1,93 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Chandler",
+    "slug": "chandler",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Chandler Development Services",
+    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
+    "serviceUrl": "https://gis.chandleraz.gov/appsanonymous/rest/services/WAM/Planning/MapServer",
+    "layerId": 6,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZONE_CODE"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZONE_CODE"
+    ],
+    "zoningDescription": [],
+    "caseNumber": [],
+    "ordinanceNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784384569,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "afc3440f68bf4a219c35333d7637541c",
+    "testAddress": "3111 W Chandler Blvd, Chandler, AZ 85226",
+    "testCoordinate": {
+      "latitude": 33.301499212767,
+      "longitude": -111.898592129302,
+      "expectedZoningCode": "PAD"
+    }
+  },
+  "notes": [
+    "This configuration resolves the published City of Chandler zoning code by intersecting coordinates with Layer 6 of the official public Planning service.",
+    "The official zoning layer publishes ZONE_CODE only and does not provide a zoning description, related case, ordinance, or governing document.",
+    "The configured test coordinate at Chandler Fashion Center resolves to PAD.",
+    "A PAD result identifies Planned Area Development zoning but does not disclose the governing PAD standards, stipulations, amendments, or sign criteria; those must be researched separately.",
+    "The City of Chandler states its maps are informational and makes no warranties concerning their accuracy or reliability.",
+    "A resolved zoning result supports permit research but does not replace review of applicable zoning cases, PAD documents, ordinances, stipulations, overlays, or confirmation by the City of Chandler."
+  ]
+}
