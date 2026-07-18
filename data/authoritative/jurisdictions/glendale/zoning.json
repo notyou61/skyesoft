@@ -1,0 +1,119 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Glendale",
+    "slug": "glendale",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Glendale Planning Department",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services1.arcgis.com/9fVTQQSiODPjLUTa/arcgis/rest/services/Glendale_Zoning/FeatureServer",
+    "layerId": 0,
+    "layerName": "Glendale Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "BASE_ZONE",
+      "ZONING",
+      "OVERLAY",
+      "CONDITIONA",
+      "Z_CASES",
+      "PENDING",
+      "LEDEND",
+      "ACRES"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "BASE_ZONE",
+      "ZONING"
+    ],
+    "zoningDescription": [
+      "LEDEND"
+    ],
+    "combinedZoningCode": [
+      "ZONING"
+    ],
+    "overlay": [
+      "OVERLAY"
+    ],
+    "conditional": [
+      "CONDITIONA"
+    ],
+    "caseNumber": [
+      "Z_CASES"
+    ],
+    "pending": [
+      "PENDING"
+    ],
+    "ordinanceNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784386153,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "793473d9bbb640ea9f463ce833c8c7a8",
+    "testAddress": "1 Cardinals Dr, Glendale, AZ 85305",
+    "testCoordinate": {
+      "latitude": 33.527502521652,
+      "longitude": -112.262227503705,
+      "expectedZoningCode": "A-1",
+      "expectedZoningDescription": "Agricultural"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Glendale base zoning by intersecting coordinates with Layer 0 of the official public Glendale Zoning feature service.",
+    "The configured test coordinate at State Farm Stadium resolves to A-1, Agricultural, in the published zoning layer.",
+    "BASE_ZONE is used as the primary zoning code; ZONING is retained as a fallback and as the published combined-zoning value.",
+    "LEDEND is the actual field name published by the service and contains the zoning district label.",
+    "OVERLAY, CONDITIONA, Z_CASES, and PENDING are retained when published because they may identify supplemental zoning review requirements.",
+    "The City of Glendale states that its online zoning maps are informational and are not the final authority; zoning confirmation is available from the Planning Department Planner of the Day.",
+    "Glendale's Unified Development Code became effective January 12, 2024; a resolved zoning result does not replace review of the current UDC, overlays, zoning cases, conditions, pending actions, or confirmation by the City of Glendale."
+  ]
+}
