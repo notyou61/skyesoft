@@ -1,0 +1,111 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Mesa",
+    "slug": "mesa",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Mesa GIS",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services2.arcgis.com/1gVyYKfYgW5Nxb1V/arcgis/rest/services/Zoning/FeatureServer",
+    "layerId": 2,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "Zoning",
+      "Description",
+      "Previous_Zoning",
+      "RelatedCase",
+      "Ordinance",
+      "Link"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "Zoning"
+    ],
+    "zoningDescription": [
+      "Description"
+    ],
+    "previousZoningCode": [
+      "Previous_Zoning"
+    ],
+    "caseNumber": [
+      "RelatedCase"
+    ],
+    "ordinanceNumber": [
+      "Ordinance"
+    ],
+    "sourceDocumentUrl": [
+      "Link"
+    ],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784383355,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "dfb036672a6f42b2a807caa1f289b206",
+    "testAddress": "6555 E Southern Ave, Mesa, AZ 85206",
+    "testCoordinate": {
+      "latitude": 33.391449564785,
+      "longitude": -111.690027914797,
+      "expectedZoningCode": "LC",
+      "expectedZoningDescription": "LC - Limited Commercial"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Mesa base zoning by coordinate.",
+    "The configured source is the public zoning feature layer published through the official City of Mesa Open GIS portal.",
+    "Description contains the published zoning code and district name; for example, LC - Limited Commercial.",
+    "Previous_Zoning, RelatedCase, Ordinance, and Link are retained when published and may provide useful zoning-history context.",
+    "Mesa publishes zoning overlays separately; this base-zoning lookup does not determine whether an overlay, planned-area standard, form-based-code condition, or other supplemental regulation applies.",
+    "A resolved zoning result supports permit research but does not replace review of applicable zoning cases, overlays, ordinances, stipulations, or confirmation by the City of Mesa."
+  ]
+}
