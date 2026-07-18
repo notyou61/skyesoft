@@ -1,23 +1,44 @@
 {
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
   "jurisdiction": {
+    "label": "Apache Junction",
     "slug": "apachejunction",
-    "label": "Apache Junction"
+    "jurisdictionType": "City",
+    "county": "Maricopa and Pinal",
+    "state": "AZ",
+    "country": "US"
   },
   "service": {
+    "status": "configured",
     "provider": "City of Apache Junction GIS Division",
+    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
     "serviceUrl": "https://gis.apachejunctionaz.gov/server/rest/services/ZoningDistricts/MapServer",
     "layerId": 0,
-    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
-    "status": "configured"
+    "layerName": "Zoning Districts",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
   },
   "query": {
-    "method": "point_intersection",
-    "outFields": ["ZoningLabel", "ZoningDescription", "Overlay", "Ordinance", "Notes"],
-    "timeoutSeconds": 10
-  },
-  "fieldMapping": {
-    "zoningCode": ["ZoningLabel"],
-    "zoningDescription": ["ZoningDescription"]
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZoningLabel",
+      "ZoningDescription",
+      "Overlay",
+      "Ordinance",
+      "Notes"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 30
   },
   "http": {
     "method": "POST",
@@ -27,6 +48,83 @@
     "requestTimeout": 30,
     "maxAttempts": 3,
     "retryDelayMs": 750,
-    "retryOnStatuses": [408, 429, 500, 502, 503, 504]
-  }
+    "retryOnStatuses": [
+      408,
+      429,
+      500,
+      502,
+      503,
+      504
+    ]
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZoningLabel"
+    ],
+    "zoningDescription": [
+      "ZoningDescription"
+    ],
+    "overlay": [
+      "Overlay"
+    ],
+    "ordinanceNumber": [
+      "Ordinance"
+    ],
+    "notes": [
+      "Notes"
+    ],
+    "caseNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " ",
+      "N/A"
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784393224,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "83c0a96afd0e4f86a258a29383befcce",
+    "sourceApplicationItemId": "7784aa7e44924707965dc8926db0b76a",
+    "fixtureVerificationSource": "City of Apache Junction GIS Data Package dated 2026-05-05",
+    "testAddress": "300 E Superstition Blvd, Apache Junction, AZ 85119",
+    "testCoordinate": {
+      "latitude": 33.42324379991,
+      "longitude": -111.542974883478,
+      "expectedZoningCode": "PI",
+      "expectedZoningDescription": "Public and Institutional"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Apache Junction zoning by intersecting runtime coordinates with Layer 0 of the City's official public ZoningDistricts map service.",
+    "ZoningLabel is the published zoning code and ZoningDescription is the corresponding published district description.",
+    "The City Hall metadata fixture was independently intersected against the City's official GIS Data Package dated May 5, 2026 and resolves to PI, Public and Institutional.",
+    "The transport configuration uses POST, explicit headers, longer timeouts, and bounded retries because the City GIS endpoint has demonstrated intermittent 502 responses.",
+    "Overlay, Ordinance, and Notes are retained when published because they may identify additional requirements or governing actions.",
+    "The City states that its GIS content is informational, is compiled from multiple sources, is generally updated monthly without guarantee, and should be independently verified.",
+    "The configuration covers the incorporated City of Apache Junction in both Maricopa and Pinal counties; parcel jurisdiction controls selection.",
+    "A resolved zoning result supports permit research but does not replace review of applicable ordinances, planned-development documents, overlays, stipulations, or confirmation by the City of Apache Junction."
+  ]
 }
