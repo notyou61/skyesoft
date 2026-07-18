@@ -1,0 +1,108 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Tempe",
+    "slug": "tempe",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Tempe Community Development Department",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services.arcgis.com/lQySeXwbBg53XWDi/arcgis/rest/services/zoning_districts/FeatureServer",
+    "layerId": 0,
+    "layerName": "Zoning District",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZoningCode",
+      "ZoningDescription",
+      "OrdinanceNumber",
+      "OrdinanceFile",
+      "PriorClassification"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZoningCode"
+    ],
+    "zoningDescription": [
+      "ZoningDescription"
+    ],
+    "previousZoningCode": [
+      "PriorClassification"
+    ],
+    "caseNumber": [],
+    "ordinanceNumber": [
+      "OrdinanceNumber"
+    ],
+    "sourceDocumentUrl": [
+      "OrdinanceFile"
+    ],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784385798,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "3023eeda721b460ca28384097ec18dc5",
+    "testAddress": "2000 E Rio Salado Pkwy, Tempe, AZ 85288",
+    "testCoordinate": {
+      "latitude": 33.432405848723,
+      "longitude": -111.905235458121,
+      "expectedZoningCode": "RCC",
+      "expectedZoningDescription": "Regional Commercial Center"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Tempe base zoning by intersecting coordinates with Layer 0 of the official public Zoning District feature service.",
+    "The configured test coordinate at Tempe Marketplace resolves to RCC, Regional Commercial Center.",
+    "The service also publishes OrdinanceNumber, OrdinanceFile, and PriorClassification when those attributes are available for a zoning polygon.",
+    "The City of Tempe municipal ArcGIS host is protected by a Cloudflare browser challenge; this configuration uses the public ArcGIS Online feature service published by the City of Tempe account for reliable anonymous API access.",
+    "Overlay districts are separate from the base zoning district and are not resolved by this configuration.",
+    "A resolved zoning result supports permit research but does not replace review of applicable overlays, zoning cases, ordinances, stipulations, or confirmation by the City of Tempe."
+  ]
+}
