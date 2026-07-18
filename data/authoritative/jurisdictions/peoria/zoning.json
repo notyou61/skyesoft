@@ -1,0 +1,108 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Peoria",
+    "slug": "peoria",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Peoria Planning and Zoning Division",
+    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
+    "serviceUrl": "https://gis.peoriaaz.gov/arcgis/rest/services/CD/Peoria_Zoning/MapServer",
+    "layerId": 20,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZONE_CODE",
+      "CASE_NUM",
+      "ORD_NUM",
+      "DOCLINK",
+      "MCR_ZONING",
+      "ACRES"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZONE_CODE"
+    ],
+    "zoningDescription": [],
+    "caseNumber": [
+      "CASE_NUM"
+    ],
+    "ordinanceNumber": [
+      "ORD_NUM"
+    ],
+    "sourceDocumentUrl": [
+      "DOCLINK"
+    ],
+    "priorCountyZoningCode": [
+      "MCR_ZONING"
+    ],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784387245,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "testAddress": "16101 N 83rd Ave, Peoria, AZ 85382",
+    "testCoordinate": {
+      "latitude": 33.632103308864,
+      "longitude": -112.234324986224,
+      "expectedZoningCode": "PAD"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Peoria base zoning by intersecting coordinates with Layer 20 of the official public Peoria Zoning map service.",
+    "The configured test coordinate at the Peoria Sports Complex resolves to PAD; the published record also identifies case Z93-16A.16 and ordinance 2022-13.",
+    "The official layer publishes the zoning code, case number, ordinance number, document link, prior Maricopa County zoning, and acreage, but it does not publish a zoning description.",
+    "DOCLINK may point to a general City resource rather than a parcel-specific case document and must be reviewed before being treated as the governing instrument.",
+    "Peoria extends into both Maricopa and Yavapai counties; the incorporated parcel jurisdiction controls selection of this configuration.",
+    "PAD, PCD, and PUD properties may have separately published subzone and development-standard information that is not resolved by this base-zoning layer.",
+    "A resolved zoning result supports permit research but does not replace review of applicable cases, ordinances, planned-area documents, subzones, stipulations, overlays, or confirmation by the City of Peoria."
+  ]
+}
