@@ -578,7 +578,7 @@ function normalizeZoningFeature(array $attributes, array $source): array {
  *   "zoningDescription": "..."
  * }
  */
-function normalizeZoningCodedValueMappings($mappings): array {
+function normalizeZoningCodedValueMappings(mixed $mappings): array {
     if (!is_array($mappings)) {
         return [];
     }
@@ -644,7 +644,7 @@ function findZoningCodedValueMapping(
     return null;
 }
 
-function normalizeZoningFieldList($fields): array {
+function normalizeZoningFieldList(mixed $fields): array {
     if (is_string($fields)) {
         $fields = [$fields];
     }
@@ -654,7 +654,7 @@ function normalizeZoningFieldList($fields): array {
     }
 
     return array_values(array_filter(array_map(
-        function($field): string {
+        function(mixed $field): string {
             return trim((string)$field);
         },
         $fields
@@ -747,7 +747,7 @@ function buildZoningProviderFailure(
     ];
 }
 
-function normalizeZoningText($value): ?string {
+function normalizeZoningText(mixed $value): ?string {
     if ($value === null || is_array($value) || is_object($value)) {
         return null;
     }
@@ -757,7 +757,7 @@ function normalizeZoningText($value): ?string {
     return $value !== '' ? $value : null;
 }
 
-function normalizeZoningApn($value): ?string {
+function normalizeZoningApn(mixed $value): ?string {
     $value = normalizeZoningText($value);
 
     if ($value === null) {
