@@ -551,6 +551,21 @@
         "api": null,
         "label": "Maricopa"
     },
+    "maricopaCounty": {
+        "aliases": [
+            "MARICOPA COUNTY",
+            "UNINCORPORATED MARICOPA COUNTY",
+            "NO CITY/TOWN",
+            "NO CITY OR TOWN",
+            "COUNTY"
+        ],
+        "county": "Maricopa",
+        "jurisdictionType": "County",
+        "fips": null,
+        "incorporation": null,
+        "api": null,
+        "label": "Maricopa County"
+    },
     "mesa": {
         "aliases": [
             "CITY OF MESA",

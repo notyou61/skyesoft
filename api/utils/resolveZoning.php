@@ -33,7 +33,9 @@ function resolveZoning(
 ): array {
     $startedAt = microtime(true);
     $result = buildZoningResult([
-        'jurisdictionName' => normalizeZoningText($jurisdictionName),
+        'jurisdictionName' => normalizeZoningJurisdictionName(
+            $jurisdictionName
+        ),
         'apnRaw'           => normalizeZoningApn($apnRaw)
     ]);
 
@@ -859,6 +861,28 @@ function normalizeZoningKey(string $value): string {
     $value = preg_replace('/[^a-z0-9]+/', ' ', $value);
 
     return trim(preg_replace('/\s+/', ' ', $value));
+}
+
+/**
+ * Convert assessor jurisdiction aliases to the canonical zoning jurisdiction.
+ */
+function normalizeZoningJurisdictionName(?string $value): ?string {
+    $jurisdictionName = normalizeZoningText($value);
+
+    if ($jurisdictionName === null) {
+        return null;
+    }
+
+    $jurisdictionKey = normalizeZoningKey($jurisdictionName);
+
+    $aliases = [
+        'no city town' => 'Maricopa County',
+        'county' => 'Maricopa County',
+        'maricopa county' => 'Maricopa County',
+        'unincorporated maricopa county' => 'Maricopa County'
+    ];
+
+    return $aliases[$jurisdictionKey] ?? $jurisdictionName;
 }
 
 /**
