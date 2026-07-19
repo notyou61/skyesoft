@@ -2909,66 +2909,135 @@ window.SkyIndex = {
 
     // #endregion
 
-    // #region 📇 Proposal Action Handler + Accept Flow
-    async handleProposalAction(action, targetProposalId = null, directEntityName = null) {
-        if (!this.currentProposal) {
-            this.appendSystemLine('⚠️ No active proposal found.', 'warning');
+    // #region 📇 Proposal Action Handler
+    async handleProposalAction(
+        action,
+        targetProposalId = null,
+        directEntityName = null
+    ) {
+        const proposal = this.currentProposal;
+
+        if (!proposal) {
+            this.appendSystemLine(
+                '⚠️ No active proposal found.',
+                'warning'
+            );
             return;
         }
 
         switch (action) {
-            case 'decline':
-                if (!confirm('Are you sure you want to decline this proposal? This will clear all un-persisted session files.')) {
+            case 'decline': {
+                const confirmed = confirm(
+                    'Are you sure you want to decline this proposal? ' +
+                    'Uncommitted proposal files will be removed.'
+                );
+
+                if (!confirmed) {
                     return;
                 }
 
                 this.setThinking(true);
 
                 try {
-                    const res = await fetch('api/processProposedContact.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            action: 'decline',
-                            source: 'ui_dashboard',
-                            activitySessionId: this.currentProposal?.activitySessionId || this.getActivitySessionId() || '',
-                            proposalId: targetProposalId || this.currentProposal?.proposalId || '',
-                            entityName: directEntityName || '',
-                            data: this.currentProposal?.data || null
-                        })
-                    });
+                    const response = await fetch(
+                        '/skyesoft/api/processProposedContact.php',
+                        {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                action: 'decline',
+                                source: 'ui_dashboard',
 
-                    const result = await res.json();
+                                activitySessionId:
+                                    proposal.activitySessionId ||
+                                    this.getActivitySessionId() ||
+                                    '',
 
-                    if (result && result.success === true) {
-                        this.currentProposal = null;
-                        this.appendSystemLine(result.message || '❌ Proposal declined.', 'system');
-                        
-                        if (typeof this.clearOutput === 'function') {
-                            this.clearOutput();
+                                proposalId:
+                                    targetProposalId ||
+                                    proposal.proposalId ||
+                                    '',
+
+                                proposalActionId:
+                                    proposal.proposalActionId ||
+                                    null,
+
+                                pc:
+                                    proposal.pcm?.pc ||
+                                    null,
+
+                                entityName:
+                                    directEntityName ||
+                                    proposal.data?.entity?.entityName ||
+                                    '',
+
+                                data:
+                                    proposal.data ||
+                                    null
+                            })
                         }
-                    } else {
-                        throw new Error(result.error || 'Unknown backend validation block.');
+                    );
+
+                    const result = await response.json();
+
+                    if (
+                        !response.ok ||
+                        result?.success !== true
+                    ) {
+                        throw new Error(
+                            result?.error ||
+                            result?.message ||
+                            `Decline request failed with HTTP ${response.status}.`
+                        );
                     }
+
+                    // Preserve a visible resolution receipt.
+                    this.transformProposalToResolutionCard(
+                        result,
+                        'declined',
+                        proposal
+                    );
+
+                    // The proposal is no longer actionable.
+                    this.currentProposal = null;
+
                 } catch (err) {
-                    console.error('[Decline Contact Error]', err);
-                    this.appendSystemLine(`❌ Decline action failed: ${err.message}`, 'error');
+                    console.error(
+                        '[Decline Contact Error]',
+                        err
+                    );
+
+                    this.appendSystemLine(
+                        `❌ Decline action failed: ${err.message}`,
+                        'error'
+                    );
+
                 } finally {
                     this.setThinking(false);
                 }
-                break;
+
+                return;
+            }
 
             case 'edit':
-                this.appendSystemLine('✏️ Edit mode coming soon...', 'system');
-                break;
+                this.appendSystemLine(
+                    '✏️ Edit mode coming soon...',
+                    'system'
+                );
+                return;
 
             case 'accept':
-                this.acceptProposedContact();   // ← Single canonical handler
-                break;
+                await this.acceptProposedContact();
+                return;
 
             default:
-                console.warn('[Proposal] Unknown action:', action);
+                console.warn(
+                    '[Proposal] Unknown action:',
+                    action
+                );
         }
     },
     // #endregion
@@ -3017,48 +3086,130 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region ✅ Transform Proposal Card to Commit Receipt
-    transformProposalToAcceptedCard: function(result) {
+    // #region ✅ Proposal Resolution Receipt
+    transformProposalToResolutionCard: function(
+        result,
+        outcome,
+        proposal = null
+    ) {
         const output = this.getOutputHost();
 
         if (!output) {
             return;
         }
 
-        // Select the most recently displayed proposal card.
         const cards = output.querySelectorAll('.result-card');
 
         const card = cards.length > 0
             ? cards[cards.length - 1]
             : null;
 
-        if (!card) {
-            this.appendSystemLine(
+        const instructions =
+            result.clientInstructions || {};
+
+        const pc =
+            result.pc ||
+            proposal?.pcm?.pc ||
+            'PROPOSAL';
+
+        const entityName =
+            result.entityName ||
+            proposal?.data?.entity?.entityName ||
+            'the submitted entity';
+
+        const contactFirstName =
+            proposal?.data?.contact?.contactFirstName ||
+            '';
+
+        const contactLastName =
+            proposal?.data?.contact?.contactLastName ||
+            '';
+
+        const contactName =
+            result.contactName ||
+            `${contactFirstName} ${contactLastName}`.trim() ||
+            'the submitted contact';
+
+        const isCommitted = outcome === 'committed';
+        const isExistingIdentity = pc === 'PC-0';
+
+        let title;
+        let badgeText;
+        let narrative;
+        let colors;
+
+        if (isCommitted) {
+            title =
+                instructions.title ||
+                'Proposal accepted and committed';
+
+            badgeText =
+                instructions.badgeText ||
+                `${pc} COMMITTED`;
+
+            narrative =
+                instructions.narrative ||
                 result.message ||
-                    'Proposal accepted and committed successfully.',
-                'success'
-            );
-            return;
+                'The proposal was accepted and committed successfully.';
+
+            colors = {
+                border: '#28a745',
+                background: '#f1fbf4',
+                text: '#155724',
+                badgeBackground: '#e8f5e9',
+                badgeBorder: '#a3cfbb',
+                referenceBorder: '#ccebd4'
+            };
+        } else if (isExistingIdentity) {
+            title =
+                instructions.title ||
+                'Existing identity result closed';
+
+            badgeText =
+                instructions.badgeText ||
+                `${pc} CLOSED`;
+
+            narrative =
+                instructions.narrative ||
+                `The existing identity result for ${contactName} at ` +
+                `${entityName} was closed without further action. ` +
+                'No database changes were required or applied.';
+
+            colors = {
+                border: '#6c757d',
+                background: '#f8f9fa',
+                text: '#495057',
+                badgeBackground: '#e9ecef',
+                badgeBorder: '#ced4da',
+                referenceBorder: '#dee2e6'
+            };
+        } else {
+            title =
+                instructions.title ||
+                'Proposal declined';
+
+            badgeText =
+                instructions.badgeText ||
+                `${pc} DECLINED`;
+
+            narrative =
+                instructions.narrative ||
+                `The ${pc} proposal for ${contactName} at ` +
+                `${entityName} was declined. ` +
+                'No proposed database changes were applied.';
+
+            colors = {
+                border: '#dc3545',
+                background: '#fff5f5',
+                text: '#842029',
+                badgeBackground: '#f8d7da',
+                badgeBorder: '#f1aeb5',
+                referenceBorder: '#f1aeb5'
+            };
         }
 
-        const instructions = result.clientInstructions || {};
-
-        const title =
-            instructions.title ||
-            'Proposal accepted and committed';
-
-        const badgeText =
-            instructions.badgeText ||
-            `${result.pc || 'PROPOSAL'} COMMITTED`;
-
-        const narrative =
-            instructions.narrative ||
-            result.message ||
-            'The proposal was accepted and committed successfully.';
-
-        const references = Array.isArray(
-            instructions.recordReferences
-        )
+        const references = isCommitted &&
+            Array.isArray(instructions.recordReferences)
             ? instructions.recordReferences
             : [];
 
@@ -3079,9 +3230,9 @@ window.SkyIndex = {
                     <span style="
                         display: inline-block;
                         padding: 3px 8px;
-                        color: #146c43;
+                        color: ${colors.text};
                         background: #fff;
-                        border: 1px solid #ccebd4;
+                        border: 1px solid ${colors.referenceBorder};
                         border-radius: 4px;
                         font-family: monospace;
                         font-size: 0.85em;
@@ -3092,13 +3243,21 @@ window.SkyIndex = {
             })
             .join('');
 
+        if (!card) {
+            this.appendSystemLine(narrative, 'system');
+            return;
+        }
+
         card.classList.add(
-            'accepted',
-            'commit-receipt'
+            'resolved',
+            `resolution-${outcome}`
         );
 
-        card.style.borderLeft = '5px solid #28a745';
-        card.style.background = '#f1fbf4';
+        card.style.borderLeft =
+            `5px solid ${colors.border}`;
+
+        card.style.background =
+            colors.background;
 
         card.innerHTML = `
             <div style="
@@ -3128,7 +3287,7 @@ window.SkyIndex = {
                         gap: 12px;
                     ">
                         <strong style="
-                            color: #155724;
+                            color: ${colors.text};
                             font-size: 0.98em;
                         ">
                             ${this.escapeHtml(title)}
@@ -3136,9 +3295,9 @@ window.SkyIndex = {
 
                         <span style="
                             padding: 3px 8px;
-                            color: #198754;
-                            background: #e8f5e9;
-                            border: 1px solid #a3cfbb;
+                            color: ${colors.text};
+                            background: ${colors.badgeBackground};
+                            border: 1px solid ${colors.badgeBorder};
                             border-radius: 4px;
                             font-family: monospace;
                             font-size: 0.78em;
@@ -3151,7 +3310,7 @@ window.SkyIndex = {
 
                     <div style="
                         margin-top: 7px;
-                        color: #155724;
+                        color: ${colors.text};
                         font-size: 0.9em;
                         line-height: 1.45;
                     ">
