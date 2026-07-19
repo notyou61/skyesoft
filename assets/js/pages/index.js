@@ -3017,35 +3017,162 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region Transform Proposal Card to Accepted State
+    // #region ✅ Transform Proposal Card to Commit Receipt
     transformProposalToAcceptedCard: function(result) {
-        const card = document.querySelector('.proposed-identity-card'); // adjust selector to match your card
-        if (!card) return;
+        const output = this.getOutputHost();
 
-        card.style.borderLeftColor = '#28a745';
-        card.classList.add('accepted');
-
-        // Update header
-        const header = card.querySelector('.proposed-header');
-        if (header) header.innerHTML = `✅ Created New ELC Record`;
-
-        // Update summary
-        const summary = card.querySelector('.proposal-summary');
-        if (summary) {
-            summary.innerHTML = `
-                <strong>New ELC Summary:</strong><br>
-                Added new entity, location and contact to the database.
-            `;
+        if (!output) {
+            return;
         }
 
-        // Disable buttons
-        const buttons = card.querySelectorAll('button');
-        buttons.forEach(btn => {
-            btn.disabled = true;
-            btn.style.opacity = '0.6';
-        });
+        // Select the most recently displayed proposal card.
+        const cards = output.querySelectorAll('.result-card');
 
-        this.appendSystemLine('✅ New ELC record created successfully.', 'success');
+        const card = cards.length > 0
+            ? cards[cards.length - 1]
+            : null;
+
+        if (!card) {
+            this.appendSystemLine(
+                result.message ||
+                    'Proposal accepted and committed successfully.',
+                'success'
+            );
+            return;
+        }
+
+        const instructions = result.clientInstructions || {};
+
+        const title =
+            instructions.title ||
+            'Proposal accepted and committed';
+
+        const badgeText =
+            instructions.badgeText ||
+            `${result.pc || 'PROPOSAL'} COMMITTED`;
+
+        const narrative =
+            instructions.narrative ||
+            result.message ||
+            'The proposal was accepted and committed successfully.';
+
+        const references = Array.isArray(
+            instructions.recordReferences
+        )
+            ? instructions.recordReferences
+            : [];
+
+        const referenceMarkup = references
+            .filter(reference => {
+                return reference?.label && reference?.id;
+            })
+            .map(reference => {
+                const label = this.escapeHtml(
+                    String(reference.label)
+                );
+
+                const id = this.escapeHtml(
+                    String(reference.id)
+                );
+
+                return `
+                    <span style="
+                        display: inline-block;
+                        padding: 3px 8px;
+                        color: #146c43;
+                        background: #fff;
+                        border: 1px solid #ccebd4;
+                        border-radius: 4px;
+                        font-family: monospace;
+                        font-size: 0.85em;
+                    ">
+                        ${label} #${id}
+                    </span>
+                `;
+            })
+            .join('');
+
+        card.classList.add(
+            'accepted',
+            'commit-receipt'
+        );
+
+        card.style.borderLeft = '5px solid #28a745';
+        card.style.background = '#f1fbf4';
+
+        card.innerHTML = `
+            <div style="
+                display: flex;
+                gap: 12px;
+                padding: 14px 16px;
+            ">
+                <img
+                    src="/skyesoft/assets/images/icons/robot.png"
+                    alt="Skyesoft"
+                    style="
+                        width: 22px;
+                        height: 22px;
+                        flex: 0 0 auto;
+                        margin-top: 1px;
+                    "
+                >
+
+                <div style="
+                    flex: 1;
+                    min-width: 0;
+                ">
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                    ">
+                        <strong style="
+                            color: #155724;
+                            font-size: 0.98em;
+                        ">
+                            ${this.escapeHtml(title)}
+                        </strong>
+
+                        <span style="
+                            padding: 3px 8px;
+                            color: #198754;
+                            background: #e8f5e9;
+                            border: 1px solid #a3cfbb;
+                            border-radius: 4px;
+                            font-family: monospace;
+                            font-size: 0.78em;
+                            font-weight: bold;
+                            white-space: nowrap;
+                        ">
+                            ${this.escapeHtml(badgeText)}
+                        </span>
+                    </div>
+
+                    <div style="
+                        margin-top: 7px;
+                        color: #155724;
+                        font-size: 0.9em;
+                        line-height: 1.45;
+                    ">
+                        ${this.escapeHtml(narrative)}
+                    </div>
+
+                    ${referenceMarkup ? `
+                        <div style="
+                            display: flex;
+                            flex-wrap: wrap;
+                            gap: 7px;
+                            margin-top: 10px;
+                        ">
+                            ${referenceMarkup}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        this.scrollOutputToBottom(output);
     },
     // #endregion
     
