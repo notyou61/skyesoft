@@ -361,26 +361,46 @@ try {
     ];
 
     $finalResponseData = [
-        'success'             => true,
-        'proposalId'          => $proposalId,
-        'proposalActionId'    => $proposalActionId,
-        'pc'                  => $pc,
-        'actionUnix'          => $actionUnix,
+        'success'          => true,
+        'status'           => 'committed',
+        'message'          => 'Data successfully synchronized into records.',
 
-        'entityId'            => $entityId,
-        'locationId'          => $locationId,
-        'contactId'           => $contactId,
+        'proposalId'       => $proposalId,
+        'proposalActionId' => $proposalActionId,
+        'pc'               => $pc,
+        'actionUnix'       => $actionUnix,
 
-        'entityName'          => $entityName,
-        'contactName'         => $contactName,
+        'entityId'         => $entityId,
+        'locationId'       => $locationId,
+        'contactId'        => $contactId,
 
-        'latitude'            => $latitude,
-        'longitude'           => $longitude,
+        'entityName'       => $entityName,
+        'contactName'      => $contactName,
 
-        'artifacts'           => $promotedArtifacts ?? [],
-        'governingObjectId'   => $governingObjectId,
-        'governingObjectType' => in_array($pc, ['PC-4','PC-5'], true) ? 'location' : 'contact'
+        'latitude'         => $latitude,
+        'longitude'        => $longitude,
+
+        'artifacts'        => $promotedArtifacts ?? [],
+
+        'governingObjectId' => $governingObjectId,
+
+        'governingObjectType' => in_array(
+            $pc,
+            ['PC-4', 'PC-5'],
+            true
+        ) ? 'location' : 'contact'
     ];
+
+    $finalResponseData['clientInstructions'] =
+        buildCommitClientInstructions(
+            $pc,
+            $entityName,
+            $contactName,
+            $payload['location'] ?? [],
+            $entityId,
+            $locationId,
+            $contactId
+        );
 
     $stmt = $db->prepare("
         INSERT INTO tblActions (
@@ -416,7 +436,6 @@ try {
     if (is_file($snapshotPath)) @unlink($snapshotPath);
 
     $response = array_merge($response, $finalResponseData);
-    $response['message'] = 'Data successfully synchronized into records.';
 
 } catch (Throwable $e) {
     if ($db->inTransaction()) $db->rollBack();
@@ -433,6 +452,102 @@ echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 #endregion
 
 #region SECTION 05 — Single Responsibility Insertion Units
+
+/**
+ * Build the canonical UI instructions for a committed proposal.
+ */
+function buildCommitClientInstructions(
+    string $pc,
+    string $entityName,
+    string $contactName,
+    array $locationData,
+    ?int $entityId,
+    ?int $locationId,
+    ?int $contactId
+): array {
+    $city = trim((string)(
+        $locationData['locationCity']
+        ?? ''
+    ));
+
+    $locationText = $city !== ''
+        ? "its {$city} location"
+        : 'its location';
+
+    $narrative = match ($pc) {
+        'PC-1' => sprintf(
+            '%s, %s, and %s were created and linked successfully. ' .
+            'Parcel and zoning details were saved with the location.',
+            $entityName,
+            $locationText,
+            $contactName
+        ),
+
+        'PC-2' => sprintf(
+            'A new location and contact were created and linked to %s.',
+            $entityName
+        ),
+
+        'PC-3' => sprintf(
+            '%s was created and linked to the existing %s location.',
+            $contactName,
+            $entityName
+        ),
+
+        'PC-4' => sprintf(
+            'A new location was created and linked to %s.',
+            $entityName
+        ),
+
+        'PC-5' => sprintf(
+            'The existing contact and location relationships for %s were updated.',
+            $contactName
+        ),
+
+        'PC-6' => sprintf(
+            'The former contact record was retired and a replacement record for %s was created.',
+            $contactName
+        ),
+
+        default =>
+            'The proposal was accepted and committed successfully.'
+    };
+
+    $references = [];
+
+    if ($entityId !== null && $entityId > 0) {
+        $references[] = [
+            'label' => 'Entity',
+            'id' => $entityId
+        ];
+    }
+
+    if ($locationId !== null && $locationId > 0) {
+        $references[] = [
+            'label' => 'Location',
+            'id' => $locationId
+        ];
+    }
+
+    if ($contactId !== null && $contactId > 0) {
+        $references[] = [
+            'label' => 'Contact',
+            'id' => $contactId
+        ];
+    }
+
+    return [
+        'action' => 'replace_proposal',
+        'template' => 'proposal_commit_receipt',
+        'removeProposalControls' => true,
+        'tone' => 'success',
+        'icon' => 'robot',
+        'badgeText' => "{$pc} COMMITTED",
+        'title' => 'Proposal accepted and committed',
+        'narrative' => $narrative,
+        'recordReferences' => $references
+    ];
+}
 
 function insertEntity(
     PDO $db,
