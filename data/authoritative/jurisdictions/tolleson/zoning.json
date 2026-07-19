@@ -1,0 +1,170 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Tolleson",
+    "slug": "tolleson",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Tolleson Development Services via AZGeo",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services6.arcgis.com/clPWQMwZfdWn4MQZ/arcgis/rest/services/TOLLESON_PUBLIC/FeatureServer",
+    "layerId": 52,
+    "layerName": "TOLLESON_ZONING",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "JURISDICTION = 'TOLLESON'",
+    "outFields": [
+      "TYPE",
+      "COMMONNAME",
+      "JURISDICTION",
+      "DOC_TYPE",
+      "DOC_NAME",
+      "last_edited_date"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "TYPE"
+    ],
+    "zoningDescription": [],
+    "commonName": [
+      "COMMONNAME"
+    ],
+    "sourceJurisdiction": [
+      "JURISDICTION"
+    ],
+    "sourceDocumentType": [
+      "DOC_TYPE"
+    ],
+    "sourceDocumentName": [
+      "DOC_NAME"
+    ],
+    "sourceLastEditedDate": [
+      "last_edited_date"
+    ],
+    "parcelNumber": [],
+    "overlay": [],
+    "caseNumber": [],
+    "ordinanceNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "codedValueMappings": {
+    "TYPE": {
+      "PAD": {
+        "zoningDescription": "Planned Area Development"
+      },
+      "R1-7": {
+        "zoningDescription": "Residential Single-Family"
+      },
+      "R1-18": {
+        "zoningDescription": "Residential Single-Family"
+      },
+      "R1-35": {
+        "zoningDescription": "Residential Single-Family"
+      },
+      "R-2": {
+        "zoningDescription": "Residential Multi-Family"
+      },
+      "R-MHP": {
+        "zoningDescription": "Manufactured Home Park"
+      },
+      "CORE": {
+        "zoningDescription": "CORE District"
+      },
+      "C-1": {
+        "zoningDescription": "Neighborhood Commercial"
+      },
+      "C-2": {
+        "zoningDescription": "General Commercial"
+      },
+      "I-1": {
+        "zoningDescription": "Light Industrial"
+      },
+      "I-2": {
+        "zoningDescription": "General Industrial"
+      },
+      "PARK": {
+        "zoningDescription": "Park"
+      },
+      "SCHOOL": {
+        "zoningDescription": "School"
+      },
+      "WELL": {
+        "zoningDescription": "Well Site"
+      },
+      "GVT": {
+        "zoningDescription": "Government"
+      }
+    }
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784429173,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "7b3b628d00f949278028773bffd55d33",
+    "sourceOrganizationId": "clPWQMwZfdWn4MQZ",
+    "sourceDataLastEditedDate": "2026-02-17",
+    "officialMapPreparedDate": "2025-09-09",
+    "testAddress": "9550 W Van Buren St, Tolleson, AZ 85353",
+    "testCoordinate": {
+      "latitude": 33.4511387,
+      "longitude": -112.2649253,
+      "expectedZoningCode": "CORE",
+      "expectedZoningDescription": "CORE District"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Tolleson zoning by intersecting runtime coordinates with Layer 52 of the public TOLLESON_PUBLIC feature service.",
+    "The dataset is published for the City of Tolleson through AZGeo, Arizona's state geospatial clearinghouse, and permits anonymous public queries.",
+    "TYPE is the published zoning code. COMMONNAME, document fields, source jurisdiction, and last-edited date are retained when populated because they may identify supplemental zoning information.",
+    "The query is restricted to JURISDICTION = 'TOLLESON' because the layer also includes zoning polygons administered by Phoenix, Maricopa County, ADOT, the Roosevelt Irrigation District, and railroad interests within the broader planning area.",
+    "District descriptions are normalized from the legend of the official City of Tolleson zoning map prepared September 9, 2025.",
+    "The configured commercial fixture at Tolleson Plaza, 9550 W Van Buren Street, resolves to CORE, CORE District.",
+    "The official map states that it is intended for reference purposes only and that aerial imagery may not match field conditions.",
+    "A resolved zoning result supports permit research but does not replace review of applicable PAD documents, zoning cases, ordinances, stipulations, overlays, or confirmation by the City of Tolleson."
+  ]
+}
