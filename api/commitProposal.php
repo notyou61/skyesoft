@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Skyesoft — commitProposal.php
  * Deterministic Commit Engine Layer
  * 
- * File Version:     1.4.1
+ * File Version:     1.4.2
  * Schema Version:   2.2.0
  * Last Updated:     2026-07-19
  */
@@ -26,7 +26,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Force session data reload
+// Force session reload
 session_write_close();
 session_start();
 
@@ -1281,11 +1281,13 @@ function promoteArtifacts(string $proposalId, int $governingObjectId, array $art
         $targetFile = $artifactsDir . '/' . $newName;
 
         if (!is_file($sourceFile)) {
-            throw new RuntimeException("TMP artifact missing: {$filename}");
+            error_log("[COMMIT] WARNING: TMP artifact missing (skipping): {$filename}");
+            continue; // Graceful skip instead of throw
         }
 
         if (!rename($sourceFile, $targetFile)) {
-            throw new RuntimeException("Artifact promotion failed: {$filename}");
+            error_log("[COMMIT] WARNING: Artifact promotion failed (skipping): {$filename}");
+            continue;
         }
 
         $artifactMoves[] = [
