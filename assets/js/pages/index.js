@@ -2301,7 +2301,7 @@ window.SkyIndex = {
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
                 btnText: '✔ Accept &amp; Save',
                 btnDisabled: false,
-                btnHandler: 'SkyIndex.acceptEditedProposal()'
+                btnHandler: "SkyIndex.handleProposalAction('accept')"
             },
             'PC-4': {
                 borderLeft: '#28a745',
@@ -2316,7 +2316,7 @@ window.SkyIndex = {
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
                 btnText: '✔ Accept &amp; Save',
                 btnDisabled: false,
-                btnHandler: 'SkyIndex.acceptEditedProposal()'
+                btnHandler: "SkyIndex.handleProposalAction('accept')"
             },
             'PC-5': {
                 borderLeft: '#28a745',
@@ -2331,7 +2331,7 @@ window.SkyIndex = {
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
                 btnText: '✔ Accept &amp; Save',
                 btnDisabled: false,
-                btnHandler: 'SkyIndex.acceptEditedProposal()'
+                btnHandler: "SkyIndex.handleProposalAction('accept')"
             },
             'PC-6': {
                 borderLeft: '#28a745',
@@ -2346,7 +2346,7 @@ window.SkyIndex = {
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
                 btnText: '✔ Accept &amp; Save',
                 btnDisabled: false,
-                btnHandler: 'SkyIndex.acceptEditedProposal()'
+                btnHandler: "SkyIndex.handleProposalAction('accept')"
             },
             'RS-3': {
                 borderLeft: '#ffc107',
@@ -2438,7 +2438,7 @@ window.SkyIndex = {
             btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
             btnText: '✔ Accept &amp; Save',
             btnDisabled: false,
-            btnHandler: 'SkyIndex.acceptEditedProposal()'
+            btnHandler: "SkyIndex.handleProposalAction('accept')"
         };
 
         // 3. Dynamic Title Computation Engine (Prevents "Proposed Contact" string overlap errors)
