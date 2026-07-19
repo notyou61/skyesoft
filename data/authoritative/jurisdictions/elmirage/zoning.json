@@ -1,0 +1,144 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "El Mirage",
+    "slug": "elmirage",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of El Mirage Development Services Department",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services7.arcgis.com/CRH3aZydoRH1XVod/arcgis/rest/services/Zoning_Dissolved/FeatureServer",
+    "layerId": 0,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "FBDCC"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "FBDCC"
+    ],
+    "zoningDescription": [],
+    "parcelNumber": [],
+    "overlay": [],
+    "caseNumber": [],
+    "ordinanceNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "codedValueMappings": {
+    "FBDCC": {
+      "NATURAL RESERVE": {
+        "zoningCode": "NR",
+        "zoningDescription": "Natural Reserve"
+      },
+      "RURAL AREA": {
+        "zoningCode": "RA",
+        "zoningDescription": "Rural Area"
+      },
+      "SUBURBAN NEIGHBORHOOD": {
+        "zoningCode": "SN",
+        "zoningDescription": "Suburban Neighborhood"
+      },
+      "MOBILE PARK": {
+        "zoningCode": "MP",
+        "zoningDescription": "Mobile Park"
+      },
+      "MIXED URBAN": {
+        "zoningCode": "MU",
+        "zoningDescription": "Mixed Urban"
+      },
+      "URBAN CORRIDOR": {
+        "zoningCode": "UC",
+        "zoningDescription": "Urban Corridor"
+      },
+      "TRANSIT DEVELOPMENT": {
+        "zoningCode": "TD",
+        "zoningDescription": "Transit Development"
+      },
+      "COMMERCE PARK": {
+        "zoningCode": "CP",
+        "zoningDescription": "Commerce Park"
+      },
+      "EMPLOYMENT/INDUSTRY": {
+        "zoningCode": "EI",
+        "zoningDescription": "Employment / Industry"
+      },
+      "PLANNED AREA DEVELOPMENT": {
+        "zoningCode": "PAD",
+        "zoningDescription": "Planned Area Development"
+      }
+    }
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784428632,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "19b27b8db8f94b2d8c2e3a4c7275be5b",
+    "sourceOrganizationId": "CRH3aZydoRH1XVod",
+    "sourceDataLastEditedDate": "2026-03-17",
+    "testAddress": "10000 N El Mirage Rd, El Mirage, AZ 85335",
+    "testCoordinate": {
+      "latitude": 33.5729888,
+      "longitude": -112.3251316,
+      "expectedZoningCode": "PAD",
+      "expectedZoningDescription": "Planned Area Development"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of El Mirage zoning by intersecting runtime coordinates with Layer 0 of the City's public Zoning Polygons feature service.",
+    "The service is hosted in the City of El Mirage ArcGIS organization, is publicly queryable without authentication, and is tagged by the City for zoning, planning, and development use.",
+    "FBDCC is the only published zoning attribute and contains the full Form-Based Development Code district name.",
+    "Coded-value normalization converts the City's published district names into the abbreviations established by Chapter 154 of the El Mirage Zoning Code while retaining the full district name as zoningDescription.",
+    "The configured test coordinate at El Mirage City Hall resolves to PAD, Planned Area Development.",
+    "The ArcGIS item describes the dataset as updated in May 2023; the live layer metadata records a data edit on March 17, 2026.",
+    "The zoning polygons do not publish parcel numbers, overlays, zoning cases, ordinances, PAD names, or PAD governing documents; those details require separate parcel and planning research.",
+    "A resolved zoning result supports permit research but does not replace review of applicable PAD documents, zoning cases, ordinances, stipulations, overlays, military compatibility requirements, or confirmation by the City of El Mirage."
+  ]
+}
