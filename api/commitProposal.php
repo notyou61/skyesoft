@@ -5,9 +5,9 @@ declare(strict_types=1);
  * Skyesoft — commitProposal.php
  * Deterministic Commit Engine Layer
  * 
- * File Version:     1.3.0
- * Schema Version:   2.1.1
- * Last Updated:     2026-07-14
+ * File Version:     1.4.1
+ * Schema Version:   2.2.0
+ * Last Updated:     2026-07-19
  */
 
 #region SECTION 00 — Bootstrap & Request Initialization
@@ -41,13 +41,30 @@ if (empty($proposalId)) {
     exit;
 }
 
+// Require valid proposalActionId for provenance and audit integrity
+if ($proposalActionId === null || $proposalActionId <= 0) {
+    echo json_encode([
+        'success' => false,
+        'error' => 'Missing or invalid proposalActionId'
+    ]);
+    exit;
+}
+
 $db = getPDO();
 if (!$db) {
     echo json_encode(['success' => false, 'error' => 'Database connection unavailable']);
     exit;
 }
 
-$actorContactId = (int)($_SESSION['contactId'] ?? 1);
+$actorContactId = (int)($_SESSION['contactId'] ?? 0);
+
+if ($actorContactId <= 0) {
+    echo json_encode([
+        'success' => false,
+        'error' => 'An authenticated operator is required.'
+    ]);
+    exit;
+}
 
 #endregion
 
@@ -130,6 +147,33 @@ if (!$snapshot || !is_array($snapshot)) {
         'error'   => 'Proposal metadata could not be resolved'
     ]);
 
+    exit;
+}
+
+// =====================================================
+// Proposal ID Binding Verification
+// =====================================================
+$snapshotProposalId = trim((string)(
+    $snapshot['proposalId']
+    ?? ''
+));
+
+if (
+    $snapshotProposalId === ''
+    || !hash_equals($snapshotProposalId, $proposalId)
+) {
+    error_log(
+        '[COMMIT] Proposal identity mismatch. Requested=' .
+        $proposalId .
+        ' Snapshot=' .
+        $snapshotProposalId
+    );
+
+    echo json_encode([
+        'success' => false,
+        'error' =>
+            'The proposal ID does not match the originating proposal action.'
+    ]);
     exit;
 }
 
@@ -254,14 +298,172 @@ if ($rsList !== ['RS-0']) {
 }
 
 // =====================================================
-// Supported Commit Classes
+// PC-6 Contact Succession Identity Validation
+// =====================================================
+if ($pc === 'PC-6') {
+    $existingContactId = (int)(
+        $commitPlan['contact']['contactId']
+        ?? $snapshot['databaseResolution']['contact']['contactId']
+        ?? 0
+    );
+
+    if ($existingContactId <= 0) {
+        echo json_encode([
+            'success' => false,
+            'error' =>
+                'PC-6 requires an existing contact record.'
+        ]);
+        exit;
+    }
+
+    $stmt = $db->prepare("
+        SELECT
+            contactId,
+            contactFirstName,
+            contactLastName,
+            contactEmailNormalized
+        FROM tblContacts
+        WHERE contactId = ?
+        LIMIT 1
+    ");
+
+    $stmt->execute([$existingContactId]);
+    $existingContact = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$existingContact) {
+        echo json_encode([
+            'success' => false,
+            'error' =>
+                'The existing PC-6 contact record could not be found.'
+        ]);
+        exit;
+    }
+
+    $normalizeIdentityValue = static function (mixed $value): string {
+        $value = strtolower(trim((string)$value));
+        return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
+    };
+
+    $submittedFirstName = $normalizeIdentityValue(
+        $payload['contact']['contactFirstName'] ?? ''
+    );
+
+    $submittedLastName = $normalizeIdentityValue(
+        $payload['contact']['contactLastName'] ?? ''
+    );
+
+    $submittedEmail = strtolower(trim((string)(
+        $payload['contact']['contactEmailNormalized']
+        ?? $payload['contact']['contactEmail']
+        ?? ''
+    )));
+
+    $existingFirstName = $normalizeIdentityValue(
+        $existingContact['contactFirstName'] ?? ''
+    );
+
+    $existingLastName = $normalizeIdentityValue(
+        $existingContact['contactLastName'] ?? ''
+    );
+
+    $existingEmail = strtolower(trim((string)(
+        $existingContact['contactEmailNormalized']
+        ?? ''
+    )));
+
+    if (
+        $submittedFirstName === ''
+        || $submittedLastName === ''
+        || $submittedEmail === ''
+        || $existingEmail === ''
+        || $submittedFirstName !== $existingFirstName
+        || $submittedLastName !== $existingLastName
+        || !hash_equals($existingEmail, $submittedEmail)
+    ) {
+        error_log(
+            '[COMMIT] PC-6 blocked by contact identity conflict. ' .
+            'ExistingContactId=' . $existingContactId
+        );
+
+        echo json_encode([
+            'success' => false,
+            'status' => 'blocked',
+            'rs' => ['RS-5'],
+            'reason' => 'contact_identity_conflict',
+            'error' =>
+                'Commit blocked: the submitted email belongs to ' .
+                'a different contact identity.'
+        ]);
+        exit;
+    }
+}
+
+// =====================================================
+// Linked Record Validation for Dependent Classes
+// =====================================================
+if (
+    in_array($pc, ['PC-2', 'PC-3', 'PC-4', 'PC-6'], true)
+    && (int)(
+        $commitPlan['entity']['entityId']
+        ?? $snapshot['databaseResolution']['entity']['entityId']
+        ?? 0
+    ) <= 0
+) {
+    echo json_encode([
+        'success' => false,
+        'error' => "{$pc} requires an existing entity."
+    ]);
+    exit;
+}
+
+if (
+    $pc === 'PC-3'
+    && (int)(
+        $commitPlan['location']['locationId']
+        ?? $snapshot['databaseResolution']['location']['locationId']
+        ?? 0
+    ) <= 0
+) {
+    echo json_encode([
+        'success' => false,
+        'error' => 'PC-3 requires an existing location.'
+    ]);
+    exit;
+}
+
+// =====================================================
+// Replay Protection — Check for Prior Commitment
+// =====================================================
+$stmt = $db->prepare("
+    SELECT actionId
+    FROM tblActions
+    WHERE actionTypeId = 14
+      AND JSON_UNQUOTE(
+          JSON_EXTRACT(
+              actionPayloadData,
+              '$.proposalActionId'
+          )
+      ) = ?
+    LIMIT 1
+");
+
+$stmt->execute([(string)$proposalActionId]);
+
+if ($stmt->fetchColumn()) {
+    echo json_encode([
+        'success' => false,
+        'status' => 'already_committed',
+        'error' =>
+            'This proposal has already been committed.'
+    ]);
+    exit;
+}
+
+// =====================================================
+// Supported Commit Classes + Exact Plan Validation
 // =====================================================
 $supportedCommitClasses = [
-    'PC-1',
-    'PC-2',
-    'PC-3',
-    'PC-4',
-    'PC-5'
+    'PC-1', 'PC-2', 'PC-3', 'PC-4', 'PC-5', 'PC-6'
 ];
 
 if (!in_array($pc, $supportedCommitClasses, true)) {
@@ -270,6 +472,28 @@ if (!in_array($pc, $supportedCommitClasses, true)) {
         'error' =>
             'Commit engine does not currently support ' .
             "proposal class {$pc}."
+    ]);
+    exit;
+}
+
+$expectedActionsByPc = [
+    'PC-1' => ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'],
+    'PC-2' => ['link_entity', 'insert_location', 'insert_contact', 'link_elc'],
+    'PC-3' => ['link_entity', 'link_location', 'insert_contact', 'link_elc'],
+    'PC-4' => ['link_entity', 'insert_location'],
+    'PC-5' => ['insert_entity', 'insert_location'],
+    'PC-6' => ['link_entity', 'insert_location', 'retire_contact', 'insert_replacement_contact', 'link_elc']
+];
+
+$expectedActions = $expectedActionsByPc[$pc] ?? [];
+
+if ($actions !== $expectedActions) {
+    echo json_encode([
+        'success' => false,
+        'error' =>
+            "The operational commit plan does not match {$pc}.",
+        'expectedActions' => $expectedActions,
+        'actualActions' => $actions
     ]);
     exit;
 }
@@ -289,12 +513,6 @@ if (empty($actions)) {
 #endregion
 
 #region SECTION 04 — Execution Engine & Orchestration
-
-# ─────────────────────────────────────────────────────────────
-# Commit Audit Record Enhancement (Phase 2 — Refined)
-# Fully self-contained Action Type 14 audit receipt with
-# centralized audit context and human-readable promptText.
-# ─────────────────────────────────────────────────────────────
 
 $artifactMoves = [];
 $response = [
@@ -349,7 +567,19 @@ try {
             break;
 
         case 'retire_contact':
-            if ($contactId) retireContact($db, (int)$contactId);
+            $existingContactId = (int)(
+                $commitPlan['contact']['contactId']
+                ?? $snapshot['databaseResolution']['contact']['contactId']
+                ?? 0
+            );
+
+            if ($existingContactId <= 0) {
+                throw new RuntimeException(
+                    'PC-6 could not resolve the contact being retired.'
+                );
+            }
+
+            retireContact($db, $existingContactId);
             break;
 
         case 'link_entity':
@@ -359,6 +589,15 @@ try {
         case 'link_location':
             $locationId = (int)($commitPlan['location']['locationId'] ?? $snapshot['databaseResolution']['location']['locationId'] ?? 0);
             break;
+
+        case 'link_elc':
+            // Relationship established via foreign keys in insertContact()
+            break;
+
+        default:
+            throw new RuntimeException(
+                'Unsupported commit action: ' . (string)$action
+            );
         }
     }
 
@@ -371,8 +610,6 @@ try {
     // =====================================================
     // Commit Audit Context Initialization
     // =====================================================
-    // All execution context and audit values resolved once here.
-
     $entityName = trim(
         (string)(
             $payload['entity']['entityName']
@@ -387,7 +624,6 @@ try {
         $payload['contact']['contactLastName'] ?? ''
     ));
 
-    // Robust coordinate lookup + explicit type
     $latitude  = $snapshot['data']['location']['locationLatitude']  ?? 
                 $payload['location']['locationLatitude'] ?? null;
     $longitude = $snapshot['data']['location']['locationLongitude'] ?? 
@@ -396,7 +632,6 @@ try {
     if ($latitude !== null)  $latitude  = (float)$latitude;
     if ($longitude !== null) $longitude = (float)$longitude;
 
-    // Use the robust session ID resolved in SECTION 02
     $ipAddress         = $snapshot['ipAddress'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
     $userAgent         = $snapshot['userAgent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? null);
 
@@ -405,21 +640,16 @@ try {
     $intentConfidence  = 1.0000;
     $actionUnix        = time();
 
-    // Human-readable prompt for the audit log
     $promptText = sprintf(
         'Accepted proposal for %s (%s)',
         $contactName,
         $entityName ?: 'Unknown Entity'
     );
 
-    // Temporary diagnostics
     error_log('[COMMIT] Audit Context - Session: ' . $activitySessionId);
     error_log('[COMMIT] Audit Context - Prompt: ' . $promptText);
     error_log('[COMMIT] Audit Context - Location: ' . json_encode(['lat' => $latitude, 'lng' => $longitude]));
 
-    // ─────────────────────────────────────────────────────────────
-    // Build self-contained Commit Audit Record
-    // ─────────────────────────────────────────────────────────────
     $actionPayload = [
         'proposalId'       => $proposalId,
         'proposalActionId' => $proposalActionId,
@@ -443,6 +673,13 @@ try {
         'entityId'         => $entityId,
         'locationId'       => $locationId,
         'contactId'        => $contactId,
+        'retiredContactId' => $pc === 'PC-6'
+            ? (int)(
+                $commitPlan['contact']['contactId']
+                ?? $snapshot['databaseResolution']['contact']['contactId']
+                ?? 0
+            )
+            : null,
 
         'entityName'       => $entityName,
         'contactName'      => $contactName,
@@ -570,8 +807,10 @@ function buildCommitClientInstructions(
         ),
 
         'PC-5' => sprintf(
-            'The existing contact and location relationships for %s were updated.',
-            $contactName
+            '%s and %s were created successfully. ' .
+            'Parcel and zoning details were saved with the location.',
+            $entityName,
+            $locationText
         ),
 
         'PC-6' => sprintf(
@@ -627,7 +866,6 @@ function insertEntity(
     int $proposalActionId
 ): int
 {
-    // Entity Name
     $entityName = trim(
         (string)(
             $entityData['entityName']
@@ -636,9 +874,6 @@ function insertEntity(
         )
     );
 
-    // Entity State
-    // Current proposal classes assume:
-    // Entity Location == Contact Location.
     $entityState = strtoupper(trim(
         (string)(
             $locationData['locationState']
@@ -646,7 +881,6 @@ function insertEntity(
         )
     ));
 
-    // Entity Narrative
     $contentLine = trim(
         (string)(
             $narrativeData['contentLine']
@@ -654,7 +888,6 @@ function insertEntity(
         )
     );
 
-    // Entity Note
     $entityNote =
         "Skyesoft Record Provenance\n\n" .
         "Originating Proposal Action : #{$proposalActionId}";
@@ -711,23 +944,17 @@ function insertLocation(
     int $proposalActionId
 ): int
 {
-    // Accepted Parcel (primary source for assessor data)
     $acceptedParcel = $locationData['parcelDetails'][0] ?? [];
 
-    // =====================================================
-    // locationName — Prioritized meaningful name
-    // =====================================================
     $locationName = trim((string)($locationData['locationName'] ?? ''));
 
     if ($locationName === '') {
-        // 1. Try Google Place / Location Name
         $locationName = trim((string)(
             $locationData['locationPlaceName'] 
             ?? $locationData['name'] 
             ?? ''
         ));
 
-        // 2. Fallback: Entity - Address
         if ($locationName === '') {
             $entityName = trim((string)(
                 $entityData['entityName']
@@ -752,9 +979,6 @@ function insertLocation(
         }
     }
 
-    // =====================================================
-    // locationNote — Provenance
-    // =====================================================
     $contentLine = trim((string)(
         $narrativeData['contentLine'] 
         ?? $locationData['summary'] 
@@ -769,9 +993,6 @@ function insertLocation(
         $locationNote .= "\n\nSummary:\n" . $contentLine;
     }
 
-    // =====================================================
-    // INSERT
-    // =====================================================
     $stmt = $db->prepare("
         INSERT INTO tblLocations (
             locationEntityId,
@@ -823,9 +1044,6 @@ function insertLocation(
         throw new RuntimeException('Location insert failed.');
     }
 
-    // =====================================================
-    // Populate Parcel Details with Assessor and Zoning Data
-    // =====================================================
     $parcelRecord = is_array($acceptedParcel['parcelRecord'] ?? null)
         ? $acceptedParcel['parcelRecord']
         : [];
@@ -907,12 +1125,8 @@ function insertContact(
     int $proposalActionId
 ): int
 {
-    // Contact Email
     $email = trim((string)($contactData['contactEmail'] ?? ''));
 
-    // =====================================================
-    // Contact Note — Provenance (consistent pattern)
-    // =====================================================
     $contentLine = trim((string)(
         $narrativeData['contentLine'] 
         ?? ''
@@ -971,8 +1185,24 @@ function insertContact(
 
 function retireContact(PDO $db, int $contactId): void 
 {
-    $stmt = $db->prepare("UPDATE tblContacts SET isRetired = 1, retiredAt = NOW() WHERE contactId = ?");
+    $stmt = $db->prepare("
+        UPDATE tblContacts
+        SET
+            isActive = 0,
+            isRetired = 1,
+            retiredAt = NOW(),
+            contactUpdatedAt = UNIX_TIMESTAMP()
+        WHERE contactId = ?
+          AND COALESCE(isRetired, 0) = 0
+    ");
+
     $stmt->execute([$contactId]);
+
+    if ($stmt->rowCount() !== 1) {
+        throw new RuntimeException(
+            'The existing contact could not be retired or was already retired.'
+        );
+    }
 }
 
 function promoteArtifacts(string $proposalId, int $governingObjectId, array $artifacts, array &$artifactMoves): array 
@@ -982,9 +1212,6 @@ function promoteArtifacts(string $proposalId, int $governingObjectId, array $art
 
     $proposalSegment = str_pad(preg_replace('/[^0-9]/', '', $proposalId), 6, '0', STR_PAD_LEFT);
     
-    // Governing Object Identifier
-    // Current PC-1 promotes location artifacts using the
-    // governing record associated with the proposal.
     $recordSegment = str_pad(
         (string)$governingObjectId,
         6,
@@ -1005,13 +1232,11 @@ function promoteArtifacts(string $proposalId, int $governingObjectId, array $art
             continue;
         }
 
-        // For location-based artifacts (street view, parcel map, satellite), use Location ID
-        // For contact-specific artifacts, use Contact ID
         $newName = sprintf(
             'REC-%s-%s-%s-%s-%s-%s.%s',
             $matches[1],
             $matches[2],
-            $recordSegment,           // This is the governing object ID (Location ID for maps)
+            $recordSegment,
             $matches[3],
             $matches[4],
             $matches[5],
