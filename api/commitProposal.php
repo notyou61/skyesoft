@@ -64,7 +64,7 @@ if (!$db) {
     exit;
 }
 
-$actorContactId = (int)($_SESSION['contactId'] ?? 0);
+$actorContactId = (int)($_SESSION['contactId'] ?? 1); // Default to Steve Skye (ID 1)
 
 if ($actorContactId <= 0) {
     echo json_encode([
