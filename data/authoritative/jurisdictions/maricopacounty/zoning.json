@@ -1,0 +1,186 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Maricopa County",
+    "slug": "maricopacounty",
+    "jurisdictionType": "County",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "Maricopa County Planning and Development Department",
+    "serviceType": "ARCGIS_MAP_SERVER_FEATURE_LAYER",
+    "serviceUrl": "https://gis.maricopa.gov/arcgis/rest/services/PND/PlanNet/MapServer",
+    "layerId": 11,
+    "layerName": "Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "JURIS = 'COUNTY'",
+    "outFields": [
+      "ZONE",
+      "APN",
+      "JURIS",
+      "EDIT_DATE"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZONE"
+    ],
+    "zoningDescription": [],
+    "parcelNumber": [
+      "APN"
+    ],
+    "sourceJurisdiction": [
+      "JURIS"
+    ],
+    "sourceLastEditedDate": [
+      "EDIT_DATE"
+    ],
+    "overlay": [],
+    "caseNumber": [],
+    "ordinanceNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "codedValueMappings": {
+    "ZONE": {
+      "RU-190": {
+        "zoningDescription": "Rural Zoning District - 190,000 Square Feet Per Primary Dwelling Unit"
+      },
+      "RU-70": {
+        "zoningDescription": "Rural Zoning District - 70,000 Square Feet Per Primary Dwelling Unit"
+      },
+      "RU-43": {
+        "zoningDescription": "Rural Zoning District - 43,560 Square Feet Per Primary Dwelling Unit"
+      },
+      "R1-35": {
+        "zoningDescription": "Single-Family Residential Zoning District - 35,000 Square Feet Per Primary Dwelling Unit"
+      },
+      "R1-18": {
+        "zoningDescription": "Single-Family Residential Zoning District - 18,000 Square Feet Per Primary Dwelling Unit"
+      },
+      "R1-10": {
+        "zoningDescription": "Single-Family Residential Zoning District - 10,000 Square Feet Per Primary Dwelling Unit"
+      },
+      "R1-8": {
+        "zoningDescription": "Single-Family Residential Zoning District - 8,000 Square Feet Per Primary Dwelling Unit"
+      },
+      "R1-7": {
+        "zoningDescription": "Single-Family Residential Zoning District - 7,000 Square Feet Per Primary Dwelling Unit"
+      },
+      "R1-6": {
+        "zoningDescription": "Single-Family Residential Zoning District - 6,000 Square Feet Per Primary Dwelling Unit"
+      },
+      "R-2": {
+        "zoningDescription": "Two-Family Residential Zoning District"
+      },
+      "R-3": {
+        "zoningDescription": "Multiple-Family Residential Zoning District"
+      },
+      "R-4": {
+        "zoningDescription": "Multiple-Family Residential Zoning District"
+      },
+      "R-5": {
+        "zoningDescription": "Multiple-Family Residential Zoning District"
+      },
+      "C-S": {
+        "zoningDescription": "Planned Shopping Center Zoning District"
+      },
+      "C-O": {
+        "zoningDescription": "Commercial Office Zoning District"
+      },
+      "C-1": {
+        "zoningDescription": "Neighborhood Commercial Zoning District"
+      },
+      "C-2": {
+        "zoningDescription": "Intermediate Commercial"
+      },
+      "C-3": {
+        "zoningDescription": "General Commercial Zoning District"
+      },
+      "IND-1": {
+        "zoningDescription": "Light Industrial Zoning District"
+      },
+      "IND-2": {
+        "zoningDescription": "General Industrial Zoning District"
+      },
+      "IND-3": {
+        "zoningDescription": "Heavy Industrial Zoning District"
+      },
+      "R1-6 RUPD": {
+        "zoningDescription": "Single-Family Residential Zoning District - 6,000 Square Feet Per Primary Dwelling Unit with Residential Unit Plan of Development"
+      }
+    }
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784432400,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "42739fd64efe411ea447ff3397fcbaaa",
+    "sourceWebMapItemId": "3b4b7f3315514849925a20dbd6b935a6",
+    "sourceApplicationItemId": "462c3def48394a0d9497b4bee7b51432",
+    "sourceOrganizationId": "ykpntM6e3tHvzKRJ",
+    "sourceRefreshCadence": "Every two weeks",
+    "sourceOrdinanceDate": "2025-12-10",
+    "testAddress": "3655 W Anthem Way, Anthem, AZ 85086",
+    "testCoordinate": {
+      "latitude": 33.8640196,
+      "longitude": -112.1388685,
+      "expectedZoningCode": "C-2",
+      "expectedZoningDescription": "Intermediate Commercial"
+    }
+  },
+  "notes": [
+    "This configuration resolves zoning administered by Maricopa County for land outside the corporate limits of a municipality by intersecting runtime coordinates with Layer 11 of the County's public PlanNet map service.",
+    "The official ArcGIS item describes the dataset as zoning for unincorporated Maricopa County, states that it reflects changes approved by the Maricopa County Board of Supervisors, and reports a two-week refresh cycle.",
+    "The query is restricted to JURIS = 'COUNTY'. A distinct-value inspection of the current layer returned COUNTY as its only jurisdiction value, providing an additional safeguard against using County zoning for incorporated parcels.",
+    "The official ArcGIS item still references Layer 21 from an earlier PlanNet service layout. The live service catalog currently exposes Zoning as Layer 11; the configured layer number, fields, and fixture were verified against the current service.",
+    "ZONE is the County-maintained base-zoning code. APN and EDIT_DATE are retained when populated, but they may be null on generalized zoning polygons; Skyesoft's parcel resolver remains the authoritative workflow for parcel identification.",
+    "The current source publishes RU-43, RU-70, and RU-190 while the County ordinance styles the corresponding districts as Rural-43, Rural-70, and Rural-190. Skyesoft preserves the source codes and normalizes only their descriptions.",
+    "Descriptions are normalized from the current Maricopa County Zoning Ordinance. Legacy or source-specific values AD-1, AD-2, AD-3, IND-2p, and IND-3p are intentionally left without inferred descriptions pending confirmation of their current legal labels.",
+    "The configured commercial fixture at 3655 W Anthem Way in unincorporated Anthem resolves to C-2, Intermediate Commercial.",
+    "The directory and jurisdiction label use maricopacounty and Maricopa County so resolveZoning() can consume the parcel jurisdiction directly; the source itself is limited to unincorporated County territory.",
+    "A resolved base-zoning result supports permit research but does not replace review of overlays, planned-area developments, plans of development, zoning cases, special-use permits, stipulations, military-airport compatibility constraints, floodplain requirements, or confirmation by the Maricopa County Planning and Development Department."
+  ]
+}
