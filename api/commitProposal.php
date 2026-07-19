@@ -260,7 +260,8 @@ $supportedCommitClasses = [
     'PC-1',
     'PC-2',
     'PC-3',
-    'PC-4'
+    'PC-4',
+    'PC-5'
 ];
 
 if (!in_array($pc, $supportedCommitClasses, true)) {
