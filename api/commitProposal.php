@@ -26,8 +26,13 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Force session data reload
+session_write_close();
+session_start();
+
 error_log('[COMMIT] session_id = ' . session_id());
 error_log('[COMMIT] SESSION = ' . json_encode($_SESSION));
+error_log('[COMMIT] contactId from session = ' . ($_SESSION['contactId'] ?? 'MISSING'));
 
 #endregion
 
