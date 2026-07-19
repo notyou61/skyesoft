@@ -5,9 +5,9 @@ declare(strict_types=1);
  * Skyesoft — processProposedContact.php
  * Main Orchestration + Proposal Report Generation
  * 
- * File Version:     1.6.6
- * Schema Version:   2.1.1
- * Last Updated:     2026-07-17
+ * File Version:     1.7.1
+ * Schema Version:   2.2.0
+ * Last Updated:     2026-07-19
  */
 
 #region SECTION 00 — Bootstrap & Request Initialization
@@ -50,7 +50,7 @@ $context = [
     'requestId'         => uniqid('ppc_', true),
     'startedAt'         => microtime(true),
     'activitySessionId' => '',
-    'version'           => '2.1.1'   // Schema/Protocol version
+    'version'           => '2.2.0'   // Schema/Protocol version
 ];
 
 // =====================================================
@@ -1746,71 +1746,127 @@ if ($pdo) {
 
 #endregion
 
-#region SECTION 13 — PCM Classification & Governance
+#region SECTION 13 — PCM Classification & Governance (Identity-First)
 
 $isExplicitLocationOnlyIntent = $isExplicitLocationOnlyIntent ?? false;
 
 // =====================================================
-// PASS 1 — PC Classification (Database-Driven)
+// IDENTITY-FIRST CLASSIFICATION (Email → Name → Location)
 // =====================================================
 
-$entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
-$locationStatus = $databaseResolution['location']['status'] ?? 'none';
-$contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
+$contactResolution = $databaseResolution['contact'] ?? [];
 
-// 🌟 NEW: Extracted from Section 11 to identify if an existing contact is migrating locations
-$isLocationTransfer = $databaseResolution['contact']['isLocationTransfer'] ?? false;
+// Ensure resolver returns full contact record for comparison
+$existingContactId = (int)($contactResolution['contactId'] ?? 0);
 
-error_log("[PPC][SECTION-12] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus | Transfer: " . ($isLocationTransfer ? 'YES' : 'NO'));
+$existingEmailNorm = strtolower(trim($contactResolution['contactEmailNormalized'] ?? ''));
+$submittedEmailNorm = strtolower(trim(
+    $data['contact']['contactEmailNormalized'] 
+    ?? $data['contact']['contactEmail'] 
+    ?? ''
+));
 
-if ($isExplicitLocationOnlyIntent === true) {
-    // Location-only proposals (explicitly requested by intake stream)
-    $pcm['pc'] = ($entityStatus === 'exact') ? 'PC-4' : 'PC-5';
-} else {
-    // 🌟 REMADE: Strict deterministic PCM classification matrix
-    if ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
-        // Passive Verification: Graph perfectly matches existing records
-        $pcm['pc'] = 'PC-0';
-        
-    } elseif ($entityStatus === 'exact' && $contactStatus === 'exact' && $isLocationTransfer === true) {
-        // ⏳ CONTACT SUCCESSION: Existing contact relocating to a brand new or alternate location asset
-        $pcm['pc'] = 'PC-6';
-        
-    } elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus !== 'exact') {
-        // Entity Expansion: Appending a brand new contact face to an existing operational facility
-        $pcm['pc'] = 'PC-3';
-        
-    } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus !== 'exact') {
-        // Entity Expansion: Appending both a brand new location and a new contact to a known entity
-        $pcm['pc'] = 'PC-2';
-        
-    } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus === 'exact') {
-        // Catch-all safety: If contact matches exactly but location is new, it MUST be a transfer (PC-6).
-        // Forcing fallback to PC-6 prevents accidental routing into the location-only (PC-4) track.
-        $pcm['pc'] = 'PC-6';
-        
+$normalizeName = static function (mixed $val): string {
+    return preg_replace('/[^a-z0-9]+/', '', strtolower(trim((string)$val))) ?? '';
+};
+
+$submittedFirst = $normalizeName($data['contact']['contactFirstName'] ?? '');
+$submittedLast  = $normalizeName($data['contact']['contactLastName'] ?? '');
+
+$existingFirst = $normalizeName($contactResolution['contactFirstName'] ?? '');
+$existingLast  = $normalizeName($contactResolution['contactLastName'] ?? '');
+
+// Hierarchical Identity
+$emailMatch = $submittedEmailNorm !== '' 
+    && $existingEmailNorm !== '' 
+    && hash_equals($existingEmailNorm, $submittedEmailNorm);
+
+$nameMatch = $submittedFirst !== '' 
+    && $submittedLast !== '' 
+    && $submittedFirst === $existingFirst 
+    && $submittedLast === $existingLast;
+
+$identityMatch = $emailMatch && $nameMatch;
+
+// Location Transfer Detection (geospatial-first)
+$isLocationTransfer = false;
+if ($identityMatch && $existingContactId > 0) {
+    $existingLoc = $contactResolution['location'] ?? $databaseResolution['location'] ?? [];
+
+    $submittedLoc = $data['location'] ?? [];
+
+    // Priority order
+    if (!empty($submittedLoc['locationPlaceId']) && !empty($existingLoc['locationPlaceId'])) {
+        $isLocationTransfer = $submittedLoc['locationPlaceId'] !== $existingLoc['locationPlaceId'];
+    } elseif (!empty($submittedLoc['parcelNumber']) && !empty($existingLoc['parcelNumber'])) {
+        $isLocationTransfer = $submittedLoc['parcelNumber'] !== $existingLoc['parcelNumber'];
+    } elseif (isset($submittedLoc['locationLatitude'], $submittedLoc['locationLongitude']) &&
+              isset($existingLoc['locationLatitude'], $existingLoc['locationLongitude'])) {
+        $latDiff = abs($submittedLoc['locationLatitude'] - $existingLoc['locationLatitude']);
+        $lngDiff = abs($submittedLoc['locationLongitude'] - $existingLoc['locationLongitude']);
+        $isLocationTransfer = $latDiff > 0.001 || $lngDiff > 0.001;
     } else {
-        // Complete Ingestion: Entirely new topology graph node
-        $pcm['pc'] = 'PC-1';
+        // Fallback
+        $isLocationTransfer = 
+            trim((string)($submittedLoc['locationAddress'] ?? '')) !== 
+            trim((string)($existingLoc['locationAddress'] ?? ''));
     }
 }
 
-// =====================================================
-// 🌟 DYNAMIC TEXT OVERRIDES FOR PC-6 LIFECYCLES
-// =====================================================
-if ($pcm['pc'] === 'PC-6') {
-    // 1. Correct the high-level description line
-    $fullName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
-    $entityName = $data['entity']['entityName'] ?? 'Existing Entity';
-    $narratives['contentLine'] = "Contact Succession Proposal for {$fullName} at {$entityName}";
-    
-    // 2. Overwrite the generic fallback UI text with explicit succession language
-    $successionNarrative = "The proposal will retire the existing contact record, create a replacement contact associated with the new location, and preserve historical relationships with prior operational records.";
-    $narratives['ui'] = $successionNarrative;
-    $narratives['decisions'] = [$successionNarrative];
-    
-    // 3. Clear out the contradictory "unresolved" warning since a new location is expected behavior
-    $narratives['review'] = []; 
+// Primary PCM Classification
+if ($identityMatch) {
+    if (!$isLocationTransfer) {
+        $pcm['pc'] = 'PC-0';
+        $pcm['rs'] = ['RS-0'];
+        $pcm['matchType'] = 'email+name+location';
+    } else {
+        $pcm['pc'] = 'PC-6';
+        $pcm['rs'] = ['RS-0'];
+        $pcm['matchType'] = 'email+name+new_location';
+        $pcm['isLocationTransfer'] = true;
+    }
+} elseif ($emailMatch && !$nameMatch) {
+    // Email hijack / identity conflict
+    $pcm['pc'] = null;
+    $pcm['rs'] = ['RS-5'];
+    $pcm['reason'] = 'contact_identity_conflict';
+    $pcm['matchType'] = 'email_mismatch_name';
+} else {
+    // Fallback to legacy status-based logic for other cases
+    $entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
+    $locationStatus = $databaseResolution['location']['status'] ?? 'none';
+    $contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
+
+    if ($isExplicitLocationOnlyIntent === true) {
+        $pcm['pc'] = ($entityStatus === 'exact') ? 'PC-4' : 'PC-5';
+    } else {
+        if ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
+            $pcm['pc'] = 'PC-0';
+        } elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus !== 'exact') {
+            $pcm['pc'] = 'PC-3';
+        } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus !== 'exact') {
+            $pcm['pc'] = 'PC-2';
+        } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus === 'exact') {
+            $pcm['pc'] = 'PC-6'; // Force PC-6 if contact matches but location differs
+        } else {
+            $pcm['pc'] = 'PC-1';
+        }
+    }
+    $pcm['matchType'] = $databaseResolution['contact']['matchType'] ?? 'name';
+}
+
+// Expose reasoning
+$pcm['identity'] = [
+    'emailMatch'       => $emailMatch,
+    'nameMatch'        => $nameMatch,
+    'locationTransfer' => $isLocationTransfer,
+    'existingContactId'=> $existingContactId,
+    'confidence'       => $identityMatch ? 95 : ($emailMatch ? 70 : 40)
+];
+
+// Ensure existingContactId is always populated for PC-6
+if ($pcm['pc'] === 'PC-6' && $existingContactId > 0) {
+    $pcm['existingContactId'] = $existingContactId;
 }
 
 // =====================================================
@@ -1819,25 +1875,22 @@ if ($pcm['pc'] === 'PC-6') {
 
 $governanceIssues = [];
 
-// 🌟 UPDATED: RS-5 Duplicate Contact Scoping
-// Strict Guardrail: Prevent RS-5 from triggering during an intentional PC-6 Contact Succession.
-// Only flags unintended duplicates trying to be re-inserted under standard creation pipelines (PC-2, PC-3).
-if ($contactStatus === 'exact' && in_array($pcm['pc'], ['PC-2', 'PC-3'])) {
+// RS-5 Duplicate Contact Scoping
+if ($emailMatch && !$nameMatch) {
     $governanceIssues[] = [
         'code' => 'RS-5', 
-        'message' => 'Duplicate contact detected',
-        // 🔥 Overrides standard UI text rows for action labels
+        'message' => 'Duplicate contact detected (identity mismatch)',
         'action_text' => 'Action: Contact is currently in the database' 
     ];
 }
 
-// RS-6 Multiple Parcels (Proposal-Centric Evaluation)
+// RS-6 Multiple Parcels
 $parcelDetails   = $data['location']['parcelDetails'] ?? [];
 $acceptedParcels = array_filter($parcelDetails, fn($parcel) => !empty($parcel['accepted']));
 $resolvedCount   = !empty($acceptedParcels) ? count($acceptedParcels) : count($parcelDetails);
 
 if (
-    $locationStatus !== 'exact' && 
+    $databaseResolution['location']['status'] !== 'exact' && 
     (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1) &&
     $resolvedCount !== 1
 ) {
@@ -2111,7 +2164,7 @@ if (!empty($rsList) && !in_array('RS-0', $rsList)) {
     foreach (['RS-3', 'RS-5', 'RS-6', 'RS-7', 'RS-8'] as $rsKey) {
         if (in_array($rsKey, $rsList) && isset($rsMatrix[$rsKey])) {
             $theme = $rsMatrix[$rsKey];
-            break; // ✅ FIXED: Correct keyword usage eliminates Intelephense diagnostics
+            break;
         }
     }
 }
@@ -2268,7 +2321,7 @@ if (isset($_SESSION['lastContactProposalActionId']) && $pdo) {
             'success'           => true,
             'status'            => 'proposed',
             'proposalId'        => $proposalId,
-            'proposalActionId'  => $actionId ?? $_SESSION['lastContactProposalActionId'] ?? null,   // ← Add this
+            'proposalActionId'  => $actionId ?? $_SESSION['lastContactProposalActionId'] ?? null,
             'proposalKind'      => $proposalType ?? 'contact',
             'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'),
             'data'              => $data ?? [],
@@ -2312,7 +2365,7 @@ echo json_encode([
     'success'           => true,
     'status'            => 'proposed',
     'proposalId'        => $proposalId,
-    'proposalActionId'  => $actionId ?? $_SESSION['lastContactProposalActionId'] ?? null,   // ← Add this
+    'proposalActionId'  => $actionId ?? $_SESSION['lastContactProposalActionId'] ?? null,
     'proposalKind'      => $proposalType ?? 'contact',
     'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'),
     'activitySessionId' => $context['activitySessionId'] ?? '',
