@@ -26,6 +26,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+error_log('[COMMIT] session_id = ' . session_id());
+error_log('[COMMIT] SESSION = ' . json_encode($_SESSION));
+
 #endregion
 
 #region SECTION 01 — Intake Data Processing
