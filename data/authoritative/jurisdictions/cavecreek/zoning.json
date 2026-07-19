@@ -1,0 +1,154 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Cave Creek",
+    "slug": "cavecreek",
+    "jurisdictionType": "Town",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "Town of Cave Creek Development Services Department via Maricopa Association of Governments",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services1.arcgis.com/MdyCMZnX1raZ7TS3/arcgis/rest/services/Zoning_February_2024/FeatureServer",
+    "layerId": 0,
+    "layerName": "Zoning_February_2024",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "ZONE_31804",
+      "APN",
+      "PG_APN",
+      "PCRZONE",
+      "Annex_No"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZONE_31804"
+    ],
+    "zoningDescription": [],
+    "parcelNumber": [
+      "APN",
+      "PG_APN"
+    ],
+    "priorCountyZoning": [
+      "PCRZONE"
+    ],
+    "annexationNumber": [
+      "Annex_No"
+    ],
+    "overlay": [],
+    "caseNumber": [],
+    "ordinanceNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "codedValueMappings": {
+    "ZONE_31804": {
+      "DR-190": {
+        "zoningDescription": "Desert Rural Residential - 190,000 Square Feet Per Dwelling Unit"
+      },
+      "DR-89": {
+        "zoningDescription": "Desert Rural Residential - 89,000 Square Feet Per Dwelling Unit"
+      },
+      "DR-70": {
+        "zoningDescription": "Desert Rural Residential - 70,000 Square Feet Per Dwelling Unit"
+      },
+      "DR-43": {
+        "zoningDescription": "Desert Rural Residential - 43,000 Square Feet Per Dwelling Unit"
+      },
+      "R-35": {
+        "zoningDescription": "Single Residence - 35,000 Square Feet Per Dwelling Unit"
+      },
+      "R-18": {
+        "zoningDescription": "Single Residence - 18,000 Square Feet Per Dwelling Unit"
+      },
+      "MR": {
+        "zoningDescription": "Multiple Residence"
+      },
+      "CB": {
+        "zoningDescription": "Commercial Buffer"
+      },
+      "TCC": {
+        "zoningDescription": "Town Core Commercial"
+      },
+      "GC": {
+        "zoningDescription": "General Commercial"
+      },
+      "OSC": {
+        "zoningDescription": "Open Space Conservation"
+      },
+      "OSR": {
+        "zoningDescription": "Open Space Recreation"
+      }
+    }
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784395200,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "fdccd3614553428680cd5e41843cf166",
+    "sourceWebMapItemId": "d852b205d4f44b84b17cae55948ad4a7",
+    "sourceApplicationItemId": "d3d24fe809704b5190b8efffbcb51252",
+    "sourceDataLastEditedDate": "2026-02-03",
+    "testAddress": "6245 E Cave Creek Rd, Cave Creek, AZ 85331",
+    "testCoordinate": {
+      "latitude": 33.831923,
+      "longitude": -111.9464482,
+      "expectedZoningCode": "TCC",
+      "expectedZoningDescription": "Town Core Commercial"
+    }
+  },
+  "notes": [
+    "This configuration resolves Town of Cave Creek zoning by intersecting runtime coordinates with Layer 0 of the public Cave Creek zoning feature service hosted in the Maricopa Association of Governments ArcGIS organization.",
+    "The Town of Cave Creek's official Ordinances and Guidelines page links directly to the Cave Creek Zoning and Land Use Map that consumes this layer.",
+    "The ArcGIS map and layer are owned by Eric Baker, who is identified by the Town as a planner in its Development Services Department.",
+    "ZONE_31804 is the zoning code displayed by the Town's public map. APN and PG_APN identify the associated parcel; PCRZONE retains prior county zoning when populated; Annex_No retains the annexation reference when populated.",
+    "The service title retains February 2024 in its name, but its ArcGIS metadata records a data edit on February 3, 2026.",
+    "The fixture at 6245 E Cave Creek Road resolves to APN 21110004A and TCC, Town Core Commercial.",
+    "District descriptions are normalized from the Town of Cave Creek Zoning Ordinance because the feature layer publishes district codes without a separate description field.",
+    "A resolved zoning result supports permit research but does not replace review of applicable ordinances, zoning amendments, site plans, specific-area plans, stipulations, overlays, or confirmation by the Town of Cave Creek."
+  ]
+}
