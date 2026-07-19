@@ -1,0 +1,227 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Litchfield Park",
+    "slug": "litchfieldpark",
+    "jurisdictionType": "City",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "City of Litchfield Park Planning & Zoning via AZGeo",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services6.arcgis.com/clPWQMwZfdWn4MQZ/arcgis/rest/services/LitchfieldPark_Zoning_03232026/FeatureServer",
+    "layerId": 0,
+    "layerName": "LitchfieldPark_Zoning",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "JURISDICTION = 'LITCHFIELD PARK'",
+    "outFields": [
+      "APN",
+      "APN_DASH",
+      "PHYSICAL_ADDRESS",
+      "JURISDICTION",
+      "GENERAL_PLAN_LAND_USE",
+      "ZONING",
+      "ORDINANCE__ZONING_",
+      "PLANNED_DEVELOPMENT",
+      "FRONT_SETBACK__CODE_",
+      "INTERIOR_SIDE_SETBACK__CODE_",
+      "TOTAL_SIDE_SETBACK__CODE_",
+      "STREETSIDE_SETBACK__CODE_",
+      "REAR_SETBACK__CODE_",
+      "SPECIAL_NOTES"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "ZONING"
+    ],
+    "zoningDescription": [],
+    "parcelNumber": [
+      "APN",
+      "APN_DASH"
+    ],
+    "siteAddress": [
+      "PHYSICAL_ADDRESS"
+    ],
+    "sourceJurisdiction": [
+      "JURISDICTION"
+    ],
+    "generalPlanLandUse": [
+      "GENERAL_PLAN_LAND_USE"
+    ],
+    "ordinanceNumber": [
+      "ORDINANCE__ZONING_"
+    ],
+    "plannedDevelopment": [
+      "PLANNED_DEVELOPMENT"
+    ],
+    "frontSetback": [
+      "FRONT_SETBACK__CODE_"
+    ],
+    "interiorSideSetback": [
+      "INTERIOR_SIDE_SETBACK__CODE_"
+    ],
+    "totalSideSetback": [
+      "TOTAL_SIDE_SETBACK__CODE_"
+    ],
+    "streetSideSetback": [
+      "STREETSIDE_SETBACK__CODE_"
+    ],
+    "rearSetback": [
+      "REAR_SETBACK__CODE_"
+    ],
+    "specialNotes": [
+      "SPECIAL_NOTES"
+    ],
+    "overlay": [],
+    "caseNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "codedValueMappings": {
+    "ZONING": {
+      "RE": {
+        "zoningDescription": "Residential Estate"
+      },
+      "R1": {
+        "zoningDescription": "Low Density Residential"
+      },
+      "R1-15": {
+        "zoningDescription": "Low-Medium Density Residential"
+      },
+      "R1-15 PD": {
+        "zoningDescription": "Low-Medium Density Residential Planned Development"
+      },
+      "R1-8": {
+        "zoningDescription": "Medium Density Residential"
+      },
+      "R1-8 PD": {
+        "zoningDescription": "Medium Density Residential Planned Development"
+      },
+      "R1-6 PD": {
+        "zoningDescription": "High-Medium Density Residential Planned Development"
+      },
+      "RC": {
+        "zoningDescription": "High Density Residential"
+      },
+      "RC PD": {
+        "zoningDescription": "High Density Residential Planned Development"
+      },
+      "MFL PD": {
+        "zoningDescription": "Low Density Multifamily Planned Development"
+      },
+      "MFH PD": {
+        "zoningDescription": "High Density Multifamily Planned Development"
+      },
+      "RT": {
+        "zoningDescription": "Resort"
+      },
+      "NC": {
+        "zoningDescription": "Neighborhood Commercial"
+      },
+      "NC PD": {
+        "zoningDescription": "Neighborhood Commercial Planned Development"
+      },
+      "CS": {
+        "zoningDescription": "Community Commercial"
+      },
+      "CTR": {
+        "zoningDescription": "City Center"
+      },
+      "I": {
+        "zoningDescription": "General Industrial"
+      },
+      "OS": {
+        "zoningDescription": "Open Space"
+      },
+      "OS PD": {
+        "zoningDescription": "Open Space Planned Development"
+      },
+      "PF": {
+        "zoningDescription": "Public Facility"
+      },
+      "PF PD": {
+        "zoningDescription": "Public Facility Planned Development"
+      },
+      "AT": {
+        "zoningDescription": "Agritourism"
+      },
+      "AT PD": {
+        "zoningDescription": "Agritourism Planned Development"
+      },
+      "CF": {
+        "zoningDescription": "Commercial-Flex"
+      }
+    }
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 95
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784429646,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "fc554550344348858a3d9e91c8b0a2e5",
+    "sourceWebMapItemId": "2bf23ab20b93452eb1cafcfe2f99e071",
+    "sourceApplicationItemId": "f3690f58aa6b4ff9a6f8a4a7ca39fe0c",
+    "sourceOrganizationId": "clPWQMwZfdWn4MQZ",
+    "sourceDataLastEditedDate": "2026-05-11",
+    "testAddress": "300 E Wigwam Blvd, Litchfield Park, AZ 85340",
+    "testCoordinate": {
+      "latitude": 33.4953846,
+      "longitude": -112.355225,
+      "expectedZoningCode": "RT",
+      "expectedZoningDescription": "Resort"
+    }
+  },
+  "notes": [
+    "This configuration resolves City of Litchfield Park zoning by intersecting runtime coordinates with Layer 0 of the current public LitchfieldPark_Zoning feature service.",
+    "The City of Litchfield Park's official Planning and Zoning page links to the public GIS application that consumes this zoning layer, which is hosted through AZGeo.",
+    "The query is restricted to JURISDICTION = 'LITCHFIELD PARK' because the source includes at least one parcel identified as outside a city or town.",
+    "ZONING is the City-maintained zoning code. APN, situs address, general-plan land use, zoning ordinance, planned-development status, code setbacks, and special notes are retained when populated because they are directly relevant to permit research.",
+    "Tax values, sale information, mailing addresses, and other assessor fields published by the layer are intentionally excluded from the query because they are not required for zoning or sign-permit review.",
+    "District descriptions are normalized from the City of Litchfield Park Zoning Code and official zoning materials.",
+    "The configured commercial fixture at The Wigwam, 300 E Wigwam Boulevard, resolves to APN 50164003B and RT, Resort.",
+    "A zoning code containing PD identifies a Planned Development district; its controlling ordinance, development agreement, stipulations, or approved plans may govern signs and other development standards.",
+    "A resolved zoning result supports permit research but does not replace review of applicable planned-development documents, zoning cases, ordinances, stipulations, overlays, Luke Air Force Base compatibility constraints, or confirmation by the City of Litchfield Park."
+  ]
+}
