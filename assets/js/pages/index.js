@@ -2286,7 +2286,7 @@ window.SkyIndex = {
                 btnStyle: 'background: #28a745; color: #fff; border: 1px solid #218838;',
                 btnText: '✔ Accept &amp; Save',
                 btnDisabled: false,
-                btnHandler: 'SkyIndex.acceptEditedProposal()'
+                btnHandler:"SkyIndex.handleProposalAction('accept')"
             },
             'PC-3': {
                 borderLeft: '#28a745',

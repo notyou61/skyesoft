@@ -183,36 +183,103 @@ error_log(
 
 #region SECTION 03 — Governance Validation Gates
 
-$commitPlan = $snapshot['commitPlan'] ?? $snapshot['persistence'] ?? [];
-$actions    = $commitPlan['actions'] ?? [];
-$payload    = $snapshot['data'] ?? [];
+$commitPlan = is_array(
+    $snapshot['commitPlan']
+    ?? $snapshot['persistence']
+    ?? null
+)
+    ? (
+        $snapshot['commitPlan']
+        ?? $snapshot['persistence']
+    )
+    : [];
 
-$pc        = $snapshot['pcm']['pc'] ?? null;
-$rsList    = $snapshot['pcm']['rs'] ?? [];
-$canCommit = (bool)($commitPlan['canCommit'] ?? false);
+$actions = is_array($commitPlan['actions'] ?? null)
+    ? array_values($commitPlan['actions'])
+    : [];
 
+$payload = is_array($snapshot['data'] ?? null)
+    ? $snapshot['data']
+    : [];
+
+$pc = trim((string)(
+    $snapshot['pcm']['pc']
+    ?? ''
+));
+
+$rsList = is_array($snapshot['pcm']['rs'] ?? null)
+    ? array_values($snapshot['pcm']['rs'])
+    : [];
+
+$canCommit = (
+    $commitPlan['canCommit']
+    ?? false
+) === true;
+
+// =====================================================
+// Commit Authorization
+// =====================================================
 if (!$canCommit) {
-    echo json_encode(['success' => false, 'error' => 'Proposal is not authorized for commitment']);
+    echo json_encode([
+        'success' => false,
+        'error' =>
+            'Proposal is not authorized for commitment.'
+    ]);
     exit;
 }
 
+// =====================================================
+// No-Action Proposal Class
+// =====================================================
 if ($pc === 'PC-0') {
-    echo json_encode(['success' => false, 'error' => 'PC-0 requires no database commitment']);
+    echo json_encode([
+        'success' => false,
+        'error' =>
+            'PC-0 represents an existing ELC relationship ' .
+            'and requires no database commitment.'
+    ]);
     exit;
 }
 
+// =====================================================
+// Governance Status
+// =====================================================
 if ($rsList !== ['RS-0']) {
-    echo json_encode(['success' => false, 'error' => 'Proposal contains unresolved governance conditions']);
+    echo json_encode([
+        'success' => false,
+        'error' =>
+            'Proposal contains unresolved governance conditions.'
+    ]);
     exit;
 }
 
-if ($pc !== 'PC-1') {   // Expand in future phases
-    echo json_encode(['success' => false, 'error' => "Commit engine currently supports PC-1 only (received: {$pc})"]);
+// =====================================================
+// Supported Commit Classes
+// =====================================================
+$supportedCommitClasses = [
+    'PC-1',
+    'PC-2'
+];
+
+if (!in_array($pc, $supportedCommitClasses, true)) {
+    echo json_encode([
+        'success' => false,
+        'error' =>
+            'Commit engine does not currently support ' .
+            "proposal class {$pc}."
+    ]);
     exit;
 }
 
+// =====================================================
+// Operational Commit Plan
+// =====================================================
 if (empty($actions)) {
-    echo json_encode(['success' => false, 'error' => 'No operational commit actions designated']);
+    echo json_encode([
+        'success' => false,
+        'error' =>
+            'No operational commit actions were designated.'
+    ]);
     exit;
 }
 
