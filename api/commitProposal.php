@@ -639,9 +639,23 @@ function insertLocation(
     }
 
     // =====================================================
-    // Populate Parcel Details with Assessor Data
+    // Populate Parcel Details with Assessor and Zoning Data
     // =====================================================
-    if (!empty($acceptedParcel['parcelNumber'])) {
+    $parcelRecord = is_array($acceptedParcel['parcelRecord'] ?? null)
+        ? $acceptedParcel['parcelRecord']
+        : [];
+
+    $parcelZoning = is_array($acceptedParcel['zoning'] ?? null)
+        ? $acceptedParcel['zoning']
+        : [];
+
+    $apnRaw = trim((string)(
+        $parcelRecord['apnRaw']
+        ?? $acceptedParcel['parcelNumber']
+        ?? ''
+    ));
+
+    if ($apnRaw !== '') {
         $stmt = $db->prepare("
             INSERT INTO tblLocationParcelDetails (
                 locationId,
@@ -650,32 +664,49 @@ function insertLocation(
                 subdivision,
                 lotSize,
                 yearBuilt,
-                puc,
-                mcrNumber,
                 zoningCode,
                 zoningDescription,
                 zoningSource,
+                zoningVerifiedAt,
                 source,
                 confidence,
                 createdAt,
                 updatedAt
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                UNIX_TIMESTAMP(),
+                NULL
+            )
         ");
 
         $stmt->execute([
             $locationId,
-            $acceptedParcel['parcelNumber'],
-            $acceptedParcel['ownerName'] ?? 'N/A',
-            $acceptedParcel['subdivision'] ?? 'N/A',
-            $acceptedParcel['lotSizeSqFt'] ?? null,
-            $acceptedParcel['constructionYear'] ?? null,
-            $acceptedParcel['puc'] ?? null,
-            $acceptedParcel['mcrNumber'] ?? null,
-            $acceptedParcel['zoningCode'] ?? null,           // NULL = not yet resolved
-            $acceptedParcel['zoningDescription'] ?? null,    // NULL = not yet resolved
-            'maricopa_assessor',
-            'parcel_resolution',
-            95
+            $apnRaw,
+            $parcelRecord['ownerName']
+                ?? $acceptedParcel['ownerName']
+                ?? null,
+            $parcelRecord['subdivision'] ?? null,
+            $parcelRecord['lotSize'] ?? null,
+            $parcelRecord['yearBuilt'] ?? null,
+            $parcelRecord['zoningCode']
+                ?? $parcelZoning['zoningCode']
+                ?? null,
+            $parcelRecord['zoningDescription']
+                ?? $parcelZoning['zoningDescription']
+                ?? null,
+            $parcelRecord['zoningSource']
+                ?? $parcelZoning['zoningSource']
+                ?? null,
+            $parcelRecord['zoningVerifiedAt']
+                ?? $parcelZoning['zoningVerifiedAt']
+                ?? null,
+            $parcelRecord['source']
+                ?? 'maricopa_assessor',
+            (int)(
+                $parcelRecord['confidence']
+                ?? $parcelZoning['confidence']
+                ?? 95
+            )
         ]);
     }
 
