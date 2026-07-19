@@ -638,74 +638,75 @@ function evaluateDuplicate(array $parsed, PDO $pdo): array
         'contactFirstName' => '',
         'contactLastName' => '',
         'contactEmailNormalized' => '',
-        'location' => []  // for transfer detection
+        'location' => []
     ];
 
     $email = strtolower(trim($parsed['contact']['email'] ?? ''));
     $firstName = trim($parsed['contact']['firstName'] ?? '');
     $lastName = trim($parsed['contact']['lastName'] ?? '');
 
-    if ($email === '') {
-        return $result; // No email = no strong match
+    if ($email === '' && ($firstName === '' || $lastName === '')) {
+        return $result;
     }
 
-    // Primary lookup: Email (strongest identity anchor)
+    // Strong lookup: Email + Name
     $stmt = $pdo->prepare("
         SELECT 
-            contactId,
-            contactEntityId AS entityId,
-            contactLocationId AS locationId,
-            contactFirstName,
-            contactLastName,
-            contactEmailNormalized,
-            isActive
-        FROM tblContacts 
-        WHERE contactEmailNormalized = ?
+            c.contactId,
+            c.contactEntityId AS entityId,
+            c.contactLocationId AS locationId,
+            c.contactFirstName,
+            c.contactLastName,
+            c.contactEmailNormalized,
+            c.isActive,
+            l.locationId,
+            l.locationAddress,
+            l.locationCity,
+            l.locationState
+        FROM tblContacts c
+        LEFT JOIN tblLocations l ON c.contactLocationId = l.locationId
+        WHERE (c.contactEmailNormalized = ? OR c.contactEmailNormalized = '')
+          AND c.contactFirstName = ?
+          AND c.contactLastName = ?
         LIMIT 1
     ");
 
-    $stmt->execute([$email]);
+    $stmt->execute([$email, $firstName, $lastName]);
     $contact = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($contact) {
-        $result['status'] = 'possible'; // or 'exact' if you want stricter
+        $result['status'] = 'exact';
         $result['contactId'] = (int)$contact['contactId'];
         $result['entityId'] = (int)$contact['entityId'];
         $result['locationId'] = (int)$contact['locationId'];
-        $result['matchType'] = 'email';
-        $result['confidence'] = 90;
+        $result['matchType'] = $email !== '' ? 'email' : 'name';
+        $result['confidence'] = 95;
 
-        // Always return full identity
         $result['contactFirstName'] = trim($contact['contactFirstName'] ?? '');
         $result['contactLastName'] = trim($contact['contactLastName'] ?? '');
         $result['contactEmailNormalized'] = trim($contact['contactEmailNormalized'] ?? '');
 
-        // Attach linked location for transfer detection
         if ($result['locationId'] > 0) {
-            $locStmt = $pdo->prepare("SELECT * FROM tblLocations WHERE locationId = ? LIMIT 1");
-            $locStmt->execute([$result['locationId']]);
-            $result['location'] = $locStmt->fetch(PDO::FETCH_ASSOC) ?? [];
+            $result['location'] = [
+                'locationId' => $contact['locationId'],
+                'locationAddress' => $contact['locationAddress'] ?? '',
+                'locationCity' => $contact['locationCity'] ?? '',
+                'locationState' => $contact['locationState'] ?? ''
+            ];
         }
 
         return $result;
     }
 
-    // Fallback: Name-only match (lower confidence)
+    // Fallback: Name-only
     if ($firstName !== '' && $lastName !== '') {
         $stmt = $pdo->prepare("
-            SELECT 
-                contactId,
-                contactEntityId AS entityId,
-                contactLocationId AS locationId,
-                contactFirstName,
-                contactLastName,
-                contactEmailNormalized
+            SELECT contactId, contactEntityId AS entityId, contactLocationId AS locationId,
+                   contactFirstName, contactLastName, contactEmailNormalized
             FROM tblContacts 
-            WHERE contactFirstName = ? 
-              AND contactLastName = ?
+            WHERE contactFirstName = ? AND contactLastName = ?
             LIMIT 1
         ");
-
         $stmt->execute([$firstName, $lastName]);
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -715,7 +716,7 @@ function evaluateDuplicate(array $parsed, PDO $pdo): array
             $result['entityId'] = (int)$contact['entityId'];
             $result['locationId'] = (int)$contact['locationId'];
             $result['matchType'] = 'name';
-            $result['confidence'] = 60;
+            $result['confidence'] = 70;
 
             $result['contactFirstName'] = trim($contact['contactFirstName'] ?? '');
             $result['contactLastName'] = trim($contact['contactLastName'] ?? '');
