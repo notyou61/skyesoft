@@ -475,8 +475,15 @@ function queryArcGisZoningSource(
         $curlErrno = curl_errno($ch);
         curl_close($ch);
 
-        $attemptTimeMs = (int)round((microtime(true) - $attemptStarted) * 1000);
-        $attemptLogs[] = "Attempt $attempt/$maxAttempts: HTTP $httpCode, cURL errno $curlErrno, ${attemptTimeMs}ms";
+        $attemptTimeMs = (int)round(
+            (microtime(true) - $attemptStarted) * 1000
+        );
+
+        $attemptLogs[] =
+            "Attempt {$attempt}/{$maxAttempts}: " .
+            "HTTP {$httpCode}, " .
+            "cURL errno {$curlErrno}, " .
+            "{$attemptTimeMs}ms";
 
         $lastResponse = [
             'response'   => $response,
