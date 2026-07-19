@@ -259,7 +259,8 @@ if ($rsList !== ['RS-0']) {
 $supportedCommitClasses = [
     'PC-1',
     'PC-2',
-    'PC-3'
+    'PC-3',
+    'PC-4'
 ];
 
 if (!in_array($pc, $supportedCommitClasses, true)) {
