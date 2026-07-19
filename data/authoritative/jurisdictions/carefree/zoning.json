@@ -1,0 +1,137 @@
+{
+  "schema": {
+    "name": "SKYESOFT_JURISDICTION_ZONING_SOURCE",
+    "version": "1.0.0"
+  },
+  "jurisdiction": {
+    "label": "Carefree",
+    "slug": "carefree",
+    "jurisdictionType": "Town",
+    "county": "Maricopa",
+    "state": "AZ",
+    "country": "US"
+  },
+  "service": {
+    "status": "configured",
+    "provider": "Town of Carefree Planning and Zoning Division via AZGeo",
+    "serviceType": "ARCGIS_FEATURE_SERVER_LAYER",
+    "serviceUrl": "https://services6.arcgis.com/clPWQMwZfdWn4MQZ/arcgis/rest/services/TOC_Zoning/FeatureServer",
+    "layerId": 104,
+    "layerName": "Zoning_lyr - 10-10 Edits Made - Single Shapes",
+    "publicAccess": true,
+    "authenticationRequired": false,
+    "authoritative": true
+  },
+  "query": {
+    "method": "POINT_INTERSECTION",
+    "geometryType": "esriGeometryPoint",
+    "inputSpatialReference": 4326,
+    "spatialRelationship": "esriSpatialRelIntersects",
+    "where": "1=1",
+    "outFields": [
+      "Zoning",
+      "LandUse"
+    ],
+    "returnGeometry": false,
+    "resultRecordCount": 10,
+    "responseFormat": "json",
+    "timeoutSeconds": 8
+  },
+  "fieldMapping": {
+    "zoningCode": [
+      "Zoning"
+    ],
+    "zoningDescription": [],
+    "landUse": [
+      "LandUse"
+    ],
+    "overlay": [],
+    "caseNumber": [],
+    "ordinanceNumber": [],
+    "historic": [],
+    "transitOrientedDevelopment": []
+  },
+  "codedValueMappings": {
+    "Zoning": {
+      "C": {
+        "zoningDescription": "Commercial Zoning District"
+      },
+      "GO": {
+        "zoningDescription": "Garden Office Zoning District"
+      },
+      "L (Resort)": {
+        "zoningDescription": "Lodging"
+      },
+      "R-3": {
+        "zoningDescription": "Multiple-Family Residential Zoning District"
+      },
+      "R1-10": {
+        "zoningDescription": "Single-Family Residential Zoning District - 10,000 Square Feet Per Single-Family Dwelling"
+      },
+      "R1-18": {
+        "zoningDescription": "Single-Family Residential Zoning District - 18,000 Square Feet Per Single-Family Dwelling"
+      },
+      "R1-35": {
+        "zoningDescription": "Single-Family Residential Zoning District - 35,000 Square Feet Per Single-Family Dwelling"
+      },
+      "Rural-43": {
+        "zoningDescription": "Rural Zoning District - One Acre Per Single-Family Dwelling"
+      },
+      "Rural-70": {
+        "zoningDescription": "Rural Zoning District - 70,000 Square Feet Per Single-Family Dwelling"
+      },
+      "Rural-190": {
+        "zoningDescription": "Rural Zoning District - 190,000 Square Feet Per Single-Family Dwelling"
+      }
+    }
+  },
+  "normalization": {
+    "trimValues": true,
+    "collapseWhitespace": true,
+    "uppercaseZoningCode": true,
+    "emptyValuesAreNull": true,
+    "emptyValueTokens": [
+      "",
+      " "
+    ]
+  },
+  "validation": {
+    "availabilityRequired": false,
+    "httpFailureIsViolation": false,
+    "requiresReviewWhenUnavailable": true,
+    "requiresReviewWhenNoResult": true,
+    "requiresReviewWhenMultipleResults": true,
+    "successfulResultConfidence": 90
+  },
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+  "metadata": {
+    "verifiedAt": 1784394000,
+    "verifiedDate": "2026-07-18",
+    "verifiedBy": "Skyesoft",
+    "sourceItemId": "f43d43196f3a4e20bab06162f287070f",
+    "sourceDatasetCreatedDate": "2022-08-22",
+    "testAddress": "8 E Sundial Cir, Carefree, AZ 85377",
+    "testCoordinate": {
+      "latitude": 33.8247087,
+      "longitude": -111.9213765,
+      "expectedZoningCode": "C",
+      "expectedZoningDescription": "Commercial Zoning District"
+    }
+  },
+  "notes": [
+    "This configuration resolves Town of Carefree zoning by intersecting runtime coordinates with Layer 104 of the public TOC Zoning feature service hosted by Arizona's AZGeo organization.",
+    "The ArcGIS item identifies the dataset as Town of Carefree Zoning Data; AZGeo is the service host rather than the Town's own web domain.",
+    "Zoning is the published district code. LandUse is populated only for certain mapped non-zoning features and must not replace Zoning as the base zoning code.",
+    "The Town Hall fixture resolves to C; the Town's current zoning ordinance identifies C as the Commercial Zoning District.",
+    "District descriptions are normalized from Section 4.01 of the Town of Carefree zoning ordinance because the feature layer publishes zoning codes but not district descriptions.",
+    "The service metadata records its last data edit on August 22, 2022. Resolved results should therefore be checked against the Town's current zoning map and any later rezoning actions before permit reliance.",
+    "The source layer also contains airport, golf, private-street, sundial, and tract polygons with blank zoning codes; those features do not constitute a resolved base-zoning result.",
+    "RUPD appears in the source data but is not defined as a standard district in the current Section 4.01 district list, so no description is inferred for it.",
+    "A resolved zoning result supports permit research but does not replace review of applicable ordinances, zoning cases, development plans, stipulations, overlays, or confirmation by the Town of Carefree."
+  ]
+}
