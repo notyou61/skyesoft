@@ -3067,14 +3067,25 @@ window.SkyIndex = {
             const result = await res.json();
 
             if (result.success === true) {
-                // Transform proposal card to accepted state
-                this.transformProposalToAcceptedCard(result);
+                const resolvedProposal = prop;
 
-                // Clear proposal state
+                this.transformProposalToResolutionCard(
+                    result,
+                    'committed',
+                    resolvedProposal
+                );
+
                 this.currentProposal = null;
 
             } else {
-                this.appendSystemLine(`❌ Commit failed: ${result.error || 'Unknown error'}`, 'error');
+                this.appendSystemLine(
+                    `❌ Commit failed: ${
+                        result.error ||
+                        result.message ||
+                        'Unknown error'
+                    }`,
+                    'error'
+                );
             }
 
         } catch (err) {
