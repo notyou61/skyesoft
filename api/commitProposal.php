@@ -1117,29 +1117,48 @@ function insertLocation(
 }
 
 function insertContact(
-    PDO $db, 
-    array $contactData, 
-    array $narrativeData, 
-    int $entityId, 
+    PDO $db,
+    array $contactData,
+    array $narrativeData,
+    int $entityId,
     int $locationId,
     int $proposalActionId
 ): int
 {
-    $email = trim((string)($contactData['contactEmail'] ?? ''));
+    // -------------------------------------------------
+    // Canonical Identity
+    // -------------------------------------------------
+    $email = trim((string)(
+        $contactData['contactEmail'] ?? ''
+    ));
 
-    $contentLine = trim((string)(
-        $narrativeData['contentLine'] 
+    $emailNormalized = trim((string)(
+        $contactData['contactEmailNormalized']
         ?? ''
     ));
 
-    $contactNote = 
-        "Skyesoft Record Provenance\n\n" .
-        "Originating Proposal Action : #" . $proposalActionId;
-
-    if ($contentLine !== '') {
-        $contactNote .= "\n\nSummary:\n" . $contentLine;
+    if ($emailNormalized === '' && $email !== '') {
+        $emailNormalized = strtolower($email);
     }
 
+    // -------------------------------------------------
+    // Provenance
+    // -------------------------------------------------
+    $contentLine = trim((string)(
+        $narrativeData['contentLine'] ?? ''
+    ));
+
+    $contactNote =
+        "Skyesoft Record Provenance\n\n" .
+        "Originating Proposal Action : #{$proposalActionId}";
+
+    if ($contentLine !== '') {
+        $contactNote .= "\n\nSummary:\n{$contentLine}";
+    }
+
+    // -------------------------------------------------
+    // Insert
+    // -------------------------------------------------
     $stmt = $db->prepare("
         INSERT INTO tblContacts (
             contactEntityId,
@@ -1157,7 +1176,14 @@ function insertContact(
             contactDate,
             contactCreatedAt,
             contactUpdatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            1,
+            UNIX_TIMESTAMP(),
+            UNIX_TIMESTAMP(),
+            UNIX_TIMESTAMP()
+        )
     ");
 
     $stmt->execute([
@@ -1169,8 +1195,8 @@ function insertContact(
         $contactData['contactTitle'] ?? null,
         $contactData['contactPrimaryPhone'] ?? null,
         $contactData['contactPrimaryPhoneRaw'] ?? null,
-        $email,
-        $email ? strtolower($email) : null,
+        $email !== '' ? $email : null,
+        $emailNormalized !== '' ? $emailNormalized : null,
         $contactNote
     ]);
 
