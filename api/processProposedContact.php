@@ -1953,19 +1953,19 @@ switch ($pc) {
 
     case 'PC-3':
         $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact', 'link_elc'];  // Added link_elc
+        $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact', 'link_elc'];
         $commitPlan['summary'] = 'Link existing Entity + Location, Insert new Contact';
         break;
 
     case 'PC-4':  // Existing Entity + New Location (no contact)
         $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['link_entity', 'insert_location', 'link_elc'];  // Added link_elc
+        $commitPlan['actions'] = ['link_entity', 'insert_location'];  // No link_elc
         $commitPlan['summary'] = 'Link existing Entity, Insert new Location only';
         break;
 
     case 'PC-5':  // New Entity + New Location (no contact)
         $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['insert_entity', 'insert_location', 'link_elc'];
+        $commitPlan['actions'] = ['insert_entity', 'insert_location'];  // No link_elc
         $commitPlan['summary'] = 'Insert new Entity + new Location (no contact)';
         break;
 
