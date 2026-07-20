@@ -349,7 +349,7 @@ error_log("[PPC] Fallback Parser → Name: '{$fallbackFirstName} {$fallbackLastN
 
 $proposalType = $proposalType ?? 'contact';
 
-error_log("[PPC][SECTION-02.5] Proposal Type detected: {$proposalType}");
+error_log("[PPC][SECTION-03] Proposal Type detected: {$proposalType}");
 
 $parsed = [
     'entity'   => ['name' => ''],
@@ -754,18 +754,10 @@ $data['location'] = [
     'locationNameSource'     => $parsed['location']['locationNameSource'] ?? 'location_parser',
 
     'locationAddress'    => $parsed['location']['address'] ?? '',
+    'locationAddressRaw' => $parsed['location']['address'] ?? '',
     'locationCity'       => $parsed['location']['city'] ?? '',
     'locationState'      => $parsed['location']['state'] ?? '',
     'locationZip'        => $parsed['location']['zip'] ?? '',
-    'locationAddressRaw' => trim(
-        ($parsed['location']['address'] ?? '') .
-        ', ' .
-        ($parsed['location']['city'] ?? '') .
-        ', ' .
-        ($parsed['location']['state'] ?? '') .
-        ' ' .
-        ($parsed['location']['zip'] ?? '')
-    ),
 
     'locationPlaceId'   => null,
     'locationLatitude'  => null,
