@@ -1784,7 +1784,6 @@ $entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
 $locationStatus = $databaseResolution['location']['status'] ?? 'none';
 $contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
 
-// 🌟 NEW: Extracted from Section 11 to identify if an existing contact is migrating locations
 $isLocationTransfer = $databaseResolution['contact']['isLocationTransfer'] ?? false;
 
 error_log("[PPC][SECTION-12] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus | Transfer: " . ($isLocationTransfer ? 'YES' : 'NO'));
@@ -1795,47 +1794,36 @@ if ($isExplicitLocationOnlyIntent === true) {
 } else {
     // 🌟 REMADE: Strict deterministic PCM classification matrix
     if ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
-        // Passive Verification: Graph perfectly matches existing records
         $pcm['pc'] = 'PC-0';
         
     } elseif ($entityStatus === 'exact' && $contactStatus === 'exact' && $isLocationTransfer === true) {
-        // ⏳ CONTACT SUCCESSION: Existing contact relocating to a brand new or alternate location asset
         $pcm['pc'] = 'PC-6';
         
     } elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus !== 'exact') {
-        // Entity Expansion: Appending a brand new contact face to an existing operational facility
         $pcm['pc'] = 'PC-3';
         
     } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus !== 'exact') {
-        // Entity Expansion: Appending both a brand new location and a new contact to a known entity
         $pcm['pc'] = 'PC-2';
         
     } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus === 'exact') {
-        // Catch-all safety: If contact matches exactly but location is new, it MUST be a transfer (PC-6).
-        // Forcing fallback to PC-6 prevents accidental routing into the location-only (PC-4) track.
-        $pcm['pc'] = 'PC-6';
-        
+        $pcm['pc'] = 'PC-6';  // Contact moving to new location
     } else {
-        // Complete Ingestion: Entirely new topology graph node
         $pcm['pc'] = 'PC-1';
     }
 }
 
 // =====================================================
-// 🌟 DYNAMIC TEXT OVERRIDES FOR PC-6 LIFECYCLES
+// DYNAMIC TEXT OVERRIDES FOR PC-6 LIFECYCLES
 // =====================================================
 if ($pcm['pc'] === 'PC-6') {
-    // 1. Correct the high-level description line
-    $fullName = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
+    $fullName   = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
     $entityName = $data['entity']['entityName'] ?? 'Existing Entity';
+    
     $narratives['contentLine'] = "Contact Succession Proposal for {$fullName} at {$entityName}";
     
-    // 2. Overwrite the generic fallback UI text with explicit succession language
     $successionNarrative = "The proposal will retire the existing contact record, create a replacement contact associated with the new location, and preserve historical relationships with prior operational records.";
     $narratives['ui'] = $successionNarrative;
     $narratives['decisions'] = [$successionNarrative];
-    
-    // 3. Clear out the contradictory "unresolved" warning since a new location is expected behavior
     $narratives['review'] = []; 
 }
 
@@ -1845,19 +1833,16 @@ if ($pcm['pc'] === 'PC-6') {
 
 $governanceIssues = [];
 
-// 🌟 UPDATED: RS-5 Duplicate Contact Scoping
-// Strict Guardrail: Prevent RS-5 from triggering during an intentional PC-6 Contact Succession.
-// Only flags unintended duplicates trying to be re-inserted under standard creation pipelines (PC-2, PC-3).
+// RS-5 Duplicate Contact (only block non-succession cases)
 if ($contactStatus === 'exact' && in_array($pcm['pc'], ['PC-2', 'PC-3'])) {
     $governanceIssues[] = [
         'code' => 'RS-5', 
         'message' => 'Duplicate contact detected',
-        // 🔥 Overrides standard UI text rows for action labels
         'action_text' => 'Action: Contact is currently in the database' 
     ];
 }
 
-// RS-6 Multiple Parcels (Proposal-Centric Evaluation)
+// RS-6 Multiple Parcels
 $parcelDetails   = $data['location']['parcelDetails'] ?? [];
 $acceptedParcels = array_filter($parcelDetails, fn($parcel) => !empty($parcel['accepted']));
 $resolvedCount   = !empty($acceptedParcels) ? count($acceptedParcels) : count($parcelDetails);
@@ -1905,7 +1890,6 @@ $blocksCommit = !empty(array_intersect($pcm['rs'], $blockingCodes));
 
 $governance = ['blockingIssues' => $governanceIssues];
 
-// Attach a canonical reason and resolution action layout text directly onto governance parent
 if (in_array('RS-5', $pcm['rs'])) {
     $governance['resolution_status'] = 'RS-5';
     $governance['reason'] = 'Duplicate Contact Detected';
@@ -1918,13 +1902,11 @@ $pcm = [
     'rs' => $pcm['rs']
 ];
 
-// 🌟 UNPACK FOR DOWNSTREAM MATRIX AND UI STATE PIPELINE
 $pc     = $pcm['pc'];
 $rsList = $pcm['rs'];
 
 error_log('[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] . ' | RS=[' . implode(', ', $pcm['rs']) . '] | Blocks=' . ($blocksCommit ? 'YES' : 'NO'));
 
-// Generates a 6-digit numeric sequence (e.g., using microseconds part or a random pad)
 $proposalId = str_pad((string)mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
 
 #endregion
