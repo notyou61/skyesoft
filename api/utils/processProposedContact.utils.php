@@ -1288,7 +1288,7 @@ function evaluateEntityDuplicate(array $parsed, PDO &$pdo): array
             try {
                 // Safely reuse your global dbConnect.php connection routine to self-heal
                 if (function_exists('getPDO')) {
-                    $pdo = getPDO();
+                    $pdo = getPDO(true);
                 } else {
                     // Fallback if dbConnect factory isn't in scope
                     $dbHost = getenv('DB_HOST') ?: 'localhost';
