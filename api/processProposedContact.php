@@ -75,20 +75,17 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     $displaySubject = '';
     $lat = $lon = null;
     $cachedSessionId = '';
+    $snapshotData = [];
+    $targetedSnapshotPath = '';
 
     // 📍 SNAPSHOT RECOVERY — Authoritative for proposal lifecycle
     $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
     if (!empty($targetProposalId) && is_dir($snapshotDir)) {
         $targetedSnapshotPath = $snapshotDir . "/{$targetProposalId}.json";
         if (is_file($targetedSnapshotPath)) {
-            $snapshotRaw = file_get_contents($targetedSnapshotPath);
+            $snapshotRaw = @file_get_contents($targetedSnapshotPath);
             if ($snapshotRaw) {
                 $snapshotData = json_decode($snapshotRaw, true) ?? [];
-
-                $lat = $snapshotData['data']['location']['locationLatitude']
-                    ?? $snapshotData['location']['latitude'] ?? null;
-                $lon = $snapshotData['data']['location']['locationLongitude']
-                    ?? $snapshotData['location']['longitude'] ?? null;
 
                 $cachedSessionId = trim(
                     $snapshotData['activitySessionId']
@@ -99,6 +96,32 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
             }
         }
     }
+
+    // ── Multi-Tiered Latitude & Longitude Resolution ──
+    // Tier 1: Proposal snapshot (authoritative)
+    // Tier 2: UI payload fallback
+    $lat = $snapshotData['data']['location']['locationLatitude']
+        ?? $snapshotData['location']['latitude']
+        ?? $inputData['data']['location']['locationLatitude']
+        ?? $inputData['location']['locationLatitude']
+        ?? $inputData['location']['latitude']
+        ?? null;
+
+    $lon = $snapshotData['data']['location']['locationLongitude']
+        ?? $snapshotData['location']['longitude']
+        ?? $inputData['data']['location']['locationLongitude']
+        ?? $inputData['location']['locationLongitude']
+        ?? $inputData['location']['longitude']
+        ?? null;
+
+    error_log(sprintf(
+        '[PPC][DECLINE-GEO] Proposal #%s | Snapshot=%s | Lat=%s | Lon=%s | Payload=%s',
+        $targetProposalId,
+        !empty($snapshotData) ? 'YES' : 'NO',
+        var_export($lat, true),
+        var_export($lon, true),
+        json_encode($inputData['data']['location'] ?? $inputData['location'] ?? [])
+    ));
 
     // ── Session ID Resolution (Proposal Snapshot first) ──
     $nativeSessionId = session_id();
@@ -145,10 +168,9 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
 
     // 1. Purge Proposal Snapshot(s)
     if (is_dir($snapshotDir)) {
-        if (!empty($targetProposalId)) {
-            $targetedPath = $snapshotDir . "/{$targetProposalId}.json";
-            if (is_file($targetedPath)) {
-                @unlink($targetedPath);
+        if (!empty($targetProposalId) && !empty($targetedSnapshotPath)) {
+            if (is_file($targetedSnapshotPath)) {
+                @unlink($targetedSnapshotPath);
                 $purgedSnapshots++;
             }
         }
