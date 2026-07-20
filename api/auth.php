@@ -166,12 +166,23 @@ if ($input['action'] === 'logout') {
     }
 
     $contactId = isset($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : null;
+    $username  = $_SESSION['username'] ?? null;
 
     // ⚡ FIX: Use logAuthAction() instead of logAction() to trigger the intercept loop
     logAuthAction($pdo, 'auth.logout', $contactId, [
         'actionOrigin' => $input['actionOrigin'] ?? 'ui_logout',
         'latitude'     => $_SESSION['lastLatitude'] ?? null,
-        'longitude'    => $_SESSION['lastLongitude'] ?? null
+        'longitude'    => $_SESSION['lastLongitude'] ?? null,
+
+        // Structured data matching login
+        'actionPayloadData' => [
+            'actionOrigin' => $input['actionOrigin'] ?? 'ui_logout',
+            'contactId'    => $contactId
+        ],
+        'actionResponseData' => [
+            'status'   => 'success',
+            'username' => $username
+        ]
     ]);
 
     // Destroy session
