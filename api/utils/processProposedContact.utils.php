@@ -1320,8 +1320,17 @@ function evaluateEntityDuplicate(array $parsed, PDO &$pdo): array
     // -------------------------------------------------
     // RAW VALUES
     // -------------------------------------------------
-    $entityName = trim($parsed['entity']['name'] ?? '');
-    $email      = strtolower(trim($parsed['contact']['email'] ?? ''));
+    $entityName = trim(
+        $parsed['entity']['entityName']
+        ?? $parsed['entity']['name']
+        ?? ''
+    );
+
+    $email = strtolower(trim(
+        $parsed['contact']['contactEmail']
+        ?? $parsed['contact']['email']
+        ?? ''
+    ));
 
     if (empty($entityName)) {
         return [
