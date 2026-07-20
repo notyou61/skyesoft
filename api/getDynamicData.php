@@ -22,7 +22,7 @@ $auth = $SKYE_CONTEXT['auth'] ?? ['authenticated' => false];
 $contactId = (int)($auth['contactId'] ?? 0);
 $isAuthenticated = $auth['authenticated'] ?? false;
 
-$idleTimeoutSeconds = 900; // 900 seconds (15 minutes), adjust as needed
+$idleTimeoutSeconds = 10; // 900 seconds (15 minutes), adjust as needed
 
 $idle = [
     "state" => "anonymous",
