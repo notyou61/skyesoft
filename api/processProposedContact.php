@@ -345,9 +345,9 @@ error_log("[PPC] Fallback Parser → Name: '{$fallbackFirstName} {$fallbackLastN
 
 #endregion
 
-#region SECTION 03 — Proposal Parser Dispatch (Architectural Branch Point)
+#region SECTION 03 — Proposal Parser Dispatch (Improved PC-4 Detection)
 
-$proposalType = $proposalType ?? 'contact';   // Set in Section 00
+$proposalType = $proposalType ?? 'contact';
 
 error_log("[PPC][SECTION-02.5] Proposal Type detected: {$proposalType}");
 
@@ -364,16 +364,42 @@ $parsed = [
 ];
 
 // =====================================================
+// IMPROVED LOCATION-ONLY INTENT DETECTION
+// =====================================================
+$isExplicitLocationOnlyIntent = ($proposalType === 'location');
+
+if (!$isExplicitLocationOnlyIntent) {
+    // Heuristic: If the input has multiple "name-like" lines but no phone/email, treat as location
+    $nameCount = 0;
+    $hasContactInfo = false;
+
+    foreach ($lines as $line) {
+        if (preg_match('/\b(?:Mr|Ms|Dr|Director|Manager|Coordinator|President|CEO)\b/i', $line)) {
+            $hasContactInfo = true;
+        }
+        if (preg_match('/^([A-Z][a-zA-Z0-9&\'-]+(?:\s+[A-Z][a-zA-Z0-9&\'-]+){1,3})$/', trim($line))) {
+            $nameCount++;
+        }
+        if (preg_match('/@|(\d{3}[-.\s]?\d{3}[-.\s]?\d{4})/', $line)) {
+            $hasContactInfo = true;
+        }
+    }
+
+    if ($nameCount >= 2 && !$hasContactInfo) {
+        error_log('[PPC][SECTION-03] → Multiple names + no contact info → forcing location-only mode');
+        $isExplicitLocationOnlyIntent = true;
+    }
+}
+
+// =====================================================
 // DISPATCH TO APPROPRIATE PARSER
 // =====================================================
-if ($proposalType === 'location') {
-    // New clean path for location-only proposals
+if ($isExplicitLocationOnlyIntent) {
     $parsed = parseLocationProposal($lines, $inputData['inputData'] ?? [], $rawInputOriginal);
-    error_log('[PPC][SECTION-02.5] → Location Parser dispatched');
+    error_log('[PPC][SECTION-03] → Location Parser dispatched (PC-4/PC-5)');
 } else {
-    // Legacy contact path — full AI extraction (unchanged behavior for PC-0..PC-3)
     $parsed = parseContactProposal($rawInput);
-    error_log('[PPC][SECTION-02.5] → Contact Parser dispatched (legacy AI path)');
+    error_log('[PPC][SECTION-03] → Contact Parser dispatched (legacy AI path)');
 }
 
 #endregion
