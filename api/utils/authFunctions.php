@@ -140,10 +140,8 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
         };
 
         // --- Prompt + response
-        $prompt = $actionKey;
-        $response = !empty($meta)
-            ? json_encode($meta, JSON_UNESCAPED_SLASHES)
-            : null;
+        $prompt   = $actionKey;
+        $response = $meta['response'] ?? ($actionKey === 'auth.logout' ? 'logout_success' : 'login_success');
 
         // --- Call NEW system
         logAction($pdo, [
