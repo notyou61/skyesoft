@@ -3205,8 +3205,7 @@ window.SkyIndex = {
 
             narrative =
                 instructions.narrative ||
-                `The ${pc} proposal for ${contactName} at ` +
-                `${entityName} was declined. ` +
+                `The contact proposal for ${contactName} at ${entityName} was declined. ` +
                 'No proposed database changes were applied.';
 
             colors = {
