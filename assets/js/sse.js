@@ -2,10 +2,6 @@
    SSE Engine → Push JSON Updates to Global App Handler
 */
 
-/* Skyesoft — sse.js
-   SSE Engine → Push JSON Updates to Global App Handler
-*/
-
 // Window SkySSE
 window.SkySSE = {
 
@@ -50,32 +46,14 @@ window.SkySSE = {
 
                     const payload = JSON.parse(event.data);
 
-                    // 🔥 STORE LAST PAYLOAD (Safe initialization)
+                    // 🔥 STORE LAST PAYLOAD
                     window.SkyeApp = window.SkyeApp || {};
-                    window.SkyIndex = window.SkyIndex || {};
                     window.SkyIndex.lastSSE = payload;
 
-                    // 🔒 AUTHORITATIVE COMMAND: Priority Force Logout
-                    if (payload.forceLogout === true) {
-                        console.warn('[SkySSE] forceLogout signal received');
-
-                        window.SkyState = window.SkyState || {};
-                        window.SkyState.authenticated = false;
-
-                        // Stop stream immediately to prevent reconnect loops
-                        this.stop();
-
-                        if (typeof window.SkyeApp.handleLogout === 'function') {
-                            window.SkyeApp.handleLogout('idle_timeout');
-                        }
-
-                        return;
-                    }
-
-                    // 📦 SINGLE HANDLE SSE CALL
+                    // Existing logic
                     window.SkyeApp?.handleSSE?.(payload);
 
-                    // 🔐 Auth transition detection (Unchanged logic for standard state shifts)
+                    // 🔐 Auth transition detection
                     if (payload.auth !== undefined) {
 
                         const isAuthenticated = payload.auth.authenticated === true;
@@ -113,6 +91,8 @@ window.SkySSE = {
                         }
                     }
 
+                    window.SkyeApp?.handleSSE?.(payload);
+
                 } catch (err) {
                     console.warn('[SkySSE] parse error', err);
                 }
@@ -130,15 +110,24 @@ window.SkySSE = {
     // 🔁 Restart stream (safe restart)
     restart: function () {
 
+        //console.log('[SkySSE] restarting stream');
+
+        // Cancel any pending restart
         if (this.restartTimer) {
             clearTimeout(this.restartTimer);
             this.restartTimer = null;
         }
 
+        // Small delay ensures session cookie commit
         this.restartTimer = setTimeout(() => {
+
+            //
             this.restartTimer = null;
+            //
             console.log('[SkySSE] restart timer fired');
+            //
             this.start();
+
         }, 800);
     },
 
