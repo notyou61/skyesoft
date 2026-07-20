@@ -147,14 +147,16 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
 
         // --- Call NEW system
         logAction($pdo, [
-            'actionName' => $actionName,
-            'contactId'  => $contactId,
-            'intent'     => $intent,
-            'prompt'     => $prompt,
-            'response'   => $response,
-            'confidence' => 1.0,
-            'lat'        => $meta['latitude']  ?? null,
-            'lng'        => $meta['longitude'] ?? null
+            'actionName'         => $actionName,
+            'contactId'          => $contactId,
+            'intent'             => $intent,
+            'prompt'             => $prompt,
+            'response'           => $response,
+            'confidence'         => 1.0,
+            'lat'                => $meta['latitude']  ?? null,
+            'lng'                => $meta['longitude'] ?? null,
+            'actionPayloadData'  => $meta['actionPayloadData']  ?? null,
+            'actionResponseData' => $meta['actionResponseData'] ?? null
         ]);
 
     } catch (Throwable $e) {
