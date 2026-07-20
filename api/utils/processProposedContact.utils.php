@@ -625,112 +625,305 @@ function fallbackExtractName(array $parsed, string $rawInput): array {
     return $parsed;
 }
 
-// 🔍 evaluateDuplicate — DB-backed contact duplicate detection
-function evaluateDuplicate(array $parsed, PDO $pdo): array
+/**
+ * Canonical Contact Identity Resolver
+ *
+ * Resolves whether a proposed contact record maps to an existing, possible, or new contact identity.
+ * Identities are evaluated against Entity + Location + Name (first and last).
+ *
+ * Responsibilities:
+ * - Safely resolves Entity/Location context (pipeline agnostic)
+ * - Evaluates identity hierarchy (Canonical -> PlaceId -> Scoped Name)
+ * - Generates structured field differences (email, phone, title)
+ * - Exposes record lifecycle state flags (isActive, contactIsNotValid)
+ *
+ * Identity Policy:
+ * Identity is defined by (Entity + Person), independent of active/valid status.
+ * Inactive or invalid records are matched as exact identity hits and passed to
+ * governance to determine operational outcomes (e.g., reactivation or operator review).
+ *
+ * @param array $parsed  Parsed contact proposal payload
+ * @param PDO   $pdo     Active database connection
+ * @return array         Structured identity resolution payload
+ */
+function evaluateContactIdentity(array $parsed, PDO $pdo): array
 {
+    // Prevent recursion loops if downstream evaluation functions call evaluateContactIdentity
+    static $inEvalGuard = false;
+
     $result = [
-        'status' => 'none',
-        'contactId' => null,
-        'entityId' => null,
-        'locationId' => null,
-        'matchType' => 'none',
-        'confidence' => 0,
-        'contactFirstName' => '',
-        'contactLastName' => '',
+        'status'                 => 'none',
+        'contactId'              => null,
+        'entityId'               => null,
+        'locationId'             => null,
+        'matchType'              => 'none',
+        'confidence'             => 0,
+        'contactFirstName'       => '',
+        'contactLastName'        => '',
         'contactEmailNormalized' => '',
-        'location' => []
+        'isActive'               => true,
+        'contactIsNotValid'      => false,
+        'location'               => [],
+        'differences'            => []
     ];
 
-    $email = strtolower(trim($parsed['contact']['email'] ?? ''));
-    $firstName = trim($parsed['contact']['firstName'] ?? '');
-    $lastName = trim($parsed['contact']['lastName'] ?? '');
+    $email     = mb_strtolower(trim($parsed['contact']['email'] ?? ''));
+    $phone     = trim($parsed['contact']['primaryPhoneRaw'] ?? $parsed['contact']['primaryPhone'] ?? '');
+    $title     = trim($parsed['contact']['title'] ?? '');
+    $firstName = mb_strtolower(trim($parsed['contact']['firstName'] ?? ''));
+    $lastName  = mb_strtolower(trim($parsed['contact']['lastName'] ?? ''));
 
-    if ($email === '' && ($firstName === '' || $lastName === '')) {
+    if ($firstName === '' || $lastName === '') {
         return $result;
     }
 
-    // Strong lookup: Email + Name
-    $stmt = $pdo->prepare("
-        SELECT 
-            c.contactId,
-            c.contactEntityId AS entityId,
-            c.contactLocationId AS locationId,
-            c.contactFirstName,
-            c.contactLastName,
-            c.contactEmailNormalized,
-            c.isActive,
-            l.locationId,
-            l.locationAddress,
-            l.locationCity,
-            l.locationState
-        FROM tblContacts c
-        LEFT JOIN tblLocations l ON c.contactLocationId = l.locationId
-        WHERE (c.contactEmailNormalized = ? OR c.contactEmailNormalized = '')
-          AND c.contactFirstName = ?
-          AND c.contactLastName = ?
-        LIMIT 1
-    ");
+    // ─────────────────────────────────────────────────────────────────
+    // 1. SAFELY RESOLVE ENTITY ID & LOCATION ID (Pipeline Agnostic)
+    // ─────────────────────────────────────────────────────────────────
+    $entityId = $parsed['entity']['entityId'] 
+        ?? $parsed['databaseResolution']['entity']['entityId'] 
+        ?? null;
 
-    $stmt->execute([$email, $firstName, $lastName]);
-    $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+    $locationId = $parsed['location']['locationId'] 
+        ?? $parsed['databaseResolution']['location']['locationId'] 
+        ?? null;
 
-    if ($contact) {
-        $result['status'] = 'exact';
-        $result['contactId'] = (int)$contact['contactId'];
-        $result['entityId'] = (int)$contact['entityId'];
-        $result['locationId'] = (int)$contact['locationId'];
-        $result['matchType'] = $email !== '' ? 'email' : 'name';
-        $result['confidence'] = 95;
+    if (!$inEvalGuard) {
+        $inEvalGuard = true;
+        try {
+            // On-the-fly Entity Resolution if called early in pipeline
+            if (!$entityId && function_exists('evaluateEntityDuplicate')) {
+                $entityEval = evaluateEntityDuplicate($parsed, $pdo);
+                if (($entityEval['status'] ?? '') === 'exact') {
+                    $entityId = $entityEval['entityId'];
+                }
+            }
 
-        $result['contactFirstName'] = trim($contact['contactFirstName'] ?? '');
-        $result['contactLastName'] = trim($contact['contactLastName'] ?? '');
-        $result['contactEmailNormalized'] = trim($contact['contactEmailNormalized'] ?? '');
+            // On-the-fly Location Resolution if called early in pipeline
+            if (!$locationId && function_exists('evaluateLocationDuplicate')) {
+                $locEval = evaluateLocationDuplicate($parsed, $pdo);
+                if (($locEval['status'] ?? '') === 'exact') {
+                    $locationId = $locEval['locationId'];
+                }
+            }
+        } finally {
+            $inEvalGuard = false;
+        }
+    }
 
-        if ($result['locationId'] > 0) {
-            $result['location'] = [
-                'locationId' => $contact['locationId'],
+    $entityId   = $entityId ? (int)$entityId : null;
+    $locationId = $locationId ? (int)$locationId : null;
+
+    // Helper closure to assemble location array
+    $buildLocationPayload = function(array $contact): array {
+        if (!empty($contact['locationId']) && (int)$contact['locationId'] > 0) {
+            return [
+                'locationId'      => (int)$contact['locationId'],
                 'locationAddress' => $contact['locationAddress'] ?? '',
-                'locationCity' => $contact['locationCity'] ?? '',
-                'locationState' => $contact['locationState'] ?? ''
+                'locationCity'    => $contact['locationCity'] ?? '',
+                'locationState'   => $contact['locationState'] ?? ''
+            ];
+        }
+        return [];
+    };
+
+    // Helper closure to calculate rich field differences against tblContacts schema
+    $calculateDifferences = function(array $contact) use ($email, $phone, $title): array {
+        $differences = [];
+
+        $dbEmail = mb_strtolower(trim($contact['contactEmailNormalized'] ?? $contact['contactEmail'] ?? ''));
+        $dbPhone = preg_replace('/\D/', '', $contact['contactPrimaryPhoneRaw'] ?? $contact['contactPrimaryPhone'] ?? '');
+        $dbTitle = trim($contact['contactTitle'] ?? '');
+
+        $propPhone = preg_replace('/\D/', '', $phone);
+
+        if ($email !== '' && $dbEmail !== '' && $dbEmail !== $email) {
+            $differences['email'] = [
+                'database' => $dbEmail,
+                'proposal' => $email
             ];
         }
 
-        return $result;
-    }
+        if ($propPhone !== '' && $dbPhone !== '' && $dbPhone !== $propPhone) {
+            $differences['phone'] = [
+                'database' => $contact['contactPrimaryPhone'] ?? '',
+                'proposal' => $phone
+            ];
+        }
 
-    // Fallback: Name-only
-    if ($firstName !== '' && $lastName !== '') {
+        if ($title !== '' && $dbTitle !== '' && strcasecmp($dbTitle, $title) !== 0) {
+            $differences['title'] = [
+                'database' => $dbTitle,
+                'proposal' => $title
+            ];
+        }
+
+        return $differences;
+    };
+
+    // ─────────────────────────────────────────────────────────────────
+    // STEP 1: CANONICAL IDENTITY LOOKUP (Entity + Location + First + Last)
+    // ─────────────────────────────────────────────────────────────────
+    if ($entityId && $locationId) {
         $stmt = $pdo->prepare("
-            SELECT contactId, contactEntityId AS entityId, contactLocationId AS locationId,
-                   contactFirstName, contactLastName, contactEmailNormalized
-            FROM tblContacts 
-            WHERE contactFirstName = ? AND contactLastName = ?
+            SELECT 
+                c.contactId,
+                c.contactEntityId AS entityId,
+                c.contactLocationId AS locationId,
+                c.contactFirstName,
+                c.contactLastName,
+                c.contactEmailNormalized,
+                c.contactEmail,
+                c.contactPrimaryPhone,
+                c.contactPrimaryPhoneRaw,
+                c.contactTitle,
+                c.contactSalutation,
+                c.isActive,
+                c.contactIsNotValid,
+                l.locationAddress,
+                l.locationCity,
+                l.locationState
+            FROM tblContacts c
+            LEFT JOIN tblLocations l ON c.contactLocationId = l.locationId
+            WHERE c.contactEntityId = ?
+              AND c.contactLocationId = ?
+              AND c.contactFirstName = ?
+              AND c.contactLastName = ?
             LIMIT 1
         ");
-        $stmt->execute([$firstName, $lastName]);
+
+        $stmt->execute([$entityId, $locationId, $firstName, $lastName]);
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($contact) {
-            $result['status'] = 'possible';
-            $result['contactId'] = (int)$contact['contactId'];
-            $result['entityId'] = (int)$contact['entityId'];
-            $result['locationId'] = (int)$contact['locationId'];
-            $result['matchType'] = 'name';
-            $result['confidence'] = 70;
-
-            $result['contactFirstName'] = trim($contact['contactFirstName'] ?? '');
-            $result['contactLastName'] = trim($contact['contactLastName'] ?? '');
+            $result['status']                 = 'exact';
+            $result['contactId']              = (int)$contact['contactId'];
+            $result['entityId']               = (int)$contact['entityId'];
+            $result['locationId']             = (int)$contact['locationId'];
+            $result['matchType']              = 'canonical_identity';
+            $result['confidence']             = 98;
+            $result['contactFirstName']       = trim($contact['contactFirstName'] ?? '');
+            $result['contactLastName']        = trim($contact['contactLastName'] ?? '');
             $result['contactEmailNormalized'] = trim($contact['contactEmailNormalized'] ?? '');
+            $result['isActive']               = (bool)($contact['isActive'] ?? true);
+            $result['contactIsNotValid']      = (bool)($contact['contactIsNotValid'] ?? false);
+            $result['location']               = $buildLocationPayload($contact);
+            $result['differences']            = $calculateDifferences($contact);
 
-            if ($result['locationId'] > 0) {
-                $locStmt = $pdo->prepare("SELECT * FROM tblLocations WHERE locationId = ? LIMIT 1");
-                $locStmt->execute([$result['locationId']]);
-                $result['location'] = $locStmt->fetch(PDO::FETCH_ASSOC) ?? [];
-            }
+            return $result;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // STEP 2: PLACEID / ADDRESS MATCH LOOKUP (Entity + PlaceId + First + Last)
+    // ─────────────────────────────────────────────────────────────────
+    $placeId = trim($parsed['location']['locationPlaceId'] ?? $parsed['location']['placeId'] ?? '');
+
+    if ($entityId && !$locationId && !empty($placeId)) {
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.contactId,
+                c.contactEntityId AS entityId,
+                c.contactLocationId AS locationId,
+                c.contactFirstName,
+                c.contactLastName,
+                c.contactEmailNormalized,
+                c.contactEmail,
+                c.contactPrimaryPhone,
+                c.contactPrimaryPhoneRaw,
+                c.contactTitle,
+                c.isActive,
+                c.contactIsNotValid,
+                l.locationAddress,
+                l.locationCity,
+                l.locationState
+            FROM tblContacts c
+            INNER JOIN tblLocations l ON c.contactLocationId = l.locationId
+            WHERE c.contactEntityId = ?
+              AND l.locationPlaceId = ?
+              AND c.contactFirstName = ?
+              AND c.contactLastName = ?
+            LIMIT 1
+        ");
+
+        $stmt->execute([$entityId, $placeId, $firstName, $lastName]);
+        $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($contact) {
+            $result['status']                 = 'exact';
+            $result['contactId']              = (int)$contact['contactId'];
+            $result['entityId']               = (int)$contact['entityId'];
+            $result['locationId']             = (int)$contact['locationId'];
+            $result['matchType']              = 'entity_placeid_identity';
+            $result['confidence']             = 95;
+            $result['contactFirstName']       = trim($contact['contactFirstName'] ?? '');
+            $result['contactLastName']        = trim($contact['contactLastName'] ?? '');
+            $result['contactEmailNormalized'] = trim($contact['contactEmailNormalized'] ?? '');
+            $result['isActive']               = (bool)($contact['isActive'] ?? true);
+            $result['contactIsNotValid']      = (bool)($contact['contactIsNotValid'] ?? false);
+            $result['location']               = $buildLocationPayload($contact);
+            $result['differences']            = $calculateDifferences($contact);
+
+            return $result;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // STEP 3: SCOPED FALLBACK (Entity + First + Last)
+    // ─────────────────────────────────────────────────────────────────
+    if ($entityId) {
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.contactId, 
+                c.contactEntityId AS entityId, 
+                c.contactLocationId AS locationId,
+                c.contactFirstName, 
+                c.contactLastName, 
+                c.contactEmailNormalized,
+                c.contactEmail,
+                c.contactPrimaryPhone,
+                c.contactPrimaryPhoneRaw,
+                c.contactTitle,
+                c.isActive,
+                c.contactIsNotValid,
+                l.locationAddress,
+                l.locationCity,
+                l.locationState
+            FROM tblContacts c
+            LEFT JOIN tblLocations l ON c.contactLocationId = l.locationId
+            WHERE c.contactEntityId = ?
+              AND c.contactFirstName = ?
+              AND c.contactLastName = ?
+            LIMIT 1
+        ");
+
+        $stmt->execute([$entityId, $firstName, $lastName]);
+        $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($contact) {
+            $result['status']                 = 'possible';
+            $result['contactId']              = (int)$contact['contactId'];
+            $result['entityId']               = (int)$contact['entityId'];
+            $result['locationId']             = (int)($contact['locationId'] ?? 0);
+            $result['matchType']              = 'entity_scoped_name';
+            $result['confidence']             = 80;
+            $result['contactFirstName']       = trim($contact['contactFirstName'] ?? '');
+            $result['contactLastName']        = trim($contact['contactLastName'] ?? '');
+            $result['contactEmailNormalized'] = trim($contact['contactEmailNormalized'] ?? '');
+            $result['isActive']               = (bool)($contact['isActive'] ?? true);
+            $result['contactIsNotValid']      = (bool)($contact['contactIsNotValid'] ?? false);
+            $result['location']               = $buildLocationPayload($contact);
+            $result['differences']            = $calculateDifferences($contact);
         }
     }
 
     return $result;
+}
+
+// Backward-compatibility wrapper for legacy call sites
+function evaluateDuplicate(array $parsed, PDO $pdo): array
+{
+    return evaluateContactIdentity($parsed, $pdo);
 }
 
 // 🧼 normalizeLocationName — standardize for comparison
