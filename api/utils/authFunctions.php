@@ -202,16 +202,23 @@ function getContactName(mixed $contactId): array {
 // 🔐 getLastAuthAction() — Fetch last auth action for a user (login/logout)
 function getLastAuthAction(PDO $pdo, int $contactId): ?string
 {
-    $stmt = $pdo->prepare("
-        SELECT promptText
-        FROM tblActions
-        WHERE contactId = :contactId
-        AND promptText IN ('auth.login','auth.logout')
-        ORDER BY actionUnix DESC
-        LIMIT 1
-    ");
+    try {
+        $stmt = $pdo->prepare("
+            SELECT prompt
+            FROM tblActions
+            WHERE contactId = :contactId
+              AND prompt IN ('auth.login', 'auth.logout')
+            ORDER BY actionUnix DESC, actionId DESC
+            LIMIT 1
+        ");
 
-    $stmt->execute(['contactId' => $contactId]);
+        $stmt->execute([':contactId' => $contactId]);
+        $result = $stmt->fetchColumn();
 
-    return $stmt->fetchColumn() ?: null;
+        return $result !== false ? (string)$result : null;
+
+    } catch (Throwable $e) {
+        error_log('[getLastAuthAction ERROR] ' . $e->getMessage());
+        return null;
+    }
 }
