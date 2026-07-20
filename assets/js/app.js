@@ -199,25 +199,32 @@ window.SkyeApp.handleSSE = function (payload) {
     // ─────────────────────────────────────────
     if (payload?.forceLogout === true) {
 
-        console.log('[SSE] forceLogout received → UI-only logout');
+        console.log('[SSE] forceLogout received → Terminating session & stream');
 
-        // 🔥 ALWAYS enforce logout state (no conditions)
+        // 1. ⛔ CRITICAL — Kill the SSE stream immediately to stop the loop
+        if (window.SkySSE && typeof window.SkySSE.stop === 'function') {
+            window.SkySSE.stop();
+        }
+
+        // 2. 🔥 Enforce local state reset
         page.authState = false;
         page.authUser  = null;
         page.authRole  = null;
         page.idleState = null;
 
-        // 🔥 CRITICAL — kill command UI
+        // 3. 🔥 Kill command surface UI
         page.commandSurfaceActive = false;
-
         document.body.removeAttribute('data-auth');
 
-        // 🔥 ALWAYS force UI transition
+        // 4. 🔥 Force UI transition
         page.renderLoginCard?.();
         page.renderFooterStatus?.call(page);
 
-        // 🔒 mark handled AFTER UI reset
+        // 5. 🔒 Mark handled
         page._logoutHandled = true;
+
+        // 6. 🌐 HARD EXIT — Redirect to ensure clean state (or call logout API)
+        window.location.href = '/login.php?reason=idle_timeout';
 
         return;
     }
