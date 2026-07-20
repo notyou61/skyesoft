@@ -37,7 +37,7 @@ $initialSession = [
 ];
 
 $contactIdForLog = $initialSession['contactId'] ?? null;
-$sessionIdForLog = $initialSession['sessionId'] ?? null;
+$sessionIdForLog = $activitySessionId;
 
 error_log('[SSE BOOT] ' . json_encode($initialSession));
 
