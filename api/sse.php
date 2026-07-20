@@ -304,7 +304,7 @@ while (true) {
         }
 
         // ─────────────────────────────────────────
-        // 🔒 IDLE LOGOUT (Signal Only — NO Mutation)
+        // 🔒 IDLE LOGOUT — Persist, Audit, Signal
         // ─────────────────────────────────────────
         $forceLogout = false;
 
@@ -312,11 +312,34 @@ while (true) {
             $idle['state'] === 'expired' &&
             $lastActivity !== null &&
             $wasAuthenticated &&
-            $contactIdForLog &&
+            $contactIdForLog !== null &&
             !$idleLogoutProcessed
         ) {
+            error_log(
+                '[IDLE] Threshold reached for contactId=' .
+                $contactIdForLog
+            );
+
+            // Prevent repeat processing in this SSE request immediately.
+            $idleLogoutProcessed = true;
+
+            // Reopen the session so the logout state is persisted.
+            if (session_status() !== PHP_SESSION_ACTIVE) {
+                session_start();
+            }
+
+            // Capture session values before closing
+            $latitude  = $_SESSION['latitude']  ?? null;
+            $longitude = $_SESSION['longitude'] ?? null;
 
             $_SESSION['idleLogoutComplete'] = true;
+            $_SESSION['authenticated']      = false;
+            $_SESSION['contactId']          = null;
+            $_SESSION['username']           = null;
+            $_SESSION['role']               = null;
+
+            // Save changes and release session lock
+            session_write_close();
 
             $auth = [
                 'authenticated' => false,
@@ -329,26 +352,61 @@ while (true) {
 
             $idle = null;
 
-            $latitude  = $_SESSION['latitude']  ?? null;
-            $longitude = $_SESSION['longitude'] ?? null;
-
             if ($pdo instanceof PDO) {
                 try {
-                    $lastAction = getLastAuthAction($pdo, $contactIdForLog);
+                    $lastAction = getLastAuthAction(
+                        $pdo,
+                        $contactIdForLog
+                    );
 
-                    if ($lastAction !== 'auth.logout') {
-                        logAuthAction($pdo, "auth.logout", $contactIdForLog, [
-                            "actionOrigin" => "idle_timeout",
-                            "ip"           => safeIp(),
-                            "ua"           => safeUserAgent(),
-                            "latitude"     => $latitude,
-                            "longitude"    => $longitude,
-                            "sessionId"    => $sessionIdForLog
-                        ]);
+                    error_log(
+                        '[IDLE] Last auth action=' .
+                        var_export($lastAction, true)
+                    );
+
+                    $alreadyLoggedOut = in_array(
+                        $lastAction,
+                        ['auth.logout', 'auth.session.logout'],
+                        true
+                    );
+
+                    if (!$alreadyLoggedOut) {
+                        error_log(
+                            '[IDLE] Logging idle logout for contactId=' .
+                            $contactIdForLog
+                        );
+
+                        $auditResult = logAuthAction(
+                            $pdo,
+                            'auth.logout',
+                            $contactIdForLog,
+                            [
+                                'actionOrigin' => 'idle_timeout',
+                                'ip'           => safeIp(),
+                                'ua'           => safeUserAgent(),
+                                'latitude'     => $latitude,
+                                'longitude'    => $longitude,
+                                'sessionId'    => $sessionIdForLog
+                            ]
+                        );
+
+                        error_log(
+                            '[IDLE] Logout audit insert result=' .
+                            var_export($auditResult, true)
+                        );
+                    } else {
+                        error_log(
+                            '[IDLE] Logout audit skipped; already logged'
+                        );
                     }
                 } catch (Throwable $e) {
-                    error_log('[SSE IDLE LOGOUT ERROR] ' . $e->getMessage());
+                    error_log(
+                        '[SSE IDLE LOGOUT ERROR] ' .
+                        $e->getMessage()
+                    );
                 }
+            } else {
+                error_log('[IDLE] Logout audit skipped: PDO unavailable');
             }
 
             $forceLogout = true;

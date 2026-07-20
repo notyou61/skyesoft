@@ -111,7 +111,7 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
 // 📜 AUTH ACTION LOGGER
 // ─────────────────────────────────────────
 // 🔐 logAuthAction() — Adapter to new action system
-function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
+function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): bool
 {
     // 🧹 CRITICAL FIX: Intercept logout instantly at entry point.
     // This executes before any session modifications or database writes drop context.
@@ -157,8 +157,11 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
             'actionResponseData' => $meta['actionResponseData'] ?? null
         ]);
 
+        return true;
+
     } catch (Throwable $e) {
         error_log('[logAuthAction ERROR] ' . $e->getMessage());
+        return false;
     }
 }
 
