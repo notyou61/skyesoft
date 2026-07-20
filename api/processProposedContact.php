@@ -1924,9 +1924,10 @@ $canCommit = !in_array('RS-3', $rsList) && !in_array('RS-5', $rsList) &&
              !in_array('RS-8', $rsList);
 
 switch ($pc) {
+
     case 'PC-0':
         $commitPlan['canCommit'] = false;
-        $commitPlan['actions'] = ['link_existing_elc'];
+        $commitPlan['actions'] = [];  // Nothing to commit
         $commitPlan['summary'] = 'No database changes required - ELC already exists';
         break;
 
@@ -1944,13 +1945,13 @@ switch ($pc) {
 
     case 'PC-3':
         $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact'];
+        $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact', 'link_elc'];  // Added link_elc
         $commitPlan['summary'] = 'Link existing Entity + Location, Insert new Contact';
         break;
 
     case 'PC-4':  // Existing Entity + New Location (no contact)
         $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['link_entity', 'insert_location'];
+        $commitPlan['actions'] = ['link_entity', 'insert_location', 'link_elc'];  // Added link_elc
         $commitPlan['summary'] = 'Link existing Entity, Insert new Location only';
         break;
 
@@ -1960,7 +1961,7 @@ switch ($pc) {
         $commitPlan['summary'] = 'Insert new Entity + new Location (no contact)';
         break;
 
-    case 'PC-6':  // 🌟 NEW: Contact Succession Lifecycle
+    case 'PC-6':  // Contact Succession
         $commitPlan['canCommit'] = $canCommit;
         $commitPlan['actions'] = [
             'link_entity', 
@@ -1973,6 +1974,8 @@ switch ($pc) {
         break;
 
     default:
+        $commitPlan['canCommit'] = false;
+        $commitPlan['actions'] = [];
         $commitPlan['summary'] = 'Unknown PC type';
         break;
 }
