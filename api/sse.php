@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.6.0
+// Version: 1.6.1
 // Real-Time Projection Engine - Production Stable (DB Activity + Geo)
 // FIX: session_start() never called after SSE headers/output begin
 // FIX: idle logout audits BEFORE clearing auth; uses executeAuthLogout()
+// DIAG: temporary verbose IDLE DEBUG logging + direct executeAuthLogout
 // ======================================================================
 
 #region ⚙️ SECTION 0 — Environment Bootstrap
@@ -352,14 +353,32 @@ while (true) {
 
         // ─────────────────────────────────────────
         // 🔒 IDLE LOGOUT — Audit FIRST, then clear local state
+        // DIAG MODE (v1.6.1): verbose condition logs + direct executeAuthLogout
+        // Duplicate guard (getLastAuthAction) temporarily bypassed to prove insert.
+        // Restore guard after the row is confirmed in tblActions.
         // ─────────────────────────────────────────
         $forceLogout = false;
+
+        // Always emit condition snapshot when approaching/at expiry (or every tick while expired)
+        if (
+            ($idle['state'] === 'expired' || $idle['state'] === 'warning') &&
+            !$idleLogoutProcessed
+        ) {
+            error_log('[IDLE DEBUG] state=' . ($idle['state'] ?? 'null'));
+            error_log('[IDLE DEBUG] authenticated=' . var_export($wasAuthenticated, true));
+            error_log('[IDLE DEBUG] contactId=' . var_export($contactIdForLog, true));
+            error_log('[IDLE DEBUG] processed=' . var_export($idleLogoutProcessed, true));
+            error_log('[IDLE DEBUG] pdo=' . ($pdo instanceof PDO ? 'available' : 'missing'));
+            error_log('[IDLE DEBUG] lastActivity=' . var_export($lastActivity, true));
+            error_log('[IDLE DEBUG] remaining=' . var_export($idle['remainingSeconds'] ?? null, true));
+        }
 
         if (
             $idle['state'] === 'expired' &&
             $lastActivity !== null &&
             $wasAuthenticated &&
             $contactIdForLog !== null &&
+            (int)$contactIdForLog > 0 &&
             !$idleLogoutProcessed
         ) {
             // Preserve authenticated identity (do NOT clear yet)
@@ -367,57 +386,35 @@ while (true) {
             $latitude        = $localSession['latitude']  ?? null;
             $longitude       = $localSession['longitude'] ?? null;
 
-            error_log(
-                '[IDLE] Threshold reached for contactId=' .
-                $logoutContactId
-            );
+            error_log('[IDLE] Threshold reached for contactId=' . $logoutContactId);
 
             $auditInserted = false;
 
-            // Audit BEFORE clearing authentication
+            // Direct audit call — NO getLastAuthAction gate while diagnosing
             if ($pdo instanceof PDO && $logoutContactId > 0) {
                 try {
-                    $lastAction = getLastAuthAction(
+                    error_log('[IDLE] Calling executeAuthLogout origin=1 contactId=' . $logoutContactId
+                        . ' activitySessionId=' . var_export($sessionIdForLog, true));
+
+                    $auditInserted = executeAuthLogout(
                         $pdo,
-                        $logoutContactId
+                        $logoutContactId,
+                        1,   // Codex origin: SSE inactivity logout
+                        [
+                            'latitude'          => $latitude,
+                            'longitude'         => $longitude,
+                            'activitySessionId' => $sessionIdForLog,
+                            'response'          => 'logout_success'
+                        ]
                     );
 
                     error_log(
-                        '[IDLE] Last auth action=' .
-                        var_export($lastAction, true)
+                        '[IDLE] executeAuthLogout result=' .
+                        var_export($auditInserted, true)
                     );
-
-                    if ($lastAction === 'auth.logout') {
-                        // Existing logout satisfies the audit requirement
-                        $auditInserted = true;
-
-                        error_log(
-                            '[IDLE] Logout audit skipped; already logged'
-                        );
-                    } else {
-                        // Shared backend path (same as manual logout)
-                        $auditInserted = executeAuthLogout(
-                            $pdo,
-                            $logoutContactId,
-                            1,   // Codex origin: SSE inactivity
-                            [
-                                'latitude'          => $latitude,
-                                'longitude'         => $longitude,
-                                'activitySessionId' => $sessionIdForLog,
-                                'response'          => 'logout_success'
-                            ]
-                        );
-
-                        error_log(
-                            '[IDLE] Logout audit insert result=' .
-                            ($auditInserted ? 'true' : 'false')
-                        );
-                    }
                 } catch (Throwable $e) {
-                    error_log(
-                        '[SSE IDLE LOGOUT ERROR] ' .
-                        $e->getMessage()
-                    );
+                    error_log('[SSE IDLE LOGOUT ERROR] ' . $e->getMessage());
+                    error_log('[SSE IDLE LOGOUT ERROR] ' . $e->getTraceAsString());
                 }
             } else {
                 error_log(
@@ -426,7 +423,8 @@ while (true) {
             }
 
             // Complete logout ONLY after successful audit
-            // (failed insert can be retried on next 1Hz tick)
+            // Do NOT set idleLogoutProcessed or clear contactId until insert succeeds.
+            // Failed insert can be retried on next 1Hz tick.
             if ($auditInserted) {
                 $idleLogoutProcessed = true;
 
@@ -459,6 +457,11 @@ while (true) {
                 $idle            = null;
                 $forceLogout     = true;
                 $contactIdForLog = null;
+            } else {
+                error_log(
+                    '[IDLE] Audit insert FAILED — will retry next tick. ' .
+                    'contactId still preserved=' . var_export($contactIdForLog, true)
+                );
             }
         }
 
