@@ -3,12 +3,13 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.6.2
+// Version: 1.6.4
 // Real-Time Projection Engine - Production Stable (DB Activity + Geo)
 // FIX: session_start() never called after SSE headers/output begin
 // FIX: idle logout audits BEFORE clearing auth; uses executeAuthLogout()
 // ENRICH: structured actionPayloadData / actionResponseData on idle audit
-// DIAG: temporary verbose IDLE DEBUG logging + direct executeAuthLogout
+// FIX: restore getLastAuthAction duplicate guard before idle audit insert
+// FIX: trim repetitive IDLE DEBUG; keep lifecycle + failure logs
 // ======================================================================
 
 #region ⚙️ SECTION 0 — Environment Bootstrap
@@ -354,25 +355,9 @@ while (true) {
 
         // ─────────────────────────────────────────
         // 🔒 IDLE LOGOUT — Audit FIRST, then clear local state
-        // DIAG MODE (v1.6.2): verbose condition logs + enriched executeAuthLogout
-        // Duplicate guard (getLastAuthAction) temporarily bypassed to prove insert.
-        // Restore guard after the row is confirmed in tblActions.
+        // v1.6.4: enriched executeAuthLogout + duplicate guard; debug spam removed
         // ─────────────────────────────────────────
         $forceLogout = false;
-
-        // Always emit condition snapshot when approaching/at expiry (or every tick while expired)
-        if (
-            ($idle['state'] === 'expired' || $idle['state'] === 'warning') &&
-            !$idleLogoutProcessed
-        ) {
-            error_log('[IDLE DEBUG] state=' . ($idle['state'] ?? 'null'));
-            error_log('[IDLE DEBUG] authenticated=' . var_export($wasAuthenticated, true));
-            error_log('[IDLE DEBUG] contactId=' . var_export($contactIdForLog, true));
-            error_log('[IDLE DEBUG] processed=' . var_export($idleLogoutProcessed, true));
-            error_log('[IDLE DEBUG] pdo=' . ($pdo instanceof PDO ? 'available' : 'missing'));
-            error_log('[IDLE DEBUG] lastActivity=' . var_export($lastActivity, true));
-            error_log('[IDLE DEBUG] remaining=' . var_export($idle['remainingSeconds'] ?? null, true));
-        }
 
         if (
             $idle['state'] === 'expired' &&
@@ -391,44 +376,69 @@ while (true) {
 
             $auditInserted = false;
 
-            // Direct audit call — NO getLastAuthAction gate while diagnosing
+            // Shared meta for idle logout audit (used only when insert is needed)
+            $logoutMeta = [
+                'source'             => 'sse_idle',
+                'latitude'           => $latitude,
+                'longitude'          => $longitude,
+                'activitySessionId'  => $sessionIdForLog,
+                'response'           => 'logout_success',
+                'timeoutSeconds'     => SKYESOFT_IDLE_TIMEOUT,
+                'lastActivityUnix'   => $lastActivity,
+                'actionPayloadData'  => [
+                    'source'            => 'sse_idle',
+                    'origin'            => 1,
+                    'timeoutSeconds'    => SKYESOFT_IDLE_TIMEOUT,
+                    'lastActivityUnix'  => $lastActivity,
+                    'activitySessionId' => $sessionIdForLog,
+                    'contactId'         => $logoutContactId,
+                ],
+                'actionResponseData' => [
+                    'result'      => 'logout_success',
+                    'audit'       => 'inserted',
+                    'forceLogout' => true,
+                ],
+            ];
+
             if ($pdo instanceof PDO && $logoutContactId > 0) {
                 try {
-                    error_log('[IDLE] Calling executeAuthLogout origin=1 contactId=' . $logoutContactId
-                        . ' activitySessionId=' . var_export($sessionIdForLog, true));
-
-                    $auditInserted = executeAuthLogout(
-                        $pdo,
-                        $logoutContactId,
-                        1,   // Codex origin: SSE inactivity logout
-                        [
-                            'source'             => 'sse_idle',
-                            'latitude'           => $latitude,
-                            'longitude'          => $longitude,
-                            'activitySessionId'  => $sessionIdForLog,
-                            'response'           => 'logout_success',
-                            'timeoutSeconds'     => SKYESOFT_IDLE_TIMEOUT,
-                            'lastActivityUnix'   => $lastActivity,
-                            'actionPayloadData'  => [
-                                'source'            => 'sse_idle',
-                                'origin'            => 1,
-                                'timeoutSeconds'    => SKYESOFT_IDLE_TIMEOUT,
-                                'lastActivityUnix'  => $lastActivity,
-                                'activitySessionId' => $sessionIdForLog,
-                                'contactId'         => $logoutContactId,
-                            ],
-                            'actionResponseData' => [
-                                'result'      => 'logout_success',
-                                'audit'       => 'inserted',
-                                'forceLogout' => true,
-                            ],
-                        ]
-                    );
+                    // Step 7.1 — duplicate protection
+                    // login now writes promptText=auth.login so this is reliable:
+                    //   auth.login  → idle logout may proceed
+                    //   auth.logout → do not insert another logout
+                    $lastAuthAction = getLastAuthAction($pdo, $logoutContactId);
 
                     error_log(
-                        '[IDLE] executeAuthLogout result=' .
-                        var_export($auditInserted, true)
+                        '[IDLE] Last auth action=' .
+                        var_export($lastAuthAction, true)
                     );
+
+                    if ($lastAuthAction === 'auth.logout') {
+                        error_log(
+                            '[IDLE] Logout already recorded; skipping audit ' .
+                            'for contactId=' . $logoutContactId
+                        );
+                        $auditInserted = true;
+                    } else {
+                        error_log(
+                            '[IDLE] Calling executeAuthLogout origin=1 contactId=' .
+                            $logoutContactId .
+                            ' activitySessionId=' .
+                            var_export($sessionIdForLog, true)
+                        );
+
+                        $auditInserted = executeAuthLogout(
+                            $pdo,
+                            $logoutContactId,
+                            1,   // Codex origin: SSE inactivity logout
+                            $logoutMeta
+                        );
+
+                        error_log(
+                            '[IDLE] Logout audit insert result=' .
+                            ($auditInserted ? 'true' : 'false')
+                        );
+                    }
                 } catch (Throwable $e) {
                     error_log('[SSE IDLE LOGOUT ERROR] ' . $e->getMessage());
                     error_log('[SSE IDLE LOGOUT ERROR] ' . $e->getTraceAsString());
