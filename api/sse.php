@@ -155,20 +155,27 @@ $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 /**
  * Persist critical session flags after headers have already been sent.
- * Uses the original session ID and silences the inevitable
- * "headers already sent" warning. Data is still written to storage.
+ *
+ * IMPORTANT: Once SSE headers/output have begun we must NEVER call
+ * session_id() or session_start() — both emit warnings that corrupt
+ * the event stream.  We therefore:
+ *   1. Always update the process-local $localSession (caller does this).
+ *   2. Best-effort write to the real session store ONLY if headers
+ *      have not been sent yet.
+ *   3. If headers are already sent we rely on the DB audit row
+ *      (logAuthAction) + the forceLogout flag; other tabs will pick
+ *      up the logout on their next full request / their own idle check.
  */
 function sky_sse_persist_session(string $sessionId, array $updates): void
 {
-    if ($sessionId === '') {
+    // Absolute guard — never touch the session API after output started
+    if (headers_sent() || $sessionId === '') {
         return;
     }
 
-    // Restore the known session ID
+    // Still safe (headers not sent) — normal path (e.g. snapshot mode)
     session_id($sessionId);
 
-    // @ suppresses the "headers already sent" warning.
-    // display_errors is already 0, but we are extra safe.
     $prev = error_reporting();
     error_reporting($prev & ~E_WARNING);
     @session_start();
