@@ -3,17 +3,21 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.5.5
+// Version: 1.5.6
 // Real-Time Projection Engine - Production Stable (DB Activity + Geo)
+// FIX: session_start() never called after SSE headers/output begin
 // ======================================================================
 
 #region ⚙️ SECTION 0 — Environment Bootstrap
 
-ini_set('display_errors', 0);
+// Hard silence any accidental output (critical for SSE purity)
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+ini_set('html_errors', '0');
 error_reporting(E_ALL);
 
 // ─────────────────────────────────────────
-// 🔐 SESSION BOOTSTRAP (CANONICAL)
+// 🔐 SESSION BOOTSTRAP (CANONICAL) — MUST BE FIRST REAL WORK
 // ─────────────────────────────────────────
 require_once __DIR__ . '/sessionBootstrap.php';
 
@@ -24,34 +28,40 @@ require_once __DIR__ . '/utils/authFunctions.php';
 require_once __DIR__ . '/dbConnect.php';
 
 // ─────────────────────────────────────────
-// 🧠 Snapshot current session state
+// 🧠 Snapshot current session state (while still open)
 // ─────────────────────────────────────────
 $activitySessionId = session_id();   // ← CANONICAL VARIABLE
 
 $initialSession = [
-    'authenticated' => !empty($_SESSION['authenticated']),
-    'contactId'     => $_SESSION['contactId'] ?? null,
-    'username'      => $_SESSION['username'] ?? null,
-    'role'          => $_SESSION['role'] ?? 'user',
+    'authenticated'     => !empty($_SESSION['authenticated']),
+    'contactId'         => $_SESSION['contactId'] ?? null,
+    'username'          => $_SESSION['username'] ?? null,
+    'role'              => $_SESSION['role'] ?? 'user',
     'activitySessionId' => $activitySessionId
 ];
 
 $contactIdForLog = $initialSession['contactId'] ?? null;
 $sessionIdForLog = $activitySessionId;
 
+// Keep a process-local copy of key session values so we can still
+// read/modify them after session_write_close() without re-opening.
+$localSession = $_SESSION;
+
 error_log('[SSE BOOT] ' . json_encode($initialSession));
 
-// 🔓 Release session lock (CRITICAL for SSE)
+// 🔓 Release session lock early (CRITICAL for concurrent requests + SSE)
 session_write_close();
 
 $isSnapshot = isset($_GET['mode']) && $_GET['mode'] === 'snapshot';
 
 #endregion
 
-#region 📸 SECTION 1 — SNAPSHOT MODE
+#region 📸 SECTION 1 — SNAPSHOT MODE (runs before any SSE output)
 
 if ($isSnapshot) {
+    // Safe to start session here — no output has been sent yet
     if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_id($activitySessionId);
         session_start();
     }
 
@@ -63,13 +73,13 @@ if ($isSnapshot) {
     ];
 
     $name = getContactName($auth['contactId']);
-    $auth['firstName'] = $name['firstName'];
-    $auth['lastName']  = $name['lastName'];
+    $auth['firstName'] = $name['firstName'] ?? null;
+    $auth['lastName']  = $name['lastName'] ?? null;
 
     $payload = require __DIR__ . "/getDynamicData.php";
 
-    $payload["auth"]      = $auth;
-    $payload["streamId"]  = "snapshot";
+    $payload["auth"]              = $auth;
+    $payload["streamId"]          = "snapshot";
     $payload["activitySessionId"] = session_id();
 
     session_write_close();
@@ -83,7 +93,7 @@ if ($isSnapshot) {
 
 #endregion
 
-#region 📡 SECTION 2 — SSE HEADERS
+#region 📡 SECTION 2 — SSE HEADERS (no session_start after this point)
 
 @ini_set('zlib.output_compression', '0');
 @ini_set('output_buffering', '0');
@@ -107,6 +117,8 @@ header('X-Accel-Buffering: no');
 header('X-LiteSpeed-Cache-Control: no-cache');
 header('X-LiteSpeed-Cache: no-cache');
 
+// First bytes of the stream — from this moment NO session_start() that
+// can emit headers is allowed.
 echo ": connected\n\n";
 echo "retry: 3000\n\n";
 
@@ -129,7 +141,7 @@ try {
     $pdo = null;
 }
 
-// Idle logout guard
+// Idle logout guard (process-local)
 $idleLogoutProcessed = false;
 
 // Micro-cache for lastActivity
@@ -141,12 +153,41 @@ $lastActivityCache = [
 define('SKYESOFT_IDLE_TIMEOUT', 10);
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
+/**
+ * Persist critical session flags after headers have already been sent.
+ * Uses the original session ID and silences the inevitable
+ * "headers already sent" warning. Data is still written to storage.
+ */
+function sky_sse_persist_session(string $sessionId, array $updates): void
+{
+    if ($sessionId === '') {
+        return;
+    }
+
+    // Restore the known session ID
+    session_id($sessionId);
+
+    // @ suppresses the "headers already sent" warning.
+    // display_errors is already 0, but we are extra safe.
+    $prev = error_reporting();
+    error_reporting($prev & ~E_WARNING);
+    @session_start();
+    error_reporting($prev);
+
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        foreach ($updates as $k => $v) {
+            $_SESSION[$k] = $v;
+        }
+        session_write_close();
+    }
+}
+
 #endregion
 
 #region 🚀 SECTION 4 — STREAM INITIALIZATION
 
-$streamId = bin2hex(random_bytes(8));
-$lastPing = 0;
+$streamId   = bin2hex(random_bytes(8));
+$lastPing   = 0;
 $lastSecond = 0;
 
 #endregion
@@ -174,16 +215,14 @@ while (true) {
 
         $lastSecond = $now;
 
-        // NO session_start() here — session is already active from bootstrap
-        // Only resume if truly closed (rare)
-        //if (session_status() === PHP_SESSION_NONE) {
-        //    session_start();
-        //}
+        // -------------------------------------------------
+        // Use the process-local copy. We do NOT call
+        // session_start() here under normal conditions.
+        // -------------------------------------------------
+        $activitySessionId = $sessionIdForLog;
 
-        $activitySessionId = session_id();
-
-        // 🔒 HARD STOP — Session already logged out
-        if (!empty($_SESSION['idleLogoutComplete']) && $_SESSION['idleLogoutComplete'] === true) {
+        // 🔒 HARD STOP — Session already logged out (flag set earlier)
+        if (!empty($localSession['idleLogoutComplete'])) {
 
             $auth = [
                 'authenticated' => false,
@@ -194,18 +233,16 @@ while (true) {
                 'lastName'      => null
             ];
 
-            $idle = null;
+            $idle        = null;
             $forceLogout = true;
-
-            session_write_close();
 
             $payload = require __DIR__ . "/getDynamicData.php";
 
-            $payload["auth"]        = $auth;
-            $payload["idle"]        = $idle;
-            $payload["forceLogout"] = true;
-            $payload["streamId"]    = $streamId;
-            $payload["activitySessionId"] = session_id();
+            $payload["auth"]              = $auth;
+            $payload["idle"]              = $idle;
+            $payload["forceLogout"]       = true;
+            $payload["streamId"]          = $streamId;
+            $payload["activitySessionId"] = $activitySessionId;
 
             echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
 
@@ -215,22 +252,22 @@ while (true) {
             continue;
         }
 
-        // Single source of truth for auth
-        $wasAuthenticated = !empty($_SESSION['authenticated']);
-        $contactId        = $_SESSION['contactId'] ?? null;
+        // Single source of truth for auth (from local snapshot + updates)
+        $wasAuthenticated = !empty($localSession['authenticated']);
+        $contactId        = $localSession['contactId'] ?? null;
 
         // Optimized name resolution
-        $name = $contactId 
-            ? getContactName($contactId) 
+        $name = $contactId
+            ? getContactName($contactId)
             : ['firstName' => null, 'lastName' => null];
 
         $auth = [
             'authenticated' => $wasAuthenticated,
             'contactId'     => $contactId,
-            'username'      => $_SESSION['username'] ?? null,
-            'role'          => $_SESSION['role'] ?? 'user',
-            'firstName'     => $name['firstName'],
-            'lastName'      => $name['lastName']
+            'username'      => $localSession['username'] ?? null,
+            'role'          => $localSession['role'] ?? 'user',
+            'firstName'     => $name['firstName'] ?? null,
+            'lastName'      => $name['lastName'] ?? null
         ];
 
         // ─────────────────────────────────────────
@@ -320,27 +357,31 @@ while (true) {
                 $contactIdForLog
             );
 
-            // Prevent repeat processing in this SSE request immediately.
+            // Prevent repeat processing in this SSE process
             $idleLogoutProcessed = true;
 
-            // Reopen the session so the logout state is persisted.
-            if (session_status() !== PHP_SESSION_ACTIVE) {
-                session_start();
-            }
+            // Capture geo before we clear anything
+            $latitude  = $localSession['latitude']  ?? null;
+            $longitude = $localSession['longitude'] ?? null;
 
-            // Capture session values before closing
-            $latitude  = $_SESSION['latitude']  ?? null;
-            $longitude = $_SESSION['longitude'] ?? null;
+            // 1. Update the process-local copy immediately
+            $localSession['idleLogoutComplete'] = true;
+            $localSession['authenticated']      = false;
+            $localSession['contactId']          = null;
+            $localSession['username']           = null;
+            $localSession['role']               = null;
 
-            $_SESSION['idleLogoutComplete'] = true;
-            $_SESSION['authenticated']      = false;
-            $_SESSION['contactId']          = null;
-            $_SESSION['username']           = null;
-            $_SESSION['role']               = null;
+            // 2. Persist the flag + cleared auth to real session storage
+            //    (safe even after headers have been sent)
+            sky_sse_persist_session($sessionIdForLog, [
+                'idleLogoutComplete' => true,
+                'authenticated'      => false,
+                'contactId'          => null,
+                'username'           => null,
+                'role'               => null,
+            ]);
 
-            // Save changes and release session lock
-            session_write_close();
-
+            // 3. Build logged-out auth for this payload
             $auth = [
                 'authenticated' => false,
                 'contactId'     => null,
@@ -352,6 +393,7 @@ while (true) {
 
             $idle = null;
 
+            // 4. Write the logout row to tblActions (this is the missing piece)
             if ($pdo instanceof PDO) {
                 try {
                     $lastAction = getLastAuthAction(
@@ -409,11 +451,9 @@ while (true) {
                 error_log('[IDLE] Logout audit skipped: PDO unavailable');
             }
 
-            $forceLogout = true;
+            $forceLogout     = true;
             $contactIdForLog = null;
         }
-
-        session_write_close();
 
         // ─────────────────────────────────────────
         // 📦 BUILD & SEND PAYLOAD (AUTHORITATIVE)
@@ -423,9 +463,9 @@ while (true) {
 
         $payload = require __DIR__ . "/getDynamicData.php";
 
-        $payload["auth"]      = $auth;
-        $payload["idle"]      = $idle;
-        $payload["streamId"]  = $streamId;
+        $payload["auth"]              = $auth;
+        $payload["idle"]              = $idle;
+        $payload["streamId"]          = $streamId;
         $payload["activitySessionId"] = $activitySessionId;
 
         if (!empty($forceLogout)) {
