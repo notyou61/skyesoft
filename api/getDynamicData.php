@@ -22,7 +22,12 @@ $auth = $SKYE_CONTEXT['auth'] ?? ['authenticated' => false];
 $contactId = (int)($auth['contactId'] ?? 0);
 $isAuthenticated = $auth['authenticated'] ?? false;
 
-$idleTimeoutSeconds = 900; // 900 seconds (15 minutes), adjust as needed
+//$idleTimeoutSeconds = 900; // 900 seconds (15 minutes), adjust as needed
+// Use the single source of truth defined in sse.php
+// (constant is already defined by the time this file is required)
+$idleTimeoutSeconds = defined('SKYESOFT_IDLE_TIMEOUT')
+    ? SKYESOFT_IDLE_TIMEOUT
+    : 900;   // fallback only if somehow loaded outside SSE
 
 $idle = [
     "state" => "anonymous",
