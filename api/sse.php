@@ -150,7 +150,7 @@ $lastActivityCache = [
     'value'     => null
 ];
 
-define('SKYESOFT_IDLE_TIMEOUT', 10);
+define('SKYESOFT_IDLE_TIMEOUT', 900);
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 /**
