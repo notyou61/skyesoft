@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 // Skyesoft — authFunctions.php
 // Shared Authentication Utilities (SSE SAFE)
-// Version: 1.4.3
+// Version: 1.4.5
 // ======================================================================
 
 // 🔗 Dependencies (explicit + safe)
@@ -111,6 +111,7 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
 // 📜 AUTH ACTION LOGGER
 // ─────────────────────────────────────────
 // 🔐 logAuthAction() — Adapter to new action system
+// Returns true only when logAction() actually inserted a row (actionId > 0)
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): bool
 {
     // 🧹 CRITICAL FIX: Intercept logout instantly at entry point.
@@ -129,7 +130,7 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
             default            => 'auth.session.login'  // fallback (safe)
         };
 
-        // --- Intent mapping
+        // --- Intent mapping (textual distinction lives here)
         $intent = match ($actionKey) {
             'auth.login'       => 'ui_login',
             'auth.logout'      => ($meta['actionOrigin'] ?? '') === 'idle_timeout'
@@ -139,14 +140,21 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
             default            => 'auth_event'
         };
 
+        // --- Origin (numeric) — actionLogger only accepts 1|2|3 (default 1)
+        // Established rule: SSE idle logout uses origin 1.
+        // UI logout also uses 1 under current allowedOrigins. Do NOT send 0.
+        $origin = 1;
+
         // --- Prompt + response
+        // prompt is written to promptText column by logAction()
         $prompt   = $actionKey;
         $response = $meta['response'] ?? ($actionKey === 'auth.logout' ? 'logout_success' : 'login_success');
 
-        // --- Call NEW system
-        logAction($pdo, [
+        // --- Call NEW system (key must be 'origin', not 'actionOrigin')
+        $actionId = logAction($pdo, [
             'actionName'         => $actionName,
             'contactId'          => $contactId,
+            'origin'             => $origin,
             'intent'             => $intent,
             'prompt'             => $prompt,
             'response'           => $response,
@@ -157,7 +165,7 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
             'actionResponseData' => $meta['actionResponseData'] ?? null
         ]);
 
-        return true;
+        return $actionId > 0;
 
     } catch (Throwable $e) {
         error_log('[logAuthAction ERROR] ' . $e->getMessage());
@@ -165,7 +173,7 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
     }
 }
 
-// 🔐 logAction() — Core logger (from actionLogger.php, adapted for auth)
+// 🔐 getContactName()
 function getContactName(mixed $contactId): array {
     // Accept string/int/null/bool and sanitize
     if ($contactId === null || $contactId === '' || $contactId === false || $contactId === 'null') {
@@ -200,14 +208,15 @@ function getContactName(mixed $contactId): array {
 }
 
 // 🔐 getLastAuthAction() — Fetch last auth action for a user (login/logout)
+// MUST read promptText (the column logAction actually writes)
 function getLastAuthAction(PDO $pdo, int $contactId): ?string
 {
     try {
         $stmt = $pdo->prepare("
-            SELECT prompt
+            SELECT promptText
             FROM tblActions
             WHERE contactId = :contactId
-              AND prompt IN ('auth.login', 'auth.logout')
+              AND promptText IN ('auth.login', 'auth.logout')
             ORDER BY actionUnix DESC, actionId DESC
             LIMIT 1
         ");
