@@ -210,55 +210,59 @@ window.SkyeApp.renderIdleCountdown = function (page) {
         }
     }
 
-    // ---- 2. Direct DOM fallback (guarantees visible countdown) ----
+    // ---- 2. Authoritative write into the real footer element ----
+    // Target: <span class="footerText">Authenticated • Ready</span>
     const idle = (page && page.idleState) || (this.lastSSE && this.lastSSE.idle) || null;
 
-    // Try every ID that has ever been used in Skyesoft footers
-    const ids = [
-        'footerIdle',
-        'idleCountdown',
-        'footer-idle',
-        'idleTimer',
-        'footerStatusIdle',
-        'hsbIdle',
-        'footer_idle',
-        'idle-remaining'
-    ];
-
-    let el = null;
-    for (const id of ids) {
-        el = document.getElementById(id);
-        if (el) break;
-    }
-    if (!el) {
-        el = document.querySelector('[data-idle-countdown], [data-role="idle-countdown"]');
-    }
+    // Prefer the live footerText span (the one that currently shows "Authenticated • Ready")
+    let el = document.querySelector('span.footerText') ||
+             document.querySelector('.footerText') ||
+             document.getElementById('footerIdle') ||
+             document.getElementById('idleCountdown') ||
+             document.querySelector('[data-idle-countdown]');
 
     if (!el) {
-        // No element in the DOM yet – nothing more we can do from app.js
-        return;
+        return; // footer not in DOM yet
     }
 
     const isAuth = (page && page.authState === true) ||
                    document.body.hasAttribute('data-auth');
 
-    if (isAuth && idle && Number.isFinite(Number(idle.remainingSeconds))) {
-        const remaining = Math.max(0, Math.floor(Number(idle.remainingSeconds)));
-        const m = Math.floor(remaining / 60);
-        const s = remaining % 60;
-        el.textContent = `Idle ${m}:${String(s).padStart(2, '0')}`;
+    // Build the status line
+    if (isAuth) {
+        let line = 'Authenticated • Ready';
+
+        if (idle && Number.isFinite(Number(idle.remainingSeconds))) {
+            const remaining = Math.max(0, Math.floor(Number(idle.remainingSeconds)));
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            const clock = `${m}:${String(s).padStart(2, '0')}`;
+
+            // Append countdown
+            line = `Authenticated • Ready • Idle ${clock}`;
+
+            // Visual state classes on the span
+            el.classList.remove('idle-ok', 'idle-warning', 'idle-critical', 'idle-expired');
+            if (idle.state) {
+                el.classList.add('idle-' + idle.state);
+            }
+            el.dataset.idleState = idle.state || '';
+            el.dataset.remaining = String(remaining);
+        } else {
+            el.classList.remove('idle-ok', 'idle-warning', 'idle-critical', 'idle-expired');
+            el.dataset.idleState = '';
+            delete el.dataset.remaining;
+        }
+
+        el.textContent = line;
         el.hidden = false;
         el.removeAttribute('hidden');
         el.style.display = '';
-        // Optional visual state
-        el.dataset.idleState = idle.state || '';
-        el.classList.remove('idle-ok', 'idle-warning', 'idle-critical');
-        if (idle.state) el.classList.add('idle-' + idle.state);
     } else {
-        el.textContent = '';
-        el.hidden = true;
+        // Logged-out: clear idle styling, leave whatever the page handler put there
+        el.classList.remove('idle-ok', 'idle-warning', 'idle-critical', 'idle-expired');
         el.dataset.idleState = '';
-        el.classList.remove('idle-ok', 'idle-warning', 'idle-critical');
+        delete el.dataset.remaining;
     }
 };
 /* #endregion */
