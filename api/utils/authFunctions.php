@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 // Skyesoft — authFunctions.php
 // Shared Authentication Utilities (SSE SAFE)
-// Version: 1.4.5
+// Version: 1.4.6
 // ======================================================================
 
 // 🔗 Dependencies (explicit + safe)
@@ -112,6 +112,11 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
 // ─────────────────────────────────────────
 // 🔐 logAuthAction() — Adapter to new action system
 // Returns true only when logAction() actually inserted a row (actionId > 0)
+//
+// For idle logout the caller (sse.php) MUST supply:
+//   $meta['actionOrigin']      = 'idle_timeout'   → intent becomes idle_logout
+//   $meta['activitySessionId'] = <preserved SSE session id>
+//
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): bool
 {
     // 🧹 CRITICAL FIX: Intercept logout instantly at entry point.
@@ -150,11 +155,23 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
         $prompt   = $actionKey;
         $response = $meta['response'] ?? ($actionKey === 'auth.logout' ? 'logout_success' : 'login_success');
 
+        // --- activitySessionId (critical for SSE idle path)
+        // Prefer the value preserved by sse.php before session mutation.
+        // Fallback to live session_id() only when caller did not supply one.
+        $activitySessionId = null;
+        if (!empty($meta['activitySessionId']) && is_string($meta['activitySessionId'])) {
+            $activitySessionId = trim($meta['activitySessionId']);
+        }
+        if ($activitySessionId === null || $activitySessionId === '') {
+            $activitySessionId = session_id() ?: null;
+        }
+
         // --- Call NEW system (key must be 'origin', not 'actionOrigin')
         $actionId = logAction($pdo, [
             'actionName'         => $actionName,
             'contactId'          => $contactId,
             'origin'             => $origin,
+            'activitySessionId'  => $activitySessionId,
             'intent'             => $intent,
             'prompt'             => $prompt,
             'response'           => $response,

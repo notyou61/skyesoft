@@ -4,6 +4,7 @@ declare(strict_types=1);
 // ============================================================
 // Skyesoft — actionLogger.php
 // Centralized action logging (ELC-compliant, consistent)
+// Version: 1.2.0 — honors caller-supplied activitySessionId
 // ============================================================
 
 ini_set('display_errors', 1);
@@ -91,8 +92,15 @@ function logAction(PDO $db, array $p): int
         $ip = $_SERVER['REMOTE_ADDR']     ?? null;
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
-        // 🔥 Canonical session ID
-        $activitySessionId = session_id();
+        // 🔥 activitySessionId — honor caller-supplied value (critical for SSE idle logout)
+        // Fallback to live session_id() only when the caller did not preserve one.
+        $activitySessionId = null;
+        if (!empty($p['activitySessionId']) && is_string($p['activitySessionId'])) {
+            $activitySessionId = trim($p['activitySessionId']);
+        }
+        if ($activitySessionId === null || $activitySessionId === '') {
+            $activitySessionId = session_id() ?: null;
+        }
 
         // ============================================================
         // Structured Action Data (NEW)
@@ -166,7 +174,7 @@ function logAction(PDO $db, array $p): int
         ]);
 
         $actionId = (int)$db->lastInsertId();
-        error_log("[logAction] SUCCESS | actionId=$actionId | actionName=$actionName");
+        error_log("[logAction] SUCCESS | actionId=$actionId | actionName=$actionName | activitySessionId=" . ($activitySessionId ?? 'null'));
         return $actionId;
 
     } catch (Throwable $e) {
