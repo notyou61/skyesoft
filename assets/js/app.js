@@ -8,13 +8,15 @@
    • lastSSE storage
    • Header updates (HSB-X)
    • Version footer updates
+   • Auth transition helpers (handleLogin / handleLogout)
 */
 
 /* #region PAGE STATE */
 window.SkyeApp = {
     currentPage: null,
     pageHandlers: {},
-    lastSSE: null
+    lastSSE: null,
+    hasReceivedFirstSSE: false
 };
 /* #endregion */
 
@@ -70,7 +72,7 @@ window.SkyeApp.handleUserInput = async function (inputText) {
             // 🟢 HIGH CONFIDENCE → AUTO PROCEED
             if (confidence >= 0.90) {
                 this.showSystemMessage?.("✅ Contact Signature Recognized");
-                this.proposeContact(inputText); // ✅ FIXED
+                this.proposeContact(inputText);
                 return;
             }
 
@@ -78,7 +80,7 @@ window.SkyeApp.handleUserInput = async function (inputText) {
             if (confidence >= 0.70) {
                 this.showConfirmation?.(
                     "Contact information detected. Create new contact?",
-                    () => this.proposeContact(inputText), // ✅ FIXED
+                    () => this.proposeContact(inputText),
                     () => console.log("[Intent] user declined contact creation")
                 );
                 return;
@@ -186,6 +188,64 @@ window.SkyeApp.updateHSB = function (payload) {
 };
 /* #endregion */
 
+/* #region AUTH TRANSITION HELPERS */
+/**
+ * Called when SSE (or other code) detects a successful login.
+ * Page handlers can override / extend via their own transitionToCommandInterface.
+ */
+window.SkyeApp.handleLogin = function () {
+    console.log('[SkyeApp] handleLogin');
+
+    const page = this.pageHandlers?.[this.currentPage];
+    if (!page) return;
+
+    page.authState = true;
+    document.body.setAttribute('data-auth', 'true');
+
+    // Prefer page-specific transition if available
+    if (typeof page.transitionToCommandInterface === 'function') {
+        page.transitionToCommandInterface();
+    }
+
+    page.renderFooterStatus?.call(page);
+};
+
+/**
+ * Central logout entry point.
+ * reason examples: 'idle_timeout', 'sse', 'user', 'force'
+ * NOTE: Does NOT stop the SSE stream — Skyesoft uses a persistent-stream architecture.
+ */
+window.SkyeApp.handleLogout = function (reason = 'unknown') {
+    console.log('[SkyeApp] handleLogout →', reason);
+
+    const page = this.pageHandlers?.[this.currentPage];
+
+    // Clear local authentication state
+    if (page) {
+        page.authState = false;
+        page.authUser  = null;
+        page.authRole  = null;
+        page.idleState = null;
+        page.commandSurfaceActive = false;
+        page._logoutHandled = true;
+    }
+
+    document.body.removeAttribute('data-auth');
+
+    // Mirror authentication state
+    window.SkyState = window.SkyState || {};
+    window.SkyState.authenticated = false;
+
+    // Render logged-out interface
+    if (page && typeof page.renderLoginCard === 'function') {
+        page.renderLoginCard();
+        page.renderFooterStatus?.call(page);
+    } else {
+        window.location.reload();
+    }
+};
+/* #endregion */
+
 /* #region GLOBAL SSE HANDLER - FIXED FOR IDLE COUNTDOWN */
 window.SkyeApp.handleSSE = function (payload) {
 
@@ -199,30 +259,10 @@ window.SkyeApp.handleSSE = function (payload) {
     // ─────────────────────────────────────────
     if (payload?.forceLogout === true) {
 
-        console.log('[SSE] forceLogout received → Terminating stream & resetting session');
+        console.log('[SSE] forceLogout received → Applying logged-out state');
 
-        // 1. ⛔ Stop the SSE stream to break the 1Hz execution loop
-        if (typeof window.SkySSE?.stop === 'function') {
-            window.SkySSE.stop();
-        }
-
-        // 2. 🔥 Enforce local logout state
-        page.authState = false;
-        page.authUser  = null;
-        page.authRole  = null;
-        page.idleState = null;
-        page.commandSurfaceActive = false;
-        document.body.removeAttribute('data-auth');
-        page._logoutHandled = true;
-
-        // 3. 🌐 Execute global app logout sequence or force a clean page reload
-        if (typeof window.SkyeApp?.handleLogout === 'function') {
-            window.SkyeApp.handleLogout('idle_timeout');
-        } else if (typeof page.renderLoginCard === 'function') {
-            // Hard reload clears in-memory state and guarantees the login route renders
-            window.location.reload();
-        }
-
+        // Delegate to the single authoritative logout path
+        this.handleLogout('idle_timeout');
         return;
     }
 
@@ -237,7 +277,7 @@ window.SkyeApp.handleSSE = function (payload) {
     if (page && payload?.idle) {
         page.idleState = payload.idle;
 
-        // 🔄 FORCE UI UPDATE (THIS IS THE FIX)
+        // 🔄 FORCE UI UPDATE
         page.renderFooterStatus?.call(page);
     }
 
@@ -294,16 +334,11 @@ window.SkyeApp.handleSSE = function (payload) {
             console.log('[SSE] Auth state changed:', { from: prevAuth, to: newAuth });
 
             if (newAuth) {
-                page.transitionToCommandInterface?.();
+                // Login path
+                this.handleLogin();
             } else {
-                page.authState = false;
-                page.authUser = null;
-                page.authRole = null;
-
-                document.body.removeAttribute('data-auth');
-
-                // 🔒 UI only (no logic trigger)
-                page.renderLoginCard?.();
+                // Logout path (SSE detected session end)
+                this.handleLogout('sse');
             }
         }
     }
@@ -355,7 +390,7 @@ window.SkyeApp.proposeContact = async function (rawInput) {
 
         console.log('[Propose]', data);
 
-        this.lastProposal = data; // ✅ NEW
+        this.lastProposal = data;
 
         this.showSystemMessage?.("📥 Contact proposal submitted");
 

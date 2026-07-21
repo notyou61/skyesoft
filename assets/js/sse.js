@@ -1,8 +1,8 @@
 /* Skyesoft — sse.js
    SSE Engine → Push JSON Updates to Global App Handler
+   (Cleaned: single handleSSE call, correct lastSSE storage, no duplicate auth logic)
 */
 
-// Window SkySSE
 window.SkySSE = {
 
     es: null,
@@ -46,51 +46,19 @@ window.SkySSE = {
 
                     const payload = JSON.parse(event.data);
 
-                    // 🔥 STORE LAST PAYLOAD
+                    // 🔥 STORE LAST PAYLOAD (single authoritative place)
                     window.SkyeApp = window.SkyeApp || {};
-                    window.SkyIndex.lastSSE = payload;
+                    window.SkyeApp.lastSSE = payload;
 
-                    // Existing logic
-                    window.SkyeApp?.handleSSE?.(payload);
-
-                    // 🔐 Auth transition detection
+                    // 🔐 Lightweight auth state mirror (for other modules)
+                    // Full auth transition + UI work lives in SkyeApp.handleSSE
                     if (payload.auth !== undefined) {
-
-                        const isAuthenticated = payload.auth.authenticated === true;
-
                         window.SkyState = window.SkyState || {};
-
-                        const prev = window.SkyState.authenticated;
-
-                        // INITIALIZATION
-                        if (prev === undefined) {
-                            window.SkyState.authenticated = isAuthenticated;
-                            return;
-                        }
-
-                        // NO CHANGE
-                        if (prev === isAuthenticated) {
-                            return;
-                        }
-
-                        // TRANSITIONS
-                        if (prev === false && isAuthenticated === true) {
-                            console.log('[SkySSE] login detected');
-
-                            window.SkyState.authenticated = true;
-                            window.SkyeApp?.handleLogin?.();
-                            return;
-                        }
-
-                        if (prev === true && isAuthenticated === false) {
-                            console.log('[SkySSE] logout detected');
-
-                            window.SkyState.authenticated = false;
-                            window.SkyeApp?.handleLogout?.('sse');
-                            return;
-                        }
+                        window.SkyState.authenticated = payload.auth.authenticated === true;
                     }
 
+                    // 🔥 SINGLE call into the global handler
+                    // (app.js owns all forceLogout / idle / auth-change / HSB / page routing)
                     window.SkyeApp?.handleSSE?.(payload);
 
                 } catch (err) {
@@ -110,8 +78,6 @@ window.SkySSE = {
     // 🔁 Restart stream (safe restart)
     restart: function () {
 
-        //console.log('[SkySSE] restarting stream');
-
         // Cancel any pending restart
         if (this.restartTimer) {
             clearTimeout(this.restartTimer);
@@ -120,14 +86,9 @@ window.SkySSE = {
 
         // Small delay ensures session cookie commit
         this.restartTimer = setTimeout(() => {
-
-            //
             this.restartTimer = null;
-            //
             console.log('[SkySSE] restart timer fired');
-            //
             this.start();
-
         }, 800);
     },
 
