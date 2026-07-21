@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ============================================================
 // Skyesoft — actionLogger.php
 // Centralized action logging (ELC-compliant, consistent)
-// Version: 1.2.0 — honors caller-supplied activitySessionId
+// Version: 1.3.0 — Codex origins [0,1,2] + caller activitySessionId
 // ============================================================
 
 ini_set('display_errors', 1);
@@ -68,9 +68,13 @@ function logAction(PDO $db, array $p): int
         // --- Optional normalization
         $contactId = !empty($p['contactId']) ? (int)$p['contactId'] : null;
 
-        $allowedOrigins = [1, 2, 3];
-        $originValue = $p['origin'] ?? 1;
-        $origin = in_array($originValue, $allowedOrigins, true) ? (int)$originValue : 1;
+        // Codex actionOrigin values:
+        //   0 = User-initiated (UI / manual)
+        //   1 = SSE inactivity logout
+        //   2 = Sentinel inactivity logout
+        $allowedOrigins = [0, 1, 2];
+        $originValue = $p['origin'] ?? 0;
+        $origin = in_array($originValue, $allowedOrigins, true) ? (int)$originValue : 0;
 
         $response = isset($p['response'])
             ? (is_string($p['response'])
@@ -93,10 +97,13 @@ function logAction(PDO $db, array $p): int
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
         // 🔥 activitySessionId — honor caller-supplied value (critical for SSE idle logout)
+        // Accept either 'activitySessionId' or legacy 'sessionId' key.
         // Fallback to live session_id() only when the caller did not preserve one.
         $activitySessionId = null;
         if (!empty($p['activitySessionId']) && is_string($p['activitySessionId'])) {
             $activitySessionId = trim($p['activitySessionId']);
+        } elseif (!empty($p['sessionId']) && is_string($p['sessionId'])) {
+            $activitySessionId = trim($p['sessionId']);
         }
         if ($activitySessionId === null || $activitySessionId === '') {
             $activitySessionId = session_id() ?: null;
@@ -174,7 +181,7 @@ function logAction(PDO $db, array $p): int
         ]);
 
         $actionId = (int)$db->lastInsertId();
-        error_log("[logAction] SUCCESS | actionId=$actionId | actionName=$actionName | activitySessionId=" . ($activitySessionId ?? 'null'));
+        error_log("[logAction] SUCCESS | actionId=$actionId | actionName=$actionName | origin=$origin | activitySessionId=" . ($activitySessionId ?? 'null'));
         return $actionId;
 
     } catch (Throwable $e) {

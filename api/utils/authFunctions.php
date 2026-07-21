@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 // Skyesoft — authFunctions.php
 // Shared Authentication Utilities (SSE SAFE)
-// Version: 1.4.6
+// Version: 1.5.0
 // ======================================================================
 
 // 🔗 Dependencies (explicit + safe)
@@ -110,12 +110,70 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
 // ─────────────────────────────────────────
 // 📜 AUTH ACTION LOGGER
 // ─────────────────────────────────────────
+
+/**
+ * Shared authenticated logout audit operation.
+ * Used by both manual logout (auth.php) and SSE idle logout (sse.php).
+ *
+ * Codex actionOrigin:
+ *   0 = User-initiated logout (UI / manual)
+ *   1 = SSE inactivity logout
+ *   2 = Sentinel inactivity logout
+ *
+ * Ordering contract (caller responsibility):
+ *   1. Preserve contactId + activitySessionId
+ *   2. Call executeAuthLogout()  ← audit insert happens here
+ *   3. Only then clear session / persist logged-out state
+ *   4. Send forceLogout (SSE) or return success (manual)
+ *
+ * @param PDO   $pdo
+ * @param int   $contactId  Authenticated contact (must be > 0)
+ * @param int   $origin     Codex origin 0|1|2
+ * @param array $meta       Optional: latitude, longitude, activitySessionId|sessionId,
+ *                          actionPayloadData, actionResponseData, response
+ * @return bool true only when a tblActions row was inserted (actionId > 0)
+ */
+function executeAuthLogout(PDO $pdo, int $contactId, int $origin, array $meta = []): bool
+{
+    if ($contactId <= 0) {
+        error_log('[executeAuthLogout] Skipped — invalid contactId');
+        return false;
+    }
+
+    // Normalize origin to Codex set; default to 0 (user-initiated) if out of range
+    if (!in_array($origin, [0, 1, 2], true)) {
+        error_log("[executeAuthLogout] Invalid origin={$origin}; coercing to 0");
+        $origin = 0;
+    }
+
+    // Build meta for logAuthAction — numeric origin is authoritative
+    $payload = [
+        'origin'             => $origin,
+        'latitude'           => $meta['latitude']  ?? null,
+        'longitude'          => $meta['longitude'] ?? null,
+        'activitySessionId'  => $meta['activitySessionId'] ?? $meta['sessionId'] ?? null,
+        'actionPayloadData'  => $meta['actionPayloadData']  ?? null,
+        'actionResponseData' => $meta['actionResponseData'] ?? null,
+        'response'           => $meta['response'] ?? 'logout_success',
+    ];
+
+    // Backward-compat string flag still accepted by logAuthAction for intent mapping
+    if ($origin === 1) {
+        $payload['actionOrigin'] = 'idle_timeout';
+    } elseif ($origin === 2) {
+        $payload['actionOrigin'] = 'sentinel_timeout';
+    } else {
+        $payload['actionOrigin'] = 'ui_logout';
+    }
+
+    return logAuthAction($pdo, 'auth.logout', $contactId, $payload);
+}
+
 // 🔐 logAuthAction() — Adapter to new action system
 // Returns true only when logAction() actually inserted a row (actionId > 0)
 //
-// For idle logout the caller (sse.php) MUST supply:
-//   $meta['actionOrigin']      = 'idle_timeout'   → intent becomes idle_logout
-//   $meta['activitySessionId'] = <preserved SSE session id>
+// Prefer executeAuthLogout() for logout paths. This function remains the
+// general adapter for login / login.fail / logout.
 //
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): bool
 {
@@ -135,38 +193,48 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
             default            => 'auth.session.login'  // fallback (safe)
         };
 
-        // --- Intent mapping (textual distinction lives here)
+        // --- Numeric origin (Codex: 0=UI, 1=SSE idle, 2=Sentinel)
+        // Prefer explicit meta['origin']; fall back from string actionOrigin; default 0
+        $origin = 0;
+        if (isset($meta['origin']) && in_array((int)$meta['origin'], [0, 1, 2], true)) {
+            $origin = (int)$meta['origin'];
+        } elseif (($meta['actionOrigin'] ?? '') === 'idle_timeout') {
+            $origin = 1;
+        } elseif (($meta['actionOrigin'] ?? '') === 'sentinel_timeout') {
+            $origin = 2;
+        }
+
+        // --- Intent mapping (textual distinction)
         $intent = match ($actionKey) {
             'auth.login'       => 'ui_login',
-            'auth.logout'      => ($meta['actionOrigin'] ?? '') === 'idle_timeout'
-                                    ? 'idle_logout'
-                                    : 'ui_logout',
+            'auth.logout'      => match ($origin) {
+                                    1 => 'idle_logout',
+                                    2 => 'sentinel_logout',
+                                    default => 'ui_logout',
+                                 },
             'auth.login.fail'  => 'auth_fail',
             default            => 'auth_event'
         };
 
-        // --- Origin (numeric) — actionLogger only accepts 1|2|3 (default 1)
-        // Established rule: SSE idle logout uses origin 1.
-        // UI logout also uses 1 under current allowedOrigins. Do NOT send 0.
-        $origin = 1;
-
         // --- Prompt + response
         // prompt is written to promptText column by logAction()
+        // MUST be the stable key (auth.login / auth.logout) so getLastAuthAction works
         $prompt   = $actionKey;
         $response = $meta['response'] ?? ($actionKey === 'auth.logout' ? 'logout_success' : 'login_success');
 
         // --- activitySessionId (critical for SSE idle path)
-        // Prefer the value preserved by sse.php before session mutation.
-        // Fallback to live session_id() only when caller did not supply one.
+        // Prefer preserved value from caller; accept activitySessionId or sessionId key.
         $activitySessionId = null;
         if (!empty($meta['activitySessionId']) && is_string($meta['activitySessionId'])) {
             $activitySessionId = trim($meta['activitySessionId']);
+        } elseif (!empty($meta['sessionId']) && is_string($meta['sessionId'])) {
+            $activitySessionId = trim($meta['sessionId']);
         }
         if ($activitySessionId === null || $activitySessionId === '') {
             $activitySessionId = session_id() ?: null;
         }
 
-        // --- Call NEW system (key must be 'origin', not 'actionOrigin')
+        // --- Call NEW system
         $actionId = logAction($pdo, [
             'actionName'         => $actionName,
             'contactId'          => $contactId,
@@ -226,6 +294,7 @@ function getContactName(mixed $contactId): array {
 
 // 🔐 getLastAuthAction() — Fetch last auth action for a user (login/logout)
 // MUST read promptText (the column logAction actually writes)
+// Login records MUST also write promptText = 'auth.login' for duplicate protection to work.
 function getLastAuthAction(PDO $pdo, int $contactId): ?string
 {
     try {

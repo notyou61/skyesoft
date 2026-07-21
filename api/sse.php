@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.5.6
+// Version: 1.6.0
 // Real-Time Projection Engine - Production Stable (DB Activity + Geo)
 // FIX: session_start() never called after SSE headers/output begin
+// FIX: idle logout audits BEFORE clearing auth; uses executeAuthLogout()
 // ======================================================================
 
 #region ⚙️ SECTION 0 — Environment Bootstrap
@@ -142,6 +143,7 @@ try {
 }
 
 // Idle logout guard (process-local)
+// Set ONLY after a successful audit insert (or confirmed already-logged).
 $idleLogoutProcessed = false;
 
 // Micro-cache for lastActivity
@@ -150,6 +152,7 @@ $lastActivityCache = [
     'value'     => null
 ];
 
+// TEST VALUE — restore to 900 (or shared config) after verification
 define('SKYESOFT_IDLE_TIMEOUT', 30);
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
@@ -162,9 +165,9 @@ $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
  *   1. Always update the process-local $localSession (caller does this).
  *   2. Best-effort write to the real session store ONLY if headers
  *      have not been sent yet.
- *   3. If headers are already sent we rely on the DB audit row
- *      (logAuthAction) + the forceLogout flag; other tabs will pick
- *      up the logout on their next full request / their own idle check.
+ *   3. If headers are already sent this is a deliberate no-op.
+ *      Real session destruction is performed by the browser calling
+ *      auth.php logout after receiving forceLogout.
  */
 function sky_sse_persist_session(string $sessionId, array $updates): void
 {
@@ -348,7 +351,7 @@ while (true) {
         }
 
         // ─────────────────────────────────────────
-        // 🔒 IDLE LOGOUT — Persist, Audit, Signal
+        // 🔒 IDLE LOGOUT — Audit FIRST, then clear local state
         // ─────────────────────────────────────────
         $forceLogout = false;
 
@@ -359,53 +362,24 @@ while (true) {
             $contactIdForLog !== null &&
             !$idleLogoutProcessed
         ) {
+            // Preserve authenticated identity (do NOT clear yet)
+            $logoutContactId = (int)$contactIdForLog;
+            $latitude        = $localSession['latitude']  ?? null;
+            $longitude       = $localSession['longitude'] ?? null;
+
             error_log(
                 '[IDLE] Threshold reached for contactId=' .
-                $contactIdForLog
+                $logoutContactId
             );
 
-            // Prevent repeat processing in this SSE process
-            $idleLogoutProcessed = true;
+            $auditInserted = false;
 
-            // Capture geo before we clear anything
-            $latitude  = $localSession['latitude']  ?? null;
-            $longitude = $localSession['longitude'] ?? null;
-
-            // 1. Update the process-local copy immediately
-            $localSession['idleLogoutComplete'] = true;
-            $localSession['authenticated']      = false;
-            $localSession['contactId']          = null;
-            $localSession['username']           = null;
-            $localSession['role']               = null;
-
-            // 2. Persist the flag + cleared auth to real session storage
-            //    (safe even after headers have been sent)
-            sky_sse_persist_session($sessionIdForLog, [
-                'idleLogoutComplete' => true,
-                'authenticated'      => false,
-                'contactId'          => null,
-                'username'           => null,
-                'role'               => null,
-            ]);
-
-            // 3. Build logged-out auth for this payload
-            $auth = [
-                'authenticated' => false,
-                'contactId'     => null,
-                'username'      => null,
-                'role'          => null,
-                'firstName'     => null,
-                'lastName'      => null
-            ];
-
-            $idle = null;
-
-            // 4. Write the logout row to tblActions (this is the missing piece)
-            if ($pdo instanceof PDO) {
+            // Audit BEFORE clearing authentication
+            if ($pdo instanceof PDO && $logoutContactId > 0) {
                 try {
                     $lastAction = getLastAuthAction(
                         $pdo,
-                        $contactIdForLog
+                        $logoutContactId
                     );
 
                     error_log(
@@ -413,39 +387,30 @@ while (true) {
                         var_export($lastAction, true)
                     );
 
-                    $alreadyLoggedOut = in_array(
-                        $lastAction,
-                        ['auth.logout', 'auth.session.logout'],
-                        true
-                    );
+                    if ($lastAction === 'auth.logout') {
+                        // Existing logout satisfies the audit requirement
+                        $auditInserted = true;
 
-                    if (!$alreadyLoggedOut) {
                         error_log(
-                            '[IDLE] Logging idle logout for contactId=' .
-                            $contactIdForLog
+                            '[IDLE] Logout audit skipped; already logged'
                         );
-
-                        $auditResult = logAuthAction(
+                    } else {
+                        // Shared backend path (same as manual logout)
+                        $auditInserted = executeAuthLogout(
                             $pdo,
-                            'auth.logout',
-                            $contactIdForLog,
+                            $logoutContactId,
+                            1,   // Codex origin: SSE inactivity
                             [
-                                'actionOrigin' => 'idle_timeout',
-                                'ip'           => safeIp(),
-                                'ua'           => safeUserAgent(),
-                                'latitude'     => $latitude,
-                                'longitude'    => $longitude,
-                                'sessionId'    => $sessionIdForLog
+                                'latitude'          => $latitude,
+                                'longitude'         => $longitude,
+                                'activitySessionId' => $sessionIdForLog,
+                                'response'          => 'logout_success'
                             ]
                         );
 
                         error_log(
                             '[IDLE] Logout audit insert result=' .
-                            var_export($auditResult, true)
-                        );
-                    } else {
-                        error_log(
-                            '[IDLE] Logout audit skipped; already logged'
+                            ($auditInserted ? 'true' : 'false')
                         );
                     }
                 } catch (Throwable $e) {
@@ -455,11 +420,46 @@ while (true) {
                     );
                 }
             } else {
-                error_log('[IDLE] Logout audit skipped: PDO unavailable');
+                error_log(
+                    '[IDLE] Logout audit unavailable: invalid PDO or contactId'
+                );
             }
 
-            $forceLogout     = true;
-            $contactIdForLog = null;
+            // Complete logout ONLY after successful audit
+            // (failed insert can be retried on next 1Hz tick)
+            if ($auditInserted) {
+                $idleLogoutProcessed = true;
+
+                // Process-local state (this SSE stream)
+                $localSession['idleLogoutComplete'] = true;
+                $localSession['authenticated']      = false;
+                $localSession['contactId']          = null;
+                $localSession['username']           = null;
+                $localSession['role']               = null;
+
+                // Best-effort real session write (no-op once headers sent —
+                // browser will call auth.php logout on forceLogout)
+                sky_sse_persist_session($sessionIdForLog, [
+                    'idleLogoutComplete' => true,
+                    'authenticated'      => false,
+                    'contactId'          => null,
+                    'username'           => null,
+                    'role'               => null,
+                ]);
+
+                $auth = [
+                    'authenticated' => false,
+                    'contactId'     => null,
+                    'username'      => null,
+                    'role'          => null,
+                    'firstName'     => null,
+                    'lastName'      => null
+                ];
+
+                $idle            = null;
+                $forceLogout     = true;
+                $contactIdForLog = null;
+            }
         }
 
         // ─────────────────────────────────────────
