@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.6.1
+// Version: 1.6.2
 // Real-Time Projection Engine - Production Stable (DB Activity + Geo)
 // FIX: session_start() never called after SSE headers/output begin
 // FIX: idle logout audits BEFORE clearing auth; uses executeAuthLogout()
+// ENRICH: structured actionPayloadData / actionResponseData on idle audit
 // DIAG: temporary verbose IDLE DEBUG logging + direct executeAuthLogout
 // ======================================================================
 
@@ -353,7 +354,7 @@ while (true) {
 
         // ─────────────────────────────────────────
         // 🔒 IDLE LOGOUT — Audit FIRST, then clear local state
-        // DIAG MODE (v1.6.1): verbose condition logs + direct executeAuthLogout
+        // DIAG MODE (v1.6.2): verbose condition logs + enriched executeAuthLogout
         // Duplicate guard (getLastAuthAction) temporarily bypassed to prove insert.
         // Restore guard after the row is confirmed in tblActions.
         // ─────────────────────────────────────────
@@ -401,10 +402,26 @@ while (true) {
                         $logoutContactId,
                         1,   // Codex origin: SSE inactivity logout
                         [
-                            'latitude'          => $latitude,
-                            'longitude'         => $longitude,
-                            'activitySessionId' => $sessionIdForLog,
-                            'response'          => 'logout_success'
+                            'source'             => 'sse_idle',
+                            'latitude'           => $latitude,
+                            'longitude'          => $longitude,
+                            'activitySessionId'  => $sessionIdForLog,
+                            'response'           => 'logout_success',
+                            'timeoutSeconds'     => SKYESOFT_IDLE_TIMEOUT,
+                            'lastActivityUnix'   => $lastActivity,
+                            'actionPayloadData'  => [
+                                'source'            => 'sse_idle',
+                                'origin'            => 1,
+                                'timeoutSeconds'    => SKYESOFT_IDLE_TIMEOUT,
+                                'lastActivityUnix'  => $lastActivity,
+                                'activitySessionId' => $sessionIdForLog,
+                                'contactId'         => $logoutContactId,
+                            ],
+                            'actionResponseData' => [
+                                'result'      => 'logout_success',
+                                'audit'       => 'inserted',
+                                'forceLogout' => true,
+                            ],
                         ]
                     );
 

@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — auth.php
-// Version: 1.3.1
+// Version: 1.4.1
 // Session-Authoritative Identity (activitySessionId)
+// LOGOUT: executeAuthLogout origin 0 (manual) with structured payload
+// LOGIN:  logAuthAction promptText=auth.login + Phase 5 payload structures
 // ======================================================================
 
 #region SECTION 0 — Environment Bootstrap
@@ -104,6 +106,23 @@ if ($input['action'] === 'login') {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user || !password_verify($password, $user['passwordHash'])) {
+        // Optional: audit failed attempt without revealing details
+        logAuthAction($pdo, 'auth.login.fail', null, [
+            'origin'            => 0,
+            'response'          => 'login_failed',
+            'latitude'          => $input['latitude']  ?? null,
+            'longitude'         => $input['longitude'] ?? null,
+            'activitySessionId' => $activitySessionId,
+            'actionPayloadData' => [
+                'source'   => 'manual',
+                'origin'   => 0,
+                'username' => $username,
+            ],
+            'actionResponseData' => [
+                'result' => 'login_failed',
+            ],
+        ]);
+
         echo json_encode([
             'success' => false,
             'message' => 'Invalid credentials.'
@@ -125,26 +144,25 @@ if ($input['action'] === 'login') {
         $_SESSION['lastLongitude'] = (float)$input['longitude'];
     }
 
-    // 🔥 LOG ACTION
-    logAction($pdo, [
-        'actionName' => 'auth.session.login',
-        'contactId'  => $user['contactId'],
-        'intent'     => 'ui_login',
-        'prompt'     => $username,
-        'response'   => 'login_success',
-        'confidence' => 1.00,
-        'lat'        => $input['latitude'] ?? null,
-        'lng'        => $input['longitude'] ?? null,
+    // 🔥 LOG ACTION — promptText MUST be 'auth.login' for getLastAuthAction()
+    // Never put password or credentials into payload/response structures.
+    $contactId = (int)$user['contactId'];
 
-        // Structured data (optional but useful)
-        'actionPayloadData' => [
-            'username' => $username,
-            'contactId' => $user['contactId']
+    logAuthAction($pdo, 'auth.login', $contactId, [
+        'origin'             => 0,
+        'latitude'           => $input['latitude']  ?? null,
+        'longitude'          => $input['longitude'] ?? null,
+        'activitySessionId'  => $activitySessionId,
+        'response'           => 'login_success',
+        'actionPayloadData'  => [
+            'source'            => 'login_form',
+            'activitySessionId' => $activitySessionId,
+            'contactId'         => $contactId,
         ],
         'actionResponseData' => [
-            'status' => 'success',
-            'username' => $user['contactEmail']
-        ]
+            'result'        => 'login_success',
+            'authenticated' => true,
+        ],
     ]);
 
     echo json_encode([
@@ -165,27 +183,60 @@ if ($input['action'] === 'logout') {
         session_start();
     }
 
-    $contactId = isset($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : null;
+    // 1. Preserve identity BEFORE clearing session
+    $contactId = isset($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : 0;
     $username  = $_SESSION['username'] ?? null;
+    $activitySessionId = session_id();
 
-    // ⚡ FIX: Use logAuthAction() instead of logAction() to trigger the intercept loop
-    logAuthAction($pdo, 'auth.logout', $contactId, [
-        'actionOrigin' => $input['actionOrigin'] ?? 'ui_logout',
-        'latitude'     => $_SESSION['lastLatitude'] ?? null,
-        'longitude'    => $_SESSION['lastLongitude'] ?? null,
+    $latitude  = $_SESSION['lastLatitude']  ?? null;
+    $longitude = $_SESSION['lastLongitude'] ?? null;
 
-        // Structured data matching login
-        'actionPayloadData' => [
-            'actionOrigin' => $input['actionOrigin'] ?? 'ui_logout',
-            'contactId'    => $contactId
-        ],
-        'actionResponseData' => [
-            'status'   => 'success',
-            'username' => $username
-        ]
-    ]);
+    // Optional: client may send source (e.g. idle_timeout follow-up from browser)
+    // Manual UI logout is always Codex origin 0. Browser forceLogout after SSE
+    // idle should still use origin 0 here only if it re-audits; preferred path is
+    // SSE already wrote origin 1 and getLastAuthAction blocks a duplicate.
+    $clientOriginHint = trim((string)($input['actionOrigin'] ?? $input['source'] ?? 'ui_logout'));
 
-    // Destroy session
+    // 2. Audit first via shared executeAuthLogout (origin 0 = user-initiated)
+    $auditInserted = false;
+
+    if ($contactId > 0) {
+        $auditInserted = executeAuthLogout(
+            $pdo,
+            $contactId,
+            0,   // Codex origin: user-initiated logout
+            [
+                'source'             => 'manual',
+                'latitude'           => $latitude,
+                'longitude'          => $longitude,
+                'activitySessionId'  => $activitySessionId,
+                'response'           => 'logout_success',
+                'actionPayloadData'  => [
+                    'source'            => 'manual',
+                    'origin'            => 0,
+                    'activitySessionId' => $activitySessionId,
+                    'contactId'         => $contactId,
+                    'clientOriginHint'  => $clientOriginHint,
+                    'username'          => $username,
+                ],
+                'actionResponseData' => [
+                    'result'      => 'logout_success',
+                    'audit'       => 'inserted',
+                    'forceLogout' => false,
+                ],
+            ]
+        );
+
+        error_log(
+            '[AUTH LOGOUT] executeAuthLogout result=' .
+            var_export($auditInserted, true) .
+            ' contactId=' . $contactId
+        );
+    } else {
+        error_log('[AUTH LOGOUT] Skipped audit — no contactId in session');
+    }
+
+    // 3. ONLY THEN destroy session
     $_SESSION = [];
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();

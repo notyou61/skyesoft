@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 // Skyesoft — authFunctions.php
 // Shared Authentication Utilities (SSE SAFE)
-// Version: 1.5.0
+// Version: 1.5.2
 // ======================================================================
 
 // 🔗 Dependencies (explicit + safe)
@@ -120,6 +120,16 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
  *   1 = SSE inactivity logout
  *   2 = Sentinel inactivity logout
  *
+ * Geo resolution order:
+ *   1. Both latitude AND longitude supplied → use supplied pair
+ *   2. Either missing → getLastKnownGeo() matched pair
+ *   3. No history → both null
+ *
+ * Structured data:
+ *   Caller-supplied actionPayloadData / actionResponseData take precedence.
+ *   Otherwise defaults are built as PHP arrays (never left null for logout).
+ *   Pass arrays — logAction() performs the single JSON encode step.
+ *
  * Ordering contract (caller responsibility):
  *   1. Preserve contactId + activitySessionId
  *   2. Call executeAuthLogout()  ← audit insert happens here
@@ -130,7 +140,8 @@ function clearUserWorkspaceArtifacts(?int $contactId = null): void
  * @param int   $contactId  Authenticated contact (must be > 0)
  * @param int   $origin     Codex origin 0|1|2
  * @param array $meta       Optional: latitude, longitude, activitySessionId|sessionId,
- *                          actionPayloadData, actionResponseData, response
+ *                          actionPayloadData, actionResponseData, response, source,
+ *                          timeoutSeconds, lastActivityUnix
  * @return bool true only when a tblActions row was inserted (actionId > 0)
  */
 function executeAuthLogout(PDO $pdo, int $contactId, int $origin, array $meta = []): bool
@@ -146,15 +157,72 @@ function executeAuthLogout(PDO $pdo, int $contactId, int $origin, array $meta = 
         $origin = 0;
     }
 
+    // --- activitySessionId (needed for defaults + forward)
+    $activitySessionId = null;
+    if (!empty($meta['activitySessionId']) && is_string($meta['activitySessionId'])) {
+        $activitySessionId = trim($meta['activitySessionId']);
+    } elseif (!empty($meta['sessionId']) && is_string($meta['sessionId'])) {
+        $activitySessionId = trim($meta['sessionId']);
+    }
+    if ($activitySessionId === null || $activitySessionId === '') {
+        $activitySessionId = session_id() ?: null;
+    }
+
+    // --- Geo resolution (matched pair only)
+    $lat = $meta['latitude']  ?? null;
+    $lng = $meta['longitude'] ?? null;
+
+    $latOk = ($lat !== null && $lat !== '');
+    $lngOk = ($lng !== null && $lng !== '');
+
+    if ($latOk && $lngOk) {
+        $latitude  = $lat;
+        $longitude = $lng;
+    } else {
+        $geo = getLastKnownGeo($pdo, $contactId);
+        $latitude  = $geo['latitude'];
+        $longitude = $geo['longitude'];
+    }
+
+    // --- Structured payload / response
+    // Pass PHP arrays only. logAction() is the single encoding step
+    // (it json_encodes arrays; strings are stored as-is).
+    $responseText = $meta['response'] ?? 'logout_success';
+
+    if (array_key_exists('actionPayloadData', $meta) && $meta['actionPayloadData'] !== null) {
+        $actionPayloadData = $meta['actionPayloadData'];
+    } else {
+        $actionPayloadData = [
+            'source'            => $meta['source'] ?? 'auth',
+            'origin'            => $origin,
+            'activitySessionId' => $activitySessionId,
+            'contactId'         => $contactId,
+        ];
+        if (isset($meta['timeoutSeconds'])) {
+            $actionPayloadData['timeoutSeconds'] = $meta['timeoutSeconds'];
+        }
+        if (isset($meta['lastActivityUnix'])) {
+            $actionPayloadData['lastActivityUnix'] = $meta['lastActivityUnix'];
+        }
+    }
+
+    if (array_key_exists('actionResponseData', $meta) && $meta['actionResponseData'] !== null) {
+        $actionResponseData = $meta['actionResponseData'];
+    } else {
+        $actionResponseData = [
+            'result' => $responseText,
+        ];
+    }
+
     // Build meta for logAuthAction — numeric origin is authoritative
     $payload = [
         'origin'             => $origin,
-        'latitude'           => $meta['latitude']  ?? null,
-        'longitude'          => $meta['longitude'] ?? null,
-        'activitySessionId'  => $meta['activitySessionId'] ?? $meta['sessionId'] ?? null,
-        'actionPayloadData'  => $meta['actionPayloadData']  ?? null,
-        'actionResponseData' => $meta['actionResponseData'] ?? null,
-        'response'           => $meta['response'] ?? 'logout_success',
+        'latitude'           => $latitude,
+        'longitude'          => $longitude,
+        'activitySessionId'  => $activitySessionId,
+        'actionPayloadData'  => $actionPayloadData,
+        'actionResponseData' => $actionResponseData,
+        'response'           => $responseText,
     ];
 
     // Backward-compat string flag still accepted by logAuthAction for intent mapping
@@ -289,6 +357,56 @@ function getContactName(mixed $contactId): array {
     } catch (Throwable $e) {
         error_log('[getContactName ERROR] ' . $e->getMessage());
         return ['firstName' => null, 'lastName' => null];
+    }
+}
+
+/**
+ * Return the most recent matched lat/lon pair for a contact from tblActions.
+ * Coordinates are always a pair from the same row — never mixed across rows.
+ *
+ * @return array{latitude: ?float, longitude: ?float}
+ */
+function getLastKnownGeo(PDO $pdo, int $contactId): array
+{
+    $empty = ['latitude' => null, 'longitude' => null];
+
+    if ($contactId <= 0) {
+        return $empty;
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            SELECT latitude, longitude
+            FROM tblActions
+            WHERE contactId = :contactId
+              AND latitude  IS NOT NULL
+              AND longitude IS NOT NULL
+            ORDER BY actionUnix DESC, actionId DESC
+            LIMIT 1
+        ");
+
+        $stmt->execute([':contactId' => $contactId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row === false) {
+            return $empty;
+        }
+
+        // Matched pair only — both present on this same row
+        $lat = $row['latitude'];
+        $lng = $row['longitude'];
+
+        if ($lat === null || $lng === null || $lat === '' || $lng === '') {
+            return $empty;
+        }
+
+        return [
+            'latitude'  => (float)$lat,
+            'longitude' => (float)$lng,
+        ];
+    } catch (Throwable $e) {
+        error_log('[getLastKnownGeo ERROR] ' . $e->getMessage());
+        return $empty;
     }
 }
 
