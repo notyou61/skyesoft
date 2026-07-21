@@ -1,6 +1,6 @@
 /* Skyesoft — sse.js
    SSE Engine → Push JSON Updates to Global App Handler
-   (Cleaned: single handleSSE call, correct lastSSE storage, no duplicate auth logic)
+   (Persistent-stream architecture: never stops the stream on logout)
 */
 
 window.SkySSE = {
@@ -50,15 +50,13 @@ window.SkySSE = {
                     window.SkyeApp = window.SkyeApp || {};
                     window.SkyeApp.lastSSE = payload;
 
-                    // 🔐 Lightweight auth state mirror (for other modules)
-                    // Full auth transition + UI work lives in SkyeApp.handleSSE
+                    // 🔐 Lightweight auth state mirror only
                     if (payload.auth !== undefined) {
                         window.SkyState = window.SkyState || {};
                         window.SkyState.authenticated = payload.auth.authenticated === true;
                     }
 
                     // 🔥 SINGLE call into the global handler
-                    // (app.js owns all forceLogout / idle / auth-change / HSB / page routing)
                     window.SkyeApp?.handleSSE?.(payload);
 
                 } catch (err) {
@@ -78,7 +76,6 @@ window.SkySSE = {
     // 🔁 Restart stream (safe restart)
     restart: function () {
 
-        // Cancel any pending restart
         if (this.restartTimer) {
             clearTimeout(this.restartTimer);
             this.restartTimer = null;
@@ -92,7 +89,7 @@ window.SkySSE = {
         }, 800);
     },
 
-    // ⛔ Stop stream
+    // ⛔ Stop stream (only for explicit teardown, never on idle logout)
     stop: function () {
 
         if (this.es) {

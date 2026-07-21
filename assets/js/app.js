@@ -9,6 +9,7 @@
    • Header updates (HSB-X)
    • Version footer updates
    • Auth transition helpers (handleLogin / handleLogout)
+   • Idle countdown (self-contained + page-handler friendly)
 */
 
 /* #region PAGE STATE */
@@ -188,6 +189,80 @@ window.SkyeApp.updateHSB = function (payload) {
 };
 /* #endregion */
 
+/* #region IDLE COUNTDOWN (self-contained) */
+/**
+ * Renders idle countdown.
+ * 1. Calls page.renderFooterStatus() if the page handler provides it.
+ * 2. Always performs a direct DOM write to any known idle element so the
+ *    countdown never disappears when the page handler is incomplete.
+ *
+ * Expected payload shape from sse.php:
+ *   idle: { state: "warning"|"ok"|"critical", remainingSeconds: N, timeoutSeconds: N }
+ */
+window.SkyeApp.renderIdleCountdown = function (page) {
+
+    // ---- 1. Let the page handler paint first (preserves any custom styling) ----
+    if (page && typeof page.renderFooterStatus === 'function') {
+        try {
+            page.renderFooterStatus.call(page);
+        } catch (err) {
+            console.warn('[SkyeApp] page.renderFooterStatus error', err);
+        }
+    }
+
+    // ---- 2. Direct DOM fallback (guarantees visible countdown) ----
+    const idle = (page && page.idleState) || (this.lastSSE && this.lastSSE.idle) || null;
+
+    // Try every ID that has ever been used in Skyesoft footers
+    const ids = [
+        'footerIdle',
+        'idleCountdown',
+        'footer-idle',
+        'idleTimer',
+        'footerStatusIdle',
+        'hsbIdle',
+        'footer_idle',
+        'idle-remaining'
+    ];
+
+    let el = null;
+    for (const id of ids) {
+        el = document.getElementById(id);
+        if (el) break;
+    }
+    if (!el) {
+        el = document.querySelector('[data-idle-countdown], [data-role="idle-countdown"]');
+    }
+
+    if (!el) {
+        // No element in the DOM yet – nothing more we can do from app.js
+        return;
+    }
+
+    const isAuth = (page && page.authState === true) ||
+                   document.body.hasAttribute('data-auth');
+
+    if (isAuth && idle && Number.isFinite(Number(idle.remainingSeconds))) {
+        const remaining = Math.max(0, Math.floor(Number(idle.remainingSeconds)));
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        el.textContent = `Idle ${m}:${String(s).padStart(2, '0')}`;
+        el.hidden = false;
+        el.removeAttribute('hidden');
+        el.style.display = '';
+        // Optional visual state
+        el.dataset.idleState = idle.state || '';
+        el.classList.remove('idle-ok', 'idle-warning', 'idle-critical');
+        if (idle.state) el.classList.add('idle-' + idle.state);
+    } else {
+        el.textContent = '';
+        el.hidden = true;
+        el.dataset.idleState = '';
+        el.classList.remove('idle-ok', 'idle-warning', 'idle-critical');
+    }
+};
+/* #endregion */
+
 /* #region AUTH TRANSITION HELPERS */
 /**
  * Called when SSE (or other code) detects a successful login.
@@ -207,7 +282,8 @@ window.SkyeApp.handleLogin = function () {
         page.transitionToCommandInterface();
     }
 
-    page.renderFooterStatus?.call(page);
+    // Refresh footer + idle
+    this.renderIdleCountdown(page);
 };
 
 /**
@@ -236,6 +312,9 @@ window.SkyeApp.handleLogout = function (reason = 'unknown') {
     window.SkyState = window.SkyState || {};
     window.SkyState.authenticated = false;
 
+    // Clear countdown immediately
+    this.renderIdleCountdown(page);
+
     // Render logged-out interface
     if (page && typeof page.renderLoginCard === 'function') {
         page.renderLoginCard();
@@ -262,6 +341,7 @@ window.SkyeApp.handleSSE = function (payload) {
         console.log('[SSE] forceLogout received → Applying logged-out state');
 
         // Delegate to the single authoritative logout path
+        // SSE stream stays alive (persistent-stream architecture)
         this.handleLogout('idle_timeout');
         return;
     }
@@ -272,14 +352,14 @@ window.SkyeApp.handleSSE = function (payload) {
     this.lastSSE = payload;
 
     // ─────────────────────────────────────────
-    // 🔄 ALWAYS UPDATE IDLE STATE (CRITICAL FIX)
+    // 🔄 ALWAYS UPDATE IDLE STATE + RENDER COUNTDOWN
     // ─────────────────────────────────────────
-    if (page && payload?.idle) {
+    if (payload?.idle) {
         page.idleState = payload.idle;
-
-        // 🔄 FORCE UI UPDATE
-        page.renderFooterStatus?.call(page);
     }
+
+    // Render on every tick — this is what makes the countdown live
+    this.renderIdleCountdown(page);
 
     // ─────────────────────────────────────────
     // FIRST SSE MESSAGE (Initialization)
@@ -307,12 +387,11 @@ window.SkyeApp.handleSSE = function (payload) {
             }
 
             page._lastRenderedAuth = page.getAuthState?.() === true;
-            page.renderFooterStatus?.call(page);
         }
 
         this.updateHSB?.(payload);
         this.routeSSEToPage?.(payload);
-        page?.renderFooterStatus?.call(page);
+        this.renderIdleCountdown(page);
         return;
     }
 
