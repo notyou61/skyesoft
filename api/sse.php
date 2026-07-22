@@ -156,7 +156,7 @@ $lastActivityCache = [
 ];
 
 // TEST VALUE — restore to 900 (or shared config) after verification
-define('SKYESOFT_IDLE_TIMEOUT', 30);
+define('SKYESOFT_IDLE_TIMEOUT', 900);
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 /**
