@@ -5,9 +5,9 @@ declare(strict_types=1);
  * Skyesoft — processProposedContact.php
  * Main Orchestration + Proposal Report Generation
  * 
- * File Version:     1.6.6
+ * File Version:     1.6.7
  * Schema Version:   2.1.1
- * Last Updated:     2026-07-17
+ * Last Updated:     2026-07-22
  */
 
 #region SECTION 00 — Bootstrap & Request Initialization
@@ -60,6 +60,28 @@ $context = [
 $rawJson = file_get_contents('php://input');
 $inputData = json_decode($rawJson, true) ?? [];
 
+// Resolve the user's browser position for tblActions audit metadata.
+// Proposal/location coordinates belong in the structured JSON only.
+$resolveBrowserCoordinates = function(array $requestData): array {
+    $latitude  = $requestData['latitude'] ?? null;
+    $longitude = $requestData['longitude'] ?? null;
+
+    if (!is_numeric($latitude) || !is_numeric($longitude)) {
+        return [null, null];
+    }
+
+    $latitude  = (float)$latitude;
+    $longitude = (float)$longitude;
+
+    if ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
+        return [null, null];
+    }
+
+    return [$latitude, $longitude];
+};
+
+list($browserLatitude, $browserLongitude) = $resolveBrowserCoordinates($inputData);
+
 // =====================================================
 // 🚨 INTERCEPT ROUTE: PROPOSAL DECLINE WORKFLOW
 // =====================================================
@@ -98,30 +120,16 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
         }
     }
 
-    // ── Multi-Tiered Latitude & Longitude Resolution ──
-    // Tier 1: Proposal snapshot (authoritative)
-    // Tier 2: UI payload fallback
-    $lat = $snapshotData['data']['location']['locationLatitude']
-        ?? $snapshotData['location']['latitude']
-        ?? $inputData['data']['location']['locationLatitude']
-        ?? $inputData['location']['locationLatitude']
-        ?? $inputData['location']['latitude']
-        ?? null;
-
-    $lon = $snapshotData['data']['location']['locationLongitude']
-        ?? $snapshotData['location']['longitude']
-        ?? $inputData['data']['location']['locationLongitude']
-        ?? $inputData['location']['locationLongitude']
-        ?? $inputData['location']['longitude']
-        ?? null;
+    // Use only the user's browser position for tblActions audit metadata.
+    $lat = $browserLatitude;
+    $lon = $browserLongitude;
 
     error_log(sprintf(
-        '[PPC][DECLINE-GEO] Proposal #%s | Snapshot=%s | Lat=%s | Lon=%s | Payload=%s',
+        '[PPC][DECLINE-ACTION-GEO] Proposal #%s | Snapshot=%s | UserLat=%s | UserLon=%s',
         $targetProposalId,
         !empty($snapshotData) ? 'YES' : 'NO',
         var_export($lat, true),
-        var_export($lon, true),
-        json_encode($inputData['data']['location'] ?? $inputData['location'] ?? [])
+        var_export($lon, true)
     ));
 
     // ── Session ID Resolution (Proposal Snapshot first) ──
@@ -233,9 +241,7 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
                 'proposalId'        => $targetProposalId
             ];
 
-            $contactId = $inputData['data']['contact']['contactId']
-                ?? $_SESSION['contactId']
-                ?? null;
+            $contactId = $_SESSION['contactId'] ?? null;
 
             $stmt = $pdo->prepare("
                 INSERT INTO tblActions (
@@ -1061,8 +1067,8 @@ try {
         'origin'            => ACTION_ORIGIN_USER,
         'activitySessionId' => $context['activitySessionId'],
         
-        'latitude'          => $data['location']['locationLatitude'] ?? null,
-        'longitude'         => $data['location']['locationLongitude'] ?? null,
+        'latitude'          => $browserLatitude,
+        'longitude'         => $browserLongitude,
 
         'actionPayloadData' => $actionPayload,
         'actionResponseData'=> null
