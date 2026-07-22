@@ -1985,8 +1985,11 @@ if ($pcm['pc'] === 'PC-6') {
 
 $governanceIssues = [];
 
-// RS-5 — Confirmed duplicate contact
-if ($isDuplicateContact) {
+// RS-5 — Duplicate contact outside its existing ELC
+if (
+    $isDuplicateContact &&
+    $pcm['pc'] !== 'PC-0'
+) {
     $governanceIssues[] = [
         'code' => 'RS-5',
         'message' => 'Duplicate contact detected',
@@ -2366,16 +2369,54 @@ $uiState = [
 $pc = $pcm['pc'] ?? 'UNKNOWN';
 $rsList = $pcm['rs'] ?? [];
 
+// Define blocking governance codes
+$blockingUiCodes = [
+    'RS-3',
+    'RS-5',
+    'RS-6',
+    'RS-7',
+    'RS-8'
+];
+
+$activeUiBlockingCodes = array_values(
+    array_intersect($rsList, $blockingUiCodes)
+);
+
 if ($pc === 'PC-0') {
+    // Existing ELC requires no proposal action
     $uiState['proposalStatus'] = 'existing';
-    $uiState['canAccept'] = $uiState['canReject'] = $uiState['canEdit'] = $uiState['canCommit'] = false;
-} elseif (in_array('RS-3', $rsList) || in_array('RS-6', $rsList) || in_array('RS-7', $rsList)) {
-    $uiState['proposalStatus'] = in_array('RS-6', $rsList) ? 'multiple_parcels' : (in_array('RS-7', $rsList) ? 'unresolved_parcel' : 'incomplete');
     $uiState['canAccept'] = false;
+    $uiState['canReject'] = false;
+    $uiState['canEdit'] = false;
     $uiState['canCommit'] = false;
+
+} elseif (!empty($activeUiBlockingCodes)) {
+    // Set status for blocked proposal
+    if (in_array('RS-6', $activeUiBlockingCodes, true)) {
+        $uiState['proposalStatus'] = 'multiple_parcels';
+    } elseif (in_array('RS-7', $activeUiBlockingCodes, true)) {
+        $uiState['proposalStatus'] = 'unresolved_parcel';
+    } elseif (in_array('RS-8', $activeUiBlockingCodes, true)) {
+        $uiState['proposalStatus'] = 'invalid_location';
+    } elseif (in_array('RS-3', $activeUiBlockingCodes, true)) {
+        $uiState['proposalStatus'] = 'incomplete';
+    } else {
+        // RS-5 remains a proposal requiring review
+        $uiState['proposalStatus'] = 'proposed';
+    }
+
+    $uiState['canAccept'] = false;
+    $uiState['canReject'] = true;
+    $uiState['canEdit'] = true;
+    $uiState['canCommit'] = false;
+
 } else {
-    // PC-6 falls cleanly in here with no blocking governance rules
-    $uiState['canAccept'] = $uiState['canCommit'] = true;
+    // Proposal is eligible for acceptance
+    $uiState['proposalStatus'] = 'proposed';
+    $uiState['canAccept'] = true;
+    $uiState['canReject'] = true;
+    $uiState['canEdit'] = true;
+    $uiState['canCommit'] = !empty($commitPlan['canCommit']);
 }
 
 // =====================================================
@@ -2508,6 +2549,84 @@ $narrativeContext = [
 
 // Call the utility function updated in processProposedContact.utils.php
 $aiNarrativeResult = buildOperationalNarratives($narrativeContext);
+
+// Override generic narratives for confirmed duplicate contact
+if (in_array('RS-5', $rsList, true)) {
+    $fullName = trim(
+        ($data['contact']['contactFirstName'] ?? '') .
+        ' ' .
+        ($data['contact']['contactLastName'] ?? '')
+    );
+
+    $entityName =
+        $data['entity']['entityName']
+        ?? 'the existing entity';
+
+    $locationCity =
+        $data['location']['locationCity']
+        ?? '';
+
+    $locationState =
+        $data['location']['locationState']
+        ?? '';
+
+    $proposedLocation = trim(
+        $locationCity .
+        (
+            $locationCity !== '' && $locationState !== ''
+                ? ', '
+                : ''
+        ) .
+        $locationState
+    );
+
+    $existingLocation =
+        $databaseResolution['contact']['location']
+        ?? [];
+
+    $existingCity =
+        $existingLocation['locationCity']
+        ?? '';
+
+    $existingState =
+        $existingLocation['locationState']
+        ?? '';
+
+    $existingLocationText = trim(
+        $existingCity .
+        (
+            $existingCity !== '' && $existingState !== ''
+                ? ', '
+                : ''
+        ) .
+        $existingState
+    );
+
+    $proposedLocationText = $proposedLocation !== ''
+        ? "The proposed {$proposedLocation} location is new"
+        : 'The proposed location is new';
+
+    $aiNarrativeResult = [
+        'contentLine' =>
+            "Duplicate Contact Review for {$fullName} at {$entityName}",
+        'decision' => [
+            "{$proposedLocationText}, but {$fullName} already exists " .
+            "as a contact for {$entityName}."
+        ],
+        'blocking' => [
+            'The existing contact cannot be inserted as a new contact record.'
+        ],
+        'review' => [
+            'Review the existing contact and determine whether the proposal ' .
+            'should proceed without creating a duplicate contact.'
+        ],
+        'informational' => [
+            $existingLocationText !== ''
+                ? "The existing contact is currently associated with {$existingLocationText}."
+                : 'The submitted identity matches an existing contact record.'
+        ]
+    ];
+}
 
 // Strategy Fallback: Handle hardcoded defaults for PC-6 if buildOperationalNarratives hasn't been updated yet
 if ($pc === 'PC-6') {
