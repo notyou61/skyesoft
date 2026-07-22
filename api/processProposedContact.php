@@ -1740,48 +1740,101 @@ $databaseResolution = [
 
 if ($pdo) {
 
-    // 1. Entity Resolution
-    $databaseResolution['entity'] = evaluateEntityDuplicate($parsed, $pdo);
+    // Resolve entity
+    $databaseResolution['entity'] = evaluateEntityDuplicate(
+        $parsed,
+        $pdo
+    );
 
-    // 2. Location Resolution
-    $databaseResolution['location'] = evaluateLocationDuplicate($parsed, $pdo);
+    // Resolve location
+    $databaseResolution['location'] = evaluateLocationDuplicate(
+        $parsed,
+        $pdo
+    );
 
-    // 3. Contact Resolution
-    $databaseResolution['contact'] = evaluateDuplicate($parsed, $pdo);
+    // Resolve contact identity
+    $databaseResolution['contact'] = evaluateDuplicate(
+        $parsed,
+        $pdo
+    );
 
-    // ====================================================================
-    // 🌟 FIXED: PC-6 Succession Evaluation (Key-Drift & Brand New Location Patch)
-    // ====================================================================
-    $contactStatus = $databaseResolution['contact']['status'] ?? 'none';
-    
-    if ($contactStatus === 'exact') {
-        // Accommodate case variation (camelCase coming from JSON streams vs snake_case from direct DB schemas)
-        $existingContactLocationId = $databaseResolution['contact']['locationId'] 
-            ?? $databaseResolution['contact']['location_id'] 
+    // Preserve authoritative identity determination
+    $contactStatus = $databaseResolution['contact']['status']
+        ?? 'none';
+
+    $contactIdentityResult =
+        $databaseResolution['contact']['identityResult']
+        ?? 'no_match';
+
+    $isDuplicateContact =
+        !empty($databaseResolution['contact']['isDuplicate']) &&
+        $contactIdentityResult === 'confirmed_duplicate';
+
+    $duplicateReason =
+        $databaseResolution['contact']['duplicateReason']
+        ?? null;
+
+    // Normalize propagated identity fields
+    $databaseResolution['contact']['identityResult'] =
+        $contactIdentityResult;
+
+    $databaseResolution['contact']['isDuplicate'] =
+        $isDuplicateContact;
+
+    $databaseResolution['contact']['duplicateReason'] =
+        $duplicateReason;
+
+    // Evaluate contact location transfer
+    $databaseResolution['contact']['isLocationTransfer'] = false;
+
+    // Confirmed duplicates require governance review
+    if ($contactStatus === 'exact' && !$isDuplicateContact) {
+
+        // Resolve existing contact location
+        $existingContactLocationId =
+            $databaseResolution['contact']['locationId']
+            ?? $databaseResolution['contact']['location_id']
             ?? null;
-            
-        $proposedLocationId = $databaseResolution['location']['locationId'] 
-            ?? $databaseResolution['location']['location_id'] 
-            ?? null;
-            
-        $locationStatus = $databaseResolution['location']['status'] ?? 'none';
 
-        // An asset transfer (PC-6) is triggered if:
-        // 1. The contact currently belongs to an existing canonical location ID...
-        // 2. AND either the target location is completely new ('none') OR maps to a different record entirely.
-        if ($existingContactLocationId && ($locationStatus === 'none' || $existingContactLocationId != $proposedLocationId)) {
+        // Resolve proposed location
+        $proposedLocationId =
+            $databaseResolution['location']['locationId']
+            ?? $databaseResolution['location']['location_id']
+            ?? null;
+
+        $locationStatus =
+            $databaseResolution['location']['status']
+            ?? 'none';
+
+        // Detect legitimate location succession
+        if (
+            !empty($existingContactLocationId) &&
+            (
+                $locationStatus === 'none' ||
+                $existingContactLocationId != $proposedLocationId
+            )
+        ) {
             $databaseResolution['contact']['isLocationTransfer'] = true;
-        } else {
-            $databaseResolution['contact']['isLocationTransfer'] = false;
         }
-    } else {
-        $databaseResolution['contact']['isLocationTransfer'] = false;
     }
 
-    error_log('[PPC][SECTION-11] Database resolution complete (Succession evaluated)');
+    error_log(
+        '[PPC][SECTION-12] Database resolution complete' .
+        ' | Contact status: ' . $contactStatus .
+        ' | Identity: ' . $contactIdentityResult .
+        ' | Duplicate: ' . ($isDuplicateContact ? 'YES' : 'NO') .
+        ' | Transfer: ' .
+        (
+            $databaseResolution['contact']['isLocationTransfer']
+                ? 'YES'
+                : 'NO'
+        )
+    );
 
 } else {
-    error_log('[PPC][SECTION-11] No PDO connection — skipping DB resolution');
+    error_log(
+        '[PPC][SECTION-12] No PDO connection — skipping DB resolution'
+    );
 }
 
 #endregion
@@ -1791,137 +1844,305 @@ if ($pdo) {
 $isExplicitLocationOnlyIntent = $isExplicitLocationOnlyIntent ?? false;
 
 // =====================================================
-// PASS 1 — PC Classification (Database-Driven)
+// PASS 1 — DATABASE-DRIVEN PCM CLASSIFICATION
 // =====================================================
 
-$entityStatus   = $databaseResolution['entity']['status']   ?? 'none';
-$locationStatus = $databaseResolution['location']['status'] ?? 'none';
-$contactStatus  = $databaseResolution['contact']['status']  ?? 'none';
+$entityStatus =
+    $databaseResolution['entity']['status']
+    ?? 'none';
 
-$isLocationTransfer = $databaseResolution['contact']['isLocationTransfer'] ?? false;
+$locationStatus =
+    $databaseResolution['location']['status']
+    ?? 'none';
 
-error_log("[PPC][SECTION-12] Database Resolution → Entity: $entityStatus | Location: $locationStatus | Contact: $contactStatus | Transfer: " . ($isLocationTransfer ? 'YES' : 'NO'));
+$contactStatus =
+    $databaseResolution['contact']['status']
+    ?? 'none';
+
+$contactIdentityResult =
+    $databaseResolution['contact']['identityResult']
+    ?? 'no_match';
+
+$isDuplicateContact =
+    !empty($databaseResolution['contact']['isDuplicate']) &&
+    $contactIdentityResult === 'confirmed_duplicate';
+
+$isLocationTransfer =
+    !empty($databaseResolution['contact']['isLocationTransfer']);
+
+error_log(
+    '[PPC][SECTION-13] Database resolution' .
+    ' | Entity: ' . $entityStatus .
+    ' | Location: ' . $locationStatus .
+    ' | Contact: ' . $contactStatus .
+    ' | Identity: ' . $contactIdentityResult .
+    ' | Duplicate: ' . ($isDuplicateContact ? 'YES' : 'NO') .
+    ' | Transfer: ' . ($isLocationTransfer ? 'YES' : 'NO')
+);
+
+// =====================================================
+// PASS 2 — PC CLASSIFICATION
+// =====================================================
 
 if ($isExplicitLocationOnlyIntent === true) {
-    // Location-only proposals (explicitly requested by intake stream)
-    $pcm['pc'] = ($entityStatus === 'exact') ? 'PC-4' : 'PC-5';
+
+    // Classify explicit location-only proposal
+    $pcm['pc'] = $entityStatus === 'exact'
+        ? 'PC-4'
+        : 'PC-5';
+
+} elseif (
+    $entityStatus === 'exact' &&
+    $locationStatus === 'exact' &&
+    $contactStatus === 'exact'
+) {
+
+    // Existing entity-location-contact structure
+    $pcm['pc'] = 'PC-0';
+
+} elseif (
+    $entityStatus === 'exact' &&
+    $locationStatus !== 'exact' &&
+    $isDuplicateContact
+) {
+
+    // Proposed new location contains existing entity contact
+    $pcm['pc'] = 'PC-2';
+
+} elseif (
+    $entityStatus === 'exact' &&
+    $contactStatus === 'exact' &&
+    $isLocationTransfer === true
+) {
+
+    // Authorized contact location succession
+    $pcm['pc'] = 'PC-6';
+
+} elseif (
+    $entityStatus === 'exact' &&
+    $locationStatus === 'exact' &&
+    $contactStatus !== 'exact'
+) {
+
+    // Existing entity and location with new contact
+    $pcm['pc'] = 'PC-3';
+
+} elseif (
+    $entityStatus === 'exact' &&
+    $locationStatus !== 'exact' &&
+    $contactStatus !== 'exact'
+) {
+
+    // Existing entity with new location and contact
+    $pcm['pc'] = 'PC-2';
+
+} elseif (
+    $entityStatus === 'exact' &&
+    $locationStatus !== 'exact' &&
+    $contactStatus === 'exact'
+) {
+
+    // Existing contact associated with a different location
+    $pcm['pc'] = 'PC-6';
+
 } else {
-    // 🌟 REMADE: Strict deterministic PCM classification matrix
-    if ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus === 'exact') {
-        $pcm['pc'] = 'PC-0';
-        
-    } elseif ($entityStatus === 'exact' && $contactStatus === 'exact' && $isLocationTransfer === true) {
-        $pcm['pc'] = 'PC-6';
-        
-    } elseif ($entityStatus === 'exact' && $locationStatus === 'exact' && $contactStatus !== 'exact') {
-        $pcm['pc'] = 'PC-3';
-        
-    } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus !== 'exact') {
-        $pcm['pc'] = 'PC-2';
-        
-    } elseif ($entityStatus === 'exact' && $locationStatus !== 'exact' && $contactStatus === 'exact') {
-        $pcm['pc'] = 'PC-6';  // Contact moving to new location
-    } else {
-        $pcm['pc'] = 'PC-1';
-    }
+
+    // New entity-location-contact structure
+    $pcm['pc'] = 'PC-1';
 }
 
 // =====================================================
-// DYNAMIC TEXT OVERRIDES FOR PC-6 LIFECYCLES
+// DYNAMIC PC-6 NARRATIVE OVERRIDE
 // =====================================================
+
 if ($pcm['pc'] === 'PC-6') {
-    $fullName   = trim(($data['contact']['contactFirstName'] ?? '') . ' ' . ($data['contact']['contactLastName'] ?? ''));
-    $entityName = $data['entity']['entityName'] ?? 'Existing Entity';
-    
-    $narratives['contentLine'] = "Contact Succession Proposal for {$fullName} at {$entityName}";
-    
-    $successionNarrative = "The proposal will retire the existing contact record, create a replacement contact associated with the new location, and preserve historical relationships with prior operational records.";
+    $fullName = trim(
+        ($data['contact']['contactFirstName'] ?? '') .
+        ' ' .
+        ($data['contact']['contactLastName'] ?? '')
+    );
+
+    $entityName =
+        $data['entity']['entityName']
+        ?? 'Existing Entity';
+
+    $narratives['contentLine'] =
+        "Contact Succession Proposal for {$fullName} at {$entityName}";
+
+    $successionNarrative =
+        'The proposal will retire the existing contact record, ' .
+        'create a replacement contact associated with the new location, ' .
+        'and preserve historical relationships with prior operational records.';
+
     $narratives['ui'] = $successionNarrative;
     $narratives['decisions'] = [$successionNarrative];
-    $narratives['review'] = []; 
+    $narratives['review'] = [];
 }
 
 // =====================================================
-// GOVERNANCE — RS Rules
+// PASS 3 — RS GOVERNANCE
 // =====================================================
 
 $governanceIssues = [];
 
-// RS-5 Duplicate Contact (only block non-succession cases)
-if ($contactStatus === 'exact' && in_array($pcm['pc'], ['PC-2', 'PC-3'])) {
+// RS-5 — Confirmed duplicate contact
+if ($isDuplicateContact) {
     $governanceIssues[] = [
-        'code' => 'RS-5', 
+        'code' => 'RS-5',
         'message' => 'Duplicate contact detected',
-        'action_text' => 'Action: Contact is currently in the database' 
+        'action_text' =>
+            'Action: Review the existing contact before proceeding',
+        'details' => [
+            'contactId' =>
+                $databaseResolution['contact']['contactId']
+                ?? null,
+            'identityResult' => $contactIdentityResult,
+            'duplicateReason' =>
+                $databaseResolution['contact']['duplicateReason']
+                ?? null
+        ]
     ];
 }
 
-// RS-6 Multiple Parcels
-$parcelDetails   = $data['location']['parcelDetails'] ?? [];
-$acceptedParcels = array_filter($parcelDetails, fn($parcel) => !empty($parcel['accepted']));
-$resolvedCount   = !empty($acceptedParcels) ? count($acceptedParcels) : count($parcelDetails);
+// RS-6 — Multiple unresolved parcels
+$parcelDetails =
+    $data['location']['parcelDetails']
+    ?? [];
+
+$acceptedParcels = array_filter(
+    $parcelDetails,
+    function ($parcel) {
+        return !empty($parcel['accepted']);
+    }
+);
+
+$resolvedCount = !empty($acceptedParcels)
+    ? count($acceptedParcels)
+    : count($parcelDetails);
 
 if (
-    $locationStatus !== 'exact' && 
-    (($data['location']['hasMultipleParcels'] ?? false) || ($data['location']['parcelCount'] ?? 0) > 1) &&
+    $locationStatus !== 'exact' &&
+    (
+        !empty($data['location']['hasMultipleParcels']) ||
+        ($data['location']['parcelCount'] ?? 0) > 1
+    ) &&
     $resolvedCount !== 1
 ) {
     $governanceIssues[] = [
         'code' => 'RS-6',
-        'message' => 'Multiple parcels found for this address - selection required',
-        'details' => ['parcelCount' => $data['location']['parcelCount'] ?? 0]
+        'message' =>
+            'Multiple parcels found for this address - selection required',
+        'details' => [
+            'parcelCount' =>
+                $data['location']['parcelCount']
+                ?? 0
+        ]
     ];
 }
 
-// RS-7 Unresolved Parcel
-if (strtolower($data['location']['locationCounty'] ?? '') === 'maricopa' && 
-    ($data['location']['parcelCount'] ?? 0) === 0) {
-    $governanceIssues[] = ['code' => 'RS-7', 'message' => 'Parcel could not be resolved'];
+// RS-7 — Unresolved Maricopa County parcel
+if (
+    strtolower($data['location']['locationCounty'] ?? '') ===
+        'maricopa' &&
+    ($data['location']['parcelCount'] ?? 0) === 0
+) {
+    $governanceIssues[] = [
+        'code' => 'RS-7',
+        'message' => 'Parcel could not be resolved'
+    ];
 }
 
-// RS-8 Invalid Location
+// RS-8 — Invalid location
 if (empty($data['location']['locationPlaceId'] ?? null)) {
-    $governanceIssues[] = ['code' => 'RS-8', 'message' => 'Invalid location'];
+    $governanceIssues[] = [
+        'code' => 'RS-8',
+        'message' => 'Invalid location'
+    ];
 }
 
-// Default RS-0 only if no other issues
+// =====================================================
+// PASS 4 — RS NORMALIZATION
+// =====================================================
+
 $pcm['rs'] = $pcm['rs'] ?? [];
+
+foreach ($governanceIssues as $issue) {
+    $pcm['rs'][] = $issue['code'];
+}
+
+$pcm['rs'] = array_values(
+    array_unique($pcm['rs'])
+);
+
+// RS-0 cannot coexist with a governance issue
+if (!empty($governanceIssues)) {
+    $pcm['rs'] = array_values(
+        array_diff($pcm['rs'], ['RS-0'])
+    );
+}
+
+// Assign RS-0 only when no issue exists
 if (empty($governanceIssues) && empty($pcm['rs'])) {
     $pcm['rs'][] = 'RS-0';
 }
 
-// Sync governance issues
-if (!empty($governanceIssues)) {
-    foreach ($governanceIssues as $issue) {
-        $pcm['rs'][] = $issue['code'];
-    }
-}
+// =====================================================
+// PASS 5 — COMMIT GOVERNANCE
+// =====================================================
 
-$pcm['rs'] = array_values(array_unique($pcm['rs']));
+$blockingCodes = [
+    'RS-3',
+    'RS-5',
+    'RS-6',
+    'RS-7',
+    'RS-8'
+];
 
-$blockingCodes = ['RS-3', 'RS-5', 'RS-6', 'RS-7', 'RS-8'];
-$blocksCommit = !empty(array_intersect($pcm['rs'], $blockingCodes));
+$blocksCommit = !empty(
+    array_intersect(
+        $pcm['rs'],
+        $blockingCodes
+    )
+);
 
-$governance = ['blockingIssues' => $governanceIssues];
+$governance = [
+    'blockingIssues' => $governanceIssues
+];
 
-if (in_array('RS-5', $pcm['rs'])) {
+if (in_array('RS-5', $pcm['rs'], true)) {
     $governance['resolution_status'] = 'RS-5';
-    $governance['reason'] = 'Duplicate Contact Detected';
-    $governance['action_text'] = 'Action: Contact is currently in the database';
+    $governance['reason'] =
+        'Duplicate Contact Detected';
+
+    $governance['action_text'] =
+        'Action: Review the existing contact before proceeding';
 }
 
-// Simplify PCM for output
+// =====================================================
+// PASS 6 — FINAL PCM OUTPUT
+// =====================================================
+
 $pcm = [
     'pc' => $pcm['pc'] ?? 'PC-1',
     'rs' => $pcm['rs']
 ];
 
-$pc     = $pcm['pc'];
+$pc = $pcm['pc'];
 $rsList = $pcm['rs'];
 
-error_log('[PPC][SECTION-12] PCM complete → PC=' . $pcm['pc'] . ' | RS=[' . implode(', ', $pcm['rs']) . '] | Blocks=' . ($blocksCommit ? 'YES' : 'NO'));
+error_log(
+    '[PPC][SECTION-13] PCM complete' .
+    ' | PC=' . $pcm['pc'] .
+    ' | RS=[' . implode(', ', $pcm['rs']) . ']' .
+    ' | Blocks=' . ($blocksCommit ? 'YES' : 'NO')
+);
 
-$proposalId = str_pad((string)mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+$proposalId = str_pad(
+    (string)mt_rand(1, 999999),
+    6,
+    '0',
+    STR_PAD_LEFT
+);
 
 #endregion
 
@@ -1939,89 +2160,192 @@ $commitPlan = [
 $pc = $pcm['pc'] ?? 'PC-UNKNOWN';
 $rsList = $pcm['rs'] ?? [];
 
-error_log("[PPC][SECTION-13] Building Commit Plan for PC={$pc}");
+// Define blocking governance codes
+$blockingCodes = [
+    'RS-3',
+    'RS-5',
+    'RS-6',
+    'RS-7',
+    'RS-8'
+];
 
-$canCommit = !in_array('RS-3', $rsList) && !in_array('RS-5', $rsList) && 
-             !in_array('RS-6', $rsList) && !in_array('RS-7', $rsList) && 
-             !in_array('RS-8', $rsList);
+$activeBlockingCodes = array_values(
+    array_intersect(
+        $rsList,
+        $blockingCodes
+    )
+);
 
+$canCommit = empty($activeBlockingCodes);
+
+error_log(
+    '[PPC][SECTION-14] Building commit plan' .
+    ' | PC=' . $pc .
+    ' | RS=[' . implode(', ', $rsList) . ']' .
+    ' | Eligible=' . ($canCommit ? 'YES' : 'NO')
+);
+
+// Build proposed database actions
 switch ($pc) {
 
     case 'PC-0':
+
+        // Existing ELC requires no database changes
         $commitPlan['canCommit'] = false;
-        $commitPlan['actions'] = [];  // Nothing to commit
-        $commitPlan['summary'] = 'No database changes required - ELC already exists';
+        $commitPlan['actions'] = [];
+        $commitPlan['summary'] =
+            'No database changes required - ELC already exists';
         break;
 
     case 'PC-1':
+
+        // New entity, location, and contact
         $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['insert_entity', 'insert_location', 'insert_contact', 'link_elc'];
-        $commitPlan['summary'] = 'Insert new Entity, Location, Contact and establish relationships';
+        $commitPlan['actions'] = [
+            'insert_entity',
+            'insert_location',
+            'insert_contact',
+            'link_elc'
+        ];
+        $commitPlan['summary'] =
+            'Insert new Entity, Location, Contact and establish relationships';
         break;
 
     case 'PC-2':
+
+        // Existing entity with new location and contact
         $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['link_entity', 'insert_location', 'insert_contact', 'link_elc'];
-        $commitPlan['summary'] = 'Link existing Entity, Insert new Location + Contact';
+        $commitPlan['actions'] = [
+            'link_entity',
+            'insert_location',
+            'insert_contact',
+            'link_elc'
+        ];
+        $commitPlan['summary'] =
+            'Link existing Entity, Insert new Location and Contact';
         break;
 
     case 'PC-3':
-        $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['link_entity', 'link_location', 'insert_contact', 'link_elc'];
-        $commitPlan['summary'] = 'Link existing Entity + Location, Insert new Contact';
-        break;
 
-    case 'PC-4':  // Existing Entity + New Location (no contact)
-        $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['link_entity', 'insert_location'];  // No link_elc
-        $commitPlan['summary'] = 'Link existing Entity, Insert new Location only';
-        break;
-
-    case 'PC-5':  // New Entity + New Location (no contact)
-        $commitPlan['canCommit'] = $canCommit;
-        $commitPlan['actions'] = ['insert_entity', 'insert_location'];  // No link_elc
-        $commitPlan['summary'] = 'Insert new Entity + new Location (no contact)';
-        break;
-
-    case 'PC-6':  // Contact Succession
+        // Existing entity and location with new contact
         $commitPlan['canCommit'] = $canCommit;
         $commitPlan['actions'] = [
-            'link_entity', 
-            'insert_location', 
-            'retire_contact', 
-            'insert_replacement_contact', 
+            'link_entity',
+            'link_location',
+            'insert_contact',
             'link_elc'
         ];
-        $commitPlan['summary'] = 'Relocate contact: Retire historical contact record to preserve integrity, create replacement contact, and link to new location';
+        $commitPlan['summary'] =
+            'Link existing Entity and Location, Insert new Contact';
+        break;
+
+    case 'PC-4':
+
+        // Existing entity with new location only
+        $commitPlan['canCommit'] = $canCommit;
+        $commitPlan['actions'] = [
+            'link_entity',
+            'insert_location'
+        ];
+        $commitPlan['summary'] =
+            'Link existing Entity and Insert new Location only';
+        break;
+
+    case 'PC-5':
+
+        // New entity and location without contact
+        $commitPlan['canCommit'] = $canCommit;
+        $commitPlan['actions'] = [
+            'insert_entity',
+            'insert_location'
+        ];
+        $commitPlan['summary'] =
+            'Insert new Entity and Location without a Contact';
+        break;
+
+    case 'PC-6':
+
+        // Contact succession to a new location
+        $commitPlan['canCommit'] = $canCommit;
+        $commitPlan['actions'] = [
+            'link_entity',
+            'insert_location',
+            'retire_contact',
+            'insert_replacement_contact',
+            'link_elc'
+        ];
+        $commitPlan['summary'] =
+            'Retire the historical Contact, create its replacement, ' .
+            'and associate the replacement with the new Location';
         break;
 
     default:
+
+        // Reject unknown classification
         $commitPlan['canCommit'] = false;
         $commitPlan['actions'] = [];
-        $commitPlan['summary'] = 'Unknown PC type';
+        $commitPlan['summary'] =
+            'Unknown proposal classification';
         break;
 }
 
-// Attach IDs where available
+// Preserve resolved entity identity
 if (!empty($databaseResolution['entity']['entityId'])) {
-    $commitPlan['entity']['entityId'] = $databaseResolution['entity']['entityId'];
+    $commitPlan['entity']['entityId'] =
+        (int)$databaseResolution['entity']['entityId'];
 }
+
+// Preserve resolved location identity
 if (!empty($databaseResolution['location']['locationId'])) {
-    $commitPlan['location']['locationId'] = $databaseResolution['location']['locationId'];
-    $commitPlan['location']['locationParcelNumberRaw'] = $databaseResolution['location']['locationParcelNumberRaw'] ?? null;
+    $commitPlan['location']['locationId'] =
+        (int)$databaseResolution['location']['locationId'];
+
+    $commitPlan['location']['locationParcelNumberRaw'] =
+        $databaseResolution['location']['locationParcelNumberRaw']
+        ?? null;
 }
-// 🌟 NEW: Pull target contactId into commit plan for explicit tracking during succession
+
+// Preserve resolved contact identity
 if (!empty($databaseResolution['contact']['contactId'])) {
-    $commitPlan['contact']['contactId'] = $databaseResolution['contact']['contactId'];
+    $commitPlan['contact']['contactId'] =
+        (int)$databaseResolution['contact']['contactId'];
 }
 
-// 🔥 Hard override if caught in an RS-5 validation trap to prevent UI component mismatch
-if (in_array('RS-5', $rsList)) {
-    $commitPlan['actions'] = []; // Clears standard insert arrays out of the snapshot loop
-    $commitPlan['summary'] = 'Action: Contact is currently in the database';
+// Preserve contact identity determination
+$commitPlan['contact']['identityResult'] =
+    $databaseResolution['contact']['identityResult']
+    ?? 'no_match';
+
+$commitPlan['contact']['isDuplicate'] =
+    !empty($databaseResolution['contact']['isDuplicate']);
+
+$commitPlan['contact']['duplicateReason'] =
+    $databaseResolution['contact']['duplicateReason']
+    ?? null;
+
+// Enforce governance barrier
+if (!empty($activeBlockingCodes)) {
+    $commitPlan['canCommit'] = false;
+    $commitPlan['actions'] = [];
+
+    if (in_array('RS-5', $activeBlockingCodes, true)) {
+        $commitPlan['summary'] =
+            'Commit blocked: Contact is currently in the database';
+    } else {
+        $commitPlan['summary'] =
+            'Commit blocked by governance: ' .
+            implode(', ', $activeBlockingCodes);
+    }
 }
 
-error_log("[PPC][SECTION-13] Commit Plan complete → canCommit=" . ($commitPlan['canCommit'] ? 'YES' : 'NO'));
+error_log(
+    '[PPC][SECTION-14] Commit plan complete' .
+    ' | CanCommit=' .
+    ($commitPlan['canCommit'] ? 'YES' : 'NO') .
+    ' | Actions=[' .
+    implode(', ', $commitPlan['actions']) .
+    ']'
+);
 
 #endregion
 
