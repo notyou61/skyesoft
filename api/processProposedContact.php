@@ -79,7 +79,8 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     $targetedSnapshotPath = '';
 
     // 📍 SNAPSHOT RECOVERY — Authoritative for proposal lifecycle
-    $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
+    //$snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
+    $snapshotDir = __DIR__ . '/data/runtimeEphemeral/proposals';
     if (!empty($targetProposalId) && is_dir($snapshotDir)) {
         $targetedSnapshotPath = $snapshotDir . "/{$targetProposalId}.json";
         if (is_file($targetedSnapshotPath)) {
