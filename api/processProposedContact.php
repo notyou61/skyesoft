@@ -842,10 +842,166 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
 
         $result = $geocodeData['results'][0];
 
+        // Build deterministic Google address component map
+        $googleComponents = [];
+
+        foreach (($result['address_components'] ?? []) as $component) {
+            foreach (($component['types'] ?? []) as $componentType) {
+                $googleComponents[$componentType] = [
+                    'long'  => $component['long_name'] ?? '',
+                    'short' => $component['short_name'] ?? ''
+                ];
+            }
+        }
+
+        // Normalize comparable street text
+        $normalizeStreet = function ($value) {
+            $value = strtolower(trim((string)$value));
+            $value = preg_replace('/[^a-z0-9 ]+/', ' ', $value);
+            $value = preg_replace('/\s+/', ' ', $value);
+
+            $replacements = [
+                ' north ' => ' n ',
+                ' south ' => ' s ',
+                ' east ' => ' e ',
+                ' west ' => ' w ',
+                ' street' => ' st',
+                ' avenue' => ' ave',
+                ' boulevard' => ' blvd',
+                ' road' => ' rd',
+                ' drive' => ' dr',
+                ' lane' => ' ln',
+                ' court' => ' ct',
+                ' place' => ' pl',
+                ' parkway' => ' pkwy',
+                ' highway' => ' hwy',
+                ' circle' => ' cir',
+                ' terrace' => ' ter',
+                ' trail' => ' trl',
+                ' way' => ' way'
+            ];
+
+            return trim(str_replace(
+                array_keys($replacements),
+                array_values($replacements),
+                ' ' . $value
+            ));
+        };
+
+        // Extract submitted street number and route
+        $submittedStreet = trim((string)($data['location']['locationAddress'] ?? ''));
+        $submittedStreet = preg_split('/[\r\n,]+/', $submittedStreet)[0] ?? '';
+        $submittedNumber = '';
+        $submittedRoute = $submittedStreet;
+
+        if (preg_match('/^\s*([0-9]+[a-zA-Z]?)\s+(.+)$/', $submittedStreet, $streetMatch)) {
+            $submittedNumber = strtolower($streetMatch[1]);
+            $submittedRoute = $streetMatch[2];
+        }
+
+        $resolvedNumber = strtolower((string)(
+            $googleComponents['street_number']['short']
+            ?? ''
+        ));
+
+        $resolvedRoute = (string)(
+            $googleComponents['route']['long']
+            ?? ''
+        );
+
+        $submittedZip = substr(
+            preg_replace('/[^0-9]/', '', (string)($data['location']['locationZip'] ?? '')),
+            0,
+            5
+        );
+
+        $resolvedZip = substr(
+            preg_replace('/[^0-9]/', '', (string)(
+                $googleComponents['postal_code']['short']
+                ?? ''
+            )),
+            0,
+            5
+        );
+
+        $submittedCity = strtolower(trim((string)(
+            $data['location']['locationCity']
+            ?? ''
+        )));
+
+        $resolvedCity = strtolower(trim((string)(
+            $googleComponents['locality']['long']
+            ?? $googleComponents['postal_town']['long']
+            ?? $googleComponents['administrative_area_level_3']['long']
+            ?? ''
+        )));
+
+        $submittedState = strtoupper(trim((string)(
+            $data['location']['locationState']
+            ?? ''
+        )));
+
+        $resolvedState = strtoupper(trim((string)(
+            $googleComponents['administrative_area_level_1']['short']
+            ?? ''
+        )));
+
+        // Determine whether Google resolved the submitted physical address
+        $addressMismatches = [];
+
+        if (!empty($result['partial_match'])) {
+            $addressMismatches[] = 'partial_match';
+        }
+
+        if ($submittedNumber === '' || $resolvedNumber === '') {
+            $addressMismatches[] = 'street_number_missing';
+        } elseif ($submittedNumber !== $resolvedNumber) {
+            $addressMismatches[] = 'street_number_mismatch';
+        }
+
+        if ($submittedRoute === '' || $resolvedRoute === '') {
+            $addressMismatches[] = 'street_route_missing';
+        } elseif ($normalizeStreet($submittedRoute) !== $normalizeStreet($resolvedRoute)) {
+            $addressMismatches[] = 'street_route_mismatch';
+        }
+
+        if (
+            $submittedCity !== '' &&
+            $resolvedCity !== '' &&
+            $submittedCity !== $resolvedCity
+        ) {
+            $addressMismatches[] = 'city_mismatch';
+        }
+
+        if (
+            $submittedState !== '' &&
+            $resolvedState !== '' &&
+            $submittedState !== $resolvedState
+        ) {
+            $addressMismatches[] = 'state_mismatch';
+        }
+
+        if (
+            $submittedZip !== '' &&
+            $resolvedZip !== '' &&
+            $submittedZip !== $resolvedZip
+        ) {
+            $addressMismatches[] = 'zip_mismatch';
+        }
+
+        $isMaterialAddressMismatch = !empty($addressMismatches);
+
         $data['location']['locationPlaceId']   = $result['place_id'] ?? null;
         $data['location']['locationLatitude']  = $result['geometry']['location']['lat'] ?? null;
         $data['location']['locationLongitude'] = $result['geometry']['location']['lng'] ?? null;
-        $data['location']['locationValidated'] = true;
+        $data['location']['locationValidated'] = !$isMaterialAddressMismatch;
+        $data['location']['locationResolvedAddress'] =
+            $result['formatted_address'] ?? '';
+        $data['location']['locationMatchQuality'] = [
+            'partialMatch' => !empty($result['partial_match']),
+            'locationType' => $result['geometry']['location_type'] ?? null,
+            'mismatches'   => $addressMismatches
+        ];
 
         // Extract county directly from Google components as a reliable pre-Census baseline
         if (!empty($result['address_components'])) {
@@ -858,15 +1014,22 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
             }
         }
 
-        error_log('[PPC][SECTION-07] Google validation successful. Extracted County: ' . ($data['location']['locationCounty'] ?? 'None'));
+        error_log(
+            '[PPC][SECTION-08] Google validation ' .
+            ($data['location']['locationValidated'] ? 'PASS' : 'FAIL') .
+            ' | Resolved: ' . ($data['location']['locationResolvedAddress'] ?: 'None') .
+            ' | Mismatches: ' .
+            (empty($addressMismatches) ? 'None' : implode(', ', $addressMismatches)) .
+            ' | County: ' . ($data['location']['locationCounty'] ?? 'None')
+        );
 
     } else {
-        error_log('[PPC][SECTION-07] Google returned no results');
+        error_log('[PPC][SECTION-08] Google returned no results');
         $data['location']['locationValidated'] = false;
     }
 
 } else {
-    error_log('[PPC][SECTION-07] Skipping Google geocode (missing address or API key)');
+    error_log('[PPC][SECTION-08] Skipping Google geocode (missing address or API key)');
     $data['location']['locationValidated'] = false;
 }
 
@@ -1617,7 +1780,7 @@ error_log(
 );
 
 // =====================================================
-// GEOGRAPHIC GOVERNANCE GATE
+// GEOGRAPHIC VALIDATION SUMMARY
 // =====================================================
 
 $resolvedCounty = strtolower(
@@ -1638,94 +1801,13 @@ error_log(sprintf(
     $resolvedCounty
 ));
 
+// Preserve the normal proposal pipeline. Section 13 assigns RS-8 after
+// database-driven PC classification so PC-4 / PC-5 identity is retained.
 if (!$locationValidated) {
-    error_log('[PPC][GOVERNANCE] Google validation failed → RS-8');
-    $rsCode = 'RS-8';
-} elseif (
-    $resolvedCounty === 'maricopa' &&
-    !$locationCensusValidated &&
-    $parcelCount === 0
-) {
-    error_log('[PPC][GOVERNANCE] Maricopa: Google OK but no parcel + Census failed → RS-8');
-    $rsCode = 'RS-8';
-} else {
-    $rsCode = null;
-}
-
-if ($rsCode === 'RS-8') {
-    $proposalId = $proposalId
-        ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6);
-
-    echo json_encode([
-        'success'           => true,
-        'status'            => 'incomplete',
-        'proposalId'        => $proposalId,
-        'activitySessionId' => $context['activitySessionId'] ?? '',
-        'data' => [
-            'entity'   => $parsed['entity'] ?? [],
-            'contact'  => $parsed['contact'] ?? [],
-            'location' => $data['location'] ?? []
-        ],
-        'databaseResolution' => [
-            'entity'   => null,
-            'location' => null,
-            'contact'  => null
-        ],
-        'pcm' => [
-            'pc' => $pcm['pc'] ?? 'PC-1',
-            'rs' => ['RS-8']
-        ],
-        'commitPlan' => [
-            'canCommit' => false,
-            'entity'    => [],
-            'location'  => [],
-            'contact'   => [],
-            'actions'   => [],
-            'summary'   => 'Location validation failed.'
-        ],
-        'ui' => [
-            'proposalStatus' => 'incomplete',
-            'canAccept'      => false,
-            'canReject'      => true,
-            'canEdit'        => true,
-            'canCommit'      => false
-        ],
-        'governance' => [
-            'blockingIssues' => [
-                [
-                    'code'    => 'RS-8',
-                    'message' => 'The address could not be validated after exhausting all available geographic sources.',
-                    'details' => [
-                        'county'            => 'maricopa',
-                        'googleValidated'   => $locationValidated,
-                        'censusValidated'   => $locationCensusValidated,
-                        'parcelCount'       => $parcelCount
-                    ]
-                ]
-            ],
-            'resolution_status' => 'RS-8',
-            'reason' => 'Exhausted Google + Parcel + Census validation.'
-        ],
-        'narratives' => [
-            'ui' => "The address could not be verified using Google's location services, parcel records, or Census validation. Please provide a more precise address.",
-            'report' => 'Address failed validation across Google, Parcel, and Census sources.'
-        ],
-        'meta' => [
-            'hasMultipleParcels' =>
-                $data['location']['hasMultipleParcels'] ?? false,
-            'parcelCount'     => $parcelCount,
-            'censusValidated' => $locationCensusValidated,
-            'googleValidated' => $locationValidated,
-            'searchAddress'   => $searchAddress ?? ''
-        ],
-        'rawInput' => [
-            'original' => $rawInputOriginal ?? '',
-            'type'     => 'signature',
-            'source'   => 'skyebot_prompt'
-        ]
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-    exit;
+    error_log(
+        '[PPC][SECTION-11] Location validation failed; ' .
+        'continuing to PCM governance for RS-8 assignment'
+    );
 }
 
 #endregion
@@ -2055,11 +2137,34 @@ if (
     ];
 }
 
-// RS-8 — Invalid location
-if (empty($data['location']['locationPlaceId'] ?? null)) {
+// RS-8 — Invalid or unverified location
+$locationPlaceId =
+    $data['location']['locationPlaceId']
+    ?? null;
+
+$locationValidated =
+    $data['location']['locationValidated']
+    ?? false;
+
+if (
+    empty($locationPlaceId) ||
+    $locationValidated !== true
+) {
     $governanceIssues[] = [
         'code' => 'RS-8',
-        'message' => 'Invalid location'
+        'message' => 'Location could not be validated',
+        'action_text' =>
+            'Action: Correct or verify the proposed location',
+        'details' => [
+            'locationPlaceId' => $locationPlaceId,
+            'locationValidated' => $locationValidated,
+            'resolvedAddress' =>
+                $data['location']['locationResolvedAddress']
+                ?? null,
+            'matchQuality' =>
+                $data['location']['locationMatchQuality']
+                ?? []
+        ]
     ];
 }
 
@@ -2119,6 +2224,15 @@ if (in_array('RS-5', $pcm['rs'], true)) {
 
     $governance['action_text'] =
         'Action: Review the existing contact before proceeding';
+}
+
+if (in_array('RS-8', $pcm['rs'], true)) {
+    $governance['resolution_status'] = 'RS-8';
+    $governance['reason'] =
+        'Invalid or Unverified Location';
+
+    $governance['action_text'] =
+        'Action: Correct or verify the proposed location';
 }
 
 // =====================================================
@@ -2625,6 +2739,56 @@ if (in_array('RS-5', $rsList, true)) {
                 ? "The existing contact is currently associated with {$existingLocationText}."
                 : 'The submitted identity matches an existing contact record.'
         ]
+    ];
+}
+
+// Override generic narratives for invalid or unverified location
+if (in_array('RS-8', $rsList, true)) {
+    $entityName =
+        $data['entity']['entityName']
+        ?? 'the proposed entity';
+
+    $submittedAddress = trim(
+        implode(', ', array_filter([
+            $data['location']['locationAddress'] ?? '',
+            $data['location']['locationCity'] ?? '',
+            $data['location']['locationState'] ?? '',
+            $data['location']['locationZip'] ?? ''
+        ]))
+    );
+
+    $resolvedAddress = trim((string)(
+        $data['location']['locationResolvedAddress']
+        ?? ''
+    ));
+
+    $mismatches =
+        $data['location']['locationMatchQuality']['mismatches']
+        ?? [];
+
+    $resolvedNarrative = $resolvedAddress !== ''
+        ? "Google resolved the input to {$resolvedAddress}, which does not " .
+            'reliably match the submitted location.'
+        : 'Google did not return a verifiable match for the submitted location.';
+
+    $aiNarrativeResult = [
+        'contentLine' =>
+            "Invalid Location Review for {$entityName}",
+        'decision' => [
+            "The proposed address {$submittedAddress} could not be validated."
+        ],
+        'blocking' => [
+            'The entity and location cannot be inserted until the address is corrected or verified.'
+        ],
+        'review' => [
+            'Review and correct the street address, then resubmit the proposal.'
+        ],
+        'informational' => array_values(array_filter([
+            $resolvedNarrative,
+            !empty($mismatches)
+                ? 'Validation differences: ' . implode(', ', $mismatches) . '.'
+                : null
+        ]))
     ];
 }
 
