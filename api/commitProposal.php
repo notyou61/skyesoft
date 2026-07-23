@@ -74,6 +74,28 @@ if ($actorContactId <= 0) {
     exit;
 }
 
+// Resolve the user's browser position for tblActions audit metadata.
+// Proposal/location coordinates belong only in the structured proposal data.
+$resolveBrowserCoordinates = function(array $requestData): array {
+    $latitude  = $requestData['latitude'] ?? null;
+    $longitude = $requestData['longitude'] ?? null;
+
+    if (!is_numeric($latitude) || !is_numeric($longitude)) {
+        return [null, null];
+    }
+
+    $latitude  = (float)$latitude;
+    $longitude = (float)$longitude;
+
+    if ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
+        return [null, null];
+    }
+
+    return [$latitude, $longitude];
+};
+
+list($browserLatitude, $browserLongitude) = $resolveBrowserCoordinates($inputData);
+
 #endregion
 
 #region SECTION 02 — Load Snapshot Context
@@ -632,13 +654,9 @@ try {
         $payload['contact']['contactLastName'] ?? ''
     ));
 
-    $latitude  = $snapshot['data']['location']['locationLatitude']  ?? 
-                $payload['location']['locationLatitude'] ?? null;
-    $longitude = $snapshot['data']['location']['locationLongitude'] ?? 
-                $payload['location']['locationLongitude'] ?? null;
-
-    if ($latitude !== null)  $latitude  = (float)$latitude;
-    if ($longitude !== null) $longitude = (float)$longitude;
+    // Browser / operator location only — never the proposed site coordinates
+    $latitude  = $browserLatitude;
+    $longitude = $browserLongitude;
 
     $ipAddress         = $snapshot['ipAddress'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
     $userAgent         = $snapshot['userAgent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? null);

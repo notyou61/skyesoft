@@ -3112,13 +3112,33 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
+            // Resolve user/browser location for tblActions audit metadata
+            let actionLocation = await this.getLocationSafe();
+
+            // Cache valid coordinates; fall back to last known good location
+            if (
+                actionLocation.latitude !== null &&
+                actionLocation.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+            } else if (this.lastLocation) {
+                actionLocation = this.lastLocation;
+            }
+
+            console.log('[COMMIT GEO]', actionLocation);
+
             const res = await fetch('/skyesoft/api/commitProposal.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     proposalId: prop.proposalId,
-                    proposalActionId: prop.proposalActionId
+                    proposalActionId: prop.proposalActionId,
+                    activitySessionId: prop.activitySessionId || this.getActivitySessionId() || '',
+
+                    // User/browser action coordinates
+                    latitude:  actionLocation?.latitude  ?? null,
+                    longitude: actionLocation?.longitude ?? null
                 })
             });
 
