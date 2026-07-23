@@ -734,44 +734,50 @@ function buildSystemContext(?array $sse, ?PDO $db = null): string
 function loadOperationalCounts(?PDO $db): array
 {
     $counts = [
-        'contactsActive'  => null,
-        'contactsTotal'   => null,
-        'entitiesActive'  => null,
-        'locationsTotal'  => null,
-        'source'          => 'database',
-        'asOf'            => date('c')
+        'contactsActive' => null,
+        'contactsTotal'  => null,
+        'entitiesTotal'  => null,
+        'locationsTotal' => null,
+        'actionsTotal'   => null,
+        'source'         => 'database',
+        'asOf'           => date('c')
     ];
 
     if (!$db instanceof PDO) {
         return $counts;
     }
 
-    try {
-        // Active contacts (isActive = 1 or NULL treated as active)
-        $counts['contactsActive'] = (int)$db->query("
-            SELECT COUNT(*) FROM tblContacts
-            WHERE COALESCE(isActive, 1) = 1
-        ")->fetchColumn();
+    $safeCount = static function (PDO $db, string $sql) {
+        try {
+            return (int)$db->query($sql)->fetchColumn();
+        } catch (Throwable $e) {
+            error_log('[skyebot] count query failed: ' . $e->getMessage() . ' | SQL: ' . $sql);
+            return null;
+        }
+    };
 
-        // All contacts
-        $counts['contactsTotal'] = (int)$db->query("
-            SELECT COUNT(*) FROM tblContacts
-        ")->fetchColumn();
+    $counts['contactsActive'] = $safeCount($db, "
+        SELECT COUNT(*) FROM tblContacts
+        WHERE COALESCE(isActive, 1) = 1
+    ");
 
-        // Active entities
-        $counts['entitiesActive'] = (int)$db->query("
-            SELECT COUNT(*) FROM tblEntities
-            WHERE COALESCE(entityStatus, 'Active') = 'Active'
-        ")->fetchColumn();
+    $counts['contactsTotal'] = $safeCount($db, "
+        SELECT COUNT(*) FROM tblContacts
+    ");
 
-        // All locations
-        $counts['locationsTotal'] = (int)$db->query("
-            SELECT COUNT(*) FROM tblLocations
-        ")->fetchColumn();
+    $counts['entitiesTotal'] = $safeCount($db, "
+        SELECT COUNT(*) FROM tblEntities
+    ");
 
-    } catch (Throwable $e) {
-        error_log('[skyebot] operational counts lookup failed: ' . $e->getMessage());
-    }
+    $counts['locationsTotal'] = $safeCount($db, "
+        SELECT COUNT(*) FROM tblLocations
+    ");
+
+    $counts['actionsTotal'] = $safeCount($db, "
+        SELECT COUNT(*) FROM tblActions
+    ");
+
+    error_log('[skyebot] operational counts: ' . json_encode($counts));
 
     return $counts;
 }
