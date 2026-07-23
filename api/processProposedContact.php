@@ -803,9 +803,9 @@ $completeness = [
 
 error_log('[PPC][PHASE-3] Completeness Result: ' . $completeness['overall']);
 
-// HARD GATE — Early Exit for RS-3
+// HARD GATE — Early Exit for RS-3 (still create an authoritative Action Type 13)
 if ($completeness['overall'] !== 'PASS') {
-    error_log('[PPC][PHASE-3] INCOMPLETE — Early Exit with RS-3');
+    error_log('[PPC][PHASE-3] INCOMPLETE — Creating Action Type 13 then exiting with RS-3');
 
     $pathsOnly  = array_column($missingFields, 'path');
     $labelsOnly = array_column($missingFields, 'label');
@@ -813,12 +813,67 @@ if ($completeness['overall'] !== 'PASS') {
     $bulletList = "• " . implode("\n• ", $labelsOnly);
     $uiMessage  = "Proposal is incomplete.\n\nMissing required field(s):\n{$bulletList}\n\nPlease provide the missing information before continuing.";
 
+    // Generate a temporary proposalId if one was not already created
+    $incompleteProposalId = $proposalId ?? ('PRP-' . date('Ymd') . '-' . substr(uniqid(), -6));
+
+    // Minimal Action Type 13 so Decline can reference it
+    $actionId = null;
+    try {
+        $actionPayload = [
+            'input'             => $rawInputOriginal ?? ($inputData['input'] ?? ''),
+            'activitySessionId' => $context['activitySessionId'] ?? '',
+            'mode'              => $inputData['mode'] ?? 'propose',
+            'requestId'         => $context['requestId'] ?? null,
+            'source'            => 'processProposedContact',
+            'status'            => 'incomplete'
+        ];
+
+        $incompleteResponseData = [
+            'success'      => true,
+            'status'       => 'incomplete',
+            'proposalId'   => $incompleteProposalId,
+            'completeness' => $completeness,
+            'governance'   => [
+                'resolution_status' => 'RS-3',
+                'reason'            => 'Incomplete Proposal',
+                'missingFields'     => $pathsOnly
+            ],
+            'message' => $uiMessage,
+            'data' => [
+                'entity'   => $parsed['entity'] ?? [],
+                'contact'  => $parsed['contact'] ?? [],
+                'location' => $parsed['location'] ?? []
+            ]
+        ];
+
+        $actionId = insertActionPrompt([
+            'contactId'         => $_SESSION['contactId'] ?? null,
+            'promptText'        => $rawInputOriginal ?? ($inputData['input'] ?? ''),
+            'responseText'      => 'contact_proposal_incomplete',
+            'intent'            => 'contact_proposal',
+            'intentConfidence'  => 0.90,
+            'actionTypeId'      => 13,
+            'origin'            => ACTION_ORIGIN_USER,
+            'activitySessionId' => $context['activitySessionId'] ?? '',
+            'latitude'          => $browserLatitude ?? null,
+            'longitude'         => $browserLongitude ?? null,
+            'actionPayloadData' => $actionPayload,
+            'actionResponseData'=> $incompleteResponseData
+        ], $pdo);
+
+        error_log('[PPC][PHASE-3] Incomplete Action Type 13 created: ' . ($actionId ?? 'NULL'));
+
+    } catch (Throwable $e) {
+        error_log('[PPC][PHASE-3] Failed to create incomplete Action Type 13: ' . $e->getMessage());
+    }
+
     echo json_encode([
-        'success'      => true,
-        'status'       => 'incomplete',
-        'proposalId'   => $proposalId ?? 'PRP-' . date('Ymd') . '-' . substr(uniqid(), -6),
-        'completeness' => $completeness,
-        'governance'   => [
+        'success'           => true,
+        'status'            => 'incomplete',
+        'proposalId'        => $incompleteProposalId,
+        'proposalActionId'  => $actionId,          // now present for Decline
+        'completeness'      => $completeness,
+        'governance'        => [
             'resolution_status' => 'RS-3',
             'reason'            => 'Incomplete Proposal',
             'missingFields'     => $pathsOnly
