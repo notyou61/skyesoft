@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — actions.php
-//  Version: 1.4.0
+//  Version: 1.4.1
 //  Centralized Action Logging Layer (activitySessionId)
 // ======================================================================
 
@@ -28,20 +28,29 @@ function insertActionPrompt(array $entry, ?PDO $db): int {
     // ─────────────────────────────
     // Normalize
     // ─────────────────────────────
-    $contactId         = $entry['contactId'] ?? null;
-    $activitySessionId = session_id();                    // ← CANONICAL
-    $response          = $entry['responseText'] ?? null;
-    $intent            = $entry['intent'] ?? 'unknown';
-    $confidence        = (float)($entry['intentConfidence'] ?? 1.00);
-    $unixTime          = (int)($entry['createdUnixTime'] ?? time());
+    $contactId   = $entry['contactId'] ?? null;
 
-    $latitude   = is_numeric($entry['latitude'] ?? null)   ? (float)$entry['latitude']   : null;
-    $longitude  = is_numeric($entry['longitude'] ?? null)  ? (float)$entry['longitude']  : null;
+    // Honor caller-supplied activitySessionId; fall back to live session only if absent
+    $activitySessionId = null;
+    if (!empty($entry['activitySessionId']) && is_string($entry['activitySessionId'])) {
+        $activitySessionId = trim($entry['activitySessionId']);
+    }
+    if ($activitySessionId === null || $activitySessionId === '') {
+        $activitySessionId = session_id() ?: null;
+    }
 
-    $ipAddress  = $_SERVER['REMOTE_ADDR']     ?? null;
-    $userAgent  = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    $response   = $entry['responseText'] ?? null;
+    $intent     = $entry['intent'] ?? 'unknown';
+    $confidence = (float)($entry['intentConfidence'] ?? 1.00);
+    $unixTime   = (int)($entry['createdUnixTime'] ?? time());
 
-    $origin     = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
+    $latitude  = is_numeric($entry['latitude'] ?? null)  ? (float)$entry['latitude']  : null;
+    $longitude = is_numeric($entry['longitude'] ?? null) ? (float)$entry['longitude'] : null;
+
+    $ipAddress = $_SERVER['REMOTE_ADDR']    ?? null;
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+    $origin       = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
     $actionTypeId = $entry['actionTypeId'] ?? null;
 
     if (!$actionTypeId) {
@@ -50,26 +59,35 @@ function insertActionPrompt(array $entry, ?PDO $db): int {
     }
 
     // ─────────────────────────────
-    // Structured Action Data (NEW)
+    // Structured Action Data
+    // Always valid JSON objects — never SQL NULL
     // ─────────────────────────────
-    $actionPayloadData = null;
-    if (isset($entry['actionPayloadData'])) {
-        $actionPayloadData = is_string($entry['actionPayloadData'])
-            ? $entry['actionPayloadData']
-            : json_encode(
+    $actionPayloadData = '{}';
+    if (array_key_exists('actionPayloadData', $entry) && $entry['actionPayloadData'] !== null) {
+        if (is_string($entry['actionPayloadData'])) {
+            $trimmed = trim($entry['actionPayloadData']);
+            $actionPayloadData = ($trimmed !== '') ? $trimmed : '{}';
+        } else {
+            $encoded = json_encode(
                 $entry['actionPayloadData'],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
             );
+            $actionPayloadData = ($encoded !== false) ? $encoded : '{}';
+        }
     }
 
-    $actionResponseData = null;
-    if (isset($entry['actionResponseData'])) {
-        $actionResponseData = is_string($entry['actionResponseData'])
-            ? $entry['actionResponseData']
-            : json_encode(
+    $actionResponseData = '{}';
+    if (array_key_exists('actionResponseData', $entry) && $entry['actionResponseData'] !== null) {
+        if (is_string($entry['actionResponseData'])) {
+            $trimmed = trim($entry['actionResponseData']);
+            $actionResponseData = ($trimmed !== '') ? $trimmed : '{}';
+        } else {
+            $encoded = json_encode(
                 $entry['actionResponseData'],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
             );
+            $actionResponseData = ($encoded !== false) ? $encoded : '{}';
+        }
     }
 
     // Truncate
@@ -84,7 +102,7 @@ function insertActionPrompt(array $entry, ?PDO $db): int {
         : null;
 
     // ─────────────────────────────
-    // Insert — NEW COLUMNS
+    // Insert — Guaranteed Non-NULL Structured JSON
     // ─────────────────────────────
     try {
         $stmt = $db->prepare("
