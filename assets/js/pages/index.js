@@ -2954,6 +2954,21 @@ window.SkyIndex = {
                 this.setThinking(true);
 
                 try {
+                    // Resolve user location (browser audit metadata)
+                    let actionLocation = await this.getLocationSafe();
+
+                    // Cache valid browser location
+                    if (
+                        actionLocation.latitude !== null &&
+                        actionLocation.longitude !== null
+                    ) {
+                        this.lastLocation = actionLocation;
+
+                    // Use last browser location when a fresh reading is unavailable
+                    } else if (this.lastLocation) {
+                        actionLocation = this.lastLocation;
+                    }
+
                     const response = await fetch(
                         '/skyesoft/api/processProposedContact.php',
                         {
@@ -2965,6 +2980,15 @@ window.SkyIndex = {
                             body: JSON.stringify({
                                 action: 'decline',
                                 source: 'ui_dashboard',
+
+                                // User/browser action coordinates
+                                latitude:
+                                    actionLocation?.latitude ??
+                                    null,
+
+                                longitude:
+                                    actionLocation?.longitude ??
+                                    null,
 
                                 activitySessionId:
                                     proposal.activitySessionId ||
@@ -3009,14 +3033,14 @@ window.SkyIndex = {
                         );
                     }
 
-                    // Preserve a visible resolution receipt.
+                    // Preserve visible resolution receipt
                     this.transformProposalToResolutionCard(
                         result,
                         'declined',
                         proposal
                     );
 
-                    // The proposal is no longer actionable.
+                    // Proposal is no longer actionable
                     this.currentProposal = null;
 
                 } catch (err) {
