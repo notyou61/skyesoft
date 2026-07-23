@@ -351,32 +351,47 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🌍 Location Resolver (non-blocking, permission-aware)
+    // #region 🌍 User Action Location Resolver
     async getLocationSafe() {
 
         return new Promise((resolve) => {
 
+            // Geolocation availability check
             if (!navigator.geolocation) {
-                resolve({ latitude: null, longitude: null });
+                resolve({
+                    latitude: null,
+                    longitude: null
+                });
                 return;
             }
 
             navigator.geolocation.getCurrentPosition(
 
-                // Success
-                (pos) => resolve({
-                    latitude: pos.coords.latitude,
-                    longitude: pos.coords.longitude
+                // Location resolved
+                (position) => resolve({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
                 }),
 
-                // Fail (permission denied, timeout, etc)
-                () => resolve({
-                    latitude: null,
-                    longitude: null
-                }),
+                // Location unavailable
+                (error) => {
+                    console.warn('[ACTION GEO] Location unavailable:', {
+                        code: error.code,
+                        message: error.message
+                    });
 
-                { timeout: 2500 } // keep UI snappy
+                    resolve({
+                        latitude: null,
+                        longitude: null
+                    });
+                },
 
+                // Browser location options
+                {
+                    enableHighAccuracy: false,
+                    timeout: 8000,
+                    maximumAge: 60000
+                }
             );
         });
     },
@@ -4160,8 +4175,14 @@ window.SkyIndex = {
                 try {
                     location = await Promise.race([
                         this.getLocationSafe(),
-                        new Promise(resolve =>
-                            setTimeout(() => resolve({ latitude: null, longitude: null }), 4000)
+                        new Promise((resolve) =>
+                            setTimeout(
+                                () => resolve({
+                                    latitude: null,
+                                    longitude: null
+                                }),
+                                9000
+                            )
                         )
                     ]);
 
@@ -4172,6 +4193,11 @@ window.SkyIndex = {
                     console.warn('[AUTH GEO] failed or timed out', geoErr);
                 }
             }
+
+            console.log('[AUTH GEO] Sending login coordinates:', {
+                latitude: location.latitude,
+                longitude: location.longitude
+            });
 
             const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
