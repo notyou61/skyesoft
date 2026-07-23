@@ -4123,6 +4123,72 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 📇 Contact List Card (paginated, proposal-card chrome)
+    renderContactListCard(list) {
+        if (!list || !Array.isArray(list.rows)) {
+            this.appendSystemLine('No contacts to display.');
+            return;
+        }
+
+        const page       = list.page || 1;
+        const totalPages = list.totalPages || 1;
+        const total      = list.total || list.rows.length;
+        const rows       = list.rows;
+
+        const rowsHtml = rows.map((r, i) => {
+            const name   = this.escapeHtml(r.name || 'Unnamed');
+            const title  = r.title  ? this.escapeHtml(r.title)  : '';
+            const entity = r.entity ? this.escapeHtml(r.entity) : '';
+            const city   = r.city   ? this.escapeHtml(r.city)   : '';
+
+            const meta = [entity, city].filter(Boolean).join(' · ');
+
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:8px 0; border-bottom:1px solid #f0f0f0;">
+                    <div style="min-width:0;">
+                        <div style="font-weight:600; color:#222;">
+                            ${i + 1 + ((page - 1) * (list.pageSize || 10))}. ${name}
+                            ${title ? `<span style="font-weight:400; color:#666;"> — ${title}</span>` : ''}
+                        </div>
+                        ${meta ? `<div style="font-size:0.85em; color:#666; margin-top:2px;">${meta}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const html = `
+            <div class="commandLine system html">
+                <div class="result-card" style="border-left: 5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
+                    <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="result-icon">📇</span>
+                            <div style="display:flex; flex-direction:column;">
+                                <strong class="result-title" style="color:#222;">Contacts</strong>
+                                <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
+                                    Page ${page} of ${totalPages} · showing ${rows.length} of ${total}
+                                </small>
+                            </div>
+                        </div>
+                        <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
+                            LIST
+                        </span>
+                    </div>
+
+                    <div class="result-body" style="padding:4px 16px 12px;">
+                        ${rowsHtml || '<div style="color:#666; padding:8px 0;">No contacts on this page.</div>'}
+                    </div>
+
+                    <div style="padding:10px 16px; border-top:1px solid #eee; background:#fafafa; font-size:0.85em; color:#666;">
+                        Say “next page” or “list contacts page ${page + 1}” to continue
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.appendSystemHtml(html);
+    },
+    // #endregion
+
     // #region 🤖 AI Command Execution
     async executeAICommand(prompt, incomingActivitySessionId = null) {
 
@@ -4191,6 +4257,14 @@ window.SkyIndex = {
 
                 const proposal = await res2.json();
                 this.handleContactProposal(proposal);
+                return;
+            }
+
+            // --------------------------------------------------
+            // 📇 CONTACT LIST CARD
+            // --------------------------------------------------
+            if (data?.type === 'contact_list' && data.list) {
+                this.renderContactListCard(data.list);
                 return;
             }
 

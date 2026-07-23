@@ -1726,6 +1726,19 @@ PROMPT;
 
         error_log('[skyebot] contact list page=' . ($operationalList['page'] ?? $page) .
                   ' rows=' . count($operationalList['rows'] ?? []));
+
+        // Structured list response — client renders the card (skip model layout)
+        if (is_array($operationalList) && isset($operationalList['rows'])) {
+            $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
+
+            echo json_encode([
+                'success'           => true,
+                'type'              => 'contact_list',
+                'list'              => $operationalList,
+                'activitySessionId' => $activitySessionId
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
     }
 
     // ─────────────────────────────────────────────
