@@ -734,12 +734,12 @@ function buildSystemContext(?array $sse, ?PDO $db = null): string
 function loadOperationalCounts(?PDO $db): array
 {
     $counts = [
-        'contactsActive'   => null,
-        'contactsRetired'  => null,
-        'entitiesActive'   => null,
-        'locationsActive'  => null,
-        'source'           => 'database',
-        'asOf'             => date('c')
+        'contactsActive'  => null,
+        'contactsTotal'   => null,
+        'entitiesActive'  => null,
+        'locationsTotal'  => null,
+        'source'          => 'database',
+        'asOf'            => date('c')
     ];
 
     if (!$db instanceof PDO) {
@@ -747,23 +747,25 @@ function loadOperationalCounts(?PDO $db): array
     }
 
     try {
+        // Active contacts (isActive = 1 or NULL treated as active)
         $counts['contactsActive'] = (int)$db->query("
             SELECT COUNT(*) FROM tblContacts
             WHERE COALESCE(isActive, 1) = 1
-              AND COALESCE(isRetired, 0) = 0
         ")->fetchColumn();
 
-        $counts['contactsRetired'] = (int)$db->query("
+        // All contacts
+        $counts['contactsTotal'] = (int)$db->query("
             SELECT COUNT(*) FROM tblContacts
-            WHERE COALESCE(isRetired, 0) = 1
         ")->fetchColumn();
 
+        // Active entities
         $counts['entitiesActive'] = (int)$db->query("
             SELECT COUNT(*) FROM tblEntities
             WHERE COALESCE(entityStatus, 'Active') = 'Active'
         ")->fetchColumn();
 
-        $counts['locationsActive'] = (int)$db->query("
+        // All locations
+        $counts['locationsTotal'] = (int)$db->query("
             SELECT COUNT(*) FROM tblLocations
         ")->fetchColumn();
 
