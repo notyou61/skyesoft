@@ -132,8 +132,8 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
         exit;
     }
 
-    // Snapshot directory & path
-    $snapshotDir = __DIR__ . '/data/runtimeEphemeral/proposals';
+    // Snapshot directory & path (project-level data directory)
+    $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
 
     if (!is_dir($snapshotDir)) {
         echo json_encode([
