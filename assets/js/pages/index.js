@@ -1286,6 +1286,21 @@ window.SkyIndex = {
         try {
             console.log('🚀 Executing dedicated contact proposal workflow');
 
+            // Resolve user/browser location for tblActions audit metadata
+            let actionLocation = await this.getLocationSafe();
+
+            // Cache valid coordinates; fall back to last known good location
+            if (
+                actionLocation.latitude !== null &&
+                actionLocation.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+            } else if (this.lastLocation) {
+                actionLocation = this.lastLocation;
+            }
+
+            console.log('[PROPOSAL GEO]', actionLocation);
+
             const res = await fetch('/skyesoft/api/processProposedContact.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -1293,7 +1308,11 @@ window.SkyIndex = {
                 body: JSON.stringify({
                     input: input,
                     activitySessionId: activitySessionId,
-                    mode: 'propose'
+                    mode: 'propose',
+
+                    // User/browser action coordinates (for tblActions)
+                    latitude:  actionLocation?.latitude  ?? null,
+                    longitude: actionLocation?.longitude ?? null
                 })
             });
 

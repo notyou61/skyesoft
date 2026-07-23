@@ -3072,9 +3072,9 @@ echo json_encode([
     'proposalParser'    => ($proposalType === 'location' ? 'location' : 'contact'),
     'activitySessionId' => $context['activitySessionId'] ?? '',
 
-    'google' => [
-        'apiKey' => $clientWorkspaceKey
-    ],
+    //'google' => [
+    //    'apiKey' => $clientWorkspaceKey
+    //],
 
     'data' => [
         'entity'   => $data['entity']   ?? [],
