@@ -3,14 +3,53 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — actions.php
-//  Version: 1.4.0
-//  Centralized Action Logging Layer (activitySessionId)
+//  Version: 1.5.0
+//  Centralized Action Logging Layer
+//  - Universal actionPayloadData / actionResponseData contract
+//  - Honors caller-supplied activitySessionId
 // ======================================================================
 
 #region SECTION 1 — Action Logging (tblActions)
 
-function insertActionPrompt(array $entry, ?PDO $db): int {
+/**
+ * Normalize any value into a JSON object string.
+ * Never returns null. Always returns a valid JSON object (at minimum "{}").
+ */
+function normalizeActionJson(mixed $value): string
+{
+    // Already a non-empty JSON object/array string
+    if (is_string($value)) {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return '{}';
+        }
 
+        $decoded = json_decode($trimmed, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+        }
+
+        // Scalar / non-object JSON → wrap it
+        return json_encode(['value' => $value], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+    }
+
+    // Array or object
+    if (is_array($value) || is_object($value)) {
+        $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return ($encoded !== false) ? $encoded : '{}';
+    }
+
+    // Null or missing
+    if ($value === null) {
+        return '{}';
+    }
+
+    // Scalar (int, float, bool)
+    return json_encode(['value' => $value], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+}
+
+function insertActionPrompt(array $entry, ?PDO $db): int
+{
     if (!$db) {
         error_log('[actions] DB not available');
         return 0;
@@ -28,20 +67,29 @@ function insertActionPrompt(array $entry, ?PDO $db): int {
     // ─────────────────────────────
     // Normalize
     // ─────────────────────────────
-    $contactId         = $entry['contactId'] ?? null;
-    $activitySessionId = session_id();                    // ← CANONICAL
-    $response          = $entry['responseText'] ?? null;
-    $intent            = $entry['intent'] ?? 'unknown';
-    $confidence        = (float)($entry['intentConfidence'] ?? 1.00);
-    $unixTime          = (int)($entry['createdUnixTime'] ?? time());
+    $contactId = $entry['contactId'] ?? null;
 
-    $latitude   = is_numeric($entry['latitude'] ?? null)   ? (float)$entry['latitude']   : null;
-    $longitude  = is_numeric($entry['longitude'] ?? null)  ? (float)$entry['longitude']  : null;
+    // Honor caller-supplied activitySessionId; fall back to live session only if absent
+    $activitySessionId = null;
+    if (!empty($entry['activitySessionId']) && is_string($entry['activitySessionId'])) {
+        $activitySessionId = trim($entry['activitySessionId']);
+    }
+    if ($activitySessionId === null || $activitySessionId === '') {
+        $activitySessionId = session_id() ?: null;
+    }
 
-    $ipAddress  = $_SERVER['REMOTE_ADDR']     ?? null;
-    $userAgent  = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    $response   = $entry['responseText'] ?? null;
+    $intent     = $entry['intent'] ?? 'unknown';
+    $confidence = (float)($entry['intentConfidence'] ?? 1.00);
+    $unixTime   = (int)($entry['createdUnixTime'] ?? time());
 
-    $origin     = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
+    $latitude  = is_numeric($entry['latitude'] ?? null)  ? (float)$entry['latitude']  : null;
+    $longitude = is_numeric($entry['longitude'] ?? null) ? (float)$entry['longitude'] : null;
+
+    $ipAddress = $_SERVER['REMOTE_ADDR']     ?? null;
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+    $origin       = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
     $actionTypeId = $entry['actionTypeId'] ?? null;
 
     if (!$actionTypeId) {
@@ -50,29 +98,13 @@ function insertActionPrompt(array $entry, ?PDO $db): int {
     }
 
     // ─────────────────────────────
-    // Structured Action Data (NEW)
+    // Universal structured-data contract
+    // Both columns are ALWAYS valid JSON objects. Never SQL NULL.
     // ─────────────────────────────
-    $actionPayloadData = null;
-    if (isset($entry['actionPayloadData'])) {
-        $actionPayloadData = is_string($entry['actionPayloadData'])
-            ? $entry['actionPayloadData']
-            : json_encode(
-                $entry['actionPayloadData'],
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            );
-    }
+    $actionPayloadData  = normalizeActionJson($entry['actionPayloadData']  ?? null);
+    $actionResponseData = normalizeActionJson($entry['actionResponseData'] ?? null);
 
-    $actionResponseData = null;
-    if (isset($entry['actionResponseData'])) {
-        $actionResponseData = is_string($entry['actionResponseData'])
-            ? $entry['actionResponseData']
-            : json_encode(
-                $entry['actionResponseData'],
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            );
-    }
-
-    // Truncate
+    // Truncate text fields
     $promptText = function_exists('mb_substr')
         ? mb_substr((string)$entry['promptText'], 0, 5000)
         : substr((string)$entry['promptText'], 0, 5000);
@@ -84,7 +116,7 @@ function insertActionPrompt(array $entry, ?PDO $db): int {
         : null;
 
     // ─────────────────────────────
-    // Insert — NEW COLUMNS
+    // Insert
     // ─────────────────────────────
     try {
         $stmt = $db->prepare("
@@ -115,7 +147,7 @@ function insertActionPrompt(array $entry, ?PDO $db): int {
         ]);
 
         $actionId = (int)$db->lastInsertId();
-        error_log("[actions] SUCCESS | actionId=$actionId | activitySessionId=$activitySessionId");
+        error_log("[actions] SUCCESS | actionId=$actionId | activitySessionId=" . ($activitySessionId ?? 'null'));
 
         return $actionId;
 
@@ -129,7 +161,8 @@ function insertActionPrompt(array $entry, ?PDO $db): int {
 
 #region SECTION 2 — Intent Execution Engine
 
-function executeIntent(string $intent, float $confidence): ?array {
+function executeIntent(string $intent, float $confidence): ?array
+{
     if ($intent === "ui_clear" && $confidence >= 0.80) {
         return ["type" => "ui_action", "response" => "clear_screen"];
     }
