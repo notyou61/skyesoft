@@ -672,7 +672,7 @@ function loadRecentActions(int $limit = 30, bool $todayOnly = false): array {
 }
 
 // Build Authoritative System Context from SSE snapshot + activity
-function buildSystemContext(?array $sse, ?PDO $db = null): string
+function buildSystemContext(?array $sse, ?PDO $db = null, ?array $list = null): string
 {
     if (!$sse) {
         return json_encode([
@@ -703,8 +703,12 @@ function buildSystemContext(?array $sse, ?PDO $db = null): string
     $recentActions = $activityData["rows"] ?? [];
     $activityMeta  = $activityData["meta"] ?? [];
 
-    // Live ELC counts (authoritative for operational questions)
     $operational = loadOperationalCounts($db);
+
+    // Optional paginated list (contacts, etc.)
+    if (is_array($list) && !empty($list)) {
+        $operational['list'] = $list;
+    }
 
     $context = [
         "priority" => $priority,
@@ -780,6 +784,94 @@ function loadOperationalCounts(?PDO $db): array
     error_log('[skyebot] operational counts: ' . json_encode($counts));
 
     return $counts;
+}
+
+/**
+ * Bounded contact list for conversational pagination.
+ * Page size is fixed at 10.
+ */
+function loadContactPage(?PDO $db, int $page = 1, int $pageSize = 10): array
+{
+    $page     = max(1, $page);
+    $pageSize = 10; // hard limit — do not raise without design review
+    $offset   = ($page - 1) * $pageSize;
+
+    $result = [
+        'type'       => 'contacts',
+        'page'       => $page,
+        'pageSize'   => $pageSize,
+        'total'      => 0,
+        'totalPages' => 0,
+        'rows'       => [],
+        'source'     => 'database',
+        'asOf'       => date('c')
+    ];
+
+    if (!$db instanceof PDO) {
+        return $result;
+    }
+
+    try {
+        $total = (int)$db->query("
+            SELECT COUNT(*) FROM tblContacts
+            WHERE COALESCE(isActive, 1) = 1
+        ")->fetchColumn();
+
+        $result['total']      = $total;
+        $result['totalPages'] = $total > 0 ? (int)ceil($total / $pageSize) : 0;
+
+        if ($total === 0) {
+            return $result;
+        }
+
+        // Clamp page to last page
+        if ($page > $result['totalPages']) {
+            $page   = $result['totalPages'];
+            $offset = ($page - 1) * $pageSize;
+            $result['page'] = $page;
+        }
+
+        $stmt = $db->prepare("
+            SELECT
+                c.contactId,
+                TRIM(CONCAT(
+                    COALESCE(c.contactFirstName, ''),
+                    ' ',
+                    COALESCE(c.contactLastName, '')
+                )) AS name,
+                c.contactTitle AS title,
+                e.entityName AS entity,
+                l.locationCity AS city
+            FROM tblContacts c
+            LEFT JOIN tblEntities e ON e.entityId = c.contactEntityId
+            LEFT JOIN tblLocations l ON l.locationId = c.contactLocationId
+            WHERE COALESCE(c.isActive, 1) = 1
+            ORDER BY c.contactLastName ASC, c.contactFirstName ASC
+            LIMIT :limit OFFSET :offset
+        ");
+
+        $stmt->bindValue(':limit',  $pageSize, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset,   PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rows[] = [
+                'id'     => (int)$row['contactId'],
+                'name'   => trim((string)$row['name']) ?: 'Unnamed',
+                'title'  => $row['title'] ?: null,
+                'entity' => $row['entity'] ?: null,
+                'city'   => $row['city'] ?: null
+            ];
+        }
+
+        $result['rows'] = $rows;
+
+    } catch (Throwable $e) {
+        error_log('[skyebot] loadContactPage failed: ' . $e->getMessage());
+    }
+
+    return $result;
 }
 
 #endregion
@@ -1504,6 +1596,7 @@ if ($type === "skyebot") {
     $role = "askOpenAI";
     $narrativeGenerated = false;
     $reportPath = null;
+    $operationalList = null;
 
     error_log("[skyebot] Processing query: " . substr($query, 0, 250));
 
@@ -1595,12 +1688,44 @@ PROMPT;
         }
     }
 
-    $lowerQuery = strtolower($query);
+    $lowerQuery = strtolower(trim($query));
     if (str_contains($lowerQuery, "deviation") || str_contains($lowerQuery, "violation") || str_contains($lowerQuery, "structural")) {
         $role = "governance";
         $type = "structural_state";
         $response = buildGovernanceResponse();
         goto SKY_OUTPUT;
+    }
+
+    // ─────────────────────────────────────────────
+    // 3b. Operational list resolution (contacts, page size 10)
+    // ─────────────────────────────────────────────
+    $isContactList =
+        preg_match('/\b(list|show|display)\b.*\bcontacts?\b/', $lowerQuery) ||
+        preg_match('/\bcontacts?\b.*\b(list|page)\b/', $lowerQuery);
+
+    $isListNavigation = (bool)preg_match('/\b(next|previous|prev)\s+page\b/', $lowerQuery);
+
+    if ($isContactList || $isListNavigation) {
+        $page = 1;
+
+        if (preg_match('/\bpage\s+(\d+)\b/', $lowerQuery, $m)) {
+            $page = max(1, (int)$m[1]);
+        } elseif (preg_match('/\bnext\s+page\b/', $lowerQuery)) {
+            $page = (int)($_SESSION['lastList']['page'] ?? 1) + 1;
+        } elseif (preg_match('/\b(prev|previous)\s+page\b/', $lowerQuery)) {
+            $page = max(1, (int)($_SESSION['lastList']['page'] ?? 2) - 1);
+        }
+
+        $operationalList = loadContactPage($db, $page, 10);
+
+        // Session handoff for next/previous
+        $_SESSION['lastList'] = [
+            'type' => 'contacts',
+            'page' => $operationalList['page'] ?? $page
+        ];
+
+        error_log('[skyebot] contact list page=' . ($operationalList['page'] ?? $page) .
+                  ' rows=' . count($operationalList['rows'] ?? []));
     }
 
     // ─────────────────────────────────────────────
@@ -1615,14 +1740,14 @@ PROMPT;
         error_log("[DEBUG] ❌ Response generation prompt file is missing or empty!");
         $basePrompt = "You are a helpful assistant. User said: " . $query;
     } else {
-        $systemContext = buildSystemContext($sseSnapshot, $db);
+        $systemContext = buildSystemContext($sseSnapshot, $db, $operationalList);
         $basePrompt = $responsePrompt . "\n\nSYSTEM DATA (JSON):\n" . $systemContext . "\n\nUser Input:\n" . $query;
     }
 
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
         $apiKey,
-        "gpt-4o-mini"        // ← switched to cheaper model
+        "gpt-4o-mini"
     );
 
     // Graceful Quota Handling
