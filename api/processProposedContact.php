@@ -95,17 +95,6 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     // 1. Full validation (no destructive work yet)
     // -------------------------------------------------
 
-    // Validate proposalId (filesystem safety)
-    $targetProposalId = trim((string)($inputData['proposalId'] ?? ''));
-
-    if ($targetProposalId === '' || !preg_match('/^\d+$/', $targetProposalId)) {
-        echo json_encode([
-            'success' => false,
-            'error'   => 'A valid proposalId is required.'
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        exit;
-    }
-
     // Require authenticated actor
     $contactId = $_SESSION['SKYESOFT_contactId']
         ?? $_SESSION['contactId']
@@ -132,116 +121,116 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
         exit;
     }
 
-    // Snapshot directory & path (project-level data directory)
-    $snapshotDir = __DIR__ . '/../data/runtimeEphemeral/proposals';
+    // Resolve proposal action identity (authoritative key)
+    $proposalActionId = isset($inputData['proposalActionId'])
+        ? (int)$inputData['proposalActionId']
+        : 0;
 
-    if (!is_dir($snapshotDir)) {
+    if ($proposalActionId <= 0) {
         echo json_encode([
             'success' => false,
-            'error'   => 'Proposal snapshot directory is unavailable.'
+            'error'   => 'A valid proposalActionId is required.'
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
-    $targetedSnapshotPath = $snapshotDir . "/{$targetProposalId}.json";
+    // Load authoritative proposal record (Action Type 13)
+    $stmt = $pdo->prepare("
+        SELECT
+            actionId,
+            contactId,
+            activitySessionId,
+            actionResponseData
+        FROM tblActions
+        WHERE actionId = ?
+          AND actionTypeId = 13
+        LIMIT 1
+    ");
 
-    // Require the targeted snapshot to exist and decode successfully
-    if (!is_file($targetedSnapshotPath)) {
+    $stmt->execute([$proposalActionId]);
+    $proposalAction = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$proposalAction) {
         echo json_encode([
             'success' => false,
-            'error'   => 'Proposal snapshot not found.'
+            'error'   => 'The proposal action could not be found.'
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
-    $snapshotRaw = @file_get_contents($targetedSnapshotPath);
-    if ($snapshotRaw === false || $snapshotRaw === '') {
+    // Verify proposal actor
+    $proposalContactId = (int)($proposalAction['contactId'] ?? 0);
+
+    if (
+        $proposalContactId <= 0 ||
+        $proposalContactId !== $contactId
+    ) {
         echo json_encode([
             'success' => false,
-            'error'   => 'Unable to read proposal snapshot.'
+            'error'   => 'Proposal actor verification failed.'
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
-    $snapshotData = json_decode($snapshotRaw, true);
-    if (!is_array($snapshotData)) {
-        echo json_encode([
-            'success' => false,
-            'error'   => 'Proposal snapshot is corrupt or invalid JSON.'
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        exit;
-    }
-
-    // Verify snapshot identity
-    $snapshotProposalId = trim((string)(
-        $snapshotData['proposalId']
-        ?? $snapshotData['data']['proposalId']
-        ?? ''
-    ));
-
-    if ($snapshotProposalId !== '' && $snapshotProposalId !== $targetProposalId) {
-        echo json_encode([
-            'success' => false,
-            'error'   => 'Proposal snapshot identity mismatch.'
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        exit;
-    }
-
-    // Extract authoritative values from snapshot
-    $cachedSessionId = trim(
-        $snapshotData['activitySessionId']
-        ?? $snapshotData['data']['activitySessionId']
-        ?? $snapshotData['context']['activitySessionId']
-        ?? ''
+    // Decode authoritative proposal
+    $proposalData = json_decode(
+        (string)$proposalAction['actionResponseData'],
+        true
     );
 
-    $snapshotActionId = trim((string)(
-        $snapshotData['proposalActionId']
-        ?? $snapshotData['data']['proposalActionId']
-        ?? ''
+    if (!is_array($proposalData)) {
+        echo json_encode([
+            'success' => false,
+            'error'   => 'The proposal record contains invalid response data.'
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Verify proposal identity
+    $storedProposalId = trim((string)(
+        $proposalData['proposalId'] ?? ''
     ));
 
-    // Browser coordinates only
-    $lat = $browserLatitude;
-    $lon = $browserLongitude;
-
-    error_log(sprintf(
-        '[PPC][DECLINE-ACTION-GEO] Proposal #%s | Snapshot=YES | UserLat=%s | UserLon=%s',
-        $targetProposalId,
-        var_export($lat, true),
-        var_export($lon, true)
+    $incomingProposalId = trim((string)(
+        $inputData['proposalId'] ?? ''
     ));
 
-    // -------------------------------------------------
-    // Session resolution + strengthened verification
-    // -------------------------------------------------
+    if (
+        $storedProposalId === '' ||
+        $incomingProposalId === '' ||
+        !hash_equals($storedProposalId, $incomingProposalId)
+    ) {
+        echo json_encode([
+            'success' => false,
+            'error'   => 'Proposal identity verification failed.'
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
 
-    $nativeSessionId = session_id();
+    // Session from the authoritative Action Type 13 row
+    $storedSessionId = trim((string)(
+        $proposalAction['activitySessionId'] ?? ''
+    ));
+
     $incomingSession = trim($inputData['activitySessionId'] ?? '');
-
     if ($incomingSession === 'no_session') {
         $incomingSession = '';
     }
 
-    // Prefer snapshot session → native session → incoming session
-    if (!empty($cachedSessionId)) {
-        $finalSessionId = $cachedSessionId;
-    } elseif (!empty($nativeSessionId)) {
-        $finalSessionId = $nativeSessionId;
-    } elseif (!empty($incomingSession)) {
-        $finalSessionId = $incomingSession;
-    } else {
-        error_log('[PPC][INTERCEPT] CRITICAL: Unable to resolve activitySessionId for decline');
+    // Prefer stored session; fall back only if empty
+    $finalSessionId = $storedSessionId !== '' ? $storedSessionId : $incomingSession;
+
+    if ($finalSessionId === '') {
         echo json_encode([
             'success' => false,
-            'error'   => 'Unable to resolve proposal session. Please refresh and try again.'
+            'error'   => 'Unable to resolve proposal session.'
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
-    // If the snapshot has an activitySessionId, require a matching incoming value
-    if ($cachedSessionId !== '') {
-        if ($incomingSession === '' || !hash_equals($cachedSessionId, $incomingSession)) {
+    // If the stored session exists, require a matching incoming value
+    if ($storedSessionId !== '') {
+        if ($incomingSession === '' || !hash_equals($storedSessionId, $incomingSession)) {
             echo json_encode([
                 'success' => false,
                 'error'   => 'Proposal session verification failed.'
@@ -250,120 +239,87 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
         }
     }
 
-    // Verify proposalActionId when present in snapshot
-    $incomingActionId = trim((string)($inputData['proposalActionId'] ?? ''));
-    if ($snapshotActionId !== '') {
-        if ($incomingActionId === '' || !hash_equals($snapshotActionId, $incomingActionId)) {
-            echo json_encode([
-                'success' => false,
-                'error'   => 'Proposal action identity mismatch.'
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-            exit;
-        }
-    }
-
-    // Propagate consistently
+    // Propagate
     $inputData['activitySessionId'] = $finalSessionId;
     $context['activitySessionId']   = $finalSessionId;
 
-    error_log('[PPC][INTERCEPT] Decline action for Session: ' . $context['activitySessionId']);
+    error_log('[PPC][INTERCEPT] Decline action for Session: ' . $context['activitySessionId'] . ' | proposalActionId=' . $proposalActionId);
 
-    // Build display subject from authoritative snapshot data first
-    $entityName = trim(
-        $snapshotData['data']['entity']['entityName']
-        ?? $snapshotData['entityName']
-        ?? $inputData['entityName']
-        ?? $inputData['data']['entity']['entityName']
-        ?? ''
-    );
+    // Browser coordinates only
+    $lat = $browserLatitude;
+    $lon = $browserLongitude;
 
-    $firstName = trim(
-        $snapshotData['data']['contact']['contactFirstName']
-        ?? $snapshotData['data']['contact']['firstName']
-        ?? $inputData['data']['contact']['contactFirstName']
-        ?? ''
-    );
+    // -------------------------------------------------
+    // Authoritative field extraction from stored proposal
+    // -------------------------------------------------
 
-    $lastName = trim(
-        $snapshotData['data']['contact']['contactLastName']
-        ?? $snapshotData['data']['contact']['lastName']
-        ?? $inputData['data']['contact']['contactLastName']
-        ?? ''
-    );
+    $proposalBody = $proposalData['data'] ?? [];
+
+    $entityName = trim((string)(
+        $proposalBody['entity']['entityName'] ?? ''
+    ));
+
+    $firstName = trim((string)(
+        $proposalBody['contact']['contactFirstName'] ?? ''
+    ));
+
+    $lastName = trim((string)(
+        $proposalBody['contact']['contactLastName'] ?? ''
+    ));
 
     $fullName = trim($firstName . ' ' . $lastName);
 
     $displaySubject = !empty($fullName)
         ? "{$fullName} ({$entityName})"
-        : (!empty($entityName) ? $entityName : "Proposal #{$targetProposalId}");
+        : (!empty($entityName) ? $entityName : "Proposal #{$storedProposalId}");
+
+    $proposalCode = $proposalBody['pcm']['pc']
+        ?? $proposalBody['proposalCode']
+        ?? null;
 
     // -------------------------------------------------
-    // 2. Perform targeted purge
+    // 2. Delete only temporary TMP-IMG artifacts
     // -------------------------------------------------
 
-    $purgedSnapshots = 0;
     $purgedArtifacts = 0;
     $failedArtifacts = 0;
-    $purgeError = null;
 
-    try {
-        // Snapshot MUST be removed for the decline to be considered complete
-        if (!@unlink($targetedSnapshotPath)) {
-            throw new RuntimeException('Unable to remove the proposal snapshot.');
-        }
-        $purgedSnapshots = 1;
+    $artifactsDir = __DIR__ . '/../artifacts';
+    if (is_dir($artifactsDir) && $storedProposalId !== '') {
+        $artifacts = scandir($artifactsDir);
+        foreach ($artifacts as $artifactFile) {
+            if ($artifactFile === '.' || $artifactFile === '..') continue;
 
-        // Purge Media Artifacts (TMP-IMG- files) — delimiter-aware
-        $artifactsDir = __DIR__ . '/../artifacts';
-        if (is_dir($artifactsDir)) {
-            $artifacts = scandir($artifactsDir);
-            foreach ($artifacts as $artifactFile) {
-                if ($artifactFile === '.' || $artifactFile === '..') continue;
-
-                if (
-                    strpos($artifactFile, 'TMP-IMG-') === 0 &&
-                    (
-                        strpos($artifactFile, "-{$targetProposalId}-") !== false ||
-                        strpos($artifactFile, "_{$targetProposalId}_") !== false ||
-                        strpos($artifactFile, "-{$targetProposalId}.") !== false ||
-                        strpos($artifactFile, "_{$targetProposalId}.") !== false ||
-                        substr($artifactFile, -strlen($targetProposalId) - 1) === "-{$targetProposalId}" ||
-                        substr($artifactFile, -strlen($targetProposalId) - 1) === "_{$targetProposalId}"
-                    )
-                ) {
-                    $artifactPath = $artifactsDir . '/' . $artifactFile;
-                    if (is_file($artifactPath)) {
-                        if (@unlink($artifactPath)) {
-                            $purgedArtifacts++;
-                        } else {
-                            $failedArtifacts++;
-                        }
+            // Match TMP-IMG-* files that contain this proposalId
+            if (
+                strpos($artifactFile, 'TMP-IMG-') === 0 &&
+                (
+                    strpos($artifactFile, "-{$storedProposalId}-") !== false ||
+                    strpos($artifactFile, "_{$storedProposalId}_") !== false ||
+                    strpos($artifactFile, "-{$storedProposalId}.") !== false ||
+                    strpos($artifactFile, "_{$storedProposalId}.") !== false ||
+                    substr($artifactFile, -strlen($storedProposalId) - 1) === "-{$storedProposalId}" ||
+                    substr($artifactFile, -strlen($storedProposalId) - 1) === "_{$storedProposalId}"
+                )
+            ) {
+                $artifactPath = $artifactsDir . '/' . $artifactFile;
+                if (is_file($artifactPath)) {
+                    if (@unlink($artifactPath)) {
+                        $purgedArtifacts++;
+                    } else {
+                        $failedArtifacts++;
                     }
                 }
             }
         }
-    } catch (Throwable $e) {
-        $purgeError = $e->getMessage();
-        error_log('[PPC][PURGE] ❌ Purge failed: ' . $purgeError);
     }
 
     error_log(sprintf(
-        '[PPC][PURGE] Snapshots: %d | Artifacts purged: %d | Artifacts failed: %d',
-        $purgedSnapshots,
+        '[PPC][PURGE] Artifacts purged: %d | Artifacts failed: %d | proposalId=%s',
         $purgedArtifacts,
-        $failedArtifacts
+        $failedArtifacts,
+        $storedProposalId
     ));
-
-    // If the snapshot could not be removed, the decline did not complete
-    if ($purgeError !== null) {
-        echo json_encode([
-            'success' => false,
-            'status'  => 'decline_failed',
-            'error'   => $purgeError,
-            'message' => "❌ Decline of {$displaySubject} failed during purge."
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        exit;
-    }
 
     // -------------------------------------------------
     // 3. Single completed Action Type 10 record
@@ -372,14 +328,14 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     $finalResponse = [
         'success'           => true,
         'status'            => 'declined',
-        'proposalId'        => $targetProposalId,
+        'proposalId'        => $storedProposalId,
+        'proposalActionId'  => $proposalActionId,
         'activitySessionId' => $context['activitySessionId'],
-        'purgedSnapshots'   => $purgedSnapshots,
         'purgedArtifacts'   => $purgedArtifacts,
         'failedArtifacts'   => $failedArtifacts,
         'message'           => $failedArtifacts > 0
-            ? "❌ {$displaySubject} was declined. Snapshot removed; some artifacts remain."
-            : "❌ {$displaySubject} was declined. Proposal artifacts have been purged."
+            ? "❌ {$displaySubject} was declined. Some temporary artifacts remain."
+            : "❌ {$displaySubject} was declined. Temporary artifacts have been purged."
     ];
 
     $actionPayload = [
@@ -387,10 +343,15 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
         'source'            => $inputData['source'] ?? 'ui_dashboard',
         'activitySessionId' => $context['activitySessionId'],
         'requestId'         => $context['requestId'],
-        'proposalId'        => $targetProposalId,
-        'proposalActionId'  => $inputData['proposalActionId'] ?? null,
-        'pc'                => $inputData['pc'] ?? ($snapshotData['pc'] ?? null)
+        'proposalId'        => $storedProposalId,
+        'proposalActionId'  => $proposalActionId,
+        'pc'                => $proposalCode
     ];
+
+    // Accurate responseText based on cleanup completeness
+    $responseText = $failedArtifacts > 0
+        ? 'proposal_declined_cleanup_partial'
+        : 'proposal_declined_and_purged';
 
     try {
         $stmt = $pdo->prepare("
@@ -408,7 +369,7 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
             time(),
             $context['activitySessionId'],
             "Decline proposal for {$displaySubject}",
-            "proposal_declined_and_purged",
+            $responseText,
             json_encode($actionPayload, JSON_UNESCAPED_SLASHES),
             json_encode($finalResponse, JSON_UNESCAPED_SLASHES),
             'contact_proposal_decline',
@@ -424,9 +385,9 @@ if (isset($inputData['action']) && $inputData['action'] === 'decline') {
     } catch (Throwable $e) {
         error_log('[PPC][ACTION-LOG] ❌ Decline log failed: ' . $e->getMessage());
 
-        // Files are already gone; report the audit failure clearly
+        // Artifacts may already be gone; report the audit failure clearly
         $finalResponse['success'] = false;
-        $finalResponse['warning'] = 'Proposal was purged but audit logging failed.';
+        $finalResponse['warning'] = 'Proposal disposition was processed but audit logging failed.';
         $finalResponse['message'] = "❌ {$displaySubject} was declined, but the action could not be fully audited.";
     }
 
