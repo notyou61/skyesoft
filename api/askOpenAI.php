@@ -1633,21 +1633,43 @@ $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
 $latitude  = is_numeric($input['latitude'] ?? null) ? (float)$input['latitude'] : null;
 $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
 
-// Action Logging
+// Action Logging — general query / skyebot path
 if ($sessionContactId && isset($response)) {
     try {
+        $actionPayloadData = [
+            'query'             => $query ?? $input['input'] ?? '[unknown]',
+            'source'            => 'skyebot',
+            'requestType'       => $type ?? 'skyebot',
+            'activitySessionId' => $activitySessionId,
+            'detectedIntent'    => $intent ?? 'unknown',
+            'intentConfidence'  => $confidence ?? null
+        ];
+
+        $actionResponseData = [
+            'success'            => true,
+            'answer'             => trim((string)$response),
+            'role'               => $role ?? 'askOpenAI',
+            'type'               => $type ?? 'skyebot',
+            'intent'             => $intent ?? 'unknown',
+            'intentConfidence'   => $confidence ?? null,
+            'narrativeGenerated' => $narrativeGenerated ?? false
+        ];
+
         insertActionPrompt([
-            'contactId'        => $sessionContactId,
-            'promptText'       => $query ?? $input['input'] ?? '[unknown]',
-            'responseText'     => trim($response),
-            'intent'           => $intent ?? 'unknown',
-            'intentConfidence' => $confidence ?? null,
-            'latitude'         => $latitude,
-            'longitude'        => $longitude,
-            'activitySessionId'=> $activitySessionId,
-            'actionTypeId'     => 3,
-            'origin'           => ACTION_ORIGIN_USER
+            'contactId'          => $sessionContactId,
+            'promptText'         => $query ?? $input['input'] ?? '[unknown]',
+            'responseText'       => trim((string)$response),
+            'intent'             => $intent ?? 'unknown',
+            'intentConfidence'   => $confidence ?? null,
+            'latitude'           => $latitude,
+            'longitude'          => $longitude,
+            'activitySessionId'  => $activitySessionId,
+            'actionTypeId'       => 3,
+            'origin'             => ACTION_ORIGIN_USER,
+            'actionPayloadData'  => $actionPayloadData,
+            'actionResponseData' => $actionResponseData
         ], $db);
+
     } catch (Throwable $e) {
         error_log("[actions] insert failed in askOpenAI.php: " . $e->getMessage());
     }

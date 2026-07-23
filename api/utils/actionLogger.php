@@ -4,14 +4,58 @@ declare(strict_types=1);
 // ============================================================
 // Skyesoft — actionLogger.php
 // Centralized action logging (ELC-compliant, consistent)
-// Version: 1.3.0 — Codex origins [0,1,2] + caller activitySessionId
+// Version: 1.4.0 — Universal actionPayloadData / actionResponseData contract
 // ============================================================
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// 🧾 logAction() — User action logger (name → ID resolved)
-// Returns the inserted actionId (0 on failure)
+/**
+ * Normalize any value into a JSON object string.
+ * Never returns null. Always returns a valid JSON object (at minimum "{}").
+ */
+function normalizeActionJson(mixed $value): string
+{
+    // Already a JSON object string
+    if (is_string($value)) {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return '{}';
+        }
+
+        $decoded = json_decode($trimmed, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            // Re-encode to guarantee consistent formatting
+            return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+        }
+
+        // Scalar / non-object JSON → wrap it
+        return json_encode(['value' => $value], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+    }
+
+    // Array or object
+    if (is_array($value) || is_object($value)) {
+        $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return ($encoded !== false) ? $encoded : '{}';
+    }
+
+    // Null or missing
+    if ($value === null) {
+        return '{}';
+    }
+
+    // Scalar (int, float, bool)
+    return json_encode(['value' => $value], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
+}
+
+/**
+ * logAction() — User action logger (name → ID resolved)
+ * Returns the inserted actionId (0 on failure)
+ *
+ * Universal contract:
+ *   actionPayloadData  and actionResponseData are ALWAYS valid JSON objects.
+ *   Callers may omit them; the logger stores "{}".
+ */
 function logAction(PDO $db, array $p): int
 {
     try {
@@ -26,7 +70,7 @@ function logAction(PDO $db, array $p): int
             return 0;
         }
 
-        // --- Required (NEW MODEL)
+        // --- Required
         $actionName = trim((string)($p['actionName'] ?? ''));
         $intent     = trim((string)($p['intent'] ?? ''));
         $prompt     = trim((string)($p['prompt'] ?? ''));
@@ -82,7 +126,7 @@ function logAction(PDO $db, array $p): int
                 : json_encode($p['response'], JSON_UNESCAPED_UNICODE))
             : null;
 
-        // 🔒 truncate response
+        // 🔒 truncate responseText
         if ($response) {
             $response = function_exists('mb_substr')
                 ? mb_substr($response, 0, 10000)
@@ -96,9 +140,7 @@ function logAction(PDO $db, array $p): int
         $ip = $_SERVER['REMOTE_ADDR']     ?? null;
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
-        // 🔥 activitySessionId — honor caller-supplied value (critical for SSE idle logout)
-        // Accept either 'activitySessionId' or legacy 'sessionId' key.
-        // Fallback to live session_id() only when the caller did not preserve one.
+        // activitySessionId — honor caller-supplied value
         $activitySessionId = null;
         if (!empty($p['activitySessionId']) && is_string($p['activitySessionId'])) {
             $activitySessionId = trim($p['activitySessionId']);
@@ -110,21 +152,11 @@ function logAction(PDO $db, array $p): int
         }
 
         // ============================================================
-        // Structured Action Data (NEW)
+        // UNIVERSAL STRUCTURED DATA CONTRACT
+        // Both fields are always valid JSON objects. Never NULL.
         // ============================================================
-        $actionPayloadData = null;
-        if (array_key_exists('actionPayloadData', $p)) {
-            $actionPayloadData = is_string($p['actionPayloadData'])
-                ? $p['actionPayloadData']
-                : json_encode($p['actionPayloadData'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
-
-        $actionResponseData = null;
-        if (array_key_exists('actionResponseData', $p)) {
-            $actionResponseData = is_string($p['actionResponseData'])
-                ? $p['actionResponseData']
-                : json_encode($p['actionResponseData'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
+        $actionPayloadData  = normalizeActionJson($p['actionPayloadData']  ?? null);
+        $actionResponseData = normalizeActionJson($p['actionResponseData'] ?? null);
 
         // --- Insert
         $stmt = $db->prepare("
@@ -164,20 +196,20 @@ function logAction(PDO $db, array $p): int
         ");
 
         $stmt->execute([
-            'actionTypeId'      => $actionTypeId,
-            'contactId'         => $contactId,
-            'origin'            => $origin,
-            'activitySessionId' => $activitySessionId,
-            'prompt'            => $prompt,
-            'response'          => $response,
-            'actionPayloadData' => $actionPayloadData,
-            'actionResponseData'=> $actionResponseData,
-            'intent'            => $intent,
-            'confidence'        => $confidence,
-            'ip'                => $ip,
-            'lat'               => $lat,
-            'lng'               => $lng,
-            'ua'                => $ua
+            'actionTypeId'       => $actionTypeId,
+            'contactId'          => $contactId,
+            'origin'             => $origin,
+            'activitySessionId'  => $activitySessionId,
+            'prompt'             => $prompt,
+            'response'           => $response,
+            'actionPayloadData'  => $actionPayloadData,
+            'actionResponseData' => $actionResponseData,
+            'intent'             => $intent,
+            'confidence'         => $confidence,
+            'ip'                 => $ip,
+            'lat'                => $lat,
+            'lng'                => $lng,
+            'ua'                 => $ua
         ]);
 
         $actionId = (int)$db->lastInsertId();
