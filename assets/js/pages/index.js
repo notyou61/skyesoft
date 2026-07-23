@@ -2970,6 +2970,31 @@ window.SkyIndex = {
                     return;
                 }
 
+                // Prefer the full original payload; fall back to currentProposal
+                const proposal =
+                    this.currentProposalPayload ||
+                    this.currentProposal ||
+                    null;
+
+                if (!proposal) {
+                    this.appendSystemLine(
+                        '⚠️ No active proposal found.',
+                        'warning'
+                    );
+                    return;
+                }
+
+                const proposalActionId = proposal.proposalActionId ?? null;
+
+                if (!proposalActionId) {
+                    console.error('[DECLINE] Missing proposalActionId', proposal);
+                    this.appendSystemLine(
+                        '❌ Cannot decline: proposalActionId is missing from the active proposal.',
+                        'error'
+                    );
+                    return;
+                }
+
                 this.setThinking(true);
 
                 try {
@@ -3019,9 +3044,7 @@ window.SkyIndex = {
                                     proposal.proposalId ||
                                     '',
 
-                                proposalActionId:
-                                    proposal.proposalActionId ||
-                                    null,
+                                proposalActionId: proposalActionId,
 
                                 pc:
                                     proposal.pcm?.pc ||
@@ -3061,6 +3084,7 @@ window.SkyIndex = {
 
                     // Proposal is no longer actionable
                     this.currentProposal = null;
+                    this.currentProposalPayload = null;
 
                 } catch (err) {
                     console.error(
