@@ -871,7 +871,8 @@ if ($completeness['overall'] !== 'PASS') {
         'success'           => true,
         'status'            => 'incomplete',
         'proposalId'        => $incompleteProposalId,
-        'proposalActionId'  => $actionId,          // now present for Decline
+        'proposalActionId'  => $actionId,
+        'activitySessionId' => $context['activitySessionId'] ?? '',   // ← add this
         'completeness'      => $completeness,
         'governance'        => [
             'resolution_status' => 'RS-3',
