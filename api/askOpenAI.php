@@ -672,23 +672,20 @@ function loadRecentActions(int $limit = 30, bool $todayOnly = false): array {
 }
 
 // Build Authoritative System Context from SSE snapshot + activity
-function buildSystemContext(?array $sse): string {
-
+function buildSystemContext(?array $sse, ?PDO $db = null): string
+{
     if (!$sse) {
         return json_encode([
-            "status" => "no_data",
+            "status"  => "no_data",
             "message" => "No SSE snapshot available"
         ]);
     }
 
-    // ─────────────────────────────────────────
-    // 🔍 Discover Domains — exclude system fields
-    // ─────────────────────────────────────────
     $exclude = [
-        "auth", 
-        "idle", 
-        "streamId", 
-        "activitySessionId",   // ← updated
+        "auth",
+        "idle",
+        "streamId",
+        "activitySessionId",
         "forceLogout"
     ];
 
@@ -697,37 +694,30 @@ function buildSystemContext(?array $sse): string {
         fn($key) => !in_array($key, $exclude, true)
     ));
 
-    // ─────────────────────────────────────────
-    // 🎯 Priority Context
-    // ─────────────────────────────────────────
     $priority = [
         "time"    => $sse["timeDateArray"] ?? null,
         "holiday" => $sse["holidayState"] ?? null
     ];
 
-    // ─────────────────────────────────────────
-    // 📊 Use SINGLE SOURCE OF TRUTH (IMPORTANT)
-    // ─────────────────────────────────────────
-    $activityData = loadRecentActions(30);
-
-    // Flatten for AI clarity
+    $activityData  = loadRecentActions(30);
     $recentActions = $activityData["rows"] ?? [];
     $activityMeta  = $activityData["meta"] ?? [];
 
-    // ─────────────────────────────────────────
-    // 📦 Unified Context
-    // ─────────────────────────────────────────
+    // Live ELC counts (authoritative for operational questions)
+    $operational = loadOperationalCounts($db);
+
     $context = [
         "priority" => $priority,
         "domains"  => $sse,
         "activity" => [
             "recentActions" => $recentActions,
-            "meta" => $activityMeta
+            "meta"          => $activityMeta
         ],
+        "operational" => $operational,
         "meta" => [
-            "source" => "SSE snapshot",
-            "readOnly" => true,
-            "schema" => "dynamic",
+            "source"           => "SSE snapshot + live ELC counts",
+            "readOnly"         => true,
+            "schema"           => "dynamic",
             "availableDomains" => $domains
         ]
     ];
@@ -736,6 +726,52 @@ function buildSystemContext(?array $sse): string {
         $context,
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
     );
+}
+/**
+ * Live ELC counts for authoritative operational answers.
+ * Read-only. Never mutates data.
+ */
+function loadOperationalCounts(?PDO $db): array
+{
+    $counts = [
+        'contactsActive'   => null,
+        'contactsRetired'  => null,
+        'entitiesActive'   => null,
+        'locationsActive'  => null,
+        'source'           => 'database',
+        'asOf'             => date('c')
+    ];
+
+    if (!$db instanceof PDO) {
+        return $counts;
+    }
+
+    try {
+        $counts['contactsActive'] = (int)$db->query("
+            SELECT COUNT(*) FROM tblContacts
+            WHERE COALESCE(isActive, 1) = 1
+              AND COALESCE(isRetired, 0) = 0
+        ")->fetchColumn();
+
+        $counts['contactsRetired'] = (int)$db->query("
+            SELECT COUNT(*) FROM tblContacts
+            WHERE COALESCE(isRetired, 0) = 1
+        ")->fetchColumn();
+
+        $counts['entitiesActive'] = (int)$db->query("
+            SELECT COUNT(*) FROM tblEntities
+            WHERE COALESCE(entityStatus, 'Active') = 'Active'
+        ")->fetchColumn();
+
+        $counts['locationsActive'] = (int)$db->query("
+            SELECT COUNT(*) FROM tblLocations
+        ")->fetchColumn();
+
+    } catch (Throwable $e) {
+        error_log('[skyebot] operational counts lookup failed: ' . $e->getMessage());
+    }
+
+    return $counts;
 }
 
 #endregion
@@ -1571,7 +1607,7 @@ PROMPT;
         error_log("[DEBUG] ❌ Response generation prompt file is missing or empty!");
         $basePrompt = "You are a helpful assistant. User said: " . $query;
     } else {
-        $systemContext = buildSystemContext($sseSnapshot);
+        $systemContext = buildSystemContext($sseSnapshot, $db);
         $basePrompt = $responsePrompt . "\n\nSYSTEM DATA (JSON):\n" . $systemContext . "\n\nUser Input:\n" . $query;
     }
 
