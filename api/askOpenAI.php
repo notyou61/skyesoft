@@ -1053,6 +1053,7 @@ function searchEntitiesByName($db, string $searchName): array
     }
 
     $normalized = preg_replace('/\s+/', ' ', strtolower($searchName));
+    $nospace    = str_replace(' ', '', $normalized);
 
     try {
         $sql = "
@@ -1070,18 +1071,18 @@ function searchEntitiesByName($db, string $searchName): array
                 e.entityIsNotValid
             FROM tblEntities e
             WHERE
-                e.entityName LIKE :like
-                OR e.entityLegalName LIKE :like
-                OR e.entityNormalizedName LIKE :like
-                OR LOWER(e.entityName) = :exact
-                OR LOWER(e.entityNormalizedName) = :exact
-                OR LOWER(REPLACE(e.entityName, ' ', '')) = :nospace
-                OR LOWER(REPLACE(e.entityNormalizedName, ' ', '')) = :nospace
+                e.entityName LIKE :like1
+                OR e.entityLegalName LIKE :like2
+                OR e.entityNormalizedName LIKE :like3
+                OR LOWER(e.entityName) = :exact1
+                OR LOWER(e.entityNormalizedName) = :exact2
+                OR LOWER(REPLACE(e.entityName, ' ', '')) = :nospace1
+                OR LOWER(REPLACE(e.entityNormalizedName, ' ', '')) = :nospace2
             ORDER BY
                 CASE
-                    WHEN LOWER(e.entityName) = :exact THEN 0
-                    WHEN LOWER(e.entityNormalizedName) = :exact THEN 1
-                    WHEN LOWER(e.entityName) LIKE :starts THEN 2
+                    WHEN LOWER(e.entityName) = :exact3 THEN 0
+                    WHEN LOWER(e.entityNormalizedName) = :exact4 THEN 1
+                    WHEN LOWER(e.entityName) LIKE :starts1 THEN 2
                     ELSE 3
                 END,
                 e.entityIsNotValid ASC,
@@ -1091,15 +1092,20 @@ function searchEntitiesByName($db, string $searchName): array
 
         $stmt = $db->prepare($sql);
 
-        $like    = '%' . $searchName . '%';
-        $starts  = $normalized . '%';
-        $exact   = $normalized;
-        $nospace = str_replace(' ', '', $normalized);
+        $like   = '%' . $searchName . '%';
+        $starts = $normalized . '%';
 
-        $stmt->bindValue(':like',    $like,    PDO::PARAM_STR);
-        $stmt->bindValue(':exact',   $exact,   PDO::PARAM_STR);
-        $stmt->bindValue(':starts',  $starts,  PDO::PARAM_STR);
-        $stmt->bindValue(':nospace', $nospace, PDO::PARAM_STR);
+        // Bind every placeholder uniquely
+        $stmt->bindValue(':like1',   $like,      PDO::PARAM_STR);
+        $stmt->bindValue(':like2',   $like,      PDO::PARAM_STR);
+        $stmt->bindValue(':like3',   $like,      PDO::PARAM_STR);
+        $stmt->bindValue(':exact1',  $normalized, PDO::PARAM_STR);
+        $stmt->bindValue(':exact2',  $normalized, PDO::PARAM_STR);
+        $stmt->bindValue(':exact3',  $normalized, PDO::PARAM_STR);
+        $stmt->bindValue(':exact4',  $normalized, PDO::PARAM_STR);
+        $stmt->bindValue(':nospace1',$nospace,    PDO::PARAM_STR);
+        $stmt->bindValue(':nospace2',$nospace,    PDO::PARAM_STR);
+        $stmt->bindValue(':starts1', $starts,     PDO::PARAM_STR);
 
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1111,7 +1117,6 @@ function searchEntitiesByName($db, string $searchName): array
         return [];
     }
 }
-
 #region SECTION 2 — Standing Orders Injection
 function injectStandingOrders(string $basePrompt): string {
     $ordersJson = loadStandingOrders();
