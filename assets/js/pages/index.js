@@ -4037,41 +4037,146 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Contact List Renderer
+    // #region 📇 Contact Search Card
     renderContactsList(contacts) {
-
         if (!Array.isArray(contacts) || contacts.length === 0) {
             this.appendSystemLine('No contacts found.');
             return;
         }
 
-        this.appendSystemLine(`📇 ${contacts.length} contact(s) found`);
+        // Build contact rows
+        const rowsHtml = contacts.map((contact, index) => {
+            const contactId = Number(contact.contactId || 0);
 
-        contacts.forEach((c, index) => {
+            const fullName = (
+                `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`
+            ).trim() || 'Unnamed Contact';
 
-            const name =
-                `${c.contactFirstName || ''} ${c.contactLastName || ''}`.trim()
-                || 'Unnamed Contact';
+            const name    = this.escapeHtml(fullName);
+            const title   = contact.contactTitle
+                ? this.escapeHtml(contact.contactTitle)
+                : '';
+            const entity  = contact.entityName
+                ? this.escapeHtml(contact.entityName)
+                : '';
+            const city    = contact.locationCity
+                ? this.escapeHtml(contact.locationCity)
+                : '';
+            const state   = contact.locationState
+                ? this.escapeHtml(contact.locationState)
+                : '';
+            const phone   = contact.contactPrimaryPhone
+                ? this.escapeHtml(contact.contactPrimaryPhone)
+                : '';
+            const email   = contact.contactEmail
+                ? this.escapeHtml(contact.contactEmail)
+                : '';
 
-            const company = c.entityName || 'Unknown Entity';
+            // Build location label
+            const location = [city, state]
+                .filter(Boolean)
+                .join(', ');
 
-            const phone = c.contactPrimaryPhone || '';
-            const email = c.contactEmail || '';
+            const meta = [entity, location]
+                .filter(Boolean)
+                .join(' · ');
 
-            // 🔹 Main line (identity)
-            this.appendSystemLine(`${index + 1}. ${name} · ${company}`);
+            // Build linked contact name
+            const nameHtml = contactId > 0
+                ? `
+                    <a href="#"
+                    onclick="event.preventDefault(); SkyIndex.showFullContact(${contactId});"
+                    style="color:#117a8b; font-weight:600; text-decoration:none;">
+                        ${name}
+                    </a>
+                `
+                : `
+                    <span style="font-weight:600; color:#222;">
+                        ${name}
+                    </span>
+                `;
 
-            // 🔹 Inline actionable info (only if exists)
-            let detailLine = [];
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; ${index < contacts.length - 1 ? 'border-bottom:1px solid #f0f0f0;' : ''}">
+                    <div style="min-width:0;">
+                        <div style="color:#222;">
+                            ${contacts.length > 1 ? `${index + 1}. ` : ''}
+                            ${nameHtml}
 
-            if (phone) detailLine.push(`📞 ${phone}`);
-            if (email) detailLine.push(`✉️ ${email}`);
+                            ${title ? `
+                                <span style="font-weight:400; color:#666;">
+                                    — ${title}
+                                </span>
+                            ` : ''}
+                        </div>
 
-            if (detailLine.length) {
-                this.appendSystemLine(`   ${detailLine.join('  ')}`);
-            }
+                        ${meta ? `
+                            <div style="font-size:0.85em; color:#666; margin-top:3px;">
+                                ${meta}
+                            </div>
+                        ` : ''}
 
-        });
+                        ${(phone || email) ? `
+                            <div style="display:flex; flex-wrap:wrap; gap:6px 14px; font-size:0.85em; margin-top:4px;">
+                                ${phone ? `
+                                    <a href="tel:${phone}"
+                                    style="color:#555; text-decoration:none;">
+                                        📞 ${phone}
+                                    </a>
+                                ` : ''}
+
+                                ${email ? `
+                                    <a href="mailto:${email}"
+                                    style="color:#117a8b; text-decoration:none;">
+                                        ✉️ ${email}
+                                    </a>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Build result card
+        const html = `
+            <div class="commandLine system html">
+                <div class="result-card"
+                style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
+
+                    <div class="result-header"
+                    style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
+
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="result-icon">📇</span>
+
+                            <div style="display:flex; flex-direction:column;">
+                                <strong class="result-title" style="color:#222;">
+                                    ${contacts.length === 1 ? 'Contact' : 'Contacts'}
+                                </strong>
+
+                                <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
+                                    ${contacts.length === 1
+                                        ? '1 matching contact'
+                                        : `${contacts.length} matching contacts`
+                                    }
+                                </small>
+                            </div>
+                        </div>
+
+                        <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
+                            FOUND
+                        </span>
+                    </div>
+
+                    <div class="result-body" style="padding:4px 16px 12px;">
+                        ${rowsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.appendSystemHtml(html);
     },
     // #endregion
 
@@ -4592,7 +4697,7 @@ window.SkyIndex = {
             }
 
             // --------------------------------------------------
-            // 📇 CONTACT SEARCH RESULTS
+            // 📇 CONTACT SEARCH CARD
             // --------------------------------------------------
             if (data?.type === 'contact_search') {
                 this.renderContactsList(
