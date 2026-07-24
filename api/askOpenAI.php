@@ -840,6 +840,8 @@ function loadContactPage(?PDO $db, int $page = 1, int $pageSize = 10): array
                     COALESCE(c.contactLastName, '')
                 )) AS name,
                 c.contactTitle AS title,
+                c.contactPrimaryPhone AS phone,
+                c.contactEmail AS email,
                 e.entityName AS entity,
                 l.locationCity AS city
             FROM tblContacts c
@@ -857,11 +859,13 @@ function loadContactPage(?PDO $db, int $page = 1, int $pageSize = 10): array
         $rows = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $rows[] = [
-                'id'     => (int)$row['contactId'],
-                'name'   => trim((string)$row['name']) ?: 'Unnamed',
-                'title'  => $row['title'] ?: null,
-                'entity' => $row['entity'] ?: null,
-                'city'   => $row['city'] ?: null
+                'contactId' => (int)$row['contactId'],
+                'name'      => trim((string)$row['name']) ?: 'Unnamed',
+                'title'     => $row['title'] ?: null,
+                'phone'     => $row['phone'] ?: null,
+                'email'     => $row['email'] ?: null,
+                'entity'    => $row['entity'] ?: null,
+                'city'      => $row['city'] ?: null
             ];
         }
 
@@ -872,6 +876,57 @@ function loadContactPage(?PDO $db, int $page = 1, int $pageSize = 10): array
     }
 
     return $result;
+}
+
+/**
+ * Complete read-only contact record for the contact detail modal.
+ */
+function loadContactDetail(?PDO $db, int $contactId): ?array
+{
+    if (!$db instanceof PDO || $contactId <= 0) {
+        return null;
+    }
+
+    try {
+        $stmt = $db->prepare("
+            SELECT
+                c.contactId,
+                c.contactSalutation,
+                c.contactFirstName,
+                c.contactLastName,
+                c.contactTitle,
+                c.contactPrimaryPhone,
+                c.contactEmail,
+                e.entityName,
+                l.locationAddress,
+                l.locationCity,
+                l.locationState,
+                l.locationZip
+            FROM tblContacts c
+            LEFT JOIN tblEntities e
+                ON e.entityId = c.contactEntityId
+            LEFT JOIN tblLocations l
+                ON l.locationId = c.contactLocationId
+            WHERE c.contactId = :contactId
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'contactId' => $contactId
+        ]);
+
+        $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($contact) ? $contact : null;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[skyebot] loadContactDetail failed: ' .
+            $e->getMessage()
+        );
+
+        return null;
+    }
 }
 
 #endregion
@@ -1102,22 +1157,44 @@ if ($apiKey === null) {
 }
 
 // 🔎 Resolve Mode / Type (POST body has highest priority)
-$type = $input['type'] 
-     ?? $_POST['type'] 
-     ?? $_GET['type'] 
+$type = $input['type']
+     ?? $_POST['type']
+     ?? $_GET['type']
      ?? ($argv[1] ?? "skyebot");
 
 $isStructured = ($type === 'structured');
 
+// =====================================================
+// READ-ONLY CONTACT DETAIL
+// =====================================================
+
+if ($type === 'contactDetail') {
+    $contactId = (int)($input['contactId'] ?? 0);
+    $contact   = loadContactDetail($db, $contactId);
+
+    header('Content-Type: application/json');
+
+    echo json_encode([
+        'success' => $contact !== null,
+        'type'    => 'contact_detail',
+        'contact' => $contact,
+        'error'   => $contact === null
+            ? 'Contact not found.'
+            : null
+    ], JSON_UNESCAPED_SLASHES);
+
+    exit;
+}
+
 // Resolve systemPrompt (for structured mode)
-$systemPrompt = $input['systemPrompt'] 
-             ?? $_POST['systemPrompt'] 
+$systemPrompt = $input['systemPrompt']
+             ?? $_POST['systemPrompt']
              ?? null;
 
 // 🧠 Resolve userQuery
-$query = $input['userQuery'] 
-      ?? $_POST['userQuery'] 
-      ?? $_GET['userQuery'] 
+$query = $input['userQuery']
+      ?? $_POST['userQuery']
+      ?? $_GET['userQuery']
       ?? ($argv[3] ?? null);
 
 // ❌ Validate

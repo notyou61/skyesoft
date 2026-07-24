@@ -4130,56 +4130,138 @@ window.SkyIndex = {
             return;
         }
 
-        const page       = list.page || 1;
-        const totalPages = list.totalPages || 1;
-        const total      = list.total || list.rows.length;
+        // Set pagination values
+        const page       = Math.max(1, Number(list.page) || 1);
+        const pageSize   = Math.max(1, Number(list.pageSize) || 10);
+        const totalPages = Math.max(1, Number(list.totalPages) || 1);
+        const total      = Number(list.total) || list.rows.length;
         const rows       = list.rows;
 
+        // Build contact rows
         const rowsHtml = rows.map((r, i) => {
-            const name   = this.escapeHtml(r.name || 'Unnamed');
-            const title  = r.title  ? this.escapeHtml(r.title)  : '';
-            const entity = r.entity ? this.escapeHtml(r.entity) : '';
-            const city   = r.city   ? this.escapeHtml(r.city)   : '';
+            const contactId = Number(r.contactId || 0);
+            const name      = this.escapeHtml(r.name || 'Unnamed');
+            const title     = r.title  ? this.escapeHtml(r.title)  : '';
+            const entity    = r.entity ? this.escapeHtml(r.entity) : '';
+            const city      = r.city   ? this.escapeHtml(r.city)   : '';
+            const phone     = r.phone  ? this.escapeHtml(r.phone)  : '';
+            const email     = r.email  ? this.escapeHtml(r.email)  : '';
 
-            const meta = [entity, city].filter(Boolean).join(' · ');
+            const rowNumber = i + 1 + ((page - 1) * pageSize);
+            const meta      = [entity, city].filter(Boolean).join(' · ');
+
+            // Build linked contact name
+            const nameHtml = contactId > 0
+                ? `
+                    <a href="#"
+                    onclick="event.preventDefault(); SkyIndex.showFullContact(${contactId});"
+                    style="color:#117a8b; font-weight:600; text-decoration:none;">
+                        ${name}
+                    </a>
+                `
+                : `<span style="font-weight:600; color:#222;">${name}</span>`;
 
             return `
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:8px 0; border-bottom:1px solid #f0f0f0;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0;">
                     <div style="min-width:0;">
-                        <div style="font-weight:600; color:#222;">
-                            ${i + 1 + ((page - 1) * (list.pageSize || 10))}. ${name}
+                        <div style="color:#222;">
+                            ${rowNumber}. ${nameHtml}
                             ${title ? `<span style="font-weight:400; color:#666;"> — ${title}</span>` : ''}
                         </div>
-                        ${meta ? `<div style="font-size:0.85em; color:#666; margin-top:2px;">${meta}</div>` : ''}
+
+                        ${meta ? `
+                            <div style="font-size:0.85em; color:#666; margin-top:3px;">
+                                ${meta}
+                            </div>
+                        ` : ''}
+
+                        ${(phone || email) ? `
+                            <div style="display:flex; flex-wrap:wrap; gap:6px 14px; font-size:0.85em; margin-top:4px;">
+                                ${phone ? `
+                                    <a href="tel:${phone}"
+                                    style="color:#555; text-decoration:none;">
+                                        📞 ${phone}
+                                    </a>
+                                ` : ''}
+
+                                ${email ? `
+                                    <a href="mailto:${email}"
+                                    style="color:#117a8b; text-decoration:none;">
+                                        ✉️ ${email}
+                                    </a>
+                                ` : ''}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
         }).join('');
 
+        // Set pagination states
+        const hasPrevious = page > 1;
+        const hasNext     = page < totalPages;
+
+        // Build pagination links
+        const previousHtml = hasPrevious
+            ? `
+                <a href="#"
+                onclick="event.preventDefault(); SkyIndex.loadContactPage(${page - 1});"
+                style="color:#117a8b; font-weight:600; text-decoration:none;">
+                    ← Back
+                </a>
+            `
+            : `<span style="color:#aaa;">← Back</span>`;
+
+        const nextHtml = hasNext
+            ? `
+                <a href="#"
+                onclick="event.preventDefault(); SkyIndex.loadContactPage(${page + 1});"
+                style="color:#117a8b; font-weight:600; text-decoration:none;">
+                    Next →
+                </a>
+            `
+            : `<span style="color:#aaa;">Next →</span>`;
+
+        // Build contact card
         const html = `
             <div class="commandLine system html">
-                <div class="result-card" style="border-left: 5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
+                <div class="result-card" style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
                     <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <span class="result-icon">📇</span>
+
                             <div style="display:flex; flex-direction:column;">
-                                <strong class="result-title" style="color:#222;">Contacts</strong>
+                                <strong class="result-title" style="color:#222;">
+                                    Contacts
+                                </strong>
+
                                 <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
                                     Page ${page} of ${totalPages} · showing ${rows.length} of ${total}
                                 </small>
                             </div>
                         </div>
+
                         <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
                             LIST
                         </span>
                     </div>
 
                     <div class="result-body" style="padding:4px 16px 12px;">
-                        ${rowsHtml || '<div style="color:#666; padding:8px 0;">No contacts on this page.</div>'}
+                        ${rowsHtml || `
+                            <div style="color:#666; padding:12px 0;">
+                                No contacts found on this page.
+                            </div>
+                        `}
                     </div>
 
-                    <div style="padding:10px 16px; border-top:1px solid #eee; background:#fafafa; font-size:0.85em; color:#666;">
-                        Say “next page” or “list contacts page ${page + 1}” to continue
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 16px; border-top:1px solid #eee; background:#fafafa; font-size:0.85em;">
+                        <div>${previousHtml}</div>
+
+                        <div style="color:#666;">
+                            Page ${page} of ${totalPages}
+                        </div>
+
+                        <div>${nextHtml}</div>
                     </div>
                 </div>
             </div>
