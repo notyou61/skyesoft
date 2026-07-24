@@ -1039,10 +1039,11 @@ function searchContactsByName(?PDO $db, string $searchName): array
 
 /**
  * Search entities / businesses by name (deterministic, authority-aware)
+ * Includes invalid entities and exposes entityIsNotValid so the UI can note them.
  *
- * @param PDO|mysqli $db
- * @param string     $searchName
- * @return array     Array of matching entity rows
+ * @param PDO $db
+ * @param string $searchName
+ * @return array
  */
 function searchEntitiesByName($db, string $searchName): array
 {
@@ -1051,43 +1052,47 @@ function searchEntitiesByName($db, string $searchName): array
         return [];
     }
 
-    // Normalize for matching (remove extra spaces, lowercase comparison)
     $normalized = preg_replace('/\s+/', ' ', strtolower($searchName));
 
     try {
-        // Adjust table/column names to match your actual schema
         $sql = "
             SELECT
                 e.entityId,
                 e.entityName,
-                e.address,
-                e.city,
-                e.state,
-                e.zip,
-                e.phone,
-                e.mainPhone,
-                e.status,
-                e.activeStatus,
-                e.createdAt
-            FROM entities e
+                e.entityLegalName,
+                e.entityNormalizedName,
+                e.entityStructure,
+                e.entityState,
+                e.entityStatus,
+                e.entityType,
+                e.entityIsVerified,
+                e.entityAccNumber,
+                e.entityIsNotValid
+            FROM tblEntities e
             WHERE
                 e.entityName LIKE :like
+                OR e.entityLegalName LIKE :like
+                OR e.entityNormalizedName LIKE :like
                 OR LOWER(e.entityName) = :exact
+                OR LOWER(e.entityNormalizedName) = :exact
             ORDER BY
                 CASE
                     WHEN LOWER(e.entityName) = :exact THEN 0
-                    WHEN LOWER(e.entityName) LIKE :starts THEN 1
-                    ELSE 2
+                    WHEN LOWER(e.entityNormalizedName) = :exact THEN 1
+                    WHEN LOWER(e.entityName) LIKE :starts THEN 2
+                    WHEN LOWER(e.entityNormalizedName) LIKE :starts THEN 3
+                    ELSE 4
                 END,
+                e.entityIsNotValid ASC,   -- valid entities first
                 e.entityName ASC
             LIMIT 25
         ";
 
         $stmt = $db->prepare($sql);
 
-        $like    = '%' . $searchName . '%';
-        $starts  = $normalized . '%';
-        $exact   = $normalized;
+        $like   = '%' . $searchName . '%';
+        $starts = $normalized . '%';
+        $exact  = $normalized;
 
         $stmt->bindValue(':like',   $like,   PDO::PARAM_STR);
         $stmt->bindValue(':exact',  $exact,  PDO::PARAM_STR);
@@ -1103,8 +1108,6 @@ function searchEntitiesByName($db, string $searchName): array
         return [];
     }
 }
-
-#endregion
 
 #region SECTION 2 — Standing Orders Injection
 function injectStandingOrders(string $basePrompt): string {

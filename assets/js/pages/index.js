@@ -4808,16 +4808,16 @@ window.SkyIndex = {
 
         // Build result rows
         const rowsHtml = matches.map((r, i) => {
-            const entityId  = Number(r.entityId || r.id || 0);
-            const name      = this.escapeHtml(r.entityName || r.name || r.businessName || 'Unnamed Entity');
-            const address   = r.address || r.fullAddress || '';
-            const city      = r.city ? this.escapeHtml(r.city) : '';
-            const state     = r.state ? this.escapeHtml(r.state) : '';
-            const phone     = r.phone || r.mainPhone || r.primaryPhone || '';
-            const status    = r.status || r.activeStatus || '';
+            const entityId     = Number(r.entityId || 0);
+            const name         = this.escapeHtml(r.entityName || 'Unnamed Entity');
+            const legalName    = r.entityLegalName ? this.escapeHtml(r.entityLegalName) : '';
+            const state        = r.entityState ? this.escapeHtml(r.entityState) : '';
+            const status       = r.entityStatus ? this.escapeHtml(r.entityStatus) : '';
+            const entityType   = r.entityType ? this.escapeHtml(r.entityType) : '';
+            const isNotValid   = Number(r.entityIsNotValid) === 1;
 
-            const location  = [city, state].filter(Boolean).join(', ');
-            const meta      = [location, status].filter(Boolean).join(' · ');
+            const metaParts = [entityType, state, status].filter(Boolean);
+            const meta = metaParts.join(' · ');
 
             const nameHtml = entityId > 0
                 ? `
@@ -4829,31 +4829,26 @@ window.SkyIndex = {
                 `
                 : `<span style="font-weight:600; color:#222;">${name}</span>`;
 
+            const invalidNote = isNotValid
+                ? `<span style="color:#c0392b; font-size:0.8em; font-weight:600; margin-left:8px;">(not valid)</span>`
+                : '';
+
             return `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0;">
                     <div style="min-width:0;">
                         <div style="color:#222;">
-                            ${i + 1}. ${nameHtml}
+                            ${i + 1}. ${nameHtml}${invalidNote}
                         </div>
 
-                        ${address ? `
-                            <div style="font-size:0.85em; color:#555; margin-top:3px;">
-                                ${this.escapeHtml(address)}
+                        ${legalName && legalName !== name ? `
+                            <div style="font-size:0.85em; color:#555; margin-top:2px;">
+                                Legal: ${legalName}
                             </div>
                         ` : ''}
 
                         ${meta ? `
                             <div style="font-size:0.85em; color:#666; margin-top:2px;">
                                 ${meta}
-                            </div>
-                        ` : ''}
-
-                        ${phone ? `
-                            <div style="font-size:0.85em; margin-top:4px;">
-                                <a href="tel:${phone}"
-                                style="color:#555; text-decoration:none;">
-                                    📞 ${this.escapeHtml(phone)}
-                                </a>
                             </div>
                         ` : ''}
                     </div>
