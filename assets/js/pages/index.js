@@ -4769,6 +4769,130 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🏢 Entity Search Card
+    renderEntitySearchCard(matches = []) {
+        const count = Array.isArray(matches) ? matches.length : 0;
+
+        // Empty state
+        if (count === 0) {
+            const emptyHtml = `
+                <div class="commandLine system html">
+                    <div class="result-card" style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
+                        <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="result-icon">🏢</span>
+                                <div style="display:flex; flex-direction:column;">
+                                    <strong class="result-title" style="color:#222;">
+                                        Entity Search
+                                    </strong>
+                                    <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
+                                        No matching entities found
+                                    </small>
+                                </div>
+                            </div>
+                            <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
+                                SEARCH
+                            </span>
+                        </div>
+                        <div class="result-body" style="padding:16px;">
+                            <div style="color:#666;">
+                                No businesses or entities matched your search.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            this.appendSystemHtml(emptyHtml);
+            return;
+        }
+
+        // Build result rows
+        const rowsHtml = matches.map((r, i) => {
+            const entityId  = Number(r.entityId || r.id || 0);
+            const name      = this.escapeHtml(r.entityName || r.name || r.businessName || 'Unnamed Entity');
+            const address   = r.address || r.fullAddress || '';
+            const city      = r.city ? this.escapeHtml(r.city) : '';
+            const state     = r.state ? this.escapeHtml(r.state) : '';
+            const phone     = r.phone || r.mainPhone || r.primaryPhone || '';
+            const status    = r.status || r.activeStatus || '';
+
+            const location  = [city, state].filter(Boolean).join(', ');
+            const meta      = [location, status].filter(Boolean).join(' · ');
+
+            const nameHtml = entityId > 0
+                ? `
+                    <a href="#"
+                    onclick="event.preventDefault(); SkyIndex.showFullEntity(${entityId});"
+                    style="color:#117a8b; font-weight:600; text-decoration:none;">
+                        ${name}
+                    </a>
+                `
+                : `<span style="font-weight:600; color:#222;">${name}</span>`;
+
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0;">
+                    <div style="min-width:0;">
+                        <div style="color:#222;">
+                            ${i + 1}. ${nameHtml}
+                        </div>
+
+                        ${address ? `
+                            <div style="font-size:0.85em; color:#555; margin-top:3px;">
+                                ${this.escapeHtml(address)}
+                            </div>
+                        ` : ''}
+
+                        ${meta ? `
+                            <div style="font-size:0.85em; color:#666; margin-top:2px;">
+                                ${meta}
+                            </div>
+                        ` : ''}
+
+                        ${phone ? `
+                            <div style="font-size:0.85em; margin-top:4px;">
+                                <a href="tel:${phone}"
+                                style="color:#555; text-decoration:none;">
+                                    📞 ${this.escapeHtml(phone)}
+                                </a>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Full card
+        const html = `
+            <div class="commandLine system html">
+                <div class="result-card" style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
+                    <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="result-icon">🏢</span>
+                            <div style="display:flex; flex-direction:column;">
+                                <strong class="result-title" style="color:#222;">
+                                    Entity Search Results
+                                </strong>
+                                <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
+                                    ${count} match${count === 1 ? '' : 'es'} found
+                                </small>
+                            </div>
+                        </div>
+                        <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
+                            SEARCH
+                        </span>
+                    </div>
+
+                    <div class="result-body" style="padding:4px 16px 12px;">
+                        ${rowsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.appendSystemHtml(html);
+    },
+    // #endregion
+
     // #region 🤖 AI Command Execution
     async executeAICommand(prompt, incomingActivitySessionId = null) {
 

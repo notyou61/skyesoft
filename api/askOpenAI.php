@@ -1037,6 +1037,73 @@ function searchContactsByName(?PDO $db, string $searchName): array
     }
 }
 
+/**
+ * Search entities / businesses by name (deterministic, authority-aware)
+ *
+ * @param PDO|mysqli $db
+ * @param string     $searchName
+ * @return array     Array of matching entity rows
+ */
+function searchEntitiesByName($db, string $searchName): array
+{
+    $searchName = trim($searchName);
+    if ($searchName === '') {
+        return [];
+    }
+
+    // Normalize for matching (remove extra spaces, lowercase comparison)
+    $normalized = preg_replace('/\s+/', ' ', strtolower($searchName));
+
+    try {
+        // Adjust table/column names to match your actual schema
+        $sql = "
+            SELECT
+                e.entityId,
+                e.entityName,
+                e.address,
+                e.city,
+                e.state,
+                e.zip,
+                e.phone,
+                e.mainPhone,
+                e.status,
+                e.activeStatus,
+                e.createdAt
+            FROM entities e
+            WHERE
+                e.entityName LIKE :like
+                OR LOWER(e.entityName) = :exact
+            ORDER BY
+                CASE
+                    WHEN LOWER(e.entityName) = :exact THEN 0
+                    WHEN LOWER(e.entityName) LIKE :starts THEN 1
+                    ELSE 2
+                END,
+                e.entityName ASC
+            LIMIT 25
+        ";
+
+        $stmt = $db->prepare($sql);
+
+        $like    = '%' . $searchName . '%';
+        $starts  = $normalized . '%';
+        $exact   = $normalized;
+
+        $stmt->bindValue(':like',   $like,   PDO::PARAM_STR);
+        $stmt->bindValue(':exact',  $exact,  PDO::PARAM_STR);
+        $stmt->bindValue(':starts', $starts, PDO::PARAM_STR);
+
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return is_array($rows) ? $rows : [];
+
+    } catch (Throwable $e) {
+        error_log('[searchEntitiesByName] ' . $e->getMessage());
+        return [];
+    }
+}
+
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
@@ -1978,6 +2045,110 @@ if ($type === "skyebot") {
 
             exit;
         }
+    }
+    // ─────────────────────────────────────────────
+    // 2c. Explicit Entity / Business Search
+    //     (after explicit contact search, before implicit resolution)
+    // ─────────────────────────────────────────────
+
+    $explicitEntitySearch = preg_match(
+        '/^\s*(?:find|search(?:\s+for)?)\s+(?:a\s+)?(?:business|company|entity|entities)(?:\s+named)?\s+(.+?)\s*$/i',
+        $query,
+        $explicitEntityMatch
+    );
+
+    $incompleteEntitySearch = preg_match(
+        '/^\s*(?:find|search(?:\s+for)?)\s+(?:a\s+)?(?:business|company|entity|entities)(?:\s+named)?\s*$/i',
+        $query
+    );
+
+    if ($incompleteEntitySearch) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success'    => false,
+            'type'       => 'entity_search',
+            'searchName' => '',
+            'matches'    => [],
+            'matchCount' => 0,
+            'error'      => 'Enter a business or company name.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    if ($explicitEntitySearch) {
+        $entitySearchName = trim($explicitEntityMatch[1] ?? '');
+
+        if ($entitySearchName === '') {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success'    => false,
+                'type'       => 'entity_search',
+                'searchName' => '',
+                'matches'    => [],
+                'matchCount' => 0,
+                'error'      => 'Enter a business or company name.'
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $entities   = searchEntitiesByName($db, $entitySearchName);
+        $matchCount = count($entities);
+
+        $actorContactId = (int)(
+            $_SESSION['SKYESOFT_contactId']
+            ?? $_SESSION['contactId']
+            ?? 0
+        );
+        $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
+
+        $searchResponse = [
+            'success'           => true,
+            'type'              => 'entity_search',
+            'searchName'        => $entitySearchName,
+            'matches'           => $entities,
+            'matchCount'        => $matchCount,
+            'activitySessionId' => $activitySessionId
+        ];
+
+        // Record action (Type 3)
+        if ($actorContactId > 0) {
+            try {
+                insertActionPrompt([
+                    'contactId'         => $actorContactId,
+                    'promptText'        => $query,
+                    'responseText'      => sprintf(
+                        'Entity search for "%s" returned %d match%s.',
+                        $entitySearchName,
+                        $matchCount,
+                        $matchCount === 1 ? '' : 'es'
+                    ),
+                    'intent'            => 'entities.search',
+                    'intentConfidence'  => 1.0,
+                    'activitySessionId' => $activitySessionId,
+                    'latitude'          => $latitude,
+                    'longitude'         => $longitude,
+                    'actionTypeId'      => 3,
+                    'origin'            => ACTION_ORIGIN_USER,
+                    'actionPayloadData' => [
+                        'operation'  => 'entities.search',
+                        'searchName' => $entitySearchName
+                    ],
+                    'actionResponseData' => [
+                        'success'    => true,
+                        'matchCount' => $matchCount
+                    ]
+                ], $db);
+            } catch (Throwable $e) {
+                error_log(
+                    '[askOpenAI] Entity-search action logging failed: ' .
+                    $e->getMessage()
+                );
+            }
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode($searchResponse, JSON_UNESCAPED_SLASHES);
+        exit;
     }
 
     // Operational contact list
