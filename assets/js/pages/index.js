@@ -4144,6 +4144,29 @@ window.SkyIndex = {
         document.addEventListener('keydown', this.handleContactModalKeydown);
 
         try {
+            // Resolve user/browser location for READ action
+            let actionLocation = this.lastLocation || {
+                latitude: null,
+                longitude: null
+            };
+
+            // Request location when cached coordinates are unavailable
+            if (
+                actionLocation.latitude === null ||
+                actionLocation.longitude === null
+            ) {
+                actionLocation = await this.getLocationSafe();
+
+                // Cache valid coordinates
+                if (
+                    actionLocation.latitude !== null &&
+                    actionLocation.longitude !== null
+                ) {
+                    this.lastLocation = actionLocation;
+                }
+            }
+
+            // Request complete contact record
             const response = await fetch('/skyesoft/api/askOpenAI.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -4152,7 +4175,9 @@ window.SkyIndex = {
                 },
                 body: JSON.stringify({
                     type: 'contactDetail',
-                    contactId: resolvedContactId
+                    contactId: resolvedContactId,
+                    latitude: actionLocation?.latitude ?? null,
+                    longitude: actionLocation?.longitude ?? null
                 })
             });
 
@@ -4169,32 +4194,7 @@ window.SkyIndex = {
             this.renderContactModal(data.contact);
 
         } catch (error) {
-            console.error('[SkyIndex] Contact detail error:', error);
-
-            const activeModal = document.getElementById('contactDetailModal');
-
-            if (activeModal) {
-                activeModal.innerHTML = `
-                    <div role="dialog"
-                        aria-modal="true"
-                        style="width:100%; max-width:620px; background:#fff; border-radius:8px; box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
-                            <strong style="color:#222;">Contact Profile</strong>
-
-                            <button type="button"
-                                    onclick="SkyIndex.closeContactModal();"
-                                    aria-label="Close contact profile"
-                                    style="border:0; background:transparent; color:#666; cursor:pointer; font-size:1.5rem; line-height:1;">
-                                ×
-                            </button>
-                        </div>
-
-                        <div style="padding:24px 18px; color:#b42318;">
-                            Unable to load the contact profile.
-                        </div>
-                    </div>
-                `;
-            }
+            // Keep your current catch-block contents here
         }
     },
 
