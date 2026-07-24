@@ -4592,6 +4592,16 @@ window.SkyIndex = {
             }
 
             // --------------------------------------------------
+            // 📇 CONTACT SEARCH RESULTS
+            // --------------------------------------------------
+            if (data?.type === 'contact_search') {
+                this.renderContactsList(
+                    Array.isArray(data.matches) ? data.matches : []
+                );
+                return;
+            }
+
+            // --------------------------------------------------
             // 📇 CONTACT LIST CARD
             // --------------------------------------------------
             if (data?.type === 'contact_list' && data.list) {
