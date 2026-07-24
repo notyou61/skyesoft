@@ -1169,9 +1169,60 @@ $isStructured = ($type === 'structured');
 // =====================================================
 
 if ($type === 'contactDetail') {
-    $contactId = (int)($input['contactId'] ?? 0);
-    $contact   = loadContactDetail($db, $contactId);
+    // Resolve requested contact
+    $targetContactId = (int)($input['contactId'] ?? 0);
 
+    // Resolve action context
+    $actorContactId = (int)($_SESSION['SKYESOFT_contactId']
+                    ?? $_SESSION['contactId']
+                    ?? 0);
+
+    $activitySessionId = $_SESSION['activitySessionId']
+                      ?? session_id();
+
+    $latitude  = $input['latitude'] ?? null;
+    $longitude = $input['longitude'] ?? null;
+
+    // Load requested contact
+    $contact = loadContactDetail($db, $targetContactId);
+
+    // Record successful contact READ
+    if ($contact !== null && $actorContactId > 0) {
+        try {
+            insertActionPrompt([
+                'contactId'          => $actorContactId,
+                'promptText'         => 'Open contact profile',
+                'responseText'       => sprintf(
+                    'Displayed contact profile #%d.',
+                    $targetContactId
+                ),
+                'intent'             => 'contacts.read',
+                'intentConfidence'   => 1.00,
+                'activitySessionId'  => $activitySessionId,
+                'latitude'           => $latitude,
+                'longitude'          => $longitude,
+                'actionTypeId'       => 13,
+                'origin'             => ACTION_ORIGIN_USER,
+                'actionPayloadData'  => [
+                    'operation'       => 'contacts.read',
+                    'targetContactId' => $targetContactId
+                ],
+                'actionResponseData' => [
+                    'success'         => true,
+                    'targetContactId' => $targetContactId
+                ]
+            ], $db);
+
+        } catch (Throwable $e) {
+            // Preserve contact response if action logging fails
+            error_log(
+                '[askOpenAI] Contact-read action logging failed: ' .
+                $e->getMessage()
+            );
+        }
+    }
+
+    // Return contact response
     header('Content-Type: application/json');
 
     echo json_encode([
