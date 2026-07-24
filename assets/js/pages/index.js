@@ -5354,16 +5354,28 @@ window.SkyIndex = {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 action: 'logout',
-                activitySessionId: activitySessionId
+                activitySessionId: activitySessionId,
+                source: source
             })
         })
         .then(res => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-            console.log('[SkyIndex] Logout request accepted', { source, activitySessionId });
+            return res.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.error || 'Logout was not completed');
+            }
 
+            console.log('[SkyIndex] Logout completed', {
+                source,
+                activitySessionId
+            });
+
+            // Stop authenticated processes
             window.SkySSE?.stop?.();
 
             const app  = window.SkyeApp;
@@ -5371,8 +5383,15 @@ window.SkyIndex = {
 
             page?.stopActivityPing?.();
 
-            if (window.SkyeApp) window.SkyeApp.lastSSE = null;
+            // Delete browser session identity
+            sessionStorage.removeItem('activitySessionId');
 
+            if (app) {
+                app.activitySessionId = null;
+                app.lastSSE = null;
+            }
+
+            // Reset page authentication
             if (page) {
                 page.authState = false;
                 page.authUser  = null;
@@ -5382,10 +5401,12 @@ window.SkyIndex = {
                 page._logoutHandled = true;
 
                 document.body.removeAttribute('data-auth');
+
                 page.renderLoginCard?.();
                 page.renderFooterStatus?.call(page);
             }
 
+            // Restart SSE as unauthenticated
             setTimeout(() => window.SkySSE?.start?.(), 100);
         })
         .catch(err => {
