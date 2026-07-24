@@ -4075,52 +4075,301 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Contact Detail Renderer
-    renderContactDetail(contact) {
-        if (!contact) {
+    // #region 📇 Contact Modal Page
+
+    // Load complete contact details
+    async showFullContact(contactId) {
+        const resolvedContactId = Number(contactId);
+
+        // Validate contact ID
+        if (!Number.isInteger(resolvedContactId) || resolvedContactId <= 0) {
             this.appendSystemLine('Contact not found.');
             return;
         }
 
+        // Close an existing contact modal
+        this.closeContactModal();
+
+        // Create loading modal
+        const modal = document.createElement('div');
+
+        modal.id = 'contactDetailModal';
+        modal.className = 'modal-backdrop';
+        modal.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:10000;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            background:rgba(0,0,0,0.58);
+        `;
+
+        modal.innerHTML = `
+            <div role="dialog"
+                aria-modal="true"
+                aria-labelledby="contactDetailTitle"
+                style="width:100%; max-width:620px; background:#fff; border-radius:8px; box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
+                    <div style="display:flex; align-items:center; gap:9px;">
+                        <span style="font-size:1.25rem;">👤</span>
+                        <strong id="contactDetailTitle" style="color:#222;">
+                            Contact Profile
+                        </strong>
+                    </div>
+
+                    <button type="button"
+                            onclick="SkyIndex.closeContactModal();"
+                            aria-label="Close contact profile"
+                            style="border:0; background:transparent; color:#666; cursor:pointer; font-size:1.5rem; line-height:1;">
+                        ×
+                    </button>
+                </div>
+
+                <div style="padding:28px 18px; text-align:center; color:#666;">
+                    Loading contact details...
+                </div>
+            </div>
+        `;
+
+        // Close when backdrop is clicked
+        modal.addEventListener('click', event => {
+            if (event.target === modal) {
+                this.closeContactModal();
+            }
+        });
+
+        document.body.appendChild(modal);
+        document.addEventListener('keydown', this.handleContactModalKeydown);
+
+        try {
+            const response = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: 'contactDetail',
+                    contactId: resolvedContactId
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success || !data.contact) {
+                throw new Error(data.error || 'Contact not found.');
+            }
+
+            this.renderContactModal(data.contact);
+
+        } catch (error) {
+            console.error('[SkyIndex] Contact detail error:', error);
+
+            const activeModal = document.getElementById('contactDetailModal');
+
+            if (activeModal) {
+                activeModal.innerHTML = `
+                    <div role="dialog"
+                        aria-modal="true"
+                        style="width:100%; max-width:620px; background:#fff; border-radius:8px; box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
+                            <strong style="color:#222;">Contact Profile</strong>
+
+                            <button type="button"
+                                    onclick="SkyIndex.closeContactModal();"
+                                    aria-label="Close contact profile"
+                                    style="border:0; background:transparent; color:#666; cursor:pointer; font-size:1.5rem; line-height:1;">
+                                ×
+                            </button>
+                        </div>
+
+                        <div style="padding:24px 18px; color:#b42318;">
+                            Unable to load the contact profile.
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    },
+
+    // Render complete contact modal
+    renderContactModal(contact) {
+        const modal = document.getElementById('contactDetailModal');
+
+        if (!modal || !contact) {
+            return;
+        }
+
+        // Format contact values
         const fullName = [
             contact.contactSalutation,
             contact.contactFirstName,
             contact.contactLastName
         ].filter(Boolean).join(' ').trim() || 'Unnamed Contact';
 
-        const title = contact.contactTitle ? `, ${contact.contactTitle}` : '';
+        const name    = this.escapeHtml(fullName);
+        const title   = contact.contactTitle
+            ? this.escapeHtml(contact.contactTitle)
+            : '';
 
-        const html = `
-            <div class="contact-card">
-                <div class="contact-header">
-                    <span class="contact-icon">👤</span>
-                    <div class="contact-name">${fullName}${title}</div>
+        const entity  = contact.entityName
+            ? this.escapeHtml(contact.entityName)
+            : '';
+
+        const phone   = contact.contactPrimaryPhone
+            ? this.escapeHtml(contact.contactPrimaryPhone)
+            : '';
+
+        const email   = contact.contactEmail
+            ? this.escapeHtml(contact.contactEmail)
+            : '';
+
+        const address = [
+            contact.locationAddress,
+            contact.locationCity,
+            contact.locationState,
+            contact.locationZip
+        ].filter(Boolean).map(value => this.escapeHtml(value)).join(', ');
+
+        // Build contact profile
+        modal.innerHTML = `
+            <div role="dialog"
+                aria-modal="true"
+                aria-labelledby="contactDetailTitle"
+                style="width:100%; max-width:620px; max-height:90vh; background:#fff; border-radius:8px; box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
+                    <div style="display:flex; align-items:center; gap:9px;">
+                        <span style="font-size:1.25rem;">👤</span>
+
+                        <div>
+                            <strong id="contactDetailTitle" style="display:block; color:#222;">
+                                Contact Profile
+                            </strong>
+
+                            <small style="color:#777;">
+                                Contact #${Number(contact.contactId) || ''}
+                            </small>
+                        </div>
+                    </div>
+
+                    <button type="button"
+                            onclick="SkyIndex.closeContactModal();"
+                            aria-label="Close contact profile"
+                            style="border:0; background:transparent; color:#666; cursor:pointer; font-size:1.5rem; line-height:1;">
+                        ×
+                    </button>
                 </div>
 
-                ${contact.entityName ? `
-                <div class="contact-company">
-                    <span class="contact-icon">🏢</span> ${contact.entityName}
-                </div>` : ''}
+                <div style="padding:20px 18px;">
+                    <div style="padding-bottom:16px; border-bottom:1px solid #eee;">
+                        <div style="font-size:1.25rem; font-weight:700; color:#222;">
+                            ${name}
+                        </div>
 
-                ${contact.contactPrimaryPhone ? `
-                <div class="contact-line">📞 ${contact.contactPrimaryPhone}</div>` : ''}
+                        ${title ? `
+                            <div style="margin-top:3px; color:#666;">
+                                ${title}
+                            </div>
+                        ` : ''}
+                    </div>
 
-                ${contact.contactEmail ? `
-                <div class="contact-line">✉️ ${contact.contactEmail}</div>` : ''}
+                    <div style="display:grid; gap:16px; padding-top:18px;">
+                        ${entity ? `
+                            <div>
+                                <div style="margin-bottom:3px; color:#777; font-size:0.78rem; font-weight:700; text-transform:uppercase;">
+                                    Entity
+                                </div>
 
-                ${contact.locationAddress ? `
-                <div class="contact-line">📍 ${contact.locationAddress}, ${contact.locationCity || ''} ${contact.locationState || ''} ${contact.locationZip || ''}</div>` : ''}
+                                <div style="color:#222;">
+                                    🏢 ${entity}
+                                </div>
+                            </div>
+                        ` : ''}
 
-                <div class="contact-actions">
-                    <span class="contact-link" onclick="SkyIndex.showFullContact(${contact.contactId})">
-                        View full profile →
-                    </span>
+                        ${phone ? `
+                            <div>
+                                <div style="margin-bottom:3px; color:#777; font-size:0.78rem; font-weight:700; text-transform:uppercase;">
+                                    Phone
+                                </div>
+
+                                <a href="tel:${phone}"
+                                style="color:#117a8b; text-decoration:none;">
+                                    📞 ${phone}
+                                </a>
+                            </div>
+                        ` : ''}
+
+                        ${email ? `
+                            <div>
+                                <div style="margin-bottom:3px; color:#777; font-size:0.78rem; font-weight:700; text-transform:uppercase;">
+                                    Email
+                                </div>
+
+                                <a href="mailto:${email}"
+                                style="color:#117a8b; text-decoration:none; overflow-wrap:anywhere;">
+                                    ✉️ ${email}
+                                </a>
+                            </div>
+                        ` : ''}
+
+                        ${address ? `
+                            <div>
+                                <div style="margin-bottom:3px; color:#777; font-size:0.78rem; font-weight:700; text-transform:uppercase;">
+                                    Location
+                                </div>
+
+                                <div style="color:#222;">
+                                    📍 ${address}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${!entity && !phone && !email && !address ? `
+                            <div style="color:#777;">
+                                No additional contact details are available.
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; padding:12px 18px; border-top:1px solid #eee; background:#fafafa;">
+                    <button type="button"
+                            onclick="SkyIndex.closeContactModal();"
+                            style="padding:7px 15px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; cursor:pointer;">
+                        Close
+                    </button>
                 </div>
             </div>
         `;
-
-        this.appendSystemHtml(html);
     },
+
+    // Close contact modal
+    closeContactModal() {
+        const modal = document.getElementById('contactDetailModal');
+
+        if (modal) {
+            modal.remove();
+        }
+
+        document.removeEventListener(
+            'keydown',
+            this.handleContactModalKeydown
+        );
+    },
+
+    // Close contact modal with Escape
+    handleContactModalKeydown(event) {
+        if (event.key === 'Escape') {
+            SkyIndex.closeContactModal();
+        }
+    },
+
     // #endregion
 
     // #region 📇 Contact List Card (paginated, proposal-card chrome)
