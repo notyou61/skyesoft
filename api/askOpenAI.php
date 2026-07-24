@@ -1075,28 +1075,31 @@ function searchEntitiesByName($db, string $searchName): array
                 OR e.entityNormalizedName LIKE :like
                 OR LOWER(e.entityName) = :exact
                 OR LOWER(e.entityNormalizedName) = :exact
+                OR LOWER(REPLACE(e.entityName, ' ', '')) = :nospace
+                OR LOWER(REPLACE(e.entityNormalizedName, ' ', '')) = :nospace
             ORDER BY
                 CASE
                     WHEN LOWER(e.entityName) = :exact THEN 0
                     WHEN LOWER(e.entityNormalizedName) = :exact THEN 1
                     WHEN LOWER(e.entityName) LIKE :starts THEN 2
-                    WHEN LOWER(e.entityNormalizedName) LIKE :starts THEN 3
-                    ELSE 4
+                    ELSE 3
                 END,
-                e.entityIsNotValid ASC,   -- valid entities first
+                e.entityIsNotValid ASC,
                 e.entityName ASC
             LIMIT 25
         ";
 
         $stmt = $db->prepare($sql);
 
-        $like   = '%' . $searchName . '%';
-        $starts = $normalized . '%';
-        $exact  = $normalized;
+        $like    = '%' . $searchName . '%';
+        $starts  = $normalized . '%';
+        $exact   = $normalized;
+        $nospace = str_replace(' ', '', $normalized);
 
-        $stmt->bindValue(':like',   $like,   PDO::PARAM_STR);
-        $stmt->bindValue(':exact',  $exact,  PDO::PARAM_STR);
-        $stmt->bindValue(':starts', $starts, PDO::PARAM_STR);
+        $stmt->bindValue(':like',    $like,    PDO::PARAM_STR);
+        $stmt->bindValue(':exact',   $exact,   PDO::PARAM_STR);
+        $stmt->bindValue(':starts',  $starts,  PDO::PARAM_STR);
+        $stmt->bindValue(':nospace', $nospace, PDO::PARAM_STR);
 
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
