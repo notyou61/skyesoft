@@ -1806,14 +1806,75 @@ PROMPT;
 
         // Structured list response — client renders the card (skip model layout)
         if (is_array($operationalList) && isset($operationalList['rows'])) {
-            $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
+            // Resolve action context
+            $actorContactId   = (int)($_SESSION['SKYESOFT_contactId']
+                            ?? $_SESSION['contactId']
+                            ?? 0);
 
-            echo json_encode([
+            $activitySessionId = $_SESSION['activitySessionId']
+                            ?? session_id();
+
+            $page       = (int)($operationalList['page'] ?? 1);
+            $pageSize   = (int)($operationalList['pageSize'] ?? 10);
+            $total      = (int)($operationalList['total'] ?? 0);
+            $totalPages = (int)($operationalList['totalPages'] ?? 1);
+            $rowCount   = count($operationalList['rows']);
+
+            // Build structured response
+            $listResponse = [
                 'success'           => true,
                 'type'              => 'contact_list',
                 'list'              => $operationalList,
                 'activitySessionId' => $activitySessionId
-            ], JSON_UNESCAPED_SLASHES);
+            ];
+
+            // Record prompt action (Type 3)
+            if ($actorContactId > 0) {
+                try {
+                    insertActionPrompt([
+                        'contactId'          => $actorContactId,
+                        'promptText'         => $query,
+                        'responseText'       => sprintf(
+                            'Displayed contacts page %d of %d (%d contacts shown; %d total).',
+                            $page,
+                            $totalPages,
+                            $rowCount,
+                            $total
+                        ),
+                        'intent'             => 'contacts.list',
+                        'intentConfidence'   => $confidence,
+                        'activitySessionId'  => $activitySessionId,
+                        'actionTypeId'       => 3,
+                        'origin'             => ACTION_ORIGIN_USER,
+                        'actionPayloadData'  => [
+                            'operation' => 'contacts.list',
+                            'page'      => $page,
+                            'pageSize'  => $pageSize
+                        ],
+                        'actionResponseData' => [
+                            'success'    => true,
+                            'page'       => $page,
+                            'totalPages' => $totalPages,
+                            'rowCount'   => $rowCount,
+                            'total'      => $total
+                        ]
+                    ], $db);
+                } catch (Throwable $e) {
+                    // Preserve list response if audit logging fails
+                    error_log(
+                        '[askOpenAI] Contact-list action logging failed: ' .
+                        $e->getMessage()
+                    );
+                }
+            }
+
+            header('Content-Type: application/json');
+
+            echo json_encode(
+                $listResponse,
+                JSON_UNESCAPED_SLASHES
+            );
+
             exit;
         }
     }
