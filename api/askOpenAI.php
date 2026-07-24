@@ -1844,6 +1844,8 @@ PROMPT;
                         'intent'             => 'contacts.list',
                         'intentConfidence'   => $confidence,
                         'activitySessionId'  => $activitySessionId,
+                        'latitude'           => $latitude,
+                        'longitude'          => $longitude,
                         'actionTypeId'       => 3,
                         'origin'             => ACTION_ORIGIN_USER,
                         'actionPayloadData'  => [
