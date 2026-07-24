@@ -929,6 +929,114 @@ function loadContactDetail(?PDO $db, int $contactId): ?array
     }
 }
 
+/**
+ * Search contacts by first name, last name, or both names.
+ */
+function searchContactsByName(?PDO $db, string $searchName): array
+{
+    if (!$db instanceof PDO) {
+        return [];
+    }
+
+    // Normalize search text
+    $searchName = trim(preg_replace('/\s+/', ' ', $searchName));
+
+    if ($searchName === '') {
+        return [];
+    }
+
+    // Separate first and last search terms
+    $nameParts = explode(' ', $searchName, 2);
+
+    $firstTerm = $nameParts[0];
+    $lastTerm  = $nameParts[1] ?? null;
+
+    try {
+        // Search by both supplied names
+        if ($lastTerm !== null && trim($lastTerm) !== '') {
+            $stmt = $db->prepare("
+                SELECT
+                    c.contactId,
+                    c.contactFirstName,
+                    c.contactLastName,
+                    c.contactTitle,
+                    c.contactPrimaryPhone,
+                    c.contactEmail,
+                    e.entityName,
+                    l.locationCity,
+                    l.locationState
+                FROM tblContacts c
+                LEFT JOIN tblEntities e
+                    ON e.entityId = c.contactEntityId
+                LEFT JOIN tblLocations l
+                    ON l.locationId = c.contactLocationId
+                WHERE (
+                    c.contactFirstName LIKE :firstTerm
+                    AND c.contactLastName LIKE :lastTerm
+                )
+                OR (
+                    c.contactFirstName LIKE :lastTermReverse
+                    AND c.contactLastName LIKE :firstTermReverse
+                )
+                ORDER BY
+                    c.contactLastName,
+                    c.contactFirstName
+                LIMIT 50
+            ");
+
+            $stmt->execute([
+                'firstTerm'       => '%' . $firstTerm . '%',
+                'lastTerm'        => '%' . $lastTerm . '%',
+                'lastTermReverse' => '%' . $lastTerm . '%',
+                'firstTermReverse'=> '%' . $firstTerm . '%'
+            ]);
+
+        // Search either first or last name
+        } else {
+            $stmt = $db->prepare("
+                SELECT
+                    c.contactId,
+                    c.contactFirstName,
+                    c.contactLastName,
+                    c.contactTitle,
+                    c.contactPrimaryPhone,
+                    c.contactEmail,
+                    e.entityName,
+                    l.locationCity,
+                    l.locationState
+                FROM tblContacts c
+                LEFT JOIN tblEntities e
+                    ON e.entityId = c.contactEntityId
+                LEFT JOIN tblLocations l
+                    ON l.locationId = c.contactLocationId
+                WHERE c.contactFirstName LIKE :firstName
+                   OR c.contactLastName LIKE :lastName
+                ORDER BY
+                    c.contactLastName,
+                    c.contactFirstName
+                LIMIT 50
+            ");
+
+            $stmt->execute([
+                'firstName' => '%' . $firstTerm . '%',
+                'lastName'  => '%' . $firstTerm . '%'
+            ]);
+        }
+
+        $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return is_array($contacts) ? $contacts : [];
+
+    } catch (Throwable $e) {
+        error_log(
+            '[skyebot] searchContactsByName failed: ' .
+            $e->getMessage()
+        );
+
+        return [];
+    }
+}
+
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
@@ -1737,134 +1845,211 @@ if ($type === "skyebot") {
         : "none";
 
     // ─────────────────────────────────────────────
-    // 2. Semantic Intent Classification
+    // 2. Deterministic Contact Operations
     // ─────────────────────────────────────────────
-    $intentPrompt = <<<PROMPT
-Analyze the following user input and return semantic intent metadata only.
+    $lowerQuery = strtolower(trim($query));
 
-Canonical domain intent grammar is allowed ONLY if the domain is in this allowed list:
-{$allowedDomainsList}
-
-If the user request maps to a domain NOT in the allowed list, return a non-domain intent.
-
-User Input:
-{$query}
-PROMPT;
-
-    $semanticIntentSchema = [
-        "type" => "json_schema",
-        "json_schema" => [
-            "name" => "semantic_intent",
-            "schema" => [
-                "type" => "object",
-                "additionalProperties" => false,
-                "required" => ["intent", "confidence", "reasoning"],
-                "properties" => [
-                    "intent"      => ["type" => "string"],
-                    "confidence"  => ["type" => "number"],
-                    "reasoning"   => ["type" => "string"]
-                ]
-            ]
-        ]
-    ];
-
-    $intentRaw = callOpenAI(
-        injectSemanticIntentContext($intentPrompt),
-        $apiKey,
-        "gpt-4o-mini",
-        $semanticIntentSchema
+    // Individual contact-search commands
+    $explicitContactSearch = preg_match(
+        '/^\s*(?:find|search(?:\s+for)?)\s+(?:a\s+)?contacts?(?:\s+named)?\s+(.+?)\s*$/i',
+        $query,
+        $explicitContactMatch
     );
 
-    error_log("[semantic-intent] Raw response: " . ($intentRaw ? substr($intentRaw, 0, 600) : "NULL"));
+    // Short name search (example: "find Steve")
+    $implicitContactSearch = preg_match(
+        '/^\s*(?:find|search(?:\s+for)?)\s+([a-z][a-z\'\-.]*(?:\s+[a-z][a-z\'\-.]*){0,2})\s*$/i',
+        $query,
+        $implicitContactMatch
+    );
 
-    $intentMeta = json_decode($intentRaw ?? "", true);
+    // Detect incomplete explicit requests
+    $incompleteContactSearch = preg_match(
+        '/^\s*(?:find|search(?:\s+for)?)\s+(?:a\s+)?contacts?(?:\s+named)?\s*$/i',
+        $query
+    );
 
-    if (!is_array($intentMeta) || !isset($intentMeta['intent']) || !isset($intentMeta['confidence'])) {
-        error_log("[semantic-intent] ❌ Failed to parse JSON or missing keys");
-        $intentMeta = [
-            "intent"     => "uncertain",
-            "confidence" => 0.0,
-            "reasoning"  => "JSON parse / schema failure"
-        ];
-    } else {
-        error_log("[semantic-intent] ✅ Intent: {$intentMeta['intent']} | Confidence: {$intentMeta['confidence']}");
+    if ($incompleteContactSearch) {
+        header('Content-Type: application/json');
+
+        echo json_encode([
+            'success'    => false,
+            'type'       => 'contact_search',
+            'searchName' => '',
+            'matches'    => [],
+            'matchCount' => 0,
+            'error'      => 'Enter a first name, last name, or full name.'
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
     }
 
-    $intent     = $intentMeta["intent"] ?? "unknown";
-    $confidence = (float)($intentMeta["confidence"] ?? 0.0);
+    $searchName = '';
 
-    // ─────────────────────────────────────────────
-    // 3. UI ACTIONS + SHORT-CIRCUITS
-    // ─────────────────────────────────────────────
-    $execution = executeIntent($intent, $confidence);
-    if ($execution) {
-        $type     = $execution['type'];
-        $response = $execution['response'];
-        goto SKY_OUTPUT;
+    if ($explicitContactSearch) {
+        $searchName = trim($explicitContactMatch[1] ?? '');
+    } elseif ($implicitContactSearch) {
+        $searchName = trim($implicitContactMatch[1] ?? '');
     }
 
-    if (
-        $confidence >= 0.70 &&
-        preg_match('/^([a-z]+)_(inquiry|repair_request|execute|amendment_request)$/', $intent, $m)
-    ) {
-        $domainKey = $m[1];
-        $mode      = $m[2];
-        if (in_array($domainKey, $streamedDomains, true)) {
-            $type = "domain_intent";
-            $response = json_encode(["domain" => $domainKey, "mode" => $mode, "confidence" => $confidence], JSON_UNESCAPED_SLASHES);
-            goto SKY_OUTPUT;
+    // Exclude obvious non-contact searches
+    $isNonContactSearch = $searchName !== '' && (bool)preg_match(
+        '/\b(zoning|permit|permits|ordinance|requirements?|code|parcel|address|location|project|report|document|file)\b/i',
+        $searchName
+    );
+
+    if ($searchName !== '' && !$isNonContactSearch) {
+        // Search authoritative contact records
+        $contacts   = searchContactsByName($db, $searchName);
+        $matchCount = count($contacts);
+
+        /*
+         * Explicit contact commands return zero matches.
+         * Implicit commands only become contact searches when a record exists.
+         */
+        $isConfirmedContactSearch =
+            (bool)$explicitContactSearch ||
+            $matchCount > 0;
+
+        if ($isConfirmedContactSearch) {
+            // Resolve action context
+            $actorContactId = (int)(
+                $_SESSION['SKYESOFT_contactId']
+                ?? $_SESSION['contactId']
+                ?? 0
+            );
+
+            $activitySessionId = $_SESSION['activitySessionId']
+                              ?? session_id();
+
+            // Build structured response
+            $searchResponse = [
+                'success'           => true,
+                'type'              => 'contact_search',
+                'searchName'        => $searchName,
+                'matches'           => $contacts,
+                'matchCount'        => $matchCount,
+                'activitySessionId' => $activitySessionId
+            ];
+
+            // Record contact-search prompt action (Type 3)
+            if ($actorContactId > 0) {
+                try {
+                    insertActionPrompt([
+                        'contactId'         => $actorContactId,
+                        'promptText'        => $query,
+                        'responseText'      => sprintf(
+                            'Contact search for "%s" returned %d match%s.',
+                            $searchName,
+                            $matchCount,
+                            $matchCount === 1 ? '' : 'es'
+                        ),
+                        'intent'            => 'contacts.search',
+                        'intentConfidence'  => 1.0,
+                        'activitySessionId' => $activitySessionId,
+                        'latitude'          => $latitude,
+                        'longitude'         => $longitude,
+                        'actionTypeId'      => 3,
+                        'origin'            => ACTION_ORIGIN_USER,
+                        'actionPayloadData' => [
+                            'operation'  => 'contacts.search',
+                            'searchName' => $searchName
+                        ],
+                        'actionResponseData' => [
+                            'success'    => true,
+                            'matchCount' => $matchCount
+                        ]
+                    ], $db);
+                } catch (Throwable $e) {
+                    // Preserve results if audit logging fails
+                    error_log(
+                        '[askOpenAI] Contact-search action logging failed: ' .
+                        $e->getMessage()
+                    );
+                }
+            }
+
+            header('Content-Type: application/json');
+
+            echo json_encode(
+                $searchResponse,
+                JSON_UNESCAPED_SLASHES
+            );
+
+            exit;
         }
     }
 
-    $lowerQuery = strtolower(trim($query));
-    if (str_contains($lowerQuery, "deviation") || str_contains($lowerQuery, "violation") || str_contains($lowerQuery, "structural")) {
-        $role = "governance";
-        $type = "structural_state";
-        $response = buildGovernanceResponse();
-        goto SKY_OUTPUT;
-    }
-
-    // ─────────────────────────────────────────────
-    // 3b. Operational list resolution (contacts, page size 10)
-    // ─────────────────────────────────────────────
+    // Operational contact list
     $isContactList =
-        preg_match('/\b(list|show|display)\b.*\bcontacts?\b/', $lowerQuery) ||
-        preg_match('/\bcontacts?\b.*\b(list|page)\b/', $lowerQuery);
+        preg_match(
+            '/\b(list|show|display)\b.*\bcontacts?\b/',
+            $lowerQuery
+        ) ||
+        preg_match(
+            '/\bcontacts?\b.*\b(list|page)\b/',
+            $lowerQuery
+        );
 
-    $isListNavigation = (bool)preg_match('/\b(next|previous|prev)\s+page\b/', $lowerQuery);
+    // Contact-list navigation only
+    $isListNavigation =
+        ($_SESSION['lastList']['type'] ?? null) === 'contacts' &&
+        (bool)preg_match(
+            '/\b(next|previous|prev)\s+page\b/',
+            $lowerQuery
+        );
 
     if ($isContactList || $isListNavigation) {
+        // Set requested page
         $page = 1;
 
         if (preg_match('/\bpage\s+(\d+)\b/', $lowerQuery, $m)) {
             $page = max(1, (int)$m[1]);
         } elseif (preg_match('/\bnext\s+page\b/', $lowerQuery)) {
             $page = (int)($_SESSION['lastList']['page'] ?? 1) + 1;
-        } elseif (preg_match('/\b(prev|previous)\s+page\b/', $lowerQuery)) {
-            $page = max(1, (int)($_SESSION['lastList']['page'] ?? 2) - 1);
+        } elseif (
+            preg_match(
+                '/\b(prev|previous)\s+page\b/',
+                $lowerQuery
+            )
+        ) {
+            $page = max(
+                1,
+                (int)($_SESSION['lastList']['page'] ?? 2) - 1
+            );
         }
 
+        // Load requested contacts
         $operationalList = loadContactPage($db, $page, 10);
 
-        // Session handoff for next/previous
+        // Preserve navigation context
         $_SESSION['lastList'] = [
             'type' => 'contacts',
             'page' => $operationalList['page'] ?? $page
         ];
 
-        error_log('[skyebot] contact list page=' . ($operationalList['page'] ?? $page) .
-                  ' rows=' . count($operationalList['rows'] ?? []));
+        error_log(
+            '[skyebot] contact list page=' .
+            ($operationalList['page'] ?? $page) .
+            ' rows=' .
+            count($operationalList['rows'] ?? [])
+        );
 
-        // Structured list response — client renders the card (skip model layout)
-        if (is_array($operationalList) && isset($operationalList['rows'])) {
+        if (
+            is_array($operationalList) &&
+            isset($operationalList['rows'])
+        ) {
             // Resolve action context
-            $actorContactId   = (int)($_SESSION['SKYESOFT_contactId']
-                            ?? $_SESSION['contactId']
-                            ?? 0);
+            $actorContactId = (int)(
+                $_SESSION['SKYESOFT_contactId']
+                ?? $_SESSION['contactId']
+                ?? 0
+            );
 
             $activitySessionId = $_SESSION['activitySessionId']
-                            ?? session_id();
+                              ?? session_id();
 
+            // Resolve response details
             $page       = (int)($operationalList['page'] ?? 1);
             $pageSize   = (int)($operationalList['pageSize'] ?? 10);
             $total      = (int)($operationalList['total'] ?? 0);
@@ -1879,27 +2064,27 @@ PROMPT;
                 'activitySessionId' => $activitySessionId
             ];
 
-            // Record prompt action (Type 3)
+            // Record contact-list prompt action (Type 3)
             if ($actorContactId > 0) {
                 try {
                     insertActionPrompt([
-                        'contactId'          => $actorContactId,
-                        'promptText'         => $query,
-                        'responseText'       => sprintf(
+                        'contactId'         => $actorContactId,
+                        'promptText'        => $query,
+                        'responseText'      => sprintf(
                             'Displayed contacts page %d of %d (%d contacts shown; %d total).',
                             $page,
                             $totalPages,
                             $rowCount,
                             $total
                         ),
-                        'intent'             => 'contacts.list',
-                        'intentConfidence'   => $confidence,
-                        'activitySessionId'  => $activitySessionId,
-                        'latitude'           => $latitude,
-                        'longitude'          => $longitude,
-                        'actionTypeId'       => 3,
-                        'origin'             => ACTION_ORIGIN_USER,
-                        'actionPayloadData'  => [
+                        'intent'            => 'contacts.list',
+                        'intentConfidence'  => 1.0,
+                        'activitySessionId' => $activitySessionId,
+                        'latitude'          => $latitude,
+                        'longitude'         => $longitude,
+                        'actionTypeId'      => 3,
+                        'origin'            => ACTION_ORIGIN_USER,
+                        'actionPayloadData' => [
                             'operation' => 'contacts.list',
                             'page'      => $page,
                             'pageSize'  => $pageSize
@@ -1913,7 +2098,7 @@ PROMPT;
                         ]
                     ], $db);
                 } catch (Throwable $e) {
-                    // Preserve list response if audit logging fails
+                    // Preserve results if audit logging fails
                     error_log(
                         '[askOpenAI] Contact-list action logging failed: ' .
                         $e->getMessage()
@@ -1930,6 +2115,138 @@ PROMPT;
 
             exit;
         }
+    }
+
+    // ─────────────────────────────────────────────
+    // 3. Semantic Intent Classification
+    // ─────────────────────────────────────────────
+    $intentPrompt = <<<PROMPT
+Analyze the following user input and return semantic intent metadata only.
+
+Canonical domain intent grammar is allowed ONLY if the domain is in this allowed list:
+{$allowedDomainsList}
+
+If the user request maps to a domain NOT in the allowed list, return a non-domain intent.
+
+User Input:
+{$query}
+PROMPT;
+
+    $semanticIntentSchema = [
+        'type' => 'json_schema',
+        'json_schema' => [
+            'name' => 'semantic_intent',
+            'schema' => [
+                'type' => 'object',
+                'additionalProperties' => false,
+                'required' => [
+                    'intent',
+                    'confidence',
+                    'reasoning'
+                ],
+                'properties' => [
+                    'intent' => [
+                        'type' => 'string'
+                    ],
+                    'confidence' => [
+                        'type' => 'number'
+                    ],
+                    'reasoning' => [
+                        'type' => 'string'
+                    ]
+                ]
+            ]
+        ]
+    ];
+
+    $intentRaw = callOpenAI(
+        injectSemanticIntentContext($intentPrompt),
+        $apiKey,
+        'gpt-4o-mini',
+        $semanticIntentSchema
+    );
+
+    error_log(
+        '[semantic-intent] Raw response: ' .
+        ($intentRaw ? substr($intentRaw, 0, 600) : 'NULL')
+    );
+
+    $intentMeta = json_decode($intentRaw ?? '', true);
+
+    if (
+        !is_array($intentMeta) ||
+        !isset($intentMeta['intent']) ||
+        !isset($intentMeta['confidence'])
+    ) {
+        error_log(
+            '[semantic-intent] Failed to parse JSON or missing keys'
+        );
+
+        $intentMeta = [
+            'intent'     => 'uncertain',
+            'confidence' => 0.0,
+            'reasoning'  => 'JSON parse / schema failure'
+        ];
+    } else {
+        error_log(
+            '[semantic-intent] Intent: ' .
+            $intentMeta['intent'] .
+            ' | Confidence: ' .
+            $intentMeta['confidence']
+        );
+    }
+
+    $intent     = $intentMeta['intent'] ?? 'unknown';
+    $confidence = (float)($intentMeta['confidence'] ?? 0.0);
+
+    // ─────────────────────────────────────────────
+    // 4. UI Actions and Short-Circuits
+    // ─────────────────────────────────────────────
+    $execution = executeIntent($intent, $confidence);
+
+    if ($execution) {
+        $type     = $execution['type'];
+        $response = $execution['response'];
+
+        goto SKY_OUTPUT;
+    }
+
+    // Resolve streamed domain intents
+    if (
+        $confidence >= 0.70 &&
+        preg_match(
+            '/^([a-z]+)_(inquiry|repair_request|execute|amendment_request)$/',
+            $intent,
+            $m
+        )
+    ) {
+        $domainKey = $m[1];
+        $mode      = $m[2];
+
+        if (in_array($domainKey, $streamedDomains, true)) {
+            $type = 'domain_intent';
+
+            $response = json_encode([
+                'domain'     => $domainKey,
+                'mode'       => $mode,
+                'confidence' => $confidence
+            ], JSON_UNESCAPED_SLASHES);
+
+            goto SKY_OUTPUT;
+        }
+    }
+
+    // Resolve structural governance requests
+    if (
+        str_contains($lowerQuery, 'deviation') ||
+        str_contains($lowerQuery, 'violation') ||
+        str_contains($lowerQuery, 'structural')
+    ) {
+        $role     = 'governance';
+        $type     = 'structural_state';
+        $response = buildGovernanceResponse();
+
+        goto SKY_OUTPUT;
     }
 
     // ─────────────────────────────────────────────
