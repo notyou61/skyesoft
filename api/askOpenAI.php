@@ -964,6 +964,7 @@ function searchContactsByName(?PDO $db, string $searchName): array
                     c.contactTitle,
                     c.contactPrimaryPhone,
                     c.contactEmail,
+                    c.isActive,
                     e.entityName,
                     l.locationCity,
                     l.locationState
@@ -1194,6 +1195,7 @@ function searchContactsByEntityId(?PDO $db, int $entityId): array
                 c.contactTitle,
                 c.contactPrimaryPhone,
                 c.contactEmail,
+                c.isActive,
                 e.entityId,
                 e.entityName,
                 l.locationCity,
@@ -1262,6 +1264,7 @@ function searchContactsByNameAndEntityId(?PDO $db, string $contactName, int $ent
                     c.contactTitle,
                     c.contactPrimaryPhone,
                     c.contactEmail,
+                    c.isActive,
                     e.entityId,
                     e.entityName,
                     l.locationCity,
