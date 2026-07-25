@@ -4962,12 +4962,28 @@ window.SkyIndex = {
             // --------------------------------------------------
             // 📇 CONTACT SEARCH CARD
             // --------------------------------------------------
+            const data = await response.json();
+
+            // Structured results first
             if (data?.type === 'contact_search') {
                 this.renderContactsList(
                     Array.isArray(data.matches) ? data.matches : []
                 );
                 return;
             }
+
+            if (data?.type === 'contact_list' && data.list) {
+                this.renderContactListCard(data.list);
+                return;
+            }
+
+            // Conversational response afterward
+            if (data?.response) {
+                this.appendSystemLine(data.response);
+                return;
+            }
+
+            this.appendSystemLine('⚠ No response from AI.');
 
             // --------------------------------------------------
             // 🏢 ENTITY SEARCH CARD
