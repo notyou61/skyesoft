@@ -790,7 +790,7 @@ function loadOperationalCounts(?PDO $db): array
  * Bounded contact list for conversational pagination.
  * Page size is fixed at 10.
  */
-function loadContactPage(?PDO $db, int $page = 1, int $pageSize = 10): array
+function loadContactPage(?PDO $db, int $page = 1, int $pageSize = 5): array
 {
     $page     = max(1, $page);
     $pageSize = 10; // hard limit — do not raise without design review
@@ -2814,7 +2814,7 @@ if ($type === "skyebot") {
         }
 
         // Load requested contacts
-        $operationalList = loadContactPage($db, $page, 10);
+        $operationalList = loadContactPage($db, $page, 5);
 
         // Preserve navigation context
         $_SESSION['lastList'] = [
