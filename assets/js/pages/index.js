@@ -4506,7 +4506,7 @@ window.SkyIndex = {
 
 // #endregion
 
-    // #region 📇 Contact List Card (paginated, proposal-card chrome)
+    // #region 📇 Contact List Card (paginated)
     renderContactListCard(list) {
         if (!list || !Array.isArray(list.rows)) {
             this.appendSystemLine('No contacts to display.');
@@ -4515,7 +4515,7 @@ window.SkyIndex = {
 
         // Set pagination values
         const page       = Math.max(1, Number(list.page) || 1);
-        const pageSize   = Math.max(1, Number(list.pageSize) || 5);
+        const pageSize   = Math.max(1, Number(list.pageSize) || 10);
         const totalPages = Math.max(1, Number(list.totalPages) || 1);
         const total      = Number(list.total) || list.rows.length;
         const rows       = list.rows;
@@ -4580,11 +4580,10 @@ window.SkyIndex = {
             `;
         }).join('');
 
-        // Set pagination states
+        // Pagination states
         const hasPrevious = page > 1;
         const hasNext     = page < totalPages;
 
-        // Build pagination links
         const previousHtml = hasPrevious
             ? `
                 <a href="#"
@@ -4605,9 +4604,9 @@ window.SkyIndex = {
             `
             : `<span style="color:#aaa;">Next →</span>`;
 
-        // Build contact card
+        // Build the card — note the stable id
         const html = `
-            <div class="commandLine system html">
+            <div id="skyContactListCard" class="commandLine system html">
                 <div class="result-card" style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
                     <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
                         <div style="display:flex; align-items:center; gap:8px;">
@@ -4650,7 +4649,20 @@ window.SkyIndex = {
             </div>
         `;
 
-        this.appendSystemHtml(html);
+        // Replace existing card or append on first render
+        const existingCard = document.getElementById('skyContactListCard');
+
+        if (existingCard) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html.trim();
+
+            const replacementCard = wrapper.firstElementChild;
+            if (replacementCard) {
+                existingCard.replaceWith(replacementCard);
+            }
+        } else {
+            this.appendSystemHtml(html);
+        }
     },
     // #endregion
 
