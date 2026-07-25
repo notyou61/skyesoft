@@ -1117,6 +1117,544 @@ function searchEntitiesByName($db, string $searchName): array
         return [];
     }
 }
+
+/**
+ * Resolve a single best-matching entity by name (exact-first ranking).
+ * Returns the top entity row or null when no confident match exists.
+ * Uses the same ranking philosophy as searchEntitiesByName but returns
+ * only the highest-ranked candidate so callers can treat it as authoritative.
+ *
+ * @param PDO|null $db
+ * @param string   $entityName
+ * @return array|null
+ */
+function searchEntityByName(?PDO $db, string $entityName): ?array
+{
+    if (!$db instanceof PDO) {
+        return null;
+    }
+
+    $entityName = trim(preg_replace('/\s+/', ' ', $entityName));
+    if ($entityName === '') {
+        return null;
+    }
+
+    $matches = searchEntitiesByName($db, $entityName);
+    if (empty($matches)) {
+        return null;
+    }
+
+    // Prefer exact (case-insensitive) name or normalized name
+    $normalized = strtolower($entityName);
+    $nospace    = str_replace(' ', '', $normalized);
+
+    foreach ($matches as $row) {
+        $name     = strtolower(trim((string)($row['entityName'] ?? '')));
+        $normName = strtolower(trim((string)($row['entityNormalizedName'] ?? '')));
+        $legal    = strtolower(trim((string)($row['entityLegalName'] ?? '')));
+
+        if (
+            $name === $normalized ||
+            $normName === $normalized ||
+            $legal === $normalized ||
+            str_replace(' ', '', $name) === $nospace ||
+            str_replace(' ', '', $normName) === $nospace
+        ) {
+            return $row;
+        }
+    }
+
+    // Fall back to the highest-ranked (first) result from the existing ordered query
+    return $matches[0] ?? null;
+}
+
+/**
+ * Return all active contacts belonging to a given entityId.
+ * Relationship: tblContacts.contactEntityId = tblEntities.entityId
+ *
+ * @param PDO|null $db
+ * @param int      $entityId
+ * @return array
+ */
+function searchContactsByEntityId(?PDO $db, int $entityId): array
+{
+    if (!$db instanceof PDO || $entityId <= 0) {
+        return [];
+    }
+
+    try {
+        $stmt = $db->prepare("
+            SELECT
+                c.contactId,
+                c.contactSalutation,
+                c.contactFirstName,
+                c.contactLastName,
+                c.contactTitle,
+                c.contactPrimaryPhone,
+                c.contactEmail,
+                e.entityId,
+                e.entityName,
+                l.locationCity,
+                l.locationState
+            FROM tblContacts c
+            LEFT JOIN tblEntities e
+                ON e.entityId = c.contactEntityId
+            LEFT JOIN tblLocations l
+                ON l.locationId = c.contactLocationId
+            WHERE c.contactEntityId = :entityId
+              AND COALESCE(c.isActive, 1) = 1
+            ORDER BY
+                c.contactLastName ASC,
+                c.contactFirstName ASC
+            LIMIT 100
+        ");
+
+        $stmt->execute(['entityId' => $entityId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return is_array($rows) ? $rows : [];
+
+    } catch (Throwable $e) {
+        error_log('[searchContactsByEntityId] ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Return active contacts matching a name (first/last/partial) that also
+ * belong to the supplied entityId.
+ * Combines the name-matching logic of searchContactsByName with the
+ * entity filter of searchContactsByEntityId.
+ *
+ * Exact whole-name matches are preferred by the ORDER BY ranking.
+ *
+ * @param PDO|null $db
+ * @param string   $contactName
+ * @param int      $entityId
+ * @return array
+ */
+function searchContactsByNameAndEntityId(?PDO $db, string $contactName, int $entityId): array
+{
+    if (!$db instanceof PDO || $entityId <= 0) {
+        return [];
+    }
+
+    $contactName = trim(preg_replace('/\s+/', ' ', $contactName));
+    if ($contactName === '') {
+        return [];
+    }
+
+    $nameParts = explode(' ', $contactName, 2);
+    $firstTerm = $nameParts[0];
+    $lastTerm  = isset($nameParts[1]) ? trim($nameParts[1]) : null;
+
+    try {
+        if ($lastTerm !== null && $lastTerm !== '') {
+            // Full first + last supplied
+            $stmt = $db->prepare("
+                SELECT
+                    c.contactId,
+                    c.contactSalutation,
+                    c.contactFirstName,
+                    c.contactLastName,
+                    c.contactTitle,
+                    c.contactPrimaryPhone,
+                    c.contactEmail,
+                    e.entityId,
+                    e.entityName,
+                    l.locationCity,
+                    l.locationState,
+                    CASE
+                        WHEN LOWER(TRIM(CONCAT(COALESCE(c.contactFirstName,''), ' ', COALESCE(c.contactLastName,'')))) = LOWER(:exactFull)
+                            THEN 0
+                        WHEN LOWER(c.contactFirstName) = LOWER(:exactFirst)
+                         AND LOWER(c.contactLastName)  = LOWER(:exactLast)
+                            THEN 1
+                        WHEN LOWER(c.contactFirstName) LIKE LOWER(:startsFirst)
+                         AND LOWER(c.contactLastName)  LIKE LOWER(:startsLast)
+                            THEN 2
+                        ELSE 3
+                    END AS rankScore
+                FROM tblContacts c
+                LEFT JOIN tblEntities e
+                    ON e.entityId = c.contactEntityId
+                LEFT JOIN tblLocations l
+                    ON l.locationId = c.contactLocationId
+                WHERE c.contactEntityId = :entityId
+                  AND COALESCE(c.isActive, 1) = 1
+                  AND (
+                      (c.contactFirstName LIKE :firstTerm AND c.contactLastName LIKE :lastTerm)
+                   OR (c.contactFirstName LIKE :lastTermReverse AND c.contactLastName LIKE :firstTermReverse)
+                  )
+                ORDER BY
+                    rankScore ASC,
+                    c.contactLastName ASC,
+                    c.contactFirstName ASC
+                LIMIT 50
+            ");
+
+            $exactFull = $firstTerm . ' ' . $lastTerm;
+
+            $stmt->execute([
+                'entityId'         => $entityId,
+                'firstTerm'        => '%' . $firstTerm . '%',
+                'lastTerm'         => '%' . $lastTerm . '%',
+                'lastTermReverse'  => '%' . $lastTerm . '%',
+                'firstTermReverse' => '%' . $firstTerm . '%',
+                'exactFull'        => $exactFull,
+                'exactFirst'       => $firstTerm,
+                'exactLast'        => $lastTerm,
+                'startsFirst'      => $firstTerm . '%',
+                'startsLast'       => $lastTerm . '%'
+            ]);
+        } else {
+            // Single token (first or last name)
+            $stmt = $db->prepare("
+                SELECT
+                    c.contactId,
+                    c.contactSalutation,
+                    c.contactFirstName,
+                    c.contactLastName,
+                    c.contactTitle,
+                    c.contactPrimaryPhone,
+                    c.contactEmail,
+                    e.entityId,
+                    e.entityName,
+                    l.locationCity,
+                    l.locationState,
+                    CASE
+                        WHEN LOWER(c.contactFirstName) = LOWER(:exactToken)
+                          OR LOWER(c.contactLastName)  = LOWER(:exactToken2)
+                            THEN 0
+                        WHEN LOWER(c.contactFirstName) LIKE LOWER(:startsToken)
+                          OR LOWER(c.contactLastName)  LIKE LOWER(:startsToken2)
+                            THEN 1
+                        ELSE 2
+                    END AS rankScore
+                FROM tblContacts c
+                LEFT JOIN tblEntities e
+                    ON e.entityId = c.contactEntityId
+                LEFT JOIN tblLocations l
+                    ON l.locationId = c.contactLocationId
+                WHERE c.contactEntityId = :entityId
+                  AND COALESCE(c.isActive, 1) = 1
+                  AND (
+                      c.contactFirstName LIKE :token
+                   OR c.contactLastName  LIKE :token2
+                  )
+                ORDER BY
+                    rankScore ASC,
+                    c.contactLastName ASC,
+                    c.contactFirstName ASC
+                LIMIT 50
+            ");
+
+            $stmt->execute([
+                'entityId'     => $entityId,
+                'token'        => '%' . $firstTerm . '%',
+                'token2'       => '%' . $firstTerm . '%',
+                'exactToken'   => $firstTerm,
+                'exactToken2'  => $firstTerm,
+                'startsToken'  => $firstTerm . '%',
+                'startsToken2' => $firstTerm . '%'
+            ]);
+        }
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return is_array($rows) ? $rows : [];
+
+    } catch (Throwable $e) {
+        error_log('[searchContactsByNameAndEntityId] ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Lightweight conversational wrapper stripper.
+ * Removes only the common command prefixes so the remaining
+ * phrase can be handed to the record resolver.
+ *
+ * Examples:
+ *   "Can you show me Steve?"          → "Steve"
+ *   "Show Christy Signs"              → "Christy Signs"
+ *   "Show Susan at Christy Signs"     → "Susan at Christy Signs"
+ *   "Please find contact Susan"       → "contact Susan"
+ *   "Search for Christy Signs"        → "Christy Signs"
+ *
+ * Does NOT decide whether the phrase is a contact or an entity.
+ *
+ * @param string $raw
+ * @return string  Cleaned lookup phrase (trimmed)
+ */
+function stripConversationalWrapper(string $raw): string
+{
+    $text = trim($raw);
+    if ($text === '') {
+        return '';
+    }
+
+    // Normalize internal whitespace and trailing punctuation that is
+    // almost always conversational noise.
+    $text = preg_replace('/\s+/', ' ', $text);
+    $text = rtrim($text, " \t\n\r\0\x0B?.!");
+
+    // Ordered from longest / most specific to shortest so we never
+    // leave a residual fragment of a longer phrase.
+    $wrappers = [
+        '/^\s*can\s+you\s+(?:please\s+)?(?:show|find|search\s+for|look\s+up)\s+(?:me\s+)?/i',
+        '/^\s*please\s+(?:show|find|search\s+for|look\s+up)\s+(?:me\s+)?/i',
+        '/^\s*(?:show|find|search\s+for|look\s+up)\s+(?:me\s+)?/i',
+        '/^\s*can\s+you\s+/i',
+        '/^\s*please\s+/i',
+    ];
+
+    foreach ($wrappers as $pattern) {
+        $text = preg_replace($pattern, '', $text);
+    }
+
+    // One final clean-up after stripping
+    $text = trim(preg_replace('/\s+/', ' ', $text));
+    $text = rtrim($text, " \t\n\r\0\x0B?.!");
+
+    return $text;
+}
+
+/**
+ * Detect and resolve the combined "Name at Entity" form.
+ *
+ * Examples that should hit this path:
+ *   "Susan at Christy Signs"
+ *   "Steve Skye at Christy Signs"
+ *   "Susan Alderson at Christy"
+ *
+ * Returns a structured contact_search payload with searchMode = "contact_entity"
+ * or null when the phrase does not contain a usable "at" separator /
+ * the entity cannot be resolved / no matching contacts are found.
+ *
+ * @param PDO|null $db
+ * @param string   $lookupPhrase   Already cleaned by stripConversationalWrapper()
+ * @return array|null
+ */
+function resolveContactAtEntity(?PDO $db, string $lookupPhrase): ?array
+{
+    if (!$db instanceof PDO) {
+        return null;
+    }
+
+    $phrase = trim($lookupPhrase);
+    if ($phrase === '' || stripos($phrase, ' at ') === false) {
+        return null;
+    }
+
+    // Split on the first " at " only (case-insensitive)
+    $parts = preg_split('/\s+at\s+/i', $phrase, 2);
+    if (count($parts) !== 2) {
+        return null;
+    }
+
+    $contactPhrase = trim($parts[0]);
+    $entityPhrase  = trim($parts[1]);
+
+    if ($contactPhrase === '' || $entityPhrase === '') {
+        return null;
+    }
+
+    // 1. Resolve the entity (exact-first)
+    $entity = searchEntityByName($db, $entityPhrase);
+    if ($entity === null || empty($entity['entityId'])) {
+        return null;          // entity not found → fall through to other resolvers
+    }
+
+    $entityId   = (int)$entity['entityId'];
+    $entityName = (string)($entity['entityName'] ?? $entityPhrase);
+
+    // 2. Search for the named contact inside that entity
+    $contacts = searchContactsByNameAndEntityId($db, $contactPhrase, $entityId);
+
+    // Even if zero contacts match the name, we still return the structured
+    // response so the client can show "no matching contact at this entity".
+    // (Change to `if (empty($contacts)) return null;` if you prefer silent fall-through.)
+
+    return [
+        'success'           => true,
+        'type'              => 'contact_search',
+        'searchMode'        => 'contact_entity',
+        'searchName'        => $phrase,               // original combined phrase
+        'contactPhrase'     => $contactPhrase,
+        'entityId'          => $entityId,
+        'entityName'        => $entityName,
+        'matches'           => $contacts,
+        'matchCount'        => count($contacts),
+        'activitySessionId' => $_SESSION['activitySessionId'] ?? session_id()
+    ];
+}
+
+/**
+ * Resolve a single lookup phrase (no "at" separator).
+ *
+ * Priority order (stop at first successful hit):
+ *  1. Exact full contact name
+ *  2. Exact entity name          → return the entity's contacts
+ *  3. Exact contact first or last name
+ *  4. Ranked partial contact match
+ *  5. Partial entity match       → return the entity's contacts
+ *  6. null (fall through to normal Skyebot)
+ *
+ * When an entity is matched, the function always returns the contacts
+ * belonging to that entity (never an isolated entity card).
+ *
+ * @param PDO|null $db
+ * @param string   $lookupPhrase   Already cleaned by stripConversationalWrapper()
+ * @return array|null
+ */
+function resolveSinglePhrase(?PDO $db, string $lookupPhrase): ?array
+{
+    if (!$db instanceof PDO) {
+        return null;
+    }
+
+    $phrase = trim($lookupPhrase);
+    if ($phrase === '') {
+        return null;
+    }
+
+    $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
+
+    // ---------------------------------------------------------------
+    // 1. Exact full contact name
+    // ---------------------------------------------------------------
+    $contacts = searchContactsByName($db, $phrase);
+
+    // Filter to true exact full-name matches only
+    $exactFull = [];
+    $normalizedPhrase = strtolower($phrase);
+    foreach ($contacts as $c) {
+        $full = strtolower(trim(
+            ($c['contactFirstName'] ?? '') . ' ' . ($c['contactLastName'] ?? '')
+        ));
+        if ($full === $normalizedPhrase) {
+            $exactFull[] = $c;
+        }
+    }
+
+    if (!empty($exactFull)) {
+        return [
+            'success'           => true,
+            'type'              => 'contact_search',
+            'searchMode'        => 'contact_exact',
+            'searchName'        => $phrase,
+            'matches'           => $exactFull,
+            'matchCount'        => count($exactFull),
+            'activitySessionId' => $activitySessionId
+        ];
+    }
+
+    // ---------------------------------------------------------------
+    // 2. Exact entity name → return its contacts
+    // ---------------------------------------------------------------
+    $entity = searchEntityByName($db, $phrase);
+    if ($entity !== null && !empty($entity['entityId'])) {
+        $entityId   = (int)$entity['entityId'];
+        $entityName = (string)($entity['entityName'] ?? $phrase);
+
+        // Confirm it is truly exact (searchEntityByName already prefers exact,
+        // but we double-check for safety)
+        $normEntity = strtolower(trim($entityName));
+        $normPhrase = strtolower(trim($phrase));
+        $isExactEntity =
+            $normEntity === $normPhrase ||
+            strtolower(trim((string)($entity['entityNormalizedName'] ?? ''))) === $normPhrase ||
+            strtolower(trim((string)($entity['entityLegalName'] ?? ''))) === $normPhrase;
+
+        if ($isExactEntity) {
+            $entityContacts = searchContactsByEntityId($db, $entityId);
+
+            return [
+                'success'           => true,
+                'type'              => 'contact_search',
+                'searchMode'        => 'entity',
+                'searchName'        => $phrase,
+                'entityId'          => $entityId,
+                'entityName'        => $entityName,
+                'matches'           => $entityContacts,
+                'matchCount'        => count($entityContacts),
+                'activitySessionId' => $activitySessionId
+            ];
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // 3. Exact contact first or last name
+    // ---------------------------------------------------------------
+    $exactFirstOrLast = [];
+    foreach ($contacts as $c) {
+        $first = strtolower(trim((string)($c['contactFirstName'] ?? '')));
+        $last  = strtolower(trim((string)($c['contactLastName'] ?? '')));
+        if ($first === $normalizedPhrase || $last === $normalizedPhrase) {
+            $exactFirstOrLast[] = $c;
+        }
+    }
+
+    if (!empty($exactFirstOrLast)) {
+        return [
+            'success'           => true,
+            'type'              => 'contact_search',
+            'searchMode'        => 'contact_exact_partial',
+            'searchName'        => $phrase,
+            'matches'           => $exactFirstOrLast,
+            'matchCount'        => count($exactFirstOrLast),
+            'activitySessionId' => $activitySessionId
+        ];
+    }
+
+    // ---------------------------------------------------------------
+    // 4. Ranked partial contact match
+    //    (anything left in $contacts after the exact filters above)
+    // ---------------------------------------------------------------
+    if (!empty($contacts)) {
+        // The existing searchContactsByName already returns a reasonable order.
+        // We can further rank if desired, but for now return as-is.
+        return [
+            'success'           => true,
+            'type'              => 'contact_search',
+            'searchMode'        => 'contact_partial',
+            'searchName'        => $phrase,
+            'matches'           => $contacts,
+            'matchCount'        => count($contacts),
+            'activitySessionId' => $activitySessionId
+        ];
+    }
+
+    // ---------------------------------------------------------------
+    // 5. Partial entity match → return its contacts
+    // ---------------------------------------------------------------
+    // Re-use the earlier $entity if it was a partial hit
+    if ($entity !== null && !empty($entity['entityId'])) {
+        $entityId   = (int)$entity['entityId'];
+        $entityName = (string)($entity['entityName'] ?? $phrase);
+        $entityContacts = searchContactsByEntityId($db, $entityId);
+
+        return [
+            'success'           => true,
+            'type'              => 'contact_search',
+            'searchMode'        => 'entity_partial',
+            'searchName'        => $phrase,
+            'entityId'          => $entityId,
+            'entityName'        => $entityName,
+            'matches'           => $entityContacts,
+            'matchCount'        => count($entityContacts),
+            'activitySessionId' => $activitySessionId
+        ];
+    }
+
+    // ---------------------------------------------------------------
+    // 6. Nothing matched → fall through to normal Skyebot
+    // ---------------------------------------------------------------
+    return null;
+}
+
+#endregion
+
 #region SECTION 2 — Standing Orders Injection
 function injectStandingOrders(string $basePrompt): string {
     $ordersJson = loadStandingOrders();
