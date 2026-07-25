@@ -164,6 +164,58 @@ $results['entities_no_contacts'] = runQuery($db, "
     LIMIT 200
 ");
 
+// 8. Orphan locations (locationEntityId points to non-existent entity)
+$results['orphan_locations'] = runQuery($db, "
+    SELECT
+        l.locationId,
+        l.locationName,
+        l.locationEntityId,
+        l.locationAddress,
+        l.locationCity,
+        l.locationState
+    FROM tblLocations l
+    LEFT JOIN tblEntities e ON e.entityId = l.locationEntityId
+    WHERE l.locationEntityId IS NOT NULL
+      AND e.entityId IS NULL
+    ORDER BY l.locationId
+    LIMIT 200
+");
+
+// 9. Locations with NULL entityId
+$results['locations_no_entity'] = runQuery($db, "
+    SELECT
+        locationId,
+        locationName,
+        locationAddress,
+        locationCity,
+        locationState
+    FROM tblLocations
+    WHERE locationEntityId IS NULL
+    ORDER BY locationId
+    LIMIT 200
+");
+
+// 10. Possible mismatched location ↔ entity
+//     (city name in location does not appear in the linked entity name)
+//     This is heuristic — review manually.
+$results['possible_location_entity_mismatch'] = runQuery($db, "
+    SELECT
+        l.locationId,
+        l.locationName,
+        l.locationCity,
+        l.locationEntityId,
+        e.entityName,
+        e.entityNormalizedName
+    FROM tblLocations l
+    INNER JOIN tblEntities e ON e.entityId = l.locationEntityId
+    WHERE l.locationCity IS NOT NULL
+      AND TRIM(l.locationCity) <> ''
+      AND LOWER(e.entityName) NOT LIKE CONCAT('%', LOWER(TRIM(l.locationCity)), '%')
+      AND LOWER(COALESCE(e.entityNormalizedName, '')) NOT LIKE CONCAT('%', LOWER(TRIM(l.locationCity)), '%')
+    ORDER BY l.locationId
+    LIMIT 200
+");
+
 // -------------------------------------------------
 // Output
 // -------------------------------------------------
