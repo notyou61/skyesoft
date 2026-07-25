@@ -1485,7 +1485,7 @@ window.SkyIndex = {
             const dataPayloadAttr = safeBase64Encode(JSON.stringify(data));
 
             const html = `
-                <div class="commandLine system html">
+                <div id="skyContactListCard" class="commandLine system html">
                     <div class="result-card">
                         <div class="result-header">
                             <span class="result-icon">📸</span>
@@ -1514,7 +1514,20 @@ window.SkyIndex = {
                 </div>
             `;
 
-            this.appendSystemHtml(html);
+            // Replace the current paginated contact list (or append on first render)
+            const existingCard = document.getElementById('skyContactListCard');
+
+            if (existingCard) {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = html.trim();
+
+                const replacementCard = wrapper.firstElementChild;
+                if (replacementCard) {
+                    existingCard.replaceWith(replacementCard);
+                }
+            } else {
+                this.appendSystemHtml(html);
+            }
         },
 
         renderParcelReviewResult(data) {
@@ -4738,7 +4751,7 @@ window.SkyIndex = {
 
         // Build the card
         const html = `
-            <div class="commandLine system html">
+            <div id="skyEntityListCard" class="commandLine system html">
                 <div class="result-card" style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
                     <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
                         <div style="display:flex; align-items:center; gap:8px;">
@@ -4781,7 +4794,20 @@ window.SkyIndex = {
             </div>
         `;
 
-        this.appendSystemHtml(html);
+        // Replace the current paginated entity list (or append on first render)
+        const existingCard = document.getElementById('skyEntityListCard');
+
+        if (existingCard) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html.trim();
+
+            const replacementCard = wrapper.firstElementChild;
+            if (replacementCard) {
+                existingCard.replaceWith(replacementCard);
+            }
+        } else {
+            this.appendSystemHtml(html);
+        }
     },
     // #endregion
 
@@ -4987,6 +5013,9 @@ window.SkyIndex = {
                 return;
             }
 
+            // --------------------------------------------------
+            // 📇 CONTACT LIST CARD
+            // --------------------------------------------------
             if (data?.type === 'contact_list' && data.list) {
                 this.renderContactListCard(data.list);
                 return;
@@ -5007,14 +5036,6 @@ window.SkyIndex = {
                 this.renderEntitySearchCard(
                     Array.isArray(data.matches) ? data.matches : []
                 );
-                return;
-            }
-
-            // --------------------------------------------------
-            // 📇 CONTACT LIST CARD
-            // --------------------------------------------------
-            if (data?.type === 'contact_list' && data.list) {
-                this.renderContactListCard(data.list);
                 return;
             }
 
