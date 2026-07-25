@@ -4486,7 +4486,7 @@ window.SkyIndex = {
 
         // Set pagination values
         const page       = Math.max(1, Number(list.page) || 1);
-        const pageSize   = Math.max(1, Number(list.pageSize) || 10);
+        const pageSize   = Math.max(1, Number(list.pageSize) || 5);
         const totalPages = Math.max(1, Number(list.totalPages) || 1);
         const total      = Number(list.total) || list.rows.length;
         const rows       = list.rows;
@@ -4634,7 +4634,7 @@ window.SkyIndex = {
 
         // Set pagination values
         const page       = Math.max(1, Number(list.page) || 1);
-        const pageSize   = Math.max(1, Number(list.pageSize) || 10);
+        const pageSize   = Math.max(1, Number(list.pageSize) || 5);
         const totalPages = Math.max(1, Number(list.totalPages) || 1);
         const total      = Number(list.total) || list.rows.length;
         const rows       = list.rows;
