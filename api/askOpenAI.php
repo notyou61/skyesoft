@@ -793,7 +793,7 @@ function loadOperationalCounts(?PDO $db): array
 function loadContactPage(?PDO $db, int $page = 1, int $pageSize = 5): array
 {
     $page     = max(1, $page);
-    $pageSize = 10; // hard limit — do not raise without design review
+    $pageSize = 5; // hard limit — do not raise without design review
     $offset   = ($page - 1) * $pageSize;
 
     $result = [
@@ -2845,7 +2845,7 @@ if ($type === "skyebot") {
 
             // Resolve response details
             $page       = (int)($operationalList['page'] ?? 1);
-            $pageSize   = (int)($operationalList['pageSize'] ?? 10);
+            $pageSize   = (int)($operationalList['pageSize'] ?? 5);
             $total      = (int)($operationalList['total'] ?? 0);
             $totalPages = (int)($operationalList['totalPages'] ?? 1);
             $rowCount   = count($operationalList['rows']);
