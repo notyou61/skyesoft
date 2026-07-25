@@ -4477,6 +4477,22 @@ window.SkyIndex = {
 
     // #endregion
 
+    // #region 📇 Contact List Pagination
+
+    // Load a specific contact-list page
+    async loadContactPage(page = 1) {
+
+        // Normalize requested page
+        const requestedPage = Math.max(1, Number(page) || 1);
+
+        // Request authoritative page from backend
+        await this.executeAICommand(
+            `show contacts page ${requestedPage}`
+        );
+    },
+
+// #endregion
+
     // #region 📇 Contact List Card (paginated, proposal-card chrome)
     renderContactListCard(list) {
         if (!list || !Array.isArray(list.rows)) {
