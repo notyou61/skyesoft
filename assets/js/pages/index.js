@@ -4962,7 +4962,7 @@ window.SkyIndex = {
             // --------------------------------------------------
             // 📇 CONTACT SEARCH CARD
             // --------------------------------------------------
-            const data = await response.json();
+           // const data = await response.json();
 
             // Structured results first
             if (data?.type === 'contact_search') {
