@@ -4085,6 +4085,10 @@ window.SkyIndex = {
                 ? this.escapeHtml(contact.contactEmail)
                 : '';
 
+            // Inactive / invalid flag
+            const isInactive = Number(contact.isActive) === 0 || 
+                            Number(contact.contactIsNotValid) === 1;
+
             // Build location label
             const location = [city, state]
                 .filter(Boolean)
@@ -4109,6 +4113,23 @@ window.SkyIndex = {
                     </span>
                 `;
 
+            // Inactive badge
+            const inactiveBadge = isInactive
+                ? `<span style="
+                        display:inline-block;
+                        margin-left:8px;
+                        padding:1px 7px;
+                        font-size:0.72em;
+                        font-weight:600;
+                        letter-spacing:0.03em;
+                        color:#8a6d3b;
+                        background:#fcf8e3;
+                        border:1px solid #faebcc;
+                        border-radius:3px;
+                        vertical-align:middle;
+                    ">[Inactive]</span>`
+                : '';
+
             return `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; ${index < contacts.length - 1 ? 'border-bottom:1px solid #f0f0f0;' : ''}">
                     <div style="min-width:0;">
@@ -4121,6 +4142,8 @@ window.SkyIndex = {
                                     — ${title}
                                 </span>
                             ` : ''}
+
+                            ${inactiveBadge}
                         </div>
 
                         ${meta ? `
