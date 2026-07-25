@@ -897,6 +897,8 @@ function loadContactDetail(?PDO $db, int $contactId): ?array
                 c.contactTitle,
                 c.contactPrimaryPhone,
                 c.contactEmail,
+                c.isActive,
+                c.contactIsNotValid,
                 e.entityName,
                 l.locationAddress,
                 l.locationCity,

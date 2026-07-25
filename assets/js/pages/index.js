@@ -4335,7 +4335,42 @@ window.SkyIndex = {
             this.renderContactModal(data.contact);
 
         } catch (error) {
-            // Keep your current catch-block contents here
+            console.error('[SkyIndex] showFullContact failed:', error);
+
+            const modal = document.getElementById('contactDetailModal');
+            if (modal) {
+                modal.innerHTML = `
+                    <div role="dialog"
+                        aria-modal="true"
+                        style="width:100%; max-width:620px; background:#fff; border-radius:8px; box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
+                            <div style="display:flex; align-items:center; gap:9px;">
+                                <span style="font-size:1.25rem;">👤</span>
+                                <strong style="color:#222;">Contact Profile</strong>
+                            </div>
+                            <button type="button"
+                                    onclick="SkyIndex.closeContactModal();"
+                                    aria-label="Close contact profile"
+                                    style="border:0; background:transparent; color:#666; cursor:pointer; font-size:1.5rem; line-height:1;">
+                                ×
+                            </button>
+                        </div>
+                        <div style="padding:28px 18px; text-align:center; color:#c0392b;">
+                            Unable to load contact details.<br>
+                            <span style="font-size:0.9em; color:#666;">${this.escapeHtml(error.message || 'Unknown error')}</span>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; padding:12px 18px; border-top:1px solid #eee; background:#fafafa;">
+                            <button type="button"
+                                    onclick="SkyIndex.closeContactModal();"
+                                    style="padding:7px 15px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; cursor:pointer;">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                this.appendSystemLine('Unable to load contact details.');
+            }
         }
     },
 
@@ -4378,6 +4413,26 @@ window.SkyIndex = {
             contact.locationZip
         ].filter(Boolean).map(value => this.escapeHtml(value)).join(', ');
 
+        // Inactive / invalid flag
+        const isInactive = Number(contact.isActive) === 0 ||
+                        Number(contact.contactIsNotValid) === 1;
+
+        const inactiveBadge = isInactive
+            ? `<span style="
+                    display:inline-block;
+                    margin-right:8px;
+                    padding:2px 8px;
+                    font-size:0.72em;
+                    font-weight:600;
+                    letter-spacing:0.03em;
+                    color:#8a6d3b;
+                    background:#fcf8e3;
+                    border:1px solid #faebcc;
+                    border-radius:3px;
+                    vertical-align:middle;
+                ">[Inactive]</span>`
+            : '';
+
         // Build contact profile
         modal.innerHTML = `
             <div role="dialog"
@@ -4394,7 +4449,7 @@ window.SkyIndex = {
                             </strong>
 
                             <small style="color:#777;">
-                                Contact #${Number(contact.contactId) || ''}
+                                ${inactiveBadge}Contact #${Number(contact.contactId) || ''}
                             </small>
                         </div>
                     </div>
