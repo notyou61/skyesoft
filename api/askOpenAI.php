@@ -2460,8 +2460,82 @@ if ($type === "skyebot") {
         ? implode(", ", $streamedDomains)
         : "none";
 
+    // =====================================================================
+    // 📇 GOVERNED NATURAL-LANGUAGE CONTACT / ENTITY RESOLUTION
+    // Runs before legacy regex searches and before semantic intent.
+    // =====================================================================
+
+    $lookupPhrase = stripConversationalWrapper($query);
+
+    if ($lookupPhrase !== '') {
+
+        // 1. Combined form: "Susan at Christy Signs"
+        $resolved = resolveContactAtEntity($db, $lookupPhrase);
+
+        // 2. Single phrase: contact name or entity name
+        if ($resolved === null) {
+            $resolved = resolveSinglePhrase($db, $lookupPhrase);
+        }
+
+        if ($resolved !== null) {
+
+            // Record the action (Type 3)
+            $actorContactId = (int)(
+                $_SESSION['SKYESOFT_contactId']
+                ?? $_SESSION['contactId']
+                ?? 0
+            );
+
+            $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
+
+            if ($actorContactId > 0) {
+                try {
+                    insertActionPrompt([
+                        'contactId'         => $actorContactId,
+                        'promptText'        => $query,
+                        'responseText'      => sprintf(
+                            'Natural-language contact resolution (%s) returned %d match%s.',
+                            $resolved['searchMode'] ?? 'unknown',
+                            $resolved['matchCount'] ?? 0,
+                            ($resolved['matchCount'] ?? 0) === 1 ? '' : 'es'
+                        ),
+                        'intent'            => 'contacts.resolve',
+                        'intentConfidence'  => 1.0,
+                        'activitySessionId' => $activitySessionId,
+                        'latitude'          => $latitude,
+                        'longitude'         => $longitude,
+                        'actionTypeId'      => 3,
+                        'origin'            => ACTION_ORIGIN_USER,
+                        'actionPayloadData' => [
+                            'operation'   => 'contacts.resolve',
+                            'searchMode'  => $resolved['searchMode'] ?? null,
+                            'searchName'  => $resolved['searchName'] ?? $lookupPhrase,
+                            'entityId'    => $resolved['entityId'] ?? null
+                        ],
+                        'actionResponseData' => [
+                            'success'    => true,
+                            'matchCount' => $resolved['matchCount'] ?? 0,
+                            'searchMode' => $resolved['searchMode'] ?? null
+                        ]
+                    ], $db);
+                } catch (Throwable $e) {
+                    error_log('[askOpenAI] Natural resolve action logging failed: ' . $e->getMessage());
+                }
+            }
+
+            // Ensure activitySessionId is present
+            $resolved['activitySessionId'] = $activitySessionId;
+
+            header('Content-Type: application/json');
+            echo json_encode($resolved, JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
+    // If we reach here, no contact/entity resolution matched → continue to legacy path
+
     // ─────────────────────────────────────────────
-    // 2. Deterministic Contact Operations
+    // 2. Deterministic Contact Operations (legacy)
     // ─────────────────────────────────────────────
     $lowerQuery = strtolower(trim($query));
 
