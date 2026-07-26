@@ -1239,8 +1239,13 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
             $addressMismatches[] = 'state_mismatch';
         }
 
-        if ($submittedZip !== '' && $resolvedZip !== '' && $submittedZip !== $resolvedZip) {
-            $addressMismatches[] = 'zip_mismatch';
+        // Treat ZIP difference as a review warning
+        if (
+            $submittedZip !== ''
+            && $resolvedZip !== ''
+            && $submittedZip !== $resolvedZip
+        ) {
+            $addressWarnings[] = 'zip_mismatch';
         }
 
         $isMaterialAddressMismatch = !empty($addressMismatches);
