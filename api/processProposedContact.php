@@ -988,30 +988,35 @@ $normalizeStreet = static function ($value): string {
     $value = preg_replace('/\s+/', ' ', $value);
 
     $replacements = [
-        ' north ' => ' n ',
-        ' south ' => ' s ',
-        ' east ' => ' e ',
-        ' west ' => ' w ',
-        ' street' => ' st',
-        ' avenue' => ' ave',
-        ' boulevard' => ' blvd',
-        ' road' => ' rd',
-        ' drive' => ' dr',
-        ' lane' => ' ln',
-        ' court' => ' ct',
-        ' place' => ' pl',
-        ' parkway' => ' pkwy',
-        ' highway' => ' hwy',
-        ' circle' => ' cir',
-        ' terrace' => ' ter',
-        ' trail' => ' trl',
-        ' way' => ' way'
+        // Compound directionals must be normalized first
+        ' northeast ' => ' ne ',
+        ' northwest ' => ' nw ',
+        ' southeast ' => ' se ',
+        ' southwest ' => ' sw ',
+        ' north '     => ' n ',
+        ' south '     => ' s ',
+        ' east '      => ' e ',
+        ' west '      => ' w ',
+        ' street '    => ' st ',
+        ' avenue '    => ' ave ',
+        ' boulevard ' => ' blvd ',
+        ' road '      => ' rd ',
+        ' drive '     => ' dr ',
+        ' lane '      => ' ln ',
+        ' court '     => ' ct ',
+        ' place '     => ' pl ',
+        ' parkway '   => ' pkwy ',
+        ' highway '   => ' hwy ',
+        ' circle '    => ' cir ',
+        ' terrace '   => ' ter ',
+        ' trail '     => ' trl ',
+        ' way '       => ' way '
     ];
 
     return trim(str_replace(
         array_keys($replacements),
         array_values($replacements),
-        ' ' . $value
+        ' ' . $value . ' '
     ));
 };
 
