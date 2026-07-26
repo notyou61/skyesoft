@@ -2065,12 +2065,27 @@ if (!$locationValidated) {
 #endregion
 
 #region SECTION 12 — Database Resolution
-$databaseResolution = ['entity' => null, 'location' => null, 'contact' => null];
+
+$databaseResolution = [
+    'entity'   => null,
+    'location' => null,
+    'contact'  => null
+];
+
 if ($pdo) {
+
     // Resolve entity
-    $databaseResolution['entity'] = evaluateEntityDuplicate($parsed, $pdo);
+    $databaseResolution['entity'] = evaluateEntityDuplicate(
+        $parsed,
+        $pdo
+    );
+
     // Resolve location
-    $databaseResolution['location'] = evaluateLocationDuplicate($parsed, $pdo);
+    $databaseResolution['location'] = evaluateLocationDuplicate(
+        $parsed,
+        $pdo
+    );
+
     // Resolve existing location by entity and Google Place ID
     $resolvedEntityId = (int)($databaseResolution['entity']['entityId'] ?? 0);
     $resolvedPlaceId = trim((string)($data['location']['locationPlaceId'] ?? ''));
@@ -2082,35 +2097,92 @@ if ($pdo) {
             $databaseResolution['location'] = ['status' => 'exact', 'locationId' => $resolvedLocationId, 'entityId' => $resolvedEntityId, 'matchType' => 'entity_place_id', 'confidence' => 100];
         }
     }
+
     // Resolve contact identity
-    $databaseResolution['contact'] = evaluateDuplicate($parsed, $pdo);
+    $databaseResolution['contact'] = evaluateDuplicate(
+        $parsed,
+        $pdo
+    );
+
     // Preserve authoritative identity determination
-    $contactStatus = $databaseResolution['contact']['status'] ?? 'none';
-    $contactIdentityResult = $databaseResolution['contact']['identityResult'] ?? 'no_match';
-    $isDuplicateContact = !empty($databaseResolution['contact']['isDuplicate']) && $contactIdentityResult === 'confirmed_duplicate';
-    $duplicateReason = $databaseResolution['contact']['duplicateReason'] ?? null;
+    $contactStatus = $databaseResolution['contact']['status']
+        ?? 'none';
+
+    $contactIdentityResult =
+        $databaseResolution['contact']['identityResult']
+        ?? 'no_match';
+
+    $isDuplicateContact =
+        !empty($databaseResolution['contact']['isDuplicate']) &&
+        $contactIdentityResult === 'confirmed_duplicate';
+
+    $duplicateReason =
+        $databaseResolution['contact']['duplicateReason']
+        ?? null;
+
     // Normalize propagated identity fields
-    $databaseResolution['contact']['identityResult'] = $contactIdentityResult;
-    $databaseResolution['contact']['isDuplicate'] = $isDuplicateContact;
-    $databaseResolution['contact']['duplicateReason'] = $duplicateReason;
+    $databaseResolution['contact']['identityResult'] =
+        $contactIdentityResult;
+
+    $databaseResolution['contact']['isDuplicate'] =
+        $isDuplicateContact;
+
+    $databaseResolution['contact']['duplicateReason'] =
+        $duplicateReason;
+
     // Evaluate contact location transfer
     $databaseResolution['contact']['isLocationTransfer'] = false;
+
     // Confirmed duplicates require governance review
     if ($contactStatus === 'exact' && !$isDuplicateContact) {
+
         // Resolve existing contact location
-        $existingContactLocationId = $databaseResolution['contact']['locationId'] ?? $databaseResolution['contact']['location_id'] ?? null;
+        $existingContactLocationId =
+            $databaseResolution['contact']['locationId']
+            ?? $databaseResolution['contact']['location_id']
+            ?? null;
+
         // Resolve proposed location
-        $proposedLocationId = $databaseResolution['location']['locationId'] ?? $databaseResolution['location']['location_id'] ?? null;
-        $locationStatus = $databaseResolution['location']['status'] ?? 'none';
+        $proposedLocationId =
+            $databaseResolution['location']['locationId']
+            ?? $databaseResolution['location']['location_id']
+            ?? null;
+
+        $locationStatus =
+            $databaseResolution['location']['status']
+            ?? 'none';
+
         // Detect legitimate location succession
-        if (!empty($existingContactLocationId) && ($locationStatus === 'none' || $existingContactLocationId != $proposedLocationId)) {
+        if (
+            !empty($existingContactLocationId) &&
+            (
+                $locationStatus === 'none' ||
+                $existingContactLocationId != $proposedLocationId
+            )
+        ) {
             $databaseResolution['contact']['isLocationTransfer'] = true;
         }
     }
-    error_log('[PPC][SECTION-12] Database resolution complete | Contact status: ' . $contactStatus . ' | Identity: ' . $contactIdentityResult . ' | Duplicate: ' . ($isDuplicateContact ? 'YES' : 'NO') . ' | Transfer: ' . ($databaseResolution['contact']['isLocationTransfer'] ? 'YES' : 'NO'));
+
+    error_log(
+        '[PPC][SECTION-12] Database resolution complete' .
+        ' | Contact status: ' . $contactStatus .
+        ' | Identity: ' . $contactIdentityResult .
+        ' | Duplicate: ' . ($isDuplicateContact ? 'YES' : 'NO') .
+        ' | Transfer: ' .
+        (
+            $databaseResolution['contact']['isLocationTransfer']
+                ? 'YES'
+                : 'NO'
+        )
+    );
+
 } else {
-    error_log('[PPC][SECTION-12] No PDO connection — skipping DB resolution');
+    error_log(
+        '[PPC][SECTION-12] No PDO connection — skipping DB resolution'
+    );
 }
+
 #endregion
 
 #region SECTION 13 — PCM Classification & Governance
