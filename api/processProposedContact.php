@@ -1184,8 +1184,54 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
             }
         }
 
-        if ($submittedCity !== '' && $resolvedCity !== '' && $submittedCity !== $resolvedCity) {
-            $addressMismatches[] = 'city_mismatch';
+        // Evaluate city difference after deterministic address components
+        if (
+            $submittedCity !== ''
+            && $resolvedCity !== ''
+            && $submittedCity !== $resolvedCity
+        ) {
+            $streetNumberMatches = (
+                $submittedNumber !== ''
+                && $resolvedNumber !== ''
+                && $submittedNumber === $resolvedNumber
+            );
+
+            $streetRouteMatches = (
+                isset($routesMatchExactly, $routesMatchWithDirectionalVariation)
+                && ($routesMatchExactly || $routesMatchWithDirectionalVariation)
+            );
+
+            $stateMatches = (
+                $submittedState !== ''
+                && $resolvedState !== ''
+                && $submittedState === $resolvedState
+            );
+
+            $zipMatches = (
+                $submittedZip !== ''
+                && $resolvedZip !== ''
+                && $submittedZip === $resolvedZip
+            );
+
+            $hasDeterministicGoogleResult = (
+                !empty($result['place_id'])
+                && isset($result['geometry']['location']['lat'])
+                && isset($result['geometry']['location']['lng'])
+                && empty($result['partial_match'])
+            );
+
+            // Accept postal/geocoding city variation
+            if (
+                $streetNumberMatches
+                && $streetRouteMatches
+                && $stateMatches
+                && $zipMatches
+                && $hasDeterministicGoogleResult
+            ) {
+                $addressWarnings[] = 'city_label_variation';
+            } else {
+                $addressMismatches[] = 'city_mismatch';
+            }
         }
 
         if ($submittedState !== '' && $resolvedState !== '' && $submittedState !== $resolvedState) {
