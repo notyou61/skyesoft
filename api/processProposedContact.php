@@ -985,7 +985,6 @@ error_log('[PPC][SECTION-06A] Canonical $data object created successfully');
 $normalizeStreet = static function ($value): string {
     $value = strtolower(trim((string)$value));
     // Normalize common accented characters
-    $value = strtr($value, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n']);
     $value = preg_replace('/[^a-z0-9 ]+/', ' ', $value);
     $value = preg_replace('/\s+/', ' ', $value);
 
