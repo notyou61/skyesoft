@@ -981,25 +981,62 @@ error_log('[PPC][SECTION-06A] Canonical $data object created successfully');
 
 #region SECTION 08 — Google Location Validation
 
-// =====================================================
-// BUILD SEARCH ADDRESS
-// =====================================================
+// Normalize street names for structural comparison
+$normalizeStreet = static function ($value): string {
+    $value = strtolower(trim((string)$value));
+    $value = preg_replace('/[^a-z0-9 ]+/', ' ', $value);
+    $value = preg_replace('/\s+/', ' ', $value);
 
+    $replacements = [
+        ' north ' => ' n ',
+        ' south ' => ' s ',
+        ' east ' => ' e ',
+        ' west ' => ' w ',
+        ' street' => ' st',
+        ' avenue' => ' ave',
+        ' boulevard' => ' blvd',
+        ' road' => ' rd',
+        ' drive' => ' dr',
+        ' lane' => ' ln',
+        ' court' => ' ct',
+        ' place' => ' pl',
+        ' parkway' => ' pkwy',
+        ' highway' => ' hwy',
+        ' circle' => ' cir',
+        ' terrace' => ' ter',
+        ' trail' => ' trl',
+        ' way' => ' way'
+    ];
+
+    return trim(str_replace(
+        array_keys($replacements),
+        array_values($replacements),
+        ' ' . $value
+    ));
+};
+
+// Remove one leading street directional
+$removeLeadingDirectional = static function ($value): string {
+    return trim((string)preg_replace(
+        '/^(n|s|e|w)\s+/i',
+        '',
+        trim((string)$value)
+    ));
+};
+
+// Build search address
 $searchAddress = trim(
     implode(', ', array_filter([
-        $data['location']['locationAddress'],
-        $data['location']['locationCity'],
-        $data['location']['locationState'],
-        $data['location']['locationZip']
+        $data['location']['locationAddress'] ?? '',
+        $data['location']['locationCity'] ?? '',
+        $data['location']['locationState'] ?? '',
+        $data['location']['locationZip'] ?? ''
     ]))
 );
 
-error_log('[PPC][SECTION-07] Search Address: ' . $searchAddress);
+error_log('[PPC][SECTION-08] Search Address: ' . $searchAddress);
 
-// =====================================================
-// GOOGLE GEOCODE
-// =====================================================
-
+// Execute Google Geocode Lookup
 $googleApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') 
     ?: getenv('GOOGLE_MAPS_BACKEND_API_KEY')
     ?: getenv('GOOGLE_MAPS_API_KEY')
@@ -1015,13 +1052,13 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
         ]);
 
     $geocodeResponse = @file_get_contents($geocodeUrl);
-    $geocodeData     = json_decode($geocodeResponse, true);
+    $geocodeData     = json_decode((string)$geocodeResponse, true);
 
     if (isset($geocodeData['results'][0])) {
 
         $result = $geocodeData['results'][0];
 
-        // Build deterministic Google address component map
+        // Map Google address components deterministically
         $googleComponents = [];
 
         foreach (($result['address_components'] ?? []) as $component) {
@@ -1033,59 +1070,23 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
             }
         }
 
-        // Normalize comparable street text
-        $normalizeStreet = function ($value) {
-            $value = strtolower(trim((string)$value));
-            $value = preg_replace('/[^a-z0-9 ]+/', ' ', $value);
-            $value = preg_replace('/\s+/', ' ', $value);
-
-            $replacements = [
-                ' north ' => ' n ',
-                ' south ' => ' s ',
-                ' east ' => ' e ',
-                ' west ' => ' w ',
-                ' street' => ' st',
-                ' avenue' => ' ave',
-                ' boulevard' => ' blvd',
-                ' road' => ' rd',
-                ' drive' => ' dr',
-                ' lane' => ' ln',
-                ' court' => ' ct',
-                ' place' => ' pl',
-                ' parkway' => ' pkwy',
-                ' highway' => ' hwy',
-                ' circle' => ' cir',
-                ' terrace' => ' ter',
-                ' trail' => ' trl',
-                ' way' => ' way'
-            ];
-
-            return trim(str_replace(
-                array_keys($replacements),
-                array_values($replacements),
-                ' ' . $value
-            ));
-        };
-
-        // Extract submitted street number and route
+        // Parse submitted address components
         $submittedStreet = trim((string)($data['location']['locationAddress'] ?? ''));
         $submittedStreet = preg_split('/[\r\n,]+/', $submittedStreet)[0] ?? '';
         $submittedNumber = '';
-        $submittedRoute = $submittedStreet;
+        $submittedRoute  = $submittedStreet;
 
         if (preg_match('/^\s*([0-9]+[a-zA-Z]?)\s+(.+)$/', $submittedStreet, $streetMatch)) {
             $submittedNumber = strtolower($streetMatch[1]);
-            $submittedRoute = $streetMatch[2];
+            $submittedRoute  = $streetMatch[2];
         }
 
         $resolvedNumber = strtolower((string)(
-            $googleComponents['street_number']['short']
-            ?? ''
+            $googleComponents['street_number']['short'] ?? ''
         ));
 
         $resolvedRoute = (string)(
-            $googleComponents['route']['long']
-            ?? ''
+            $googleComponents['route']['long'] ?? ''
         );
 
         $submittedZip = substr(
@@ -1096,16 +1097,14 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
 
         $resolvedZip = substr(
             preg_replace('/[^0-9]/', '', (string)(
-                $googleComponents['postal_code']['short']
-                ?? ''
+                $googleComponents['postal_code']['short'] ?? ''
             )),
             0,
             5
         );
 
         $submittedCity = strtolower(trim((string)(
-            $data['location']['locationCity']
-            ?? ''
+            $data['location']['locationCity'] ?? ''
         )));
 
         $resolvedCity = strtolower(trim((string)(
@@ -1116,17 +1115,16 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
         )));
 
         $submittedState = strtoupper(trim((string)(
-            $data['location']['locationState']
-            ?? ''
+            $data['location']['locationState'] ?? ''
         )));
 
         $resolvedState = strtoupper(trim((string)(
-            $googleComponents['administrative_area_level_1']['short']
-            ?? ''
+            $googleComponents['administrative_area_level_1']['short'] ?? ''
         )));
 
-        // Determine whether Google resolved the submitted physical address
+        // Analyze and evaluate mismatches
         $addressMismatches = [];
+        $addressWarnings   = [];
 
         if (!empty($result['partial_match'])) {
             $addressMismatches[] = 'partial_match';
@@ -1138,33 +1136,58 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
             $addressMismatches[] = 'street_number_mismatch';
         }
 
+        // Compare normalized street routes
         if ($submittedRoute === '' || $resolvedRoute === '') {
             $addressMismatches[] = 'street_route_missing';
-        } elseif ($normalizeStreet($submittedRoute) !== $normalizeStreet($resolvedRoute)) {
-            $addressMismatches[] = 'street_route_mismatch';
+        } else {
+            $normalizedSubmittedRoute = $normalizeStreet($submittedRoute);
+            $normalizedResolvedRoute  = $normalizeStreet($resolvedRoute);
+
+            $submittedRouteWithoutDirectional = $removeLeadingDirectional(
+                $normalizedSubmittedRoute
+            );
+
+            $resolvedRouteWithoutDirectional = $removeLeadingDirectional(
+                $normalizedResolvedRoute
+            );
+
+            $routesMatchExactly = (
+                $normalizedSubmittedRoute === $normalizedResolvedRoute
+            );
+
+            // Detect whether each route contains a leading directional
+            $submittedHasDirectional = (
+                preg_match('/^(n|s|e|w)\s+/i', $normalizedSubmittedRoute) === 1
+            );
+
+            $resolvedHasDirectional = (
+                preg_match('/^(n|s|e|w)\s+/i', $normalizedResolvedRoute) === 1
+            );
+
+            // Allow a directional omission on only one route
+            $routesMatchWithDirectionalVariation = (
+                $submittedRouteWithoutDirectional === $resolvedRouteWithoutDirectional
+                && $submittedRouteWithoutDirectional !== ''
+                && $resolvedRouteWithoutDirectional !== ''
+                && $submittedHasDirectional !== $resolvedHasDirectional
+            );
+
+            if (!$routesMatchExactly && !$routesMatchWithDirectionalVariation) {
+                $addressMismatches[] = 'street_route_mismatch';
+            } elseif ($routesMatchWithDirectionalVariation) {
+                $addressWarnings[] = 'street_directional_normalized';
+            }
         }
 
-        if (
-            $submittedCity !== '' &&
-            $resolvedCity !== '' &&
-            $submittedCity !== $resolvedCity
-        ) {
+        if ($submittedCity !== '' && $resolvedCity !== '' && $submittedCity !== $resolvedCity) {
             $addressMismatches[] = 'city_mismatch';
         }
 
-        if (
-            $submittedState !== '' &&
-            $resolvedState !== '' &&
-            $submittedState !== $resolvedState
-        ) {
+        if ($submittedState !== '' && $resolvedState !== '' && $submittedState !== $resolvedState) {
             $addressMismatches[] = 'state_mismatch';
         }
 
-        if (
-            $submittedZip !== '' &&
-            $resolvedZip !== '' &&
-            $submittedZip !== $resolvedZip
-        ) {
+        if ($submittedZip !== '' && $resolvedZip !== '' && $submittedZip !== $resolvedZip) {
             $addressMismatches[] = 'zip_mismatch';
         }
 
@@ -1174,19 +1197,18 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
         $data['location']['locationLatitude']  = $result['geometry']['location']['lat'] ?? null;
         $data['location']['locationLongitude'] = $result['geometry']['location']['lng'] ?? null;
         $data['location']['locationValidated'] = !$isMaterialAddressMismatch;
-        $data['location']['locationResolvedAddress'] =
-            $result['formatted_address'] ?? '';
+        $data['location']['locationResolvedAddress'] = $result['formatted_address'] ?? '';
         $data['location']['locationMatchQuality'] = [
             'partialMatch' => !empty($result['partial_match']),
             'locationType' => $result['geometry']['location_type'] ?? null,
-            'mismatches'   => $addressMismatches
+            'mismatches'   => $addressMismatches,
+            'warnings'     => $addressWarnings
         ];
 
-        // Extract county directly from Google components as a reliable pre-Census baseline
+        // Extract county baseline directly from Google components
         if (!empty($result['address_components'])) {
             foreach ($result['address_components'] as $component) {
-                if (in_array('administrative_area_level_2', $component['types'])) {
-                    // Strips out " County" suffix to store clean "Maricopa"
+                if (in_array('administrative_area_level_2', $component['types'], true)) {
                     $data['location']['locationCounty'] = str_replace(' County', '', $component['long_name']);
                     break;
                 }
@@ -1199,6 +1221,8 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
             ' | Resolved: ' . ($data['location']['locationResolvedAddress'] ?: 'None') .
             ' | Mismatches: ' .
             (empty($addressMismatches) ? 'None' : implode(', ', $addressMismatches)) .
+            ' | Warnings: ' .
+            (empty($addressWarnings) ? 'None' : implode(', ', $addressWarnings)) .
             ' | County: ' . ($data['location']['locationCounty'] ?? 'None')
         );
 
@@ -1212,21 +1236,19 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
     $data['location']['locationValidated'] = false;
 }
 
-// =====================================================
-// 📊 ACTION LOGGING (After Google Enrichment)
-// =====================================================
+// Action Logging (Post-Geocoding)
 error_log('[PPC][ACTION-LOG] Starting action insert (post-enrichment)');
 
 $actionId = null;
 
 try {
     $actionPayload = [
-        'input'              => $rawInputOriginal,
-        'rawInput'           => $rawInput,
-        'activitySessionId'  => $context['activitySessionId'],
-        'mode'               => $inputData['mode'] ?? 'propose',
-        'requestId'          => $context['requestId'],
-        'source'             => 'processProposedContact'
+        'input'             => $rawInputOriginal,
+        'rawInput'          => $rawInput,
+        'activitySessionId' => $context['activitySessionId'],
+        'mode'              => $inputData['mode'] ?? 'propose',
+        'requestId'         => $context['requestId'],
+        'source'            => 'processProposedContact'
     ];
 
     $actionId = insertActionPrompt([
@@ -1238,20 +1260,18 @@ try {
         'actionTypeId'      => $inputData['actionTypeId'] ?? 13,
         'origin'            => ACTION_ORIGIN_USER,
         'activitySessionId' => $context['activitySessionId'],
-        
         'latitude'          => $browserLatitude,
         'longitude'         => $browserLongitude,
-
         'actionPayloadData' => $actionPayload,
         'actionResponseData'=> null
     ], $pdo);
 
-    error_log("[PPC][ACTION-LOG] ✅ Success - ActionID: " . ($actionId ?? 'NULL'));
+    error_log('[PPC][ACTION-LOG] ✅ Success - ActionID: ' . ($actionId ?? 'NULL'));
 
     $_SESSION['lastContactProposalActionId'] = $actionId;
 
 } catch (Throwable $e) {
-    error_log("[PPC][ACTION-LOG] ❌ Failed: " . $e->getMessage());
+    error_log('[PPC][ACTION-LOG] ❌ Failed: ' . $e->getMessage());
 }
 
 #endregion
