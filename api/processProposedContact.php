@@ -2086,14 +2086,45 @@ if ($pdo) {
     );
 
     // Resolve existing location by entity and Google Place ID
-    $resolvedEntityId = (int)($databaseResolution['entity']['entityId'] ?? 0);
-    $resolvedPlaceId = trim((string)($data['location']['locationPlaceId'] ?? ''));
+    $resolvedEntityId = (int)(
+        $databaseResolution['entity']['entityId']
+        ?? 0
+    );
+
+    $resolvedPlaceId = trim((string)(
+        $data['location']['locationPlaceId']
+        ?? ''
+    ));
+
     if ($resolvedEntityId > 0 && $resolvedPlaceId !== '') {
-        $stmt = $pdo->prepare("SELECT locationId FROM tblLocations WHERE entityId = :entityId AND locationPlaceId = :locationPlaceId LIMIT 1");
-        $stmt->execute(['entityId' => $resolvedEntityId, 'locationPlaceId' => $resolvedPlaceId]);
-        $resolvedLocationId = (int)($stmt->fetchColumn() ?: 0);
+
+        // Match the database uniqueness identity
+        $stmt = $pdo->prepare("
+            SELECT locationId
+            FROM tblLocations
+            WHERE locationEntityId = :locationEntityId
+              AND locationPlaceId = :locationPlaceId
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'locationEntityId' => $resolvedEntityId,
+            'locationPlaceId'  => $resolvedPlaceId
+        ]);
+
+        $resolvedLocationId = (int)(
+            $stmt->fetchColumn()
+            ?: 0
+        );
+
         if ($resolvedLocationId > 0) {
-            $databaseResolution['location'] = ['status' => 'exact', 'locationId' => $resolvedLocationId, 'entityId' => $resolvedEntityId, 'matchType' => 'entity_place_id', 'confidence' => 100];
+            $databaseResolution['location'] = [
+                'status'     => 'exact',
+                'locationId' => $resolvedLocationId,
+                'entityId'   => $resolvedEntityId,
+                'matchType'  => 'entity_place_id',
+                'confidence' => 100
+            ];
         }
     }
 
@@ -2112,8 +2143,8 @@ if ($pdo) {
         ?? 'no_match';
 
     $isDuplicateContact =
-        !empty($databaseResolution['contact']['isDuplicate']) &&
-        $contactIdentityResult === 'confirmed_duplicate';
+        !empty($databaseResolution['contact']['isDuplicate'])
+        && $contactIdentityResult === 'confirmed_duplicate';
 
     $duplicateReason =
         $databaseResolution['contact']['duplicateReason']
@@ -2129,10 +2160,10 @@ if ($pdo) {
     $databaseResolution['contact']['duplicateReason'] =
         $duplicateReason;
 
-    // Evaluate contact location transfer
+    // Initialize contact location transfer
     $databaseResolution['contact']['isLocationTransfer'] = false;
 
-    // Confirmed duplicates require governance review
+    // Evaluate a matched contact that is not a confirmed duplicate
     if ($contactStatus === 'exact' && !$isDuplicateContact) {
 
         // Resolve existing contact location
@@ -2153,10 +2184,10 @@ if ($pdo) {
 
         // Detect legitimate location succession
         if (
-            !empty($existingContactLocationId) &&
-            (
-                $locationStatus === 'none' ||
-                $existingContactLocationId != $proposedLocationId
+            !empty($existingContactLocationId)
+            && (
+                $locationStatus === 'none'
+                || (int)$existingContactLocationId !== (int)$proposedLocationId
             )
         ) {
             $databaseResolution['contact']['isLocationTransfer'] = true;
@@ -2164,12 +2195,12 @@ if ($pdo) {
     }
 
     error_log(
-        '[PPC][SECTION-12] Database resolution complete' .
-        ' | Contact status: ' . $contactStatus .
-        ' | Identity: ' . $contactIdentityResult .
-        ' | Duplicate: ' . ($isDuplicateContact ? 'YES' : 'NO') .
-        ' | Transfer: ' .
-        (
+        '[PPC][SECTION-12] Database resolution complete'
+        . ' | Contact status: ' . $contactStatus
+        . ' | Identity: ' . $contactIdentityResult
+        . ' | Duplicate: ' . ($isDuplicateContact ? 'YES' : 'NO')
+        . ' | Transfer: '
+        . (
             $databaseResolution['contact']['isLocationTransfer']
                 ? 'YES'
                 : 'NO'
