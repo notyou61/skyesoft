@@ -1030,6 +1030,17 @@ $removeLeadingDirectional = static function ($value): string {
     ));
 };
 
+// Remove both leading and trailing street directionals
+// Handles: N, S, E, W, NE, NW, SE, SW
+$removeDirectional = static function (string $route): string {
+    // Leading
+    $route = preg_replace('/^(n|s|e|w|ne|nw|se|sw)\s+/i', '', $route);
+    // Trailing
+    $route = preg_replace('/\s+(n|s|e|w|ne|nw|se|sw)$/i', '', $route);
+    return trim($route);
+};
+
+
 // Build search address
 $searchAddress = trim(
     implode(', ', array_filter([
@@ -1142,40 +1153,27 @@ if (!empty($searchAddress) && !empty($googleApiKey)) {
             $addressMismatches[] = 'street_number_mismatch';
         }
 
-        // Compare normalized street routes
+        // Compare normalized street routes (softened directional handling)
         if ($submittedRoute === '' || $resolvedRoute === '') {
             $addressMismatches[] = 'street_route_missing';
         } else {
             $normalizedSubmittedRoute = $normalizeStreet($submittedRoute);
             $normalizedResolvedRoute  = $normalizeStreet($resolvedRoute);
 
-            $submittedRouteWithoutDirectional = $removeLeadingDirectional(
-                $normalizedSubmittedRoute
-            );
-
-            $resolvedRouteWithoutDirectional = $removeLeadingDirectional(
-                $normalizedResolvedRoute
-            );
+            // Remove both leading and trailing directionals
+            $submittedRouteClean = $removeDirectional($normalizedSubmittedRoute);
+            $resolvedRouteClean  = $removeDirectional($normalizedResolvedRoute);
 
             $routesMatchExactly = (
                 $normalizedSubmittedRoute === $normalizedResolvedRoute
             );
 
-            // Detect whether each route contains a leading directional
-            $submittedHasDirectional = (
-                preg_match('/^(n|s|e|w)\s+/i', $normalizedSubmittedRoute) === 1
-            );
-
-            $resolvedHasDirectional = (
-                preg_match('/^(n|s|e|w)\s+/i', $normalizedResolvedRoute) === 1
-            );
-
-            // Allow a directional omission on only one route
+            // Allow directional variation (leading or trailing)
             $routesMatchWithDirectionalVariation = (
-                $submittedRouteWithoutDirectional === $resolvedRouteWithoutDirectional
-                && $submittedRouteWithoutDirectional !== ''
-                && $resolvedRouteWithoutDirectional !== ''
-                && $submittedHasDirectional !== $resolvedHasDirectional
+                $submittedRouteClean === $resolvedRouteClean
+                && $submittedRouteClean !== ''
+                && $resolvedRouteClean !== ''
+                && $normalizedSubmittedRoute !== $normalizedResolvedRoute
             );
 
             if (!$routesMatchExactly && !$routesMatchWithDirectionalVariation) {
