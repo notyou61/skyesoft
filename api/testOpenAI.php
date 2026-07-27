@@ -24,6 +24,15 @@ error_log('[env] OPENAI=' . ($apiKey ? 'OK' : 'NULL'));
 error_log('[env] DB_USER=' . var_export(skyesoftGetEnv("DB_USER"), true));
 error_log('[env] DB_PASS=' . var_export(skyesoftGetEnv("DB_PASS"), true));
 
+// Google Custom Search keys
+error_log('[CSE] GOOGLE_CSE_API_KEY = ' . var_export(skyesoftGetEnv('GOOGLE_CSE_API_KEY'), true));
+error_log('[CSE] GOOGLE_CSE_CX      = ' . var_export(skyesoftGetEnv('GOOGLE_CSE_CX'), true));
+
+// Common alternative names (just in case)
+error_log('[CSE] GOOGLE_API_KEY     = ' . var_export(skyesoftGetEnv('GOOGLE_API_KEY'), true));
+error_log('[CSE] GOOGLE_SEARCH_KEY   = ' . var_export(skyesoftGetEnv('GOOGLE_SEARCH_KEY'), true));
+error_log('[CSE] GOOGLE_CX           = ' . var_export(skyesoftGetEnv('GOOGLE_CX'), true));
+
 // #endregion
 
 
