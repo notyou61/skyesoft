@@ -1984,7 +1984,7 @@ if ($type === 'classifyProposalIntent') {
         exit;
     }
 
-    $systemPrompt = <<<PROMPT
+$systemPrompt = <<<PROMPT
 You are a precise classifier for Skyesoft. Your only job is to decide whether the user's multi-line input is a Contact Proposal, a Location Proposal, or neither.
 
 Return ONLY valid JSON with this exact shape:
@@ -1997,27 +1997,27 @@ Return ONLY valid JSON with this exact shape:
 
 Classification rules:
 
-1. contact_proposal
-   - Has a person's name (First Last)
-   - Usually also has a job title, phone number, and/or email
-   - May include a company name and address, but the primary signal is a person + contact details
+1. contact_proposal (most common)
+   - Contains a person's name (First Last or FIRST LAST)
+   - Usually includes a job title, phone number, and/or email
+   - May also include a company name and street address
+   - If a clear person + contact method (phone or email) is present, prefer contact_proposal even if an address is also present
 
 2. location_proposal
-   - Focused on a physical place / business location
-   - Typically starts with a company or location name
-   - Contains a street address + city, state, ZIP
-   - Does NOT have a clear personal name + contact details as the primary focus
+   - Focused primarily on a physical place or business location
+   - Does NOT contain a clear personal name + phone/email as the main subject
+   - Typically just entity name + address block
 
 3. none
    - Single line
-   - Conversational questions
-   - Ambiguous or incomplete information
-   - Anything that is not a clear structured proposal
+   - Pure conversational questions
+   - Clearly incomplete or ambiguous input with no person and no usable address
 
 Important:
-- Prefer "none" when in doubt.
-- displayName should be the most useful short label for the UI (person name or entity/location name).
-- Never invent data. Only use what is present in the input.
+- Prefer contact_proposal when a person name + phone or email is present.
+- Prefer location_proposal only when there is no clear person + contact method.
+- displayName should be the person's full name for contact_proposal, or the entity/location name for location_proposal.
+- Never invent data.
 PROMPT;
 
     $fullPrompt = $systemPrompt . "\n\nUser Input:\n" . $userQuery;

@@ -1453,7 +1453,7 @@ window.SkyIndex = {
         if (!text || !text.trim()) return;
 
         const activitySessionId = this.getActivitySessionId();
-        console.log('[COMMAND]', text, '| session:', activitySessionId);
+        //console.log('[COMMAND]', text, '| session:', activitySessionId);
 
         const normalized = text.trim().toLowerCase();
         const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -1507,7 +1507,7 @@ window.SkyIndex = {
         if (lines.length >= 2) {
             const proposalIntent = await this.classifyProposalIntent(text, activitySessionId);
 
-            console.log('%c[PROPOSAL CLASSIFICATION RESULT]', 'color:red;font-weight:bold', proposalIntent);
+            //console.log('%c[PROPOSAL CLASSIFICATION RESULT]', 'color:red;font-weight:bold', proposalIntent);
 
             if (proposalIntent?.type === 'contact_proposal') {
                 const displayName = proposalIntent.displayName || 'New Contact';
