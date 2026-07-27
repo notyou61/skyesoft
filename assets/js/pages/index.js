@@ -657,31 +657,89 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🧩 UI Action Registry — Command Surface Action Router
+    // #region 🧩 UI Action Registry + Aliases + Command Registries (Authoritative)
+
+    uiAliases: {
+        cls: "clear_screen",
+        clear: "clear_screen",
+        reset: "clear_screen",
+
+        logout: "logout",
+        exit: "logout",
+
+        "?": "help",
+        help: "help"
+    },
+
+    commandRegistry: {
+        street_view: {
+            display: "Google Street View",
+            icon: "📸",
+            processing: "Loading Street View..."
+        },
+        location_review: {
+            display: "Location Review",
+            icon: "📍",
+            processing: "Resolving Location..."
+        },
+        property_review: {
+            display: "Property Review",
+            icon: "🏠",
+            processing: "Resolving Property..."
+        },
+        parcel_review: {
+            display: "Parcel Review",
+            icon: "📐",
+            processing: "Resolving Parcel..."
+        },
+        contact_proposal: {
+            display: "Proposed Contact",
+            icon: "👤",
+            processing: "Analyzing Contact..."
+        },
+        location_proposal: {
+            display: "Location Proposal",
+            icon: "📍",
+            processing: "Processing Location..."
+        }
+    },
+
+    workflowRegistry: {
+        "street view": "street_view",
+        "location review": "location_review",
+        "property review": "location_review",
+        "parcel review": "location_review"
+    },
+
+    // #endregion
+
     uiActionRegistry: {
         // 🧹 Clear Session Surface
         clear_screen() {
             this.clearSessionSurface();
         },
+
         // 🔓 Logout (Manual User Logout)
         logout() {
-
             // Inform the command thread
             SkyIndex.appendSystemLine('Logging out…');
 
             // Delegate to canonical logout handler
             SkyIndex.logout('command');
-
         },
+
+        // ❓ Help
+        help(topic = "") {
+            this.showHelp(topic);
+        },
+
         // #region 🛡 Governance Actions — Codex Compliance Operations
-        
+
         // 🌳 Accept Merkle Snapshot
         accept_merkle: async () => {
-
             SkyIndex.appendSystemLine('Processing Merkle acceptance...');
 
             try {
-
                 const res = await fetch('/skyesoft/scripts/merkleBuilder.php?mode=accept');
 
                 if (!res.ok) {
@@ -714,10 +772,8 @@ window.SkyIndex = {
                 SkyIndex.appendSystemLine(`🛠 Violations Resolved: ${fixed}`);
 
             } catch (err) {
-
                 console.error(err);
                 SkyIndex.appendSystemLine(`❌ Merkle acceptance failed: ${err.message}`);
-
             }
         },
 
@@ -728,11 +784,9 @@ window.SkyIndex = {
         // 📦 Reconcile Repository Inventory
         // Rebuilds the repository inventory index and resolves discrepancies.
         reconcile_inventory: async () => {
-
             SkyIndex.appendSystemLine('Reconciling repository inventory...');
 
             try {
-
                 const res = await fetch('/skyesoft/scripts/repositoryInventoryBuilder.php?mode=reconcile');
 
                 if (!res.ok) {
@@ -761,10 +815,8 @@ window.SkyIndex = {
                 SkyIndex.appendSystemLine(`🛠 Violations Resolved: ${fixed}`);
 
             } catch (err) {
-
                 console.error(err);
                 SkyIndex.appendSystemLine(`❌ Inventory reconciliation failed: ${err.message}`);
-
             }
         },
 
@@ -772,21 +824,71 @@ window.SkyIndex = {
 
         // 🔎 Review Unexpected Files
         review_unexpected: async () => {
-
             SkyIndex.appendSystemLine('Reviewing unexpected files…');
 
             try {
-
                 // Future: repository anomaly inspection
-
             } catch (err) {
-
                 console.error(err);
                 SkyIndex.appendSystemLine(`❌ Unexpected review failed: ${err.message}`);
-
             }
         }
 
+        // Future UI commands only need to be added here
+    },
+    // #endregion
+
+    // #region 🗂 Command & Workflow Registries
+    commandRegistry: {
+        street_view: {
+            display: "Google Street View",
+            icon: "📸",
+            processing: "Loading Street View..."
+        },
+        location_review: {
+            display: "Location Review",
+            icon: "📍",
+            processing: "Resolving Location..."
+        },
+        property_review: {
+            display: "Property Review",
+            icon: "🏠",
+            processing: "Resolving Property..."
+        },
+        parcel_review: {
+            display: "Parcel Review",
+            icon: "📐",
+            processing: "Resolving Parcel..."
+        },
+        contact_proposal: {
+            display: "Proposed Contact",
+            icon: "👤",
+            processing: "Analyzing Contact..."
+        },
+        location_proposal: {
+            display: "Location Proposal",
+            icon: "📍",
+            processing: "Processing Location..."
+        }
+    },
+
+    workflowRegistry: {
+        "street view": "street_view",
+        "location review": "location_review",
+        "property review": "location_review",   // maps to same handler for now
+        "parcel review": "location_review"
+    },
+    // #endregion
+
+    // #region ❓ Help System
+    showHelp(topic = "") {
+        // TODO: build the real modal help page
+        console.log('[Help] topic requested:', topic || '(general)');
+        this.appendSystemLine(
+            topic
+                ? `Help topic: ${topic}`
+                : 'Help system coming soon. Type "help contacts", "help search", etc.'
+        );
     },
     // #endregion
 
@@ -827,26 +929,6 @@ window.SkyIndex = {
             return;
         }
 
-        // #region 🧭 UI Action Registry (authoritative)
-        this.uiActionRegistry = {
-            // Clear Screen
-            clear_screen: () => {
-                this.clearSessionSurface();
-            },
-
-            // Logout
-            logout: () => {
-
-                console.log('[UI] Logout handler fired');
-
-                // Optional UX message
-                SkyIndex.appendSystemLine('🔒 Ending session…');
-
-                // ✅ Delegate to canonical system
-                SkyIndex.logout('command');
-
-            }
-        };
         // #endregion
 
         // Load registries in order of preference
@@ -1132,151 +1214,188 @@ window.SkyIndex = {
 
     // #endregion
 
-    // #region 🧠 Command Router
-    async handleCommand(text) {
-        if (!text || !text.trim()) return;
+    // #region 📇 Proposal Intent Classification
+    async classifyProposalIntent(text, activitySessionId) {
+        try {
+            const res = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'classifyProposalIntent',
+                    userQuery: text,
+                    sessionId: activitySessionId
+                })
+            });
 
-        const activitySessionId = this.getActivitySessionId();
-        console.log('[COMMAND]', text, '| session:', activitySessionId);
-
-        const normalized = text.toString().trim().toLowerCase();
-
-        // Parse lines once (shared by all routers)
-        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-        const firstLine = lines[0]?.toLowerCase() || '';
-
-        // --------------------------------------------------
-        // 🎛 Fast UI Actions Interceptor
-        // --------------------------------------------------
-        let canonicalAction = null;
-        if (['cls', 'clear', 'reset'].includes(normalized)) {
-            canonicalAction = 'clear_screen';
-        } else if (['logout', 'exit'].includes(normalized)) {
-            canonicalAction = 'logout';
-        }
-        if (canonicalAction) {
-            const handler = this.uiActionRegistry?.[canonicalAction];
-            if (typeof handler === 'function') {
-                await handler.call(this);
-                return;
+            if (!res.ok) {
+                console.error('[classifyProposalIntent] HTTP error', res.status);
+                return { type: 'none' };
             }
+
+            const data = await res.json();
+            return data;   // { type, displayName?, confidence? }
+        } catch (err) {
+            console.error('[classifyProposalIntent] Error', err);
+            return { type: 'none' };
         }
+    },
+    // #endregion
 
-        // --------------------------------------------------
-        // 📸 Explicit Workflows (Higher Priority)
-        // --------------------------------------------------
-        const isExplicitCommand = 
-            firstLine.startsWith('street view') ||
-            firstLine.startsWith('property review') ||
-            firstLine.startsWith('parcel review') ||
-            firstLine.startsWith('recorder') ||
-            firstLine.startsWith('treasurer') ||
-            firstLine.startsWith('tax');
+    // #region 📸 Workflow Dispatcher
+    async dispatchWorkflow(workflow, text, activitySessionId) {
 
-        if (isExplicitCommand) {
-            const streetViewIntent = await this.isStreetViewIntent(text);
-            if (streetViewIntent) {
+        const meta = this.commandRegistry?.[workflow] || {};
+
+        switch (workflow) {
+
+            // --------------------------------------------------
+            // Street View — full original behavior preserved
+            // --------------------------------------------------
+            case 'street_view': {
                 const userLineNode = this.appendSystemLine(text, 'user');
                 this.suppressRawIntentEcho();
                 this.renderStreetViewProcessingState();
 
                 (async () => {
                     let cleanAddress = text.trim();
+
                     try {
                         const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
                             method: 'POST',
                             credentials: 'include',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ type: "parseIntent", userQuery: text })
+                            body: JSON.stringify({
+                                type: "parseIntent",
+                                userQuery: text
+                            })
                         });
 
                         if (parseRes.ok) {
                             const parsed = await parseRes.json();
                             if (parsed.cleanAddress) cleanAddress = parsed.cleanAddress;
                         }
-                    } catch (e) { console.error('[Intent Parse Error]', e); }
+                    } catch (e) {
+                        console.error('[Intent Parse Error]', e);
+                    }
 
+                    // Rename using registry display name
                     if (userLineNode) {
                         const textSpan = userLineNode.querySelector('.commandText');
-                        if (textSpan) textSpan.textContent = `Google Street View - ${cleanAddress}`;
+                        if (textSpan) {
+                            textSpan.textContent = `${meta.display || 'Google Street View'} - ${cleanAddress}`;
+                        }
                     }
 
                     await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
                 })();
+                break;
+            }
 
+            // --------------------------------------------------
+            // Location / Property / Parcel Review
+            // --------------------------------------------------
+            case 'location_review':
+            case 'property_review':
+            case 'parcel_review':
+                this.appendSystemLine(text, 'user');
+                this.appendSystemLine(`${meta.display || 'Review'} workflow coming soon.`);
+                break;
+
+            default:
+                this.appendSystemLine(text, 'user');
+                await this.executeAICommand(text, activitySessionId);
+        }
+    },
+    // #endregion
+
+    // #region 🧠 Command Router
+    async handleCommand(text) {
+
+        if (!text || !text.trim()) return;
+
+        const activitySessionId = this.getActivitySessionId();
+        console.log('[COMMAND]', text, '| session:', activitySessionId);
+
+        const normalized = text.trim().toLowerCase();
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        const firstLine = lines[0]?.toLowerCase() || '';
+
+        // ==================================================
+        // 🎛 UI ROUTER
+        // ==================================================
+
+        const canonicalAction = this.uiAliases?.[normalized];
+
+        if (canonicalAction) {
+            const handler = this.uiActionRegistry?.[canonicalAction];
+            if (typeof handler === 'function') {
+                await handler.call(this, "");
                 return;
             }
         }
 
-        // --------------------------------------------------
-        // 📇 Unified Proposal Router (PC-1 through PC-5) — Structural Validation
-        // --------------------------------------------------
+        const [command, ...args] = normalized.split(/\s+/);
+
+        if (this.uiActionRegistry?.[command]) {
+            const handler = this.uiActionRegistry[command];
+            if (typeof handler === 'function') {
+                await handler.call(this, args.join(' ').trim());
+                return;
+            }
+        }
+
+        // ==================================================
+        // 📸 WORKFLOW ROUTER
+        // ==================================================
+
+        const workflow = this.workflowRegistry?.[firstLine];
+
+        if (workflow) {
+            await this.dispatchWorkflow(workflow, text, activitySessionId);
+            return;
+        }
+
+        // ==================================================
+        // 📇 PROPOSAL ROUTER (only structured multi-line)
+        // ==================================================
+
         if (lines.length >= 2) {
-            const hasEmail         = /@\S+/.test(text);
-            const hasStrictEmail   = /@\S+\.\S{2,}/.test(text);
-            const hasPhone         = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
-            const hasName          = /[A-Z][a-z]+ [A-Z][a-z]+/.test(text);
-            const hasZip           = /\b\d{5}(-\d{4})?\b/.test(text);
-            const hasStreetAddress = /\b\d{1,6}\s+\S+/.test(text);
+            const proposalIntent = await this.classifyProposalIntent(text, activitySessionId);
 
-            // Look for professional title keywords
-            const structuralLines = lines.map(l => l.trim()).filter(Boolean);
-            const hasJobTitleKeywords = structuralLines.some(line => 
-                /\b(Manager|Director|VP|CEO|COO|President|Officer|Supervisor|Coordinator|Lead|Executive|Secretary|Admin|Staff|Owner|Founder)\b/i.test(line)
-            );
-
-            // Contextual Rule: If the very first line starts with a street address pattern, 
-            // it's highly likely a standalone physical property proposal.
-            const firstLineIsAddress = hasStreetAddress && /\b\d{1,6}\s+\S+/.test(structuralLines[0] || '');
-
-            // Classify as a Contact if it contains contact credentials, explicit title markers,
-            // or if a person's name is listed on top without an immediate street address prefix.
-            const looksLikeContactProposal = (hasStrictEmail || hasPhone) || 
-                                            hasJobTitleKeywords || 
-                                            (hasName && !firstLineIsAddress);
-
-            // A Location Proposal should strictly look like a property description or a standalone address matrix
-            const looksLikeLocationProposal = !looksLikeContactProposal && hasStreetAddress && hasZip;
-
-            if (looksLikeContactProposal) {
-                console.log('[Proposal Router] Routing to CONTACT workflow');
-                const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
-                const normalizedName = nameMatch ? nameMatch[1] : 'New Contact';
-                this.appendSystemLine(`Proposed Contact - ${normalizedName}`, 'user');
+            if (proposalIntent?.type === 'contact_proposal') {
+                const displayName = proposalIntent.displayName || 'New Contact';
+                const meta = this.commandRegistry?.contact_proposal || {};
+                this.appendSystemLine(`${meta.display || 'Proposed Contact'} - ${displayName}`, 'user');
                 this.suppressRawContactEcho();
                 this.renderContactProcessingState();
-                await this.executeContactProposalWorkflow(text, activitySessionId);
+
+                await this.executeContactProposalWorkflow(text, activitySessionId, proposalIntent);
                 return;
             }
 
-            if (looksLikeLocationProposal) {
-                console.log('[Proposal Router] Routing to LOCATION workflow');
-                let calibratedLines = [...lines];
-                if (calibratedLines.length === 3) {
-                    const lastLine = calibratedLines[2];
-                    const zipMatch = lastLine.match(/(.*?\b(?:Rd|St|Ave|Blvd|Dr|Lane|Way|Plaza|Pkwy|Rd\.)?)\s*([A-Za-z\s]+,\s*[A-Z]{2}\s+\d{5}.*)/i);
-                    if (zipMatch) {
-                        calibratedLines[2] = zipMatch[1].trim();
-                        calibratedLines.push(zipMatch[2].trim());
-                    }
-                }
-                const entityName = calibratedLines[0] || 'Proposed Location';
-                this.appendSystemLine(`Processing Location Proposal — ${entityName}`, 'user');
+            if (proposalIntent?.type === 'location_proposal') {
+                const displayName = proposalIntent.displayName || 'Proposed Location';
+                const meta = this.commandRegistry?.location_proposal || {};
+                this.appendSystemLine(`${meta.display || 'Processing Location Proposal'} — ${displayName}`, 'user');
                 this.suppressRawContactEcho();
+
                 if (typeof this.renderLocationProcessingState === 'function') {
                     this.renderLocationProcessingState();
                 } else {
                     this.renderContactProcessingState();
                 }
-                await this.executeLocationProposalWorkflow(text, activitySessionId, calibratedLines);
+
+                await this.executeLocationProposalWorkflow(text, activitySessionId, proposalIntent);
                 return;
             }
         }
 
-        // --------------------------------------------------
-        // AI Fallback
-        // --------------------------------------------------
-        this.appendSystemLine(text, 'user');   
+        // ==================================================
+        // 🤖 AI CONVERSATION
+        // ==================================================
+
+        this.appendSystemLine(text, 'user');
         await this.executeAICommand(text, activitySessionId);
     },
     // #endregion
