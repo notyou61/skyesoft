@@ -930,8 +930,6 @@ window.SkyIndex = {
             return;
         }
 
-        // #endregion
-
         // Load registries in order of preference
         await this.loadRuntimeDomainRegistry();
         await this.loadIconMap();
