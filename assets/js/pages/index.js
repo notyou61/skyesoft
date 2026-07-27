@@ -1498,6 +1498,12 @@ window.SkyIndex = {
         // 📇 PROPOSAL ROUTER (only structured multi-line)
         // ==================================================
 
+        console.log('%c[PROPOSAL ROUTER]', 'color:orange;font-weight:bold', {
+            linesLength: lines.length,
+            firstLine: firstLine,
+            textPreview: text.substring(0, 80)
+        });
+
         if (lines.length >= 2) {
             const proposalIntent = await this.classifyProposalIntent(text, activitySessionId);
 
