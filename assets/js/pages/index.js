@@ -713,6 +713,7 @@ window.SkyIndex = {
 
     // #endregion
 
+    // #region 🧩 UI Action Registry (Authoritative)
     uiActionRegistry: {
         // 🧹 Clear Session Surface
         clear_screen() {
