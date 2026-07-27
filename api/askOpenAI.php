@@ -1664,8 +1664,17 @@ function resolveSinglePhrase(?PDO $db, string $lookupPhrase): ?array
  */
 function googleCustomSearch(string $query, int $num = 5): array
 {
-    $apiKey = skyesoftGetEnv('GOOGLE_CSE_API_KEY') ?: getenv('GOOGLE_CSE_API_KEY');
-    $cx     = skyesoftGetEnv('GOOGLE_CSE_CX')      ?: getenv('GOOGLE_CSE_CX');
+$apiKey = skyesoftGetEnv('GOOGLE_CSE_API_KEY')
+       ?: skyesoftGetEnv('GOOGLE_SEARCH_KEY')
+       ?: getenv('GOOGLE_CSE_API_KEY')
+       ?: getenv('GOOGLE_SEARCH_KEY');
+
+$cx     = skyesoftGetEnv('GOOGLE_CSE_CX')
+       ?: skyesoftGetEnv('GOOGLE_SEARCH_CX')
+       ?: skyesoftGetEnv('GOOGLE_CX')
+       ?: getenv('GOOGLE_CSE_CX')
+       ?: getenv('GOOGLE_SEARCH_CX')
+       ?: getenv('GOOGLE_CX');
 
     if (!$apiKey || !$cx || trim($query) === '') {
         error_log('[GoogleCSE] Missing API key, CX, or empty query');
