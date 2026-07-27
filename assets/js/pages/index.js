@@ -1539,7 +1539,7 @@ window.SkyIndex = {
     // #endregion
 
     // #region 📇 Contact Proposal Workflow
-    async executeContactProposalWorkflow(input, activitySessionId) {
+    async executeContactProposalWorkflow(input, activitySessionId, proposalIntent = null) {
         try {
             console.log('🚀 Executing dedicated contact proposal workflow');
 
