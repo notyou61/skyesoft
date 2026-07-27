@@ -1507,6 +1507,8 @@ window.SkyIndex = {
         if (lines.length >= 2) {
             const proposalIntent = await this.classifyProposalIntent(text, activitySessionId);
 
+            console.log('%c[PROPOSAL CLASSIFICATION RESULT]', 'color:red;font-weight:bold', proposalIntent);
+
             if (proposalIntent?.type === 'contact_proposal') {
                 const displayName = proposalIntent.displayName || 'New Contact';
                 const meta = this.commandRegistry?.contact_proposal || {};
