@@ -1743,6 +1743,393 @@
                     "Mutating repository inventory files"
                 ]
             },
+            "interactionModelStandard": {
+                "title": {
+                    "icon": 12,
+                    "text": "Skyesoft Interaction Model Standard (SIM-1)"
+                },
+                "tier": 2,
+                "type": "Architectural Standard",
+                "hierarchyOrder": 5,
+                "version": "1.0.0",
+                "preamble": {
+                    "icon": 7,
+                    "text": "This Standard defines the canonical interaction architecture governing how users search, open, navigate, summarize, and act upon business objects through the Skyesoft Command Interface. Skyesoft is a graph of business objects connected through navigable relationships. Entity, Location, and Contact (ELC) constitute the first governed object family but do not define the boundary of the interaction model."
+                },
+                "scope": {
+                    "text": "Governs prompt interpretation, intent resolution, cross-object search, response selection, card presentation, relationship navigation, action execution, and extensibility for all current and future Skyesoft business objects."
+                },
+                "requirements": [
+                    "The Skyesoft Command Interface SHALL provide one universal prompt for searching, navigating, summarizing, creating, and acting upon business objects.",
+                    "The Resolver SHALL determine user intent independently from object identity.",
+                    "The Object Resolver SHALL search every registered object type compatible with the normalized query.",
+                    "Users SHALL NOT be required to specify an object type when the query can be resolved reliably without one.",
+                    "Every resolver or action result SHALL use the canonical response envelope.",
+                    "Every visible result SHALL be rendered as a Search Results Card, Object Card, Collection Card, or Information Card.",
+                    "A query producing one dominant match SHALL open the matching Object Card directly.",
+                    "A query producing multiple credible matches SHALL display a Search Results Card.",
+                    "A query producing no matches SHALL return a not-found Search Results Card with an explanation and permitted next steps.",
+                    "Every persistent business object SHALL implement the canonical object contract.",
+                    "Every relationship SHALL be navigable to an Object Card, Collection Card, Information Card, or Search Results Card.",
+                    "Actions SHALL be modeled as operations available from responses and SHALL NOT constitute a fifth response type.",
+                    "Every action SHALL return one of the four canonical response types.",
+                    "Governed data changes requiring user review SHALL use the Proposal workflow.",
+                    "A Proposal SHALL be treated as a persistent business object.",
+                    "Accepting, declining, or committing a Proposal SHALL return a Proposal Receipt as an Information Card.",
+                    "New business object types SHALL be added without redesigning the Command Interface or introducing object-specific navigation systems.",
+                    "Parsers, resolvers, handlers, business rules, and renderers SHALL remain structurally separated.",
+                    "Navigation history SHALL preserve prior collection pagination, sorting, and filtering state.",
+                    "Server responses SHALL remain authoritative for object identity, permissions, and action availability."
+                ],
+                "enforcement": {
+                    "notes": "Interaction-model violations are architectural. Implementations that bypass the canonical resolver, response envelope, response types, object contract, or relationship model must be corrected before the affected feature is considered conformant.",
+                    "auditedBy": "repositoryAuditor",
+                    "violationSeverity": "structural"
+                },
+                "relationships": {
+                    "references": [
+                        "repositoryStandard",
+                        "errorGovernanceStandard",
+                        "proposalGovernanceStandard",
+                        "actionGovernanceStandard",
+                        "userInterfaceStandard"
+                    ],
+                    "governedBy": "constitution.articleIII"
+                },
+                "conceptualModel": {
+                    "name": "Skyesoft Business Object Graph",
+                    "principles": {
+                        "universalEntry": "The Command Interface is the universal entry point into the Skyesoft business object graph.",
+                        "objectGraph": "Skyesoft is a graph of business objects connected through explicit, navigable relationships.",
+                        "objectNeutrality": "The interaction architecture applies uniformly regardless of object type.",
+                        "responseConsistency": "Every request and action resolves through the same four response types.",
+                        "progressiveNavigation": "The interface must feel like movement through connected information rather than a collection of unrelated screens.",
+                        "extensibility": "New object types extend the graph without changing the interaction architecture.",
+                        "authoritativeIdentity": "Persistent objects are identified by their registered object type and stable object ID."
+                    }
+                },
+                "processingPipeline": [
+                    {
+                        "stage": "prompt",
+                        "responsibility": "Capture the user's natural-language request or selected relationship."
+                    },
+                    {
+                        "stage": "intentResolver",
+                        "responsibility": "Determine whether the user intends to search, open, navigate, create, update, summarize, report, or execute another action."
+                    },
+                    {
+                        "stage": "objectResolver",
+                        "responsibility": "Resolve identifiers and search terms across all compatible registered object types."
+                    },
+                    {
+                        "stage": "handler",
+                        "responsibility": "Retrieve objects, execute authorized actions, create governed proposals, or generate requested information."
+                    },
+                    {
+                        "stage": "responseRenderer",
+                        "responsibility": "Render the result using one of the four canonical response types."
+                    }
+                ],
+                "responseEnvelope": {
+                    "requiredFields": [
+                        "intent",
+                        "status",
+                        "responseType",
+                        "message",
+                        "data",
+                        "relationships",
+                        "actions",
+                        "meta"
+                    ],
+                    "optionalIdentityFields": [
+                        "objectType",
+                        "objectId",
+                        "title"
+                    ],
+                    "allowedStatuses": [
+                        "resolved",
+                        "ambiguous",
+                        "not_found",
+                        "proposed",
+                        "completed",
+                        "failed",
+                        "unauthorized"
+                    ],
+                    "allowedResponseTypes": [
+                        "search_results",
+                        "object_card",
+                        "collection_card",
+                        "information_card"
+                    ],
+                    "recommendedMetaFields": [
+                        "confidence",
+                        "query",
+                        "parser",
+                        "resolver",
+                        "resultCount",
+                        "generatedAt",
+                        "activitySessionId",
+                        "proposalActionId"
+                    ]
+                },
+                "responseTypes": [
+                    {
+                        "responseType": "search_results",
+                        "name": "Search Results Card",
+                        "purpose": "Present unresolved, ambiguous, broad, or not-found search outcomes.",
+                        "rules": [
+                            "One dominant match opens its Object Card unless the user explicitly requests a list.",
+                            "Multiple credible matches are displayed as ranked candidates.",
+                            "No matches produce a not-found result with an explanation and permitted next steps.",
+                            "Selecting a candidate opens the candidate's Object Card."
+                        ]
+                    },
+                    {
+                        "responseType": "object_card",
+                        "name": "Object Card",
+                        "purpose": "Present one persistent business object.",
+                        "requiredSections": [
+                            "identity",
+                            "summary",
+                            "relationships",
+                            "actions"
+                        ]
+                    },
+                    {
+                        "responseType": "collection_card",
+                        "name": "Collection Card",
+                        "purpose": "Present a related, searched, or filtered collection of business objects.",
+                        "requiredSections": [
+                            "title",
+                            "count",
+                            "items",
+                            "context",
+                            "actions"
+                        ],
+                        "stateRequirements": [
+                            "pagination",
+                            "sorting",
+                            "filtering"
+                        ]
+                    },
+                    {
+                        "responseType": "information_card",
+                        "name": "Information Card",
+                        "purpose": "Present generated information, interpretation, explanation, status, receipt, timeline, help, or report output.",
+                        "persistenceRule": "Generated information is not automatically a persistent object. If saved as a Report, Summary, Note, or Document, the resulting record receives its own Object Card."
+                    }
+                ],
+                "objectContract": {
+                    "requiredDefinitions": [
+                        "objectType",
+                        "pluralName",
+                        "identity",
+                        "searchFields",
+                        "summaryFields",
+                        "relationships",
+                        "actions",
+                        "objectCardRenderer",
+                        "collectionCardRenderer",
+                        "permissions"
+                    ],
+                    "optionalDefinitions": [
+                        "parser",
+                        "informationViews",
+                        "proposalHandler",
+                        "validationRules",
+                        "artifactRules"
+                    ],
+                    "identityRule": "Each persistent business object must expose a registered object type, stable object ID, and primary display label."
+                },
+                "objectRegistry": {
+                    "initial": [
+                        "entity",
+                        "location",
+                        "contact",
+                        "order",
+                        "application",
+                        "note",
+                        "task",
+                        "topic",
+                        "document",
+                        "report",
+                        "summary",
+                        "proposal"
+                    ],
+                    "future": [
+                        "invoice",
+                        "estimate",
+                        "inspection",
+                        "email",
+                        "phone_call",
+                        "meeting",
+                        "permit",
+                        "survey",
+                        "asset"
+                    ],
+                    "registrationRule": "A new object type becomes searchable and navigable only after satisfying the canonical object contract."
+                },
+                "searchRules": [
+                    {
+                        "ruleId": "SIM-1.1",
+                        "description": "Normalize the user's prompt before intent and object resolution.",
+                        "constraints": [
+                            "Normalization must preserve meaningful identifiers.",
+                            "Normalization must not assume an object type.",
+                            "Normalization must be deterministic for equivalent input."
+                        ]
+                    },
+                    {
+                        "ruleId": "SIM-1.2",
+                        "description": "Search every registered object type compatible with the normalized query.",
+                        "constraints": [
+                            "Numeric input must not be assumed to belong to only one object type.",
+                            "Names, addresses, phone numbers, email addresses, order numbers, application numbers, permit numbers, record IDs, and keywords must be supported when declared by registered objects.",
+                            "Object-specific parsers may refine universal parsing but must not bypass the canonical resolver."
+                        ]
+                    },
+                    {
+                        "ruleId": "SIM-1.3",
+                        "description": "Rank candidates deterministically using match strength and contextual relevance.",
+                        "constraints": [
+                            "Exact identifiers rank above exact names.",
+                            "Exact names rank above prefix matches.",
+                            "Prefix matches rank above fuzzy matches.",
+                            "Relationship and recent-context signals may affect ranking but must not constitute silent proof.",
+                            "Multiple credible matches must remain visible to the user."
+                        ]
+                    }
+                ],
+                "relationshipRules": [
+                    {
+                        "ruleId": "SIM-1.4",
+                        "description": "Resolve every displayed relationship to a canonical navigation target.",
+                        "targets": {
+                            "singleObject": "object_card",
+                            "multipleObjects": "collection_card",
+                            "generatedView": "information_card",
+                            "ambiguousReference": "search_results"
+                        }
+                    },
+                    {
+                        "ruleId": "SIM-1.5",
+                        "description": "Preserve navigational context when moving between related responses.",
+                        "constraints": [
+                            "Back navigation must restore the prior response.",
+                            "Collection page, sort, and filter state must be restored.",
+                            "An explicit identifier must override conflicting contextual inference."
+                        ]
+                    }
+                ],
+                "actionRules": [
+                    {
+                        "ruleId": "SIM-1.6",
+                        "description": "Model actions as operations exposed by response cards.",
+                        "commonActions": [
+                            "open",
+                            "view",
+                            "edit",
+                            "add",
+                            "link",
+                            "unlink",
+                            "retire",
+                            "accept",
+                            "decline",
+                            "summarize",
+                            "generate_report",
+                            "create_task",
+                            "send",
+                            "download"
+                        ],
+                        "constraints": [
+                            "Actions must respect server-authoritative permissions.",
+                            "Disabled actions must provide a reason when displayed.",
+                            "Action results must use the canonical response envelope.",
+                            "Actions must return one of the four canonical response types."
+                        ]
+                    },
+                    {
+                        "ruleId": "SIM-1.7",
+                        "description": "Route governed data changes through the Proposal workflow when review is required.",
+                        "constraints": [
+                            "The Proposal must retain stable identity and audit provenance.",
+                            "Accept, decline, and commit outcomes must produce a Proposal Receipt Information Card.",
+                            "Proposal handling must not introduce a separate navigation architecture."
+                        ]
+                    }
+                ],
+                "errorSemantics": {
+                    "notFound": "Return a Search Results Card with status not_found, the interpreted query, and permitted next steps.",
+                    "ambiguous": "Return ranked Search Results and do not silently select among credible matches.",
+                    "unauthorized": "Return an Information Card explaining that the requested object or action is unavailable.",
+                    "validationFailure": "Return an Information Card identifying correctable fields without discarding the user's entered data.",
+                    "actionFailure": "Return an Information Card containing a safe explanation, recovery options, and an audit reference when available.",
+                    "rendererFailure": "Return a minimal Information Card through the canonical response envelope."
+                },
+                "conformanceTests": [
+                    {
+                        "testId": "SIM-T01",
+                        "scenario": "A search produces no matches.",
+                        "expected": "A not-found Search Results Card is returned with suggestions."
+                    },
+                    {
+                        "testId": "SIM-T02",
+                        "scenario": "A search produces one dominant match.",
+                        "expected": "The matching Object Card opens directly."
+                    },
+                    {
+                        "testId": "SIM-T03",
+                        "scenario": "A search produces multiple credible matches.",
+                        "expected": "A ranked Search Results Card is displayed."
+                    },
+                    {
+                        "testId": "SIM-T04",
+                        "scenario": "The user selects a to-many relationship.",
+                        "expected": "A Collection Card opens and every item links to its Object Card."
+                    },
+                    {
+                        "testId": "SIM-T05",
+                        "scenario": "The user selects a to-one relationship.",
+                        "expected": "The related Object Card opens."
+                    },
+                    {
+                        "testId": "SIM-T06",
+                        "scenario": "The user requests a summary of the current object.",
+                        "expected": "An Information Card is generated without replacing the underlying object's identity."
+                    },
+                    {
+                        "testId": "SIM-T07",
+                        "scenario": "The user executes an available action.",
+                        "expected": "The result uses the canonical response envelope and one of the four response types."
+                    },
+                    {
+                        "testId": "SIM-T08",
+                        "scenario": "A governed data change requires review.",
+                        "expected": "A Proposal Object is created and its disposition produces a Proposal Receipt Information Card."
+                    },
+                    {
+                        "testId": "SIM-T09",
+                        "scenario": "A new conformant object type is registered.",
+                        "expected": "The object becomes searchable and navigable without changing the four response types."
+                    },
+                    {
+                        "testId": "SIM-T10",
+                        "scenario": "The user returns from an Object Card to a prior Collection Card.",
+                        "expected": "The prior page, sort, and filter state are restored."
+                    }
+                ],
+                "nonGoals": [
+                    "Creating independent navigation systems for individual object types",
+                    "Treating ELC as the boundary of the Skyesoft interaction architecture",
+                    "Requiring users to memorize object-specific commands",
+                    "Embedding database retrieval logic within card renderers",
+                    "Treating every generated Information Card as a persistent database object",
+                    "Opening an arbitrary candidate when several credible matches exist",
+                    "Allowing client-side state to override server-authoritative identity or permissions",
+                    "Introducing a new response type for each new business object",
+                    "Hardcoding future object types into the universal navigation model"
+                ]
+            },
             "recordLifecyclePolicy": {
                 "icon": 20,
                 "title": "Record Lifecycle Policy",
