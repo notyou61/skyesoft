@@ -883,13 +883,152 @@ window.SkyIndex = {
 
     // #region ❓ Help System
     showHelp(topic = "") {
-        // TODO: build the real modal help page
         console.log('[Help] topic requested:', topic || '(general)');
-        this.appendSystemLine(
-            topic
-                ? `Help topic: ${topic}`
-                : 'Help system coming soon. Type "help contacts", "help search", etc.'
-        );
+
+        // Close any existing help modal first
+        this.closeHelpModal();
+
+        const normalizedTopic = (topic || '').toLowerCase().trim();
+
+        // --------------------------------------------------
+        // Help content (easy to expand later)
+        // --------------------------------------------------
+        const helpContent = {
+            '': {
+                title: 'Skyesoft Help',
+                body: `
+                    <p>Type a command or paste structured data.</p>
+                    <ul style="margin:12px 0 0 18px; line-height:1.6;">
+                        <li><strong>help contacts</strong> — Contact-related commands</li>
+                        <li><strong>help search</strong> — Searching contacts & entities</li>
+                        <li><strong>help locations</strong> — Location & property tools</li>
+                        <li><strong>help streetview</strong> — Google Street View</li>
+                        <li><strong>clear</strong> — Clear the command surface</li>
+                        <li><strong>logout</strong> — End your session</li>
+                    </ul>
+                    <p style="margin-top:16px; color:#666; font-size:0.9em;">
+                        You can also paste multi-line contact signatures or location blocks directly.
+                    </p>
+                `
+            },
+            contacts: {
+                title: 'Help — Contacts',
+                body: `
+                    <p>Paste a contact signature (name, title, company, phone, email, address) to create a new contact proposal.</p>
+                    <p style="margin-top:12px;"><strong>Example:</strong></p>
+                    <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto;">
+    John Smith
+    Operations Manager
+    Acme Corporation
+    123 Main Street
+    Phoenix, AZ 85001
+    480-555-1212
+    john.smith@acme.com</pre>
+                `
+            },
+            search: {
+                title: 'Help — Search',
+                body: `
+                    <p>Search commands (coming soon in full form):</p>
+                    <ul style="margin:12px 0 0 18px; line-height:1.6;">
+                        <li><code>show contacts</code></li>
+                        <li><code>show contacts page 2</code></li>
+                        <li><code>find contact John Smith</code></li>
+                        <li><code>search entities Acme</code></li>
+                    </ul>
+                `
+            },
+            locations: {
+                title: 'Help — Locations',
+                body: `
+                    <p>Paste a multi-line location block to create a Location Proposal.</p>
+                    <p style="margin-top:12px;"><strong>Example:</strong></p>
+                    <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto;">
+    Acme Corporation
+    Main Office
+    123 Main Street
+    Phoenix, AZ 85001</pre>
+                `
+            },
+            streetview: {
+                title: 'Help — Street View',
+                body: `
+                    <p>Type:</p>
+                    <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em;">
+    street view 123 Main St, Phoenix, AZ 85001</pre>
+                    <p style="margin-top:12px;">Skyesoft will clean the address and open the Street View workspace.</p>
+                `
+            }
+        };
+
+        const content = helpContent[normalizedTopic] || helpContent[''];
+
+        // --------------------------------------------------
+        // Build modal
+        // --------------------------------------------------
+        const modal = document.createElement('div');
+        modal.id = 'skyHelpModal';
+        modal.className = 'modal-backdrop';
+        modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.55);
+        `;
+
+        modal.innerHTML = `
+            <div role="dialog" aria-modal="true" aria-labelledby="skyHelpTitle"
+                style="width:100%; max-width:560px; max-height:85vh; background:#fff; border-radius:10px;
+                        box-shadow:0 20px 50px rgba(0,0,0,0.25); overflow:hidden; display:flex; flex-direction:column;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            padding:16px 20px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
+                    <strong id="skyHelpTitle" style="font-size:1.15em; color:#222;">
+                        ${this.escapeHtml(content.title)}
+                    </strong>
+                    <button type="button" onclick="SkyIndex.closeHelpModal()"
+                            aria-label="Close help"
+                            style="border:0; background:transparent; font-size:1.6rem; line-height:1;
+                                color:#888; cursor:pointer; padding:0 4px;">×</button>
+                </div>
+
+                <div style="padding:20px; overflow-y:auto; flex:1; font-size:0.95em; line-height:1.5; color:#333;">
+                    ${content.body}
+                </div>
+
+                <div style="padding:14px 20px; border-top:1px solid #eee; background:#fafafa; text-align:right;">
+                    <button type="button" onclick="SkyIndex.closeHelpModal()"
+                            style="padding:8px 18px; border:1px solid #ccc; border-radius:6px;
+                                background:#fff; color:#333; font-weight:500; cursor:pointer;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.closeHelpModal();
+        });
+
+        document.body.appendChild(modal);
+        document.addEventListener('keydown', this._helpModalKeyHandler);
+    },
+
+    closeHelpModal() {
+        const modal = document.getElementById('skyHelpModal');
+        if (modal) modal.remove();
+        document.removeEventListener('keydown', this._helpModalKeyHandler);
+    },
+
+    _helpModalKeyHandler(e) {
+        if (e.key === 'Escape') {
+            SkyIndex.closeHelpModal();
+        }
     },
     // #endregion
 
