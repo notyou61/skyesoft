@@ -3210,31 +3210,59 @@ PROMPT;
     }
 
     // ─────────────────────────────────────────────
-    // 6. Conversational Fallback + Google Grounding
+    // 6. Conversational Fallback – AI decides on Google
     // ─────────────────────────────────────────────
     error_log("[DEBUG] Entering conversational fallback. Query: " . substr($query, 0, 150));
 
-    $googleResults = googleCustomSearch($query, 5);
+    $sseSnapshot    = loadSseSnapshot();
+    $responsePrompt = loadResponseGenerationPrompt();
+    $systemContext  = buildSystemContext($sseSnapshot, $db, $operationalList ?? null);
+
+    // First pass: can the system context answer this?
+    $decisionPrompt = <<<PROMPT
+    You are deciding whether the following SYSTEM DATA contains enough information to answer the user question.
+
+    Reply with ONLY one word:
+    - LOCAL   (if the system data is sufficient)
+    - SEARCH  (if external search is required)
+
+    SYSTEM DATA:
+    {$systemContext}
+
+    USER QUESTION:
+    {$query}
+    PROMPT;
+
+    $decision = strtoupper(trim(callOpenAI(
+        injectStandingOrders($decisionPrompt),
+        $apiKey,
+        'gpt-4o-mini'
+    ) ?? ''));
+
+    $useGoogle = ($decision === 'SEARCH');
+
+    $googleResults = [];
     $googleContext = '';
 
-    if (!empty($googleResults)) {
-        $googleContext = "GOOGLE SEARCH RESULTS (use these as factual grounding):\n\n";
-        foreach ($googleResults as $i => $r) {
-            $googleContext .= ($i + 1) . ". " . ($r['title'] ?? '') . "\n";
-            $googleContext .= "   " . ($r['link'] ?? '') . "\n";
-            $googleContext .= "   " . ($r['snippet'] ?? '') . "\n\n";
+    if ($useGoogle) {
+        $googleResults = googleCustomSearch($query, 5);
+
+        if (!empty($googleResults)) {
+            $googleContext = "GOOGLE SEARCH RESULTS (use these as factual grounding):\n\n";
+            foreach ($googleResults as $i => $r) {
+                $googleContext .= ($i + 1) . ". " . ($r['title'] ?? '') . "\n";
+                $googleContext .= "   " . ($r['link'] ?? '') . "\n";
+                $googleContext .= "   " . ($r['snippet'] ?? '') . "\n\n";
+            }
         }
     }
 
-    $sseSnapshot     = loadSseSnapshot();
-    $responsePrompt  = loadResponseGenerationPrompt();
-
+    // Final answer generation
     if ($responsePrompt === "") {
         $basePrompt = "You are a helpful assistant.\n\n" .
                     $googleContext .
                     "User question: " . $query;
     } else {
-        $systemContext = buildSystemContext($sseSnapshot, $db, $operationalList ?? null);
         $basePrompt = $responsePrompt .
                     "\n\nSYSTEM DATA (JSON):\n" . $systemContext .
                     "\n\n" . $googleContext .
@@ -3248,15 +3276,12 @@ PROMPT;
     );
 
     if (!$response) {
-        $response = "I'm here, but OpenAI is currently out of credits on this account. Try again in a few minutes or let Steve know to top up the balance.";
+        $response = "I'm here, but OpenAI is currently out of credits on this account.";
     }
 
-    // Prefer structured ai_query response when we have Google results
+    // Return structured ai_query only when Google was actually used
     if (!empty($googleResults)) {
-        $type = 'ai_query';
-
-        // Build the structured payload the frontend expects
-        $structuredResponse = [
+        echo json_encode([
             'success'            => true,
             'role'               => 'askOpenAI',
             'type'               => 'ai_query',
@@ -3271,13 +3296,7 @@ PROMPT;
                 ]
             ],
             'activitySessionId'  => $_SESSION['activitySessionId'] ?? session_id()
-        ];
-
-        // Log and exit early with the structured shape
-        error_log('[skyebot] Returning ai_query with ' . count($googleResults) . ' Google sources');
-
-        // (optional) still write the action log here if desired
-        echo json_encode($structuredResponse, JSON_UNESCAPED_SLASHES);
+        ], JSON_UNESCAPED_SLASHES);
         exit;
     }
 
