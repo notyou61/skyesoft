@@ -5285,6 +5285,48 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🔎 AI Query Information Card
+    renderAIQueryCard(data = {}) {
+
+        const responseData = data.actionResponseData || data.responseData || {};
+        const answer = data.response || responseData.answer || 'No answer was returned.';
+        const googleResults = responseData?.sources?.google?.results || [];
+
+        const sourcesHtml = googleResults.map(result => {
+            const link = this.escapeHtml(result.link || '');
+            const title = this.escapeHtml(
+                result.title || result.displayLink || 'Google result'
+            );
+            const snippet = this.escapeHtml(result.snippet || '');
+
+            return `
+                <li class="querySource">
+                    <a href="${link}"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        ${title}
+                    </a>
+                    ${snippet ? `<div class="querySnippet">${snippet}</div>` : ''}
+                </li>
+            `;
+        }).join('');
+
+        this.appendSystemHtml(`
+            <div class="result-card query-result">
+                <div class="result-header">
+                    <strong>Search Result</strong>
+                </div>
+                <div class="result-body">
+                    <p>${this.escapeHtml(answer)}</p>
+                    ${sourcesHtml
+                        ? `<ul class="querySources">${sourcesHtml}</ul>`
+                        : ''}
+                </div>
+            </div>
+        `);
+    },
+    // #endregion
+
     // #region 🤖 AI Command Execution
     async executeAICommand(prompt, incomingActivitySessionId = null) {
 
@@ -5325,25 +5367,28 @@ window.SkyIndex = {
             const data = await res.json();
 
             // --------------------------------------------------
-            // 📇 CONTACT PROPOSAL HANDLING
+            // 📇 PROPOSAL HANDLING
             // --------------------------------------------------
-            // Unified entry point for all valid proposal data statuses (including exception types)
-            if (data?.status === 'proposed' || data?.status === 'partial' || data?.status === 'incomplete') {
+            if (
+                data?.status === 'proposed' ||
+                data?.status === 'partial' ||
+                data?.status === 'incomplete'
+            ) {
                 console.log(`📇 Proposal received with status: ${data.status}`);
                 this.handleContactProposal(data);
                 return;
             }
 
             // --------------------------------------------------
-            // 📇 Bridge fallback
+            // 📇 PROPOSAL BRIDGE FALLBACK
             // --------------------------------------------------
             if (data?.type === 'contact_proposal' && data?.input) {
                 console.log('📇 Bridge detected → calling proposal engine');
 
                 const res2 = await fetch('/skyesoft/api/processProposedContact.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         input: data.input,
                         activitySessionId: data.activitySessionId || activitySessionId,
@@ -5351,16 +5396,27 @@ window.SkyIndex = {
                     })
                 });
 
+                if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
+
                 const proposal = await res2.json();
                 this.handleContactProposal(proposal);
                 return;
             }
 
             // --------------------------------------------------
+            // 🔎 AI QUERY / GOOGLE SEARCH RESPONSE
+            // --------------------------------------------------
+            if (
+                data?.type === 'ai_query' ||
+                data?.type === 'information_card'
+            ) {
+                this.renderAIQueryCard(data);
+                return;
+            }
+
+            // --------------------------------------------------
             // 📇 CONTACT SEARCH CARD
             // --------------------------------------------------
-
-            // Structured results first
             if (data?.type === 'contact_search') {
                 this.renderContactsList(
                     Array.isArray(data.matches) ? data.matches : []
@@ -5371,18 +5427,10 @@ window.SkyIndex = {
             // --------------------------------------------------
             // 📇 CONTACT LIST CARD
             // --------------------------------------------------
-            if (data?.type === 'contact_list' && data.list) {
+            if (data?.type === 'contact_list' && data?.list) {
                 this.renderContactListCard(data.list);
                 return;
             }
-
-            // Conversational response afterward
-            if (data?.response) {
-                this.appendSystemLine(data.response);
-                return;
-            }
-
-            this.appendSystemLine('⚠ No response from AI.');
 
             // --------------------------------------------------
             // 🏢 ENTITY SEARCH CARD
@@ -5394,23 +5442,30 @@ window.SkyIndex = {
                 return;
             }
 
-            // ───────────────────────────────────────────────
-            // UI Action / Domain Intent / Normal Response
-            // ───────────────────────────────────────────────
+            // --------------------------------------------------
+            // 🖥 UI ACTION
+            // --------------------------------------------------
             if (data?.type === 'ui_action') {
                 // ... existing UI action logic
                 return;
             }
 
+            // --------------------------------------------------
+            // 🧭 DOMAIN INTENT
+            // --------------------------------------------------
             if (data?.type === 'domain_intent') {
                 // ... existing domain intent logic
                 return;
             }
 
+            // --------------------------------------------------
+            // 💬 CONVERSATIONAL RESPONSE
+            // --------------------------------------------------
             if (typeof data?.response === 'string' && data.response.trim()) {
-                const looksLikeHtml = data.response.includes('<div') ||
-                                    data.response.includes('<a ') ||
-                                    data.response.includes('<button');
+                const looksLikeHtml =
+                    data.response.includes('<div') ||
+                    data.response.includes('<a ') ||
+                    data.response.includes('<button');
 
                 if (looksLikeHtml) {
                     if (data.response.includes('codeBlock')) {
