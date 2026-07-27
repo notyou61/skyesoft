@@ -1658,6 +1658,62 @@ function resolveSinglePhrase(?PDO $db, string $lookupPhrase): ?array
     return null;
 }
 
+/**
+ * Perform a Google Custom Search and return normalized results.
+ * Returns an empty array on any failure (never throws).
+ */
+function googleCustomSearch(string $query, int $num = 5): array
+{
+    $apiKey = skyesoftGetEnv('GOOGLE_CSE_API_KEY') ?: getenv('GOOGLE_CSE_API_KEY');
+    $cx     = skyesoftGetEnv('GOOGLE_CSE_CX')      ?: getenv('GOOGLE_CSE_CX');
+
+    if (!$apiKey || !$cx || trim($query) === '') {
+        error_log('[GoogleCSE] Missing API key, CX, or empty query');
+        return [];
+    }
+
+    $url = 'https://www.googleapis.com/customsearch/v1?' . http_build_query([
+        'key' => $apiKey,
+        'cx'  => $cx,
+        'q'   => $query,
+        'num' => max(1, min(10, $num))
+    ]);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 4
+    ]);
+
+    $raw      = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    // PHP 8.5+ auto-closes CurlHandle
+
+    if ($raw === false || $httpCode !== 200) {
+        error_log("[GoogleCSE] HTTP {$httpCode} or request failed for query: {$query}");
+        return [];
+    }
+
+    $data = json_decode($raw, true);
+    if (!is_array($data) || empty($data['items'])) {
+        return [];
+    }
+
+    $results = [];
+    foreach ($data['items'] as $item) {
+        $results[] = [
+            'title'       => $item['title']       ?? '',
+            'link'        => $item['link']        ?? '',
+            'snippet'     => $item['snippet']     ?? '',
+            'displayLink' => $item['displayLink'] ?? ''
+        ];
+    }
+
+    error_log('[GoogleCSE] Returned ' . count($results) . ' results for: ' . $query);
+    return $results;
+}
+
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
@@ -3145,19 +3201,35 @@ PROMPT;
     }
 
     // ─────────────────────────────────────────────
-    // 6. Conversational Fallback
+    // 6. Conversational Fallback + Google Grounding
     // ─────────────────────────────────────────────
     error_log("[DEBUG] Entering conversational fallback. Query: " . substr($query, 0, 150));
 
-    $sseSnapshot = loadSseSnapshot();
-    $responsePrompt = loadResponseGenerationPrompt();
+    $googleResults = googleCustomSearch($query, 5);
+    $googleContext = '';
+
+    if (!empty($googleResults)) {
+        $googleContext = "GOOGLE SEARCH RESULTS (use these as factual grounding):\n\n";
+        foreach ($googleResults as $i => $r) {
+            $googleContext .= ($i + 1) . ". " . ($r['title'] ?? '') . "\n";
+            $googleContext .= "   " . ($r['link'] ?? '') . "\n";
+            $googleContext .= "   " . ($r['snippet'] ?? '') . "\n\n";
+        }
+    }
+
+    $sseSnapshot     = loadSseSnapshot();
+    $responsePrompt  = loadResponseGenerationPrompt();
 
     if ($responsePrompt === "") {
-        error_log("[DEBUG] ❌ Response generation prompt file is missing or empty!");
-        $basePrompt = "You are a helpful assistant. User said: " . $query;
+        $basePrompt = "You are a helpful assistant.\n\n" .
+                    $googleContext .
+                    "User question: " . $query;
     } else {
-        $systemContext = buildSystemContext($sseSnapshot, $db, $operationalList);
-        $basePrompt = $responsePrompt . "\n\nSYSTEM DATA (JSON):\n" . $systemContext . "\n\nUser Input:\n" . $query;
+        $systemContext = buildSystemContext($sseSnapshot, $db, $operationalList ?? null);
+        $basePrompt = $responsePrompt .
+                    "\n\nSYSTEM DATA (JSON):\n" . $systemContext .
+                    "\n\n" . $googleContext .
+                    "\nUser Input:\n" . $query;
     }
 
     $response = callOpenAI(
@@ -3166,9 +3238,38 @@ PROMPT;
         "gpt-4o-mini"
     );
 
-    // Graceful Quota Handling
     if (!$response) {
         $response = "I'm here, but OpenAI is currently out of credits on this account. Try again in a few minutes or let Steve know to top up the balance.";
+    }
+
+    // Prefer structured ai_query response when we have Google results
+    if (!empty($googleResults)) {
+        $type = 'ai_query';
+
+        // Build the structured payload the frontend expects
+        $structuredResponse = [
+            'success'            => true,
+            'role'               => 'askOpenAI',
+            'type'               => 'ai_query',
+            'response'           => trim((string)$response),
+            'actionResponseData' => [
+                'answer'  => trim((string)$response),
+                'sources' => [
+                    'google' => [
+                        'searched' => true,
+                        'results'  => $googleResults
+                    ]
+                ]
+            ],
+            'activitySessionId'  => $_SESSION['activitySessionId'] ?? session_id()
+        ];
+
+        // Log and exit early with the structured shape
+        error_log('[skyebot] Returning ai_query with ' . count($googleResults) . ' Google sources');
+
+        // (optional) still write the action log here if desired
+        echo json_encode($structuredResponse, JSON_UNESCAPED_SLASHES);
+        exit;
     }
 
     $type = "skyebot";
