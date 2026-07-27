@@ -1979,85 +1979,182 @@ function generateProposalReport(string $proposalId, array $proposal): ?string {
 }
 
 /**
- * parseLocationProposal — Clean parser for location-only proposals (PC-5+)
- * Robust line-based extraction with smart name detection. No AI, deterministic.
+ * Parse a city/state/ZIP line into components.
+ * Returns null if the line does not match the expected pattern.
  */
-function parseLocationProposal(array $lines, array $clientData, string $rawInputOriginal): array {
+function parseCityStateZip(string $line): ?array
+{
+    if (!preg_match('/^[^,]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?$/i', $line)) {
+        return null;
+    }
+
+    $parts = array_map('trim', explode(',', $line));
+    $city  = $parts[0] ?? '';
+
+    $stateZip   = preg_replace('/\s+/', ' ', implode(' ', array_slice($parts, 1)));
+    $stateParts = explode(' ', $stateZip);
+
+    return [
+        'city'  => $city,
+        'state' => $stateParts[0] ?? '',
+        'zip'   => $stateParts[count($stateParts) - 1] ?? ''
+    ];
+}
+
+/**
+ * parseLocationProposal — Clean parser for location-only proposals (PC-5+)
+ * Supports both labeled and positional formats.
+ * Precedence: clientData → labeled → positional
+ */
+function parseLocationProposal(array $lines, array $clientData, string $rawInputOriginal): array
+{
     // Clean and filter lines
     $lines = array_values(array_filter(array_map('trim', $lines), fn($l) => $l !== ''));
 
-    $entityName   = trim($clientData['entity']['entityName'] ?? ($lines[0] ?? ''));
+    $entityName   = trim($clientData['entity']['entityName'] ?? '');
     $locationName = trim($clientData['location']['locationName'] ?? '');
+    $address      = trim($clientData['location']['locationAddress'] ?? $clientData['location']['address'] ?? '');
+    $city         = trim($clientData['location']['locationCity'] ?? '');
+    $state        = trim($clientData['location']['locationState'] ?? '');
+    $zip          = trim($clientData['location']['locationZip'] ?? '');
 
-    // Smart location name extraction from raw lines if not in clientData
-    if (empty($locationName) && count($lines) >= 2) {
-        $potentialName = $lines[1];
+    // -------------------------------------------------
+    // 1. Label-aware parsing
+    // -------------------------------------------------
+    $addressLines = [];
 
-        // Heuristic: Line 2 is likely a location name if it doesn't look like a street address
-        // (doesn't start with number or typical address pattern)
-        if (!preg_match('/^\d+\s+[A-Za-z]/', $potentialName) && 
-            !preg_match('/^\d{5}/', $potentialName) &&
-            strlen($potentialName) > 3) {
-            
-            $locationName = $potentialName;
+    for ($i = 0; $i < count($lines); $i++) {
+        $line = $lines[$i];
+
+        // Only treat lines that actually end with a colon as labels
+        if (!preg_match('/^[^:]+:\s*$/', $line)) {
+            continue;
+        }
+
+        $label = strtolower(rtrim($line, ':'));
+
+        if ($label === 'entity' && empty($entityName)) {
+            $candidate = trim($lines[$i + 1] ?? '');
+            if ($candidate !== '' && !str_ends_with($candidate, ':')) {
+                $entityName = $candidate;
+            }
+            $i++;
+            continue;
+        }
+
+        if ($label === 'location' && empty($locationName)) {
+            $candidate = trim($lines[$i + 1] ?? '');
+            if ($candidate !== '' && !str_ends_with($candidate, ':')) {
+                $locationName = $candidate;
+            }
+            $i++;
+
+            // Collect following address lines until next label or end
+            while (
+                isset($lines[$i + 1]) &&
+                !preg_match('/^[^:]+:\s*$/', $lines[$i + 1])
+            ) {
+                $addressLines[] = $lines[++$i];
+            }
+            continue;
         }
     }
 
-    // Address extraction (start after entity + possible location name)
-    $addressStartIndex = empty($locationName) ? 1 : 2;
-    $addressRaw = implode("\n", array_slice($lines, $addressStartIndex));
+    // -------------------------------------------------
+    // 2. Positional fallback
+    // -------------------------------------------------
+    if (empty($entityName) && !empty($lines[0]) && !str_ends_with($lines[0], ':')) {
+        $entityName = $lines[0];
+    }
 
-    // Try to pull address from clientData first (more reliable)
-    $address = trim($clientData['location']['locationAddress'] ?? 
-                    $clientData['location']['address'] ?? 
-                    $addressRaw);
+    if (empty($locationName) && count($lines) >= 2) {
+        $potential = $lines[1];
+        if (
+            !preg_match('/^\d+\s+[A-Za-z]/', $potential) &&
+            !preg_match('/^\d{5}/', $potential) &&
+            strlen($potential) > 3 &&
+            !str_ends_with($potential, ':')
+        ) {
+            $locationName = $potential;
+        }
+    }
 
-    // Robust city/state/zip parsing from remaining lines or clientData
-    $cityLine = $clientData['location']['locationCityStateZip'] ?? 
-                ($lines[count($lines) - 1] ?? '');
+    // -------------------------------------------------
+    // 3. Address + City/State/Zip handling
+    // -------------------------------------------------
+    if (empty($address)) {
+        if (!empty($addressLines)) {
+            $cityLineCandidate = array_pop($addressLines);
+            $address = implode(', ', $addressLines);
 
-    $parts    = array_map('trim', explode(',', $cityLine));
-    $city     = $parts[0] ?? '';
-    $stateZip = implode(',', array_slice($parts, 1));
-    $stateZip = preg_replace('/\s+/', ' ', $stateZip);
-    $stateParts = explode(' ', $stateZip);
-    $state = $stateParts[0] ?? '';
-    $zip   = $stateParts[count($stateParts) - 1] ?? '';
+            if ($parsedCity = parseCityStateZip($cityLineCandidate)) {
+                $city  = $city  ?: $parsedCity['city'];
+                $state = $state ?: $parsedCity['state'];
+                $zip   = $zip   ?: $parsedCity['zip'];
+            } else {
+                $address = trim($address . ', ' . $cityLineCandidate, ', ');
+            }
+        } else {
+            // Classic positional fallback
+            $start = empty($locationName) ? 1 : 2;
+            $remaining = array_slice($lines, $start);
 
-    // Fallbacks from clientData
-    if (empty($city))  $city  = $clientData['location']['locationCity'] ?? '';
-    if (empty($state)) $state = $clientData['location']['locationState'] ?? '';
-    if (empty($zip))   $zip   = $clientData['location']['locationZip'] ?? '';
+            if (count($remaining) > 1) {
+                $cityLineCandidate = array_pop($remaining);
+                $address = implode(', ', $remaining);
+
+                if ($parsedCity = parseCityStateZip($cityLineCandidate)) {
+                    $city  = $city  ?: $parsedCity['city'];
+                    $state = $state ?: $parsedCity['state'];
+                    $zip   = $zip   ?: $parsedCity['zip'];
+                } else {
+                    $address = trim($address . ', ' . $cityLineCandidate, ', ');
+                }
+            } elseif (!empty($remaining)) {
+                $address = $remaining[0];
+            }
+        }
+    }
+
+    // Final fallback from last line if still missing
+    if ((empty($city) || empty($state) || empty($zip)) && !empty($lines)) {
+        $lastLine = $lines[count($lines) - 1];
+        if ($parsedCity = parseCityStateZip($lastLine)) {
+            $city  = $city  ?: $parsedCity['city'];
+            $state = $state ?: $parsedCity['state'];
+            $zip   = $zip   ?: $parsedCity['zip'];
+        }
+    }
 
     $parsed = [
         'entity' => [
-            'name' => $entityName,
-            'nameInferred' => false,
-            'nameConfirmed' => true,
-            'nameSource' => 'location_proposal_parser'
+            'name'          => $entityName,
+            'nameInferred'  => false,
+            'nameConfirmed' => !empty($entityName),
+            'nameSource'    => 'location_proposal_parser'
         ],
         'contact' => [
-            'firstName' => '', 
-            'lastName' => '', 
-            'salutation' => '', 
-            'title' => '',
-            'primaryPhone' => '', 
-            'primaryPhoneRaw' => '', 
-            'email' => ''
+            'firstName'        => '',
+            'lastName'         => '',
+            'salutation'       => '',
+            'title'            => '',
+            'primaryPhone'     => '',
+            'primaryPhoneRaw'  => '',
+            'email'            => ''
         ],
         'location' => [
-            'address'      => $address,
-            'city'         => $city,
-            'state'        => strtoupper($state),
-            'zip'          => $zip,
-            'suite'        => '',
-            'locationName' => $locationName,           // ← Now reliably populated
+            'address'               => $address,
+            'city'                  => $city,
+            'state'                 => strtoupper($state),
+            'zip'                   => $zip,
+            'suite'                 => '',
+            'locationName'          => $locationName,
             'locationNameConfirmed' => !empty($locationName),
             'locationNameInferred'  => empty($locationName)
         ]
     ];
 
-    error_log("[PPC][LocationParser] SUCCESS - Entity='{$entityName}' | LocationName='{$locationName}' | Address='{$address}'");
+    error_log("[PPC][LocationParser] SUCCESS - Entity='{$entityName}' | LocationName='{$locationName}' | Address='{$address}' | City='{$city}'");
 
     return $parsed;
 }
