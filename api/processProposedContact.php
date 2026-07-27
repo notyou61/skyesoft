@@ -984,9 +984,13 @@ error_log('[PPC][SECTION-06A] Canonical $data object created successfully');
 // Normalize street names for structural comparison
 $normalizeStreet = static function ($value): string {
     $value = strtolower(trim((string)$value));
-    // Normalize common accented characters
-    $value = preg_replace('/[^a-z0-9 ]+/', ' ', $value);
+
+    // Remove most punctuation
+    $value = preg_replace('/[^a-z0-9 #]+/', ' ', $value);
     $value = preg_replace('/\s+/', ' ', $value);
+
+    // Normalize common unit / suite designators first
+    $value = preg_replace('/\b(suite|ste|unit|apt|apartment|#)\b\.?\s*/i', ' unit ', $value);
 
     $replacements = [
         // Compound directionals must be normalized first
@@ -998,6 +1002,8 @@ $normalizeStreet = static function ($value): string {
         ' south '     => ' s ',
         ' east '      => ' e ',
         ' west '      => ' w ',
+
+        // Street types
         ' street '    => ' st ',
         ' avenue '    => ' ave ',
         ' boulevard ' => ' blvd ',
@@ -1011,14 +1017,26 @@ $normalizeStreet = static function ($value): string {
         ' circle '    => ' cir ',
         ' terrace '   => ' ter ',
         ' trail '     => ' trl ',
-        ' way '       => ' way '
+        ' way '       => ' way ',
+
+        // Extra common variants
+        ' st. '       => ' st ',
+        ' ave. '      => ' ave ',
+        ' blvd. '     => ' blvd ',
+        ' rd. '       => ' rd ',
+        ' dr. '       => ' dr ',
     ];
 
-    return trim(str_replace(
+    $value = str_replace(
         array_keys($replacements),
         array_values($replacements),
         ' ' . $value . ' '
-    ));
+    );
+
+    // Clean up leftover unit noise for pure route comparison
+    $value = preg_replace('/\s+unit\s+\w+/', '', $value);
+
+    return trim(preg_replace('/\s+/', ' ', $value));
 };
 
 // Remove one leading street directional
