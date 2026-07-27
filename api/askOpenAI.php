@@ -1966,6 +1966,102 @@ if ($type === 'contactDetail') {
     exit;
 }
 
+// =====================================================
+// PROPOSAL INTENT CLASSIFICATION
+// =====================================================
+
+if ($type === 'classifyProposalIntent') {
+
+    $userQuery = trim((string)($input['userQuery'] ?? ''));
+
+    if ($userQuery === '') {
+        echo json_encode([
+            'type'       => 'none',
+            'displayName'=> null,
+            'confidence' => 0.0,
+            'reason'     => 'Empty input'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    $systemPrompt = <<<PROMPT
+You are a precise classifier for Skyesoft. Your only job is to decide whether the user's multi-line input is a Contact Proposal, a Location Proposal, or neither.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "type": "contact_proposal" | "location_proposal" | "none",
+  "displayName": "string or null",
+  "confidence": number between 0 and 1,
+  "reason": "short explanation"
+}
+
+Classification rules:
+
+1. contact_proposal
+   - Has a person's name (First Last)
+   - Usually also has a job title, phone number, and/or email
+   - May include a company name and address, but the primary signal is a person + contact details
+
+2. location_proposal
+   - Focused on a physical place / business location
+   - Typically starts with a company or location name
+   - Contains a street address + city, state, ZIP
+   - Does NOT have a clear personal name + contact details as the primary focus
+
+3. none
+   - Single line
+   - Conversational questions
+   - Ambiguous or incomplete information
+   - Anything that is not a clear structured proposal
+
+Important:
+- Prefer "none" when in doubt.
+- displayName should be the most useful short label for the UI (person name or entity/location name).
+- Never invent data. Only use what is present in the input.
+PROMPT;
+
+    $fullPrompt = $systemPrompt . "\n\nUser Input:\n" . $userQuery;
+
+    try {
+        $raw = callOpenAI($fullPrompt, $apiKey, 'gpt-4o-mini');
+
+        // Try to extract JSON even if the model wraps it
+        if (preg_match('/\{.*\}/s', $raw, $m)) {
+            $raw = $m[0];
+        }
+
+        $result = json_decode($raw, true);
+
+        if (!is_array($result) || !isset($result['type'])) {
+            throw new Exception('Invalid classifier response');
+        }
+
+        // Normalize
+        $allowed = ['contact_proposal', 'location_proposal', 'none'];
+        if (!in_array($result['type'], $allowed, true)) {
+            $result['type'] = 'none';
+        }
+
+        echo json_encode([
+            'type'        => $result['type'],
+            'displayName' => $result['displayName'] ?? null,
+            'confidence'  => isset($result['confidence']) ? (float)$result['confidence'] : 0.0,
+            'reason'      => $result['reason'] ?? null
+        ], JSON_UNESCAPED_SLASHES);
+
+    } catch (Throwable $e) {
+        error_log('[classifyProposalIntent] Error: ' . $e->getMessage());
+        echo json_encode([
+            'type'        => 'none',
+            'displayName' => null,
+            'confidence'  => 0.0,
+            'reason'      => 'Classifier failed'
+        ], JSON_UNESCAPED_SLASHES);
+    }
+
+    exit;
+}
+
 // Resolve systemPrompt (for structured mode)
 $systemPrompt = $input['systemPrompt']
              ?? $_POST['systemPrompt']
