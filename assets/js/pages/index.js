@@ -839,48 +839,6 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🗂 Command & Workflow Registries
-    commandRegistry: {
-        street_view: {
-            display: "Google Street View",
-            icon: "📸",
-            processing: "Loading Street View..."
-        },
-        location_review: {
-            display: "Location Review",
-            icon: "📍",
-            processing: "Resolving Location..."
-        },
-        property_review: {
-            display: "Property Review",
-            icon: "🏠",
-            processing: "Resolving Property..."
-        },
-        parcel_review: {
-            display: "Parcel Review",
-            icon: "📐",
-            processing: "Resolving Parcel..."
-        },
-        contact_proposal: {
-            display: "Proposed Contact",
-            icon: "👤",
-            processing: "Analyzing Contact..."
-        },
-        location_proposal: {
-            display: "Location Proposal",
-            icon: "📍",
-            processing: "Processing Location..."
-        }
-    },
-
-    workflowRegistry: {
-        "street view": "street_view",
-        "location review": "location_review",
-        "property review": "location_review",   // maps to same handler for now
-        "parcel review": "location_review"
-    },
-    // #endregion
-
     // #region ❓ Help System
     showHelp(topic = "") {
         console.log('[Help] topic requested:', topic || '(general)');
