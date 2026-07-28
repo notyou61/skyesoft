@@ -932,6 +932,101 @@ function loadContactDetail(?PDO $db, int $contactId): ?array
 }
 
 /**
+ * Paginated entity list (read-only).
+ * Returns the same shape the frontend Entity List Card expects.
+ *
+ * @param PDO|null $db
+ * @param int      $page
+ * @param int      $pageSize
+ * @return array
+ */
+function loadEntityPage(?PDO $db, int $page = 1, int $pageSize = 5): array
+{
+    $page     = max(1, $page);
+    $pageSize = 5; // hard limit — keep consistent with contacts
+    $offset   = ($page - 1) * $pageSize;
+
+    $result = [
+        'type'       => 'entities',
+        'page'       => $page,
+        'pageSize'   => $pageSize,
+        'total'      => 0,
+        'totalPages' => 0,
+        'rows'       => [],
+        'source'     => 'database',
+        'asOf'       => date('c')
+    ];
+
+    if (!$db instanceof PDO) {
+        return $result;
+    }
+
+    try {
+        // Total count (exclude invalid entities if desired)
+        $total = (int)$db->query("
+            SELECT COUNT(*)
+            FROM tblEntities
+            WHERE COALESCE(entityIsNotValid, 0) = 0
+        ")->fetchColumn();
+
+        $result['total']      = $total;
+        $result['totalPages'] = $total > 0 ? (int)ceil($total / $pageSize) : 0;
+
+        if ($total === 0) {
+            return $result;
+        }
+
+        // Clamp page to last page
+        if ($page > $result['totalPages']) {
+            $page   = $result['totalPages'];
+            $offset = ($page - 1) * $pageSize;
+            $result['page'] = $page;
+        }
+
+        $stmt = $db->prepare("
+            SELECT
+                e.entityId,
+                e.entityName,
+                e.entityLegalName,
+                e.entityType,
+                e.entityStatus,
+                e.entityState,
+                e.entityIsNotValid
+            FROM tblEntities e
+            WHERE COALESCE(e.entityIsNotValid, 0) = 0
+            ORDER BY e.entityName ASC
+            LIMIT :limit OFFSET :offset
+        ");
+
+        $stmt->bindValue(':limit',  $pageSize, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset,   PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rows[] = [
+                'entityId'   => (int)$row['entityId'],
+                'entityName' => trim((string)$row['entityName']) ?: 'Unnamed Entity',
+                'name'       => trim((string)$row['entityName']) ?: 'Unnamed Entity', // alias for frontend compatibility
+                'address'    => null,   // populate later if you join a primary location
+                'city'       => null,
+                'state'      => $row['entityState'] ?: null,
+                'phone'      => null,
+                'status'     => $row['entityStatus'] ?: null,
+                'entityType' => $row['entityType'] ?: null
+            ];
+        }
+
+        $result['rows'] = $rows;
+
+    } catch (Throwable $e) {
+        error_log('[skyebot] loadEntityPage failed: ' . $e->getMessage());
+    }
+
+    return $result;
+}
+
+/**
  * Search contacts by first name, last name, or both names.
  */
 function searchContactsByName(?PDO $db, string $searchName): array
@@ -1723,6 +1818,151 @@ $cx     = skyesoftGetEnv('GOOGLE_CSE_CX')
     return $results;
 }
 
+/**
+ * Load a single entity with related collection counts.
+ * Read-only. Returns null when the entity does not exist.
+ *
+ * @param PDO|null $db
+ * @param int      $entityId
+ * @return array|null
+ */
+function loadEntityDetail(?PDO $db, int $entityId): ?array
+{
+    if (!$db instanceof PDO || $entityId <= 0) {
+        return null;
+    }
+
+    try {
+        // --------------------------------------------------
+        // Core entity record
+        // --------------------------------------------------
+        $stmt = $db->prepare("
+            SELECT
+                e.entityId,
+                e.entityName,
+                e.entityLegalName,
+                e.entityNormalizedName,
+                e.entityStructure,
+                e.entityState,
+                e.entityStatus,
+                e.entityType,
+                e.entityIsVerified,
+                e.entityAccNumber,
+                e.entityIsNotValid
+            FROM tblEntities e
+            WHERE e.entityId = :entityId
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'entityId' => $entityId
+        ]);
+
+        $entity = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($entity)) {
+            return null;
+        }
+
+        // --------------------------------------------------
+        // Related collection counts (safe / defensive)
+        // --------------------------------------------------
+        $safeCount = static function (PDO $db, string $sql, int $entityId): int {
+            try {
+                $s = $db->prepare($sql);
+                $s->execute(['entityId' => $entityId]);
+                return (int)$s->fetchColumn();
+            } catch (Throwable $e) {
+                error_log('[loadEntityDetail] count failed: ' . $e->getMessage());
+                return 0;
+            }
+        };
+
+        // Locations linked to this entity
+        $entity['locationCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblLocations WHERE locationEntityId = :entityId",
+            $entityId
+        );
+
+        // Contacts linked to this entity
+        $entity['contactCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblContacts WHERE contactEntityId = :entityId",
+            $entityId
+        );
+
+        // Orders (adjust table/column names if your schema differs)
+        $entity['orderCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblOrders WHERE orderEntityId = :entityId",
+            $entityId
+        );
+
+        // Applications
+        $entity['applicationCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblApplications WHERE applicationEntityId = :entityId",
+            $entityId
+        );
+
+        // Notes
+        $entity['noteCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblNotes WHERE noteEntityId = :entityId",
+            $entityId
+        );
+
+        // Tasks
+        $entity['taskCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblTasks WHERE taskEntityId = :entityId",
+            $entityId
+        );
+
+        // --------------------------------------------------
+        // Last activity (best-effort)
+        // --------------------------------------------------
+        try {
+            $act = $db->prepare("
+                SELECT MAX(actionUnix) AS lastUnix
+                FROM tblActions
+                WHERE actionPayloadData LIKE :entityNeedle
+                   OR actionResponseData LIKE :entityNeedle
+            ");
+            $needle = '%"entityId":' . $entityId . '%';
+            $act->execute(['entityNeedle' => $needle]);
+            $lastUnix = $act->fetchColumn();
+
+            if ($lastUnix && is_numeric($lastUnix)) {
+                $entity['lastActivity'] = date('M j, Y', (int)$lastUnix);
+            } else {
+                $entity['lastActivity'] = null;
+            }
+        } catch (Throwable $e) {
+            $entity['lastActivity'] = null;
+        }
+
+        // --------------------------------------------------
+        // Optional contact fields (only if columns exist)
+        // --------------------------------------------------
+        // These are left null when the columns are not present.
+        // Adjust names to match your actual schema when known.
+        $entity['primaryPhone'] = $entity['primaryPhone'] ?? null;
+        $entity['email']        = $entity['email']        ?? null;
+        $entity['website']      = $entity['website']      ?? null;
+
+        return $entity;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[skyebot] loadEntityDetail failed: ' .
+            $e->getMessage()
+        );
+        return null;
+    }
+}
+
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
@@ -2025,6 +2265,80 @@ if ($type === 'contactDetail') {
         'contact' => $contact,
         'error'   => $contact === null
             ? 'Contact not found.'
+            : null
+    ], JSON_UNESCAPED_SLASHES);
+
+    exit;
+}
+
+// =====================================================
+// READ-ONLY ENTITY DETAIL
+// =====================================================
+
+if ($type === 'entityDetail') {
+
+    // Resolve requested entity
+    $targetEntityId = (int)($input['entityId'] ?? 0);
+
+    // Resolve action context
+    $actorContactId = (int)($_SESSION['SKYESOFT_contactId']
+                    ?? $_SESSION['contactId']
+                    ?? 0);
+
+    $activitySessionId = $_SESSION['activitySessionId']
+                      ?? session_id();
+
+    $latitude  = $input['latitude']  ?? null;
+    $longitude = $input['longitude'] ?? null;
+
+    // Load requested entity
+    $entity = loadEntityDetail($db, $targetEntityId);
+
+    // Record successful entity READ
+    if ($entity !== null && $actorContactId > 0) {
+        try {
+            insertActionPrompt([
+                'contactId'          => $actorContactId,
+                'promptText'         => 'Open entity profile',
+                'responseText'       => sprintf(
+                    'Displayed entity profile #%d.',
+                    $targetEntityId
+                ),
+                'intent'             => 'entities.read',
+                'intentConfidence'   => 1.00,
+                'activitySessionId'  => $activitySessionId,
+                'latitude'           => $latitude,
+                'longitude'          => $longitude,
+                'actionTypeId'       => 13,          // same READ action type used by contacts
+                'origin'             => ACTION_ORIGIN_USER,
+                'actionPayloadData'  => [
+                    'operation'      => 'entities.read',
+                    'targetEntityId' => $targetEntityId
+                ],
+                'actionResponseData' => [
+                    'success'        => true,
+                    'targetEntityId' => $targetEntityId
+                ]
+            ], $db);
+
+        } catch (Throwable $e) {
+            // Preserve entity response if action logging fails
+            error_log(
+                '[askOpenAI] Entity-read action logging failed: ' .
+                $e->getMessage()
+            );
+        }
+    }
+
+    // Return entity response
+    header('Content-Type: application/json');
+
+    echo json_encode([
+        'success' => $entity !== null,
+        'type'    => 'entity_detail',
+        'entity'  => $entity,
+        'error'   => $entity === null
+            ? 'Entity not found.'
             : null
     ], JSON_UNESCAPED_SLASHES);
 
@@ -3061,6 +3375,147 @@ if ($type === "skyebot") {
                     // Preserve results if audit logging fails
                     error_log(
                         '[askOpenAI] Contact-list action logging failed: ' .
+                        $e->getMessage()
+                    );
+                }
+            }
+
+            header('Content-Type: application/json');
+
+            echo json_encode(
+                $listResponse,
+                JSON_UNESCAPED_SLASHES
+            );
+
+            exit;
+        }
+    }
+
+    // =====================================================================
+    // Operational Entity List
+    // =====================================================================
+
+    $isEntityList =
+        preg_match(
+            '/\b(list|show|display)\b.*\b(entities|entity|businesses|companies)\b/',
+            $lowerQuery
+        ) ||
+        preg_match(
+            '/\b(entities|entity|businesses|companies)\b.*\b(list|page)\b/',
+            $lowerQuery
+        );
+
+    // Entity-list navigation only
+    $isEntityListNavigation =
+        ($_SESSION['lastList']['type'] ?? null) === 'entities' &&
+        (bool)preg_match(
+            '/\b(next|previous|prev)\s+page\b/',
+            $lowerQuery
+        );
+
+    if ($isEntityList || $isEntityListNavigation) {
+
+        // Set requested page
+        $page = 1;
+
+        if (preg_match('/\bpage\s+(\d+)\b/', $lowerQuery, $m)) {
+            $page = max(1, (int)$m[1]);
+        } elseif (preg_match('/\bnext\s+page\b/', $lowerQuery)) {
+            $page = (int)($_SESSION['lastList']['page'] ?? 1) + 1;
+        } elseif (
+            preg_match(
+                '/\b(prev|previous)\s+page\b/',
+                $lowerQuery
+            )
+        ) {
+            $page = max(
+                1,
+                (int)($_SESSION['lastList']['page'] ?? 2) - 1
+            );
+        }
+
+        // Load requested entities
+        $operationalList = loadEntityPage($db, $page, 5);
+
+        // Preserve navigation context
+        $_SESSION['lastList'] = [
+            'type' => 'entities',
+            'page' => $operationalList['page'] ?? $page
+        ];
+
+        error_log(
+            '[skyebot] entity list page=' .
+            ($operationalList['page'] ?? $page) .
+            ' rows=' .
+            count($operationalList['rows'] ?? [])
+        );
+
+        if (
+            is_array($operationalList) &&
+            isset($operationalList['rows'])
+        ) {
+            // Resolve action context
+            $actorContactId = (int)(
+                $_SESSION['SKYESOFT_contactId']
+                ?? $_SESSION['contactId']
+                ?? 0
+            );
+
+            $activitySessionId = $_SESSION['activitySessionId']
+                              ?? session_id();
+
+            // Resolve response details
+            $page       = (int)($operationalList['page'] ?? 1);
+            $pageSize   = (int)($operationalList['pageSize'] ?? 5);
+            $total      = (int)($operationalList['total'] ?? 0);
+            $totalPages = (int)($operationalList['totalPages'] ?? 1);
+            $rowCount   = count($operationalList['rows']);
+
+            // Build structured response
+            $listResponse = [
+                'success'           => true,
+                'type'              => 'entity_list',
+                'list'              => $operationalList,
+                'activitySessionId' => $activitySessionId
+            ];
+
+            // Record entity-list prompt action (Type 3)
+            if ($actorContactId > 0) {
+                try {
+                    insertActionPrompt([
+                        'contactId'         => $actorContactId,
+                        'promptText'        => $query,
+                        'responseText'      => sprintf(
+                            'Displayed entities page %d of %d (%d entities shown; %d total).',
+                            $page,
+                            $totalPages,
+                            $rowCount,
+                            $total
+                        ),
+                        'intent'            => 'entities.list',
+                        'intentConfidence'  => 1.0,
+                        'activitySessionId' => $activitySessionId,
+                        'latitude'          => $latitude,
+                        'longitude'         => $longitude,
+                        'actionTypeId'      => 3,
+                        'origin'            => ACTION_ORIGIN_USER,
+                        'actionPayloadData' => [
+                            'operation' => 'entities.list',
+                            'page'      => $page,
+                            'pageSize'  => $pageSize
+                        ],
+                        'actionResponseData' => [
+                            'success'    => true,
+                            'page'       => $page,
+                            'totalPages' => $totalPages,
+                            'rowCount'   => $rowCount,
+                            'total'      => $total
+                        ]
+                    ], $db);
+                } catch (Throwable $e) {
+                    // Preserve results if audit logging fails
+                    error_log(
+                        '[askOpenAI] Entity-list action logging failed: ' .
                         $e->getMessage()
                     );
                 }

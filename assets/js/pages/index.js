@@ -4967,6 +4967,314 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🏢 Entity Pagination + Detail
+    async loadEntityPage(page = 1) {
+        const requestedPage = Math.max(1, Number(page) || 1);
+
+        // Request authoritative page from backend (same pattern as contacts)
+        await this.executeAICommand(
+            `show entities page ${requestedPage}`
+        );
+    },
+
+    async showFullEntity(entityId) {
+        const resolvedEntityId = Number(entityId);
+
+        if (!Number.isInteger(resolvedEntityId) || resolvedEntityId <= 0) {
+            this.appendSystemLine('Entity not found.');
+            return;
+        }
+
+        // Close any existing entity modal
+        this.closeEntityModal();
+
+        // Loading modal (same chrome as Contact Profile)
+        const modal = document.createElement('div');
+        modal.id = 'entityDetailModal';
+        modal.className = 'modal-backdrop';
+        modal.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:10000;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            background:rgba(0,0,0,0.58);
+        `;
+
+        modal.innerHTML = `
+            <div role="dialog"
+                aria-modal="true"
+                aria-labelledby="entityDetailTitle"
+                style="width:100%; max-width:680px; background:#fff; border-radius:8px;
+                        box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
+                    <div style="display:flex; align-items:center; gap:9px;">
+                        <span style="font-size:1.25rem;">🏢</span>
+                        <strong id="entityDetailTitle" style="color:#222;">
+                            Entity Profile
+                        </strong>
+                    </div>
+                    <button type="button"
+                            onclick="SkyIndex.closeEntityModal();"
+                            aria-label="Close entity profile"
+                            style="border:0; background:transparent; color:#666; cursor:pointer;
+                                font-size:1.5rem; line-height:1;">
+                        ×
+                    </button>
+                </div>
+                <div style="padding:28px 18px; text-align:center; color:#666;">
+                    Loading entity details...
+                </div>
+            </div>
+        `;
+
+        modal.addEventListener('click', event => {
+            if (event.target === modal) {
+                this.closeEntityModal();
+            }
+        });
+
+        document.body.appendChild(modal);
+        document.addEventListener('keydown', this.handleEntityModalKeydown);
+
+        try {
+            // Resolve location for READ action (same as contacts)
+            let actionLocation = this.lastLocation || {
+                latitude: null,
+                longitude: null
+            };
+
+            if (
+                actionLocation.latitude === null ||
+                actionLocation.longitude === null
+            ) {
+                actionLocation = await this.getLocationSafe();
+                if (
+                    actionLocation.latitude !== null &&
+                    actionLocation.longitude !== null
+                ) {
+                    this.lastLocation = actionLocation;
+                }
+            }
+
+            const response = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'entityDetail',
+                    entityId: resolvedEntityId,
+                    latitude: actionLocation?.latitude ?? null,
+                    longitude: actionLocation?.longitude ?? null
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success || !data.entity) {
+                throw new Error(data.error || 'Entity not found.');
+            }
+
+            this.renderEntityModal(data.entity, resolvedEntityId);
+
+        } catch (error) {
+            console.error('[SkyIndex] showFullEntity failed:', error);
+
+            const modalEl = document.getElementById('entityDetailModal');
+            if (modalEl) {
+                const body = modalEl.querySelector('[role="dialog"] > div:last-child');
+                if (body) {
+                    body.innerHTML = `
+                        <div style="padding:24px 18px; color:#c0392b; text-align:center;">
+                            ${this.escapeHtml(error.message || 'Failed to load entity.')}
+                        </div>
+                    `;
+                }
+            }
+        }
+    },
+
+    closeEntityModal() {
+        const modal = document.getElementById('entityDetailModal');
+        if (modal) modal.remove();
+        document.removeEventListener('keydown', this.handleEntityModalKeydown);
+    },
+
+    handleEntityModalKeydown(e) {
+        if (e.key === 'Escape') {
+            SkyIndex.closeEntityModal();
+        }
+    },
+
+    /**
+     * Renders the full Entity Card inside the modal.
+     * This is the hub: Locations, Contacts, Orders, Applications, Notes, Tasks.
+     */
+    renderEntityModal(entity, entityId) {
+        const modal = document.getElementById('entityDetailModal');
+        if (!modal) return;
+
+        const dialog = modal.querySelector('[role="dialog"]');
+        if (!dialog) return;
+
+        const resolvedEntityId = Number(entityId || entity.entityId || 0);
+
+        const name        = this.escapeHtml(entity.entityName || entity.name || 'Unnamed Entity');
+        const legalName   = entity.entityLegalName ? this.escapeHtml(entity.entityLegalName) : '';
+        const entityType  = entity.entityType ? this.escapeHtml(entity.entityType) : '';
+        const status      = entity.entityStatus || entity.status || '';
+        const phone       = entity.primaryPhone || entity.phone || '';
+        const email       = entity.email || '';
+        const website     = entity.website || '';
+
+        // Counts (live from backend)
+        const locationCount     = Number(entity.locationCount ?? entity.locations ?? 0);
+        const contactCount      = Number(entity.contactCount  ?? entity.contacts  ?? 0);
+        const orderCount        = Number(entity.orderCount    ?? entity.orders    ?? 0);
+        const applicationCount  = Number(entity.applicationCount ?? entity.applications ?? 0);
+        const noteCount         = Number(entity.noteCount     ?? entity.notes     ?? 0);
+        const taskCount         = Number(entity.taskCount     ?? entity.tasks     ?? 0);
+
+        const lastActivity = entity.lastActivity
+            ? this.escapeHtml(entity.lastActivity)
+            : '—';
+
+        // Collection links
+        const collectionLink = (label, count, action) => {
+            if (count <= 0) {
+                return `
+                    <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f0f0; color:#999;">
+                        <span>${label}</span>
+                        <span>0</span>
+                    </div>
+                `;
+            }
+            return `
+                <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f0f0;">
+                    <a href="#"
+                    onclick="event.preventDefault(); ${action}"
+                    style="color:#117a8b; font-weight:600; text-decoration:none;">
+                        ${label}
+                    </a>
+                    <span style="font-weight:600; color:#222;">${count}</span>
+                </div>
+            `;
+        };
+
+        dialog.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;
+                        gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
+                <div style="display:flex; align-items:center; gap:9px;">
+                    <span style="font-size:1.25rem;">🏢</span>
+                    <strong id="entityDetailTitle" style="color:#222;">
+                        ${name}
+                    </strong>
+                </div>
+                <button type="button"
+                        onclick="SkyIndex.closeEntityModal();"
+                        aria-label="Close entity profile"
+                        style="border:0; background:transparent; color:#666; cursor:pointer;
+                            font-size:1.5rem; line-height:1;">
+                    ×
+                </button>
+            </div>
+
+            <div style="padding:18px; max-height:70vh; overflow-y:auto;">
+
+                <!-- Identity -->
+                <div style="margin-bottom:18px;">
+                    ${legalName && legalName !== name ? `
+                        <div style="font-size:0.9em; color:#555; margin-bottom:4px;">
+                            Legal: ${legalName}
+                        </div>
+                    ` : ''}
+                    <div style="display:flex; flex-wrap:wrap; gap:8px 14px; font-size:0.88em; color:#666;">
+                        ${entityType ? `<span>${entityType}</span>` : ''}
+                        ${status ? `<span>• ${this.escapeHtml(status)}</span>` : ''}
+                    </div>
+                </div>
+
+                <!-- Contact info -->
+                ${(phone || email || website) ? `
+                    <div style="margin-bottom:18px; font-size:0.9em;">
+                        ${phone ? `
+                            <div style="margin-bottom:4px;">
+                                <a href="tel:${this.escapeHtml(phone)}" style="color:#555; text-decoration:none;">
+                                    📞 ${this.escapeHtml(phone)}
+                                </a>
+                            </div>
+                        ` : ''}
+                        ${email ? `
+                            <div style="margin-bottom:4px;">
+                                <a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">
+                                    ✉️ ${this.escapeHtml(email)}
+                                </a>
+                            </div>
+                        ` : ''}
+                        ${website ? `
+                            <div>
+                                <a href="${this.escapeHtml(website)}" target="_blank" rel="noopener"
+                                style="color:#117a8b; text-decoration:none;">
+                                    🌐 ${this.escapeHtml(website)}
+                                </a>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+
+                <!-- Related Collections (the hub) -->
+                <div style="margin-bottom:8px;">
+                    <div style="font-size:0.78em; font-weight:600; letter-spacing:0.04em;
+                                color:#888; text-transform:uppercase; margin-bottom:6px;">
+                        Related
+                    </div>
+
+                    ${collectionLink('Locations', locationCount,
+                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show locations for entity ${resolvedEntityId}');`)}
+
+                    ${collectionLink('Contacts', contactCount,
+                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show contacts for entity ${resolvedEntityId}');`)}
+
+                    ${collectionLink('Orders', orderCount,
+                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show orders for entity ${resolvedEntityId}');`)}
+
+                    ${collectionLink('Applications', applicationCount,
+                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show applications for entity ${resolvedEntityId}');`)}
+
+                    ${collectionLink('Notes', noteCount,
+                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show notes for entity ${resolvedEntityId}');`)}
+
+                    ${collectionLink('Tasks', taskCount,
+                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show tasks for entity ${resolvedEntityId}');`)}
+                </div>
+
+                <!-- Last Activity -->
+                <div style="margin-top:16px; padding-top:12px; border-top:1px solid #eee;
+                            font-size:0.85em; color:#666;">
+                    Last Activity: <strong style="color:#333;">${lastActivity}</strong>
+                </div>
+            </div>
+
+            <div style="padding:12px 18px; border-top:1px solid #eee; background:#fafafa;
+                        display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button"
+                        onclick="SkyIndex.closeEntityModal();"
+                        style="padding:8px 16px; border:1px solid #ccc; border-radius:6px;
+                            background:#fff; color:#333; cursor:pointer; font-weight:500;">
+                    Close
+                </button>
+            </div>
+        `;
+    },
+    // #endregion
+
     // #region 🏢 Entity List Card (paginated, proposal-card chrome)
     renderEntityListCard(list) {
         if (!list || !Array.isArray(list.rows)) {
@@ -5397,6 +5705,14 @@ window.SkyIndex = {
                 this.renderEntitySearchCard(
                     Array.isArray(data.matches) ? data.matches : []
                 );
+                return;
+            }
+
+            // --------------------------------------------------
+            // 🏢 ENTITY LIST CARD
+            // --------------------------------------------------
+            if (data?.type === 'entity_list' && data?.list) {
+                this.renderEntityListCard(data.list);
                 return;
             }
 
