@@ -5168,38 +5168,69 @@ window.SkyIndex = {
             `;
         };
 
+        // Build badges (Title Case)
+        const typeBadge = entityType
+            ? `<span style="
+                    display:inline-block;
+                    margin-left:8px;
+                    padding:2px 8px;
+                    font-size:0.72em;
+                    font-weight:600;
+                    letter-spacing:0.03em;
+                    color:#117a8b;
+                    background:rgba(23,162,184,0.12);
+                    border:1px solid rgba(23,162,184,0.25);
+                    border-radius:4px;
+                    vertical-align:middle;
+                    text-transform:capitalize;
+                ">${entityType}</span>`
+            : '';
+
+        const statusBadge = status
+            ? `<span style="
+                    display:inline-block;
+                    margin-left:6px;
+                    padding:2px 8px;
+                    font-size:0.72em;
+                    font-weight:600;
+                    letter-spacing:0.03em;
+                    color:#2e7d32;
+                    background:rgba(46,125,50,0.10);
+                    border:1px solid rgba(46,125,50,0.22);
+                    border-radius:4px;
+                    vertical-align:middle;
+                    text-transform:capitalize;
+                ">${this.escapeHtml(status)}</span>`
+            : '';
+
         dialog.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;
                         gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
-                <div style="display:flex; align-items:center; gap:9px;">
-                    <span style="font-size:1.25rem;">🏢</span>
-                    <strong id="entityDetailTitle" style="color:#222;">
+                <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                    <span style="font-size:1.25rem; flex-shrink:0;">🏢</span>
+                    <strong id="entityDetailTitle" style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${name}
                     </strong>
+                    ${typeBadge}
+                    ${statusBadge}
                 </div>
                 <button type="button"
                         onclick="SkyIndex.closeEntityModal();"
                         aria-label="Close entity profile"
                         style="border:0; background:transparent; color:#666; cursor:pointer;
-                            font-size:1.5rem; line-height:1;">
+                            font-size:1.5rem; line-height:1; flex-shrink:0;">
                     ×
                 </button>
             </div>
 
             <div style="padding:18px; max-height:70vh; overflow-y:auto;">
 
-                <!-- Identity -->
-                <div style="margin-bottom:18px;">
-                    ${legalName && legalName !== name ? `
-                        <div style="font-size:0.9em; color:#555; margin-bottom:4px;">
-                            Legal: ${legalName}
-                        </div>
-                    ` : ''}
-                    <div style="display:flex; flex-wrap:wrap; gap:8px 14px; font-size:0.88em; color:#666;">
-                        ${entityType ? `<span>${entityType}</span>` : ''}
-                        ${status ? `<span>• ${this.escapeHtml(status)}</span>` : ''}
+                <!-- Legal name (only if different) -->
+                ${legalName && legalName !== name ? `
+                    <div style="font-size:0.9em; color:#555; margin-bottom:16px;">
+                        Legal: ${legalName}
                     </div>
-                </div>
+                ` : ''}
 
                 <!-- Contact info -->
                 ${(phone || email || website) ? `
