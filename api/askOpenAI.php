@@ -1848,6 +1848,7 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
                 e.entityType,
                 e.entityIsVerified,
                 e.entityAccNumber,
+                e.entityDate,
                 e.entityIsNotValid
             FROM tblEntities e
             WHERE e.entityId = :entityId
@@ -1941,6 +1942,28 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
             }
         } catch (Throwable $e) {
             $entity['lastActivity'] = null;
+        }
+
+        // --------------------------------------------------
+        // Created date + Last Activity fallback
+        // --------------------------------------------------
+        $createdRaw = $entity['entityDate'] ?? null;
+
+        if ($createdRaw !== null && $createdRaw !== '') {
+            // Handle both Unix timestamps and date strings
+            if (is_numeric($createdRaw) && (int)$createdRaw > 1000000000) {
+                $entity['createdDate'] = date('M j, Y', (int)$createdRaw);
+            } else {
+                $ts = strtotime((string)$createdRaw);
+                $entity['createdDate'] = $ts ? date('M j, Y', $ts) : null;
+            }
+        } else {
+            $entity['createdDate'] = null;
+        }
+
+        // Last Activity falls back to Created when empty
+        if (empty($entity['lastActivity']) && !empty($entity['createdDate'])) {
+            $entity['lastActivity'] = $entity['createdDate'];
         }
 
         // --------------------------------------------------

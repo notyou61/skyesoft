@@ -5142,9 +5142,8 @@ window.SkyIndex = {
         const noteCount         = Number(entity.noteCount     ?? entity.notes     ?? 0);
         const taskCount         = Number(entity.taskCount     ?? entity.tasks     ?? 0);
 
-        const lastActivity = entity.lastActivity
-            ? this.escapeHtml(entity.lastActivity)
-            : '—';
+        const createdDate  = entity.createdDate  ? this.escapeHtml(entity.createdDate)  : '—';
+        const lastActivity = entity.lastActivity ? this.escapeHtml(entity.lastActivity) : createdDate;
 
         // Collection links
         const collectionLink = (label, count, action) => {
@@ -5286,10 +5285,15 @@ window.SkyIndex = {
                         `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show tasks for entity ${resolvedEntityId}');`)}
                 </div>
 
-                <!-- Last Activity -->
+                <!-- Created + Last Activity (single row) -->
                 <div style="margin-top:16px; padding-top:12px; border-top:1px solid #eee;
-                            font-size:0.85em; color:#666;">
-                    Last Activity: <strong style="color:#333;">${lastActivity}</strong>
+                            font-size:0.85em; color:#666; display:flex; gap:24px;">
+                    <div>
+                        Created: <strong style="color:#333;">${createdDate}</strong>
+                    </div>
+                    <div>
+                        Last Activity: <strong style="color:#333;">${lastActivity}</strong>
+                    </div>
                 </div>
             </div>
 
