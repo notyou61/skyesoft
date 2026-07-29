@@ -2310,6 +2310,180 @@
                     "violationCode": "CP-UI-2025-A1"
                 }
             },
+            "businessObjectCardStandard": {
+                "title": {
+                    "icon": 67,
+                    "text": "Business Object Card Standard"
+                },
+                "tier": 2,
+                "hierarchyOrder": 17,
+                "type": "Structural Standard",
+                "preamble": {
+                    "icon": 0,
+                    "text": "This standard defines the canonical presentation structure for all Skyesoft Business Object Cards. It establishes a consistent conversational and workspace representation for business objects while separating presentation from data retrieval."
+                },
+                "purpose": {
+                    "icon": 6,
+                    "text": "Ensure every business object presents information using a uniform, reusable structure that supports conversational interaction, navigation, scalability, and long-term architectural consistency."
+                },
+                "scope": {
+                    "governedObjects": [
+                        "Entities",
+                        "Locations",
+                        "Contacts",
+                        "Orders",
+                        "Applications",
+                        "Tasks",
+                        "Notes",
+                        "Reports",
+                        "Proposals",
+                        "Future governed business objects"
+                    ],
+                    "presentationContexts": [
+                        "Conversational cards",
+                        "Workspace cards",
+                        "Embedded object summaries",
+                        "Search result cards"
+                    ],
+                    "exclusions": [
+                        "Traditional modal dialogs",
+                        "Administrative configuration screens",
+                        "Third-party embedded interfaces"
+                    ]
+                },
+                "cardStructure": {
+                    "requiredRegions": [
+                        "header",
+                        "body",
+                        "footer"
+                    ],
+                    "header": {
+                        "purpose": "Identify the business object.",
+                        "requiredElements": [
+                            "Object icon",
+                            "Object type",
+                            "Primary title",
+                            "Status indicators"
+                        ],
+                        "prohibitedElements": [
+                            "Navigation lists",
+                            "Action buttons",
+                            "Editable content"
+                        ]
+                    },
+                    "body": {
+                        "purpose": "Present the business object's information.",
+                        "requiredSections": [
+                            "Summary"
+                        ],
+                        "optionalSections": [
+                            "Properties",
+                            "Topics",
+                            "Activity",
+                            "Timeline",
+                            "Financial",
+                            "Attachments"
+                        ]
+                    },
+                    "footer": {
+                        "purpose": "Provide actions applicable to the current object.",
+                        "examples": [
+                            "Open Workspace",
+                            "Edit",
+                            "Generate Report",
+                            "Create Task",
+                            "View History"
+                        ]
+                    }
+                },
+                "topics": {
+                    "definition": "A Topic represents a navigable domain associated with the current business object.",
+                    "examples": [
+                        "Locations",
+                        "Contacts",
+                        "Orders",
+                        "Applications",
+                        "Notes",
+                        "Tasks",
+                        "Reports"
+                    ],
+                    "rules": [
+                        "Topics represent navigation, not data fields.",
+                        "Selecting a Topic navigates to the associated object or collection.",
+                        "Topics may display summary counts when appropriate.",
+                        "Topics are reusable across business object types."
+                    ]
+                },
+                "presentationArchitecture": {
+                    "principles": [
+                        "Presentation shall be independent of data retrieval.",
+                        "Business objects shall share a common visual structure.",
+                        "Cards shall remain conversationally readable.",
+                        "Cards shall support progressive disclosure."
+                    ],
+                    "retrievalPattern": [
+                        "getObject()",
+                        "renderObjectCard()",
+                        "appendObjectCard()"
+                    ],
+                    "examples": {
+                        "entity": [
+                            "getEntity()",
+                            "renderEntityCard()",
+                            "appendEntityCard()"
+                        ],
+                        "location": [
+                            "getLocation()",
+                            "renderLocationCard()",
+                            "appendLocationCard()"
+                        ],
+                        "contact": [
+                            "getContact()",
+                            "renderContactCard()",
+                            "appendContactCard()"
+                        ]
+                    }
+                },
+                "htmlStructure": {
+                    "requiredClasses": [
+                        "skyCard",
+                        "skyCardHeader",
+                        "skyCardBody",
+                        "skyCardSection",
+                        "skyCardFooter"
+                    ],
+                    "rules": [
+                        "All Business Object Cards shall use the standard structural classes.",
+                        "Object-specific CSS shall extend, not replace, the standard structure.",
+                        "Business objects shall not define alternative card hierarchies."
+                    ]
+                },
+                "governanceRules": [
+                    "Every governed business object shall implement the standard Business Object Card structure.",
+                    "Business Object Cards shall contain Header, Body, and Footer regions.",
+                    "Presentation logic shall remain separate from retrieval logic.",
+                    "Topics shall be used for navigable relationships rather than embedded collections.",
+                    "New business object types shall inherit this standard unless explicitly exempted by the Codex."
+                ],
+                "auditability": {
+                    "auditedBy": "Codex Audit Standard",
+                    "traceability": "Business Object Cards shall provide a consistent presentation model across all governed objects.",
+                    "automationUse": "Automation may generate cards using this structure but shall not alter the prescribed hierarchy."
+                },
+                "prohibitions": [
+                    "Embedding retrieval logic within presentation components.",
+                    "Creating object-specific card layouts that violate the standard structure.",
+                    "Using Topics as arbitrary data fields.",
+                    "Mixing navigation with object actions.",
+                    "Replacing the canonical card hierarchy with custom implementations."
+                ],
+                "notes": [
+                    "This standard establishes the canonical presentation model for all Skyesoft Business Objects.",
+                    "The standard supports both conversational interfaces and workspace navigation.",
+                    "Topics represent navigable domains rather than simple relationships.",
+                    "This standard promotes architectural consistency while allowing object-specific content within a common framework."
+                ]
+            },
             "headerStatusBlockStandard": {
                 "title": {
                     "icon": 68,
