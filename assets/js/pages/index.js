@@ -5039,7 +5039,7 @@ window.SkyIndex = {
     },
 
     appendEntityCard(entity) {
-        // Normalize property names (same defensive pattern as renderEntityModal)
+        // Normalize
         const name = this.escapeHtml(
             entity.entityName || entity.name || 'Unnamed Entity'
         );
@@ -5056,7 +5056,6 @@ window.SkyIndex = {
             entity.entityState || entity.state || ''
         );
 
-        // Defensive counts
         const locationCount    = Number(entity.locationCount    ?? entity.locations    ?? 0);
         const contactCount     = Number(entity.contactCount     ?? entity.contacts     ?? 0);
         const orderCount       = Number(entity.orderCount       ?? entity.orders       ?? 0);
@@ -5066,7 +5065,7 @@ window.SkyIndex = {
 
         const entityId = Number(entity.entityId || entity.id || 0);
 
-        // Relationship row helper
+        // Relationship row (shared pattern for every object card)
         const relRow = (icon, label, count, command) => {
             const isZero = count <= 0;
             return `
@@ -5083,17 +5082,19 @@ window.SkyIndex = {
         const html = `
         <div class="skyCard entityCard">
 
-            <!-- Header -->
+            <!-- Header (mirrors Contact Card) -->
             <div class="skyCardHeader">
                 <div class="skyCardHeaderMain">
                     <span class="skyCardIcon">🏢</span>
                     <div class="skyCardTitleBlock">
+                        <div class="skyCardType">Entity</div>
                         <div class="skyCardTitle">${name}</div>
-                        ${state ? `<div class="skyCardSub">${state}</div>` : ''}
+                        <div class="skyCardSub">
+                            ${entityType ? entityType : ''}${entityType && state ? ' • ' : ''}${state || ''}
+                        </div>
                     </div>
                 </div>
                 <div class="skyCardBadges">
-                    ${entityType ? `<span class="badge badge-type">${entityType}</span>` : ''}
                     ${status ? `<span class="badge badge-status">${status}</span>` : ''}
                 </div>
             </div>

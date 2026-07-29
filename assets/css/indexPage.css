@@ -942,4 +942,29 @@ body[data-page="index"] .authText {
     background: #0d9488;
     border-color: #0d9488;
 }
+
+/* Object type label (e.g. "Entity", "Contact", "Location") */
+.skyCardType {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-bottom: 1px;
+}
+
+/* Slightly tighter title when type label is present */
+.skyCardTitleBlock .skyCardTitle {
+    font-size: 1.05rem;
+    font-weight: 650;
+    line-height: 1.25;
+}
+
+/* Subtitle under the name */
+.skyCardSub {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
 /* #endregion */
