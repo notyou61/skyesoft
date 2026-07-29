@@ -5939,12 +5939,13 @@ window.SkyIndex = {
             <!-- Body -->
             <div class="result-body" style="padding:0 14px 12px;">
 
-                <!-- Address + Entity + Parcel -->
+                <!-- Address + Entity + Parcel (cleaner, less repetitive) -->
                 <div style="padding:2px 0 8px; border-bottom:1px solid #f0f0f0;">
-                    ${addressHtml}
+
+                    ${addressHtml.replace('📍 ', '') /* remove the pin – header already has one */}
 
                     ${entityName ? `
-                        <div style="margin-top:6px; font-size:0.85em; color:#555;">
+                        <div style="margin-top:7px; font-size:0.85em; color:#555;">
                             🏢 ${entityId > 0
                                 ? `<a href="#" onclick="event.preventDefault(); SkyIndex.renderEntityCard(${entityId});" style="color:#117a8b; text-decoration:none; font-weight:500;">${entityName}</a>`
                                 : entityName}
