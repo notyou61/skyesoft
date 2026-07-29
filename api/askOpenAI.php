@@ -2076,18 +2076,22 @@ function loadLocationDetail(?PDO $db, string $identifier): ?array
             if ($location) error_log('[loadLocationDetail] matched by ID');
         }
 
-        // 2. Exact Parcel Number
+        // 2. Exact Parcel Number (normalized)
         if (!$location) {
             $parcel = preg_replace('/[^0-9A-Za-z]/', '', strtoupper($identifier));
             if (strlen($parcel) >= 5) {
                 error_log('[loadLocationDetail] trying parcel = ' . $parcel);
                 $stmt = $db->prepare("
-                    SELECT * FROM tblLocations
-                    WHERE locationParcelNumberRaw = :parcel
-                       OR REPLACE(REPLACE(REPLACE(locationParcelNumber, '-', ''), ' ', ''), '.', '') = :parcel
+                    SELECT *
+                    FROM tblLocations
+                    WHERE locationParcelNumberRaw = :parcel1
+                    OR REPLACE(REPLACE(REPLACE(locationParcelNumber, '-', ''), ' ', ''), '.', '') = :parcel2
                     LIMIT 1
                 ");
-                $stmt->execute(['parcel' => $parcel]);
+                $stmt->execute([
+                    'parcel1' => $parcel,
+                    'parcel2' => $parcel
+                ]);
                 $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
                 if ($location) error_log('[loadLocationDetail] matched by parcel');
             }
@@ -2138,8 +2142,6 @@ function loadLocationDetail(?PDO $db, string $identifier): ?array
             error_log('[loadLocationDetail] NO MATCH for [' . $identifier . ']');
             return null;
         }
-
-        // ... rest of the function stays the same
 
         $locationId = (int)$location['locationId'];
 
