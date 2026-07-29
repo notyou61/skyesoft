@@ -228,7 +228,7 @@ window.SkyIndex = {
 
             // Universal allowed patterns
             const isAllowedHtml =
-                safeHtml.includes('result-card') ||           // ← New unified class
+                safeHtml.includes('result-card') ||
                 safeHtml.includes('property-review-card') ||
                 safeHtml.includes('streetview-card') ||
                 safeHtml.includes('contact-card') ||
@@ -238,7 +238,10 @@ window.SkyIndex = {
                 safeHtml.includes('gov-panel') ||
                 safeHtml.includes('Primary Parcel') ||
                 safeHtml.includes('Parcel Review') ||
-                safeHtml.includes('📸 Location Imagery');
+                safeHtml.includes('📸 Location Imagery') ||
+                // Entity cards
+                safeHtml.includes('skyCard') ||
+                safeHtml.includes('entityCard');
 
             if (!isAllowedHtml) {
                 this.appendSystemLine('[Unsupported HTML content]');
