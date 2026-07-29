@@ -5100,6 +5100,8 @@ window.SkyIndex = {
         </div>
         `;
 
+        console.log(html);
+
         this.appendSystemHtml(html);
     },
 
