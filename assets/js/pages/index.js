@@ -5065,7 +5065,7 @@ window.SkyIndex = {
             cityStateZip = [city, state, zip].filter(Boolean).join(' ');
         }
 
-        // Optional secondary context (jurisdiction / zone)
+        // Optional secondary context
         const jurisdiction = this.escapeHtml(location.locationJurisdiction || '');
         const zone         = this.escapeHtml(location.locationZone || '');
         const county       = this.escapeHtml(location.locationCounty || '');
@@ -5076,22 +5076,21 @@ window.SkyIndex = {
         if (zone)         contextParts.push('Zone ' + zone);
 
         const contextLine = contextParts.length
-            ? `<div style="margin-left:1.35em; margin-top:2px; font-size:0.8em; color:#777;">${contextParts.join(' • ')}</div>`
+            ? `<div style="margin-left:1.25em; font-size:0.78em; color:#777;">${contextParts.join(' • ')}</div>`
             : '';
 
         if (!line1 && !cityStateZip) return '';
 
         return `
-            <div style="font-size:0.9em; color:#374151; line-height:1.45; margin-top:2px;">
+            <div style="font-size:0.85em; color:#374151; line-height:1.35;">
                 ${line1 ? `<div>📍 ${line1}${suite ? ' ' + suite : ''}</div>` : ''}
-                ${cityStateZip ? `<div style="margin-left:1.35em;">${cityStateZip}</div>` : ''}
+                ${cityStateZip ? `<div style="margin-left:1.25em;">${cityStateZip}</div>` : ''}
                 ${contextLine}
             </div>
         `;
     },
 
     appendEntityCard(entity) {
-        // Normalize core fields
         const name = this.escapeHtml(
             entity.entityName || entity.name || 'Unnamed Entity'
         );
@@ -5106,7 +5105,6 @@ window.SkyIndex = {
 
         const entityId = Number(entity.entityId || entity.id || 0);
 
-        // Counts
         const locationCount    = Number(entity.locationCount    ?? 0);
         const contactCount     = Number(entity.contactCount     ?? 0);
         const orderCount       = Number(entity.orderCount       ?? 0);
@@ -5114,26 +5112,24 @@ window.SkyIndex = {
         const noteCount        = Number(entity.noteCount        ?? 0);
         const taskCount        = Number(entity.taskCount        ?? 0);
 
-        // Billing address (server is the source of truth)
         const addressHtml = this.renderBillingAddress(entity.billingLocation);
 
-        // Relationship row helper
         const relRow = (icon, label, count, command) => {
             const isZero = count <= 0;
             const style = isZero
-                ? 'display:flex; justify-content:space-between; align-items:center; padding:7px 0; color:#999; border-bottom:1px solid #f3f3f3;'
-                : 'display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid #f3f3f3; cursor:pointer;';
+                ? 'display:flex; justify-content:space-between; align-items:center; padding:5px 0; color:#999; border-bottom:1px solid #f3f3f3;'
+                : 'display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #f3f3f3; cursor:pointer;';
 
             return `
                 <div style="${style}"
                     ${!isZero ? `onclick="event.preventDefault(); SkyIndex.executeAICommand('${command}')"` : ''}>
-                    <span style="display:flex; align-items:center; gap:8px;">
-                        <span style="width:1.2rem; text-align:center;">${icon}</span>
-                        <span style="font-weight:500; color:${isZero ? '#999' : '#374151'};">${label}</span>
+                    <span style="display:flex; align-items:center; gap:7px;">
+                        <span style="width:1.1rem; text-align:center; font-size:0.9em;">${icon}</span>
+                        <span style="font-weight:500; font-size:0.9em; color:${isZero ? '#999' : '#374151'};">${label}</span>
                     </span>
-                    <span style="display:flex; align-items:center; gap:6px;">
-                        <strong style="color:${isZero ? '#999' : '#111'};">${count}</strong>
-                        ${!isZero ? `<span style="color:#9ca3af; font-size:1.05rem;">›</span>` : ''}
+                    <span style="display:flex; align-items:center; gap:5px;">
+                        <strong style="font-size:0.9em; color:${isZero ? '#999' : '#111'};">${count}</strong>
+                        ${!isZero ? `<span style="color:#9ca3af; font-size:1rem;">›</span>` : ''}
                     </span>
                 </div>
             `;
@@ -5142,24 +5138,22 @@ window.SkyIndex = {
         const html = `
         <div class="result-card" style="border-left:5px solid #0f766e; background:#fff; width:100%; max-width:100%;">
 
-            <!-- Header: Icon + Name + Badges -->
-            <div class="result-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:12px 16px;">
-                <div style="display:flex; align-items:flex-start; gap:8px; min-width:0;">
-                    <span class="result-icon" style="font-size:1.3rem; line-height:1.3;">🏢</span>
-                    <div style="min-width:0;">
-                        <strong style="color:#111; font-size:1.15rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            ${name}
-                        </strong>
-                    </div>
+            <!-- Header -->
+            <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px 8px;">
+                <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                    <span style="font-size:1.2rem; line-height:1;">🏢</span>
+                    <strong style="color:#111; font-size:1.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${name}
+                    </strong>
                 </div>
-                <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; flex-shrink:0;">
+                <div style="display:flex; flex-wrap:wrap; gap:5px; justify-content:flex-end; flex-shrink:0;">
                     ${entityType ? `
-                        <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:2px 8px; border-radius:4px; font-size:0.72em; font-weight:600; text-transform:capitalize;">
+                        <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:1px 7px; border-radius:4px; font-size:0.7em; font-weight:600; text-transform:capitalize;">
                             ${entityType}
                         </span>
                     ` : ''}
                     ${status ? `
-                        <span style="background:rgba(46,125,50,0.10); color:#2e7d32; border:1px solid rgba(46,125,50,0.22); padding:2px 8px; border-radius:4px; font-size:0.72em; font-weight:600; text-transform:capitalize;">
+                        <span style="background:rgba(46,125,50,0.10); color:#2e7d32; border:1px solid rgba(46,125,50,0.22); padding:1px 7px; border-radius:4px; font-size:0.7em; font-weight:600; text-transform:capitalize;">
                             ${status}
                         </span>
                     ` : ''}
@@ -5167,17 +5161,17 @@ window.SkyIndex = {
             </div>
 
             <!-- Body -->
-            <div class="result-body" style="padding:0 16px 14px;">
+            <div class="result-body" style="padding:0 14px 12px;">
 
-                <!-- Canonical Address -->
+                <!-- Address -->
                 ${addressHtml ? `
-                    <div style="padding:6px 0 12px; border-bottom:1px solid #f0f0f0;">
+                    <div style="padding:2px 0 8px; border-bottom:1px solid #f0f0f0;">
                         ${addressHtml}
                     </div>
                 ` : ''}
 
-                <!-- Topics heading (lighter) -->
-                <div style="font-size:0.68rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#9ca3af; margin:14px 0 4px;">
+                <!-- Topics -->
+                <div style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#9ca3af; margin:8px 0 2px;">
                     Topics
                 </div>
 
@@ -5192,23 +5186,23 @@ window.SkyIndex = {
                 </div>
 
                 <!-- Actions -->
-                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid #f0f0f0;">
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; padding-top:8px; border-top:1px solid #f0f0f0;">
                     <button type="button"
                             onclick="SkyIndex.showEntityModal(${entityId})"
-                            style="padding:6px 12px; border-radius:6px; border:1px solid #0f766e; background:#0f766e; color:#fff; font-size:0.8rem; font-weight:550; cursor:pointer;">
+                            style="padding:5px 11px; border-radius:5px; border:1px solid #0f766e; background:#0f766e; color:#fff; font-size:0.78rem; font-weight:550; cursor:pointer;">
                         Open Profile
                     </button>
                     ${locationCount > 0 ? `
                         <button type="button"
                                 onclick="SkyIndex.executeAICommand('show locations for entity ${entityId}')"
-                                style="padding:6px 12px; border-radius:6px; border:1px solid #d1d5db; background:#fff; color:#374151; font-size:0.8rem; font-weight:550; cursor:pointer;">
+                                style="padding:5px 11px; border-radius:5px; border:1px solid #d1d5db; background:#fff; color:#374151; font-size:0.78rem; font-weight:550; cursor:pointer;">
                             View Locations
                         </button>
                     ` : ''}
                     ${contactCount > 0 ? `
                         <button type="button"
                                 onclick="SkyIndex.executeAICommand('show contacts for entity ${entityId}')"
-                                style="padding:6px 12px; border-radius:6px; border:1px solid #d1d5db; background:#fff; color:#374151; font-size:0.8rem; font-weight:550; cursor:pointer;">
+                                style="padding:5px 11px; border-radius:5px; border:1px solid #d1d5db; background:#fff; color:#374151; font-size:0.78rem; font-weight:550; cursor:pointer;">
                             View Contacts
                         </button>
                     ` : ''}
