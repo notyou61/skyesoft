@@ -2057,97 +2057,89 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
 function loadLocationDetail(?PDO $db, string $identifier): ?array
 {
     if (!$db instanceof PDO || trim($identifier) === '') {
+        error_log('[loadLocationDetail] empty identifier or no DB');
         return null;
     }
 
     $identifier = trim($identifier);
+    error_log('[loadLocationDetail] identifier received = [' . $identifier . ']');
 
     try {
-        // --------------------------------------------------
-        // Resolution order (most specific → broadest)
-        // --------------------------------------------------
         $location = null;
 
         // 1. Numeric Location ID
         if (ctype_digit($identifier)) {
-            $stmt = $db->prepare("
-                SELECT *
-                FROM tblLocations
-                WHERE locationId = :id
-                LIMIT 1
-            ");
+            error_log('[loadLocationDetail] trying numeric ID');
+            $stmt = $db->prepare("SELECT * FROM tblLocations WHERE locationId = :id LIMIT 1");
             $stmt->execute(['id' => (int)$identifier]);
             $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            if ($location) error_log('[loadLocationDetail] matched by ID');
         }
 
-        // 2. Exact Parcel Number (normalized)
+        // 2. Exact Parcel Number
         if (!$location) {
             $parcel = preg_replace('/[^0-9A-Za-z]/', '', strtoupper($identifier));
             if (strlen($parcel) >= 5) {
+                error_log('[loadLocationDetail] trying parcel = ' . $parcel);
                 $stmt = $db->prepare("
-                    SELECT *
-                    FROM tblLocations
+                    SELECT * FROM tblLocations
                     WHERE locationParcelNumberRaw = :parcel
                        OR REPLACE(REPLACE(REPLACE(locationParcelNumber, '-', ''), ' ', ''), '.', '') = :parcel
                     LIMIT 1
                 ");
                 $stmt->execute(['parcel' => $parcel]);
                 $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+                if ($location) error_log('[loadLocationDetail] matched by parcel');
             }
         }
 
         // 3. Exact Address
         if (!$location) {
-            $stmt = $db->prepare("
-                SELECT *
-                FROM tblLocations
-                WHERE locationAddress = :addr
-                LIMIT 1
-            ");
+            error_log('[loadLocationDetail] trying exact address');
+            $stmt = $db->prepare("SELECT * FROM tblLocations WHERE locationAddress = :addr LIMIT 1");
             $stmt->execute(['addr' => $identifier]);
             $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            if ($location) error_log('[loadLocationDetail] matched by exact address');
         }
 
         // 4. Google Place ID
         if (!$location && str_starts_with($identifier, 'ChIJ')) {
-            $stmt = $db->prepare("
-                SELECT *
-                FROM tblLocations
-                WHERE locationPlaceId = :placeId
-                LIMIT 1
-            ");
+            error_log('[loadLocationDetail] trying Place ID');
+            $stmt = $db->prepare("SELECT * FROM tblLocations WHERE locationPlaceId = :placeId LIMIT 1");
             $stmt->execute(['placeId' => $identifier]);
             $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            if ($location) error_log('[loadLocationDetail] matched by Place ID');
         }
 
         // 5. Exact Location Name
         if (!$location) {
-            $stmt = $db->prepare("
-                SELECT *
-                FROM tblLocations
-                WHERE locationName = :name
-                LIMIT 1
-            ");
+            error_log('[loadLocationDetail] trying exact name');
+            $stmt = $db->prepare("SELECT * FROM tblLocations WHERE locationName = :name LIMIT 1");
             $stmt->execute(['name' => $identifier]);
             $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            if ($location) error_log('[loadLocationDetail] matched by exact name');
         }
 
-        // 6. Fuzzy Location Name (simple LIKE)
+        // 6. Fuzzy Location Name
         if (!$location) {
+            error_log('[loadLocationDetail] trying fuzzy name');
             $stmt = $db->prepare("
-                SELECT *
-                FROM tblLocations
+                SELECT * FROM tblLocations
                 WHERE locationName LIKE :name
                 ORDER BY locationId ASC
                 LIMIT 1
             ");
             $stmt->execute(['name' => '%' . $identifier . '%']);
             $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            if ($location) error_log('[loadLocationDetail] matched by fuzzy name');
         }
 
         if (!is_array($location)) {
+            error_log('[loadLocationDetail] NO MATCH for [' . $identifier . ']');
             return null;
         }
+
+        // ... rest of the function stays the same
 
         $locationId = (int)$location['locationId'];
 
