@@ -5790,6 +5790,412 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 📍 Location Pagination + Detail
+
+    async loadLocationPage(page = 1) {
+        const requestedPage = Math.max(1, Number(page) || 1);
+
+        await this.executeAICommand(
+            `show locations page ${requestedPage}`
+        );
+    },
+
+    /**
+     * Retrieves a complete Location object from the server.
+     * Identifier can be: locationId, name, address, parcel, placeId, etc.
+     * Server is responsible for resolution order.
+     *
+     * @param {string|number} identifier
+     * @returns {Promise<Object>}
+     */
+    async getLocation(identifier) {
+        // Resolve location for READ action logging (same pattern as Entity)
+        let actionLocation = this.lastLocation || {
+            latitude: null,
+            longitude: null
+        };
+
+        if (
+            actionLocation.latitude === null ||
+            actionLocation.longitude === null
+        ) {
+            actionLocation = await this.getLocationSafe();
+            if (
+                actionLocation.latitude !== null &&
+                actionLocation.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+            }
+        }
+
+        const res = await fetch('/skyesoft/api/askOpenAI.php?type=locationDetail', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                identifier: String(identifier).trim(),
+                latitude: actionLocation?.latitude ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        return await res.json();
+    },
+
+    async renderLocationCard(identifier) {
+        const data = await this.getLocation(identifier);
+
+        if (!data.success || !data.location) {
+            this.appendSystemLine(data.error || 'Unable to retrieve location.');
+            return;
+        }
+
+        this.appendLocationCard(data.location);
+    },
+
+    appendLocationCard(location) {
+        const name = this.escapeHtml(
+            location.locationName || location.name || 'Unnamed Location'
+        );
+
+        const locationId = Number(location.locationId || location.id || 0);
+
+        // Status / flags
+        const isBilling = Number(location.locationIsBilling) === 1;
+        const isValid   = Number(location.locationIsNotValid) !== 1;
+
+        // Counts (defensive)
+        const contactCount     = Number(location.contactCount     ?? 0);
+        const orderCount       = Number(location.orderCount       ?? 0);
+        const applicationCount = Number(location.applicationCount ?? 0);
+        const noteCount        = Number(location.noteCount        ?? 0);
+        const taskCount        = Number(location.taskCount        ?? 0);
+
+        // Canonical address (reuse the same helper)
+        const addressHtml = this.renderBillingAddress(location);
+
+        // Relationship row helper (identical pattern)
+        const relRow = (icon, label, count, command) => {
+            const isZero = count <= 0;
+            const style = isZero
+                ? 'display:flex; justify-content:space-between; align-items:center; padding:5px 0; color:#999; border-bottom:1px solid #f3f3f3;'
+                : 'display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #f3f3f3; cursor:pointer;';
+
+            return `
+                <div style="${style}"
+                    ${!isZero ? `onclick="event.preventDefault(); SkyIndex.executeAICommand('${command}')"` : ''}>
+                    <span style="display:flex; align-items:center; gap:7px;">
+                        <span style="width:1.1rem; text-align:center; font-size:0.9em;">${icon}</span>
+                        <span style="font-weight:500; font-size:0.9em; color:${isZero ? '#999' : '#374151'};">${label}</span>
+                    </span>
+                    <span style="display:flex; align-items:center; gap:5px;">
+                        <strong style="font-size:0.9em; color:${isZero ? '#999' : '#111'};">${count}</strong>
+                        ${!isZero ? `<span style="color:#9ca3af; font-size:1rem;">›</span>` : ''}
+                    </span>
+                </div>
+            `;
+        };
+
+        const html = `
+        <div class="result-card" style="border-left:5px solid #0d9488; background:#fff; width:100%; max-width:100%;">
+
+            <!-- Header -->
+            <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px 8px;">
+                <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                    <span style="font-size:1.2rem; line-height:1;">📍</span>
+                    <strong style="color:#111; font-size:1.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${name}
+                    </strong>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:5px; justify-content:flex-end; flex-shrink:0;">
+                    ${isBilling ? `
+                        <span style="background:rgba(13,148,136,0.12); color:#0f766e; border:1px solid rgba(13,148,136,0.25); padding:1px 7px; border-radius:4px; font-size:0.7em; font-weight:600;">
+                            Billing
+                        </span>
+                    ` : ''}
+                    ${!isValid ? `
+                        <span style="background:rgba(185,28,28,0.10); color:#b91c1c; border:1px solid rgba(185,28,28,0.22); padding:1px 7px; border-radius:4px; font-size:0.7em; font-weight:600;">
+                            Invalid
+                        </span>
+                    ` : ''}
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="result-body" style="padding:0 14px 12px;">
+
+                <!-- Canonical Address -->
+                ${addressHtml ? `
+                    <div style="padding:2px 0 8px; border-bottom:1px solid #f0f0f0;">
+                        ${addressHtml}
+                    </div>
+                ` : ''}
+
+                <!-- Topics -->
+                <div style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#9ca3af; margin:8px 0 2px;">
+                    Topics
+                </div>
+
+                <!-- Relationships -->
+                <div>
+                    ${relRow('👤', 'Contacts',      contactCount,     `show contacts for location ${locationId}`)}
+                    ${relRow('📦', 'Orders',        orderCount,       `show orders for location ${locationId}`)}
+                    ${relRow('📄', 'Applications',  applicationCount, `show applications for location ${locationId}`)}
+                    ${relRow('📝', 'Notes',         noteCount,        `show notes for location ${locationId}`)}
+                    ${relRow('✔',  'Tasks',         taskCount,        `show tasks for location ${locationId}`)}
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; padding-top:8px; border-top:1px solid #f0f0f0;">
+                    <button type="button"
+                            onclick="SkyIndex.showLocationModal(${locationId})"
+                            style="padding:5px 11px; border-radius:5px; border:1px solid #0d9488; background:#0d9488; color:#fff; font-size:0.78rem; font-weight:550; cursor:pointer;">
+                        Open Profile
+                    </button>
+                    ${contactCount > 0 ? `
+                        <button type="button"
+                                onclick="SkyIndex.executeAICommand('show contacts for location ${locationId}')"
+                                style="padding:5px 11px; border-radius:5px; border:1px solid #d1d5db; background:#fff; color:#374151; font-size:0.78rem; font-weight:550; cursor:pointer;">
+                            View Contacts
+                        </button>
+                    ` : ''}
+                </div>
+
+            </div>
+        </div>
+        `;
+
+        this.appendSystemHtml(html);
+    },
+
+    async showLocationModal(locationId) {
+        const resolvedId = Number(locationId);
+
+        if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
+            this.appendSystemLine('Location not found.');
+            return;
+        }
+
+        this.closeLocationModal();
+
+        const modal = document.createElement('div');
+        modal.id = 'locationDetailModal';
+        modal.className = 'modal-backdrop';
+        modal.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:10000;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            background:rgba(0,0,0,0.58);
+        `;
+
+        modal.innerHTML = `
+            <div role="dialog"
+                aria-modal="true"
+                aria-labelledby="locationDetailTitle"
+                style="width:100%; max-width:680px; background:#fff; border-radius:8px;
+                        box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
+                    <div style="display:flex; align-items:center; gap:9px;">
+                        <span style="font-size:1.25rem;">📍</span>
+                        <strong id="locationDetailTitle" style="color:#222;">
+                            Location Profile
+                        </strong>
+                    </div>
+                    <button type="button"
+                            onclick="SkyIndex.closeLocationModal();"
+                            aria-label="Close location profile"
+                            style="border:0; background:transparent; color:#666; cursor:pointer;
+                                font-size:1.5rem; line-height:1;">
+                        ×
+                    </button>
+                </div>
+                <div style="padding:28px 18px; text-align:center; color:#666;">
+                    Loading location details...
+                </div>
+            </div>
+        `;
+
+        modal.addEventListener('click', event => {
+            if (event.target === modal) {
+                this.closeLocationModal();
+            }
+        });
+
+        document.body.appendChild(modal);
+        document.addEventListener('keydown', this.handleLocationModalKeydown);
+
+        try {
+            const data = await this.getLocation(resolvedId);
+
+            if (!data.success || !data.location) {
+                throw new Error(data.error || 'Location not found.');
+            }
+
+            this.renderLocationModal(data.location, resolvedId);
+
+        } catch (error) {
+            console.error('[SkyIndex] showLocationModal failed:', error);
+
+            const modalEl = document.getElementById('locationDetailModal');
+            if (modalEl) {
+                const body = modalEl.querySelector('[role="dialog"] > div:last-child');
+                if (body) {
+                    body.innerHTML = `
+                        <div style="padding:24px 18px; color:#c0392b; text-align:center;">
+                            ${this.escapeHtml(error.message || 'Failed to load location.')}
+                        </div>
+                    `;
+                }
+            }
+        }
+    },
+
+    closeLocationModal() {
+        const modal = document.getElementById('locationDetailModal');
+        if (modal) modal.remove();
+        document.removeEventListener('keydown', this.handleLocationModalKeydown);
+    },
+
+    handleLocationModalKeydown(e) {
+        if (e.key === 'Escape') {
+            SkyIndex.closeLocationModal();
+        }
+    },
+
+    /**
+     * Full Location Profile (modal)
+     * Parallel to renderEntityModal
+     */
+    renderLocationModal(location, locationId) {
+        const modal = document.getElementById('locationDetailModal');
+        if (!modal) return;
+
+        const dialog = modal.querySelector('[role="dialog"]');
+        if (!dialog) return;
+
+        const resolvedId = Number(locationId || location.locationId || 0);
+
+        const name = this.escapeHtml(
+            location.locationName || location.name || 'Unnamed Location'
+        );
+
+        const isBilling = Number(location.locationIsBilling) === 1;
+        const isValid   = Number(location.locationIsNotValid) !== 1;
+
+        // Counts
+        const contactCount     = Number(location.contactCount     ?? 0);
+        const orderCount       = Number(location.orderCount       ?? 0);
+        const applicationCount = Number(location.applicationCount ?? 0);
+        const noteCount        = Number(location.noteCount        ?? 0);
+        const taskCount        = Number(location.taskCount        ?? 0);
+
+        const addressHtml = this.renderBillingAddress(location);
+
+        // Collection links
+        const collectionLink = (label, count, action) => {
+            if (count <= 0) {
+                return `
+                    <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f0f0; color:#999;">
+                        <span>${label}</span>
+                        <span>0</span>
+                    </div>
+                `;
+            }
+            return `
+                <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f0f0;">
+                    <a href="#"
+                    onclick="event.preventDefault(); ${action}"
+                    style="color:#117a8b; font-weight:600; text-decoration:none;">
+                        ${label}
+                    </a>
+                    <span style="font-weight:600; color:#222;">${count}</span>
+                </div>
+            `;
+        };
+
+        dialog.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;
+                        gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
+                <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                    <span style="font-size:1.25rem; flex-shrink:0;">📍</span>
+                    <strong id="locationDetailTitle" style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${name}
+                    </strong>
+                    ${isBilling ? `
+                        <span style="margin-left:8px; padding:2px 8px; font-size:0.72em; font-weight:600;
+                                    color:#0f766e; background:rgba(13,148,136,0.12);
+                                    border:1px solid rgba(13,148,136,0.25); border-radius:4px;">
+                            Billing
+                        </span>
+                    ` : ''}
+                </div>
+                <button type="button"
+                        onclick="SkyIndex.closeLocationModal();"
+                        aria-label="Close location profile"
+                        style="border:0; background:transparent; color:#666; cursor:pointer;
+                            font-size:1.5rem; line-height:1; flex-shrink:0;">
+                    ×
+                </button>
+            </div>
+
+            <div style="padding:18px; max-height:70vh; overflow-y:auto;">
+
+                <!-- Address -->
+                ${addressHtml ? `
+                    <div style="margin-bottom:16px;">
+                        ${addressHtml}
+                    </div>
+                ` : ''}
+
+                <!-- Related Collections -->
+                <div style="margin-bottom:8px;">
+                    <div style="font-size:0.78em; font-weight:600; letter-spacing:0.04em;
+                                color:#888; text-transform:uppercase; margin-bottom:6px;">
+                        Related
+                    </div>
+
+                    ${collectionLink('Contacts', contactCount,
+                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show contacts for location ${resolvedId}');`)}
+
+                    ${collectionLink('Orders', orderCount,
+                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show orders for location ${resolvedId}');`)}
+
+                    ${collectionLink('Applications', applicationCount,
+                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show applications for location ${resolvedId}');`)}
+
+                    ${collectionLink('Notes', noteCount,
+                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show notes for location ${resolvedId}');`)}
+
+                    ${collectionLink('Tasks', taskCount,
+                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show tasks for location ${resolvedId}');`)}
+                </div>
+            </div>
+
+            <div style="padding:12px 18px; border-top:1px solid #eee; background:#fafafa;
+                        display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button"
+                        onclick="SkyIndex.closeLocationModal();"
+                        style="padding:8px 16px; border:1px solid #ccc; border-radius:6px;
+                            background:#fff; color:#333; cursor:pointer; font-weight:500;">
+                    Close
+                </button>
+            </div>
+        `;
+    },
+
+    // #endregion
+
     // #region 🔎 AI Query Information Card
     renderAIQueryCard(data = {}) {
 
