@@ -4977,7 +4977,126 @@ window.SkyIndex = {
         );
     },
 
-    async showFullEntity(entityId) {
+    /**
+     * Retrieves a complete Entity object from the server.
+     * Includes location for READ action logging.
+     *
+     * @param {number} entityId
+     * @returns {Promise<Object>}
+     */
+    async getEntity(entityId) {
+        // Resolve location for READ action (same as contacts)
+        let actionLocation = this.lastLocation || {
+            latitude: null,
+            longitude: null
+        };
+
+        if (
+            actionLocation.latitude === null ||
+            actionLocation.longitude === null
+        ) {
+            actionLocation = await this.getLocationSafe();
+            if (
+                actionLocation.latitude !== null &&
+                actionLocation.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+            }
+        }
+
+        const res = await fetch('/skyesoft/api/askOpenAI.php?type=entityDetail', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                entityId,
+                latitude: actionLocation?.latitude ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        return await res.json();
+    },
+
+    async renderEntityCard(entityId) {
+        const data = await this.getEntity(entityId);
+
+        if (!data.success || !data.entity) {
+            this.appendSystemLine('Unable to retrieve entity.');
+            return;
+        }
+
+        this.appendEntityCard(data.entity);
+    },
+
+    appendEntityCard(entity) {
+        // Normalize property names (same defensive pattern as renderEntityModal)
+        const name = this.escapeHtml(
+            entity.entityName || entity.name || 'Unnamed Entity'
+        );
+
+        const entityType = this.escapeHtml(
+            entity.entityType || entity.entityTypeName || ''
+        );
+
+        const status = this.escapeHtml(
+            entity.entityStatus || entity.status || ''
+        );
+
+        // Defensive counts
+        const locationCount    = Number(entity.locationCount    ?? entity.locations    ?? 0);
+        const contactCount     = Number(entity.contactCount     ?? entity.contacts     ?? 0);
+        const orderCount       = Number(entity.orderCount       ?? entity.orders       ?? 0);
+        const applicationCount = Number(entity.applicationCount ?? entity.applications ?? 0);
+        const noteCount        = Number(entity.noteCount        ?? entity.notes        ?? 0);
+        const taskCount        = Number(entity.taskCount        ?? entity.tasks        ?? 0);
+
+        const html = `
+        <div class="skyCard entityCard">
+
+            <div class="skyCardHeader">
+
+                <span class="skyCardIcon">🏢</span>
+
+                <span class="skyCardTitle">
+                    ${name}
+                </span>
+
+                ${entityType ? `<span class="badge">${entityType}</span>` : ''}
+
+                ${status ? `<span class="badge success">${status}</span>` : ''}
+
+            </div>
+
+            <div class="skyRelationships">
+
+                <div>Locations <strong>${locationCount}</strong></div>
+
+                <div>Contacts <strong>${contactCount}</strong></div>
+
+                <div>Orders <strong>${orderCount}</strong></div>
+
+                <div>Applications <strong>${applicationCount}</strong></div>
+
+                <div>Notes <strong>${noteCount}</strong></div>
+
+                <div>Tasks <strong>${taskCount}</strong></div>
+
+            </div>
+
+        </div>
+        `;
+
+        this.appendSystemHtml(html);
+    },
+
+    async showEntityModal(entityId) {
         const resolvedEntityId = Number(entityId);
 
         if (!Number.isInteger(resolvedEntityId) || resolvedEntityId <= 0) {
@@ -5041,42 +5160,7 @@ window.SkyIndex = {
         document.addEventListener('keydown', this.handleEntityModalKeydown);
 
         try {
-            // Resolve location for READ action (same as contacts)
-            let actionLocation = this.lastLocation || {
-                latitude: null,
-                longitude: null
-            };
-
-            if (
-                actionLocation.latitude === null ||
-                actionLocation.longitude === null
-            ) {
-                actionLocation = await this.getLocationSafe();
-                if (
-                    actionLocation.latitude !== null &&
-                    actionLocation.longitude !== null
-                ) {
-                    this.lastLocation = actionLocation;
-                }
-            }
-
-            const response = await fetch('/skyesoft/api/askOpenAI.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'entityDetail',
-                    entityId: resolvedEntityId,
-                    latitude: actionLocation?.latitude ?? null,
-                    longitude: actionLocation?.longitude ?? null
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
+            const data = await this.getEntity(resolvedEntityId);
 
             if (!data.success || !data.entity) {
                 throw new Error(data.error || 'Entity not found.');
@@ -5085,7 +5169,7 @@ window.SkyIndex = {
             this.renderEntityModal(data.entity, resolvedEntityId);
 
         } catch (error) {
-            console.error('[SkyIndex] showFullEntity failed:', error);
+            console.error('[SkyIndex] showEntityModal failed:', error);
 
             const modalEl = document.getElementById('entityDetailModal');
             if (modalEl) {
@@ -5342,7 +5426,7 @@ window.SkyIndex = {
             const nameHtml = entityId > 0
                 ? `
                     <a href="#"
-                    onclick="event.preventDefault(); SkyIndex.showFullEntity(${entityId});"
+                    onclick="event.preventDefault(); SkyIndex.showEntityModal(${entityId});"
                     style="color:#117a8b; font-weight:600; text-decoration:none;">
                         ${name}
                     </a>
@@ -5520,7 +5604,7 @@ window.SkyIndex = {
             const nameHtml = entityId > 0
                 ? `
                     <a href="#"
-                    onclick="event.preventDefault(); SkyIndex.showFullEntity(${entityId});"
+                    onclick="event.preventDefault(); SkyIndex.showEntityModal(${entityId});"
                     style="color:#117a8b; font-weight:600; text-decoration:none;">
                         ${name}
                     </a>
@@ -5740,7 +5824,7 @@ window.SkyIndex = {
                 data?.type === 'entity_detail' &&
                 Number(data?.entityId) > 0
             ) {
-                await this.showFullEntity(Number(data.entityId));
+                await this.showEntityModal(Number(data.entityId));
                 return;
             }
 
