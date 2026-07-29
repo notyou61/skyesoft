@@ -5734,6 +5734,17 @@ window.SkyIndex = {
             }
 
             // --------------------------------------------------
+            // 🏢 ENTITY DETAIL CARD
+            // --------------------------------------------------
+            if (
+                data?.type === 'entity_detail' &&
+                Number(data?.entityId) > 0
+            ) {
+                await this.showFullEntity(Number(data.entityId));
+                return;
+            }
+
+            // --------------------------------------------------
             // 🏢 ENTITY SEARCH CARD
             // --------------------------------------------------
             if (data?.type === 'entity_search') {
