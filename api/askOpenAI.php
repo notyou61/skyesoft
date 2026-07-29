@@ -2049,6 +2049,182 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
     }
 }
 
+/**
+ * Load a complete Location Business Object.
+ * Identifier can be: locationId, name, address, parcel, placeId, lat/lng, etc.
+ * Server is responsible for resolution order.
+ */
+function loadLocationDetail(?PDO $db, string $identifier): ?array
+{
+    if (!$db instanceof PDO || trim($identifier) === '') {
+        return null;
+    }
+
+    $identifier = trim($identifier);
+
+    try {
+        // --------------------------------------------------
+        // Resolution order (most specific → broadest)
+        // --------------------------------------------------
+        $location = null;
+
+        // 1. Numeric Location ID
+        if (ctype_digit($identifier)) {
+            $stmt = $db->prepare("
+                SELECT *
+                FROM tblLocations
+                WHERE locationId = :id
+                LIMIT 1
+            ");
+            $stmt->execute(['id' => (int)$identifier]);
+            $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        // 2. Exact Parcel Number (normalized)
+        if (!$location) {
+            $parcel = preg_replace('/[^0-9A-Za-z]/', '', strtoupper($identifier));
+            if (strlen($parcel) >= 5) {
+                $stmt = $db->prepare("
+                    SELECT *
+                    FROM tblLocations
+                    WHERE locationParcelNumberRaw = :parcel
+                       OR REPLACE(REPLACE(REPLACE(locationParcelNumber, '-', ''), ' ', ''), '.', '') = :parcel
+                    LIMIT 1
+                ");
+                $stmt->execute(['parcel' => $parcel]);
+                $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
+        }
+
+        // 3. Exact Address
+        if (!$location) {
+            $stmt = $db->prepare("
+                SELECT *
+                FROM tblLocations
+                WHERE locationAddress = :addr
+                LIMIT 1
+            ");
+            $stmt->execute(['addr' => $identifier]);
+            $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        // 4. Google Place ID
+        if (!$location && str_starts_with($identifier, 'ChIJ')) {
+            $stmt = $db->prepare("
+                SELECT *
+                FROM tblLocations
+                WHERE locationPlaceId = :placeId
+                LIMIT 1
+            ");
+            $stmt->execute(['placeId' => $identifier]);
+            $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        // 5. Exact Location Name
+        if (!$location) {
+            $stmt = $db->prepare("
+                SELECT *
+                FROM tblLocations
+                WHERE locationName = :name
+                LIMIT 1
+            ");
+            $stmt->execute(['name' => $identifier]);
+            $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        // 6. Fuzzy Location Name (simple LIKE)
+        if (!$location) {
+            $stmt = $db->prepare("
+                SELECT *
+                FROM tblLocations
+                WHERE locationName LIKE :name
+                ORDER BY locationId ASC
+                LIMIT 1
+            ");
+            $stmt->execute(['name' => '%' . $identifier . '%']);
+            $location = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        if (!is_array($location)) {
+            return null;
+        }
+
+        $locationId = (int)$location['locationId'];
+
+        // --------------------------------------------------
+        // Related collection counts (safe / defensive)
+        // --------------------------------------------------
+        $safeCount = static function (PDO $db, string $sql, int $locationId): int {
+            try {
+                $s = $db->prepare($sql);
+                $s->execute(['locationId' => $locationId]);
+                return (int)$s->fetchColumn();
+            } catch (Throwable $e) {
+                error_log('[loadLocationDetail] count failed: ' . $e->getMessage());
+                return 0;
+            }
+        };
+
+        $location['contactCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblContacts WHERE contactLocationId = :locationId",
+            $locationId
+        );
+
+        $location['orderCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblOrders WHERE orderLocationId = :locationId",
+            $locationId
+        );
+
+        $location['applicationCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblApplications WHERE applicationLocationId = :locationId",
+            $locationId
+        );
+
+        $location['noteCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblNotes WHERE noteLocationId = :locationId",
+            $locationId
+        );
+
+        $location['taskCount'] = $safeCount(
+            $db,
+            "SELECT COUNT(*) FROM tblTasks WHERE taskLocationId = :locationId",
+            $locationId
+        );
+
+        // --------------------------------------------------
+        // Parent Entity (optional but useful)
+        // --------------------------------------------------
+        $entityId = (int)($location['locationEntityId'] ?? 0);
+        if ($entityId > 0) {
+            try {
+                $eStmt = $db->prepare("
+                    SELECT entityId, entityName, entityType, entityStatus
+                    FROM tblEntities
+                    WHERE entityId = :entityId
+                    LIMIT 1
+                ");
+                $eStmt->execute(['entityId' => $entityId]);
+                $entity = $eStmt->fetch(PDO::FETCH_ASSOC);
+                $location['entity'] = is_array($entity) ? $entity : null;
+            } catch (Throwable $e) {
+                $location['entity'] = null;
+            }
+        } else {
+            $location['entity'] = null;
+        }
+
+        return $location;
+
+    } catch (Throwable $e) {
+        error_log('[skyebot] loadLocationDetail failed: ' . $e->getMessage());
+        return null;
+    }
+}
+
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
@@ -2425,6 +2601,81 @@ if ($type === 'entityDetail') {
         'entity'  => $entity,
         'error'   => $entity === null
             ? 'Entity not found.'
+            : null
+    ], JSON_UNESCAPED_SLASHES);
+
+    exit;
+}
+
+// =====================================================
+// READ-ONLY LOCATION DETAIL
+// =====================================================
+
+if ($type === 'locationDetail') {
+
+    // Resolve requested identifier
+    $identifier = trim((string)($input['identifier'] ?? ''));
+
+    // Resolve action context
+    $actorContactId = (int)($_SESSION['SKYESOFT_contactId']
+                    ?? $_SESSION['contactId']
+                    ?? 0);
+
+    $activitySessionId = $_SESSION['activitySessionId']
+                      ?? session_id();
+
+    $latitude  = $input['latitude']  ?? null;
+    $longitude = $input['longitude'] ?? null;
+
+    // Load requested location
+    $location = loadLocationDetail($db, $identifier);
+
+    // Record successful location READ
+    if ($location !== null && $actorContactId > 0) {
+        try {
+            insertActionPrompt([
+                'contactId'          => $actorContactId,
+                'promptText'         => 'Open location profile',
+                'responseText'       => sprintf(
+                    'Displayed location profile #%d (%s).',
+                    (int)($location['locationId'] ?? 0),
+                    $location['locationName'] ?? $identifier
+                ),
+                'intent'             => 'locations.read',
+                'intentConfidence'   => 1.00,
+                'activitySessionId'  => $activitySessionId,
+                'latitude'           => $latitude,
+                'longitude'          => $longitude,
+                'actionTypeId'       => 13,          // same READ action type used by entities/contacts
+                'origin'             => ACTION_ORIGIN_USER,
+                'actionPayloadData'  => [
+                    'operation'         => 'locations.read',
+                    'targetIdentifier'  => $identifier,
+                    'targetLocationId'  => (int)($location['locationId'] ?? 0)
+                ],
+                'actionResponseData' => [
+                    'success'          => true,
+                    'targetLocationId' => (int)($location['locationId'] ?? 0)
+                ]
+            ], $db);
+
+        } catch (Throwable $e) {
+            error_log(
+                '[askOpenAI] Location-read action logging failed: ' .
+                $e->getMessage()
+            );
+        }
+    }
+
+    // Return location response
+    header('Content-Type: application/json');
+
+    echo json_encode([
+        'success'  => $location !== null,
+        'type'     => 'location_detail',
+        'location' => $location,
+        'error'    => $location === null
+            ? 'Location not found.'
             : null
     ], JSON_UNESCAPED_SLASHES);
 
