@@ -5036,7 +5036,9 @@ window.SkyIndex = {
     },
 
     appendEntityCard(entity) {
-        // Normalize property names (same defensive pattern as renderEntityModal)
+
+        const entityId = Number(entity.entityId ?? 0);
+
         const name = this.escapeHtml(
             entity.entityName || entity.name || 'Unnamed Entity'
         );
@@ -5049,7 +5051,6 @@ window.SkyIndex = {
             entity.entityStatus || entity.status || ''
         );
 
-        // Defensive counts
         const locationCount    = Number(entity.locationCount    ?? entity.locations    ?? 0);
         const contactCount     = Number(entity.contactCount     ?? entity.contacts     ?? 0);
         const orderCount       = Number(entity.orderCount       ?? entity.orders       ?? 0);
@@ -5064,9 +5065,7 @@ window.SkyIndex = {
 
                 <span class="skyCardIcon">🏢</span>
 
-                <span class="skyCardTitle">
-                    ${name}
-                </span>
+                <span class="skyCardTitle">${name}</span>
 
                 ${entityType ? `<span class="badge">${entityType}</span>` : ''}
 
@@ -5076,17 +5075,25 @@ window.SkyIndex = {
 
             <div class="skyRelationships">
 
-                <div>Locations <strong>${locationCount}</strong></div>
+                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show locations for entity ${entityId}')">Locations</a> <strong>${locationCount}</strong></div>
 
-                <div>Contacts <strong>${contactCount}</strong></div>
+                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show contacts for entity ${entityId}')">Contacts</a> <strong>${contactCount}</strong></div>
 
-                <div>Orders <strong>${orderCount}</strong></div>
+                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show orders for entity ${entityId}')">Orders</a> <strong>${orderCount}</strong></div>
 
-                <div>Applications <strong>${applicationCount}</strong></div>
+                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show applications for entity ${entityId}')">Applications</a> <strong>${applicationCount}</strong></div>
 
-                <div>Notes <strong>${noteCount}</strong></div>
+                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show notes for entity ${entityId}')">Notes</a> <strong>${noteCount}</strong></div>
 
-                <div>Tasks <strong>${taskCount}</strong></div>
+                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show tasks for entity ${entityId}')">Tasks</a> <strong>${taskCount}</strong></div>
+
+            </div>
+
+            <div class="skyCardActions">
+
+                <button onclick="SkyIndex.showEntityModal(${entityId})">
+                    Open Profile
+                </button>
 
             </div>
 
@@ -5824,7 +5831,7 @@ window.SkyIndex = {
                 data?.type === 'entity_detail' &&
                 Number(data?.entityId) > 0
             ) {
-                await this.showEntityModal(Number(data.entityId));
+                await this.renderEntityCard(Number(data.entityId));
                 return;
             }
 
