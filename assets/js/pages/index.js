@@ -4971,6 +4971,7 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🏢 Entity Pagination + Detail
+
     async loadEntityPage(page = 1) {
         const requestedPage = Math.max(1, Number(page) || 1);
 
@@ -5038,8 +5039,42 @@ window.SkyIndex = {
         this.appendEntityCard(data.entity);
     },
 
+    /**
+     * Renders a canonical billing / primary address block.
+     * Reusable across Entity, Contact, Location, Order, Proposal, and PDF cards.
+     *
+     * @param {Object|null} location  – billingLocation (or any location object)
+     * @returns {string} HTML
+     */
+    renderBillingAddress(location) {
+        if (!location) return '';
+
+        const line1 = this.escapeHtml(location.locationAddress || '');
+        const suite = location.locationAddressSuite
+            ? this.escapeHtml(location.locationAddressSuite)
+            : '';
+        const city  = this.escapeHtml(location.locationCity || '');
+        const state = this.escapeHtml(location.locationState || '');
+        const zip   = this.escapeHtml(location.locationZip || '');
+
+        const cityStateZip = [city, state, zip]
+            .filter(Boolean)
+            .join(state && city ? ', ' : ' ')
+            .replace(/,\s*$/, '')
+            .trim();
+
+        if (!line1 && !cityStateZip) return '';
+
+        return `
+            <div style="font-size:0.85em; color:#555; line-height:1.4; margin-top:2px;">
+                ${line1 ? `<div>📍 ${line1}${suite ? ' ' + suite : ''}</div>` : ''}
+                ${cityStateZip ? `<div style="margin-left:1.35em;">${cityStateZip}</div>` : ''}
+            </div>
+        `;
+    },
+
     appendEntityCard(entity) {
-        // Normalize
+        // Normalize core fields
         const name = this.escapeHtml(
             entity.entityName || entity.name || 'Unnamed Entity'
         );
@@ -5052,20 +5087,20 @@ window.SkyIndex = {
             entity.entityStatus || entity.status || ''
         );
 
-        const state = this.escapeHtml(
-            entity.entityState || entity.state || ''
-        );
-
-        const locationCount    = Number(entity.locationCount    ?? entity.locations    ?? 0);
-        const contactCount     = Number(entity.contactCount     ?? entity.contacts     ?? 0);
-        const orderCount       = Number(entity.orderCount       ?? entity.orders       ?? 0);
-        const applicationCount = Number(entity.applicationCount ?? entity.applications ?? 0);
-        const noteCount        = Number(entity.noteCount        ?? entity.notes        ?? 0);
-        const taskCount        = Number(entity.taskCount        ?? entity.tasks        ?? 0);
-
         const entityId = Number(entity.entityId || entity.id || 0);
 
-        // Relationship row (same visual language as Contact Card)
+        // Counts
+        const locationCount    = Number(entity.locationCount    ?? 0);
+        const contactCount     = Number(entity.contactCount     ?? 0);
+        const orderCount       = Number(entity.orderCount       ?? 0);
+        const applicationCount = Number(entity.applicationCount ?? 0);
+        const noteCount        = Number(entity.noteCount        ?? 0);
+        const taskCount        = Number(entity.taskCount        ?? 0);
+
+        // Billing address (server is the source of truth)
+        const addressHtml = this.renderBillingAddress(entity.billingLocation);
+
+        // Relationship row helper
         const relRow = (icon, label, count, command) => {
             const isZero = count <= 0;
             const style = isZero
@@ -5074,7 +5109,7 @@ window.SkyIndex = {
 
             return `
                 <div style="${style}"
-                    ${!isZero ? `onclick="event.preventDefault(); SkyIndex.executeAICommand('${command}')"` : ''}>
+                     ${!isZero ? `onclick="event.preventDefault(); SkyIndex.executeAICommand('${command}')"` : ''}>
                     <span style="display:flex; align-items:center; gap:8px;">
                         <span style="width:1.2rem; text-align:center;">${icon}</span>
                         <span style="font-weight:500; color:${isZero ? '#999' : '#374151'};">${label}</span>
@@ -5090,55 +5125,47 @@ window.SkyIndex = {
         const html = `
         <div class="result-card" style="border-left:5px solid #0f766e; background:#fff; width:100%; max-width:100%;">
 
-            <!-- Header (exact Contact Card pattern) -->
-            <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="result-icon">🏢</span>
-                    <div style="display:flex; flex-direction:column;">
-                        <strong class="result-title" style="color:#222;">
-                            Entity
+            <!-- Header: Icon + Name + Badges -->
+            <div class="result-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:12px 16px;">
+                <div style="display:flex; align-items:flex-start; gap:8px; min-width:0;">
+                    <span class="result-icon" style="font-size:1.25rem; line-height:1.3;">🏢</span>
+                    <div style="min-width:0;">
+                        <strong style="color:#222; font-size:1.05rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            ${name}
                         </strong>
-                        <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
-                            ${entityType || 'Business Entity'}
-                        </small>
                     </div>
                 </div>
-                ${status ? `
-                    <span style="background:rgba(46,125,50,0.10); color:#2e7d32; border:1px solid rgba(46,125,50,0.22); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold; text-transform:uppercase;">
-                        ${status}
-                    </span>
-                ` : ''}
+                <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; flex-shrink:0;">
+                    ${entityType ? `
+                        <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:2px 8px; border-radius:4px; font-size:0.72em; font-weight:600; text-transform:capitalize;">
+                            ${entityType}
+                        </span>
+                    ` : ''}
+                    ${status ? `
+                        <span style="background:rgba(46,125,50,0.10); color:#2e7d32; border:1px solid rgba(46,125,50,0.22); padding:2px 8px; border-radius:4px; font-size:0.72em; font-weight:600; text-transform:capitalize;">
+                            ${status}
+                        </span>
+                    ` : ''}
+                </div>
             </div>
 
             <!-- Body -->
-            <div class="result-body" style="padding:4px 16px 12px;">
+            <div class="result-body" style="padding:0 16px 14px;">
 
-                <!-- Primary identity -->
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0;">
-                    <div style="min-width:0;">
-                        <div style="color:#222;">
-                            <a href="#"
-                            onclick="event.preventDefault(); SkyIndex.showEntityModal(${entityId});"
-                            style="color:#117a8b; font-weight:600; text-decoration:none;">
-                                ${name}
-                            </a>
-                            ${entityType ? `
-                                <span style="font-weight:400; color:#666;">
-                                    — ${entityType}
-                                </span>
-                            ` : ''}
-                        </div>
-
-                        ${state ? `
-                            <div style="font-size:0.85em; color:#666; margin-top:3px;">
-                                ${state}
-                            </div>
-                        ` : ''}
+                <!-- Canonical Address -->
+                ${addressHtml ? `
+                    <div style="padding:4px 0 12px; border-bottom:1px solid #f0f0f0;">
+                        ${addressHtml}
                     </div>
+                ` : ''}
+
+                <!-- Topics heading -->
+                <div style="font-size:0.72rem; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#888; margin:12px 0 4px;">
+                    Topics
                 </div>
 
                 <!-- Relationships -->
-                <div style="margin-top:4px; border-top:1px solid #f0f0f0; padding-top:4px;">
+                <div>
                     ${relRow('📍', 'Locations',     locationCount,    `show locations for entity ${entityId}`)}
                     ${relRow('👤', 'Contacts',      contactCount,     `show contacts for entity ${entityId}`)}
                     ${relRow('📦', 'Orders',        orderCount,       `show orders for entity ${entityId}`)}
@@ -5473,6 +5500,7 @@ window.SkyIndex = {
             </div>
         `;
     },
+    
     // #endregion
 
     // #region 🏢 Entity List Card (paginated, proposal-card chrome)
