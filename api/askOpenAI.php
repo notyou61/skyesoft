@@ -1590,21 +1590,21 @@ function resolveContactAtEntity(?PDO $db, string $lookupPhrase): ?array
 }
 
 /**
- * Resolve a single lookup phrase (no "at" separator).
+ * Resolve a single lookup phrase with no "at" separator.
  *
  * Priority order (stop at first successful hit):
  *  1. Exact full contact name
- *  2. Exact entity name          → return the entity's contacts
+ *  2. Exact entity name          → open the Entity Card
  *  3. Exact contact first or last name
  *  4. Ranked partial contact match
- *  5. Partial entity match       → return the entity's contacts
- *  6. null (fall through to normal Skyebot)
+ *  5. Partial entity match       → return Entity Search Results
+ *  6. null                       → fall through to normal Skyebot
  *
- * When an entity is matched, the function always returns the contacts
- * belonging to that entity (never an isolated entity card).
+ * Entity matches are resolved as Entity objects. Contacts associated with
+ * an entity are accessed through the Contacts relationship on the Entity Card.
  *
  * @param PDO|null $db
- * @param string   $lookupPhrase   Already cleaned by stripConversationalWrapper()
+ * @param string   $lookupPhrase Already cleaned by stripConversationalWrapper()
  * @return array|null
  */
 function resolveSinglePhrase(?PDO $db, string $lookupPhrase): ?array
@@ -1614,26 +1614,33 @@ function resolveSinglePhrase(?PDO $db, string $lookupPhrase): ?array
     }
 
     $phrase = trim($lookupPhrase);
+
     if ($phrase === '') {
         return null;
     }
 
-    $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
+    $activitySessionId =
+        $_SESSION['activitySessionId']
+        ?? session_id();
+
+    $normalizedPhrase = strtolower($phrase);
 
     // ---------------------------------------------------------------
     // 1. Exact full contact name
     // ---------------------------------------------------------------
     $contacts = searchContactsByName($db, $phrase);
 
-    // Filter to true exact full-name matches only
     $exactFull = [];
-    $normalizedPhrase = strtolower($phrase);
-    foreach ($contacts as $c) {
-        $full = strtolower(trim(
-            ($c['contactFirstName'] ?? '') . ' ' . ($c['contactLastName'] ?? '')
+
+    foreach ($contacts as $contact) {
+        $fullName = strtolower(trim(
+            ($contact['contactFirstName'] ?? '')
+            . ' '
+            . ($contact['contactLastName'] ?? '')
         ));
-        if ($full === $normalizedPhrase) {
-            $exactFull[] = $c;
+
+        if ($fullName === $normalizedPhrase) {
+            $exactFull[] = $contact;
         }
     }
 
@@ -1650,34 +1657,54 @@ function resolveSinglePhrase(?PDO $db, string $lookupPhrase): ?array
     }
 
     // ---------------------------------------------------------------
-    // 2. Exact entity name → return its contacts
+    // Resolve potential entity match once for exact and partial checks
     // ---------------------------------------------------------------
     $entity = searchEntityByName($db, $phrase);
-    if ($entity !== null && !empty($entity['entityId'])) {
-        $entityId   = (int)$entity['entityId'];
-        $entityName = (string)($entity['entityName'] ?? $phrase);
 
-        // Confirm it is truly exact (searchEntityByName already prefers exact,
-        // but we double-check for safety)
-        $normEntity = strtolower(trim($entityName));
-        $normPhrase = strtolower(trim($phrase));
+    // ---------------------------------------------------------------
+    // 2. Exact entity name → open Entity Card
+    // ---------------------------------------------------------------
+    if (
+        $entity !== null
+        && !empty($entity['entityId'])
+    ) {
+        $entityId   = (int)$entity['entityId'];
+        $entityName = trim((string)(
+            $entity['entityName']
+            ?? $phrase
+        ));
+
+        $normalizedEntityName = strtolower($entityName);
+
+        $normalizedStoredName = strtolower(trim((string)(
+            $entity['entityNormalizedName']
+            ?? ''
+        )));
+
+        $normalizedLegalName = strtolower(trim((string)(
+            $entity['entityLegalName']
+            ?? ''
+        )));
+
         $isExactEntity =
-            $normEntity === $normPhrase ||
-            strtolower(trim((string)($entity['entityNormalizedName'] ?? ''))) === $normPhrase ||
-            strtolower(trim((string)($entity['entityLegalName'] ?? ''))) === $normPhrase;
+            $normalizedEntityName === $normalizedPhrase
+            || (
+                $normalizedStoredName !== ''
+                && $normalizedStoredName === $normalizedPhrase
+            )
+            || (
+                $normalizedLegalName !== ''
+                && $normalizedLegalName === $normalizedPhrase
+            );
 
         if ($isExactEntity) {
-            $entityContacts = searchContactsByEntityId($db, $entityId);
-
             return [
                 'success'           => true,
-                'type'              => 'contact_search',
-                'searchMode'        => 'entity',
+                'type'              => 'entity_detail',
+                'searchMode'        => 'entity_exact',
                 'searchName'        => $phrase,
                 'entityId'          => $entityId,
                 'entityName'        => $entityName,
-                'matches'           => $entityContacts,
-                'matchCount'        => count($entityContacts),
                 'activitySessionId' => $activitySessionId
             ];
         }
@@ -1687,11 +1714,23 @@ function resolveSinglePhrase(?PDO $db, string $lookupPhrase): ?array
     // 3. Exact contact first or last name
     // ---------------------------------------------------------------
     $exactFirstOrLast = [];
-    foreach ($contacts as $c) {
-        $first = strtolower(trim((string)($c['contactFirstName'] ?? '')));
-        $last  = strtolower(trim((string)($c['contactLastName'] ?? '')));
-        if ($first === $normalizedPhrase || $last === $normalizedPhrase) {
-            $exactFirstOrLast[] = $c;
+
+    foreach ($contacts as $contact) {
+        $firstName = strtolower(trim((string)(
+            $contact['contactFirstName']
+            ?? ''
+        )));
+
+        $lastName = strtolower(trim((string)(
+            $contact['contactLastName']
+            ?? ''
+        )));
+
+        if (
+            $firstName === $normalizedPhrase
+            || $lastName === $normalizedPhrase
+        ) {
+            $exactFirstOrLast[] = $contact;
         }
     }
 
@@ -1709,11 +1748,8 @@ function resolveSinglePhrase(?PDO $db, string $lookupPhrase): ?array
 
     // ---------------------------------------------------------------
     // 4. Ranked partial contact match
-    //    (anything left in $contacts after the exact filters above)
     // ---------------------------------------------------------------
     if (!empty($contacts)) {
-        // The existing searchContactsByName already returns a reasonable order.
-        // We can further rank if desired, but for now return as-is.
         return [
             'success'           => true,
             'type'              => 'contact_search',
@@ -1726,29 +1762,25 @@ function resolveSinglePhrase(?PDO $db, string $lookupPhrase): ?array
     }
 
     // ---------------------------------------------------------------
-    // 5. Partial entity match → return its contacts
+    // 5. Partial entity match → Entity Search Results
     // ---------------------------------------------------------------
-    // Re-use the earlier $entity if it was a partial hit
-    if ($entity !== null && !empty($entity['entityId'])) {
-        $entityId   = (int)$entity['entityId'];
-        $entityName = (string)($entity['entityName'] ?? $phrase);
-        $entityContacts = searchContactsByEntityId($db, $entityId);
-
+    if (
+        $entity !== null
+        && !empty($entity['entityId'])
+    ) {
         return [
             'success'           => true,
-            'type'              => 'contact_search',
+            'type'              => 'entity_search',
             'searchMode'        => 'entity_partial',
             'searchName'        => $phrase,
-            'entityId'          => $entityId,
-            'entityName'        => $entityName,
-            'matches'           => $entityContacts,
-            'matchCount'        => count($entityContacts),
+            'matches'           => [$entity],
+            'matchCount'        => 1,
             'activitySessionId' => $activitySessionId
         ];
     }
 
     // ---------------------------------------------------------------
-    // 6. Nothing matched → fall through to normal Skyebot
+    // 6. Nothing matched → normal Skyebot processing
     // ---------------------------------------------------------------
     return null;
 }
