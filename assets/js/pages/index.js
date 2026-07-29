@@ -5057,18 +5057,35 @@ window.SkyIndex = {
         const state = this.escapeHtml(location.locationState || '');
         const zip   = this.escapeHtml(location.locationZip || '');
 
-        const cityStateZip = [city, state, zip]
-            .filter(Boolean)
-            .join(state && city ? ', ' : ' ')
-            .replace(/,\s*$/, '')
-            .trim();
+        // Correct U.S. format: City, ST ZIP
+        let cityStateZip = '';
+        if (city && state) {
+            cityStateZip = `${city}, ${state}${zip ? ' ' + zip : ''}`;
+        } else {
+            cityStateZip = [city, state, zip].filter(Boolean).join(' ');
+        }
+
+        // Optional secondary context (jurisdiction / zone)
+        const jurisdiction = this.escapeHtml(location.locationJurisdiction || '');
+        const zone         = this.escapeHtml(location.locationZone || '');
+        const county       = this.escapeHtml(location.locationCounty || '');
+
+        const contextParts = [];
+        if (jurisdiction) contextParts.push(jurisdiction);
+        if (county)       contextParts.push(county + ' County');
+        if (zone)         contextParts.push('Zone ' + zone);
+
+        const contextLine = contextParts.length
+            ? `<div style="margin-left:1.35em; margin-top:2px; font-size:0.8em; color:#777;">${contextParts.join(' • ')}</div>`
+            : '';
 
         if (!line1 && !cityStateZip) return '';
 
         return `
-            <div style="font-size:0.85em; color:#555; line-height:1.4; margin-top:2px;">
+            <div style="font-size:0.9em; color:#374151; line-height:1.45; margin-top:2px;">
                 ${line1 ? `<div>📍 ${line1}${suite ? ' ' + suite : ''}</div>` : ''}
                 ${cityStateZip ? `<div style="margin-left:1.35em;">${cityStateZip}</div>` : ''}
+                ${contextLine}
             </div>
         `;
     },
@@ -5109,7 +5126,7 @@ window.SkyIndex = {
 
             return `
                 <div style="${style}"
-                     ${!isZero ? `onclick="event.preventDefault(); SkyIndex.executeAICommand('${command}')"` : ''}>
+                    ${!isZero ? `onclick="event.preventDefault(); SkyIndex.executeAICommand('${command}')"` : ''}>
                     <span style="display:flex; align-items:center; gap:8px;">
                         <span style="width:1.2rem; text-align:center;">${icon}</span>
                         <span style="font-weight:500; color:${isZero ? '#999' : '#374151'};">${label}</span>
@@ -5128,9 +5145,9 @@ window.SkyIndex = {
             <!-- Header: Icon + Name + Badges -->
             <div class="result-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:12px 16px;">
                 <div style="display:flex; align-items:flex-start; gap:8px; min-width:0;">
-                    <span class="result-icon" style="font-size:1.25rem; line-height:1.3;">🏢</span>
+                    <span class="result-icon" style="font-size:1.3rem; line-height:1.3;">🏢</span>
                     <div style="min-width:0;">
-                        <strong style="color:#222; font-size:1.05rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        <strong style="color:#111; font-size:1.15rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                             ${name}
                         </strong>
                     </div>
@@ -5154,13 +5171,13 @@ window.SkyIndex = {
 
                 <!-- Canonical Address -->
                 ${addressHtml ? `
-                    <div style="padding:4px 0 12px; border-bottom:1px solid #f0f0f0;">
+                    <div style="padding:6px 0 12px; border-bottom:1px solid #f0f0f0;">
                         ${addressHtml}
                     </div>
                 ` : ''}
 
-                <!-- Topics heading -->
-                <div style="font-size:0.72rem; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#888; margin:12px 0 4px;">
+                <!-- Topics heading (lighter) -->
+                <div style="font-size:0.68rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#9ca3af; margin:14px 0 4px;">
                     Topics
                 </div>
 
@@ -5500,7 +5517,7 @@ window.SkyIndex = {
             </div>
         `;
     },
-    
+
     // #endregion
 
     // #region 🏢 Entity List Card (paginated, proposal-card chrome)
