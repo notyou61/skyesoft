@@ -6244,6 +6244,33 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
+            // =====================================================
+            // 📦 Object Keyword Dispatcher (Entity / Location / …)
+            // =====================================================
+            const objectCommands = {
+                entity:   (id) => this.renderEntityCard(id),
+                location: (id) => this.renderLocationCard(id),
+                // contact: (id) => this.renderContactCard?.(id),
+                // order:   (id) => this.renderOrderCard?.(id),
+                // application: (id) => this.renderApplicationCard?.(id),
+            };
+
+            const trimmed = String(prompt || '').trim();
+            const firstWord = trimmed.split(/\s+/)[0]?.toLowerCase();
+
+            if (firstWord && objectCommands[firstWord]) {
+                const identifier = trimmed.substring(firstWord.length).trim();
+
+                if (!identifier) {
+                    this.appendSystemLine(`Please provide an identifier after "${firstWord}".`);
+                    return;
+                }
+
+                await objectCommands[firstWord](identifier);
+                return;   // ← do not continue to the general AI path
+            }
+            // =====================================================
+
             const activitySessionId = incomingActivitySessionId || this.getActivitySessionId();
 
             console.log('🤖 AI using activitySessionId:', activitySessionId);
