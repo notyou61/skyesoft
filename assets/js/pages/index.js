@@ -5039,9 +5039,7 @@ window.SkyIndex = {
     },
 
     appendEntityCard(entity) {
-
-        const entityId = Number(entity.entityId ?? 0);
-
+        // Normalize property names (same defensive pattern as renderEntityModal)
         const name = this.escapeHtml(
             entity.entityName || entity.name || 'Unnamed Entity'
         );
@@ -5054,6 +5052,11 @@ window.SkyIndex = {
             entity.entityStatus || entity.status || ''
         );
 
+        const state = this.escapeHtml(
+            entity.entityState || entity.state || ''
+        );
+
+        // Defensive counts
         const locationCount    = Number(entity.locationCount    ?? entity.locations    ?? 0);
         const contactCount     = Number(entity.contactCount     ?? entity.contacts     ?? 0);
         const orderCount       = Number(entity.orderCount       ?? entity.orders       ?? 0);
@@ -5061,49 +5064,72 @@ window.SkyIndex = {
         const noteCount        = Number(entity.noteCount        ?? entity.notes        ?? 0);
         const taskCount        = Number(entity.taskCount        ?? entity.tasks        ?? 0);
 
+        const entityId = Number(entity.entityId || entity.id || 0);
+
+        // Relationship row helper
+        const relRow = (icon, label, count, command) => {
+            const isZero = count <= 0;
+            return `
+                <div class="skyRelRow ${isZero ? 'is-zero' : ''}"
+                    ${!isZero ? `onclick="event.preventDefault(); SkyIndex.executeAICommand('${command}')"` : ''}>
+                    <span class="skyRelIcon">${icon}</span>
+                    <span class="skyRelLabel">${label}</span>
+                    <span class="skyRelCount">${count}</span>
+                    ${!isZero ? `<span class="skyRelChevron">›</span>` : ''}
+                </div>
+            `;
+        };
+
         const html = `
         <div class="skyCard entityCard">
 
+            <!-- Header -->
             <div class="skyCardHeader">
-
-                <span class="skyCardIcon">🏢</span>
-
-                <span class="skyCardTitle">${name}</span>
-
-                ${entityType ? `<span class="badge">${entityType}</span>` : ''}
-
-                ${status ? `<span class="badge success">${status}</span>` : ''}
-
+                <div class="skyCardHeaderMain">
+                    <span class="skyCardIcon">🏢</span>
+                    <div class="skyCardTitleBlock">
+                        <div class="skyCardTitle">${name}</div>
+                        ${state ? `<div class="skyCardSub">${state}</div>` : ''}
+                    </div>
+                </div>
+                <div class="skyCardBadges">
+                    ${entityType ? `<span class="badge badge-type">${entityType}</span>` : ''}
+                    ${status ? `<span class="badge badge-status">${status}</span>` : ''}
+                </div>
             </div>
 
+            <!-- Relationships -->
             <div class="skyRelationships">
-
-                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show locations for entity ${entityId}')">Locations</a> <strong>${locationCount}</strong></div>
-
-                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show contacts for entity ${entityId}')">Contacts</a> <strong>${contactCount}</strong></div>
-
-                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show orders for entity ${entityId}')">Orders</a> <strong>${orderCount}</strong></div>
-
-                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show applications for entity ${entityId}')">Applications</a> <strong>${applicationCount}</strong></div>
-
-                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show notes for entity ${entityId}')">Notes</a> <strong>${noteCount}</strong></div>
-
-                <div><a href="#" onclick="event.preventDefault(); SkyIndex.executeAICommand('show tasks for entity ${entityId}')">Tasks</a> <strong>${taskCount}</strong></div>
-
+                ${relRow('📍', 'Locations',     locationCount,    `show locations for entity ${entityId}`)}
+                ${relRow('👤', 'Contacts',      contactCount,     `show contacts for entity ${entityId}`)}
+                ${relRow('📦', 'Orders',        orderCount,       `show orders for entity ${entityId}`)}
+                ${relRow('📄', 'Applications',  applicationCount, `show applications for entity ${entityId}`)}
+                ${relRow('📝', 'Notes',         noteCount,        `show notes for entity ${entityId}`)}
+                ${relRow('✔',  'Tasks',         taskCount,        `show tasks for entity ${entityId}`)}
             </div>
 
+            <!-- Actions -->
             <div class="skyCardActions">
-
-                <button onclick="SkyIndex.showEntityModal(${entityId})">
+                <button type="button" class="skyBtn skyBtn-primary"
+                        onclick="SkyIndex.showEntityModal(${entityId})">
                     Open Profile
                 </button>
-
+                ${locationCount > 0 ? `
+                    <button type="button" class="skyBtn"
+                            onclick="SkyIndex.executeAICommand('show locations for entity ${entityId}')">
+                        View Locations
+                    </button>
+                ` : ''}
+                ${contactCount > 0 ? `
+                    <button type="button" class="skyBtn"
+                            onclick="SkyIndex.executeAICommand('show contacts for entity ${entityId}')">
+                        View Contacts
+                    </button>
+                ` : ''}
             </div>
 
         </div>
         `;
-
-        console.log(html);
 
         this.appendSystemHtml(html);
     },
