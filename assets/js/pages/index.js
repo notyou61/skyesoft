@@ -5065,70 +5065,112 @@ window.SkyIndex = {
 
         const entityId = Number(entity.entityId || entity.id || 0);
 
-        // Relationship row (shared pattern for every object card)
+        // Relationship row (same visual language as Contact Card)
         const relRow = (icon, label, count, command) => {
             const isZero = count <= 0;
+            const style = isZero
+                ? 'display:flex; justify-content:space-between; align-items:center; padding:7px 0; color:#999; border-bottom:1px solid #f3f3f3;'
+                : 'display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid #f3f3f3; cursor:pointer;';
+
             return `
-                <div class="skyRelRow ${isZero ? 'is-zero' : ''}"
+                <div style="${style}"
                     ${!isZero ? `onclick="event.preventDefault(); SkyIndex.executeAICommand('${command}')"` : ''}>
-                    <span class="skyRelIcon">${icon}</span>
-                    <span class="skyRelLabel">${label}</span>
-                    <span class="skyRelCount">${count}</span>
-                    ${!isZero ? `<span class="skyRelChevron">›</span>` : ''}
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <span style="width:1.2rem; text-align:center;">${icon}</span>
+                        <span style="font-weight:500; color:${isZero ? '#999' : '#374151'};">${label}</span>
+                    </span>
+                    <span style="display:flex; align-items:center; gap:6px;">
+                        <strong style="color:${isZero ? '#999' : '#111'};">${count}</strong>
+                        ${!isZero ? `<span style="color:#9ca3af; font-size:1.05rem;">›</span>` : ''}
+                    </span>
                 </div>
             `;
         };
 
         const html = `
-        <div class="skyCard entityCard">
+        <div class="result-card" style="border-left:5px solid #0f766e; background:#fff; width:100%; max-width:100%;">
 
-            <!-- Header (mirrors Contact Card) -->
-            <div class="skyCardHeader">
-                <div class="skyCardHeaderMain">
-                    <span class="skyCardIcon">🏢</span>
-                    <div class="skyCardTitleBlock">
-                        <div class="skyCardType">Entity</div>
-                        <div class="skyCardTitle">${name}</div>
-                        <div class="skyCardSub">
-                            ${entityType ? entityType : ''}${entityType && state ? ' • ' : ''}${state || ''}
-                        </div>
+            <!-- Header (exact Contact Card pattern) -->
+            <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="result-icon">🏢</span>
+                    <div style="display:flex; flex-direction:column;">
+                        <strong class="result-title" style="color:#222;">
+                            Entity
+                        </strong>
+                        <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
+                            ${entityType || 'Business Entity'}
+                        </small>
                     </div>
                 </div>
-                <div class="skyCardBadges">
-                    ${status ? `<span class="badge badge-status">${status}</span>` : ''}
+                ${status ? `
+                    <span style="background:rgba(46,125,50,0.10); color:#2e7d32; border:1px solid rgba(46,125,50,0.22); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold; text-transform:uppercase;">
+                        ${status}
+                    </span>
+                ` : ''}
+            </div>
+
+            <!-- Body -->
+            <div class="result-body" style="padding:4px 16px 12px;">
+
+                <!-- Primary identity -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0;">
+                    <div style="min-width:0;">
+                        <div style="color:#222;">
+                            <a href="#"
+                            onclick="event.preventDefault(); SkyIndex.showEntityModal(${entityId});"
+                            style="color:#117a8b; font-weight:600; text-decoration:none;">
+                                ${name}
+                            </a>
+                            ${entityType ? `
+                                <span style="font-weight:400; color:#666;">
+                                    — ${entityType}
+                                </span>
+                            ` : ''}
+                        </div>
+
+                        ${state ? `
+                            <div style="font-size:0.85em; color:#666; margin-top:3px;">
+                                ${state}
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
-            </div>
 
-            <!-- Relationships -->
-            <div class="skyRelationships">
-                ${relRow('📍', 'Locations',     locationCount,    `show locations for entity ${entityId}`)}
-                ${relRow('👤', 'Contacts',      contactCount,     `show contacts for entity ${entityId}`)}
-                ${relRow('📦', 'Orders',        orderCount,       `show orders for entity ${entityId}`)}
-                ${relRow('📄', 'Applications',  applicationCount, `show applications for entity ${entityId}`)}
-                ${relRow('📝', 'Notes',         noteCount,        `show notes for entity ${entityId}`)}
-                ${relRow('✔',  'Tasks',         taskCount,        `show tasks for entity ${entityId}`)}
-            </div>
+                <!-- Relationships -->
+                <div style="margin-top:4px; border-top:1px solid #f0f0f0; padding-top:4px;">
+                    ${relRow('📍', 'Locations',     locationCount,    `show locations for entity ${entityId}`)}
+                    ${relRow('👤', 'Contacts',      contactCount,     `show contacts for entity ${entityId}`)}
+                    ${relRow('📦', 'Orders',        orderCount,       `show orders for entity ${entityId}`)}
+                    ${relRow('📄', 'Applications',  applicationCount, `show applications for entity ${entityId}`)}
+                    ${relRow('📝', 'Notes',         noteCount,        `show notes for entity ${entityId}`)}
+                    ${relRow('✔',  'Tasks',         taskCount,        `show tasks for entity ${entityId}`)}
+                </div>
 
-            <!-- Actions -->
-            <div class="skyCardActions">
-                <button type="button" class="skyBtn skyBtn-primary"
-                        onclick="SkyIndex.showEntityModal(${entityId})">
-                    Open Profile
-                </button>
-                ${locationCount > 0 ? `
-                    <button type="button" class="skyBtn"
-                            onclick="SkyIndex.executeAICommand('show locations for entity ${entityId}')">
-                        View Locations
+                <!-- Actions -->
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid #f0f0f0;">
+                    <button type="button"
+                            onclick="SkyIndex.showEntityModal(${entityId})"
+                            style="padding:6px 12px; border-radius:6px; border:1px solid #0f766e; background:#0f766e; color:#fff; font-size:0.8rem; font-weight:550; cursor:pointer;">
+                        Open Profile
                     </button>
-                ` : ''}
-                ${contactCount > 0 ? `
-                    <button type="button" class="skyBtn"
-                            onclick="SkyIndex.executeAICommand('show contacts for entity ${entityId}')">
-                        View Contacts
-                    </button>
-                ` : ''}
-            </div>
+                    ${locationCount > 0 ? `
+                        <button type="button"
+                                onclick="SkyIndex.executeAICommand('show locations for entity ${entityId}')"
+                                style="padding:6px 12px; border-radius:6px; border:1px solid #d1d5db; background:#fff; color:#374151; font-size:0.8rem; font-weight:550; cursor:pointer;">
+                            View Locations
+                        </button>
+                    ` : ''}
+                    ${contactCount > 0 ? `
+                        <button type="button"
+                                onclick="SkyIndex.executeAICommand('show contacts for entity ${entityId}')"
+                                style="padding:6px 12px; border-radius:6px; border:1px solid #d1d5db; background:#fff; color:#374151; font-size:0.8rem; font-weight:550; cursor:pointer;">
+                            View Contacts
+                        </button>
+                    ` : ''}
+                </div>
 
+            </div>
         </div>
         `;
 
