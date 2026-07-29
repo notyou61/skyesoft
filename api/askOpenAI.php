@@ -21,7 +21,6 @@ declare(strict_types=1);
 
 #region SECTION 0 — Environment Bootstrap
 
-// Ensure logs directory exists
 $logDir = __DIR__ . '/logs';
 if (!is_dir($logDir)) {
     @mkdir($logDir, 0777, true);
@@ -2217,6 +2216,119 @@ function loadLocationDetail(?PDO $db, string $identifier): ?array
         error_log('[skyebot] loadLocationDetail failed: ' . $e->getMessage());
         return null;
     }
+}
+
+/**
+ * Paginated location list (read-only).
+ * Returns the same shape the frontend Location List Card expects.
+ *
+ * @param PDO|null $db
+ * @param int      $page
+ * @param int      $pageSize
+ * @return array
+ */
+function loadLocationPage(?PDO $db, int $page = 1, int $pageSize = 5): array
+{
+    $page     = max(1, $page);
+    $pageSize = 5; // hard limit — keep consistent with entities/contacts
+    $offset   = ($page - 1) * $pageSize;
+
+    $result = [
+        'type'       => 'locations',
+        'page'       => $page,
+        'pageSize'   => $pageSize,
+        'total'      => 0,
+        'totalPages' => 0,
+        'rows'       => [],
+        'source'     => 'database',
+        'asOf'       => date('c')
+    ];
+
+    if (!$db instanceof PDO) {
+        return $result;
+    }
+
+    try {
+        // Total count (exclude invalid locations)
+        $total = (int)$db->query("
+            SELECT COUNT(*)
+            FROM tblLocations
+            WHERE COALESCE(locationIsNotValid, 0) = 0
+        ")->fetchColumn();
+
+        $result['total']      = $total;
+        $result['totalPages'] = $total > 0 ? (int)ceil($total / $pageSize) : 0;
+
+        if ($total === 0) {
+            return $result;
+        }
+
+        // Clamp page to last page
+        if ($page > $result['totalPages']) {
+            $page   = $result['totalPages'];
+            $offset = ($page - 1) * $pageSize;
+            $result['page'] = $page;
+        }
+
+        $stmt = $db->prepare("
+            SELECT
+                l.locationId,
+                l.locationName,
+                l.locationAddress,
+                l.locationCity,
+                l.locationState,
+                l.locationZip,
+                l.locationParcelNumber,
+                l.locationParcelNumberRaw,
+                l.locationIsBilling,
+                l.locationEntityId,
+                e.entityName,
+                e.entityId
+            FROM tblLocations l
+            LEFT JOIN tblEntities e ON e.entityId = l.locationEntityId
+            WHERE COALESCE(l.locationIsNotValid, 0) = 0
+            ORDER BY l.locationName ASC, l.locationId ASC
+            LIMIT :limit OFFSET :offset
+        ");
+
+        $stmt->bindValue(':limit',  $pageSize, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset,   PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rows[] = [
+                'locationId'              => (int)$row['locationId'],
+                'locationName'            => trim((string)$row['locationName']) ?: 'Unnamed Location',
+                'name'                    => trim((string)$row['locationName']) ?: 'Unnamed Location', // alias
+                'locationAddress'         => $row['locationAddress'] ?: null,
+                'address'                 => $row['locationAddress'] ?: null,
+                'locationCity'            => $row['locationCity'] ?: null,
+                'city'                    => $row['locationCity'] ?: null,
+                'locationState'           => $row['locationState'] ?: null,
+                'state'                   => $row['locationState'] ?: null,
+                'locationZip'             => $row['locationZip'] ?: null,
+                'zip'                     => $row['locationZip'] ?: null,
+                'locationParcelNumber'    => $row['locationParcelNumber'] ?: null,
+                'locationParcelNumberRaw' => $row['locationParcelNumberRaw'] ?: null,
+                'parcel'                  => $row['locationParcelNumber'] ?: $row['locationParcelNumberRaw'] ?: null,
+                'locationIsBilling'       => (int)$row['locationIsBilling'],
+                'entityId'                => $row['entityId'] ? (int)$row['entityId'] : null,
+                'entityName'              => $row['entityName'] ?: null,
+                'entity'                  => $row['entityId'] ? [
+                    'entityId'   => (int)$row['entityId'],
+                    'entityName' => $row['entityName'] ?: null
+                ] : null
+            ];
+        }
+
+        $result['rows'] = $rows;
+
+    } catch (Throwable $e) {
+        error_log('[skyebot] loadLocationPage failed: ' . $e->getMessage());
+    }
+
+    return $result;
 }
 
 #endregion
