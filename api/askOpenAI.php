@@ -1925,7 +1925,7 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
             $entityId
         );
 
-        // Orders (adjust table/column names if your schema differs)
+        // Orders
         $entity['orderCount'] = $safeCount(
             $db,
             "SELECT COUNT(*) FROM tblOrders WHERE orderEntityId = :entityId",
@@ -1952,6 +1952,41 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
             "SELECT COUNT(*) FROM tblTasks WHERE taskEntityId = :entityId",
             $entityId
         );
+
+        // --------------------------------------------------
+        // Billing Location (canonical address)
+        // Exactly one per Entity after the migration
+        // --------------------------------------------------
+        try {
+            $locStmt = $db->prepare("
+                SELECT
+                    locationId,
+                    locationName,
+                    locationAddress,
+                    locationAddressSuite,
+                    locationCity,
+                    locationState,
+                    locationZip,
+                    locationJurisdiction,
+                    locationCounty,
+                    locationParcelNumber,
+                    locationZone,
+                    locationLatitude,
+                    locationLongitude
+                FROM tblLocations
+                WHERE locationEntityId = :entityId
+                  AND locationIsBilling = 1
+                  AND locationIsNotValid = 0
+                LIMIT 1
+            ");
+            $locStmt->execute(['entityId' => $entityId]);
+            $billing = $locStmt->fetch(PDO::FETCH_ASSOC);
+
+            $entity['billingLocation'] = is_array($billing) ? $billing : null;
+        } catch (Throwable $e) {
+            error_log('[loadEntityDetail] billing location failed: ' . $e->getMessage());
+            $entity['billingLocation'] = null;
+        }
 
         // --------------------------------------------------
         // Last activity (best-effort)
@@ -1982,7 +2017,6 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
         $createdRaw = $entity['entityDate'] ?? null;
 
         if ($createdRaw !== null && $createdRaw !== '') {
-            // Handle both Unix timestamps and date strings
             if (is_numeric($createdRaw) && (int)$createdRaw > 1000000000) {
                 $entity['createdDate'] = date('M j, Y', (int)$createdRaw);
             } else {
@@ -1993,16 +2027,13 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
             $entity['createdDate'] = null;
         }
 
-        // Last Activity falls back to Created when empty
         if (empty($entity['lastActivity']) && !empty($entity['createdDate'])) {
             $entity['lastActivity'] = $entity['createdDate'];
         }
 
         // --------------------------------------------------
-        // Optional contact fields (only if columns exist)
+        // Optional contact fields
         // --------------------------------------------------
-        // These are left null when the columns are not present.
-        // Adjust names to match your actual schema when known.
         $entity['primaryPhone'] = $entity['primaryPhone'] ?? null;
         $entity['email']        = $entity['email']        ?? null;
         $entity['website']      = $entity['website']      ?? null;
