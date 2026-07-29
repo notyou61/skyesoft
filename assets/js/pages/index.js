@@ -5870,17 +5870,26 @@ window.SkyIndex = {
         const isBilling = Number(location.locationIsBilling) === 1;
         const isValid   = Number(location.locationIsNotValid) !== 1;
 
-        // Counts (defensive)
+        // Counts
         const contactCount     = Number(location.contactCount     ?? 0);
         const orderCount       = Number(location.orderCount       ?? 0);
         const applicationCount = Number(location.applicationCount ?? 0);
         const noteCount        = Number(location.noteCount        ?? 0);
         const taskCount        = Number(location.taskCount        ?? 0);
 
-        // Canonical address (reuse the same helper)
+        // Parent Entity
+        const entityName = location.entity?.entityName
+            ? this.escapeHtml(location.entity.entityName)
+            : null;
+        const entityId = Number(location.entity?.entityId || 0);
+
+        // Parcel
+        const parcel = location.locationParcelNumber || location.locationParcelNumberRaw || '';
+
+        // Canonical address
         const addressHtml = this.renderBillingAddress(location);
 
-        // Relationship row helper (identical pattern)
+        // Relationship row helper
         const relRow = (icon, label, count, command) => {
             const isZero = count <= 0;
             const style = isZero
@@ -5930,12 +5939,24 @@ window.SkyIndex = {
             <!-- Body -->
             <div class="result-body" style="padding:0 14px 12px;">
 
-                <!-- Canonical Address -->
-                ${addressHtml ? `
-                    <div style="padding:2px 0 8px; border-bottom:1px solid #f0f0f0;">
-                        ${addressHtml}
-                    </div>
-                ` : ''}
+                <!-- Address + Entity + Parcel -->
+                <div style="padding:2px 0 8px; border-bottom:1px solid #f0f0f0;">
+                    ${addressHtml}
+
+                    ${entityName ? `
+                        <div style="margin-top:6px; font-size:0.85em; color:#555;">
+                            🏢 ${entityId > 0
+                                ? `<a href="#" onclick="event.preventDefault(); SkyIndex.renderEntityCard(${entityId});" style="color:#117a8b; text-decoration:none; font-weight:500;">${entityName}</a>`
+                                : entityName}
+                        </div>
+                    ` : ''}
+
+                    ${parcel ? `
+                        <div style="margin-top:3px; font-size:0.82em; color:#666;">
+                            📐 Parcel ${this.escapeHtml(parcel)}
+                        </div>
+                    ` : ''}
+                </div>
 
                 <!-- Topics -->
                 <div style="font-size:0.65rem; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; color:#9ca3af; margin:8px 0 2px;">
