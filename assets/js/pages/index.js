@@ -5760,28 +5760,26 @@ window.SkyIndex = {
 
         // Full card
         const html = `
-            <div class="commandLine system html">
-                <div class="result-card" style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
-                    <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span class="result-icon">🏢</span>
-                            <div style="display:flex; flex-direction:column;">
-                                <strong class="result-title" style="color:#222;">
-                                    Entity Search Results
-                                </strong>
-                                <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
-                                    ${count} match${count === 1 ? '' : 'es'} found
-                                </small>
-                            </div>
+            <div class="result-card" style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
+                <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="result-icon">🏢</span>
+                        <div style="display:flex; flex-direction:column;">
+                            <strong class="result-title" style="color:#222;">
+                                Entity Search Results
+                            </strong>
+                            <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
+                                ${count} match${count === 1 ? '' : 'es'} found
+                            </small>
                         </div>
-                        <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
-                            SEARCH
-                        </span>
                     </div>
+                    <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
+                        SEARCH
+                    </span>
+                </div>
 
-                    <div class="result-body" style="padding:4px 16px 12px;">
-                        ${rowsHtml}
-                    </div>
+                <div class="result-body" style="padding:4px 16px 12px;">
+                    ${rowsHtml}
                 </div>
             </div>
         `;
