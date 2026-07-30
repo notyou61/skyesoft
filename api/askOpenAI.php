@@ -3591,28 +3591,33 @@ if ($type === "skyebot") {
             $resolved = resolveSinglePhrase($db, $lookupPhrase);
         }
 
-        // 2b. Forced or high-confidence Entity
-    if ($resolved === null) {
-        $entityPhrase = $lookupPhrase;
-        if (preg_match('/^(?:entity|business|company)\s+(.+)$/i', $lookupPhrase, $m)) {
-            $entityPhrase = trim($m[1]);
-            $forceEntity  = true;
-        }
+        // 2b. Forced Entity
+        if ($resolved === null) {
+            $entityPhrase = $lookupPhrase;
 
-        // Re-use your existing entity search / resolve helper
-        // and only return when score is high or $forceEntity is true
-        $entityMatch = searchEntityByName($db, $entityPhrase);   // or your stronger resolver
-        if ($entityMatch !== null && ($forceEntity || /* high score */ true)) {
-            $resolved = [
-                'success'    => true,
-                'type'       => 'entity_detail',   // or whatever your entity card expects
-                'entityId'   => (int)$entityMatch['entityId'],
-                'entity'     => $entityMatch,
-                'searchMode' => 'entities.resolve',
-                'matchCount' => 1
-            ];
+            if (preg_match('/^(?:entity|business|company)\s+(.+)$/i', $lookupPhrase, $m)) {
+                $entityPhrase = trim($m[1]);
+                $forceEntity  = true;
+            }
+
+            if ($forceEntity) {
+                // Use the broader search (same one that powers the search card)
+                $matches = searchEntitiesByName($db, $entityPhrase);   // note the plural
+
+                if (!empty($matches)) {
+                    $top = $matches[0];          // highest-ranked result
+
+                    $resolved = [
+                        'success'    => true,
+                        'type'       => 'entity_detail',
+                        'entityId'   => (int)$top['entityId'],
+                        'entity'     => $top,
+                        'searchMode' => 'entities.resolve',
+                        'matchCount' => 1
+                    ];
+                }
+            }
         }
-    }
 
         // 3. Location resolution (new)
         if ($resolved === null) {
