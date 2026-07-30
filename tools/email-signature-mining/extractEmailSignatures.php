@@ -3,19 +3,18 @@
  * extractEmailSignatures.php
  * Skyesoft – Email Signature Mining – Phase 1 Discovery Tool
  *
- * Version: 1.1
- * Location: /tools/extractEmailSignatures.php
- * JSON source: /data/authoritative/messages_part_*.json
+ * Version: 1.2
+ * Location: tools/email-signature-mining/extractEmailSignatures.php
  */
 
 declare(strict_types=1);
 
 // ============================================================
-// PATHS  (adjusted for Skyesoft layout)
+// PATHS
 // ============================================================
-$baseDir      = dirname(__DIR__);                          // /skyesoft
-$jsonDir      = $baseDir . '/data/authoritative/';
-$outputDir    = $baseDir . '/tools/emailSignatureExtraction/';
+$baseDir      = __DIR__;                                           // tools/email-signature-mining
+$jsonDir      = $baseDir . '/emailJSONObjects/';
+$outputDir    = $baseDir . '/emailSignatureExtraction/';
 $reportDir    = $outputDir . 'reports/';
 $signatureDir = $outputDir . 'signatures/';
 $logDir       = $outputDir . 'logs/';
@@ -48,7 +47,7 @@ function logMsg(string $msg): void {
     global $logFile;
     $line = '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL;
     file_put_contents($logFile, $line, FILE_APPEND);
-    echo $line; // also show in browser when run via URL
+    echo $line;
 }
 
 // ============================================================
@@ -245,7 +244,7 @@ $html = '<!DOCTYPE html>
 </head>
 <body>
 <h1>Skyesoft – Signature Discovery Report</h1>
-<div class="meta">Generated: ' . date('Y-m-d H:i:s T') . '<br>Source: data/authoritative/messages_part_*.json</div>
+<div class="meta">Generated: ' . date('Y-m-d H:i:s T') . '<br>Source: emailJSONObjects/messages_part_*.json</div>
 <div class="stats">
     <div class="stat"><div class="num">' . $stats['files_processed'] . '</div><div class="label">JSON Files</div></div>
     <div class="stat"><div class="num">' . number_format($stats['messages_total']) . '</div><div class="label">Messages</div></div>
