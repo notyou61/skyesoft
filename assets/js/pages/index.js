@@ -6261,7 +6261,7 @@ window.SkyIndex = {
             const nameHtml = locationId > 0
                 ? `
                     <a href="#"
-                    onclick="event.preventDefault(); SkyIndex.openLocationModal(${locationId});"
+                    onclick="event.preventDefault(); SkyIndex.showLocationModal(${locationId});"
                     style="color:#117a8b; font-weight:600; text-decoration:none;">
                         ${name}
                     </a>
