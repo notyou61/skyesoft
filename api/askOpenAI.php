@@ -2331,6 +2331,179 @@ function loadLocationPage(?PDO $db, int $page = 1, int $pageSize = 5): array
     return $result;
 }
 
+/**
+ * Resolve a location by natural-language phrase.
+ * Returns a structured location_detail payload or null.
+ *
+ * Scoring:
+ *  100  Exact locationName (case-insensitive)
+ *   95  Exact full address
+ *   92  Exact parcel number
+ *   90  Exact Google Place ID
+ *   80  Strong prefix / starts-with
+ *   70  Contains / fuzzy
+ *
+ * Only returns when best score ≥ 90 (or explicit "location …" force).
+ */
+function resolveLocationByPhrase(?PDO $db, string $phrase, bool $force = false): ?array
+{
+    if (!$db instanceof PDO) {
+        return null;
+    }
+
+    $phrase = trim(preg_replace('/\s+/', ' ', $phrase));
+    if ($phrase === '') {
+        return null;
+    }
+
+    $normalized = strtolower($phrase);
+    $nospace    = str_replace(' ', '', $normalized);
+
+    try {
+        // Broad candidate set (name, address, parcel, placeId)
+        $stmt = $db->prepare("
+            SELECT
+                l.locationId,
+                l.locationEntityId,
+                l.locationName,
+                l.locationPlaceId,
+                l.locationAddress,
+                l.locationAddressSuite,
+                l.locationCity,
+                l.locationState,
+                l.locationZip,
+                l.locationParcelNumber,
+                l.locationParcelNumberRaw,
+                l.locationJurisdiction,
+                l.locationCounty,
+                l.locationZone,
+                l.locationIsBilling,
+                l.locationIsNotValid,
+                e.entityId,
+                e.entityName,
+                e.entityType,
+                e.entityStatus
+            FROM tblLocations l
+            LEFT JOIN tblEntities e ON e.entityId = l.locationEntityId
+            WHERE COALESCE(l.locationIsNotValid, 0) = 0
+              AND (
+                    LOWER(l.locationName) LIKE :like1
+                 OR LOWER(l.locationAddress) LIKE :like2
+                 OR l.locationParcelNumber = :exactParcel
+                 OR l.locationParcelNumberRaw = :exactParcelRaw
+                 OR l.locationPlaceId = :exactPlace
+                 OR LOWER(REPLACE(l.locationName, ' ', '')) LIKE :nospace
+              )
+            ORDER BY l.locationName ASC
+            LIMIT 25
+        ");
+
+        $like = '%' . $phrase . '%';
+        $stmt->execute([
+            'like1'         => $like,
+            'like2'         => $like,
+            'exactParcel'   => $phrase,
+            'exactParcelRaw'=> $phrase,
+            'exactPlace'    => $phrase,
+            'nospace'       => '%' . $nospace . '%'
+        ]);
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($rows)) {
+            return null;
+        }
+
+        // Score each candidate
+        $scored = [];
+        foreach ($rows as $row) {
+            $score = 0;
+            $name  = strtolower(trim((string)($row['locationName'] ?? '')));
+            $addr  = strtolower(trim(
+                ($row['locationAddress'] ?? '') . ' ' .
+                ($row['locationCity'] ?? '') . ' ' .
+                ($row['locationState'] ?? '') . ' ' .
+                ($row['locationZip'] ?? '')
+            ));
+            $parcel = trim((string)($row['locationParcelNumber'] ?? $row['locationParcelNumberRaw'] ?? ''));
+            $place  = trim((string)($row['locationPlaceId'] ?? ''));
+
+            if ($name === $normalized) {
+                $score = 100;
+            } elseif ($addr === $normalized || str_contains($addr, $normalized)) {
+                $score = 95;
+            } elseif ($parcel !== '' && $parcel === $phrase) {
+                $score = 92;
+            } elseif ($place !== '' && $place === $phrase) {
+                $score = 90;
+            } elseif (str_starts_with($name, $normalized) || str_starts_with($nospace, str_replace(' ', '', $name))) {
+                $score = 80;
+            } elseif (str_contains($name, $normalized)) {
+                $score = 70;
+            }
+
+            if ($score > 0) {
+                $scored[] = ['score' => $score, 'row' => $row];
+            }
+        }
+
+        if (empty($scored)) {
+            return null;
+        }
+
+        // Sort highest score first
+        usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
+
+        $best = $scored[0];
+
+        // Threshold: ≥ 90, or force=true (explicit "location …")
+        if ($best['score'] < 90 && !$force) {
+            return null;
+        }
+
+        $row = $best['row'];
+
+        // Shape the same payload that locationDetail returns
+        $location = [
+            'locationId'              => (string)$row['locationId'],
+            'locationEntityId'        => (string)$row['locationEntityId'],
+            'locationName'            => $row['locationName'],
+            'locationPlaceId'         => $row['locationPlaceId'],
+            'locationAddress'         => $row['locationAddress'],
+            'locationAddressSuite'    => $row['locationAddressSuite'],
+            'locationCity'            => $row['locationCity'],
+            'locationState'           => $row['locationState'],
+            'locationZip'             => $row['locationZip'],
+            'locationParcelNumber'    => $row['locationParcelNumber'],
+            'locationParcelNumberRaw' => $row['locationParcelNumberRaw'],
+            'locationJurisdiction'    => $row['locationJurisdiction'],
+            'locationCounty'          => $row['locationCounty'],
+            'locationZone'            => $row['locationZone'],
+            'locationIsBilling'       => $row['locationIsBilling'],
+            'locationIsNotValid'      => $row['locationIsNotValid'],
+            'entity' => [
+                'entityId'     => (string)($row['entityId'] ?? ''),
+                'entityName'   => $row['entityName'] ?? null,
+                'entityType'   => $row['entityType'] ?? null,
+                'entityStatus' => $row['entityStatus'] ?? null
+            ]
+        ];
+
+        return [
+            'success'    => true,
+            'type'       => 'location_detail',
+            'location'   => $location,
+            'searchMode' => 'location.resolve',
+            'matchCount' => 1,
+            'score'      => $best['score'],
+            'error'      => null
+        ];
+
+    } catch (Throwable $e) {
+        error_log('[resolveLocationByPhrase] ' . $e->getMessage());
+        return null;
+    }
+}
+
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
@@ -3384,7 +3557,8 @@ if ($type === "skyebot") {
         : "none";
 
     // =====================================================================
-    // 📇 GOVERNED NATURAL-LANGUAGE CONTACT / ENTITY RESOLUTION
+    // 📇 GOVERNED NATURAL-LANGUAGE BUSINESS-OBJECT RESOLUTION
+    // Order: Contact → Entity → Location
     // Runs before legacy regex searches and before semantic intent.
     // =====================================================================
 
@@ -3392,24 +3566,55 @@ if ($type === "skyebot") {
 
     if ($lookupPhrase !== '') {
 
+        $resolved = null;
+        $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
+
+        // Detect explicit force keywords
+        $forceLocation = (bool)preg_match(
+            '/^\s*(?:show|open|find|search(?:\s+for)?|location)\s+(?:location|loc)\b/i',
+            $query
+        ) || (bool)preg_match(
+            '/\blocation\s+(.+)$/i',
+            $lookupPhrase
+        );
+
         // 1. Combined form: "Susan at Christy Signs"
         $resolved = resolveContactAtEntity($db, $lookupPhrase);
 
-        // 2. Single phrase: contact name or entity name
+        // 2. Single phrase – Contact or Entity (existing helper)
         if ($resolved === null) {
             $resolved = resolveSinglePhrase($db, $lookupPhrase);
         }
 
+        // 3. Location resolution (new)
+        if ($resolved === null) {
+            // Strip leading "location " if present so the pure name is used
+            $locationPhrase = $lookupPhrase;
+            if (preg_match('/^(?:location|loc)\s+(.+)$/i', $lookupPhrase, $m)) {
+                $locationPhrase = trim($m[1]);
+                $forceLocation  = true;
+            }
+
+            $resolved = resolveLocationByPhrase($db, $locationPhrase, $forceLocation);
+        }
+
+        // ─────────────────────────────────────────────
+        // High-confidence match found → return immediately
+        // ─────────────────────────────────────────────
         if ($resolved !== null) {
 
-            // Record the action (Type 3)
             $actorContactId = (int)(
                 $_SESSION['SKYESOFT_contactId']
                 ?? $_SESSION['contactId']
                 ?? 0
             );
 
-            $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
+            // Determine intent / operation for logging
+            $intent = match ($resolved['type'] ?? '') {
+                'location_detail' => 'locations.resolve',
+                'entity_detail', 'entity_search' => 'entities.resolve',
+                default           => 'contacts.resolve'
+            };
 
             if ($actorContactId > 0) {
                 try {
@@ -3417,12 +3622,12 @@ if ($type === "skyebot") {
                         'contactId'         => $actorContactId,
                         'promptText'        => $query,
                         'responseText'      => sprintf(
-                            'Natural-language contact resolution (%s) returned %d match%s.',
-                            $resolved['searchMode'] ?? 'unknown',
-                            $resolved['matchCount'] ?? 0,
-                            ($resolved['matchCount'] ?? 0) === 1 ? '' : 'es'
+                            'Natural-language resolution (%s) returned %d match%s.',
+                            $resolved['searchMode'] ?? $intent,
+                            $resolved['matchCount'] ?? 1,
+                            ($resolved['matchCount'] ?? 1) === 1 ? '' : 'es'
                         ),
-                        'intent'            => 'contacts.resolve',
+                        'intent'            => $intent,
                         'intentConfidence'  => 1.0,
                         'activitySessionId' => $activitySessionId,
                         'latitude'          => $latitude,
@@ -3430,15 +3635,15 @@ if ($type === "skyebot") {
                         'actionTypeId'      => 3,
                         'origin'            => ACTION_ORIGIN_USER,
                         'actionPayloadData' => [
-                            'operation'   => 'contacts.resolve',
-                            'searchMode'  => $resolved['searchMode'] ?? null,
-                            'searchName'  => $resolved['searchName'] ?? $lookupPhrase,
-                            'entityId'    => $resolved['entityId'] ?? null
+                            'operation'  => $intent,
+                            'searchMode' => $resolved['searchMode'] ?? null,
+                            'searchName' => $lookupPhrase,
+                            'score'      => $resolved['score'] ?? null
                         ],
                         'actionResponseData' => [
                             'success'    => true,
-                            'matchCount' => $resolved['matchCount'] ?? 0,
-                            'searchMode' => $resolved['searchMode'] ?? null
+                            'matchCount' => $resolved['matchCount'] ?? 1,
+                            'type'       => $resolved['type'] ?? null
                         ]
                     ], $db);
                 } catch (Throwable $e) {
@@ -3446,7 +3651,6 @@ if ($type === "skyebot") {
                 }
             }
 
-            // Ensure activitySessionId is present
             $resolved['activitySessionId'] = $activitySessionId;
 
             header('Content-Type: application/json');
@@ -3454,6 +3658,9 @@ if ($type === "skyebot") {
             exit;
         }
     }
+
+    // If we reach here, no high-confidence Contact / Entity / Location match
+    // → continue to legacy path (explicit searches, lists, semantic intent, Google)
 
     // If we reach here, no contact/entity resolution matched → continue to legacy path
 
