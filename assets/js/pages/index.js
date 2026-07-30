@@ -6097,11 +6097,13 @@ window.SkyIndex = {
 
     /**
      * Full Location Profile (modal)
-     * Layout standard:
-     *   Header      → icon + name + flags
-     *   Identity    → address (the defining attribute)
-     *   Attributes  → entity / parcel / jurisdiction
-     *   Related     → collection counts
+     *
+     * Visual hierarchy:
+     *   1. Header      → 📍 + Location Name (hero)
+     *   2. Identity    → Address (supporting, no label)
+     *   3. Divider
+     *   4. Attributes  → Entity / Parcel / Jurisdiction
+     *   5. Related     → collection counts
      */
     renderLocationModal(location, locationId) {
         const modal = document.getElementById('locationDetailModal');
@@ -6125,7 +6127,7 @@ window.SkyIndex = {
         const noteCount        = Number(location.noteCount        ?? 0);
         const taskCount        = Number(location.taskCount        ?? 0);
 
-        // ── Identity (address) ──────────────────────────────────────
+        // ── Address (Identity) ──────────────────────────────────────
         const line1 = this.escapeHtml(location.locationAddress || '');
         const suite = location.locationAddressSuite
             ? this.escapeHtml(location.locationAddressSuite)
@@ -6149,11 +6151,11 @@ window.SkyIndex = {
             location.locationParcelNumber || location.locationParcelNumberRaw || ''
         );
 
-        // Build jurisdiction line only from values that exist
+        // Only include values that exist
         const jurisdictionParts = [];
         if (jurisdiction) jurisdictionParts.push(jurisdiction);
         if (county)       jurisdictionParts.push(county + ' County');
-        if (zone)         jurisdictionParts.push(zone);   // no "Zone " prefix unless you want it
+        if (zone)         jurisdictionParts.push(zone);
         const jurisdictionLine = jurisdictionParts.join(' • ') || null;
 
         // Entity
@@ -6194,11 +6196,15 @@ window.SkyIndex = {
                 : `<span style="color:#222;">${value}</span>`;
 
             return `
-                <div style="display:flex; align-items:flex-start; gap:8px; padding:7px 0; font-size:0.92em;">
-                    <span style="width:1.25rem; text-align:center; flex-shrink:0; line-height:1.3;">${icon}</span>
+                <div style="display:flex; align-items:flex-start; gap:9px; padding:8px 0;">
+                    <span style="width:1.3rem; text-align:center; flex-shrink:0; font-size:1.05em; line-height:1.3;">${icon}</span>
                     <div style="min-width:0;">
-                        <div style="font-size:0.7em; color:#888; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:1px;">${label}</div>
-                        <div>${valueHtml}</div>
+                        <div style="font-size:0.72em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:1px;">
+                            ${label}
+                        </div>
+                        <div style="font-size:0.95em; color:#222; line-height:1.35;">
+                            ${valueHtml}
+                        </div>
                     </div>
                 </div>
             `;
@@ -6206,44 +6212,53 @@ window.SkyIndex = {
 
         // ── Render ──────────────────────────────────────────────────
         dialog.innerHTML = `
-            <!-- HEADER -->
-            <div style="display:flex; justify-content:space-between; align-items:center;
-                        gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
-                <div style="display:flex; align-items:center; gap:9px; min-width:0;">
-                    <span style="font-size:1.25rem; flex-shrink:0;">📍</span>
-                    <strong id="locationDetailTitle"
-                            style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${name}
-                    </strong>
-                    ${isBilling ? `
-                        <span style="margin-left:6px; padding:2px 8px; font-size:0.72em; font-weight:600;
-                                    color:#0f766e; background:rgba(13,148,136,0.12);
-                                    border:1px solid rgba(13,148,136,0.25); border-radius:4px;">
-                            Billing
-                        </span>
+            <!-- HEADER (Record Identity) -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;
+                        gap:12px; padding:16px 18px 12px; background:#fafafa;">
+                <div style="min-width:0; flex:1;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:1.3rem; flex-shrink:0; line-height:1;">📍</span>
+                        <strong id="locationDetailTitle"
+                                style="font-size:1.15em; font-weight:600; color:#222;
+                                    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            ${name}
+                        </strong>
+                        ${isBilling ? `
+                            <span style="padding:2px 7px; font-size:0.68em; font-weight:600;
+                                        color:#0f766e; background:rgba(13,148,136,0.12);
+                                        border:1px solid rgba(13,148,136,0.25); border-radius:4px;
+                                        flex-shrink:0;">
+                                Billing
+                            </span>
+                        ` : ''}
+                    </div>
+
+                    <!-- Address sits directly under the name (supporting, no label) -->
+                    ${(line1 || cityStateZip) ? `
+                        <div style="margin:6px 0 0 2.05rem; font-size:0.86em; font-weight:400;
+                                    color:#666; line-height:1.35;">
+                            ${line1 ? `<div>${line1}${suite ? ' ' + suite : ''}</div>` : ''}
+                            ${cityStateZip ? `<div>${cityStateZip}</div>` : ''}
+                        </div>
                     ` : ''}
                 </div>
+
                 <button type="button"
                         onclick="SkyIndex.closeLocationModal();"
                         aria-label="Close location profile"
                         style="border:0; background:transparent; color:#666; cursor:pointer;
-                            font-size:1.5rem; line-height:1; flex-shrink:0;">
+                            font-size:1.5rem; line-height:1; flex-shrink:0; margin-top:-2px;">
                     ×
                 </button>
             </div>
 
-            <div style="padding:18px; max-height:70vh; overflow-y:auto;">
+            <!-- Divider -->
+            <div style="border-top:1px solid #e8e8e8;"></div>
 
-                <!-- IDENTITY (address is the defining attribute) -->
-                ${(line1 || cityStateZip) ? `
-                    <div style="margin-bottom:18px; font-size:1em; color:#222; line-height:1.45;">
-                        ${line1 ? `<div style="font-weight:500;">${line1}${suite ? ' ' + suite : ''}</div>` : ''}
-                        ${cityStateZip ? `<div>${cityStateZip}</div>` : ''}
-                    </div>
-                ` : ''}
+            <div style="padding:14px 18px 18px; max-height:65vh; overflow-y:auto;">
 
                 <!-- ATTRIBUTES -->
-                <div style="margin-bottom:20px; border-top:1px solid #f0f0f0; padding-top:12px;">
+                <div style="margin-bottom:18px;">
                     ${attrRow('🏢', 'Entity', entityName,
                         entityId > 0
                             ? `SkyIndex.closeLocationModal(); SkyIndex.showEntityModal(${entityId});`
@@ -6254,8 +6269,8 @@ window.SkyIndex = {
 
                 <!-- RELATED -->
                 <div>
-                    <div style="font-size:0.75em; font-weight:600; letter-spacing:0.04em;
-                                color:#888; text-transform:uppercase; margin-bottom:6px;">
+                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                                color:#888; text-transform:uppercase; margin-bottom:4px;">
                         Related
                     </div>
 
