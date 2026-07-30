@@ -6681,17 +6681,10 @@ window.SkyIndex = {
             }
 
             // --------------------------------------------------
-            // 📍 LOCATION DETAIL (natural-language resolve or direct open)
+            // 📍 LOCATION DETAIL (natural-language resolve)
             // --------------------------------------------------
             if (data?.type === 'location_detail' && data?.location) {
-                const locationId = Number(data.location.locationId || 0);
-                if (locationId > 0) {
-                    // Prefer the modal path so the user gets the full profile
-                    await this.showLocationModal(locationId);
-                } else {
-                    // Fallback: render as an inline card if we somehow lack an ID
-                    this.appendLocationCard(data.location);
-                }
+                this.appendLocationCard(data.location);
                 return;
             }
 
