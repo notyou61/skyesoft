@@ -3975,6 +3975,147 @@ if ($type === "skyebot") {
         }
     }
 
+    // =====================================================================
+    // Operational Location List
+    // =====================================================================
+
+    $isLocationList =
+        preg_match(
+            '/\b(list|show|display)\b.*\blocations?\b/',
+            $lowerQuery
+        ) ||
+        preg_match(
+            '/\blocations?\b.*\b(list|page)\b/',
+            $lowerQuery
+        );
+
+    // Location-list navigation only
+    $isLocationListNavigation =
+        ($_SESSION['lastList']['type'] ?? null) === 'locations' &&
+        (bool)preg_match(
+            '/\b(next|previous|prev)\s+page\b/',
+            $lowerQuery
+        );
+
+    if ($isLocationList || $isLocationListNavigation) {
+
+        // Set requested page
+        $page = 1;
+
+        if (preg_match('/\bpage\s+(\d+)\b/', $lowerQuery, $m)) {
+            $page = max(1, (int)$m[1]);
+        } elseif (preg_match('/\bnext\s+page\b/', $lowerQuery)) {
+            $page = (int)($_SESSION['lastList']['page'] ?? 1) + 1;
+        } elseif (
+            preg_match(
+                '/\b(prev|previous)\s+page\b/',
+                $lowerQuery
+            )
+        ) {
+            $page = max(
+                1,
+                (int)($_SESSION['lastList']['page'] ?? 2) - 1
+            );
+        }
+
+        // Load requested locations
+        $operationalList = loadLocationPage($db, $page, 5);
+
+        // Preserve navigation context
+        $_SESSION['lastList'] = [
+            'type' => 'locations',
+            'page' => $operationalList['page'] ?? $page
+        ];
+
+        error_log(
+            '[skyebot] location list page=' .
+            ($operationalList['page'] ?? $page) .
+            ' rows=' .
+            count($operationalList['rows'] ?? [])
+        );
+
+        if (
+            is_array($operationalList) &&
+            isset($operationalList['rows'])
+        ) {
+            // Resolve action context
+            $actorContactId = (int)(
+                $_SESSION['SKYESOFT_contactId']
+                ?? $_SESSION['contactId']
+                ?? 0
+            );
+
+            $activitySessionId = $_SESSION['activitySessionId']
+                              ?? session_id();
+
+            // Resolve response details
+            $page       = (int)($operationalList['page'] ?? 1);
+            $pageSize   = (int)($operationalList['pageSize'] ?? 5);
+            $total      = (int)($operationalList['total'] ?? 0);
+            $totalPages = (int)($operationalList['totalPages'] ?? 1);
+            $rowCount   = count($operationalList['rows']);
+
+            // Build structured response
+            $listResponse = [
+                'success'           => true,
+                'type'              => 'location_list',
+                'list'              => $operationalList,
+                'activitySessionId' => $activitySessionId
+            ];
+
+            // Record location-list prompt action (Type 3)
+            if ($actorContactId > 0) {
+                try {
+                    insertActionPrompt([
+                        'contactId'         => $actorContactId,
+                        'promptText'        => $query,
+                        'responseText'      => sprintf(
+                            'Displayed locations page %d of %d (%d locations shown; %d total).',
+                            $page,
+                            $totalPages,
+                            $rowCount,
+                            $total
+                        ),
+                        'intent'            => 'locations.list',
+                        'intentConfidence'  => 1.0,
+                        'activitySessionId' => $activitySessionId,
+                        'latitude'          => $latitude,
+                        'longitude'         => $longitude,
+                        'actionTypeId'      => 3,
+                        'origin'            => ACTION_ORIGIN_USER,
+                        'actionPayloadData' => [
+                            'operation' => 'locations.list',
+                            'page'      => $page,
+                            'pageSize'  => $pageSize
+                        ],
+                        'actionResponseData' => [
+                            'success'    => true,
+                            'page'       => $page,
+                            'totalPages' => $totalPages,
+                            'rowCount'   => $rowCount,
+                            'total'      => $total
+                        ]
+                    ], $db);
+                } catch (Throwable $e) {
+                    // Preserve results if audit logging fails
+                    error_log(
+                        '[askOpenAI] Location-list action logging failed: ' .
+                        $e->getMessage()
+                    );
+                }
+            }
+
+            header('Content-Type: application/json');
+
+            echo json_encode(
+                $listResponse,
+                JSON_UNESCAPED_SLASHES
+            );
+
+            exit;
+        }
+    }
+
     // ─────────────────────────────────────────────
     // 3. Semantic Intent Classification
     // ─────────────────────────────────────────────

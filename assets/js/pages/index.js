@@ -6558,13 +6558,6 @@ window.SkyIndex = {
                 return;
             }
 
-            // --------------------------------------------------
-            // 📇 CONTACT LIST CARD
-            // --------------------------------------------------
-            if (data?.type === 'contact_list' && data?.list) {
-                this.renderContactListCard(data.list);
-                return;
-            }
 
             // --------------------------------------------------
             // 🏢 ENTITY DETAIL CARD
@@ -6592,6 +6585,22 @@ window.SkyIndex = {
             // --------------------------------------------------
             if (data?.type === 'entity_list' && data?.list) {
                 this.renderEntityListCard(data.list);
+                return;
+            }
+
+            // --------------------------------------------------
+            // 📍 LOCATION LIST CARD
+            // --------------------------------------------------
+            if (data?.type === 'location_list' && data?.list) {
+                this.renderLocationListCard(data.list);
+                return;
+            }
+
+            // --------------------------------------------------
+            // 📇 CONTACT LIST CARD
+            // --------------------------------------------------
+            if (data?.type === 'contact_list' && data?.list) {
+                this.renderContactListCard(data.list);
                 return;
             }
 
