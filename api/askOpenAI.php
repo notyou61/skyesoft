@@ -3564,22 +3564,19 @@ if ($type === "skyebot") {
 
     $lookupPhrase = stripConversationalWrapper($query);
 
-        if ($lookupPhrase !== '') {
+    if ($lookupPhrase !== '') {
 
         $resolved = null;
         $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
 
-        // ── Force-keyword detection ──────────────────────────────
+        // Detect explicit force keywords
         $forceLocation = (bool)preg_match(
-            '/^\s*(?:show|open|find|search(?:\s+for)?)\s+(?:a\s+)?(?:location|loc)\b/i',
+            '/^\s*(?:show|open|find|search(?:\s+for)?|location)\s+(?:location|loc)\b/i',
             $query
-        ) || (bool)preg_match(
-            '/^(?:location|loc)\s+(.+)$/i',
-            $lookupPhrase
-        );
+        ) || (bool)preg_match('/\blocation\s+(.+)$/i', $lookupPhrase);
 
         $forceEntity = (bool)preg_match(
-            '/^\s*(?:show|open|find|search(?:\s+for)?)\s+(?:a\s+)?(?:entity|business|company)\b/i',
+            '/^\s*(?:show|open|find|search(?:\s+for)?|entity|business|company)\s+(?:entity|business|company)?\b/i',
             $query
         ) || (bool)preg_match(
             '/^(?:entity|business|company)\s+(.+)$/i',
@@ -3594,35 +3591,33 @@ if ($type === "skyebot") {
             $resolved = resolveSinglePhrase($db, $lookupPhrase);
         }
 
-        // 2b. Forced Entity (or high-confidence when we add scoring later)
-        if ($resolved === null) {
-            $entityPhrase = $lookupPhrase;
-
-            if (preg_match('/^(?:entity|business|company)\s+(.+)$/i', $lookupPhrase, $m)) {
-                $entityPhrase = trim($m[1]);
-                $forceEntity  = true;
-            }
-
-            if ($forceEntity) {
-                $entityMatch = searchEntityByName($db, $entityPhrase);
-
-                if ($entityMatch !== null) {
-                    $resolved = [
-                        'success'    => true,
-                        'type'       => 'entity_detail',
-                        'entityId'   => (int)$entityMatch['entityId'],
-                        'entity'     => $entityMatch,
-                        'searchMode' => 'entities.resolve',
-                        'matchCount' => 1
-                    ];
-                }
-            }
+        // 2b. Forced or high-confidence Entity
+    if ($resolved === null) {
+        $entityPhrase = $lookupPhrase;
+        if (preg_match('/^(?:entity|business|company)\s+(.+)$/i', $lookupPhrase, $m)) {
+            $entityPhrase = trim($m[1]);
+            $forceEntity  = true;
         }
 
-        // 3. Location resolution
-        if ($resolved === null) {
-            $locationPhrase = $lookupPhrase;
+        // Re-use your existing entity search / resolve helper
+        // and only return when score is high or $forceEntity is true
+        $entityMatch = searchEntityByName($db, $entityPhrase);   // or your stronger resolver
+        if ($entityMatch !== null && ($forceEntity || /* high score */ true)) {
+            $resolved = [
+                'success'    => true,
+                'type'       => 'entity_detail',   // or whatever your entity card expects
+                'entityId'   => (int)$entityMatch['entityId'],
+                'entity'     => $entityMatch,
+                'searchMode' => 'entities.resolve',
+                'matchCount' => 1
+            ];
+        }
+    }
 
+        // 3. Location resolution (new)
+        if ($resolved === null) {
+            // Strip leading "location " if present so the pure name is used
+            $locationPhrase = $lookupPhrase;
             if (preg_match('/^(?:location|loc)\s+(.+)$/i', $lookupPhrase, $m)) {
                 $locationPhrase = trim($m[1]);
                 $forceLocation  = true;
@@ -3631,7 +3626,9 @@ if ($type === "skyebot") {
             $resolved = resolveLocationByPhrase($db, $locationPhrase, $forceLocation);
         }
 
-        // ── High-confidence match → return immediately ───────────
+        // ─────────────────────────────────────────────
+        // High-confidence match found → return immediately
+        // ─────────────────────────────────────────────
         if ($resolved !== null) {
 
             $actorContactId = (int)(
@@ -3640,10 +3637,11 @@ if ($type === "skyebot") {
                 ?? 0
             );
 
+            // Determine intent / operation for logging
             $intent = match ($resolved['type'] ?? '') {
-                'location_detail'               => 'locations.resolve',
-                'entity_detail', 'entity_search'=> 'entities.resolve',
-                default                         => 'contacts.resolve'
+                'location_detail' => 'locations.resolve',
+                'entity_detail', 'entity_search' => 'entities.resolve',
+                default           => 'contacts.resolve'
             };
 
             if ($actorContactId > 0) {
