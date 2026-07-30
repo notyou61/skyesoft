@@ -6526,6 +6526,9 @@ window.SkyIndex = {
         try {
             // =====================================================
             // 📦 Object Keyword Dispatcher (Entity / Location / …)
+            // Only short-circuit when the identifier is a pure numeric ID.
+            // Natural-language forms ("Entity Christy Signs") fall through
+            // to the skyebot resolver.
             // =====================================================
             const objectCommands = {
                 entity:   (id) => this.renderEntityCard(id),
@@ -6546,8 +6549,13 @@ window.SkyIndex = {
                     return;
                 }
 
-                await objectCommands[firstWord](identifier);
-                return;   // ← do not continue to the general AI path
+                // Only short-circuit for pure numeric IDs
+                if (/^\d+$/.test(identifier)) {
+                    await objectCommands[firstWord](identifier);
+                    return;
+                }
+
+                // Otherwise fall through to the normal skyebot / resolver path
             }
             // =====================================================
 
