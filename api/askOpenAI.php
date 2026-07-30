@@ -3594,23 +3594,32 @@ if ($type === "skyebot") {
         // 2b. Forced Entity
         if ($resolved === null) {
             $entityPhrase = $lookupPhrase;
+            $forceEntity  = false;
 
             if (preg_match('/^(?:entity|business|company)\s+(.+)$/i', $lookupPhrase, $m)) {
                 $entityPhrase = trim($m[1]);
                 $forceEntity  = true;
             }
 
-            if ($forceEntity) {
-                // Use the broader search (same one that powers the search card)
-                $matches = searchEntitiesByName($db, $entityPhrase);   // note the plural
+            // Also catch "Entity Christy Signs", "find entity …", etc.
+            if (!$forceEntity) {
+                $forceEntity = (bool)preg_match(
+                    '/^\s*(?:show|open|find|search(?:\s+for)?)\s+(?:a\s+)?(?:entity|business|company)\b/i',
+                    $query
+                );
+            }
 
-                if (!empty($matches)) {
-                    $top = $matches[0];          // highest-ranked result
+            if ($forceEntity && $entityPhrase !== '') {
+                // Use the broader multi-result search (same one that powers the search card)
+                $matches = searchEntitiesByName($db, $entityPhrase);
+
+                if (!empty($matches) && is_array($matches[0])) {
+                    $top = $matches[0];
 
                     $resolved = [
                         'success'    => true,
                         'type'       => 'entity_detail',
-                        'entityId'   => (int)$top['entityId'],
+                        'entityId'   => (int)($top['entityId'] ?? 0),
                         'entity'     => $top,
                         'searchMode' => 'entities.resolve',
                         'matchCount' => 1
