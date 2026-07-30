@@ -6097,7 +6097,11 @@ window.SkyIndex = {
 
     /**
      * Full Location Profile (modal)
-     * Parallel to renderEntityModal
+     * Layout standard:
+     *   Header      → icon + name + flags
+     *   Identity    → address (the defining attribute)
+     *   Attributes  → entity / parcel / jurisdiction
+     *   Related     → collection counts
      */
     renderLocationModal(location, locationId) {
         const modal = document.getElementById('locationDetailModal');
@@ -6113,7 +6117,6 @@ window.SkyIndex = {
         );
 
         const isBilling = Number(location.locationIsBilling) === 1;
-        const isValid   = Number(location.locationIsNotValid) !== 1;
 
         // Counts
         const contactCount     = Number(location.contactCount     ?? 0);
@@ -6122,9 +6125,46 @@ window.SkyIndex = {
         const noteCount        = Number(location.noteCount        ?? 0);
         const taskCount        = Number(location.taskCount        ?? 0);
 
-        const addressHtml = this.renderBillingAddress(location);
+        // ── Identity (address) ──────────────────────────────────────
+        const line1 = this.escapeHtml(location.locationAddress || '');
+        const suite = location.locationAddressSuite
+            ? this.escapeHtml(location.locationAddressSuite)
+            : '';
+        const city  = this.escapeHtml(location.locationCity || '');
+        const state = this.escapeHtml(location.locationState || '');
+        const zip   = this.escapeHtml(location.locationZip || '');
 
-        // Collection links
+        let cityStateZip = '';
+        if (city && state) {
+            cityStateZip = `${city}, ${state}${zip ? ' ' + zip : ''}`;
+        } else {
+            cityStateZip = [city, state, zip].filter(Boolean).join(' ');
+        }
+
+        // ── Attributes ──────────────────────────────────────────────
+        const jurisdiction = this.escapeHtml(location.locationJurisdiction || '');
+        const county       = this.escapeHtml(location.locationCounty || '');
+        const zone         = this.escapeHtml(location.locationZone || '');
+        const parcel       = this.escapeHtml(
+            location.locationParcelNumber || location.locationParcelNumberRaw || ''
+        );
+
+        // Build jurisdiction line only from values that exist
+        const jurisdictionParts = [];
+        if (jurisdiction) jurisdictionParts.push(jurisdiction);
+        if (county)       jurisdictionParts.push(county + ' County');
+        if (zone)         jurisdictionParts.push(zone);   // no "Zone " prefix unless you want it
+        const jurisdictionLine = jurisdictionParts.join(' • ') || null;
+
+        // Entity
+        const entityName = this.escapeHtml(
+            location.entity?.entityName || location.entityName || ''
+        );
+        const entityId = Number(
+            location.entity?.entityId || location.locationEntityId || 0
+        );
+
+        // ── Helpers ─────────────────────────────────────────────────
         const collectionLink = (label, count, action) => {
             if (count <= 0) {
                 return `
@@ -6146,16 +6186,37 @@ window.SkyIndex = {
             `;
         };
 
+        const attrRow = (icon, label, value, action = null) => {
+            if (!value) return '';
+            const valueHtml = action
+                ? `<a href="#" onclick="event.preventDefault(); ${action}"
+                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
+                : `<span style="color:#222;">${value}</span>`;
+
+            return `
+                <div style="display:flex; align-items:flex-start; gap:8px; padding:7px 0; font-size:0.92em;">
+                    <span style="width:1.25rem; text-align:center; flex-shrink:0; line-height:1.3;">${icon}</span>
+                    <div style="min-width:0;">
+                        <div style="font-size:0.7em; color:#888; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:1px;">${label}</div>
+                        <div>${valueHtml}</div>
+                    </div>
+                </div>
+            `;
+        };
+
+        // ── Render ──────────────────────────────────────────────────
         dialog.innerHTML = `
+            <!-- HEADER -->
             <div style="display:flex; justify-content:space-between; align-items:center;
                         gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
                 <div style="display:flex; align-items:center; gap:9px; min-width:0;">
                     <span style="font-size:1.25rem; flex-shrink:0;">📍</span>
-                    <strong id="locationDetailTitle" style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    <strong id="locationDetailTitle"
+                            style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${name}
                     </strong>
                     ${isBilling ? `
-                        <span style="margin-left:8px; padding:2px 8px; font-size:0.72em; font-weight:600;
+                        <span style="margin-left:6px; padding:2px 8px; font-size:0.72em; font-weight:600;
                                     color:#0f766e; background:rgba(13,148,136,0.12);
                                     border:1px solid rgba(13,148,136,0.25); border-radius:4px;">
                             Billing
@@ -6173,39 +6234,47 @@ window.SkyIndex = {
 
             <div style="padding:18px; max-height:70vh; overflow-y:auto;">
 
-                <!-- Address -->
-                ${addressHtml ? `
-                    <div style="margin-bottom:16px;">
-                        ${addressHtml}
+                <!-- IDENTITY (address is the defining attribute) -->
+                ${(line1 || cityStateZip) ? `
+                    <div style="margin-bottom:18px; font-size:1em; color:#222; line-height:1.45;">
+                        ${line1 ? `<div style="font-weight:500;">${line1}${suite ? ' ' + suite : ''}</div>` : ''}
+                        ${cityStateZip ? `<div>${cityStateZip}</div>` : ''}
                     </div>
                 ` : ''}
 
-                <!-- Related Collections -->
-                <div style="margin-bottom:8px;">
-                    <div style="font-size:0.78em; font-weight:600; letter-spacing:0.04em;
+                <!-- ATTRIBUTES -->
+                <div style="margin-bottom:20px; border-top:1px solid #f0f0f0; padding-top:12px;">
+                    ${attrRow('🏢', 'Entity', entityName,
+                        entityId > 0
+                            ? `SkyIndex.closeLocationModal(); SkyIndex.showEntityModal(${entityId});`
+                            : null)}
+                    ${attrRow('📐', 'Parcel', parcel)}
+                    ${attrRow('🗺', 'Jurisdiction', jurisdictionLine)}
+                </div>
+
+                <!-- RELATED -->
+                <div>
+                    <div style="font-size:0.75em; font-weight:600; letter-spacing:0.04em;
                                 color:#888; text-transform:uppercase; margin-bottom:6px;">
                         Related
                     </div>
 
                     ${collectionLink('Contacts', contactCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show contacts for location ${resolvedId}');`)}
-
                     ${collectionLink('Orders', orderCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show orders for location ${resolvedId}');`)}
-
                     ${collectionLink('Applications', applicationCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show applications for location ${resolvedId}');`)}
-
                     ${collectionLink('Notes', noteCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show notes for location ${resolvedId}');`)}
-
                     ${collectionLink('Tasks', taskCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show tasks for location ${resolvedId}');`)}
                 </div>
             </div>
 
+            <!-- FOOTER -->
             <div style="padding:12px 18px; border-top:1px solid #eee; background:#fafafa;
-                        display:flex; justify-content:flex-end; gap:10px;">
+                        display:flex; justify-content:flex-end;">
                 <button type="button"
                         onclick="SkyIndex.closeLocationModal();"
                         style="padding:8px 16px; border:1px solid #ccc; border-radius:6px;
