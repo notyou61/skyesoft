@@ -4,12 +4,12 @@
  * Skyesoft – Email Signature Mining – Phase 2
  * Produces structured ELC Candidate JSON (high recall)
  *
- * Version: 2.0
+ * Version: 2.1
  * Location: tools/email-signature-mining/extractEmailSignatures.php
  *
  * Output:
  *   emailSignatureExtraction/elcCandidates.json
- *   emailSignatureExtraction/reports/signatureDiscoveryReport.html  (lighter debug)
+ *   emailSignatureExtraction/reports/signatureDiscoveryReport.html  (first 200 only)
  */
 
 declare(strict_types=1);
@@ -54,8 +54,24 @@ function logMsg(string $msg): void {
     echo $line;
 }
 
+/**
+ * Force a string into valid UTF-8 (prevents json_encode from returning false)
+ */
+function cleanUtf8(?string $value): string {
+    if ($value === null || $value === '') {
+        return '';
+    }
+    // Remove any invalid sequences
+    $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+    if ($clean === false) {
+        $clean = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+    }
+    // Final safety
+    return mb_convert_encoding($clean, 'UTF-8', 'UTF-8');
+}
+
 // ============================================================
-// PIPELINE FUNCTIONS (largely unchanged from v1.3 – high recall)
+// PIPELINE FUNCTIONS (high recall – essentially unchanged)
 // ============================================================
 
 function classifyMessage(array $msg): array
@@ -216,10 +232,7 @@ function parseSignatureFields(string $raw): array
         $result['contact']['phone'] = $m[0];
     }
 
-    // Name + Title patterns (common signature styles)
-    // "Name | Title"
-    // "Name, Title"
-    // "Name\nTitle"
+    // Name + Title patterns
     foreach ($lines as $i => $line) {
         if (preg_match('/^([A-Z][a-zA-Z\'\-]+(?:\s+[A-Z][a-zA-Z\'\-]+)+)\s*[|,–\-]\s*(.+)$/', $line, $m)) {
             $result['contact']['name']  = trim($m[1]);
@@ -235,7 +248,7 @@ function parseSignatureFields(string $raw): array
         }
     }
 
-    // Entity – look for lines that look like company names after the contact block
+    // Entity
     foreach ($lines as $line) {
         if (preg_match('/(Inc\.|LLC|Corp\.|Corporation|Company|Signs?|Marketing|Group|Associates)/i', $line) &&
             !preg_match('/@/', $line) &&
@@ -245,7 +258,7 @@ function parseSignatureFields(string $raw): array
         }
     }
 
-    // Simple address heuristic (very light)
+    // Address heuristic
     if (preg_match('/(\d+\s+[A-Za-z0-9\.\s]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Way|Court|Ct)\.?\s*(?:Suite|Ste|Unit|#)?\s*\d*)/i', $raw, $m)) {
         $result['location']['streetAddress'] = trim($m[1]);
     }
@@ -297,7 +310,7 @@ function processSignatureExtraction(array $msg, array &$seen): array
 // ============================================================
 // MAIN
 // ============================================================
-logMsg('=== Skyesoft ELC Candidate Extraction (v2.0) started ===');
+logMsg('=== Skyesoft ELC Candidate Extraction (v2.1) started ===');
 logMsg('JSON directory  : ' . $jsonDir);
 logMsg('Output directory: ' . $outputDir);
 
@@ -362,22 +375,35 @@ foreach ($files as $filePath) {
 
         $parsed = parseSignatureFields($result['signature']);
 
+        // Clean every string that will go into JSON
         $candidates[] = [
             'signatureId'   => sprintf('SIG-%06d', $sigCounter),
             'status'        => 'pending',
             'score'         => $result['score'],
             'source'        => [
-                'entryId'     => $msg['entry_id'] ?? null,
-                'folder'      => $msg['folder_path'] ?? null,
-                'senderName'  => $msg['sender_name'] ?? null,
-                'senderEmail' => $msg['sender_email'] ?? null,
-                'subject'     => $msg['subject'] ?? null,
-                'receivedAt'  => $msg['received_at'] ?? null,
+                'entryId'     => cleanUtf8($msg['entry_id'] ?? null),
+                'folder'      => cleanUtf8($msg['folder_path'] ?? null),
+                'senderName'  => cleanUtf8($msg['sender_name'] ?? null),
+                'senderEmail' => cleanUtf8($msg['sender_email'] ?? null),
+                'subject'     => cleanUtf8($msg['subject'] ?? null),
+                'receivedAt'  => cleanUtf8($msg['received_at'] ?? null),
             ],
-            'entity'        => $parsed['entity'],
-            'location'      => $parsed['location'],
-            'contact'       => $parsed['contact'],
-            'rawSignature'  => $result['signature'],
+            'entity'        => [
+                'name' => $parsed['entity']['name'] ? cleanUtf8($parsed['entity']['name']) : null,
+            ],
+            'location'      => [
+                'streetAddress' => $parsed['location']['streetAddress'] ? cleanUtf8($parsed['location']['streetAddress']) : null,
+                'city'          => $parsed['location']['city'] ? cleanUtf8($parsed['location']['city']) : null,
+                'state'         => $parsed['location']['state'] ? cleanUtf8($parsed['location']['state']) : null,
+                'zipCode'       => $parsed['location']['zipCode'] ? cleanUtf8($parsed['location']['zipCode']) : null,
+            ],
+            'contact'       => [
+                'name'  => $parsed['contact']['name'] ? cleanUtf8($parsed['contact']['name']) : null,
+                'title' => $parsed['contact']['title'] ? cleanUtf8($parsed['contact']['title']) : null,
+                'phone' => $parsed['contact']['phone'] ? cleanUtf8($parsed['contact']['phone']) : null,
+                'email' => $parsed['contact']['email'] ? cleanUtf8($parsed['contact']['email']) : null,
+            ],
+            'rawSignature'  => cleanUtf8($result['signature']),
         ];
     }
 
@@ -385,34 +411,56 @@ foreach ($files as $filePath) {
 }
 
 // ============================================================
-// WRITE STRUCTURED JSON
+// WRITE STRUCTURED JSON (robust)
 // ============================================================
-$jsonOut = json_encode($candidates, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-file_put_contents($candidatesFile, $jsonOut);
+logMsg('Encoding ' . count($candidates) . ' candidates to JSON...');
+
+$jsonOut = json_encode(
+    $candidates,
+    JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+);
+
+if ($jsonOut === false) {
+    $err = json_last_error_msg();
+    logMsg('ERROR: json_encode failed – ' . $err);
+    // Fallback: try without pretty print
+    $jsonOut = json_encode($candidates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    if ($jsonOut === false) {
+        logMsg('ERROR: Even compact encode failed – ' . json_last_error_msg());
+        exit(1);
+    }
+    logMsg('Fell back to compact JSON');
+}
+
+$bytes = file_put_contents($candidatesFile, $jsonOut);
+if ($bytes === false) {
+    logMsg('ERROR: file_put_contents failed for ' . $candidatesFile);
+    exit(1);
+}
 
 logMsg('=== Extraction complete ===');
 logMsg("Files processed : {$stats['files_processed']}");
 logMsg("Total Messages  : {$stats['messages_total']}");
 logMsg("Accepted        : {$stats['accepted']}");
-logMsg("Candidates JSON : $candidatesFile");
+logMsg("Candidates JSON : $candidatesFile (" . number_format($bytes) . " bytes)");
 
 // ============================================================
-// LIGHT HTML DEBUG REPORT (optional, much smaller)
+// LIGHT HTML DEBUG REPORT (first 200 only)
 // ============================================================
-$html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Skyesoft ELC Candidates v2.0</title>
+$html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Skyesoft ELC Candidates v2.1</title>
 <style>
 body{font-family:system-ui,sans-serif;background:#f8f9fa;margin:0;padding:24px}
 .card{background:#fff;border:1px solid #dee2e6;border-radius:8px;margin-bottom:16px;padding:16px}
 .sig{background:#f1f3f5;border-left:4px solid #0d6efd;padding:12px;font-family:monospace;white-space:pre-wrap;font-size:0.85rem}
 .meta{color:#6c757d;font-size:0.85rem}
 </style></head><body>
-<h1>Skyesoft ELC Candidates <small>(v2.0 – high recall)</small></h1>
+<h1>Skyesoft ELC Candidates <small>(v2.1 – high recall)</small></h1>
 <p class="meta">Generated: ' . date('Y-m-d H:i:s T') . ' | Candidates: ' . count($candidates) . '</p>';
 
-foreach (array_slice($candidates, 0, 200) as $c) { // first 200 only for size
+foreach (array_slice($candidates, 0, 200) as $c) {
     $html .= '<div class="card">
         <strong>' . htmlspecialchars($c['signatureId']) . '</strong> – Score: ' . $c['score'] . '<br>
-        <span class="meta">' . htmlspecialchars(($c['source']['senderName'] ?? '') . ' <' . ($c['source']['senderEmail'] ?? '') . '>') . '</span>
+        <span class="meta">' . htmlspecialchars(($c['source']['senderName'] ?? '') . ' &lt;' . ($c['source']['senderEmail'] ?? '') . '&gt;') . '</span>
         <pre class="sig">' . htmlspecialchars($c['rawSignature']) . '</pre>
         <div class="meta">
             Entity: ' . htmlspecialchars($c['entity']['name'] ?? '—') . ' |
@@ -427,4 +475,4 @@ $html .= '<p class="meta">Showing first 200 of ' . count($candidates) . ' candid
 file_put_contents($reportFile, $html);
 
 logMsg("Light HTML report : $reportFile");
-echo "\nDone.\nCandidates: $candidatesFile\n";
+echo "\nDone.\nCandidates: $candidatesFile (" . number_format($bytes) . " bytes)\n";
