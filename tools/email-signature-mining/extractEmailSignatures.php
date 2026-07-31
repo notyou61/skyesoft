@@ -602,8 +602,9 @@ function isValidStreetAddress(string $value): bool
         return false;
     }
 
+    // Updated regex to handle trailing suite/unit/apartment designation (#2142, Ste 100, etc.)
     return (bool) preg_match(
-        '/\b\d{1,6}\s+[A-Za-z0-9.\'’\-\s]+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir|trail|trl)\b/i',
+        '/\b\d{1,6}\s+[A-Za-z0-9.\'’\-\s]+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir|trail|trl)\b(?:\s*,\s*(?:suite|ste|unit|apt|#)\s*[A-Za-z0-9\-]+)?/i',
         $value
     );
 }
