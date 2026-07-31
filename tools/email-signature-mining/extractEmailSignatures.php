@@ -6,7 +6,7 @@
  * Produces structured ELC Candidate JSON optimized for review and
  * conversion into a copyable Entity–Location–Contact Proposal Candidate.
  *
- * Version: 2.2
+ * Version: 2.3
  * Location: tools/email-signature-mining/extractEmailSignatures.php
  *
  * Input:
@@ -582,7 +582,7 @@ function isValidStreetAddress(string $value): bool
 {
     $value = normalizeLine($value);
 
-    if ($value === '' || mb_strlen($value) > 120) {
+    if ($value === '' || mb_strlen($value) > 140) {
         return false;
     }
 
@@ -603,7 +603,7 @@ function isValidStreetAddress(string $value): bool
     }
 
     return (bool) preg_match(
-        '/^\d{1,6}\s+.+\b(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir|trail|trl)\b\.?(?:\s*,?\s*(?:suite|ste|unit|#)\s*[A-Za-z0-9\-]+)?$/i',
+        '/\b\d{1,6}\s+[A-Za-z0-9.\'’\-\s]+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir|trail|trl)\b/i',
         $value
     );
 }
@@ -692,37 +692,49 @@ function parseSignatureFields(string $raw): array
         }
     }
 
-    // Address
+    // Address Parsing (Single-Line and Multi-Line Support)
     foreach ($lines as $index => $line) {
-        if (!isValidStreetAddress($line)) {
-            continue;
-        }
-
-        $result['location']['streetAddress'] = $line;
-
-        $nextLine = $lines[$index + 1] ?? '';
-        $nextNext = $lines[$index + 2] ?? '';
-
-        $cityLine = $nextLine;
-        if (
-            $nextLine !== '' &&
-            preg_match('/^(?:suite|ste|unit|#)\s*[A-Za-z0-9\-]+$/i', $nextLine)
-        ) {
-            $result['location']['streetAddress'] .= ', ' . $nextLine;
-            $cityLine = $nextNext;
-        }
-
+        // Option A: Single Line Address Format (e.g. "13580 5th Street, Chino CA 91710")
         if (preg_match(
-            '/^([A-Za-z.\'’\- ]+),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/',
-            $cityLine,
-            $cityMatch
+            '/^(\d{1,6}\s+.+?\b(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir)\b\.?)\s*,?\s*([A-Za-z.\'’\- ]+),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i',
+            $line,
+            $singleLineMatch
         )) {
-            $result['location']['city']    = trim($cityMatch[1]);
-            $result['location']['state']   = strtoupper($cityMatch[2]);
-            $result['location']['zipCode'] = $cityMatch[3];
+            $result['location']['streetAddress'] = trim($singleLineMatch[1]);
+            $result['location']['city']          = trim($singleLineMatch[2]);
+            $result['location']['state']         = strtoupper($singleLineMatch[3]);
+            $result['location']['zipCode']       = $singleLineMatch[4];
+            break;
         }
 
-        break;
+        // Option B: Multi-Line Address Format
+        if (isValidStreetAddress($line)) {
+            $result['location']['streetAddress'] = $line;
+
+            $nextLine = $lines[$index + 1] ?? '';
+            $nextNext = $lines[$index + 2] ?? '';
+
+            $cityLine = $nextLine;
+            if (
+                $nextLine !== '' &&
+                preg_match('/^(?:suite|ste|unit|#)\s*[A-Za-z0-9\-]+$/i', $nextLine)
+            ) {
+                $result['location']['streetAddress'] .= ', ' . $nextLine;
+                $cityLine = $nextNext;
+            }
+
+            if (preg_match(
+                '/^([A-Za-z.\'’\- ]+),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/',
+                $cityLine,
+                $cityMatch
+            )) {
+                $result['location']['city']    = trim($cityMatch[1]);
+                $result['location']['state']   = strtoupper($cityMatch[2]);
+                $result['location']['zipCode'] = $cityMatch[3];
+            }
+
+            break;
+        }
     }
 
     // Fallback city/state/ZIP search
@@ -741,10 +753,9 @@ function parseSignatureFields(string $raw): array
         }
     }
 
-    // Entity:
-    // Prefer a short, valid line after title and before address/contact details.
-    $nameIndex = null;
-    $titleIndex = null;
+    // Entity Parsing
+    $nameIndex    = null;
+    $titleIndex   = null;
     $addressIndex = null;
 
     foreach ($lines as $index => $line) {
@@ -1026,7 +1037,7 @@ function processSignatureExtraction(array $msg, array &$seen): array
 // SECTION 13 — MAIN
 // ============================================================
 
-logMsg('=== Skyesoft ELC Candidate Extraction (v2.2) started ===');
+logMsg('=== Skyesoft ELC Candidate Extraction (v2.3) started ===');
 logMsg('JSON directory  : ' . $jsonDir);
 logMsg('Output directory: ' . $outputDir);
 
@@ -1100,6 +1111,18 @@ foreach ($files as $filePath) {
 
         $parsed = $result['parsed'];
 
+        // Build combined full address string if parts exist
+        $fullAddress = $parsed['location']['streetAddress'];
+        if (!empty($parsed['location']['city'])) {
+            $fullAddress .= ($fullAddress ? ', ' : '') . $parsed['location']['city'];
+            if (!empty($parsed['location']['state'])) {
+                $fullAddress .= ' ' . $parsed['location']['state'];
+            }
+            if (!empty($parsed['location']['zipCode'])) {
+                $fullAddress .= ' ' . $parsed['location']['zipCode'];
+            }
+        }
+
         $candidates[] = [
             'signatureId' => sprintf('SIG-%06d', $sigCounter),
             'status'      => 'pending',
@@ -1121,16 +1144,14 @@ foreach ($files as $filePath) {
                     : null,
             ],
             'location'    => [
-                'streetAddress' => $parsed['location']['streetAddress'] !== null
-                    ? cleanUtf8($parsed['location']['streetAddress'])
-                    : null,
-                'city' => $parsed['location']['city'] !== null
+                'streetAddress' => $fullAddress !== null ? cleanUtf8($fullAddress) : null,
+                'city'          => $parsed['location']['city'] !== null
                     ? cleanUtf8($parsed['location']['city'])
                     : null,
-                'state' => $parsed['location']['state'] !== null
+                'state'         => $parsed['location']['state'] !== null
                     ? cleanUtf8($parsed['location']['state'])
                     : null,
-                'zipCode' => $parsed['location']['zipCode'] !== null
+                'zipCode'       => $parsed['location']['zipCode'] !== null
                     ? cleanUtf8($parsed['location']['zipCode'])
                     : null,
             ],
@@ -1190,157 +1211,9 @@ if ($jsonOut === false) {
 $bytes = file_put_contents($candidatesFile, $jsonOut, LOCK_EX);
 
 if ($bytes === false) {
-    logMsg('ERROR: Could not write ' . $candidatesFile);
+    logMsg('ERROR: Failed to write output file to ' . $candidatesFile);
     exit(1);
 }
 
-// ============================================================
-// SECTION 15 — HTML DEBUG REPORT
-// ============================================================
-
-$html = '<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Skyesoft ELC Candidates v2.2</title>
-<style>
-body{
-    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    background:#f8f9fa;
-    color:#212529;
-    margin:0;
-    padding:24px;
-}
-h1{margin-top:0}
-.summary{
-    background:#fff;
-    border:1px solid #dee2e6;
-    border-radius:8px;
-    padding:14px 16px;
-    margin-bottom:18px;
-}
-.card{
-    background:#fff;
-    border:1px solid #dee2e6;
-    border-radius:8px;
-    margin-bottom:16px;
-    padding:16px;
-}
-.sig{
-    background:#f1f3f5;
-    border-left:4px solid #0d6efd;
-    padding:12px;
-    font-family:Consolas,monospace;
-    white-space:pre-wrap;
-    font-size:.85rem;
-}
-.meta{
-    color:#6c757d;
-    font-size:.85rem;
-}
-.grid{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:6px 18px;
-    margin-top:10px;
-}
-.label{font-weight:600}
-</style>
-</head>
-<body>
-<h1>Skyesoft ELC Candidates <small>(v2.2)</small></h1>
-<div class="summary">
-    <div><strong>Generated:</strong> ' . htmlspecialchars(date('Y-m-d H:i:s T')) . '</div>
-    <div><strong>Candidates:</strong> ' . number_format(count($candidates)) . '</div>
-    <div><strong>Messages:</strong> ' . number_format($stats['messages_total']) . '</div>
-</div>';
-
-foreach (array_slice($candidates, 0, $debugReportLimit) as $candidate) {
-    $html .= '<div class="card">
-        <strong>' . htmlspecialchars($candidate['signatureId']) . '</strong>
-        <span class="meta">
-            — Raw Score: ' . (int) $candidate['score']['raw'] . '
-            | ELC Score: ' . (int) $candidate['score']['elc'] . '
-        </span>
-        <br>
-        <span class="meta">' .
-            htmlspecialchars(
-                ($candidate['source']['senderName'] ?? '') .
-                ' <' .
-                ($candidate['source']['senderEmail'] ?? '') .
-                '>'
-            ) .
-        '</span>
-
-        <pre class="sig">' .
-            htmlspecialchars($candidate['rawSignature']) .
-        '</pre>
-
-        <div class="grid">
-            <div><span class="label">Entity:</span> ' .
-                htmlspecialchars($candidate['entity']['name'] ?? '—') .
-            '</div>
-            <div><span class="label">Contact:</span> ' .
-                htmlspecialchars($candidate['contact']['name'] ?? '—') .
-            '</div>
-            <div><span class="label">Title:</span> ' .
-                htmlspecialchars($candidate['contact']['title'] ?? '—') .
-            '</div>
-            <div><span class="label">Phone:</span> ' .
-                htmlspecialchars($candidate['contact']['phone'] ?? '—') .
-            '</div>
-            <div><span class="label">Email:</span> ' .
-                htmlspecialchars($candidate['contact']['email'] ?? '—') .
-            '</div>
-            <div><span class="label">Address:</span> ' .
-                htmlspecialchars($candidate['location']['streetAddress'] ?? '—') .
-            '</div>
-            <div><span class="label">City:</span> ' .
-                htmlspecialchars($candidate['location']['city'] ?? '—') .
-            '</div>
-            <div><span class="label">State/ZIP:</span> ' .
-                htmlspecialchars(
-                    trim(
-                        ($candidate['location']['state'] ?? '') .
-                        ' ' .
-                        ($candidate['location']['zipCode'] ?? '')
-                    ) ?: '—'
-                ) .
-            '</div>
-        </div>
-    </div>';
-}
-
-$html .= '<p class="meta">Showing first ' .
-    min($debugReportLimit, count($candidates)) .
-    ' of ' .
-    count($candidates) .
-    ' candidates. Full dataset: elcCandidates.json</p>
-</body>
-</html>';
-
-file_put_contents($reportFile, $html, LOCK_EX);
-
-// ============================================================
-// SECTION 16 — FINAL LOG
-// ============================================================
-
-logMsg('=== Extraction complete ===');
-logMsg('Files processed : ' . $stats['files_processed']);
-logMsg('Total messages  : ' . $stats['messages_total']);
-logMsg('Accepted        : ' . $stats['accepted']);
-logMsg('Duplicates      : ' . $stats['duplicates']);
-logMsg('Internal        : ' . $stats['internal']);
-logMsg('Automated       : ' . $stats['automated']);
-logMsg('Invalid ELC     : ' . $stats['invalid_elc']);
-logMsg('Low quality     : ' . $stats['low_quality']);
-logMsg('System folder   : ' . $stats['system_folder']);
-logMsg('No body         : ' . $stats['no_body']);
-logMsg('No signature    : ' . $stats['no_signature']);
-logMsg('Candidates JSON : ' . $candidatesFile . ' (' . number_format($bytes) . ' bytes)');
-logMsg('HTML report     : ' . $reportFile);
-
-echo PHP_EOL;
-echo 'Done.' . PHP_EOL;
-echo 'Candidates: ' . $candidatesFile . PHP_EOL;
-echo 'Report: ' . $reportFile . PHP_EOL;
+logMsg('Successfully wrote ' . $bytes . ' bytes to ' . $candidatesFile);
+logMsg('=== Signature Extraction Complete ===');
