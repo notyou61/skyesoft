@@ -1160,7 +1160,7 @@ foreach ($files as $filePath) {
                     : null,
             ],
             'contact'     => [
-                'name' => $parsed['contact']['name'] !== null
+                'name'  => $parsed['contact']['name'] !== null
                     ? cleanUtf8($parsed['contact']['name'])
                     : null,
                 'title' => $parsed['contact']['title'] !== null
@@ -1176,48 +1176,21 @@ foreach ($files as $filePath) {
             'rawSignature' => cleanUtf8($result['signature']),
         ];
     }
-
-    unset($messages, $raw);
 }
 
-// ============================================================
-// SECTION 14 — WRITE JSON
-// ============================================================
-
-logMsg('Encoding ' . count($candidates) . ' candidates to JSON...');
-
-$jsonOut = json_encode(
-    $candidates,
-    JSON_PRETTY_PRINT |
-    JSON_UNESCAPED_UNICODE |
-    JSON_UNESCAPED_SLASHES |
-    JSON_INVALID_UTF8_SUBSTITUTE
-);
-
-if ($jsonOut === false) {
-    logMsg('ERROR: json_encode failed — ' . json_last_error_msg());
-
-    $jsonOut = json_encode(
-        $candidates,
-        JSON_UNESCAPED_UNICODE |
-        JSON_UNESCAPED_SLASHES |
-        JSON_INVALID_UTF8_SUBSTITUTE
-    );
-
-    if ($jsonOut === false) {
-        logMsg('ERROR: Compact json_encode also failed — ' . json_last_error_msg());
-        exit(1);
-    }
-
-    logMsg('Fell back to compact JSON');
-}
-
-$bytes = file_put_contents($candidatesFile, $jsonOut, LOCK_EX);
-
-if ($bytes === false) {
-    logMsg('ERROR: Failed to write output file to ' . $candidatesFile);
+// Write Candidates JSON Output
+$jsonOutput = json_encode($candidates, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+if ($jsonOutput === false) {
+    logMsg('ERROR: Failed to encode candidates array to JSON — ' . json_last_error_msg());
     exit(1);
 }
 
-logMsg('Successfully wrote ' . $bytes . ' bytes to ' . $candidatesFile);
-logMsg('=== Signature Extraction Complete ===');
+file_put_contents($candidatesFile, $jsonOutput, LOCK_EX);
+logMsg(sprintf('Saved %d candidate records to %s', count($candidates), $candidatesFile));
+
+// Final Execution Stats Log
+logMsg('=== Pipeline Summary ===');
+foreach ($stats as $metric => $count) {
+    logMsg(sprintf('  %-18s : %d', $metric, $count));
+}
+logMsg('=== Skyesoft ELC Candidate Extraction complete ===');
