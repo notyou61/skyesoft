@@ -8,9 +8,10 @@
 
 declare(strict_types=1);
 
-$baseDir     = __DIR__ . '/emailSignatureExtraction/';
-$dataFile    = $baseDir . 'elcCandidates.json';
-$stateFile   = $baseDir . 'candidateReviewState.json';
+// Updated / Robust:
+$baseDir   = rtrim(__DIR__, '/\\') . '/emailSignatureExtraction/';
+$dataFile  = $baseDir . 'elcCandidates.json';
+$stateFile = $baseDir . 'candidateReviewState.json';
 
 if (!file_exists($dataFile)) {
     die("Error: Candidate data file not found at {$dataFile}");
