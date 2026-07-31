@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-// Updated / Robust:
+// Updated / Robust Path Handling:
 $baseDir   = rtrim(__DIR__, '/\\') . '/emailSignatureExtraction/';
 $dataFile  = $baseDir . 'elcCandidates.json';
 $stateFile = $baseDir . 'candidateReviewState.json';
@@ -195,6 +195,16 @@ let states = <?php echo json_encode($states, JSON_HEX_TAG | JSON_HEX_APOS | JSON
 let activeIndex = 0;
 let filteredQueue = [];
 
+// Helper to unpack nested JSON objects safely into string primitives
+function strVal(val, key = 'name') {
+    if (!val) return '';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object') {
+        return val[key] || val.value || val.text || val.display || '';
+    }
+    return String(val);
+}
+
 function getRecord(idx) {
     const raw = rawCandidates[idx];
     if (!raw) return null;
@@ -202,20 +212,24 @@ function getRecord(idx) {
     const id = raw.candidateId || `PC-${idx}`;
     const state = states[id] || {};
 
+    // Safely parse nested structures
+    const rawContact = raw.contact || {};
+    const rawEntity  = raw.entity || {};
+
     return {
         id: id,
         idx: idx,
         status: state.status || 'pending',
-        entity: state.entity !== undefined ? state.entity : (raw.entity || ''),
-        contact: state.contact !== undefined ? state.contact : (raw.contact || ''),
-        title: state.title !== undefined ? state.title : (raw.title || ''),
-        address: state.address !== undefined ? state.address : (raw.address || ''),
-        phone: state.phone !== undefined ? state.phone : (raw.phone || ''),
-        email: state.email !== undefined ? state.email : (raw.email || ''),
-        sender: raw.sender_email ? `${raw.sender_name || ''} <${raw.sender_email}>` : '',
-        folder: raw.folder_path || '',
-        subject: raw.subject || '',
-        rawSignature: raw.signature || raw.rawSignature || ''
+        entity:  state.entity  !== undefined ? state.entity  : strVal(rawEntity, 'name'),
+        contact: state.contact !== undefined ? state.contact : strVal(rawContact, 'name'),
+        title:   state.title   !== undefined ? state.title   : strVal(raw.title || rawContact.title, 'title'),
+        address: state.address !== undefined ? state.address : strVal(raw.address || rawEntity.address, 'address'),
+        phone:   state.phone   !== undefined ? state.phone   : strVal(raw.phone || rawContact.phone, 'phone'),
+        email:   state.email   !== undefined ? state.email   : strVal(raw.email || rawContact.email, 'email'),
+        sender:  raw.sender_email ? `${raw.sender_name || ''} <${raw.sender_email}>` : strVal(raw.sender),
+        folder:  strVal(raw.folder_path || raw.folder),
+        subject: strVal(raw.subject),
+        rawSignature: strVal(raw.signature || raw.rawSignature)
     };
 }
 
