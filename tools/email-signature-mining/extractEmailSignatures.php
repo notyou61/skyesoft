@@ -716,16 +716,19 @@ function parseSignatureFields(string $raw): array
             $nextNext = $lines[$index + 2] ?? '';
 
             $cityLine = $nextLine;
+
+            // Check if the suite/unit was put on its own separate line
             if (
                 $nextLine !== '' &&
-                preg_match('/^(?:suite|ste|unit|#)\s*[A-Za-z0-9\-]+$/i', $nextLine)
+                preg_match('/^(?:suite|ste|unit|apt|#)\s*[A-Za-z0-9\-]+$/i', $nextLine)
             ) {
                 $result['location']['streetAddress'] .= ', ' . $nextLine;
                 $cityLine = $nextNext;
             }
 
+            // Match "Chandler, AZ 85226"
             if (preg_match(
-                '/^([A-Za-z.\'’\- ]+),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/',
+                '/^([A-Za-z.\'’\-\s]+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i',
                 $cityLine,
                 $cityMatch
             )) {
