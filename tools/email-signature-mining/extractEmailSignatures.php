@@ -6,7 +6,7 @@
  * Produces structured ELC Candidate JSON optimized for review and
  * conversion into a copyable Entity–Location–Contact Proposal Candidate.
  *
- * Version: 2.3
+ * Version: 2.4
  * Location: tools/email-signature-mining/extractEmailSignatures.php
  *
  * Input:
@@ -425,14 +425,14 @@ function scoreSignature(string $signature): int
     }
 
     if (preg_match(
-        '/\b(?:inc\.?|llc|corp\.?|corporation|company|group|associates|solutions|services|signs?|department|city of|county of)\b/i',
+        '/\b(?:inc\.?|llc|corp\.?|corporation|company|group|associates|solutions|services|signs?|department|city of|county of|center|plaza|mall)\b/i',
         $signature
     )) {
         $score += 1;
     }
 
     if (preg_match(
-        '/\b\d{1,6}\s+[A-Za-z0-9.\'’\- ]+\s+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy)\b/i',
+        '/\b\d{1,6}\s+[A-Za-z0-9.\'’\-\s]+?\b(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir|trail|trl)\b/i',
         $signature
     )) {
         $score += 2;
@@ -602,9 +602,9 @@ function isValidStreetAddress(string $value): bool
         return false;
     }
 
-    // Updated regex to handle trailing suite/unit/apartment designation (#2142, Ste 100, etc.)
+    // Matches numbers + street name + street suffix + optional dot + optional suite/unit/ste/#
     return (bool) preg_match(
-        '/\b\d{1,6}\s+[A-Za-z0-9.\'’\-\s]+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir|trail|trl)\b(?:\s*,\s*(?:suite|ste|unit|apt|#)\s*[A-Za-z0-9\-]+)?/i',
+        '/\b\d{1,6}\s+[A-Za-z0-9.\'’\-\s]+?\b(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir|trail|trl)\b\.?(?:\s*,?\s*(?:suite|ste|unit|apt|bldg|building|#|space|spc|fl|floor)\b\.?\s*[A-Za-z0-9\-]+)?/i',
         $value
     );
 }
@@ -660,7 +660,7 @@ function parseSignatureFields(string $raw): array
         $result['contact']['phone'] = normalizePhone($phoneMatch[0]);
     }
 
-    // Contact name and title
+    // Contact Name and Title Parsing
     foreach ($lines as $index => $line) {
         if (preg_match(
             '/^(.+?)\s*[|–—]\s*(.+)$/u',
@@ -693,11 +693,11 @@ function parseSignatureFields(string $raw): array
         }
     }
 
-    // Address Parsing (Single-Line and Multi-Line Support)
+    // Address Parsing
     foreach ($lines as $index => $line) {
-        // Option A: Single Line Address Format (e.g. "13580 5th Street, Chino CA 91710")
+        // Single Line Address Format: "3111 W Chandler Blvd, Suite 2142, Chandler, AZ 85226"
         if (preg_match(
-            '/^(\d{1,6}\s+.+?\b(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir)\b\.?)\s*,?\s*([A-Za-z.\'’\- ]+),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i',
+            '/^(\d{1,6}\s+[A-Za-z0-9.\'’\-\s]+?\b(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir|trail|trl)\b\.?(?:\s*,?\s*(?:suite|ste|unit|apt|bldg|building|#|space|spc)\b\.?\s*[A-Za-z0-9\-]+)?)\s*,?\s*([A-Za-z.\'’\- ]+),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i',
             $line,
             $singleLineMatch
         )) {
@@ -708,7 +708,7 @@ function parseSignatureFields(string $raw): array
             break;
         }
 
-        // Option B: Multi-Line Address Format
+        // Multi-Line Address Format
         if (isValidStreetAddress($line)) {
             $result['location']['streetAddress'] = $line;
 
@@ -717,16 +717,14 @@ function parseSignatureFields(string $raw): array
 
             $cityLine = $nextLine;
 
-            // Check if the suite/unit was put on its own separate line
             if (
                 $nextLine !== '' &&
-                preg_match('/^(?:suite|ste|unit|apt|#)\s*[A-Za-z0-9\-]+$/i', $nextLine)
+                preg_match('/^(?:suite|ste|unit|apt|bldg|building|#|space|spc|fl|floor)\b\.?\s*[A-Za-z0-9\-]+$/i', $nextLine)
             ) {
                 $result['location']['streetAddress'] .= ', ' . $nextLine;
                 $cityLine = $nextNext;
             }
 
-            // Match "Chandler, AZ 85226"
             if (preg_match(
                 '/^([A-Za-z.\'’\-\s]+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/i',
                 $cityLine,
@@ -741,7 +739,7 @@ function parseSignatureFields(string $raw): array
         }
     }
 
-    // Fallback city/state/ZIP search
+    // Fallback City/State/ZIP Search
     if ($result['location']['city'] === null) {
         foreach ($lines as $line) {
             if (preg_match(
@@ -811,7 +809,7 @@ function parseSignatureFields(string $raw): array
         }
     }
 
-    // General entity fallback
+    // General Entity Fallback
     if ($result['entity']['name'] === null) {
         foreach ($lines as $line) {
             if (
@@ -828,7 +826,7 @@ function parseSignatureFields(string $raw): array
                 isValidEntityName($line) &&
                 (
                     preg_match(
-                        '/\b(?:inc\.?|llc|corp\.?|corporation|company|group|associates|solutions|services|signs?|department|city of|county of|insurance|construction|development|international|technologies|systems|partners?)\b/i',
+                        '/\b(?:inc\.?|llc|corp\.?|corporation|company|group|associates|solutions|services|signs?|department|city of|county of|insurance|construction|development|international|technologies|systems|partners?|center|plaza|mall)\b/i',
                         $line
                     ) ||
                     ($nameIndex !== null && array_search($line, $lines, true) > $nameIndex)
@@ -1041,7 +1039,7 @@ function processSignatureExtraction(array $msg, array &$seen): array
 // SECTION 13 — MAIN
 // ============================================================
 
-logMsg('=== Skyesoft ELC Candidate Extraction (v2.3) started ===');
+logMsg('=== Skyesoft ELC Candidate Extraction (v2.4) started ===');
 logMsg('JSON directory  : ' . $jsonDir);
 logMsg('Output directory: ' . $outputDir);
 
@@ -1115,18 +1113,6 @@ foreach ($files as $filePath) {
 
         $parsed = $result['parsed'];
 
-        // Build combined full address string if parts exist
-        $fullAddress = $parsed['location']['streetAddress'];
-        if (!empty($parsed['location']['city'])) {
-            $fullAddress .= ($fullAddress ? ', ' : '') . $parsed['location']['city'];
-            if (!empty($parsed['location']['state'])) {
-                $fullAddress .= ' ' . $parsed['location']['state'];
-            }
-            if (!empty($parsed['location']['zipCode'])) {
-                $fullAddress .= ' ' . $parsed['location']['zipCode'];
-            }
-        }
-
         $candidates[] = [
             'signatureId' => sprintf('SIG-%06d', $sigCounter),
             'status'      => 'pending',
@@ -1148,7 +1134,9 @@ foreach ($files as $filePath) {
                     : null,
             ],
             'location'    => [
-                'streetAddress' => $fullAddress !== null ? cleanUtf8($fullAddress) : null,
+                'streetAddress' => $parsed['location']['streetAddress'] !== null
+                    ? cleanUtf8($parsed['location']['streetAddress'])
+                    : null,
                 'city'          => $parsed['location']['city'] !== null
                     ? cleanUtf8($parsed['location']['city'])
                     : null,
