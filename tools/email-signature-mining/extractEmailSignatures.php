@@ -2,30 +2,37 @@
 /**
  * extractEmailSignatures.php
  * Skyesoft – Email Signature Mining – Phase 2
- * Produces structured ELC Candidate JSON (high recall)
  *
- * Version: 2.1
+ * Produces structured ELC Candidate JSON optimized for review and
+ * conversion into a copyable Entity–Location–Contact Proposal Candidate.
+ *
+ * Version: 2.2
  * Location: tools/email-signature-mining/extractEmailSignatures.php
+ *
+ * Input:
+ *   emailJSONObjects/messages_part_*.json
  *
  * Output:
  *   emailSignatureExtraction/elcCandidates.json
- *   emailSignatureExtraction/reports/signatureDiscoveryReport.html  (first 200 only)
+ *   emailSignatureExtraction/reports/signatureDiscoveryReport.html
+ *   emailSignatureExtraction/logs/extraction.log
  */
 
 declare(strict_types=1);
 
 // ============================================================
-// PATHS
+// SECTION 00 — PATHS
 // ============================================================
-$baseDir      = __DIR__;
-$jsonDir      = $baseDir . '/emailJSONObjects/';
-$outputDir    = $baseDir . '/emailSignatureExtraction/';
-$reportDir    = $outputDir . 'reports/';
-$logDir       = $outputDir . 'logs/';
+
+$baseDir   = __DIR__;
+$jsonDir   = $baseDir . '/emailJSONObjects/';
+$outputDir = $baseDir . '/emailSignatureExtraction/';
+$reportDir = $outputDir . 'reports/';
+$logDir    = $outputDir . 'logs/';
 
 foreach ([$outputDir, $reportDir, $logDir] as $dir) {
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        throw new RuntimeException('Unable to create directory: ' . $dir);
     }
 }
 
@@ -34,290 +41,999 @@ $reportFile     = $reportDir . 'signatureDiscoveryReport.html';
 $logFile        = $logDir . 'extraction.log';
 
 // ============================================================
-// CONFIG
+// SECTION 01 — CONFIG
 // ============================================================
-$maxSignatureLines = 18;
-$minCandidateChars = 40;
+
+$maxSignatureLines = 12;
+$minCandidateChars = 30;
+$minRawScore       = 3;
+$minElcScore       = 5;
+$debugReportLimit  = 200;
+
 $commonClosings = [
-    'thanks', 'thank you', 'best regards', 'best,', 'regards',
-    'sincerely', 'warm regards', 'warmest regards', 'kind regards',
-    'cheers', 'all the best', 'respectfully', 'cordially',
+    'thanks',
+    'thank you',
+    'thank you,',
+    'best',
+    'best,',
+    'best regards',
+    'best regards,',
+    'regards',
+    'regards,',
+    'sincerely',
+    'sincerely,',
+    'warm regards',
+    'warm regards,',
+    'warmest regards',
+    'kind regards',
+    'kind regards,',
+    'cheers',
+    'all the best',
+    'respectfully',
+    'cordially',
+];
+
+$signatureTerminators = [
+    '-----original message-----',
+    '________________________________',
+    'confidentiality notice',
+    'confidential notice',
+    'this email and any attachments',
+    'this message and any attachments',
+    'the information contained in this email',
+    'unsubscribe',
+    'manage preferences',
+    'privacy policy',
+    'view in browser',
+    'view online',
+    'powered by',
+    'terms of use',
+    'copyright ©',
+    'copyright (c)',
+    'you are receiving this email',
+    'this message was intended for',
+    'get outlook for ios',
+    'sent from my iphone',
+    'sent from my ipad',
+    'sent from outlook',
 ];
 
 // ============================================================
-// LOGGING
+// SECTION 02 — LOGGING / UTF-8
 // ============================================================
-function logMsg(string $msg): void {
+
+function logMsg(string $msg): void
+{
     global $logFile;
+
     $line = '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL;
-    file_put_contents($logFile, $line, FILE_APPEND);
+    file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
     echo $line;
 }
 
-/**
- * Force a string into valid UTF-8 (prevents json_encode from returning false)
- */
-function cleanUtf8(?string $value): string {
+function cleanUtf8(?string $value): string
+{
     if ($value === null || $value === '') {
         return '';
     }
-    // Remove any invalid sequences
+
     $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+
     if ($clean === false) {
         $clean = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
     }
-    // Final safety
+
     return mb_convert_encoding($clean, 'UTF-8', 'UTF-8');
 }
 
 // ============================================================
-// PIPELINE FUNCTIONS (high recall – essentially unchanged)
+// SECTION 03 — GENERIC TEXT HELPERS
+// ============================================================
+
+function normalizeLine(string $line): string
+{
+    $line = html_entity_decode($line, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $line = preg_replace('/<mailto:([^>]+)>/i', '$1', $line) ?? $line;
+    $line = preg_replace('/<https?:\/\/[^>]+>/i', '', $line) ?? $line;
+    $line = preg_replace('/\s+/', ' ', $line) ?? $line;
+
+    return trim($line);
+}
+
+function normalizeEmail(string $email): string
+{
+    return strtolower(trim($email));
+}
+
+function normalizePhone(string $phone): string
+{
+    $phone = trim($phone);
+    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+    if (strlen($digits) === 11 && str_starts_with($digits, '1')) {
+        $digits = substr($digits, 1);
+    }
+
+    if (strlen($digits) === 10) {
+        return sprintf(
+            '(%s) %s-%s',
+            substr($digits, 0, 3),
+            substr($digits, 3, 3),
+            substr($digits, 6, 4)
+        );
+    }
+
+    return $phone;
+}
+
+function containsAny(string $haystack, array $needles): bool
+{
+    $haystack = strtolower($haystack);
+
+    foreach ($needles as $needle) {
+        if ($needle !== '' && str_contains($haystack, strtolower($needle))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function isLikelyUrlLine(string $line): bool
+{
+    return (bool) preg_match('/(?:https?:\/\/|www\.|<https?:\/\/)/i', $line);
+}
+
+function isLikelyEmailLine(string $line): bool
+{
+    return (bool) preg_match(
+        '/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/',
+        $line
+    );
+}
+
+function isLikelyPhoneLine(string $line): bool
+{
+    return (bool) preg_match(
+        '/(?:\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}/',
+        $line
+    );
+}
+
+function isTerminatorLine(string $line): bool
+{
+    global $signatureTerminators;
+
+    $normalized = strtolower(normalizeLine($line));
+
+    if ($normalized === '') {
+        return false;
+    }
+
+    foreach ($signatureTerminators as $terminator) {
+        if (str_contains($normalized, strtolower($terminator))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ============================================================
+// SECTION 04 — MESSAGE CLASSIFICATION
 // ============================================================
 
 function classifyMessage(array $msg): array
 {
-    $folder  = strtolower($msg['folder_path'] ?? '');
-    $sender  = strtolower($msg['sender_email'] ?? '');
-    $subject = strtolower($msg['subject'] ?? '');
+    $folder  = strtolower((string) ($msg['folder_path'] ?? ''));
+    $sender  = strtolower((string) ($msg['sender_email'] ?? ''));
+    $subject = strtolower((string) ($msg['subject'] ?? ''));
 
-    foreach (['sync issues', 'conflicts', 'local failures', 'server failures'] as $skip) {
-        if (str_contains($folder, $skip)) {
+    foreach ([
+        'sync issues',
+        'conflicts',
+        'local failures',
+        'server failures',
+    ] as $skipFolder) {
+        if (str_contains($folder, $skipFolder)) {
             return ['skip' => true, 'reason' => 'System Folder'];
         }
     }
 
-    if (str_ends_with($sender, '@christysigns.com')) {
+    if (
+        str_ends_with($sender, '@christysigns.com') ||
+        str_contains($sender, '/cn=steve') ||
+        str_contains($sender, '/cn=rocky') ||
+        str_contains($sender, '/cn=wendy')
+    ) {
         return ['skip' => true, 'reason' => 'Internal'];
     }
 
     if (
-        preg_match('/(noreply|no-reply|mailer-daemon|postmaster)/', $sender) ||
-        preg_match('/(newsletter|unsubscribe|notification|voicemail|delivery)/', $subject)
+        preg_match(
+            '/(?:noreply|no-reply|do-not-reply|mailer-daemon|postmaster|bounce|automated|notification)/i',
+            $sender
+        ) ||
+        preg_match(
+            '/(?:newsletter|unsubscribe|quarantine|voicemail|delivery status|password reset|verification code|invitation to bid)/i',
+            $subject
+        )
     ) {
         return ['skip' => true, 'reason' => 'Automated'];
     }
 
-    return ['skip' => false];
+    return ['skip' => false, 'reason' => null];
 }
 
-function scoreSignature(string $sig): int
+// ============================================================
+// SECTION 05 — BODY / REPLY CLEANING
+// ============================================================
+
+function removeQuotedHistory(string $body): string
 {
-    $score = 0;
+    $body = str_replace(["\r\n", "\r"], "\n", $body);
+    $lines = explode("\n", $body);
+    $clean = [];
 
-    if (preg_match('/@/', $sig)) {
-        $score += 2;
-    }
-    if (preg_match('/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/', $sig)) {
-        $score += 2;
-    }
-    if (preg_match('/manager|director|planner|engineer|project|coordinator|inspector|specialist/i', $sig)) {
-        $score++;
-    }
-    if (preg_match('/https?:\/\//i', $sig)) {
-        $score--;
-    }
-    if (substr_count($sig, "\n") >= 3) {
-        $score++;
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+
+        if (
+            preg_match('/^-----Original Message-----$/i', $trimmed) ||
+            preg_match('/^From:\s+/i', $trimmed) ||
+            preg_match('/^Sent:\s+/i', $trimmed) ||
+            preg_match('/^To:\s+/i', $trimmed) ||
+            preg_match('/^Cc:\s+/i', $trimmed) ||
+            preg_match('/^Subject:\s+/i', $trimmed) ||
+            preg_match('/^On .+ wrote:$/i', $trimmed) ||
+            preg_match('/^_{5,}$/', $trimmed)
+        ) {
+            break;
+        }
+
+        if (str_starts_with($trimmed, '>')) {
+            continue;
+        }
+
+        $clean[] = $line;
     }
 
-    return $score;
+    return implode("\n", $clean);
+}
+
+// ============================================================
+// SECTION 06 — SIGNATURE EXTRACTION
+// ============================================================
+
+function findLastClosingIndex(array $lines): int
+{
+    global $commonClosings;
+
+    $lastIndex = -1;
+
+    foreach ($lines as $index => $line) {
+        $normalized = strtolower(rtrim(normalizeLine($line), ','));
+
+        foreach ($commonClosings as $closing) {
+            $closingNormalized = strtolower(rtrim($closing, ','));
+
+            if (
+                $normalized === $closingNormalized ||
+                str_starts_with($normalized, $closingNormalized . ' ')
+            ) {
+                $lastIndex = $index;
+            }
+        }
+    }
+
+    return $lastIndex;
+}
+
+function trimSignatureNoise(array $lines): array
+{
+    $clean = [];
+
+    foreach ($lines as $line) {
+        $line = normalizeLine($line);
+
+        if ($line === '') {
+            continue;
+        }
+
+        if (isTerminatorLine($line)) {
+            break;
+        }
+
+        if (
+            preg_match('/^(facebook|linkedin|twitter|instagram|youtube)\b/i', $line) ||
+            preg_match('/^(roc#|license#|license no\.?)/i', $line) ||
+            preg_match('/^[<>\[\]\s]*$/', $line)
+        ) {
+            continue;
+        }
+
+        $clean[] = $line;
+    }
+
+    return $clean;
 }
 
 function extractCandidateSignature(string $body): ?string
 {
-    global $maxSignatureLines, $minCandidateChars, $commonClosings;
+    global $maxSignatureLines, $minCandidateChars;
 
     if (trim($body) === '') {
         return null;
     }
 
-    $text = str_replace(["\r\n", "\r"], "\n", $body);
-    $text = preg_replace("/[ \t]+/", ' ', $text);
-    $text = preg_replace("/\n{3,}/", "\n\n", $text);
+    $body = removeQuotedHistory($body);
+    $body = preg_replace('/[ \t]+/', ' ', $body) ?? $body;
+    $body = preg_replace('/\n{3,}/', "\n\n", $body) ?? $body;
 
-    $lines = explode("\n", $text);
-    $cleanLines = [];
-    $inQuoted = false;
+    $lines = array_values(array_filter(
+        array_map('normalizeLine', explode("\n", $body)),
+        static fn(string $line): bool => $line !== ''
+    ));
 
-    foreach ($lines as $line) {
-        $trimmed = trim($line);
-
-        if (preg_match('/^From:\s+/i', $trimmed) ||
-            preg_match('/^Sent:\s+/i', $trimmed) ||
-            preg_match('/^To:\s+/i', $trimmed) ||
-            preg_match('/^Subject:\s+/i', $trimmed) ||
-            preg_match('/^_{5,}/', $trimmed) ||
-            preg_match('/^-{5,}/', $trimmed) ||
-            preg_match('/^-----Original Message-----/i', $trimmed)) {
-            $inQuoted = true;
-            continue;
-        }
-
-        if ($inQuoted && (str_starts_with($trimmed, '>') || $trimmed === '')) {
-            continue;
-        }
-
-        $inQuoted = false;
-        $cleanLines[] = $line;
-    }
-
-    $text = implode("\n", $cleanLines);
-    $lines = array_values(array_filter(array_map('trim', explode("\n", $text)), fn($l) => $l !== ''));
-
-    if (count($lines) === 0) {
+    if ($lines === []) {
         return null;
     }
 
-    $lastClosingIdx = -1;
-    foreach ($lines as $i => $line) {
-        $lower = strtolower($line);
-        foreach ($commonClosings as $closing) {
-            if (str_starts_with($lower, $closing) || $lower === $closing) {
-                $lastClosingIdx = $i;
-                break 2;
-            }
-        }
-    }
+    $closingIndex = findLastClosingIndex($lines);
 
-    if ($lastClosingIdx >= 0 && $lastClosingIdx < count($lines) - 1) {
-        $candidateLines = array_slice($lines, $lastClosingIdx + 1, $maxSignatureLines);
+    if ($closingIndex >= 0 && $closingIndex < count($lines) - 1) {
+        $candidateLines = array_slice(
+            $lines,
+            $closingIndex + 1,
+            $maxSignatureLines
+        );
     } else {
         $candidateLines = array_slice($lines, -$maxSignatureLines);
     }
 
+    $candidateLines = trimSignatureNoise($candidateLines);
     $candidate = trim(implode("\n", $candidateLines));
 
-    if (strlen($candidate) < $minCandidateChars) {
-        return null;
-    }
-
-    if (preg_match('/^(unsubscribe|view in browser|powered by)/i', $candidate)) {
+    if ($candidate === '' || mb_strlen($candidate) < $minCandidateChars) {
         return null;
     }
 
     return $candidate;
 }
 
-/**
- * Light heuristic parser – best-effort only.
- * Leaves fields null when uncertain. Reviewer will correct in portal.
- */
+// ============================================================
+// SECTION 07 — RAW SIGNATURE SCORING
+// ============================================================
+
+function scoreSignature(string $signature): int
+{
+    $score = 0;
+
+    if (isLikelyEmailLine($signature)) {
+        $score += 2;
+    }
+
+    if (isLikelyPhoneLine($signature)) {
+        $score += 2;
+    }
+
+    if (preg_match(
+        '/\b(?:manager|director|planner|engineer|project|coordinator|inspector|specialist|president|owner|executive|administrator|representative|supervisor|consultant)\b/i',
+        $signature
+    )) {
+        $score += 1;
+    }
+
+    if (preg_match(
+        '/\b(?:inc\.?|llc|corp\.?|corporation|company|group|associates|solutions|services|signs?|department|city of|county of)\b/i',
+        $signature
+    )) {
+        $score += 1;
+    }
+
+    if (preg_match(
+        '/\b\d{1,6}\s+[A-Za-z0-9.\'’\- ]+\s+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy)\b/i',
+        $signature
+    )) {
+        $score += 2;
+    }
+
+    if (substr_count($signature, "\n") >= 2) {
+        $score += 1;
+    }
+
+    if (isLikelyUrlLine($signature)) {
+        $score -= 1;
+    }
+
+    if (containsAny($signature, [
+        'unsubscribe',
+        'manage preferences',
+        'privacy policy',
+        'view in browser',
+        'copyright',
+    ])) {
+        $score -= 4;
+    }
+
+    return $score;
+}
+
+// ============================================================
+// SECTION 08 — FIELD VALIDATION HELPERS
+// ============================================================
+
+function isValidPersonName(string $value): bool
+{
+    $value = normalizeLine($value);
+
+    if ($value === '' || mb_strlen($value) < 4 || mb_strlen($value) > 70) {
+        return false;
+    }
+
+    if (
+        isLikelyUrlLine($value) ||
+        isLikelyEmailLine($value) ||
+        isLikelyPhoneLine($value) ||
+        preg_match('/\d/', $value)
+    ) {
+        return false;
+    }
+
+    if (containsAny($value, [
+        'unsubscribe',
+        'manage preferences',
+        'privacy',
+        'policy',
+        'customer service',
+        'general contractor',
+        'view',
+        'support team',
+        'marketing team',
+        'newsletter',
+        'department',
+        'office closed',
+        'sent from',
+        'project status',
+        'bid due',
+    ])) {
+        return false;
+    }
+
+    return (bool) preg_match(
+        '/^[A-Z][A-Za-z\'’\-]+(?:\s+(?:[A-Z]\.|[A-Z][A-Za-z\'’\-]+)){1,4}(?:,\s*[A-Z]{2,10})?$/u',
+        $value
+    );
+}
+
+function isValidTitle(string $value): bool
+{
+    $value = normalizeLine($value);
+
+    if ($value === '' || mb_strlen($value) < 3 || mb_strlen($value) > 100) {
+        return false;
+    }
+
+    if (
+        isLikelyUrlLine($value) ||
+        isLikelyEmailLine($value) ||
+        containsAny($value, [
+            'unsubscribe',
+            'manage preferences',
+            'privacy policy',
+            'view online',
+            'copyright',
+            'click here',
+            'terms of use',
+        ])
+    ) {
+        return false;
+    }
+
+    return (bool) preg_match(
+        '/\b(?:manager|director|coordinator|inspector|engineer|specialist|planner|president|owner|executive|representative|administrator|supervisor|consultant|officer|agent|associate|project manager|account manager|sales|operations|development|estimator|permit|principal)\b/i',
+        $value
+    );
+}
+
+function isValidEntityName(string $value): bool
+{
+    $value = normalizeLine($value);
+
+    if ($value === '' || mb_strlen($value) < 3 || mb_strlen($value) > 80) {
+        return false;
+    }
+
+    if (
+        isLikelyUrlLine($value) ||
+        isLikelyEmailLine($value) ||
+        isLikelyPhoneLine($value) ||
+        containsAny($value, [
+            'unsubscribe',
+            'manage preferences',
+            'privacy',
+            'copyright',
+            'view ',
+            'click here',
+            'terms of use',
+            'sent from',
+            'office:',
+            'phone:',
+            'fax:',
+            'email:',
+            'web:',
+            'roc#',
+            'ticket#',
+            'contractor, please',
+            'this message',
+        ])
+    ) {
+        return false;
+    }
+
+    if (substr_count($value, ',') > 2) {
+        return false;
+    }
+
+    return !preg_match('/^[A-Z][a-z]+\s+[A-Z][a-z]+$/', $value);
+}
+
+function isValidStreetAddress(string $value): bool
+{
+    $value = normalizeLine($value);
+
+    if ($value === '' || mb_strlen($value) > 120) {
+        return false;
+    }
+
+    if (
+        isLikelyUrlLine($value) ||
+        containsAny($value, [
+            'unsubscribe',
+            'privacy',
+            'customer',
+            'please',
+            'copyright',
+            'california public',
+            'you are receiving',
+            'message intended',
+        ])
+    ) {
+        return false;
+    }
+
+    return (bool) preg_match(
+        '/^\d{1,6}\s+.+\b(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|parkway|pkwy|highway|hwy|circle|cir|trail|trl)\b\.?(?:\s*,?\s*(?:suite|ste|unit|#)\s*[A-Za-z0-9\-]+)?$/i',
+        $value
+    );
+}
+
+// ============================================================
+// SECTION 09 — FIELD PARSER
+// ============================================================
+
 function parseSignatureFields(string $raw): array
 {
     $result = [
-        'entity' => ['name' => null],
+        'entity' => [
+            'name' => null,
+        ],
         'location' => [
             'streetAddress' => null,
-            'city' => null,
-            'state' => null,
-            'zipCode' => null,
+            'city'          => null,
+            'state'         => null,
+            'zipCode'       => null,
         ],
         'contact' => [
-            'name' => null,
+            'name'  => null,
             'title' => null,
             'phone' => null,
             'email' => null,
         ],
     ];
 
-    $lines = array_values(array_filter(array_map('trim', explode("\n", $raw))));
+    $lines = array_values(array_filter(
+        array_map('normalizeLine', explode("\n", $raw)),
+        static fn(string $line): bool => $line !== ''
+    ));
+
+    if ($lines === []) {
+        return $result;
+    }
 
     // Email
-    if (preg_match('/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/', $raw, $m)) {
-        $result['contact']['email'] = $m[0];
+    if (preg_match(
+        '/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/',
+        $raw,
+        $emailMatch
+    )) {
+        $result['contact']['email'] = normalizeEmail($emailMatch[0]);
     }
 
-    // Phone (simple US)
-    if (preg_match('/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/', $raw, $m)) {
-        $result['contact']['phone'] = $m[0];
+    // Phone
+    if (preg_match(
+        '/(?:\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}/',
+        $raw,
+        $phoneMatch
+    )) {
+        $result['contact']['phone'] = normalizePhone($phoneMatch[0]);
     }
 
-    // Name + Title patterns
-    foreach ($lines as $i => $line) {
-        if (preg_match('/^([A-Z][a-zA-Z\'\-]+(?:\s+[A-Z][a-zA-Z\'\-]+)+)\s*[|,–\-]\s*(.+)$/', $line, $m)) {
-            $result['contact']['name']  = trim($m[1]);
-            $result['contact']['title'] = trim($m[2]);
+    // Contact name and title
+    foreach ($lines as $index => $line) {
+        if (preg_match(
+            '/^(.+?)\s*[|–—]\s*(.+)$/u',
+            $line,
+            $combinedMatch
+        )) {
+            $possibleName  = trim($combinedMatch[1]);
+            $possibleTitle = trim($combinedMatch[2]);
+
+            if (isValidPersonName($possibleName)) {
+                $result['contact']['name'] = $possibleName;
+
+                if (isValidTitle($possibleTitle)) {
+                    $result['contact']['title'] = $possibleTitle;
+                }
+
+                break;
+            }
+        }
+
+        if (isValidPersonName($line)) {
+            $result['contact']['name'] = $line;
+
+            $nextLine = $lines[$index + 1] ?? null;
+            if ($nextLine !== null && isValidTitle($nextLine)) {
+                $result['contact']['title'] = $nextLine;
+            }
+
             break;
         }
-        if (preg_match('/^([A-Z][a-zA-Z\'\-]+(?:\s+[A-Z][a-zA-Z\'\-]+)+)$/', $line) &&
-            isset($lines[$i + 1]) &&
-            preg_match('/(Manager|Director|Coordinator|Inspector|Engineer|Specialist|Planner|President|Owner)/i', $lines[$i + 1])) {
-            $result['contact']['name']  = $line;
-            $result['contact']['title'] = $lines[$i + 1];
+    }
+
+    // Address
+    foreach ($lines as $index => $line) {
+        if (!isValidStreetAddress($line)) {
+            continue;
+        }
+
+        $result['location']['streetAddress'] = $line;
+
+        $nextLine = $lines[$index + 1] ?? '';
+        $nextNext = $lines[$index + 2] ?? '';
+
+        $cityLine = $nextLine;
+        if (
+            $nextLine !== '' &&
+            preg_match('/^(?:suite|ste|unit|#)\s*[A-Za-z0-9\-]+$/i', $nextLine)
+        ) {
+            $result['location']['streetAddress'] .= ', ' . $nextLine;
+            $cityLine = $nextNext;
+        }
+
+        if (preg_match(
+            '/^([A-Za-z.\'’\- ]+),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/',
+            $cityLine,
+            $cityMatch
+        )) {
+            $result['location']['city']    = trim($cityMatch[1]);
+            $result['location']['state']   = strtoupper($cityMatch[2]);
+            $result['location']['zipCode'] = $cityMatch[3];
+        }
+
+        break;
+    }
+
+    // Fallback city/state/ZIP search
+    if ($result['location']['city'] === null) {
+        foreach ($lines as $line) {
+            if (preg_match(
+                '/^([A-Za-z.\'’\- ]+),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/',
+                $line,
+                $cityMatch
+            )) {
+                $result['location']['city']    = trim($cityMatch[1]);
+                $result['location']['state']   = strtoupper($cityMatch[2]);
+                $result['location']['zipCode'] = $cityMatch[3];
+                break;
+            }
+        }
+    }
+
+    // Entity:
+    // Prefer a short, valid line after title and before address/contact details.
+    $nameIndex = null;
+    $titleIndex = null;
+    $addressIndex = null;
+
+    foreach ($lines as $index => $line) {
+        if ($result['contact']['name'] !== null && $line === $result['contact']['name']) {
+            $nameIndex = $index;
+        }
+
+        if ($result['contact']['title'] !== null && $line === $result['contact']['title']) {
+            $titleIndex = $index;
+        }
+
+        if (
+            $result['location']['streetAddress'] !== null &&
+            str_starts_with($result['location']['streetAddress'], $line)
+        ) {
+            $addressIndex = $index;
+        }
+    }
+
+    $preferredIndexes = [];
+
+    if ($titleIndex !== null) {
+        $preferredIndexes[] = $titleIndex + 1;
+    }
+
+    if ($nameIndex !== null) {
+        $preferredIndexes[] = $nameIndex + 1;
+        $preferredIndexes[] = $nameIndex + 2;
+    }
+
+    if ($addressIndex !== null) {
+        $preferredIndexes[] = $addressIndex - 1;
+    }
+
+    foreach (array_unique($preferredIndexes) as $index) {
+        if (!isset($lines[$index])) {
+            continue;
+        }
+
+        $candidate = $lines[$index];
+
+        if (
+            isValidEntityName($candidate) &&
+            $candidate !== $result['contact']['name'] &&
+            $candidate !== $result['contact']['title']
+        ) {
+            $result['entity']['name'] = $candidate;
             break;
         }
     }
 
-    // Entity
-    foreach ($lines as $line) {
-        if (preg_match('/(Inc\.|LLC|Corp\.|Corporation|Company|Signs?|Marketing|Group|Associates)/i', $line) &&
-            !preg_match('/@/', $line) &&
-            strlen($line) > 5 && strlen($line) < 80) {
-            $result['entity']['name'] = $line;
-            break;
-        }
-    }
+    // General entity fallback
+    if ($result['entity']['name'] === null) {
+        foreach ($lines as $line) {
+            if (
+                $line === $result['contact']['name'] ||
+                $line === $result['contact']['title'] ||
+                $line === $result['location']['streetAddress'] ||
+                isLikelyEmailLine($line) ||
+                isLikelyPhoneLine($line)
+            ) {
+                continue;
+            }
 
-    // Address heuristic
-    if (preg_match('/(\d+\s+[A-Za-z0-9\.\s]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Boulevard|Blvd|Way|Court|Ct)\.?\s*(?:Suite|Ste|Unit|#)?\s*\d*)/i', $raw, $m)) {
-        $result['location']['streetAddress'] = trim($m[1]);
-    }
-    if (preg_match('/([A-Za-z\s]+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)/', $raw, $m)) {
-        $result['location']['city']    = trim($m[1]);
-        $result['location']['state']   = $m[2];
-        $result['location']['zipCode'] = $m[3];
+            if (
+                isValidEntityName($line) &&
+                (
+                    preg_match(
+                        '/\b(?:inc\.?|llc|corp\.?|corporation|company|group|associates|solutions|services|signs?|department|city of|county of|insurance|construction|development|international|technologies|systems|partners?)\b/i',
+                        $line
+                    ) ||
+                    ($nameIndex !== null && array_search($line, $lines, true) > $nameIndex)
+                )
+            ) {
+                $result['entity']['name'] = $line;
+                break;
+            }
+        }
     }
 
     return $result;
 }
 
-function processSignatureExtraction(array $msg, array &$seen): array
+// ============================================================
+// SECTION 10 — ELC VALIDATION / SCORING
+// ============================================================
+
+function scoreParsedELC(array $parsed): int
 {
-    $class = classifyMessage($msg);
-    if ($class['skip']) {
-        return ['accepted' => false, 'reason' => $class['reason']];
+    $score = 0;
+
+    if (!empty($parsed['contact']['name'])) {
+        $score += 3;
     }
 
-    $body = $msg['body'] ?? '';
-    if (trim($body) === '') {
-        return ['accepted' => false, 'reason' => 'No Body'];
+    if (!empty($parsed['contact']['email'])) {
+        $score += 2;
     }
 
-    $candidate = extractCandidateSignature($body);
-    if ($candidate === null) {
-        return ['accepted' => false, 'reason' => 'No Signature'];
+    if (!empty($parsed['contact']['phone'])) {
+        $score += 2;
     }
 
-    $score = scoreSignature($candidate);
-    if ($score < 3) {
-        return ['accepted' => false, 'reason' => 'Low Quality', 'score' => $score];
+    if (!empty($parsed['contact']['title'])) {
+        $score += 1;
     }
 
-    $hash = hash('sha256', strtolower(trim($candidate)));
-    if (isset($seen[$hash])) {
-        return ['accepted' => false, 'reason' => 'Duplicates', 'score' => $score];
+    if (!empty($parsed['entity']['name'])) {
+        $score += 2;
     }
-    $seen[$hash] = true;
+
+    if (!empty($parsed['location']['streetAddress'])) {
+        $score += 2;
+    }
+
+    if (
+        !empty($parsed['location']['city']) &&
+        !empty($parsed['location']['state']) &&
+        !empty($parsed['location']['zipCode'])
+    ) {
+        $score += 2;
+    }
+
+    return $score;
+}
+
+function validateELC(array $parsed, string $raw): array
+{
+    global $minElcScore;
+
+    $reasons = [];
+
+    $contactName = $parsed['contact']['name'] ?? null;
+    $email       = $parsed['contact']['email'] ?? null;
+    $phone       = $parsed['contact']['phone'] ?? null;
+    $entity      = $parsed['entity']['name'] ?? null;
+    $street      = $parsed['location']['streetAddress'] ?? null;
+
+    if ($contactName === null) {
+        $reasons[] = 'Missing Contact Name';
+    }
+
+    if ($email === null && $phone === null) {
+        $reasons[] = 'Missing Contact Method';
+    }
+
+    if ($entity === null && $street === null) {
+        $reasons[] = 'Missing Entity and Location';
+    }
+
+    if (containsAny($raw, [
+        'manage preferences',
+        'unsubscribe',
+        'privacy policy',
+        'this message was intended for',
+        'you are receiving this email',
+    ])) {
+        $reasons[] = 'Marketing or Footer Content';
+    }
+
+    $score = scoreParsedELC($parsed);
+
+    if ($score < $minElcScore) {
+        $reasons[] = 'ELC Score Below Threshold';
+    }
 
     return [
-        'accepted'  => true,
-        'reason'    => 'Business Signature',
-        'score'     => $score,
-        'signature' => $candidate,
+        'valid'   => $reasons === [],
+        'score'   => $score,
+        'reasons' => $reasons,
     ];
 }
 
 // ============================================================
-// MAIN
+// SECTION 11 — SIGNATURE DEDUPLICATION
 // ============================================================
-logMsg('=== Skyesoft ELC Candidate Extraction (v2.1) started ===');
+
+function buildCandidateHash(array $parsed, string $raw): string
+{
+    $email = normalizeEmail((string) ($parsed['contact']['email'] ?? ''));
+
+    if ($email !== '') {
+        return hash('sha256', 'email:' . $email);
+    }
+
+    $name   = strtolower(trim((string) ($parsed['contact']['name'] ?? '')));
+    $phone  = preg_replace('/\D+/', '', (string) ($parsed['contact']['phone'] ?? '')) ?? '';
+    $entity = strtolower(trim((string) ($parsed['entity']['name'] ?? '')));
+
+    if ($name !== '' && ($phone !== '' || $entity !== '')) {
+        return hash('sha256', implode('|', [$name, $phone, $entity]));
+    }
+
+    return hash('sha256', strtolower(trim($raw)));
+}
+
+// ============================================================
+// SECTION 12 — PROCESS ONE MESSAGE
+// ============================================================
+
+function processSignatureExtraction(array $msg, array &$seen): array
+{
+    global $minRawScore;
+
+    $classification = classifyMessage($msg);
+
+    if ($classification['skip']) {
+        return [
+            'accepted' => false,
+            'reason'   => $classification['reason'],
+        ];
+    }
+
+    $body = (string) ($msg['body'] ?? '');
+
+    if (trim($body) === '') {
+        return [
+            'accepted' => false,
+            'reason'   => 'No Body',
+        ];
+    }
+
+    $signature = extractCandidateSignature($body);
+
+    if ($signature === null) {
+        return [
+            'accepted' => false,
+            'reason'   => 'No Signature',
+        ];
+    }
+
+    $rawScore = scoreSignature($signature);
+
+    if ($rawScore < $minRawScore) {
+        return [
+            'accepted' => false,
+            'reason'   => 'Low Quality',
+            'rawScore' => $rawScore,
+        ];
+    }
+
+    $parsed = parseSignatureFields($signature);
+    $validation = validateELC($parsed, $signature);
+
+    if (!$validation['valid']) {
+        return [
+            'accepted'   => false,
+            'reason'     => 'Invalid ELC',
+            'rawScore'   => $rawScore,
+            'elcScore'   => $validation['score'],
+            'validation' => $validation['reasons'],
+        ];
+    }
+
+    $hash = buildCandidateHash($parsed, $signature);
+
+    if (isset($seen[$hash])) {
+        return [
+            'accepted' => false,
+            'reason'   => 'Duplicates',
+            'rawScore' => $rawScore,
+            'elcScore' => $validation['score'],
+        ];
+    }
+
+    $seen[$hash] = true;
+
+    return [
+        'accepted'  => true,
+        'reason'    => 'ELC Signature',
+        'rawScore'  => $rawScore,
+        'elcScore'  => $validation['score'],
+        'signature' => $signature,
+        'parsed'    => $parsed,
+    ];
+}
+
+// ============================================================
+// SECTION 13 — MAIN
+// ============================================================
+
+logMsg('=== Skyesoft ELC Candidate Extraction (v2.2) started ===');
 logMsg('JSON directory  : ' . $jsonDir);
 logMsg('Output directory: ' . $outputDir);
 
 $files = glob($jsonDir . 'messages_part_*.json');
 sort($files);
 
-if (empty($files)) {
+if ($files === []) {
     logMsg('ERROR: No messages_part_*.json files found');
     exit(1);
 }
@@ -329,58 +1045,69 @@ $stats = [
     'duplicates'      => 0,
     'internal'        => 0,
     'automated'       => 0,
+    'invalid_elc'     => 0,
     'low_quality'     => 0,
     'system_folder'   => 0,
     'no_body'         => 0,
     'no_signature'    => 0,
 ];
 
-$seen = [];
+$seen       = [];
 $candidates = [];
 $sigCounter = 0;
 
 foreach ($files as $filePath) {
     $filename = basename($filePath);
-    logMsg("Processing: $filename");
+    logMsg('Processing: ' . $filename);
 
     $raw = file_get_contents($filePath);
+
     if ($raw === false) {
-        logMsg("  ERROR: Could not read $filename");
+        logMsg('  ERROR: Could not read ' . $filename);
         continue;
     }
 
     $messages = json_decode($raw, true);
+
     if (!is_array($messages)) {
-        logMsg("  ERROR: Invalid JSON in $filename");
+        logMsg('  ERROR: Invalid JSON in ' . $filename . ' — ' . json_last_error_msg());
         continue;
     }
 
     $stats['files_processed']++;
 
     foreach ($messages as $msg) {
+        if (!is_array($msg)) {
+            continue;
+        }
+
         $stats['messages_total']++;
 
         $result = processSignatureExtraction($msg, $seen);
 
         if (!$result['accepted']) {
-            $key = strtolower(str_replace(' ', '_', $result['reason']));
-            if (isset($stats[$key])) {
+            $key = strtolower(str_replace(' ', '_', (string) $result['reason']));
+
+            if (array_key_exists($key, $stats)) {
                 $stats[$key]++;
             }
+
             continue;
         }
 
         $stats['accepted']++;
         $sigCounter++;
 
-        $parsed = parseSignatureFields($result['signature']);
+        $parsed = $result['parsed'];
 
-        // Clean every string that will go into JSON
         $candidates[] = [
-            'signatureId'   => sprintf('SIG-%06d', $sigCounter),
-            'status'        => 'pending',
-            'score'         => $result['score'],
-            'source'        => [
+            'signatureId' => sprintf('SIG-%06d', $sigCounter),
+            'status'      => 'pending',
+            'score'       => [
+                'raw' => $result['rawScore'],
+                'elc' => $result['elcScore'],
+            ],
+            'source'      => [
                 'entryId'     => cleanUtf8($msg['entry_id'] ?? null),
                 'folder'      => cleanUtf8($msg['folder_path'] ?? null),
                 'senderName'  => cleanUtf8($msg['sender_name'] ?? null),
@@ -388,22 +1115,40 @@ foreach ($files as $filePath) {
                 'subject'     => cleanUtf8($msg['subject'] ?? null),
                 'receivedAt'  => cleanUtf8($msg['received_at'] ?? null),
             ],
-            'entity'        => [
-                'name' => $parsed['entity']['name'] ? cleanUtf8($parsed['entity']['name']) : null,
+            'entity'      => [
+                'name' => $parsed['entity']['name'] !== null
+                    ? cleanUtf8($parsed['entity']['name'])
+                    : null,
             ],
-            'location'      => [
-                'streetAddress' => $parsed['location']['streetAddress'] ? cleanUtf8($parsed['location']['streetAddress']) : null,
-                'city'          => $parsed['location']['city'] ? cleanUtf8($parsed['location']['city']) : null,
-                'state'         => $parsed['location']['state'] ? cleanUtf8($parsed['location']['state']) : null,
-                'zipCode'       => $parsed['location']['zipCode'] ? cleanUtf8($parsed['location']['zipCode']) : null,
+            'location'    => [
+                'streetAddress' => $parsed['location']['streetAddress'] !== null
+                    ? cleanUtf8($parsed['location']['streetAddress'])
+                    : null,
+                'city' => $parsed['location']['city'] !== null
+                    ? cleanUtf8($parsed['location']['city'])
+                    : null,
+                'state' => $parsed['location']['state'] !== null
+                    ? cleanUtf8($parsed['location']['state'])
+                    : null,
+                'zipCode' => $parsed['location']['zipCode'] !== null
+                    ? cleanUtf8($parsed['location']['zipCode'])
+                    : null,
             ],
-            'contact'       => [
-                'name'  => $parsed['contact']['name'] ? cleanUtf8($parsed['contact']['name']) : null,
-                'title' => $parsed['contact']['title'] ? cleanUtf8($parsed['contact']['title']) : null,
-                'phone' => $parsed['contact']['phone'] ? cleanUtf8($parsed['contact']['phone']) : null,
-                'email' => $parsed['contact']['email'] ? cleanUtf8($parsed['contact']['email']) : null,
+            'contact'     => [
+                'name' => $parsed['contact']['name'] !== null
+                    ? cleanUtf8($parsed['contact']['name'])
+                    : null,
+                'title' => $parsed['contact']['title'] !== null
+                    ? cleanUtf8($parsed['contact']['title'])
+                    : null,
+                'phone' => $parsed['contact']['phone'] !== null
+                    ? cleanUtf8($parsed['contact']['phone'])
+                    : null,
+                'email' => $parsed['contact']['email'] !== null
+                    ? cleanUtf8($parsed['contact']['email'])
+                    : null,
             ],
-            'rawSignature'  => cleanUtf8($result['signature']),
+            'rawSignature' => cleanUtf8($result['signature']),
         ];
     }
 
@@ -411,68 +1156,191 @@ foreach ($files as $filePath) {
 }
 
 // ============================================================
-// WRITE STRUCTURED JSON (robust)
+// SECTION 14 — WRITE JSON
 // ============================================================
+
 logMsg('Encoding ' . count($candidates) . ' candidates to JSON...');
 
 $jsonOut = json_encode(
     $candidates,
-    JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+    JSON_PRETTY_PRINT |
+    JSON_UNESCAPED_UNICODE |
+    JSON_UNESCAPED_SLASHES |
+    JSON_INVALID_UTF8_SUBSTITUTE
 );
 
 if ($jsonOut === false) {
-    $err = json_last_error_msg();
-    logMsg('ERROR: json_encode failed – ' . $err);
-    // Fallback: try without pretty print
-    $jsonOut = json_encode($candidates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    logMsg('ERROR: json_encode failed — ' . json_last_error_msg());
+
+    $jsonOut = json_encode(
+        $candidates,
+        JSON_UNESCAPED_UNICODE |
+        JSON_UNESCAPED_SLASHES |
+        JSON_INVALID_UTF8_SUBSTITUTE
+    );
+
     if ($jsonOut === false) {
-        logMsg('ERROR: Even compact encode failed – ' . json_last_error_msg());
+        logMsg('ERROR: Compact json_encode also failed — ' . json_last_error_msg());
         exit(1);
     }
+
     logMsg('Fell back to compact JSON');
 }
 
-$bytes = file_put_contents($candidatesFile, $jsonOut);
+$bytes = file_put_contents($candidatesFile, $jsonOut, LOCK_EX);
+
 if ($bytes === false) {
-    logMsg('ERROR: file_put_contents failed for ' . $candidatesFile);
+    logMsg('ERROR: Could not write ' . $candidatesFile);
     exit(1);
 }
 
-logMsg('=== Extraction complete ===');
-logMsg("Files processed : {$stats['files_processed']}");
-logMsg("Total Messages  : {$stats['messages_total']}");
-logMsg("Accepted        : {$stats['accepted']}");
-logMsg("Candidates JSON : $candidatesFile (" . number_format($bytes) . " bytes)");
+// ============================================================
+// SECTION 15 — HTML DEBUG REPORT
+// ============================================================
 
-// ============================================================
-// LIGHT HTML DEBUG REPORT (first 200 only)
-// ============================================================
-$html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Skyesoft ELC Candidates v2.1</title>
+$html = '<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Skyesoft ELC Candidates v2.2</title>
 <style>
-body{font-family:system-ui,sans-serif;background:#f8f9fa;margin:0;padding:24px}
-.card{background:#fff;border:1px solid #dee2e6;border-radius:8px;margin-bottom:16px;padding:16px}
-.sig{background:#f1f3f5;border-left:4px solid #0d6efd;padding:12px;font-family:monospace;white-space:pre-wrap;font-size:0.85rem}
-.meta{color:#6c757d;font-size:0.85rem}
-</style></head><body>
-<h1>Skyesoft ELC Candidates <small>(v2.1 – high recall)</small></h1>
-<p class="meta">Generated: ' . date('Y-m-d H:i:s T') . ' | Candidates: ' . count($candidates) . '</p>';
+body{
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:#f8f9fa;
+    color:#212529;
+    margin:0;
+    padding:24px;
+}
+h1{margin-top:0}
+.summary{
+    background:#fff;
+    border:1px solid #dee2e6;
+    border-radius:8px;
+    padding:14px 16px;
+    margin-bottom:18px;
+}
+.card{
+    background:#fff;
+    border:1px solid #dee2e6;
+    border-radius:8px;
+    margin-bottom:16px;
+    padding:16px;
+}
+.sig{
+    background:#f1f3f5;
+    border-left:4px solid #0d6efd;
+    padding:12px;
+    font-family:Consolas,monospace;
+    white-space:pre-wrap;
+    font-size:.85rem;
+}
+.meta{
+    color:#6c757d;
+    font-size:.85rem;
+}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px 18px;
+    margin-top:10px;
+}
+.label{font-weight:600}
+</style>
+</head>
+<body>
+<h1>Skyesoft ELC Candidates <small>(v2.2)</small></h1>
+<div class="summary">
+    <div><strong>Generated:</strong> ' . htmlspecialchars(date('Y-m-d H:i:s T')) . '</div>
+    <div><strong>Candidates:</strong> ' . number_format(count($candidates)) . '</div>
+    <div><strong>Messages:</strong> ' . number_format($stats['messages_total']) . '</div>
+</div>';
 
-foreach (array_slice($candidates, 0, 200) as $c) {
+foreach (array_slice($candidates, 0, $debugReportLimit) as $candidate) {
     $html .= '<div class="card">
-        <strong>' . htmlspecialchars($c['signatureId']) . '</strong> – Score: ' . $c['score'] . '<br>
-        <span class="meta">' . htmlspecialchars(($c['source']['senderName'] ?? '') . ' &lt;' . ($c['source']['senderEmail'] ?? '') . '&gt;') . '</span>
-        <pre class="sig">' . htmlspecialchars($c['rawSignature']) . '</pre>
-        <div class="meta">
-            Entity: ' . htmlspecialchars($c['entity']['name'] ?? '—') . ' |
-            Contact: ' . htmlspecialchars($c['contact']['name'] ?? '—') . ' |
-            Phone: ' . htmlspecialchars($c['contact']['phone'] ?? '—') . ' |
-            Email: ' . htmlspecialchars($c['contact']['email'] ?? '—') . '
+        <strong>' . htmlspecialchars($candidate['signatureId']) . '</strong>
+        <span class="meta">
+            — Raw Score: ' . (int) $candidate['score']['raw'] . '
+            | ELC Score: ' . (int) $candidate['score']['elc'] . '
+        </span>
+        <br>
+        <span class="meta">' .
+            htmlspecialchars(
+                ($candidate['source']['senderName'] ?? '') .
+                ' <' .
+                ($candidate['source']['senderEmail'] ?? '') .
+                '>'
+            ) .
+        '</span>
+
+        <pre class="sig">' .
+            htmlspecialchars($candidate['rawSignature']) .
+        '</pre>
+
+        <div class="grid">
+            <div><span class="label">Entity:</span> ' .
+                htmlspecialchars($candidate['entity']['name'] ?? '—') .
+            '</div>
+            <div><span class="label">Contact:</span> ' .
+                htmlspecialchars($candidate['contact']['name'] ?? '—') .
+            '</div>
+            <div><span class="label">Title:</span> ' .
+                htmlspecialchars($candidate['contact']['title'] ?? '—') .
+            '</div>
+            <div><span class="label">Phone:</span> ' .
+                htmlspecialchars($candidate['contact']['phone'] ?? '—') .
+            '</div>
+            <div><span class="label">Email:</span> ' .
+                htmlspecialchars($candidate['contact']['email'] ?? '—') .
+            '</div>
+            <div><span class="label">Address:</span> ' .
+                htmlspecialchars($candidate['location']['streetAddress'] ?? '—') .
+            '</div>
+            <div><span class="label">City:</span> ' .
+                htmlspecialchars($candidate['location']['city'] ?? '—') .
+            '</div>
+            <div><span class="label">State/ZIP:</span> ' .
+                htmlspecialchars(
+                    trim(
+                        ($candidate['location']['state'] ?? '') .
+                        ' ' .
+                        ($candidate['location']['zipCode'] ?? '')
+                    ) ?: '—'
+                ) .
+            '</div>
         </div>
     </div>';
 }
 
-$html .= '<p class="meta">Showing first 200 of ' . count($candidates) . ' candidates. Full dataset is in elcCandidates.json</p></body></html>';
-file_put_contents($reportFile, $html);
+$html .= '<p class="meta">Showing first ' .
+    min($debugReportLimit, count($candidates)) .
+    ' of ' .
+    count($candidates) .
+    ' candidates. Full dataset: elcCandidates.json</p>
+</body>
+</html>';
 
-logMsg("Light HTML report : $reportFile");
-echo "\nDone.\nCandidates: $candidatesFile (" . number_format($bytes) . " bytes)\n";
+file_put_contents($reportFile, $html, LOCK_EX);
+
+// ============================================================
+// SECTION 16 — FINAL LOG
+// ============================================================
+
+logMsg('=== Extraction complete ===');
+logMsg('Files processed : ' . $stats['files_processed']);
+logMsg('Total messages  : ' . $stats['messages_total']);
+logMsg('Accepted        : ' . $stats['accepted']);
+logMsg('Duplicates      : ' . $stats['duplicates']);
+logMsg('Internal        : ' . $stats['internal']);
+logMsg('Automated       : ' . $stats['automated']);
+logMsg('Invalid ELC     : ' . $stats['invalid_elc']);
+logMsg('Low quality     : ' . $stats['low_quality']);
+logMsg('System folder   : ' . $stats['system_folder']);
+logMsg('No body         : ' . $stats['no_body']);
+logMsg('No signature    : ' . $stats['no_signature']);
+logMsg('Candidates JSON : ' . $candidatesFile . ' (' . number_format($bytes) . ' bytes)');
+logMsg('HTML report     : ' . $reportFile);
+
+echo PHP_EOL;
+echo 'Done.' . PHP_EOL;
+echo 'Candidates: ' . $candidatesFile . PHP_EOL;
+echo 'Report: ' . $reportFile . PHP_EOL;
