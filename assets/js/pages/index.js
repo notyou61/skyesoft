@@ -6159,33 +6159,28 @@ window.SkyIndex = {
                 </button>
             `;
 
-        // Identity content (single definition only)
+        // Identity content — only real tblEntities columns
+        // Type + Status remain editable here (they exist on the table)
+        // Phone / Email / Website removed (not on tblEntities)
         const hasIdentity =
             (legalName && legalName !== (entity.entityName || entity.name)) ||
-            phone || email || website;
+            entityType ||
+            status;
 
         const identityContent = isEditing
             ? `
                 <form id="entityEditForm" onsubmit="return false;">
                     ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
                     ${editField('Legal Name', 'entityLegalName', legalName)}
-                    ${editField('Phone', 'primaryPhone', phone, 'tel')}
-                    ${editField('Email', 'email', email, 'email')}
-                    ${editField('Website', 'website', website, 'url')}
+                    ${editField('Type', 'entityType', entityType)}
+                    ${editField('Status', 'entityStatus', status)}
                 </form>
             `
             : hasIdentity
                 ? `
                     ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
-                    ${attrRow('Phone', phone
-                        ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>`
-                        : null)}
-                    ${attrRow('Email', email
-                        ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>`
-                        : null)}
-                    ${attrRow('Website', website
-                        ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>`
-                        : null)}
+                    ${attrRow('Type', entityType ? this.escapeHtml(entityType) : null)}
+                    ${attrRow('Status', status ? this.escapeHtml(status) : null)}
                 `
                 : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
 
@@ -6257,20 +6252,17 @@ window.SkyIndex = {
         this.renderEntityModal(data.entity, data.entityId, { edit: false });
     },
 
-    // Collect form values and save
     async saveEntityEdit(entityId) {
         const form = document.getElementById('entityEditForm');
         if (!form) return;
 
+        // Only fields that exist on tblEntities
         const payload = {
-            entityId: Number(entityId),
-            entityName:       form.querySelector('[name="entityName"]')?.value?.trim() || '',
-            entityLegalName:  form.querySelector('[name="entityLegalName"]')?.value?.trim() || '',
-            entityType:       form.querySelector('[name="entityType"]')?.value?.trim() || '',
-            entityStatus:     form.querySelector('[name="entityStatus"]')?.value?.trim() || '',
-            primaryPhone:     form.querySelector('[name="primaryPhone"]')?.value?.trim() || '',
-            email:            form.querySelector('[name="email"]')?.value?.trim() || '',
-            website:          form.querySelector('[name="website"]')?.value?.trim() || ''
+            entityId:        Number(entityId),
+            entityName:      form.querySelector('[name="entityName"]')?.value?.trim() || '',
+            entityLegalName: form.querySelector('[name="entityLegalName"]')?.value?.trim() || '',
+            entityType:      form.querySelector('[name="entityType"]')?.value?.trim() || '',
+            entityStatus:    form.querySelector('[name="entityStatus"]')?.value?.trim() || ''
         };
 
         if (!payload.entityName) {
@@ -6279,7 +6271,6 @@ window.SkyIndex = {
         }
 
         try {
-            // Disable Save while working
             const saveBtn = document.querySelector('#entityDetailModal button[onclick*="saveEntityEdit"]');
             if (saveBtn) {
                 saveBtn.disabled = true;
@@ -6288,7 +6279,7 @@ window.SkyIndex = {
 
             const updated = await this.updateEntity(payload);
 
-            // Refresh the modal with the new data in view mode
+            // Refresh modal in view mode with fresh data
             this._currentEntityModalData = {
                 entity: updated,
                 entityId: Number(entityId)
@@ -6310,16 +6301,33 @@ window.SkyIndex = {
     },
 
     /**
-     * Persist entity changes.
-     * Wire this to your real endpoint.
-     * Expected response shape: { success: true, entity: { ... } }
+     * Persist entity changes via askOpenAI.php?type=entityUpdate
+     * Sends activitySessionId + geo for tblActions audit.
+     * Expected response: { success: true, entity: { ... } }
      */
     async updateEntity(payload) {
+        // Resolve location for tblActions (same pattern as contact proposals)
+        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
+
+        if (actionLocation.latitude === null || actionLocation.longitude === null) {
+            actionLocation = await this.getLocationSafe();
+            if (actionLocation.latitude !== null && actionLocation.longitude !== null) {
+                this.lastLocation = actionLocation;
+            }
+        }
+
+        const activitySessionId = this.getActivitySessionId();
+
         const res = await fetch('/skyesoft/api/askOpenAI.php?type=entityUpdate', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                ...payload,
+                activitySessionId,
+                latitude:  actionLocation?.latitude  ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
         });
 
         if (!res.ok) {

@@ -2887,6 +2887,199 @@ if ($type === 'entityDetail') {
 }
 
 // =====================================================
+// ENTITY UPDATE (mutation)
+// =====================================================
+
+if ($type === 'entityUpdate') {
+
+    // Resolve actor + session context
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    $activitySessionId = $_SESSION['activitySessionId']
+                      ?? session_id();
+
+    $latitude  = is_numeric($input['latitude']  ?? null) ? (float)$input['latitude']  : null;
+    $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
+
+    // Resolve target
+    $targetEntityId = (int)($input['entityId'] ?? 0);
+
+    if ($targetEntityId <= 0) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'entity_update',
+            'error'   => 'Valid entityId is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Allowed fields only (real tblEntities columns)
+    $entityName      = trim((string)($input['entityName']      ?? ''));
+    $entityLegalName = trim((string)($input['entityLegalName'] ?? ''));
+    $entityType      = trim((string)($input['entityType']      ?? ''));
+    $entityStatus    = trim((string)($input['entityStatus']    ?? ''));
+
+    if ($entityName === '') {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'entity_update',
+            'error'   => 'Entity name is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Validate entityType against enum if provided
+    $allowedTypes = ['company', 'customer', 'vendor', 'jurisdiction'];
+    if ($entityType !== '' && !in_array(strtolower($entityType), $allowedTypes, true)) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'entity_update',
+            'error'   => 'Invalid entityType. Allowed: company, customer, vendor, jurisdiction.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Normalize type to lowercase for enum
+    if ($entityType !== '') {
+        $entityType = strtolower($entityType);
+    }
+
+    try {
+        // Confirm entity exists
+        $check = $db->prepare("
+            SELECT entityId
+            FROM tblEntities
+            WHERE entityId = :entityId
+              AND entityIsNotValid = 0
+            LIMIT 1
+        ");
+        $check->execute(['entityId' => $targetEntityId]);
+
+        if (!$check->fetchColumn()) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'type'    => 'entity_update',
+                'error'   => 'Entity not found.'
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        // Build dynamic UPDATE (only set fields that were sent)
+        $sets   = ['entityName = :entityName'];
+        $params = [
+            'entityId'   => $targetEntityId,
+            'entityName' => $entityName
+        ];
+
+        // Legal name (allow clearing)
+        $sets[] = 'entityLegalName = :entityLegalName';
+        $params['entityLegalName'] = ($entityLegalName !== '') ? $entityLegalName : null;
+
+        if ($entityType !== '') {
+            $sets[] = 'entityType = :entityType';
+            $params['entityType'] = $entityType;
+        }
+
+        if ($entityStatus !== '') {
+            $sets[] = 'entityStatus = :entityStatus';
+            $params['entityStatus'] = $entityStatus;
+        }
+
+        // Keep normalized name in sync with display name
+        $sets[] = 'entityNormalizedName = :entityNormalizedName';
+        $params['entityNormalizedName'] = strtolower(preg_replace('/\s+/', ' ', $entityName));
+
+        $sql = "
+            UPDATE tblEntities
+            SET " . implode(",\n                ", $sets) . "
+            WHERE entityId = :entityId
+              AND entityIsNotValid = 0
+            LIMIT 1
+        ";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+
+        // Reload full entity (same shape as entityDetail)
+        $entity = loadEntityDetail($db, $targetEntityId);
+
+        if ($entity === null) {
+            throw new RuntimeException('Entity updated but reload failed.');
+        }
+
+        // Audit log
+        if ($actorContactId > 0) {
+            try {
+                insertActionPrompt([
+                    'contactId'         => $actorContactId,
+                    'promptText'        => 'Update entity profile',
+                    'responseText'      => sprintf(
+                        'Updated entity #%d (%s).',
+                        $targetEntityId,
+                        $entityName
+                    ),
+                    'intent'            => 'entities.update',
+                    'intentConfidence'  => 1.0,
+                    'activitySessionId' => $activitySessionId,
+                    'latitude'          => $latitude,
+                    'longitude'         => $longitude,
+                    // TODO: replace 13 with the new UPDATE actionTypeId once added to tblActionTypes
+                    'actionTypeId'      => 13,
+                    'origin'            => ACTION_ORIGIN_USER,
+                    'actionPayloadData' => [
+                        'operation'      => 'entities.update',
+                        'targetEntityId' => $targetEntityId,
+                        'fields'         => [
+                            'entityName'      => $entityName,
+                            'entityLegalName' => $entityLegalName !== '' ? $entityLegalName : null,
+                            'entityType'      => $entityType !== '' ? $entityType : null,
+                            'entityStatus'    => $entityStatus !== '' ? $entityStatus : null
+                        ]
+                    ],
+                    'actionResponseData' => [
+                        'success'        => true,
+                        'targetEntityId' => $targetEntityId
+                    ]
+                ], $db);
+            } catch (Throwable $e) {
+                // Preserve the successful update if audit logging fails
+                error_log(
+                    '[askOpenAI] Entity-update action logging failed: ' .
+                    $e->getMessage()
+                );
+            }
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'type'    => 'entity_update',
+            'entity'  => $entity
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        error_log('[askOpenAI] entityUpdate failed: ' . $e->getMessage());
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'entity_update',
+            'error'   => 'Update failed: ' . $e->getMessage()
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
+// =====================================================
 // READ-ONLY LOCATION DETAIL
 // =====================================================
 
