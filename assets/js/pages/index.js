@@ -6047,6 +6047,9 @@ window.SkyIndex = {
         const lastActivity = entity.lastActivity ? this.escapeHtml(entity.lastActivity) : createdDate;
 
         // ── Helpers ─────────────────────────────────────────────────
+        const LABEL_WIDTH = '110px';
+
+        // Aligned view-mode row
         const attrRow = (label, value, action = null) => {
             if (!value && value !== 0) return '';
             const valueHtml = action
@@ -6054,26 +6057,25 @@ window.SkyIndex = {
                         style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
                 : `<span style="color:#222;">${value}</span>`;
             return `
-                <div style="display:flex; align-items:flex-start; gap:10px; padding:6px 0;">
-                    <div style="width:100px; flex-shrink:0; font-size:0.78em; font-weight:600;
-                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:1px;">
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:baseline; padding:6px 0;">
+                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
                         ${label}
                     </div>
-                    <div style="min-width:0; font-size:0.95em; line-height:1.4;">
+                    <div style="font-size:0.95em; line-height:1.4; min-width:0;">
                         ${valueHtml}
                     </div>
                 </div>
             `;
         };
 
+        // Aligned edit-mode field
         const editField = (label, fieldName, value, type = 'text') => {
             return `
-                <div style="display:flex; align-items:flex-start; gap:10px; padding:6px 0;">
-                    <div style="width:100px; flex-shrink:0; font-size:0.78em; font-weight:600;
-                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:8px;">
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:6px 0;">
+                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
                         ${label}
                     </div>
-                    <div style="min-width:0; flex:1;">
+                    <div style="min-width:0;">
                         <input type="${type}"
                                name="${fieldName}"
                                value="${this.escapeHtml(value || '')}"
@@ -6121,7 +6123,7 @@ window.SkyIndex = {
             </div>
         `;
 
-        // Badges
+        // Badges (Type + Status live here only — not repeated in Identity)
         const typeBadge = entityType
             ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
                             color:#117a8b; background:rgba(23,162,184,0.12); border:1px solid rgba(23,162,184,0.25);
@@ -6157,21 +6159,18 @@ window.SkyIndex = {
             `;
 
         // Identity content
+        // Type + Status intentionally omitted (already shown as badges)
         const identityContent = isEditing
             ? `
                 <form id="entityEditForm" onsubmit="return false;">
                     ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
                     ${editField('Legal Name', 'entityLegalName', legalName)}
-                    ${editField('Type', 'entityType', entityType)}
-                    ${editField('Status', 'entityStatus', status)}
                     ${editField('Phone', 'primaryPhone', phone, 'tel')}
                     ${editField('Email', 'email', email, 'email')}
                     ${editField('Website', 'website', website, 'url')}
                 </form>
             `
             : `
-                ${attrRow('Type', entityType ? this.escapeHtml(entityType) : null)}
-                ${attrRow('Status', status ? this.escapeHtml(status) : null)}
                 ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
                 ${attrRow('Phone', phone
                     ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>`
@@ -6182,6 +6181,9 @@ window.SkyIndex = {
                 ${attrRow('Website', website
                     ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>`
                     : null)}
+                ${!legalName && !phone && !email && !website
+                    ? `<div style="color:#999; font-size:0.9em; padding:4px 0;">No additional identity details.</div>`
+                    : ''}
             `;
 
         // Related content
