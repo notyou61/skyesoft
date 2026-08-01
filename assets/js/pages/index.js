@@ -843,613 +843,676 @@ window.SkyIndex = {
     // #endregion
 
     // #region ❓ Help System
-    showHelp(topic = "") {
-        console.log('[Help] topic requested:', topic || '(general)');
+        showHelp(topic = "") {
+            console.log('[Help] topic requested:', topic || '(general)');
 
-        // Close any existing help modal first
-        this.closeHelpModal();
+            // Close any existing help modal first
+            this.closeHelpModal();
 
-        const normalizedTopic = (topic || '').toLowerCase().trim();
+            const normalizedTopic = (topic || '').toLowerCase().trim();
 
-        // --------------------------------------------------
-        // Help pages (each page is its own function)
-        // --------------------------------------------------
-        const helpPages = {
+            // --------------------------------------------------
+            // Help pages (each page is its own function)
+            // --------------------------------------------------
+            const helpPages = {
 
-            home() {
-                return {
-                    title: 'Skyesoft Help',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <p style="margin:0 0 18px; color:#555;">
-                                Choose a topic below, or type <code>help &lt;topic&gt;</code> at the command surface.
-                            </p>
+                home() {
+                    return {
+                        title: 'Skyesoft Help',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <p style="margin:0 0 18px; color:#555;">
+                                    Choose a topic below, or type <code>help &lt;topic&gt;</code> at the command surface.
+                                </p>
 
-                            <div style="margin-bottom:20px;">
-                                <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">Presentation</div>
+                                <div style="margin-bottom:20px;">
+                                    <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">Presentation</div>
+                                    <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                        <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('orders'); return false;" style="color:#1a73e8; text-decoration:none;">• Orders</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('applications'); return false;" style="color:#1a73e8; text-decoration:none;">• Applications</a></li>
+                                    </ul>
+                                </div>
+
+                                <div style="margin-bottom:20px;">
+                                    <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">Search</div>
+                                    <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                        <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
+                                    </ul>
+                                </div>
+
+                                <div style="margin-bottom:20px;">
+                                    <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">Data Entry</div>
+                                    <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                        <li><a href="#" onclick="SkyIndex.showHelp('contactproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Contact Proposals</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
+                                    </ul>
+                                </div>
+
+                                <div style="margin-bottom:8px;">
+                                    <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">System</div>
+                                    <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                        <li><a href="#" onclick="SkyIndex.showHelp('interface'); return false;" style="color:#1a73e8; text-decoration:none;">• Interface</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('keyboard'); return false;" style="color:#1a73e8; text-decoration:none;">• Keyboard</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('commands'); return false;" style="color:#1a73e8; text-decoration:none;">• Commands</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('about'); return false;" style="color:#1a73e8; text-decoration:none;">• About Skyesoft</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        `
+                    };
+                },
+
+                // --------------------------------------------------
+                // NEW: Interface (Portal Layout)
+                // --------------------------------------------------
+                interface() {
+                    return {
+                        title: 'Interface',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › System › Interface</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    The Skyesoft Portal is divided into three main regions: Header, Body (Command Interface), and Footer.
+                                    Understanding these regions makes the rest of the system easier to navigate.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Header</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li><strong>Logo + Title</strong> — “Skyesoft Portal”</li>
+                                    <li><strong>Weather</strong> — Current temperature and conditions</li>
+                                    <li><strong>Time</strong> — Current local time</li>
+                                    <li><strong>Interval</strong> — Session uptime counter</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Body — Command Interface</h3>
+                                <p style="margin:0 0 10px;">The main working area contains:</p>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li><strong>Surface</strong> — Large display area where Lists, Cards, and results appear</li>
+                                    <li><strong>Status line</strong> — Shows system readiness (e.g. “Skyesoft ready.”)</li>
+                                    <li><strong>Command Prompt</strong> — The input bar at the bottom of the interface
+                                        <ul style="margin:6px 0 0 16px; padding:0; line-height:1.5;">
+                                            <li><strong>+</strong> — Attachments control (add files or media)</li>
+                                            <li><strong>Type a command…</strong> — Main prompt where you type or paste</li>
+                                            <li><strong>Return / Send button</strong> — Submits the command</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Footer</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li><strong>Authentication status</strong> — Shows you are logged in</li>
+                                    <li><strong>Ready indicator</strong> — System is accepting commands</li>
+                                    <li><strong>Idle countdown</strong> — Time remaining before idle timeout</li>
+                                    <li><strong>Version</strong> — Current application version (bottom right)</li>
+                                    <li><strong>Copyright</strong> — © 2026 Maychris Corporation</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Quick Reference</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    Header     →  Logo, Weather, Time, Interval
+    Body       →  Surface + Command Prompt (+ / input / send)
+    Footer     →  Auth • Ready • Idle timer • Version</pre>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>All Lists and Cards appear in the <strong>Surface</strong>.</li>
+                                    <li>The command prompt is the primary way to interact with Skyesoft.</li>
+                                    <li>The idle countdown resets whenever you type or submit a command.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('commands'); return false;" style="color:#1a73e8; text-decoration:none;">• Commands</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('keyboard'); return false;" style="color:#1a73e8; text-decoration:none;">• Keyboard</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('about'); return false;" style="color:#1a73e8; text-decoration:none;">• About Skyesoft</a></li>
+                                </ul>
+                            </div>
+                        `
+                    };
+                },
+
+                // --------------------------------------------------
+                // Presentation Model
+                // --------------------------------------------------
+                presentation() {
+                    return {
+                        title: 'Presentation Model',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Presentation › Presentation Model</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Every business object in Skyesoft follows the same presentation architecture.
+                                    The resolver decides <em>what</em> the user means; the presentation layer decides <em>how</em> it is shown.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Surface Objects</h3>
+                                <p style="margin:0 0 8px;">Each object has three consistent surfaces:</p>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li><strong>List</strong> — paginated collection (clickable rows)</li>
+                                    <li><strong>Card</strong> — summary view of a single record</li>
+                                    <li><strong>Modal</strong> — full profile</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Collection Commands</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    show entities
+    show locations
+    show contacts
+
+    show entities page 2
+    list contacts</pre>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Detail Commands</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    entity Christy Signs
+    location Aaron's # C0D09
+    contact Steve Skye</pre>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Pipeline</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    User Command
+        │
+        ▼
+    Resolver
+        │
+        ▼
+    get&lt;Object&gt;()
+        │
+        ▼
+    render&lt;Object&gt;Card()
+        │
+        ▼
+    append&lt;Object&gt;Card()</pre>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>Search is independent — it only feeds the resolver.</li>
+                                    <li>Clicking a list row or a card opens the Modal (full profile).</li>
+                                    <li>The same List / Card / Modal pattern will be used for Orders, Applications, Notes, Tasks, Permits, Projects, and Proposals.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('interface'); return false;" style="color:#1a73e8; text-decoration:none;">• Interface</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
+                                </ul>
+                            </div>
+                        `
+                    };
+                },
+
+                // --------------------------------------------------
+                // Contacts / Entities / Locations (unchanged from previous version)
+                // --------------------------------------------------
+                contacts() {
+                    return {
+                        title: 'Contacts',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Presentation › Contacts</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Contacts are people. They appear as List, Card, and Modal surfaces following the standard presentation model.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Collection (List)</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    show contacts
+    show contacts page 2
+    list contacts</pre>
+                                <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
+                                    Produces a paginated Contact List. Each row is clickable and opens the Contact Modal.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Detail (Object)</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    contact Steve Skye</pre>
+                                <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
+                                    Resolves to a single Contact Card (summary). From the card you can open the full Contact Modal.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Presentation Surfaces</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li><strong>Contact List</strong> — paginated collection</li>
+                                    <li><strong>Contact Card</strong> — summary view</li>
+                                    <li><strong>Contact Modal</strong> — full profile</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>The resolver determines that the input refers to a Contact; the presentation layer then renders List, Card, or Modal.</li>
+                                    <li>To create a new contact, paste a signature or use Contact Proposals (see Data Entry).</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('contactproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Contact Proposals</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
+                                </ul>
+                            </div>
+                        `
+                    };
+                },
+
+                entities() {
+                    return {
+                        title: 'Entities',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Presentation › Entities</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Entities are companies, organizations, or named groups. Contacts and locations belong to entities.
+                                    They follow the standard List / Card / Modal presentation model.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Collection (List)</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    show entities
+    show entities page 2
+    list entities</pre>
+                                <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
+                                    Produces a paginated Entity List. Each row is clickable and opens the Entity Modal.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Detail (Object)</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    entity Christy Signs</pre>
+                                <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
+                                    Resolves to a single Entity Card (summary). From the card you can open the full Entity Modal.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Presentation Surfaces</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li><strong>Entity List</strong> — paginated collection</li>
+                                    <li><strong>Entity Card</strong> — summary view</li>
+                                    <li><strong>Entity Modal</strong> — full profile</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>Entities are frequently matched or created automatically during contact and location proposal processing.</li>
+                                    <li>The resolver decides the input is an Entity; presentation then renders List, Card, or Modal.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
+                                </ul>
+                            </div>
+                        `
+                    };
+                },
+
+                locations() {
+                    return {
+                        title: 'Locations',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Presentation › Locations</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Locations are physical addresses and properties. They follow the standard List / Card / Modal presentation model.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Collection (List)</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    show locations
+    show locations page 3
+    list locations</pre>
+                                <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
+                                    Produces a paginated Location List. Each row is clickable and opens the Location Modal.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Detail (Object)</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    location Aaron's # C0D09</pre>
+                                <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
+                                    Resolves to a single Location Card (summary). From the card you can open the full Location Modal.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Presentation Surfaces</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li><strong>Location List</strong> — paginated collection</li>
+                                    <li><strong>Location Card</strong> — summary view</li>
+                                    <li><strong>Location Modal</strong> — full profile</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>Addresses are cleaned and normalized. Parcel and jurisdiction data are attached when authoritative sources exist.</li>
+                                    <li>The resolver decides the input is a Location; presentation then renders List, Card, or Modal.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
+                                </ul>
+                            </div>
+                        `
+                    };
+                },
+
+                orders() {
+                    return {
+                        title: 'Orders',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Presentation › Orders</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Orders track sign work, installations, and related items. They will follow the same List / Card / Modal presentation model as Entities, Locations, and Contacts.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Planned Commands</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    show orders
+    show orders page 2
+    order &lt;identifier&gt;</pre>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>Orders link contacts, entities, and locations into a single workflow.</li>
+                                    <li>Implementation will reuse the exact same presentation pipeline.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('applications'); return false;" style="color:#1a73e8; text-decoration:none;">• Applications</a></li>
+                                </ul>
+                            </div>
+                        `
+                    };
+                },
+
+                applications() {
+                    return {
+                        title: 'Applications',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Presentation › Applications</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Applications manage permit submissions, ordinance reviews, and jurisdiction requirements.
+                                    They will follow the same List / Card / Modal presentation model.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Planned Commands</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    show applications
+    application &lt;identifier&gt;</pre>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>Applications are tied to locations and local sign ordinances.</li>
+                                    <li>Implementation will reuse the exact same presentation pipeline.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('orders'); return false;" style="color:#1a73e8; text-decoration:none;">• Orders</a></li>
+                                </ul>
+                            </div>
+                        `
+                    };
+                },
+
+                search() {
+                    return {
+                        title: 'Search',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Search › Search</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Search locates records. The resolver then decides the object type and hands the result to the presentation layer (List, Card, or Modal).
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    show contacts
+    show contacts page 2
+    find contact John Smith
+    search entities Acme
+    Christy Signs
+    Aaron's # C0D09
+    Steve Skye</pre>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>Search is independent of presentation. Once the resolver knows the type, the standard pipeline renders the appropriate List, Card, or Modal.</li>
+                                    <li>Free-text input (e.g. a company name or person name) is also resolved and presented through the same path.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
                                 <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
                                     <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
                                     <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
                                     <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
                                     <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
-                                    <li><a href="#" onclick="SkyIndex.showHelp('orders'); return false;" style="color:#1a73e8; text-decoration:none;">• Orders</a></li>
-                                    <li><a href="#" onclick="SkyIndex.showHelp('applications'); return false;" style="color:#1a73e8; text-decoration:none;">• Applications</a></li>
                                 </ul>
                             </div>
+                        `
+                    };
+                },
 
-                            <div style="margin-bottom:20px;">
-                                <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">Search</div>
+                streetview() {
+                    return {
+                        title: 'Street View',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Search › Street View</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Open Google Street View for a cleaned address directly from the command surface.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    street view 123 Main St, Phoenix, AZ 85001</pre>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>Skyesoft cleans and normalizes the address before opening the Street View workspace.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
                                 <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                    <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
-                                    <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
                                     <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
                                 </ul>
                             </div>
+                        `
+                    };
+                },
 
-                            <div style="margin-bottom:20px;">
-                                <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">Data Entry</div>
+                parcel() {
+                    return {
+                        title: 'Parcel Search',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Search › Parcel Search</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Resolve parcel information for an address when authoritative data is available (e.g. Maricopa County).
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                                <p style="margin:0 0 18px; color:#666;">
+                                    Parcel lookup is typically performed automatically during location proposal processing.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>Authoritative parcel/jurisdiction resolution is enforced only where data sources exist. Elsewhere the fields remain null rather than guessed.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
                                 <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                    <li><a href="#" onclick="SkyIndex.showHelp('contactproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Contact Proposals</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
                                     <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
                                 </ul>
                             </div>
+                        `
+                    };
+                },
 
-                            <div style="margin-bottom:8px;">
-                                <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">System</div>
+                contactproposals() {
+                    return {
+                        title: 'Contact Proposals',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Data Entry › Contact Proposals</span>
+                                </div>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Paste a contact signature to create a structured Contact Proposal for review and acceptance.
+                                </p>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    John Smith
+    Operations Manager
+    Acme Corporation
+    123 Main Street
+    Phoenix, AZ 85001
+    480-555-1212
+    john.smith@acme.com</pre>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                    <li>The system normalizes, infers missing fields, validates, and checks for duplicates before presenting the proposal.</li>
+                                    <li>Proposal classes (PC-0 through PC-6) classify the result for downstream handling.</li>
+                                    <li>Once accepted, the contact becomes a normal record and is displayed via the standard List / Card / Modal presentation model.</li>
+                                </ul>
+
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
                                 <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                    <li><a href="#" onclick="SkyIndex.showHelp('keyboard'); return false;" style="color:#1a73e8; text-decoration:none;">• Keyboard</a></li>
-                                    <li><a href="#" onclick="SkyIndex.showHelp('commands'); return false;" style="color:#1a73e8; text-decoration:none;">• Commands</a></li>
-                                    <li><a href="#" onclick="SkyIndex.showHelp('about'); return false;" style="color:#1a73e8; text-decoration:none;">• About Skyesoft</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
                                 </ul>
                             </div>
-                        </div>
-                    `
-                };
-            },
+                        `
+                    };
+                },
 
-            // --------------------------------------------------
-            // Presentation Model (overall architecture)
-            // --------------------------------------------------
-            presentation() {
-                return {
-                    title: 'Presentation Model',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Presentation Model</span>
-                            </div>
+                locationproposals() {
+                    return {
+                        title: 'Location Proposals',
+                        body: `
+                            <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                <div style="margin-bottom:18px;">
+                                    <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                    style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                    <span style="color:#999; margin:0 6px;">|</span>
+                                    <span style="color:#666; font-size:0.9em;">Help › Data Entry › Location Proposals</span>
+                                </div>
 
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Every business object in Skyesoft follows the same presentation architecture.
-                                The resolver decides <em>what</em> the user means; the presentation layer decides <em>how</em> it is shown.
-                            </p>
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                <p style="margin:0 0 18px;">
+                                    Paste a multi-line location block to create a Location Proposal.
+                                </p>
 
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Surface Objects</h3>
-                            <p style="margin:0 0 8px;">Each object has three consistent surfaces:</p>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li><strong>List</strong> — paginated collection (clickable rows)</li>
-                                <li><strong>Card</strong> — summary view of a single record</li>
-                                <li><strong>Modal</strong> — full profile</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Collection Commands</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-show entities
-show locations
-show contacts
-
-show entities page 2
-list contacts</pre>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Detail Commands</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-entity Christy Signs
-location Aaron's # C0D09
-contact Steve Skye</pre>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Pipeline</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-User Command
-      │
-      ▼
-Resolver
-      │
-      ▼
-get&lt;Object&gt;()
-      │
-      ▼
-render&lt;Object&gt;Card()
-      │
-      ▼
-append&lt;Object&gt;Card()</pre>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>Search is independent — it only feeds the resolver.</li>
-                                <li>Clicking a list row or a card opens the Modal (full profile).</li>
-                                <li>The same List / Card / Modal pattern will be used for Orders, Applications, Notes, Tasks, Permits, Projects, and Proposals.</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            // --------------------------------------------------
-            // Contacts
-            // --------------------------------------------------
-            contacts() {
-                return {
-                    title: 'Contacts',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Contacts</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Contacts are people. They appear as List, Card, and Modal surfaces following the standard presentation model.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Collection (List)</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-show contacts
-show contacts page 2
-list contacts</pre>
-                            <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
-                                Produces a paginated Contact List. Each row is clickable and opens the Contact Modal.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Detail (Object)</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-contact Steve Skye</pre>
-                            <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
-                                Resolves to a single Contact Card (summary). From the card you can open the full Contact Modal.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Presentation Surfaces</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li><strong>Contact List</strong> — paginated collection</li>
-                                <li><strong>Contact Card</strong> — summary view</li>
-                                <li><strong>Contact Modal</strong> — full profile</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>The resolver determines that the input refers to a Contact; the presentation layer then renders List, Card, or Modal.</li>
-                                <li>To create a new contact, paste a signature or use Contact Proposals (see Data Entry).</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('contactproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Contact Proposals</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            // --------------------------------------------------
-            // Entities
-            // --------------------------------------------------
-            entities() {
-                return {
-                    title: 'Entities',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Entities</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Entities are companies, organizations, or named groups. Contacts and locations belong to entities.
-                                They follow the standard List / Card / Modal presentation model.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Collection (List)</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-show entities
-show entities page 2
-list entities</pre>
-                            <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
-                                Produces a paginated Entity List. Each row is clickable and opens the Entity Modal.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Detail (Object)</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-entity Christy Signs</pre>
-                            <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
-                                Resolves to a single Entity Card (summary). From the card you can open the full Entity Modal.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Presentation Surfaces</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li><strong>Entity List</strong> — paginated collection</li>
-                                <li><strong>Entity Card</strong> — summary view</li>
-                                <li><strong>Entity Modal</strong> — full profile</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>Entities are frequently matched or created automatically during contact and location proposal processing.</li>
-                                <li>The resolver decides the input is an Entity; presentation then renders List, Card, or Modal.</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            // --------------------------------------------------
-            // Locations
-            // --------------------------------------------------
-            locations() {
-                return {
-                    title: 'Locations',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Locations</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Locations are physical addresses and properties. They follow the standard List / Card / Modal presentation model.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Collection (List)</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-show locations
-show locations page 3
-list locations</pre>
-                            <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
-                                Produces a paginated Location List. Each row is clickable and opens the Location Modal.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Detail (Object)</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-location Aaron's # C0D09</pre>
-                            <p style="margin:0 0 18px; color:#555; font-size:0.95em;">
-                                Resolves to a single Location Card (summary). From the card you can open the full Location Modal.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Presentation Surfaces</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li><strong>Location List</strong> — paginated collection</li>
-                                <li><strong>Location Card</strong> — summary view</li>
-                                <li><strong>Location Modal</strong> — full profile</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>Addresses are cleaned and normalized. Parcel and jurisdiction data are attached when authoritative sources exist.</li>
-                                <li>The resolver decides the input is a Location; presentation then renders List, Card, or Modal.</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            // --------------------------------------------------
-            // Orders & Applications (stubs that already follow the model)
-            // --------------------------------------------------
-            orders() {
-                return {
-                    title: 'Orders',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Orders</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Orders track sign work, installations, and related items. They will follow the same List / Card / Modal presentation model as Entities, Locations, and Contacts.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Planned Commands</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-show orders
-show orders page 2
-order &lt;identifier&gt;</pre>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>Orders link contacts, entities, and locations into a single workflow.</li>
-                                <li>Implementation will reuse the exact same presentation pipeline.</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('applications'); return false;" style="color:#1a73e8; text-decoration:none;">• Applications</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            applications() {
-                return {
-                    title: 'Applications',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Applications</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Applications manage permit submissions, ordinance reviews, and jurisdiction requirements.
-                                They will follow the same List / Card / Modal presentation model.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Planned Commands</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-show applications
-application &lt;identifier&gt;</pre>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>Applications are tied to locations and local sign ordinances.</li>
-                                <li>Implementation will reuse the exact same presentation pipeline.</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('orders'); return false;" style="color:#1a73e8; text-decoration:none;">• Orders</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            // --------------------------------------------------
-            // Search (updated to reinforce resolver role)
-            // --------------------------------------------------
-            search() {
-                return {
-                    title: 'Search',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Search › Search</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Search locates records. The resolver then decides the object type and hands the result to the presentation layer (List, Card, or Modal).
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-show contacts
-show contacts page 2
-find contact John Smith
-search entities Acme
-Christy Signs
-Aaron's # C0D09
-Steve Skye</pre>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>Search is independent of presentation. Once the resolver knows the type, the standard pipeline renders the appropriate List, Card, or Modal.</li>
-                                <li>Free-text input (e.g. a company name or person name) is also resolved and presented through the same path.</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            // --------------------------------------------------
-            // Remaining pages (streetview, parcel, proposals, system)
-            // kept largely as-is, with minor Related Topic updates
-            // --------------------------------------------------
-            streetview() {
-                return {
-                    title: 'Street View',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Search › Street View</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Open Google Street View for a cleaned address directly from the command surface.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-street view 123 Main St, Phoenix, AZ 85001</pre>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>Skyesoft cleans and normalizes the address before opening the Street View workspace.</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            parcel() {
-                return {
-                    title: 'Parcel Search',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Search › Parcel Search</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Resolve parcel information for an address when authoritative data is available (e.g. Maricopa County).
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
-                            <p style="margin:0 0 18px; color:#666;">
-                                Parcel lookup is typically performed automatically during location proposal processing.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>Authoritative parcel/jurisdiction resolution is enforced only where data sources exist. Elsewhere the fields remain null rather than guessed.</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            contactproposals() {
-                return {
-                    title: 'Contact Proposals',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Data Entry › Contact Proposals</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Paste a contact signature to create a structured Contact Proposal for review and acceptance.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-John Smith
-Operations Manager
-Acme Corporation
-123 Main Street
-Phoenix, AZ 85001
-480-555-1212
-john.smith@acme.com</pre>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
-                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>The system normalizes, infers missing fields, validates, and checks for duplicates before presenting the proposal.</li>
-                                <li>Proposal classes (PC-0 through PC-6) classify the result for downstream handling.</li>
-                                <li>Once accepted, the contact becomes a normal record and is displayed via the standard List / Card / Modal presentation model.</li>
-                            </ul>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
-                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
-                                <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
-                                <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
-                            </ul>
-                        </div>
-                    `
-                };
-            },
-
-            locationproposals() {
-                return {
-                    title: 'Location Proposals',
-                    body: `
-                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
-                            <div style="margin-bottom:18px;">
-                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
-                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
-                                <span style="color:#999; margin:0 6px;">|</span>
-                                <span style="color:#666; font-size:0.9em;">Help › Data Entry › Location Proposals</span>
-                            </div>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
-                            <p style="margin:0 0 18px;">
-                                Paste a multi-line location block to create a Location Proposal.
-                            </p>
-
-                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
-                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
-Acme Corporation
-Main Office
-123 Main Street
-Phoenix, AZ 85001</pre>
+                                <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                                <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+    Acme Corporation
+    Main Office
+    123 Main Street
+    Phoenix, AZ 85001</pre>
 
                             <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
                             <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
@@ -1500,6 +1563,7 @@ Phoenix, AZ 85001</pre>
                             <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
                             <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
                                 <li><a href="#" onclick="SkyIndex.showHelp('commands'); return false;" style="color:#1a73e8; text-decoration:none;">• Commands</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('interface'); return false;" style="color:#1a73e8; text-decoration:none;">• Interface</a></li>
                                 <li><a href="#" onclick="SkyIndex.showHelp('about'); return false;" style="color:#1a73e8; text-decoration:none;">• About Skyesoft</a></li>
                             </ul>
                         </div>
@@ -1541,6 +1605,7 @@ Phoenix, AZ 85001</pre>
                             <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
                             <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
                                 <li><a href="#" onclick="SkyIndex.showHelp('keyboard'); return false;" style="color:#1a73e8; text-decoration:none;">• Keyboard</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('interface'); return false;" style="color:#1a73e8; text-decoration:none;">• Interface</a></li>
                                 <li><a href="#" onclick="SkyIndex.showHelp(''); return false;" style="color:#1a73e8; text-decoration:none;">• Help Home</a></li>
                             </ul>
                         </div>
@@ -1567,13 +1632,14 @@ Phoenix, AZ 85001</pre>
 
                             <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
                             <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
-                                <li>This Help system is the living documentation for commands, workflows, and the presentation architecture.</li>
-                                <li>More topics (AI capabilities, search syntax, full user manual sections) will be added over time using the same framework.</li>
+                                <li>This Help system is the living documentation for commands, workflows, the presentation architecture, and the portal interface.</li>
+                                <li>More topics will be added over time using the same framework.</li>
                             </ul>
 
                             <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
                             <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
                                 <li><a href="#" onclick="SkyIndex.showHelp(''); return false;" style="color:#1a73e8; text-decoration:none;">• Help Home</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('interface'); return false;" style="color:#1a73e8; text-decoration:none;">• Interface</a></li>
                                 <li><a href="#" onclick="SkyIndex.showHelp('presentation'); return false;" style="color:#1a73e8; text-decoration:none;">• Presentation Model</a></li>
                                 <li><a href="#" onclick="SkyIndex.showHelp('commands'); return false;" style="color:#1a73e8; text-decoration:none;">• Commands</a></li>
                             </ul>
