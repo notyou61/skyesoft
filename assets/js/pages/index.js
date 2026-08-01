@@ -6057,7 +6057,7 @@ window.SkyIndex = {
                         style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
                 : `<span style="color:#222;">${value}</span>`;
             return `
-                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:baseline; padding:6px 0;">
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:baseline; padding:5px 0;">
                     <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
                         ${label}
                     </div>
@@ -6071,7 +6071,7 @@ window.SkyIndex = {
         // Aligned edit-mode field
         const editField = (label, fieldName, value, type = 'text') => {
             return `
-                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:6px 0;">
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:5px 0;">
                     <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
                         ${label}
                     </div>
@@ -6092,7 +6092,7 @@ window.SkyIndex = {
             if (count <= 0) {
                 return `
                     <div style="display:flex; justify-content:space-between; align-items:center;
-                                padding:8px 0; border-bottom:1px solid #f0f0f0; color:#999;">
+                                padding:7px 0; border-bottom:1px solid #f0f0f0; color:#999;">
                         <span>${label}</span>
                         <span>0</span>
                     </div>
@@ -6100,7 +6100,7 @@ window.SkyIndex = {
             }
             return `
                 <div style="display:flex; justify-content:space-between; align-items:center;
-                            padding:8px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
+                            padding:7px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
                      onclick="event.preventDefault(); ${action}">
                     <span style="color:#117a8b; font-weight:600;">${label}</span>
                     <span style="display:flex; align-items:center; gap:6px;">
@@ -6111,24 +6111,108 @@ window.SkyIndex = {
             `;
         };
 
-        // Section wrapper (rounded card)
+        // Section wrapper (rounded card + divider under title + tight)
         const section = (title, content) => `
             <div style="background:#fafafa; border:1px solid #eee; border-radius:10px;
-                        padding:12px 14px; margin-bottom:14px;">
+                        padding:10px 14px 12px; margin-bottom:12px;">
                 <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                            color:#888; text-transform:uppercase; margin-bottom:8px;">
+                            color:#888; text-transform:uppercase; padding-bottom:7px;
+                            border-bottom:1px solid #e8e8e8; margin-bottom:8px;">
                     ${title}
                 </div>
                 ${content}
             </div>
         `;
 
-        // Badges (Type + Status live here only — not repeated in Identity)
+        // Badges (Type + Status live only here)
         const typeBadge = entityType
             ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
                             color:#117a8b; background:rgba(23,162,184,0.12); border:1px solid rgba(23,162,184,0.25);
                             border-radius:4px; text-transform:capitalize;">${this.escapeHtml(entityType)}</span>`
             : '';
+
+        const statusBadge = status
+            ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
+                            color:#2e7d32; background:rgba(46,125,50,0.10); border:1px solid rgba(46,125,50,0.22);
+                            border-radius:4px; text-transform:capitalize;">${this.escapeHtml(status)}</span>`
+            : '';
+
+        // Header actions
+        const headerActions = isEditing
+            ? `
+                <button type="button" onclick="SkyIndex.cancelEntityEdit();"
+                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
+                               background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                    Cancel
+                </button>
+                <button type="button" onclick="SkyIndex.saveEntityEdit(${resolvedEntityId});"
+                        style="padding:5px 14px; border:1px solid #0d9488; border-radius:6px;
+                               background:#0d9488; color:#fff; font-size:0.85em; font-weight:550; cursor:pointer;">
+                    Save
+                </button>
+            `
+            : `
+                <button type="button" onclick="SkyIndex.editEntityModal();"
+                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
+                               background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                    Edit
+                </button>
+            `;
+
+        // Identity content (single definition)
+        const hasIdentity =
+            (legalName && legalName !== (entity.entityName || entity.name)) ||
+            phone || email || website;
+
+        const identityContent = isEditing
+            ? `
+                <form id="entityEditForm" onsubmit="return false;">
+                    ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
+                    ${editField('Legal Name', 'entityLegalName', legalName)}
+                    ${editField('Phone', 'primaryPhone', phone, 'tel')}
+                    ${editField('Email', 'email', email, 'email')}
+                    ${editField('Website', 'website', website, 'url')}
+                </form>
+            `
+            : hasIdentity
+                ? `
+                    ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
+                    ${attrRow('Phone', phone
+                        ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>`
+                        : null)}
+                    ${attrRow('Email', email
+                        ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>`
+                        : null)}
+                    ${attrRow('Website', website
+                        ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>`
+                        : null)}
+                `
+                : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
+
+        const identityContent = isEditing
+            ? `
+                <form id="entityEditForm" onsubmit="return false;">
+                    ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
+                    ${editField('Legal Name', 'entityLegalName', legalName)}
+                    ${editField('Phone', 'primaryPhone', phone, 'tel')}
+                    ${editField('Email', 'email', email, 'email')}
+                    ${editField('Website', 'website', website, 'url')}
+                </form>
+            `
+            : hasIdentity
+                ? `
+                    ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
+                    ${attrRow('Phone', phone
+                        ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>`
+                        : null)}
+                    ${attrRow('Email', email
+                        ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>`
+                        : null)}
+                    ${attrRow('Website', website
+                        ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>`
+                        : null)}
+                `
+                : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
 
         const statusBadge = status
             ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
@@ -6201,7 +6285,6 @@ window.SkyIndex = {
             ${relatedRow('Tasks', taskCount,
                 `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show tasks for entity ${resolvedEntityId}');`)}
         `;
-
         // Metadata content
         const metadataContent = `
             <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
