@@ -6025,7 +6025,7 @@ window.SkyIndex = {
         const isEditing = options.edit === true;
         const resolvedEntityId = Number(entityId || entity.entityId || 0);
 
-        // Store the current entity so we can re-render after cancel / save
+        // Keep current data for cancel / re-render
         this._currentEntityModalData = { entity, entityId: resolvedEntityId };
 
         const name        = this.escapeHtml(entity.entityName || entity.name || 'Unnamed Entity');
@@ -6036,7 +6036,6 @@ window.SkyIndex = {
         const email       = entity.email || '';
         const website     = entity.website || '';
 
-        // Counts
         const locationCount     = Number(entity.locationCount ?? entity.locations ?? 0);
         const contactCount      = Number(entity.contactCount  ?? entity.contacts  ?? 0);
         const orderCount        = Number(entity.orderCount    ?? entity.orders    ?? 0);
@@ -6055,9 +6054,9 @@ window.SkyIndex = {
                         style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
                 : `<span style="color:#222;">${value}</span>`;
             return `
-                <div style="display:flex; align-items:flex-start; gap:10px; padding:7px 0;">
-                    <div style="width:110px; flex-shrink:0; font-size:0.78em; font-weight:600;
-                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:2px;">
+                <div style="display:flex; align-items:flex-start; gap:10px; padding:6px 0;">
+                    <div style="width:100px; flex-shrink:0; font-size:0.78em; font-weight:600;
+                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:1px;">
                         ${label}
                     </div>
                     <div style="min-width:0; font-size:0.95em; line-height:1.4;">
@@ -6069,8 +6068,8 @@ window.SkyIndex = {
 
         const editField = (label, fieldName, value, type = 'text') => {
             return `
-                <div style="display:flex; align-items:flex-start; gap:10px; padding:7px 0;">
-                    <div style="width:110px; flex-shrink:0; font-size:0.78em; font-weight:600;
+                <div style="display:flex; align-items:flex-start; gap:10px; padding:6px 0;">
+                    <div style="width:100px; flex-shrink:0; font-size:0.78em; font-weight:600;
                                 color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:8px;">
                         ${label}
                     </div>
@@ -6091,7 +6090,7 @@ window.SkyIndex = {
             if (count <= 0) {
                 return `
                     <div style="display:flex; justify-content:space-between; align-items:center;
-                                padding:9px 0; border-bottom:1px solid #f0f0f0; color:#999;">
+                                padding:8px 0; border-bottom:1px solid #f0f0f0; color:#999;">
                         <span>${label}</span>
                         <span>0</span>
                     </div>
@@ -6099,7 +6098,7 @@ window.SkyIndex = {
             }
             return `
                 <div style="display:flex; justify-content:space-between; align-items:center;
-                            padding:9px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
+                            padding:8px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
                      onclick="event.preventDefault(); ${action}">
                     <span style="color:#117a8b; font-weight:600;">${label}</span>
                     <span style="display:flex; align-items:center; gap:6px;">
@@ -6110,7 +6109,19 @@ window.SkyIndex = {
             `;
         };
 
-        // Badges (read-only even in edit mode)
+        // Section wrapper (rounded card)
+        const section = (title, content) => `
+            <div style="background:#fafafa; border:1px solid #eee; border-radius:10px;
+                        padding:12px 14px; margin-bottom:14px;">
+                <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                            color:#888; text-transform:uppercase; margin-bottom:8px;">
+                    ${title}
+                </div>
+                ${content}
+            </div>
+        `;
+
+        // Badges
         const typeBadge = entityType
             ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
                             color:#117a8b; background:rgba(23,162,184,0.12); border:1px solid rgba(23,162,184,0.25);
@@ -6145,8 +6156,60 @@ window.SkyIndex = {
                 </button>
             `;
 
+        // Identity content
+        const identityContent = isEditing
+            ? `
+                <form id="entityEditForm" onsubmit="return false;">
+                    ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
+                    ${editField('Legal Name', 'entityLegalName', legalName)}
+                    ${editField('Type', 'entityType', entityType)}
+                    ${editField('Status', 'entityStatus', status)}
+                    ${editField('Phone', 'primaryPhone', phone, 'tel')}
+                    ${editField('Email', 'email', email, 'email')}
+                    ${editField('Website', 'website', website, 'url')}
+                </form>
+            `
+            : `
+                ${attrRow('Type', entityType ? this.escapeHtml(entityType) : null)}
+                ${attrRow('Status', status ? this.escapeHtml(status) : null)}
+                ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
+                ${attrRow('Phone', phone
+                    ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>`
+                    : null)}
+                ${attrRow('Email', email
+                    ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>`
+                    : null)}
+                ${attrRow('Website', website
+                    ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>`
+                    : null)}
+            `;
+
+        // Related content
+        const relatedContent = `
+            ${relatedRow('Locations', locationCount,
+                `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show locations for entity ${resolvedEntityId}');`)}
+            ${relatedRow('Contacts', contactCount,
+                `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show contacts for entity ${resolvedEntityId}');`)}
+            ${relatedRow('Orders', orderCount,
+                `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show orders for entity ${resolvedEntityId}');`)}
+            ${relatedRow('Applications', applicationCount,
+                `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show applications for entity ${resolvedEntityId}');`)}
+            ${relatedRow('Notes', noteCount,
+                `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show notes for entity ${resolvedEntityId}');`)}
+            ${relatedRow('Tasks', taskCount,
+                `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show tasks for entity ${resolvedEntityId}');`)}
+        `;
+
+        // Metadata content
+        const metadataContent = `
+            <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
+                <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
+                <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
+            </div>
+        `;
+
         dialog.innerHTML = `
-            <!-- 1. HEADER -->
+            <!-- HEADER -->
             <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
                         padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
                 <div style="display:flex; align-items:center; gap:9px; min-width:0; flex:1;">
@@ -6168,71 +6231,9 @@ window.SkyIndex = {
             </div>
 
             <div style="padding:16px 18px 18px; max-height:70vh; overflow-y:auto;">
-
-                <!-- 2. IDENTITY -->
-                <div style="margin-bottom:20px;">
-                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                                color:#888; text-transform:uppercase; margin-bottom:6px;">
-                        Identity
-                    </div>
-
-                    ${isEditing ? `
-                        <form id="entityEditForm" onsubmit="return false;">
-                            ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
-                            ${editField('Legal Name', 'entityLegalName', legalName)}
-                            ${editField('Type', 'entityType', entityType)}
-                            ${editField('Status', 'entityStatus', status)}
-                            ${editField('Phone', 'primaryPhone', phone, 'tel')}
-                            ${editField('Email', 'email', email, 'email')}
-                            ${editField('Website', 'website', website, 'url')}
-                        </form>
-                    ` : `
-                        ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
-                        ${attrRow('Type', entityType ? this.escapeHtml(entityType) : null)}
-                        ${attrRow('Status', status ? this.escapeHtml(status) : null)}
-                        ${attrRow('Phone', phone
-                            ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>`
-                            : null)}
-                        ${attrRow('Email', email
-                            ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>`
-                            : null)}
-                        ${attrRow('Website', website
-                            ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>`
-                            : null)}
-                    `}
-                </div>
-
-                <!-- 3. RELATED (always read-only) -->
-                <div style="margin-bottom:20px;">
-                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                                color:#888; text-transform:uppercase; margin-bottom:4px;">
-                        Related
-                    </div>
-                    ${relatedRow('Locations', locationCount,
-                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show locations for entity ${resolvedEntityId}');`)}
-                    ${relatedRow('Contacts', contactCount,
-                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show contacts for entity ${resolvedEntityId}');`)}
-                    ${relatedRow('Orders', orderCount,
-                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show orders for entity ${resolvedEntityId}');`)}
-                    ${relatedRow('Applications', applicationCount,
-                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show applications for entity ${resolvedEntityId}');`)}
-                    ${relatedRow('Notes', noteCount,
-                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show notes for entity ${resolvedEntityId}');`)}
-                    ${relatedRow('Tasks', taskCount,
-                        `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show tasks for entity ${resolvedEntityId}');`)}
-                </div>
-
-                <!-- 4. METADATA (always read-only) -->
-                <div>
-                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                                color:#888; text-transform:uppercase; margin-bottom:6px;">
-                        Metadata
-                    </div>
-                    <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
-                        <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
-                        <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
-                    </div>
-                </div>
+                ${section('Identity', identityContent)}
+                ${section('Related', relatedContent)}
+                ${section('Metadata', metadataContent)}
             </div>
         `;
     },
