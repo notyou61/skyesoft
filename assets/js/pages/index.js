@@ -6012,22 +6012,25 @@ window.SkyIndex = {
         }
     },
 
-    /**
-     * Renders the full Entity Card inside the modal.
-     * This is the hub: Locations, Contacts, Orders, Applications, Notes, Tasks.
-     */
-    renderEntityModal(entity, entityId) {
+    // --------------------------------------------------
+    // Entity Modal — Presentation + Edit
+    // --------------------------------------------------
+    renderEntityModal(entity, entityId, options = {}) {
         const modal = document.getElementById('entityDetailModal');
         if (!modal) return;
 
         const dialog = modal.querySelector('[role="dialog"]');
         if (!dialog) return;
 
+        const isEditing = options.edit === true;
         const resolvedEntityId = Number(entityId || entity.entityId || 0);
 
+        // Store the current entity so we can re-render after cancel / save
+        this._currentEntityModalData = { entity, entityId: resolvedEntityId };
+
         const name        = this.escapeHtml(entity.entityName || entity.name || 'Unnamed Entity');
-        const legalName   = entity.entityLegalName ? this.escapeHtml(entity.entityLegalName) : '';
-        const entityType  = entity.entityType ? this.escapeHtml(entity.entityType) : '';
+        const legalName   = entity.entityLegalName || '';
+        const entityType  = entity.entityType || '';
         const status      = entity.entityStatus || entity.status || '';
         const phone       = entity.primaryPhone || entity.phone || '';
         const email       = entity.email || '';
@@ -6046,7 +6049,7 @@ window.SkyIndex = {
 
         // ── Helpers ─────────────────────────────────────────────────
         const attrRow = (label, value, action = null) => {
-            if (!value) return '';
+            if (!value && value !== 0) return '';
             const valueHtml = action
                 ? `<a href="#" onclick="event.preventDefault(); ${action}"
                         style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
@@ -6059,6 +6062,26 @@ window.SkyIndex = {
                     </div>
                     <div style="min-width:0; font-size:0.95em; line-height:1.4;">
                         ${valueHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        const editField = (label, fieldName, value, type = 'text') => {
+            return `
+                <div style="display:flex; align-items:flex-start; gap:10px; padding:7px 0;">
+                    <div style="width:110px; flex-shrink:0; font-size:0.78em; font-weight:600;
+                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:8px;">
+                        ${label}
+                    </div>
+                    <div style="min-width:0; flex:1;">
+                        <input type="${type}"
+                               name="${fieldName}"
+                               value="${this.escapeHtml(value || '')}"
+                               style="width:100%; padding:7px 10px; border:1px solid #d1d5db;
+                                      border-radius:6px; font-size:0.95em; color:#222;
+                                      background:#fff; box-sizing:border-box;"
+                               ${fieldName === 'entityName' ? 'required' : ''} />
                     </div>
                 </div>
             `;
@@ -6087,11 +6110,11 @@ window.SkyIndex = {
             `;
         };
 
-        // Badges
+        // Badges (read-only even in edit mode)
         const typeBadge = entityType
             ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
                             color:#117a8b; background:rgba(23,162,184,0.12); border:1px solid rgba(23,162,184,0.25);
-                            border-radius:4px; text-transform:capitalize;">${entityType}</span>`
+                            border-radius:4px; text-transform:capitalize;">${this.escapeHtml(entityType)}</span>`
             : '';
 
         const statusBadge = status
@@ -6100,11 +6123,33 @@ window.SkyIndex = {
                             border-radius:4px; text-transform:capitalize;">${this.escapeHtml(status)}</span>`
             : '';
 
+        // Header actions
+        const headerActions = isEditing
+            ? `
+                <button type="button" onclick="SkyIndex.cancelEntityEdit();"
+                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
+                               background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                    Cancel
+                </button>
+                <button type="button" onclick="SkyIndex.saveEntityEdit(${resolvedEntityId});"
+                        style="padding:5px 14px; border:1px solid #0d9488; border-radius:6px;
+                               background:#0d9488; color:#fff; font-size:0.85em; font-weight:550; cursor:pointer;">
+                    Save
+                </button>
+            `
+            : `
+                <button type="button" onclick="SkyIndex.editEntityModal();"
+                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
+                               background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                    Edit
+                </button>
+            `;
+
         dialog.innerHTML = `
             <!-- 1. HEADER -->
             <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
                         padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
-                <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                <div style="display:flex; align-items:center; gap:9px; min-width:0; flex:1;">
                     <span style="font-size:1.25rem; flex-shrink:0;">🏢</span>
                     <strong id="entityDetailTitle"
                             style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -6113,10 +6158,13 @@ window.SkyIndex = {
                     ${typeBadge}
                     ${statusBadge}
                 </div>
-                <button type="button" onclick="SkyIndex.closeEntityModal();"
-                        aria-label="Close entity profile"
-                        style="border:0; background:transparent; color:#666; cursor:pointer;
-                               font-size:1.5rem; line-height:1; flex-shrink:0;">×</button>
+                <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                    ${headerActions}
+                    <button type="button" onclick="SkyIndex.closeEntityModal();"
+                            aria-label="Close entity profile"
+                            style="border:0; background:transparent; color:#666; cursor:pointer;
+                                   font-size:1.5rem; line-height:1; margin-left:4px;">×</button>
+                </div>
             </div>
 
             <div style="padding:16px 18px 18px; max-height:70vh; overflow-y:auto;">
@@ -6127,13 +6175,34 @@ window.SkyIndex = {
                                 color:#888; text-transform:uppercase; margin-bottom:6px;">
                         Identity
                     </div>
-                    ${attrRow('Legal Name', legalName && legalName !== name ? legalName : null)}
-                    ${attrRow('Phone', phone ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>` : null)}
-                    ${attrRow('Email', email ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>` : null)}
-                    ${attrRow('Website', website ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>` : null)}
+
+                    ${isEditing ? `
+                        <form id="entityEditForm" onsubmit="return false;">
+                            ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
+                            ${editField('Legal Name', 'entityLegalName', legalName)}
+                            ${editField('Type', 'entityType', entityType)}
+                            ${editField('Status', 'entityStatus', status)}
+                            ${editField('Phone', 'primaryPhone', phone, 'tel')}
+                            ${editField('Email', 'email', email, 'email')}
+                            ${editField('Website', 'website', website, 'url')}
+                        </form>
+                    ` : `
+                        ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
+                        ${attrRow('Type', entityType ? this.escapeHtml(entityType) : null)}
+                        ${attrRow('Status', status ? this.escapeHtml(status) : null)}
+                        ${attrRow('Phone', phone
+                            ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>`
+                            : null)}
+                        ${attrRow('Email', email
+                            ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>`
+                            : null)}
+                        ${attrRow('Website', website
+                            ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>`
+                            : null)}
+                    `}
                 </div>
 
-                <!-- 3. RELATED -->
+                <!-- 3. RELATED (always read-only) -->
                 <div style="margin-bottom:20px;">
                     <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
                                 color:#888; text-transform:uppercase; margin-bottom:4px;">
@@ -6153,7 +6222,7 @@ window.SkyIndex = {
                         `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show tasks for entity ${resolvedEntityId}');`)}
                 </div>
 
-                <!-- 4. METADATA -->
+                <!-- 4. METADATA (always read-only) -->
                 <div>
                     <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
                                 color:#888; text-transform:uppercase; margin-bottom:6px;">
@@ -6166,6 +6235,99 @@ window.SkyIndex = {
                 </div>
             </div>
         `;
+    },
+
+    // Switch the open Entity modal into edit mode
+    editEntityModal() {
+        const data = this._currentEntityModalData;
+        if (!data) return;
+        this.renderEntityModal(data.entity, data.entityId, { edit: true });
+    },
+
+    // Cancel edit → re-render in view mode
+    cancelEntityEdit() {
+        const data = this._currentEntityModalData;
+        if (!data) return;
+        this.renderEntityModal(data.entity, data.entityId, { edit: false });
+    },
+
+    // Collect form values and save
+    async saveEntityEdit(entityId) {
+        const form = document.getElementById('entityEditForm');
+        if (!form) return;
+
+        const payload = {
+            entityId: Number(entityId),
+            entityName:       form.querySelector('[name="entityName"]')?.value?.trim() || '',
+            entityLegalName:  form.querySelector('[name="entityLegalName"]')?.value?.trim() || '',
+            entityType:       form.querySelector('[name="entityType"]')?.value?.trim() || '',
+            entityStatus:     form.querySelector('[name="entityStatus"]')?.value?.trim() || '',
+            primaryPhone:     form.querySelector('[name="primaryPhone"]')?.value?.trim() || '',
+            email:            form.querySelector('[name="email"]')?.value?.trim() || '',
+            website:          form.querySelector('[name="website"]')?.value?.trim() || ''
+        };
+
+        if (!payload.entityName) {
+            this.appendSystemLine('Entity name is required.');
+            return;
+        }
+
+        try {
+            // Disable Save while working
+            const saveBtn = document.querySelector('#entityDetailModal button[onclick*="saveEntityEdit"]');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving…';
+            }
+
+            const updated = await this.updateEntity(payload);
+
+            // Refresh the modal with the new data in view mode
+            this._currentEntityModalData = {
+                entity: updated,
+                entityId: Number(entityId)
+            };
+            this.renderEntityModal(updated, entityId, { edit: false });
+
+            this.appendSystemLine('Entity updated.');
+
+        } catch (err) {
+            console.error('[SkyIndex] saveEntityEdit failed:', err);
+            this.appendSystemLine(`❌ Failed to update entity: ${err.message || 'Unknown error'}`);
+
+            const saveBtn = document.querySelector('#entityDetailModal button[onclick*="saveEntityEdit"]');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            }
+        }
+    },
+
+    /**
+     * Persist entity changes.
+     * Wire this to your real endpoint.
+     * Expected response shape: { success: true, entity: { ... } }
+     */
+    async updateEntity(payload) {
+        const res = await fetch('/skyesoft/api/askOpenAI.php?type=entityUpdate', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`HTTP ${res.status} — ${text.slice(0, 200)}`);
+        }
+
+        const data = await res.json();
+
+        if (!data?.success || !data.entity) {
+            throw new Error(data?.error || data?.message || 'Update failed');
+        }
+
+        return data.entity;
     },
 
     // #endregion
