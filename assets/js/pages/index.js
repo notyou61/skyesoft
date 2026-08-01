@@ -6159,28 +6159,35 @@ window.SkyIndex = {
                 </button>
             `;
 
-        // Identity content — only real tblEntities columns
-        // Type + Status remain editable here (they exist on the table)
-        // Phone / Email / Website removed (not on tblEntities)
+        // Identity content — real tblEntities columns only
         const hasIdentity =
             (legalName && legalName !== (entity.entityName || entity.name)) ||
+            entity.entityStructure ||
+            entity.entityNormalizedName ||
+            entity.entityAccNumber ||
             entityType ||
-            status;
+            (entity.entityIsNotValid !== undefined && entity.entityIsNotValid !== null);
 
         const identityContent = isEditing
             ? `
                 <form id="entityEditForm" onsubmit="return false;">
                     ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
                     ${editField('Legal Name', 'entityLegalName', legalName)}
+                    ${editField('Structure', 'entityStructure', entity.entityStructure || '')}
+                    ${editField('Normalized', 'entityNormalizedName', entity.entityNormalizedName || '')}
+                    ${editField('Account #', 'entityAccNumber', entity.entityAccNumber || '')}
                     ${editField('Type', 'entityType', entityType)}
-                    ${editField('Status', 'entityStatus', status)}
+                    ${editField('Invalid', 'entityIsNotValid', String(entity.entityIsNotValid ?? 0))}
                 </form>
             `
             : hasIdentity
                 ? `
                     ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
+                    ${attrRow('Structure', entity.entityStructure ? this.escapeHtml(entity.entityStructure) : null)}
+                    ${attrRow('Normalized', entity.entityNormalizedName ? this.escapeHtml(entity.entityNormalizedName) : null)}
+                    ${attrRow('Account #', entity.entityAccNumber ? this.escapeHtml(entity.entityAccNumber) : null)}
                     ${attrRow('Type', entityType ? this.escapeHtml(entityType) : null)}
-                    ${attrRow('Status', status ? this.escapeHtml(status) : null)}
+                    ${attrRow('Invalid', entity.entityIsNotValid == 1 ? 'Yes' : (entity.entityIsNotValid == 0 ? 'No' : null))}
                 `
                 : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
 
@@ -6258,11 +6265,14 @@ window.SkyIndex = {
 
         // Only fields that exist on tblEntities
         const payload = {
-            entityId:        Number(entityId),
-            entityName:      form.querySelector('[name="entityName"]')?.value?.trim() || '',
-            entityLegalName: form.querySelector('[name="entityLegalName"]')?.value?.trim() || '',
-            entityType:      form.querySelector('[name="entityType"]')?.value?.trim() || '',
-            entityStatus:    form.querySelector('[name="entityStatus"]')?.value?.trim() || ''
+            entityId:             Number(entityId),
+            entityName:           form.querySelector('[name="entityName"]')?.value?.trim() || '',
+            entityLegalName:      form.querySelector('[name="entityLegalName"]')?.value?.trim() || '',
+            entityStructure:      form.querySelector('[name="entityStructure"]')?.value?.trim() || '',
+            entityNormalizedName: form.querySelector('[name="entityNormalizedName"]')?.value?.trim() || '',
+            entityAccNumber:      form.querySelector('[name="entityAccNumber"]')?.value?.trim() || '',
+            entityType:           form.querySelector('[name="entityType"]')?.value?.trim() || '',
+            entityIsNotValid:     form.querySelector('[name="entityIsNotValid"]')?.value?.trim() || '0'
         };
 
         if (!payload.entityName) {

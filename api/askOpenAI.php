@@ -2892,7 +2892,6 @@ if ($type === 'entityDetail') {
 
 if ($type === 'entityUpdate') {
 
-    // Resolve actor + session context
     $actorContactId = (int)(
         $_SESSION['SKYESOFT_contactId']
         ?? $_SESSION['contactId']
@@ -2905,7 +2904,6 @@ if ($type === 'entityUpdate') {
     $latitude  = is_numeric($input['latitude']  ?? null) ? (float)$input['latitude']  : null;
     $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
 
-    // Resolve target
     $targetEntityId = (int)($input['entityId'] ?? 0);
 
     if ($targetEntityId <= 0) {
@@ -2918,11 +2916,14 @@ if ($type === 'entityUpdate') {
         exit;
     }
 
-    // Allowed fields only (real tblEntities columns)
-    $entityName      = trim((string)($input['entityName']      ?? ''));
-    $entityLegalName = trim((string)($input['entityLegalName'] ?? ''));
-    $entityType      = trim((string)($input['entityType']      ?? ''));
-    $entityStatus    = trim((string)($input['entityStatus']    ?? ''));
+    // Collect allowed fields
+    $entityName           = trim((string)($input['entityName']           ?? ''));
+    $entityLegalName      = trim((string)($input['entityLegalName']      ?? ''));
+    $entityStructure      = trim((string)($input['entityStructure']      ?? ''));
+    $entityNormalizedName = trim((string)($input['entityNormalizedName'] ?? ''));
+    $entityAccNumber      = trim((string)($input['entityAccNumber']      ?? ''));
+    $entityType           = trim((string)($input['entityType']           ?? ''));
+    $entityIsNotValid     = (int)($input['entityIsNotValid'] ?? 0);
 
     if ($entityName === '') {
         header('Content-Type: application/json');
@@ -2934,7 +2935,7 @@ if ($type === 'entityUpdate') {
         exit;
     }
 
-    // Validate entityType against enum if provided
+    // Validate enum
     $allowedTypes = ['company', 'customer', 'vendor', 'jurisdiction'];
     if ($entityType !== '' && !in_array(strtolower($entityType), $allowedTypes, true)) {
         header('Content-Type: application/json');
@@ -2946,18 +2947,24 @@ if ($type === 'entityUpdate') {
         exit;
     }
 
-    // Normalize type to lowercase for enum
     if ($entityType !== '') {
         $entityType = strtolower($entityType);
     }
 
+    // Auto-normalize if blank
+    if ($entityNormalizedName === '') {
+        $entityNormalizedName = strtolower(preg_replace('/\s+/', ' ', $entityName));
+    }
+
+    // Clamp invalid flag
+    $entityIsNotValid = $entityIsNotValid ? 1 : 0;
+
     try {
-        // Confirm entity exists
+        // Confirm exists
         $check = $db->prepare("
             SELECT entityId
             FROM tblEntities
             WHERE entityId = :entityId
-              AND entityIsNotValid = 0
             LIMIT 1
         ");
         $check->execute(['entityId' => $targetEntityId]);
@@ -2972,50 +2979,44 @@ if ($type === 'entityUpdate') {
             exit;
         }
 
-        // Build dynamic UPDATE (only set fields that were sent)
-        $sets   = ['entityName = :entityName'];
-        $params = [
-            'entityId'   => $targetEntityId,
-            'entityName' => $entityName
-        ];
-
-        // Legal name (allow clearing)
-        $sets[] = 'entityLegalName = :entityLegalName';
-        $params['entityLegalName'] = ($entityLegalName !== '') ? $entityLegalName : null;
-
-        if ($entityType !== '') {
-            $sets[] = 'entityType = :entityType';
-            $params['entityType'] = $entityType;
-        }
-
-        if ($entityStatus !== '') {
-            $sets[] = 'entityStatus = :entityStatus';
-            $params['entityStatus'] = $entityStatus;
-        }
-
-        // Keep normalized name in sync with display name
-        $sets[] = 'entityNormalizedName = :entityNormalizedName';
-        $params['entityNormalizedName'] = strtolower(preg_replace('/\s+/', ' ', $entityName));
+        $nowUnix = time();
 
         $sql = "
             UPDATE tblEntities
-            SET " . implode(",\n                ", $sets) . "
+            SET
+                entityName           = :entityName,
+                entityLegalName      = :entityLegalName,
+                entityStructure      = :entityStructure,
+                entityNormalizedName = :entityNormalizedName,
+                entityAccNumber      = :entityAccNumber,
+                entityType           = :entityType,
+                entityIsNotValid     = :entityIsNotValid,
+                entityUpdatedUnix    = :entityUpdatedUnix
             WHERE entityId = :entityId
-              AND entityIsNotValid = 0
             LIMIT 1
         ";
 
         $stmt = $db->prepare($sql);
-        $stmt->execute($params);
+        $stmt->execute([
+            'entityId'             => $targetEntityId,
+            'entityName'           => $entityName,
+            'entityLegalName'      => ($entityLegalName !== '') ? $entityLegalName : null,
+            'entityStructure'      => ($entityStructure !== '') ? $entityStructure : null,
+            'entityNormalizedName' => $entityNormalizedName,
+            'entityAccNumber'      => ($entityAccNumber !== '') ? $entityAccNumber : null,
+            'entityType'           => ($entityType !== '') ? $entityType : 'company',
+            'entityIsNotValid'     => $entityIsNotValid,
+            'entityUpdatedUnix'    => $nowUnix
+        ]);
 
-        // Reload full entity (same shape as entityDetail)
+        // Reload
         $entity = loadEntityDetail($db, $targetEntityId);
 
         if ($entity === null) {
             throw new RuntimeException('Entity updated but reload failed.');
         }
 
-        // Audit log
+        // Audit
         if ($actorContactId > 0) {
             try {
                 insertActionPrompt([
@@ -3031,17 +3032,21 @@ if ($type === 'entityUpdate') {
                     'activitySessionId' => $activitySessionId,
                     'latitude'          => $latitude,
                     'longitude'         => $longitude,
-                    // TODO: replace 13 with the new UPDATE actionTypeId once added to tblActionTypes
+                    // TODO: replace with dedicated UPDATE actionTypeId when added
                     'actionTypeId'      => 13,
                     'origin'            => ACTION_ORIGIN_USER,
                     'actionPayloadData' => [
                         'operation'      => 'entities.update',
                         'targetEntityId' => $targetEntityId,
                         'fields'         => [
-                            'entityName'      => $entityName,
-                            'entityLegalName' => $entityLegalName !== '' ? $entityLegalName : null,
-                            'entityType'      => $entityType !== '' ? $entityType : null,
-                            'entityStatus'    => $entityStatus !== '' ? $entityStatus : null
+                            'entityName'           => $entityName,
+                            'entityLegalName'      => $entityLegalName !== '' ? $entityLegalName : null,
+                            'entityStructure'      => $entityStructure !== '' ? $entityStructure : null,
+                            'entityNormalizedName' => $entityNormalizedName,
+                            'entityAccNumber'      => $entityAccNumber !== '' ? $entityAccNumber : null,
+                            'entityType'           => $entityType !== '' ? $entityType : null,
+                            'entityIsNotValid'     => $entityIsNotValid,
+                            'entityUpdatedUnix'    => $nowUnix
                         ]
                     ],
                     'actionResponseData' => [
@@ -3050,11 +3055,7 @@ if ($type === 'entityUpdate') {
                     ]
                 ], $db);
             } catch (Throwable $e) {
-                // Preserve the successful update if audit logging fails
-                error_log(
-                    '[askOpenAI] Entity-update action logging failed: ' .
-                    $e->getMessage()
-                );
+                error_log('[askOpenAI] Entity-update action logging failed: ' . $e->getMessage());
             }
         }
 
