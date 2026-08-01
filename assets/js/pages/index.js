@@ -6159,7 +6159,7 @@ window.SkyIndex = {
             `;
 
         // Identity content
-        // Type + Status intentionally omitted (already shown as badges)
+        // Type + Status live only as badges in the Header (no repetition)
         const identityContent = isEditing
             ? `
                 <form id="entityEditForm" onsubmit="return false;">
