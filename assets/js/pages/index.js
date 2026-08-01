@@ -5333,12 +5333,8 @@ window.SkyIndex = {
     // Render complete contact modal
     renderContactModal(contact) {
         const modal = document.getElementById('contactDetailModal');
+        if (!modal || !contact) return;
 
-        if (!modal || !contact) {
-            return;
-        }
-
-        // Format contact values
         const fullName = [
             contact.contactSalutation,
             contact.contactFirstName,
@@ -5346,156 +5342,126 @@ window.SkyIndex = {
         ].filter(Boolean).join(' ').trim() || 'Unnamed Contact';
 
         const name    = this.escapeHtml(fullName);
-        const title   = contact.contactTitle
-            ? this.escapeHtml(contact.contactTitle)
-            : '';
+        const title   = contact.contactTitle ? this.escapeHtml(contact.contactTitle) : '';
+        const entity  = contact.entityName ? this.escapeHtml(contact.entityName) : '';
+        const entityId = Number(contact.entityId || contact.contactEntityId || 0);
+        const phone   = contact.contactPrimaryPhone ? this.escapeHtml(contact.contactPrimaryPhone) : '';
+        const email   = contact.contactEmail ? this.escapeHtml(contact.contactEmail) : '';
 
-        const entity  = contact.entityName
-            ? this.escapeHtml(contact.entityName)
-            : '';
-
-        const phone   = contact.contactPrimaryPhone
-            ? this.escapeHtml(contact.contactPrimaryPhone)
-            : '';
-
-        const email   = contact.contactEmail
-            ? this.escapeHtml(contact.contactEmail)
-            : '';
-
-        const address = [
+        const addressParts = [
             contact.locationAddress,
             contact.locationCity,
             contact.locationState,
             contact.locationZip
-        ].filter(Boolean).map(value => this.escapeHtml(value)).join(', ');
+        ].filter(Boolean).map(v => this.escapeHtml(v));
+        const address = addressParts.join(', ');
 
-        // Inactive / invalid flag
+        const locationId = Number(contact.locationId || contact.contactLocationId || 0);
+
         const isInactive = Number(contact.isActive) === 0 ||
-                        Number(contact.contactIsNotValid) === 1;
+                           Number(contact.contactIsNotValid) === 1;
+
+        const createdDate  = contact.createdDate  ? this.escapeHtml(contact.createdDate)  : '—';
+        const lastActivity = contact.lastActivity ? this.escapeHtml(contact.lastActivity) : createdDate;
+
+        // ── Helpers ─────────────────────────────────────────────────
+        const attrRow = (label, value, action = null) => {
+            if (!value) return '';
+            const valueHtml = action
+                ? `<a href="#" onclick="event.preventDefault(); ${action}"
+                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
+                : `<span style="color:#222;">${value}</span>`;
+            return `
+                <div style="display:flex; align-items:flex-start; gap:10px; padding:7px 0;">
+                    <div style="width:110px; flex-shrink:0; font-size:0.78em; font-weight:600;
+                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:2px;">
+                        ${label}
+                    </div>
+                    <div style="min-width:0; font-size:0.95em; line-height:1.4;">
+                        ${valueHtml}
+                    </div>
+                </div>
+            `;
+        };
 
         const inactiveBadge = isInactive
-            ? `<span style="
-                    display:inline-block;
-                    margin-right:8px;
-                    padding:2px 8px;
-                    font-size:0.72em;
-                    font-weight:600;
-                    letter-spacing:0.03em;
-                    color:#8a6d3b;
-                    background:#fcf8e3;
-                    border:1px solid #faebcc;
-                    border-radius:3px;
-                    vertical-align:middle;
-                ">[Inactive]</span>`
+            ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
+                            color:#8a6d3b; background:#fcf8e3; border:1px solid #faebcc;
+                            border-radius:4px;">Inactive</span>`
             : '';
 
-        // Build contact profile
+        // Note: Contact modal currently rebuilds the entire modal element.
+        // We keep that pattern for compatibility.
         modal.innerHTML = `
-            <div role="dialog"
-                aria-modal="true"
-                aria-labelledby="contactDetailTitle"
-                style="width:100%; max-width:620px; max-height:90vh; background:#fff; border-radius:8px; box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:auto;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
-                    <div style="display:flex; align-items:center; gap:9px;">
-                        <span style="font-size:1.25rem;">👤</span>
+            <div role="dialog" aria-modal="true" aria-labelledby="contactDetailTitle"
+                 style="width:100%; max-width:620px; max-height:90vh; background:#fff;
+                        border-radius:8px; box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;
+                        display:flex; flex-direction:column;">
 
-                        <div>
-                            <strong id="contactDetailTitle" style="display:block; color:#222;">
-                                Contact Profile
-                            </strong>
-
-                            <small style="color:#777;">
-                                ${inactiveBadge}Contact #${Number(contact.contactId) || ''}
-                            </small>
-                        </div>
-                    </div>
-
-                    <button type="button"
-                            onclick="SkyIndex.closeContactModal();"
-                            aria-label="Close contact profile"
-                            style="border:0; background:transparent; color:#666; cursor:pointer; font-size:1.5rem; line-height:1;">
-                        ×
-                    </button>
-                </div>
-
-                <div style="padding:20px 18px;">
-                    <div style="padding-bottom:16px; border-bottom:1px solid #eee;">
-                        <div style="font-size:1.25rem; font-weight:700; color:#222;">
+                <!-- 1. HEADER -->
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
+                            padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
+                    <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                        <span style="font-size:1.25rem; flex-shrink:0;">👤</span>
+                        <strong id="contactDetailTitle"
+                                style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                             ${name}
-                        </div>
-
-                        ${title ? `
-                            <div style="margin-top:3px; color:#666;">
-                                ${title}
-                            </div>
-                        ` : ''}
+                        </strong>
+                        ${inactiveBadge}
                     </div>
-
-                    <div style="display:grid; gap:16px; padding-top:18px;">
-                        ${entity ? `
-                            <div>
-                                <div style="margin-bottom:3px; color:#777; font-size:0.78rem; font-weight:700; text-transform:uppercase;">
-                                    Entity
-                                </div>
-
-                                <div style="color:#222;">
-                                    🏢 ${entity}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        ${phone ? `
-                            <div>
-                                <div style="margin-bottom:3px; color:#777; font-size:0.78rem; font-weight:700; text-transform:uppercase;">
-                                    Phone
-                                </div>
-
-                                <a href="tel:${phone}"
-                                style="color:#117a8b; text-decoration:none;">
-                                    📞 ${phone}
-                                </a>
-                            </div>
-                        ` : ''}
-
-                        ${email ? `
-                            <div>
-                                <div style="margin-bottom:3px; color:#777; font-size:0.78rem; font-weight:700; text-transform:uppercase;">
-                                    Email
-                                </div>
-
-                                <a href="mailto:${email}"
-                                style="color:#117a8b; text-decoration:none; overflow-wrap:anywhere;">
-                                    ✉️ ${email}
-                                </a>
-                            </div>
-                        ` : ''}
-
-                        ${address ? `
-                            <div>
-                                <div style="margin-bottom:3px; color:#777; font-size:0.78rem; font-weight:700; text-transform:uppercase;">
-                                    Location
-                                </div>
-
-                                <div style="color:#222;">
-                                    📍 ${address}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        ${!entity && !phone && !email && !address ? `
-                            <div style="color:#777;">
-                                No additional contact details are available.
-                            </div>
-                        ` : ''}
-                    </div>
+                    <button type="button" onclick="SkyIndex.closeContactModal();"
+                            aria-label="Close contact profile"
+                            style="border:0; background:transparent; color:#666; cursor:pointer;
+                                   font-size:1.5rem; line-height:1; flex-shrink:0;">×</button>
                 </div>
 
-                <div style="display:flex; justify-content:flex-end; padding:12px 18px; border-top:1px solid #eee; background:#fafafa;">
-                    <button type="button"
-                            onclick="SkyIndex.closeContactModal();"
-                            style="padding:7px 15px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; cursor:pointer;">
-                        Close
-                    </button>
+                <div style="padding:16px 18px 18px; max-height:70vh; overflow-y:auto;">
+
+                    <!-- 2. IDENTITY -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                                    color:#888; text-transform:uppercase; margin-bottom:6px;">
+                            Identity
+                        </div>
+                        ${attrRow('Title', title)}
+                        ${attrRow('Entity', entity,
+                            entityId > 0
+                                ? `SkyIndex.closeContactModal(); SkyIndex.showEntityModal(${entityId});`
+                                : null)}
+                        ${attrRow('Location', address,
+                            locationId > 0
+                                ? `SkyIndex.closeContactModal(); SkyIndex.showLocationModal(${locationId});`
+                                : null)}
+                        ${attrRow('Phone', phone
+                            ? `<a href="tel:${phone}" style="color:#117a8b; text-decoration:none;">${phone}</a>`
+                            : null)}
+                        ${attrRow('Email', email
+                            ? `<a href="mailto:${email}" style="color:#117a8b; text-decoration:none;">${email}</a>`
+                            : null)}
+                    </div>
+
+                    <!-- 3. RELATED (placeholder – contacts currently have limited related counts) -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                                    color:#888; text-transform:uppercase; margin-bottom:4px;">
+                            Related
+                        </div>
+                        <div style="color:#999; font-size:0.9em; padding:6px 0;">
+                            No related collections available for contacts yet.
+                        </div>
+                    </div>
+
+                    <!-- 4. METADATA -->
+                    <div>
+                        <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                                    color:#888; text-transform:uppercase; margin-bottom:6px;">
+                            Metadata
+                        </div>
+                        <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
+                            <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
+                            <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -6067,7 +6033,7 @@ window.SkyIndex = {
         const email       = entity.email || '';
         const website     = entity.website || '';
 
-        // Counts (live from backend)
+        // Counts
         const locationCount     = Number(entity.locationCount ?? entity.locations ?? 0);
         const contactCount      = Number(entity.contactCount  ?? entity.contacts  ?? 0);
         const orderCount        = Number(entity.orderCount    ?? entity.orders    ?? 0);
@@ -6078,166 +6044,126 @@ window.SkyIndex = {
         const createdDate  = entity.createdDate  ? this.escapeHtml(entity.createdDate)  : '—';
         const lastActivity = entity.lastActivity ? this.escapeHtml(entity.lastActivity) : createdDate;
 
-        // Collection links
-        const collectionLink = (label, count, action) => {
+        // ── Helpers ─────────────────────────────────────────────────
+        const attrRow = (label, value, action = null) => {
+            if (!value) return '';
+            const valueHtml = action
+                ? `<a href="#" onclick="event.preventDefault(); ${action}"
+                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
+                : `<span style="color:#222;">${value}</span>`;
+            return `
+                <div style="display:flex; align-items:flex-start; gap:10px; padding:7px 0;">
+                    <div style="width:110px; flex-shrink:0; font-size:0.78em; font-weight:600;
+                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:2px;">
+                        ${label}
+                    </div>
+                    <div style="min-width:0; font-size:0.95em; line-height:1.4;">
+                        ${valueHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        const relatedRow = (label, count, action) => {
             if (count <= 0) {
                 return `
-                    <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f0f0; color:#999;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;
+                                padding:9px 0; border-bottom:1px solid #f0f0f0; color:#999;">
                         <span>${label}</span>
                         <span>0</span>
                     </div>
                 `;
             }
             return `
-                <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f0f0;">
-                    <a href="#"
-                    onclick="event.preventDefault(); ${action}"
-                    style="color:#117a8b; font-weight:600; text-decoration:none;">
-                        ${label}
-                    </a>
-                    <span style="font-weight:600; color:#222;">${count}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            padding:9px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
+                     onclick="event.preventDefault(); ${action}">
+                    <span style="color:#117a8b; font-weight:600;">${label}</span>
+                    <span style="display:flex; align-items:center; gap:6px;">
+                        <strong style="color:#222;">${count}</strong>
+                        <span style="color:#9ca3af;">›</span>
+                    </span>
                 </div>
             `;
         };
 
-        // Build badges (Title Case)
+        // Badges
         const typeBadge = entityType
-            ? `<span style="
-                    display:inline-block;
-                    margin-left:8px;
-                    padding:2px 8px;
-                    font-size:0.72em;
-                    font-weight:600;
-                    letter-spacing:0.03em;
-                    color:#117a8b;
-                    background:rgba(23,162,184,0.12);
-                    border:1px solid rgba(23,162,184,0.25);
-                    border-radius:4px;
-                    vertical-align:middle;
-                    text-transform:capitalize;
-                ">${entityType}</span>`
+            ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
+                            color:#117a8b; background:rgba(23,162,184,0.12); border:1px solid rgba(23,162,184,0.25);
+                            border-radius:4px; text-transform:capitalize;">${entityType}</span>`
             : '';
 
         const statusBadge = status
-            ? `<span style="
-                    display:inline-block;
-                    margin-left:6px;
-                    padding:2px 8px;
-                    font-size:0.72em;
-                    font-weight:600;
-                    letter-spacing:0.03em;
-                    color:#2e7d32;
-                    background:rgba(46,125,50,0.10);
-                    border:1px solid rgba(46,125,50,0.22);
-                    border-radius:4px;
-                    vertical-align:middle;
-                    text-transform:capitalize;
-                ">${this.escapeHtml(status)}</span>`
+            ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
+                            color:#2e7d32; background:rgba(46,125,50,0.10); border:1px solid rgba(46,125,50,0.22);
+                            border-radius:4px; text-transform:capitalize;">${this.escapeHtml(status)}</span>`
             : '';
 
         dialog.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;
-                        gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
+            <!-- 1. HEADER -->
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
+                        padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
                 <div style="display:flex; align-items:center; gap:9px; min-width:0;">
                     <span style="font-size:1.25rem; flex-shrink:0;">🏢</span>
-                    <strong id="entityDetailTitle" style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    <strong id="entityDetailTitle"
+                            style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${name}
                     </strong>
                     ${typeBadge}
                     ${statusBadge}
                 </div>
-                <button type="button"
-                        onclick="SkyIndex.closeEntityModal();"
+                <button type="button" onclick="SkyIndex.closeEntityModal();"
                         aria-label="Close entity profile"
                         style="border:0; background:transparent; color:#666; cursor:pointer;
-                            font-size:1.5rem; line-height:1; flex-shrink:0;">
-                    ×
-                </button>
+                               font-size:1.5rem; line-height:1; flex-shrink:0;">×</button>
             </div>
 
-            <div style="padding:18px; max-height:70vh; overflow-y:auto;">
+            <div style="padding:16px 18px 18px; max-height:70vh; overflow-y:auto;">
 
-                <!-- Legal name (only if different) -->
-                ${legalName && legalName !== name ? `
-                    <div style="font-size:0.9em; color:#555; margin-bottom:16px;">
-                        Legal: ${legalName}
-                    </div>
-                ` : ''}
-
-                <!-- Contact info -->
-                ${(phone || email || website) ? `
-                    <div style="margin-bottom:18px; font-size:0.9em;">
-                        ${phone ? `
-                            <div style="margin-bottom:4px;">
-                                <a href="tel:${this.escapeHtml(phone)}" style="color:#555; text-decoration:none;">
-                                    📞 ${this.escapeHtml(phone)}
-                                </a>
-                            </div>
-                        ` : ''}
-                        ${email ? `
-                            <div style="margin-bottom:4px;">
-                                <a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">
-                                    ✉️ ${this.escapeHtml(email)}
-                                </a>
-                            </div>
-                        ` : ''}
-                        ${website ? `
-                            <div>
-                                <a href="${this.escapeHtml(website)}" target="_blank" rel="noopener"
-                                style="color:#117a8b; text-decoration:none;">
-                                    🌐 ${this.escapeHtml(website)}
-                                </a>
-                            </div>
-                        ` : ''}
-                    </div>
-                ` : ''}
-
-                <!-- Related Collections (the hub) -->
-                <div style="margin-bottom:8px;">
-                    <div style="font-size:0.78em; font-weight:600; letter-spacing:0.04em;
+                <!-- 2. IDENTITY -->
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
                                 color:#888; text-transform:uppercase; margin-bottom:6px;">
+                        Identity
+                    </div>
+                    ${attrRow('Legal Name', legalName && legalName !== name ? legalName : null)}
+                    ${attrRow('Phone', phone ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>` : null)}
+                    ${attrRow('Email', email ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>` : null)}
+                    ${attrRow('Website', website ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>` : null)}
+                </div>
+
+                <!-- 3. RELATED -->
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                                color:#888; text-transform:uppercase; margin-bottom:4px;">
                         Related
                     </div>
-
-                    ${collectionLink('Locations', locationCount,
+                    ${relatedRow('Locations', locationCount,
                         `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show locations for entity ${resolvedEntityId}');`)}
-
-                    ${collectionLink('Contacts', contactCount,
+                    ${relatedRow('Contacts', contactCount,
                         `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show contacts for entity ${resolvedEntityId}');`)}
-
-                    ${collectionLink('Orders', orderCount,
+                    ${relatedRow('Orders', orderCount,
                         `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show orders for entity ${resolvedEntityId}');`)}
-
-                    ${collectionLink('Applications', applicationCount,
+                    ${relatedRow('Applications', applicationCount,
                         `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show applications for entity ${resolvedEntityId}');`)}
-
-                    ${collectionLink('Notes', noteCount,
+                    ${relatedRow('Notes', noteCount,
                         `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show notes for entity ${resolvedEntityId}');`)}
-
-                    ${collectionLink('Tasks', taskCount,
+                    ${relatedRow('Tasks', taskCount,
                         `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show tasks for entity ${resolvedEntityId}');`)}
                 </div>
 
-                <!-- Created + Last Activity (single row) -->
-                <div style="margin-top:16px; padding-top:12px; border-top:1px solid #eee;
-                            font-size:0.85em; color:#666; display:flex; gap:24px;">
-                    <div>
-                        Created: <strong style="color:#333;">${createdDate}</strong>
+                <!-- 4. METADATA -->
+                <div>
+                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                                color:#888; text-transform:uppercase; margin-bottom:6px;">
+                        Metadata
                     </div>
-                    <div>
-                        Last Activity: <strong style="color:#333;">${lastActivity}</strong>
+                    <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
+                        <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
+                        <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
                     </div>
                 </div>
-            </div>
-
-            <div style="padding:12px 18px; border-top:1px solid #eee; background:#fafafa;
-                        display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button"
-                        onclick="SkyIndex.closeEntityModal();"
-                        style="padding:8px 16px; border:1px solid #ccc; border-radius:6px;
-                            background:#fff; color:#333; cursor:pointer; font-weight:500;">
-                    Close
-                </button>
             </div>
         `;
     },
@@ -6845,7 +6771,6 @@ window.SkyIndex = {
         const name = this.escapeHtml(
             location.locationName || location.name || 'Unnamed Location'
         );
-
         const isBilling = Number(location.locationIsBilling) === 1;
 
         // Counts
@@ -6855,11 +6780,9 @@ window.SkyIndex = {
         const noteCount        = Number(location.noteCount        ?? 0);
         const taskCount        = Number(location.taskCount        ?? 0);
 
-        // ── Address (Identity) ──────────────────────────────────────
+        // Address
         const line1 = this.escapeHtml(location.locationAddress || '');
-        const suite = location.locationAddressSuite
-            ? this.escapeHtml(location.locationAddressSuite)
-            : '';
+        const suite = location.locationAddressSuite ? this.escapeHtml(location.locationAddressSuite) : '';
         const city  = this.escapeHtml(location.locationCity || '');
         const state = this.escapeHtml(location.locationState || '');
         const zip   = this.escapeHtml(location.locationZip || '');
@@ -6871,7 +6794,10 @@ window.SkyIndex = {
             cityStateZip = [city, state, zip].filter(Boolean).join(' ');
         }
 
-        // ── Attributes ──────────────────────────────────────────────
+        const fullAddress = [line1 + (suite ? ' ' + suite : ''), cityStateZip]
+            .filter(Boolean).join('<br>');
+
+        // Attributes
         const jurisdiction = this.escapeHtml(location.locationJurisdiction || '');
         const county       = this.escapeHtml(location.locationCounty || '');
         const zone         = this.escapeHtml(location.locationZone || '');
@@ -6879,14 +6805,12 @@ window.SkyIndex = {
             location.locationParcelNumber || location.locationParcelNumberRaw || ''
         );
 
-        // Only include values that exist
         const jurisdictionParts = [];
         if (jurisdiction) jurisdictionParts.push(jurisdiction);
         if (county)       jurisdictionParts.push(county + ' County');
         if (zone)         jurisdictionParts.push(zone);
         const jurisdictionLine = jurisdictionParts.join(' • ') || null;
 
-        // Entity
         const entityName = this.escapeHtml(
             location.entity?.entityName || location.entityName || ''
         );
@@ -6894,136 +6818,122 @@ window.SkyIndex = {
             location.entity?.entityId || location.locationEntityId || 0
         );
 
+        const createdDate  = location.createdDate  ? this.escapeHtml(location.createdDate)  : '—';
+        const lastActivity = location.lastActivity ? this.escapeHtml(location.lastActivity) : createdDate;
+
         // ── Helpers ─────────────────────────────────────────────────
-        const collectionLink = (label, count, action) => {
+        const attrRow = (label, value, action = null) => {
+            if (!value) return '';
+            const valueHtml = action
+                ? `<a href="#" onclick="event.preventDefault(); ${action}"
+                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
+                : `<span style="color:#222;">${value}</span>`;
+            return `
+                <div style="display:flex; align-items:flex-start; gap:10px; padding:7px 0;">
+                    <div style="width:110px; flex-shrink:0; font-size:0.78em; font-weight:600;
+                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:2px;">
+                        ${label}
+                    </div>
+                    <div style="min-width:0; font-size:0.95em; line-height:1.4;">
+                        ${valueHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        const relatedRow = (label, count, action) => {
             if (count <= 0) {
                 return `
-                    <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f0f0; color:#999;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;
+                                padding:9px 0; border-bottom:1px solid #f0f0f0; color:#999;">
                         <span>${label}</span>
                         <span>0</span>
                     </div>
                 `;
             }
             return `
-                <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f0f0;">
-                    <a href="#"
-                    onclick="event.preventDefault(); ${action}"
-                    style="color:#117a8b; font-weight:600; text-decoration:none;">
-                        ${label}
-                    </a>
-                    <span style="font-weight:600; color:#222;">${count}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            padding:9px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
+                     onclick="event.preventDefault(); ${action}">
+                    <span style="color:#117a8b; font-weight:600;">${label}</span>
+                    <span style="display:flex; align-items:center; gap:6px;">
+                        <strong style="color:#222;">${count}</strong>
+                        <span style="color:#9ca3af;">›</span>
+                    </span>
                 </div>
             `;
         };
 
-        const attrRow = (icon, label, value, action = null) => {
-            if (!value) return '';
-            const valueHtml = action
-                ? `<a href="#" onclick="event.preventDefault(); ${action}"
-                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
-                : `<span style="color:#222;">${value}</span>`;
-
-            return `
-                <div style="display:flex; align-items:flex-start; gap:9px; padding:8px 0;">
-                    <span style="width:1.3rem; text-align:center; flex-shrink:0; font-size:1.05em; line-height:1.3;">${icon}</span>
-                    <div style="min-width:0;">
-                        <div style="font-size:0.72em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:1px;">
-                            ${label}
-                        </div>
-                        <div style="font-size:0.95em; color:#222; line-height:1.35;">
-                            ${valueHtml}
-                        </div>
-                    </div>
-                </div>
-            `;
-        };
-
-        // ── Render ──────────────────────────────────────────────────
         dialog.innerHTML = `
-            <!-- HEADER (Record Identity) -->
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;
-                        gap:12px; padding:16px 18px 12px; background:#fafafa;">
-                <div style="min-width:0; flex:1;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:1.3rem; flex-shrink:0; line-height:1;">📍</span>
-                        <strong id="locationDetailTitle"
-                                style="font-size:1.15em; font-weight:600; color:#222;
-                                    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            ${name}
-                        </strong>
-                        ${isBilling ? `
-                            <span style="padding:2px 7px; font-size:0.68em; font-weight:600;
-                                        color:#0f766e; background:rgba(13,148,136,0.12);
-                                        border:1px solid rgba(13,148,136,0.25); border-radius:4px;
-                                        flex-shrink:0;">
-                                Billing
-                            </span>
-                        ` : ''}
-                    </div>
-
-                    <!-- Address sits directly under the name (supporting, no label) -->
-                    ${(line1 || cityStateZip) ? `
-                        <div style="margin:6px 0 0 2.05rem; font-size:0.86em; font-weight:400;
-                                    color:#666; line-height:1.35;">
-                            ${line1 ? `<div>${line1}${suite ? ' ' + suite : ''}</div>` : ''}
-                            ${cityStateZip ? `<div>${cityStateZip}</div>` : ''}
-                        </div>
+            <!-- 1. HEADER -->
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
+                        padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
+                <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                    <span style="font-size:1.25rem; flex-shrink:0;">📍</span>
+                    <strong id="locationDetailTitle"
+                            style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${name}
+                    </strong>
+                    ${isBilling ? `
+                        <span style="padding:2px 8px; font-size:0.72em; font-weight:600;
+                                    color:#0f766e; background:rgba(13,148,136,0.12);
+                                    border:1px solid rgba(13,148,136,0.25); border-radius:4px;">
+                            Billing
+                        </span>
                     ` : ''}
                 </div>
-
-                <button type="button"
-                        onclick="SkyIndex.closeLocationModal();"
+                <button type="button" onclick="SkyIndex.closeLocationModal();"
                         aria-label="Close location profile"
                         style="border:0; background:transparent; color:#666; cursor:pointer;
-                            font-size:1.5rem; line-height:1; flex-shrink:0; margin-top:-2px;">
-                    ×
-                </button>
+                               font-size:1.5rem; line-height:1; flex-shrink:0;">×</button>
             </div>
 
-            <!-- Divider -->
-            <div style="border-top:1px solid #e8e8e8;"></div>
+            <div style="padding:16px 18px 18px; max-height:70vh; overflow-y:auto;">
 
-            <div style="padding:14px 18px 18px; max-height:65vh; overflow-y:auto;">
-
-                <!-- ATTRIBUTES -->
-                <div style="margin-bottom:18px;">
-                    ${attrRow('🏢', 'Entity', entityName,
+                <!-- 2. IDENTITY -->
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                                color:#888; text-transform:uppercase; margin-bottom:6px;">
+                        Identity
+                    </div>
+                    ${attrRow('Address', fullAddress || null)}
+                    ${attrRow('Entity', entityName,
                         entityId > 0
                             ? `SkyIndex.closeLocationModal(); SkyIndex.showEntityModal(${entityId});`
                             : null)}
-                    ${attrRow('📐', 'Parcel', parcel)}
-                    ${attrRow('🗺', 'Jurisdiction', jurisdictionLine)}
+                    ${attrRow('Parcel', parcel)}
+                    ${attrRow('Jurisdiction', jurisdictionLine)}
                 </div>
 
-                <!-- RELATED -->
-                <div>
+                <!-- 3. RELATED -->
+                <div style="margin-bottom:20px;">
                     <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
                                 color:#888; text-transform:uppercase; margin-bottom:4px;">
                         Related
                     </div>
-
-                    ${collectionLink('Contacts', contactCount,
+                    ${relatedRow('Contacts', contactCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show contacts for location ${resolvedId}');`)}
-                    ${collectionLink('Orders', orderCount,
+                    ${relatedRow('Orders', orderCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show orders for location ${resolvedId}');`)}
-                    ${collectionLink('Applications', applicationCount,
+                    ${relatedRow('Applications', applicationCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show applications for location ${resolvedId}');`)}
-                    ${collectionLink('Notes', noteCount,
+                    ${relatedRow('Notes', noteCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show notes for location ${resolvedId}');`)}
-                    ${collectionLink('Tasks', taskCount,
+                    ${relatedRow('Tasks', taskCount,
                         `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show tasks for location ${resolvedId}');`)}
                 </div>
-            </div>
 
-            <!-- FOOTER -->
-            <div style="padding:12px 18px; border-top:1px solid #eee; background:#fafafa;
-                        display:flex; justify-content:flex-end;">
-                <button type="button"
-                        onclick="SkyIndex.closeLocationModal();"
-                        style="padding:8px 16px; border:1px solid #ccc; border-radius:6px;
-                            background:#fff; color:#333; cursor:pointer; font-weight:500;">
-                    Close
-                </button>
+                <!-- 4. METADATA -->
+                <div>
+                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                                color:#888; text-transform:uppercase; margin-bottom:6px;">
+                        Metadata
+                    </div>
+                    <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
+                        <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
+                        <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
+                    </div>
+                </div>
             </div>
         `;
     },
