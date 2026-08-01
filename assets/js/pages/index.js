@@ -6159,7 +6159,7 @@ window.SkyIndex = {
                 </button>
             `;
 
-        // Identity content (single definition)
+        // Identity content (single definition only)
         const hasIdentity =
             (legalName && legalName !== (entity.entityName || entity.name)) ||
             phone || email || website;
@@ -6189,87 +6189,6 @@ window.SkyIndex = {
                 `
                 : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
 
-        const identityContent = isEditing
-            ? `
-                <form id="entityEditForm" onsubmit="return false;">
-                    ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
-                    ${editField('Legal Name', 'entityLegalName', legalName)}
-                    ${editField('Phone', 'primaryPhone', phone, 'tel')}
-                    ${editField('Email', 'email', email, 'email')}
-                    ${editField('Website', 'website', website, 'url')}
-                </form>
-            `
-            : hasIdentity
-                ? `
-                    ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
-                    ${attrRow('Phone', phone
-                        ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>`
-                        : null)}
-                    ${attrRow('Email', email
-                        ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>`
-                        : null)}
-                    ${attrRow('Website', website
-                        ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>`
-                        : null)}
-                `
-                : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
-
-        const statusBadge = status
-            ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
-                            color:#2e7d32; background:rgba(46,125,50,0.10); border:1px solid rgba(46,125,50,0.22);
-                            border-radius:4px; text-transform:capitalize;">${this.escapeHtml(status)}</span>`
-            : '';
-
-        // Header actions
-        const headerActions = isEditing
-            ? `
-                <button type="button" onclick="SkyIndex.cancelEntityEdit();"
-                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
-                               background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
-                    Cancel
-                </button>
-                <button type="button" onclick="SkyIndex.saveEntityEdit(${resolvedEntityId});"
-                        style="padding:5px 14px; border:1px solid #0d9488; border-radius:6px;
-                               background:#0d9488; color:#fff; font-size:0.85em; font-weight:550; cursor:pointer;">
-                    Save
-                </button>
-            `
-            : `
-                <button type="button" onclick="SkyIndex.editEntityModal();"
-                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
-                               background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
-                    Edit
-                </button>
-            `;
-
-        // Identity content
-        // Type + Status live only as badges in the Header (no repetition)
-        const identityContent = isEditing
-            ? `
-                <form id="entityEditForm" onsubmit="return false;">
-                    ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
-                    ${editField('Legal Name', 'entityLegalName', legalName)}
-                    ${editField('Phone', 'primaryPhone', phone, 'tel')}
-                    ${editField('Email', 'email', email, 'email')}
-                    ${editField('Website', 'website', website, 'url')}
-                </form>
-            `
-            : `
-                ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
-                ${attrRow('Phone', phone
-                    ? `<a href="tel:${this.escapeHtml(phone)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(phone)}</a>`
-                    : null)}
-                ${attrRow('Email', email
-                    ? `<a href="mailto:${this.escapeHtml(email)}" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(email)}</a>`
-                    : null)}
-                ${attrRow('Website', website
-                    ? `<a href="${this.escapeHtml(website)}" target="_blank" rel="noopener" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(website)}</a>`
-                    : null)}
-                ${!legalName && !phone && !email && !website
-                    ? `<div style="color:#999; font-size:0.9em; padding:4px 0;">No additional identity details.</div>`
-                    : ''}
-            `;
-
         // Related content
         const relatedContent = `
             ${relatedRow('Locations', locationCount,
@@ -6285,6 +6204,7 @@ window.SkyIndex = {
             ${relatedRow('Tasks', taskCount,
                 `SkyIndex.closeEntityModal(); SkyIndex.executeAICommand('show tasks for entity ${resolvedEntityId}');`)}
         `;
+
         // Metadata content
         const metadataContent = `
             <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
