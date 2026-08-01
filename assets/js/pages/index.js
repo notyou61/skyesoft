@@ -852,80 +852,580 @@ window.SkyIndex = {
         const normalizedTopic = (topic || '').toLowerCase().trim();
 
         // --------------------------------------------------
-        // Help content (easy to expand later)
+        // Help pages (each page is its own function)
         // --------------------------------------------------
-        const helpContent = {
-            '': {
-                title: 'Skyesoft Help',
-                body: `
-                    <p>Type a command or paste structured data.</p>
-                    <ul style="margin:12px 0 0 18px; line-height:1.6;">
-                        <li><strong>help contacts</strong> — Contact-related commands</li>
-                        <li><strong>help search</strong> — Searching contacts & entities</li>
-                        <li><strong>help locations</strong> — Location & property tools</li>
-                        <li><strong>help streetview</strong> — Google Street View</li>
-                        <li><strong>clear</strong> — Clear the command surface</li>
-                        <li><strong>logout</strong> — End your session</li>
-                    </ul>
-                    <p style="margin-top:16px; color:#666; font-size:0.9em;">
-                        You can also paste multi-line contact signatures or location blocks directly.
-                    </p>
-                `
+        const helpPages = {
+
+            home() {
+                return {
+                    title: 'Skyesoft Help',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <p style="margin:0 0 18px; color:#555;">
+                                Choose a topic below, or type <code>help &lt;topic&gt;</code> at the command surface.
+                            </p>
+
+                            <div style="margin-bottom:20px;">
+                                <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">Presentation</div>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('orders'); return false;" style="color:#1a73e8; text-decoration:none;">• Orders</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('applications'); return false;" style="color:#1a73e8; text-decoration:none;">• Applications</a></li>
+                                </ul>
+                            </div>
+
+                            <div style="margin-bottom:20px;">
+                                <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">Search</div>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
+                                </ul>
+                            </div>
+
+                            <div style="margin-bottom:20px;">
+                                <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">Data Entry</div>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('contactproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Contact Proposals</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
+                                </ul>
+                            </div>
+
+                            <div style="margin-bottom:8px;">
+                                <div style="font-weight:600; color:#222; margin-bottom:6px; letter-spacing:0.02em;">System</div>
+                                <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                    <li><a href="#" onclick="SkyIndex.showHelp('keyboard'); return false;" style="color:#1a73e8; text-decoration:none;">• Keyboard</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('commands'); return false;" style="color:#1a73e8; text-decoration:none;">• Commands</a></li>
+                                    <li><a href="#" onclick="SkyIndex.showHelp('about'); return false;" style="color:#1a73e8; text-decoration:none;">• About Skyesoft</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    `
+                };
             },
-            contacts: {
-                title: 'Help — Contacts',
-                body: `
-                    <p>Paste a contact signature (name, title, company, phone, email, address) to create a new contact proposal.</p>
-                    <p style="margin-top:12px;"><strong>Example:</strong></p>
-                    <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto;">
-    John Smith
-    Operations Manager
-    Acme Corporation
-    123 Main Street
-    Phoenix, AZ 85001
-    480-555-1212
-    john.smith@acme.com</pre>
-                `
+
+            contacts() {
+                return {
+                    title: 'Contacts',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Contacts</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Create, search, and manage contacts. Paste a structured signature to generate a Contact Proposal.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+John Smith
+Operations Manager
+Acme Corporation
+123 Main Street
+Phoenix, AZ 85001
+480-555-1212
+john.smith@acme.com</pre>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Phone numbers and email addresses are detected automatically.</li>
+                                <li>Titles, company names, and addresses are parsed when present.</li>
+                                <li>You can also type <code>help contactproposals</code> for the full proposal workflow.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('contactproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Contact Proposals</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
             },
-            search: {
-                title: 'Help — Search',
-                body: `
-                    <p>Search commands (coming soon in full form):</p>
-                    <ul style="margin:12px 0 0 18px; line-height:1.6;">
-                        <li><code>show contacts</code></li>
-                        <li><code>show contacts page 2</code></li>
-                        <li><code>find contact John Smith</code></li>
-                        <li><code>search entities Acme</code></li>
-                    </ul>
-                `
+
+            entities() {
+                return {
+                    title: 'Entities',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Entities</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Entities represent companies, organizations, or named groups that contacts and locations belong to.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <p style="margin:0 0 8px;">Search or reference an entity by name:</p>
+                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+search entities Acme
+show entities</pre>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Entities are created or matched automatically during contact and location proposal processing.</li>
+                                <li>Use Search to locate existing entities before creating new ones.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
             },
-            locations: {
-                title: 'Help — Locations',
-                body: `
-                    <p>Paste a multi-line location block to create a Location Proposal.</p>
-                    <p style="margin-top:12px;"><strong>Example:</strong></p>
-                    <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto;">
-    Acme Corporation
-    Main Office
-    123 Main Street
-    Phoenix, AZ 85001</pre>
-                `
+
+            locations() {
+                return {
+                    title: 'Locations',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Locations</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Manage physical addresses and properties. Paste a multi-line location block to create a Location Proposal.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+Acme Corporation
+Main Office
+123 Main Street
+Phoenix, AZ 85001</pre>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Addresses are cleaned and normalized before proposal creation.</li>
+                                <li>Parcel and jurisdiction data are resolved when authoritative sources are available.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
             },
-            streetview: {
-                title: 'Help — Street View',
-                body: `
-                    <p>Type:</p>
-                    <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em;">
-    street view 123 Main St, Phoenix, AZ 85001</pre>
-                    <p style="margin-top:12px;">Skyesoft will clean the address and open the Street View workspace.</p>
-                `
+
+            orders() {
+                return {
+                    title: 'Orders',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Orders</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Track and manage sign orders, installations, and related work items.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <p style="margin:0 0 18px; color:#666;">
+                                Order-specific commands and views are under active development.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Orders link contacts, entities, and locations into a single workflow.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('applications'); return false;" style="color:#1a73e8; text-decoration:none;">• Applications</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
+            },
+
+            applications() {
+                return {
+                    title: 'Applications',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Presentation › Applications</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Manage permit applications, ordinance reviews, and jurisdiction-specific requirements.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <p style="margin:0 0 18px; color:#666;">
+                                Application workflows and status views are expanding.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Applications are tied to locations and local sign ordinances.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('orders'); return false;" style="color:#1a73e8; text-decoration:none;">• Orders</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
+            },
+
+            search() {
+                return {
+                    title: 'Search',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Search › Search</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Locate contacts, entities, and locations by name, address, or other attributes.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+show contacts
+show contacts page 2
+find contact John Smith
+search entities Acme</pre>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Search commands continue to expand. Partial matches and paging are supported where available.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('entities'); return false;" style="color:#1a73e8; text-decoration:none;">• Entities</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
+            },
+
+            streetview() {
+                return {
+                    title: 'Street View',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Search › Street View</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Open Google Street View for a cleaned address directly from the command surface.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+street view 123 Main St, Phoenix, AZ 85001</pre>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Skyesoft cleans and normalizes the address before opening the Street View workspace.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
+            },
+
+            parcel() {
+                return {
+                    title: 'Parcel Search',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Search › Parcel Search</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Resolve parcel information for an address when authoritative data is available (e.g. Maricopa County).
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <p style="margin:0 0 18px; color:#666;">
+                                Parcel lookup is typically performed automatically during location proposal processing.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Authoritative parcel/jurisdiction resolution is enforced only where data sources exist. Elsewhere the fields remain null rather than guessed.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
+            },
+
+            contactproposals() {
+                return {
+                    title: 'Contact Proposals',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Data Entry › Contact Proposals</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Paste a contact signature to create a structured Contact Proposal for review and acceptance.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+John Smith
+Operations Manager
+Acme Corporation
+123 Main Street
+Phoenix, AZ 85001
+480-555-1212
+john.smith@acme.com</pre>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>The system normalizes, infers missing fields, validates, and checks for duplicates before presenting the proposal.</li>
+                                <li>Proposal classes (PC-0 through PC-6) classify the result for downstream handling.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('contacts'); return false;" style="color:#1a73e8; text-decoration:none;">• Contacts</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('locationproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Location Proposals</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
+            },
+
+            locationproposals() {
+                return {
+                    title: 'Location Proposals',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › Data Entry › Location Proposals</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Paste a multi-line location block to create a Location Proposal.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+Acme Corporation
+Main Office
+123 Main Street
+Phoenix, AZ 85001</pre>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Addresses are cleaned; parcel and jurisdiction data are attached when authoritative sources are available.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('contactproposals'); return false;" style="color:#1a73e8; text-decoration:none;">• Contact Proposals</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
+            },
+
+            keyboard() {
+                return {
+                    title: 'Keyboard',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › System › Keyboard</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Keyboard shortcuts and navigation aids for the Skyesoft command surface and dialogs.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li><code>Escape</code> — Close the current help dialog (or other modal).</li>
+                                <li>Focus remains on the command surface after most actions so you can keep typing.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>Additional shortcuts will be documented here as they are added.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('commands'); return false;" style="color:#1a73e8; text-decoration:none;">• Commands</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('about'); return false;" style="color:#1a73e8; text-decoration:none;">• About Skyesoft</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
+            },
+
+            commands() {
+                return {
+                    title: 'Commands',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › System › Commands</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Core commands available at the Skyesoft command surface.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li><code>help</code> — Open this documentation</li>
+                                <li><code>help contacts</code> — Jump to a specific topic</li>
+                                <li><code>clear</code> — Clear the command surface</li>
+                                <li><code>logout</code> — End your session</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>You can also paste multi-line contact signatures or location blocks directly.</li>
+                                <li>Type <code>help &lt;topic&gt;</code> for any topic listed on the home page.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp('keyboard'); return false;" style="color:#1a73e8; text-decoration:none;">• Keyboard</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp(''); return false;" style="color:#1a73e8; text-decoration:none;">• Help Home</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
+            },
+
+            about() {
+                return {
+                    title: 'About Skyesoft',
+                    body: `
+                        <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                            <div style="margin-bottom:18px;">
+                                <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                   style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                <span style="color:#999; margin:0 6px;">|</span>
+                                <span style="color:#666; font-size:0.9em;">Help › System › About Skyesoft</span>
+                            </div>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                            <p style="margin:0 0 18px;">
+                                Skyesoft is the internal platform for contact, location, entity, order, and application management, with integrated permit and ordinance tools.
+                            </p>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                            <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                <li>This Help system is the living documentation for commands, workflows, and proposal classes.</li>
+                                <li>More topics (AI capabilities, search syntax, full user manual sections) will be added over time using the same framework.</li>
+                            </ul>
+
+                            <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                            <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                <li><a href="#" onclick="SkyIndex.showHelp(''); return false;" style="color:#1a73e8; text-decoration:none;">• Help Home</a></li>
+                                <li><a href="#" onclick="SkyIndex.showHelp('commands'); return false;" style="color:#1a73e8; text-decoration:none;">• Commands</a></li>
+                            </ul>
+                        </div>
+                    `
+                };
             }
+
         };
 
-        const content = helpContent[normalizedTopic] || helpContent[''];
+        // Resolve page (fallback to home)
+        const pageFn = helpPages[normalizedTopic] || helpPages.home;
+        const content = pageFn();
 
         // --------------------------------------------------
-        // Build modal
+        // Build modal (creation + cleanup unchanged)
         // --------------------------------------------------
         const modal = document.createElement('div');
         modal.id = 'skyHelpModal';
