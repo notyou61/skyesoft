@@ -1880,6 +1880,7 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
                 e.entityIsVerified,
                 e.entityAccNumber,
                 e.entityDate,
+                e.entityUpdatedUnix,
                 e.entityIsNotValid
             FROM tblEntities e
             WHERE e.entityId = :entityId
@@ -1910,42 +1911,36 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
             }
         };
 
-        // Locations linked to this entity
         $entity['locationCount'] = $safeCount(
             $db,
             "SELECT COUNT(*) FROM tblLocations WHERE locationEntityId = :entityId",
             $entityId
         );
 
-        // Contacts linked to this entity
         $entity['contactCount'] = $safeCount(
             $db,
             "SELECT COUNT(*) FROM tblContacts WHERE contactEntityId = :entityId",
             $entityId
         );
 
-        // Orders
         $entity['orderCount'] = $safeCount(
             $db,
             "SELECT COUNT(*) FROM tblOrders WHERE orderEntityId = :entityId",
             $entityId
         );
 
-        // Applications
         $entity['applicationCount'] = $safeCount(
             $db,
             "SELECT COUNT(*) FROM tblApplications WHERE applicationEntityId = :entityId",
             $entityId
         );
 
-        // Notes
         $entity['noteCount'] = $safeCount(
             $db,
             "SELECT COUNT(*) FROM tblNotes WHERE noteEntityId = :entityId",
             $entityId
         );
 
-        // Tasks
         $entity['taskCount'] = $safeCount(
             $db,
             "SELECT COUNT(*) FROM tblTasks WHERE taskEntityId = :entityId",
@@ -1954,7 +1949,6 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
 
         // --------------------------------------------------
         // Billing Location (canonical address)
-        // Exactly one per Entity after the migration
         // --------------------------------------------------
         try {
             $locStmt = $db->prepare("
@@ -1988,30 +1982,44 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
         }
 
         // --------------------------------------------------
-        // Last activity (best-effort)
+        // Last activity
+        // Priority:
+        //   1. entityUpdatedUnix (authoritative write stamp)
+        //   2. Latest matching action in tblActions
+        //   3. Fall back to created date (applied below)
         // --------------------------------------------------
-        try {
-            $act = $db->prepare("
-                SELECT MAX(actionUnix) AS lastUnix
-                FROM tblActions
-                WHERE actionPayloadData LIKE :entityNeedle
-                   OR actionResponseData LIKE :entityNeedle
-            ");
-            $needle = '%"entityId":' . $entityId . '%';
-            $act->execute(['entityNeedle' => $needle]);
-            $lastUnix = $act->fetchColumn();
+        $entity['lastActivity'] = null;
 
-            if ($lastUnix && is_numeric($lastUnix)) {
-                $entity['lastActivity'] = date('M j, Y', (int)$lastUnix);
-            } else {
-                $entity['lastActivity'] = null;
+        if (!empty($entity['entityUpdatedUnix']) && is_numeric($entity['entityUpdatedUnix'])) {
+            $entity['lastActivity'] = date('M j, Y', (int)$entity['entityUpdatedUnix']);
+        }
+
+        if (empty($entity['lastActivity'])) {
+            try {
+                $act = $db->prepare("
+                    SELECT MAX(actionUnix) AS lastUnix
+                    FROM tblActions
+                    WHERE actionPayloadData  LIKE :needle1
+                       OR actionPayloadData  LIKE :needle2
+                       OR actionResponseData LIKE :needle1
+                       OR actionResponseData LIKE :needle2
+                ");
+                $act->execute([
+                    'needle1' => '%"entityId":' . $entityId . '%',
+                    'needle2' => '%"targetEntityId":' . $entityId . '%'
+                ]);
+                $lastUnix = $act->fetchColumn();
+
+                if ($lastUnix && is_numeric($lastUnix)) {
+                    $entity['lastActivity'] = date('M j, Y', (int)$lastUnix);
+                }
+            } catch (Throwable $e) {
+                // keep null
             }
-        } catch (Throwable $e) {
-            $entity['lastActivity'] = null;
         }
 
         // --------------------------------------------------
-        // Created date + Last Activity fallback
+        // Created date
         // --------------------------------------------------
         $createdRaw = $entity['entityDate'] ?? null;
 
@@ -2026,16 +2034,10 @@ function loadEntityDetail(?PDO $db, int $entityId): ?array
             $entity['createdDate'] = null;
         }
 
+        // Final fallback: use creation date when last activity is still empty
         if (empty($entity['lastActivity']) && !empty($entity['createdDate'])) {
             $entity['lastActivity'] = $entity['createdDate'];
         }
-
-        // --------------------------------------------------
-        // Optional contact fields
-        // --------------------------------------------------
-        $entity['primaryPhone'] = $entity['primaryPhone'] ?? null;
-        $entity['email']        = $entity['email']        ?? null;
-        $entity['website']      = $entity['website']      ?? null;
 
         return $entity;
 
