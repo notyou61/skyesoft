@@ -7526,9 +7526,10 @@ window.SkyIndex = {
     // #region 📍 Locations Workspace Page (collection)
 
     /**
-     * Typed list: locations for one entity (askOpenAI.php?type=locationsByEntity)
+     * Typed list: all locations for one entity (client paginates).
+     * askOpenAI.php?type=locationsByEntity
      */
-    async getLocationsForEntity(entityId, page = 1) {
+    async getLocationsForEntity(entityId, pageSize = 200) {
         let actionLocation = this.lastLocation || { latitude: null, longitude: null };
         if (actionLocation.latitude === null || actionLocation.longitude === null) {
             actionLocation = await this.getLocationSafe();
@@ -7541,8 +7542,8 @@ window.SkyIndex = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 entityId: Number(entityId),
-                page: Math.max(1, Number(page) || 1),
-                pageSize: 5,
+                page: 1,
+                pageSize: Math.max(1, Math.min(500, Number(pageSize) || 200)),
                 latitude:  actionLocation?.latitude  ?? null,
                 longitude: actionLocation?.longitude ?? null
             })
@@ -7564,19 +7565,34 @@ window.SkyIndex = {
             throw new Error('Entity not found.');
         }
 
+        const pageSize = 5;
         const listPage = Math.max(1, Number(page.state?.page) || 1);
-        const data = await this.getLocationsForEntity(entityId, listPage);
 
-        if (!data?.success || !data?.list || !Array.isArray(data.list.rows)) {
-            throw new Error(data?.error || 'Unable to load locations.');
+        // Cache: reuse rows already on this stack entry
+        let allRows = Array.isArray(page.state?.rows) ? page.state.rows : null;
+        let total   = Number(page.state?.total);
+
+        if (!allRows) {
+            const data = await this.getLocationsForEntity(entityId, 200);
+            if (!data?.success || !data?.list || !Array.isArray(data.list.rows)) {
+                throw new Error(data?.error || 'Unable to load locations.');
+            }
+            allRows = data.list.rows;
+            total   = Number(data.list.total) || allRows.length;
+
+            // Persist on stack so Next/Previous do not refetch
+            page.state = {
+                ...(page.state || {}),
+                rows: allRows,
+                total,
+                page: listPage
+            };
         }
 
-        const list       = data.list;
-        const rows       = list.rows || [];
-        const pageNum    = Math.max(1, Number(list.page) || listPage);
-        const totalPages = Math.max(1, Number(list.totalPages) || 1);
-        const total      = Number(list.total) || rows.length;
-        const pageSize   = Number(list.pageSize) || 5;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        const pageNum    = Math.min(listPage, totalPages);
+        const start      = (pageNum - 1) * pageSize;
+        const rows       = allRows.slice(start, start + pageSize);
 
         const rowsHtml = rows.map((r, i) => {
             const locationId = Number(r.locationId || r.id || 0);
@@ -7586,7 +7602,7 @@ window.SkyIndex = {
             const state      = this.escapeHtml(r.locationState || r.state || '');
             const zip        = this.escapeHtml(r.locationZip || r.zip || '');
             const isBilling  = Number(r.locationIsBilling) === 1;
-            const rowNumber  = i + 1 + ((pageNum - 1) * pageSize);
+            const rowNumber  = start + i + 1;
 
             let cityStateZip = '';
             if (city && state) {
@@ -7620,13 +7636,13 @@ window.SkyIndex = {
         const hasPrevious = pageNum > 1;
         const hasNext     = pageNum < totalPages;
 
-        // Safe inside onclick="... parentTitle: '...' ..."
         const parentTitleEsc = String(page.parentTitle || 'Entity')
             .replace(/\\/g, '\\\\')
             .replace(/'/g, "\\'");
 
+        // Keep rows + total on the stack; only change page index
         const goPage = (p) =>
-            `SkyWorkspace.replace({ pageType: 'locations', objectType: 'location', objectId: ${entityId}, title: 'Locations', parentTitle: '${parentTitleEsc}', state: { page: ${p} } })`;
+            `SkyWorkspace.replace({ pageType: 'locations', objectType: 'location', objectId: ${entityId}, title: 'Locations', parentTitle: '${parentTitleEsc}', state: { page: ${p}, rows: SkyWorkspace.stack[SkyWorkspace.stack.length-1].state.rows, total: ${total} } })`;
 
         const paginationHtml = `
             <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
