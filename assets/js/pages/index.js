@@ -7619,24 +7619,28 @@ window.SkyIndex = {
 
         const hasPrevious = pageNum > 1;
         const hasNext     = pageNum < totalPages;
-        const parentTitleJson = JSON.stringify(page.parentTitle || 'Entity');
+
+        // Safe inside onclick="... parentTitle: '...' ..."
+        const parentTitleEsc = String(page.parentTitle || 'Entity')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'");
 
         const goPage = (p) =>
-            `SkyWorkspace.replace({ pageType: 'locations', objectType: 'location', objectId: ${entityId}, title: 'Locations', parentTitle: ${parentTitleJson}, state: { page: ${p} } })`;
+            `SkyWorkspace.replace({ pageType: 'locations', objectType: 'location', objectId: ${entityId}, title: 'Locations', parentTitle: '${parentTitleEsc}', state: { page: ${p} } })`;
 
         const paginationHtml = `
             <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
                         margin-top:12px; padding-top:10px; border-top:1px solid #eee; font-size:0.85em;">
                 <div>
                     ${hasPrevious
-                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum - 1)}"
+                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum - 1)}; return false;"
                                 style="color:#117a8b; font-weight:600; text-decoration:none;">← Previous</a>`
                         : `<span style="color:#aaa;">← Previous</span>`}
                 </div>
                 <div style="color:#666;">${pageNum} of ${totalPages}</div>
                 <div>
                     ${hasNext
-                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum + 1)}"
+                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum + 1)}; return false;"
                                 style="color:#117a8b; font-weight:600; text-decoration:none;">Next →</a>`
                         : `<span style="color:#aaa;">Next →</span>`}
                 </div>
