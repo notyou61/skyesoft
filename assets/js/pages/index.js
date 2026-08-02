@@ -21,6 +21,7 @@
 // #region 📦 Canonical Domain Surface Dependencies
 import { adaptStreamedDomain } from '/skyesoft/assets/js/domainAdapter.js';
 import { renderOutline } from '/skyesoft/assets/js/outlineRenderer.js';
+import '/skyesoft/assets/js/pages/workspace.js';   // defines window.SkyWorkspace
 
 // Safe Base64 that handles Unicode (em-dashes, smart quotes, etc.)
 function safeBase64Encode(str) {
