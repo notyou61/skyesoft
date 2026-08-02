@@ -5811,7 +5811,14 @@ window.SkyIndex = {
 
         const addressHtml = this.renderBillingAddress(entity.billingLocation);
 
-        const relRow = (icon, label, count, command) => {
+        const parentTitleEsc = String(entity.entityName || entity.name || 'Entity')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'");
+
+        const openLocations = `SkyWorkspace.open({ pageType: 'entity', objectType: 'entity', objectId: ${entityId}, title: '${parentTitleEsc}' }); SkyWorkspace.push({ pageType: 'locations', objectType: 'location', objectId: ${entityId}, title: 'Locations', parentTitle: '${parentTitleEsc}', state: { page: 1 } });`;
+        const openContacts  = `SkyWorkspace.open({ pageType: 'entity', objectType: 'entity', objectId: ${entityId}, title: '${parentTitleEsc}' }); SkyWorkspace.push({ pageType: 'contacts', objectType: 'contact', objectId: ${entityId}, title: 'Contacts', parentTitle: '${parentTitleEsc}', state: { page: 1 } });`;
+
+        const relRow = (icon, label, count, actionJs) => {
             const isZero = count <= 0;
             const style = isZero
                 ? 'display:flex; justify-content:space-between; align-items:center; padding:5px 0; color:#999; border-bottom:1px solid #f3f3f3;'
@@ -5819,7 +5826,7 @@ window.SkyIndex = {
 
             return `
                 <div style="${style}"
-                    ${!isZero ? `onclick="event.preventDefault(); SkyIndex.executeAICommand('${command}')"` : ''}>
+                    ${!isZero ? `onclick="event.preventDefault(); ${actionJs}"` : ''}>
                     <span style="display:flex; align-items:center; gap:7px;">
                         <span style="width:1.1rem; text-align:center; font-size:0.9em;">${icon}</span>
                         <span style="font-weight:500; font-size:0.9em; color:${isZero ? '#999' : '#374151'};">${label}</span>
@@ -5874,12 +5881,12 @@ window.SkyIndex = {
 
                 <!-- Relationships -->
                 <div>
-                    ${relRow('📍', 'Locations',     locationCount,    `show locations for entity ${entityId}`)}
-                    ${relRow('👤', 'Contacts',      contactCount,     `show contacts for entity ${entityId}`)}
-                    ${relRow('📦', 'Orders',        orderCount,       `show orders for entity ${entityId}`)}
-                    ${relRow('📄', 'Applications',  applicationCount, `show applications for entity ${entityId}`)}
-                    ${relRow('📝', 'Notes',         noteCount,        `show notes for entity ${entityId}`)}
-                    ${relRow('✔',  'Tasks',         taskCount,        `show tasks for entity ${entityId}`)}
+                    ${relRow('📍', 'Locations', locationCount, openLocations)}
+                    ${relRow('👤', 'Contacts',  contactCount,  openContacts)}
+                    ${relRow('📦', 'Orders', orderCount, `SkyIndex.executeAICommand('show orders for entity ${entityId}')`)}
+                    ${relRow('📄', 'Applications', applicationCount, `SkyIndex.executeAICommand('show applications for entity ${entityId}')`)}
+                    ${relRow('📝', 'Notes', noteCount, `SkyIndex.executeAICommand('show notes for entity ${entityId}')`)}
+                    ${relRow('✔', 'Tasks', taskCount, `SkyIndex.executeAICommand('show tasks for entity ${entityId}')`)}
                 </div>
 
                 <!-- Actions -->
@@ -5891,14 +5898,14 @@ window.SkyIndex = {
                     </button>
                     ${locationCount > 0 ? `
                         <button type="button"
-                                onclick="SkyIndex.executeAICommand('show locations for entity ${entityId}')"
+                                onclick="${openLocations}"
                                 style="padding:5px 11px; border-radius:5px; border:1px solid #d1d5db; background:#fff; color:#374151; font-size:0.78rem; font-weight:550; cursor:pointer;">
                             View Locations
                         </button>
                     ` : ''}
                     ${contactCount > 0 ? `
                         <button type="button"
-                                onclick="SkyIndex.executeAICommand('show contacts for entity ${entityId}')"
+                                onclick="${openContacts}"
                                 style="padding:5px 11px; border-radius:5px; border:1px solid #d1d5db; background:#fff; color:#374151; font-size:0.78rem; font-weight:550; cursor:pointer;">
                             View Contacts
                         </button>
