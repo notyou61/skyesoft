@@ -7539,14 +7539,14 @@ window.SkyIndex = {
         }
 
         const activitySessionId = this.getActivitySessionId();
-        const query = `show locations for entity ${Number(entityId)} page ${Math.max(1, Number(page) || 1)}`;
+        const userQuery = `show locations for entity ${Number(entityId)} page ${Math.max(1, Number(page) || 1)}`;
 
         const res = await fetch('/skyesoft/api/askOpenAI.php', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                query,
+                userQuery,                    // ← required key
                 activitySessionId,
                 latitude:  actionLocation?.latitude  ?? null,
                 longitude: actionLocation?.longitude ?? null
