@@ -5920,85 +5920,19 @@ window.SkyIndex = {
             return;
         }
 
-        // Close any existing entity modal
-        this.closeEntityModal();
-
-        // Loading modal (same chrome as Contact Profile)
-        const modal = document.createElement('div');
-        modal.id = 'entityDetailModal';
-        modal.className = 'modal-backdrop';
-        modal.style.cssText = `
-            position:fixed;
-            inset:0;
-            z-index:10000;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-            background:rgba(0,0,0,0.58);
-        `;
-
-        modal.innerHTML = `
-            <div role="dialog"
-                aria-modal="true"
-                aria-labelledby="entityDetailTitle"
-                style="width:100%; max-width:680px; background:#fff; border-radius:8px;
-                        box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;">
-                <div style="display:flex; justify-content:space-between; align-items:center;
-                            gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
-                    <div style="display:flex; align-items:center; gap:9px;">
-                        <span style="font-size:1.25rem;">🏢</span>
-                        <strong id="entityDetailTitle" style="color:#222;">
-                            Entity Profile
-                        </strong>
-                    </div>
-                    <button type="button"
-                            onclick="SkyIndex.closeEntityModal();"
-                            aria-label="Close entity profile"
-                            style="border:0; background:transparent; color:#666; cursor:pointer;
-                                font-size:1.5rem; line-height:1;">
-                        ×
-                    </button>
-                </div>
-                <div style="padding:28px 18px; text-align:center; color:#666;">
-                    Loading entity details...
-                </div>
-            </div>
-        `;
-
-        modal.addEventListener('click', event => {
-            if (event.target === modal) {
-                this.closeEntityModal();
-            }
-        });
-
-        document.body.appendChild(modal);
-        document.addEventListener('keydown', this.handleEntityModalKeydown);
-
-        try {
-            const data = await this.getEntity(resolvedEntityId);
-
-            if (!data.success || !data.entity) {
-                throw new Error(data.error || 'Entity not found.');
-            }
-
-            this.renderEntityModal(data.entity, resolvedEntityId);
-
-        } catch (error) {
-            console.error('[SkyIndex] showEntityModal failed:', error);
-
-            const modalEl = document.getElementById('entityDetailModal');
-            if (modalEl) {
-                const body = modalEl.querySelector('[role="dialog"] > div:last-child');
-                if (body) {
-                    body.innerHTML = `
-                        <div style="padding:24px 18px; color:#c0392b; text-align:center;">
-                            ${this.escapeHtml(error.message || 'Failed to load entity.')}
-                        </div>
-                    `;
-                }
-            }
+        if (!window.SkyWorkspace) {
+            this.appendSystemLine('Workspace unavailable.');
+            return;
         }
+
+        // Optional: close legacy entity modal if it is still open
+        this.closeEntityModal?.();
+
+        SkyWorkspace.open({
+            pageType:   'entity',
+            objectType: 'entity',
+            objectId:   resolvedEntityId
+        });
     },
 
     closeEntityModal() {
@@ -7458,10 +7392,14 @@ window.SkyIndex = {
                 `
                 : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
 
-        // Related — still uses old commands for now (Step 4 will switch to push)
+        // Related — Locations navigates via Workspace; others stay on commands until their pages exist
+        const parentTitle = (entity.entityName || entity.name || 'Entity')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'");
+
         const relatedContent = `
             ${relatedRow('Locations', locationCount,
-                `SkyIndex.executeAICommand('show locations for entity ${entityId}');`)}
+                `SkyWorkspace.push({ pageType: 'locations', objectType: 'location', objectId: ${entityId}, title: 'Locations', parentTitle: '${parentTitle}', state: { page: 1 } })`)}
             ${relatedRow('Contacts', contactCount,
                 `SkyIndex.executeAICommand('show contacts for entity ${entityId}');`)}
             ${relatedRow('Orders', orderCount,
@@ -7583,6 +7521,160 @@ window.SkyIndex = {
             this.appendSystemLine(`❌ Failed to update entity: ${err.message || 'Unknown error'}`);
         }
     },
+    // #endregion
+
+    // #region 📍 Locations Workspace Page (collection)
+
+    /**
+     * Load a page of locations for a parent entity (via existing NL list path).
+     * @param {number} entityId
+     * @param {number} page
+     * @returns {Promise<Object>} location_list payload
+     */
+    async getLocationsForEntity(entityId, page = 1) {
+        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
+        if (actionLocation.latitude === null || actionLocation.longitude === null) {
+            actionLocation = await this.getLocationSafe();
+            if (actionLocation.latitude !== null) this.lastLocation = actionLocation;
+        }
+
+        const activitySessionId = this.getActivitySessionId();
+        const query = `show locations for entity ${Number(entityId)} page ${Math.max(1, Number(page) || 1)}`;
+
+        const res = await fetch('/skyesoft/api/askOpenAI.php', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query,
+                activitySessionId,
+                latitude:  actionLocation?.latitude  ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    },
+
+    /**
+     * Workspace collection page: Locations for an Entity.
+     * page.objectId = parent entityId
+     * page.parentTitle = entity name for ← back
+     * page.state.page = current list page
+     */
+    async renderLocationsPage(page, ctx) {
+        const entityId = Number(page.objectId);
+        if (!Number.isInteger(entityId) || entityId <= 0) {
+            throw new Error('Entity not found.');
+        }
+
+        const listPage = Math.max(1, Number(page.state?.page) || 1);
+        const data = await this.getLocationsForEntity(entityId, listPage);
+
+        if (!data?.success || !data?.list || !Array.isArray(data.list.rows)) {
+            throw new Error(data?.error || 'Unable to load locations.');
+        }
+
+        const list       = data.list;
+        const rows       = list.rows || [];
+        const pageNum    = Math.max(1, Number(list.page) || listPage);
+        const totalPages = Math.max(1, Number(list.totalPages) || 1);
+        const total      = Number(list.total) || rows.length;
+
+        const rowsHtml = rows.map((r, i) => {
+            const locationId = Number(r.locationId || r.id || 0);
+            const locName    = this.escapeHtml(r.locationName || r.name || 'Unnamed Location');
+            const address    = this.escapeHtml(r.locationAddress || r.address || '');
+            const city       = this.escapeHtml(r.locationCity || r.city || '');
+            const state      = this.escapeHtml(r.locationState || r.state || '');
+            const zip        = this.escapeHtml(r.locationZip || r.zip || '');
+            const isBilling  = Number(r.locationIsBilling) === 1;
+            const rowNumber  = i + 1 + ((pageNum - 1) * (Number(list.pageSize) || 5));
+
+            let cityStateZip = '';
+            if (city && state) {
+                cityStateZip = `${city}, ${state}${zip ? ' ' + zip : ''}`;
+            } else {
+                cityStateZip = [city, state, zip].filter(Boolean).join(' ');
+            }
+
+            // Future Step 7: push location profile
+            const click = locationId > 0
+                ? `onclick="event.preventDefault(); /* location profile later */"`
+                : '';
+
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+                            padding:10px 0; border-bottom:1px solid #f0f0f0; ${locationId > 0 ? 'cursor:pointer;' : ''}"
+                    ${click}>
+                    <div style="min-width:0; flex:1;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="color:#222; font-weight:600;">
+                                ${rowNumber}. ${locName}
+                            </span>
+                            ${isBilling ? `
+                                <span style="background:rgba(13,148,136,0.12); color:#0f766e;
+                                            border:1px solid rgba(13,148,136,0.25); padding:1px 7px;
+                                            border-radius:4px; font-size:0.68em; font-weight:600;">
+                                    Billing
+                                </span>
+                            ` : ''}
+                        </div>
+                        ${address ? `<div style="font-size:0.85em; color:#555; margin-top:3px;">${address}</div>` : ''}
+                        ${cityStateZip ? `<div style="font-size:0.85em; color:#666; margin-top:1px;">${cityStateZip}</div>` : ''}
+                    </div>
+                    ${locationId > 0 ? `<span style="color:#9ca3af; flex-shrink:0;">›</span>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        const hasPrevious = pageNum > 1;
+        const hasNext     = pageNum < totalPages;
+
+        // Pagination via replace (keeps stack; updates state.page)
+        const goPage = (p) =>
+            `SkyWorkspace.replace({ pageType: 'locations', objectType: 'location', objectId: ${entityId}, title: 'Locations', parentTitle: ${JSON.stringify(page.parentTitle || 'Entity')}, state: { page: ${p} } })`;
+
+        const paginationHtml = `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
+                        margin-top:12px; padding-top:10px; border-top:1px solid #eee; font-size:0.85em;">
+                <div>
+                    ${hasPrevious
+                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum - 1)}"
+                                style="color:#117a8b; font-weight:600; text-decoration:none;">← Previous</a>`
+                        : `<span style="color:#aaa;">← Previous</span>`}
+                </div>
+                <div style="color:#666;">${pageNum} of ${totalPages}</div>
+                <div>
+                    ${hasNext
+                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum + 1)}"
+                                style="color:#117a8b; font-weight:600; text-decoration:none;">Next →</a>`
+                        : `<span style="color:#aaa;">Next →</span>`}
+                </div>
+            </div>
+        `;
+
+        const titleHtml = `
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+                <span style="font-size:1.15rem;">📍</span>
+                <strong style="color:#222;">Locations</strong>
+                <span style="font-size:0.78em; color:#888; font-weight:500;">
+                    ${total} total
+                </span>
+            </span>
+        `;
+
+        const bodyHtml = `
+            <div style="background:#fafafa; border:1px solid #eee; border-radius:10px; padding:10px 14px 12px;">
+                ${rowsHtml || `<div style="color:#999; padding:8px 0;">No locations for this entity.</div>`}
+                ${paginationHtml}
+            </div>
+        `;
+
+        return { titleHtml, bodyHtml, actionsHtml: '' };
+    },
+
     // #endregion
 
     // #region 🔎 AI Query Information Card
@@ -8407,8 +8499,13 @@ window.SkyIndex = {
 window.SkyeApp.registerPage('index', window.SkyIndex);
 
 // Workspace page registry (Entity adapter)
-if (window.SkyWorkspace && typeof SkyIndex.renderEntityPage === 'function') {
-    SkyWorkspace.registerPage('entity', SkyIndex.renderEntityPage.bind(SkyIndex));
+if (window.SkyWorkspace) {
+    if (typeof SkyIndex.renderEntityPage === 'function') {
+        SkyWorkspace.registerPage('entity', SkyIndex.renderEntityPage.bind(SkyIndex));
+    }
+    if (typeof SkyIndex.renderLocationsPage === 'function') {
+        SkyWorkspace.registerPage('locations', SkyIndex.renderLocationsPage.bind(SkyIndex));
+    }
 }
 // #endregion
 
