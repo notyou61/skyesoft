@@ -7563,116 +7563,28 @@ window.SkyIndex = {
      * page.parentTitle = entity name for ← back
      * page.state.page = current list page
      */
-    async renderLocationsPage(page, ctx) {
-        const entityId = Number(page.objectId);
-        if (!Number.isInteger(entityId) || entityId <= 0) {
-            throw new Error('Entity not found.');
+    async getLocationsForEntity(entityId, page = 1) {
+        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
+        if (actionLocation.latitude === null || actionLocation.longitude === null) {
+            actionLocation = await this.getLocationSafe();
+            if (actionLocation.latitude !== null) this.lastLocation = actionLocation;
         }
 
-        const listPage = Math.max(1, Number(page.state?.page) || 1);
-        const data = await this.getLocationsForEntity(entityId, listPage);
+        const res = await fetch('/skyesoft/api/askOpenAI.php?type=locationsByEntity', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                entityId: Number(entityId),
+                page: Math.max(1, Number(page) || 1),
+                pageSize: 5,
+                latitude:  actionLocation?.latitude  ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
+        });
 
-        if (!data?.success || !data?.list || !Array.isArray(data.list.rows)) {
-            throw new Error(data?.error || 'Unable to load locations.');
-        }
-
-        const list       = data.list;
-        const rows       = list.rows || [];
-        const pageNum    = Math.max(1, Number(list.page) || listPage);
-        const totalPages = Math.max(1, Number(list.totalPages) || 1);
-        const total      = Number(list.total) || rows.length;
-
-        const rowsHtml = rows.map((r, i) => {
-            const locationId = Number(r.locationId || r.id || 0);
-            const locName    = this.escapeHtml(r.locationName || r.name || 'Unnamed Location');
-            const address    = this.escapeHtml(r.locationAddress || r.address || '');
-            const city       = this.escapeHtml(r.locationCity || r.city || '');
-            const state      = this.escapeHtml(r.locationState || r.state || '');
-            const zip        = this.escapeHtml(r.locationZip || r.zip || '');
-            const isBilling  = Number(r.locationIsBilling) === 1;
-            const rowNumber  = i + 1 + ((pageNum - 1) * (Number(list.pageSize) || 5));
-
-            let cityStateZip = '';
-            if (city && state) {
-                cityStateZip = `${city}, ${state}${zip ? ' ' + zip : ''}`;
-            } else {
-                cityStateZip = [city, state, zip].filter(Boolean).join(' ');
-            }
-
-            // Future Step 7: push location profile
-            const click = locationId > 0
-                ? `onclick="event.preventDefault(); /* location profile later */"`
-                : '';
-
-            return `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
-                            padding:10px 0; border-bottom:1px solid #f0f0f0; ${locationId > 0 ? 'cursor:pointer;' : ''}"
-                    ${click}>
-                    <div style="min-width:0; flex:1;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="color:#222; font-weight:600;">
-                                ${rowNumber}. ${locName}
-                            </span>
-                            ${isBilling ? `
-                                <span style="background:rgba(13,148,136,0.12); color:#0f766e;
-                                            border:1px solid rgba(13,148,136,0.25); padding:1px 7px;
-                                            border-radius:4px; font-size:0.68em; font-weight:600;">
-                                    Billing
-                                </span>
-                            ` : ''}
-                        </div>
-                        ${address ? `<div style="font-size:0.85em; color:#555; margin-top:3px;">${address}</div>` : ''}
-                        ${cityStateZip ? `<div style="font-size:0.85em; color:#666; margin-top:1px;">${cityStateZip}</div>` : ''}
-                    </div>
-                    ${locationId > 0 ? `<span style="color:#9ca3af; flex-shrink:0;">›</span>` : ''}
-                </div>
-            `;
-        }).join('');
-
-        const hasPrevious = pageNum > 1;
-        const hasNext     = pageNum < totalPages;
-
-        // Pagination via replace (keeps stack; updates state.page)
-        const goPage = (p) =>
-            `SkyWorkspace.replace({ pageType: 'locations', objectType: 'location', objectId: ${entityId}, title: 'Locations', parentTitle: ${JSON.stringify(page.parentTitle || 'Entity')}, state: { page: ${p} } })`;
-
-        const paginationHtml = `
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
-                        margin-top:12px; padding-top:10px; border-top:1px solid #eee; font-size:0.85em;">
-                <div>
-                    ${hasPrevious
-                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum - 1)}"
-                                style="color:#117a8b; font-weight:600; text-decoration:none;">← Previous</a>`
-                        : `<span style="color:#aaa;">← Previous</span>`}
-                </div>
-                <div style="color:#666;">${pageNum} of ${totalPages}</div>
-                <div>
-                    ${hasNext
-                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum + 1)}"
-                                style="color:#117a8b; font-weight:600; text-decoration:none;">Next →</a>`
-                        : `<span style="color:#aaa;">Next →</span>`}
-                </div>
-            </div>
-        `;
-
-        const titleHtml = `
-            <span style="display:inline-flex; align-items:center; gap:8px;">
-                <span style="font-size:1.15rem;">📍</span>
-                <strong style="color:#222;">Locations</strong>
-                <span style="font-size:0.78em; color:#888; font-weight:500;">
-                    ${total} total
-                </span>
-            </span>
-        `;
-
-        const bodyHtml = `
-            <div style="background:#fafafa; border:1px solid #eee; border-radius:10px; padding:10px 14px 12px;">
-                ${rowsHtml || `<div style="color:#999; padding:8px 0;">No locations for this entity.</div>`}
-                ${paginationHtml}
-            </div>
-        `;
-
-        return { titleHtml, bodyHtml, actionsHtml: '' };
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
     },
 
     // #endregion

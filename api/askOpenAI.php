@@ -3158,6 +3158,91 @@ if ($type === 'locationDetail') {
 }
 
 // =====================================================
+// LOCATIONS BY ENTITY (paginated list for Workspace)
+// =====================================================
+if ($type === 'locationsByEntity') {
+
+    $entityId = (int)($input['entityId'] ?? 0);
+    $page     = max(1, (int)($input['page'] ?? 1));
+    $pageSize = max(1, min(50, (int)($input['pageSize'] ?? 5)));
+
+    if ($entityId <= 0) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'location_list',
+            'error'   => 'Valid entityId is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    try {
+        // Total
+        $countStmt = $db->prepare("
+            SELECT COUNT(*)
+            FROM tblLocations
+            WHERE locationEntityId = :entityId
+              AND locationIsNotValid = 0
+        ");
+        $countStmt->execute(['entityId' => $entityId]);
+        $total = (int)$countStmt->fetchColumn();
+        $totalPages = max(1, (int)ceil($total / $pageSize));
+        if ($page > $totalPages) $page = $totalPages;
+        $offset = ($page - 1) * $pageSize;
+
+        $stmt = $db->prepare("
+            SELECT
+                l.locationId,
+                l.locationName,
+                l.locationAddress,
+                l.locationAddressSuite,
+                l.locationCity,
+                l.locationState,
+                l.locationZip,
+                l.locationParcelNumber,
+                l.locationIsBilling,
+                l.locationEntityId,
+                e.entityName
+            FROM tblLocations l
+            LEFT JOIN tblEntities e ON e.entityId = l.locationEntityId
+            WHERE l.locationEntityId = :entityId
+              AND l.locationIsNotValid = 0
+            ORDER BY l.locationIsBilling DESC, l.locationName ASC
+            LIMIT :limit OFFSET :offset
+        ");
+        $stmt->bindValue('entityId', $entityId, PDO::PARAM_INT);
+        $stmt->bindValue('limit', $pageSize, PDO::PARAM_INT);
+        $stmt->bindValue('offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'type'    => 'location_list',
+            'list'    => [
+                'page'       => $page,
+                'pageSize'   => $pageSize,
+                'total'      => $total,
+                'totalPages' => $totalPages,
+                'rows'       => $rows
+            ]
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        error_log('[askOpenAI] locationsByEntity failed: ' . $e->getMessage());
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'location_list',
+            'error'   => 'Unable to load locations.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
+// =====================================================
 // PROPOSAL INTENT CLASSIFICATION
 // =====================================================
 
