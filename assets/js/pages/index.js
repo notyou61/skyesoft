@@ -7301,6 +7301,290 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🏢 Entity Workspace Page (SkyWorkspace adapter)
+    /**
+ * Workspace page renderer for Entity.
+ * Returns { titleHtml, bodyHtml, actionsHtml } — does not touch the modal DOM.
+ *
+ * @param {Object} page  { pageType, objectId, title?, state? }
+ * @param {Object} ctx   { push, pop, replace, close, stack, workspace }
+ */
+    async renderEntityPage(page, ctx) {
+        const entityId = Number(page.objectId);
+        if (!Number.isInteger(entityId) || entityId <= 0) {
+            throw new Error('Entity not found.');
+        }
+
+        const data = await this.getEntity(entityId);
+        if (!data.success || !data.entity) {
+            throw new Error(data.error || 'Entity not found.');
+        }
+
+        const entity = data.entity;
+        const isEditing = page.state?.edit === true;
+
+        // Keep for edit/cancel (same as before)
+        this._currentEntityModalData = { entity, entityId };
+
+        const name       = this.escapeHtml(entity.entityName || entity.name || 'Unnamed Entity');
+        const legalName  = entity.entityLegalName || '';
+        const entityType = entity.entityType || '';
+        const status     = entity.entityStatus || entity.status || '';
+
+        const locationCount    = Number(entity.locationCount    ?? 0);
+        const contactCount     = Number(entity.contactCount     ?? 0);
+        const orderCount       = Number(entity.orderCount       ?? 0);
+        const applicationCount = Number(entity.applicationCount ?? 0);
+        const noteCount        = Number(entity.noteCount        ?? 0);
+        const taskCount        = Number(entity.taskCount        ?? 0);
+
+        const createdDate  = entity.createdDate  ? this.escapeHtml(entity.createdDate)  : '—';
+        const lastActivity = entity.lastActivity ? this.escapeHtml(entity.lastActivity) : createdDate;
+
+        // ── Helpers (same as current modal) ─────────────────────────────
+        const LABEL_WIDTH = '110px';
+
+        const attrRow = (label, value, action = null) => {
+            if (!value && value !== 0) return '';
+            const valueHtml = action
+                ? `<a href="#" onclick="event.preventDefault(); ${action}"
+                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
+                : `<span style="color:#222;">${value}</span>`;
+            return `
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:baseline; padding:5px 0;">
+                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                        ${label}
+                    </div>
+                    <div style="font-size:0.95em; line-height:1.4; min-width:0;">
+                        ${valueHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        const editField = (label, fieldName, value, type = 'text') => `
+            <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:5px 0;">
+                <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                    ${label}
+                </div>
+                <div style="min-width:0;">
+                    <input type="${type}" name="${fieldName}"
+                        value="${this.escapeHtml(value || '')}"
+                        style="width:100%; padding:7px 10px; border:1px solid #d1d5db;
+                                border-radius:6px; font-size:0.95em; color:#222;
+                                background:#fff; box-sizing:border-box;"
+                        ${fieldName === 'entityName' ? 'required' : ''} />
+                </div>
+            </div>
+        `;
+
+        const relatedRow = (label, count, action) => {
+            if (count <= 0) {
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center;
+                                padding:7px 0; border-bottom:1px solid #f0f0f0; color:#999;">
+                        <span>${label}</span>
+                        <span>0</span>
+                    </div>
+                `;
+            }
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            padding:7px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
+                    onclick="event.preventDefault(); ${action}">
+                    <span style="color:#117a8b; font-weight:600;">${label}</span>
+                    <span style="display:flex; align-items:center; gap:6px;">
+                        <strong style="color:#222;">${count}</strong>
+                        <span style="color:#9ca3af;">›</span>
+                    </span>
+                </div>
+            `;
+        };
+
+        const section = (title, content) => `
+            <div style="background:#fafafa; border:1px solid #eee; border-radius:10px;
+                        padding:10px 14px 12px; margin-bottom:12px;">
+                <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                            color:#888; text-transform:uppercase; padding-bottom:7px;
+                            border-bottom:1px solid #e8e8e8; margin-bottom:8px;">
+                    ${title}
+                </div>
+                ${content}
+            </div>
+        `;
+
+        // Badges
+        const typeBadge = entityType
+            ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
+                            color:#117a8b; background:rgba(23,162,184,0.12); border:1px solid rgba(23,162,184,0.25);
+                            border-radius:4px; text-transform:capitalize;">${this.escapeHtml(entityType)}</span>`
+            : '';
+
+        const statusBadge = status
+            ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
+                            color:#2e7d32; background:rgba(46,125,50,0.10); border:1px solid rgba(46,125,50,0.22);
+                            border-radius:4px; text-transform:capitalize;">${this.escapeHtml(status)}</span>`
+            : '';
+
+        // Identity
+        const hasIdentity =
+            (legalName && legalName !== (entity.entityName || entity.name)) ||
+            entity.entityStructure ||
+            entity.entityNormalizedName ||
+            entity.entityAccNumber ||
+            entityType ||
+            (entity.entityIsNotValid !== undefined && entity.entityIsNotValid !== null);
+
+        const identityContent = isEditing
+            ? `
+                <form id="entityEditForm" onsubmit="return false;">
+                    ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
+                    ${editField('Legal Name', 'entityLegalName', legalName)}
+                    ${editField('Structure', 'entityStructure', entity.entityStructure || '')}
+                    ${editField('Normalized', 'entityNormalizedName', entity.entityNormalizedName || '')}
+                    ${editField('Account #', 'entityAccNumber', entity.entityAccNumber || '')}
+                    ${editField('Type', 'entityType', entityType)}
+                    ${editField('Invalid', 'entityIsNotValid', String(entity.entityIsNotValid ?? 0))}
+                </form>
+            `
+            : hasIdentity
+                ? `
+                    ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
+                    ${attrRow('Structure', entity.entityStructure ? this.escapeHtml(entity.entityStructure) : null)}
+                    ${attrRow('Normalized', entity.entityNormalizedName ? this.escapeHtml(entity.entityNormalizedName) : null)}
+                    ${attrRow('Account #', entity.entityAccNumber ? this.escapeHtml(entity.entityAccNumber) : null)}
+                    ${attrRow('Type', entityType ? this.escapeHtml(entityType) : null)}
+                    ${attrRow('Invalid', entity.entityIsNotValid == 1 ? 'Yes' : (entity.entityIsNotValid == 0 ? 'No' : null))}
+                `
+                : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
+
+        // Related — still uses old commands for now (Step 4 will switch to push)
+        const relatedContent = `
+            ${relatedRow('Locations', locationCount,
+                `SkyIndex.executeAICommand('show locations for entity ${entityId}');`)}
+            ${relatedRow('Contacts', contactCount,
+                `SkyIndex.executeAICommand('show contacts for entity ${entityId}');`)}
+            ${relatedRow('Orders', orderCount,
+                `SkyIndex.executeAICommand('show orders for entity ${entityId}');`)}
+            ${relatedRow('Applications', applicationCount,
+                `SkyIndex.executeAICommand('show applications for entity ${entityId}');`)}
+            ${relatedRow('Notes', noteCount,
+                `SkyIndex.executeAICommand('show notes for entity ${entityId}');`)}
+            ${relatedRow('Tasks', taskCount,
+                `SkyIndex.executeAICommand('show tasks for entity ${entityId}');`)}
+        `;
+
+        const metadataContent = `
+            <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
+                <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
+                <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
+            </div>
+        `;
+
+        // Title (left side of Workspace header)
+        const titleHtml = `
+            <span style="display:inline-flex; align-items:center; gap:8px; min-width:0;">
+                <span style="font-size:1.15rem; flex-shrink:0;">🏢</span>
+                <strong style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${name}
+                </strong>
+                ${typeBadge}
+                ${statusBadge}
+            </span>
+        `;
+
+        // Actions (Edit / Save / Cancel — right side, before ×)
+        const actionsHtml = isEditing
+            ? `
+                <button type="button" onclick="SkyIndex.cancelEntityEditWorkspace();"
+                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
+                            background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                    Cancel
+                </button>
+                <button type="button" onclick="SkyIndex.saveEntityEditWorkspace(${entityId});"
+                        style="padding:5px 14px; border:1px solid #0d9488; border-radius:6px;
+                            background:#0d9488; color:#fff; font-size:0.85em; font-weight:550; cursor:pointer;">
+                    Save
+                </button>
+            `
+            : `
+                <button type="button" onclick="SkyIndex.editEntityWorkspace();"
+                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
+                            background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                    Edit
+                </button>
+            `;
+
+        const bodyHtml = `
+            ${section('Identity', identityContent)}
+            ${section('Related', relatedContent)}
+            ${section('Metadata', metadataContent)}
+        `;
+
+        return { titleHtml, bodyHtml, actionsHtml };
+    },
+
+    // Edit mode via Workspace replace (keeps stack, flips state.edit)
+    editEntityWorkspace() {
+        const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+        if (!top || top.pageType !== 'entity') return;
+        window.SkyWorkspace.replace({
+            ...top,
+            state: { ...(top.state || {}), edit: true }
+        });
+    },
+
+    cancelEntityEditWorkspace() {
+        const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+        if (!top || top.pageType !== 'entity') return;
+        window.SkyWorkspace.replace({
+            ...top,
+            state: { ...(top.state || {}), edit: false }
+        });
+    },
+
+    async saveEntityEditWorkspace(entityId) {
+        const form = document.getElementById('entityEditForm');
+        if (!form) return;
+
+        const payload = {
+            entityId:             Number(entityId),
+            entityName:           form.querySelector('[name="entityName"]')?.value?.trim() || '',
+            entityLegalName:      form.querySelector('[name="entityLegalName"]')?.value?.trim() || '',
+            entityStructure:      form.querySelector('[name="entityStructure"]')?.value?.trim() || '',
+            entityNormalizedName: form.querySelector('[name="entityNormalizedName"]')?.value?.trim() || '',
+            entityAccNumber:      form.querySelector('[name="entityAccNumber"]')?.value?.trim() || '',
+            entityType:           form.querySelector('[name="entityType"]')?.value?.trim() || '',
+            entityIsNotValid:     form.querySelector('[name="entityIsNotValid"]')?.value?.trim() || '0'
+        };
+
+        if (!payload.entityName) {
+            this.appendSystemLine('Entity name is required.');
+            return;
+        }
+
+        try {
+            const updated = await this.updateEntity(payload);
+            this._currentEntityModalData = { entity: updated, entityId: Number(entityId) };
+
+            const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+            window.SkyWorkspace.replace({
+                ...(top || {}),
+                pageType:   'entity',
+                objectType: 'entity',
+                objectId:   Number(entityId),
+                title:      updated.entityName || updated.name,
+                state:      { edit: false }
+            });
+
+            this.appendSystemLine('Entity updated.');
+        } catch (err) {
+            console.error('[SkyIndex] saveEntityEditWorkspace failed:', err);
+            this.appendSystemLine(`❌ Failed to update entity: ${err.message || 'Unknown error'}`);
+        }
+    },
+    // #endregion
+
     // #region 🔎 AI Query Information Card
     renderAIQueryCard(data = {}) {
 
@@ -8117,6 +8401,15 @@ window.SkyIndex = {
     // #endregion
 
 };
+// #endregion
+
+// #region 🧾 Page Registration
+window.SkyeApp.registerPage('index', window.SkyIndex);
+
+// Workspace page registry (Entity adapter)
+if (window.SkyWorkspace && typeof SkyIndex.renderEntityPage === 'function') {
+    SkyWorkspace.registerPage('entity', SkyIndex.renderEntityPage.bind(SkyIndex));
+}
 // #endregion
 
 // #region 🗺️ Google Maps Dual View Initializer (Map + Street View)
