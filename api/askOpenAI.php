@@ -3243,6 +3243,89 @@ if ($type === 'locationsByEntity') {
 }
 
 // =====================================================
+// CONTACTS BY ENTITY (paginated list for Workspace)
+// =====================================================
+if ($type === 'contactsByEntity') {
+
+    $entityId = (int)($input['entityId'] ?? 0);
+    $page     = max(1, (int)($input['page'] ?? 1));
+    $pageSize = max(1, min(500, (int)($input['pageSize'] ?? 200)));
+
+    if ($entityId <= 0) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'contact_list',
+            'error'   => 'Valid entityId is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    try {
+        $countStmt = $db->prepare("
+            SELECT COUNT(*)
+            FROM tblContacts
+            WHERE contactEntityId = :entityId
+              AND COALESCE(isActive, 1) = 1
+        ");
+        $countStmt->execute(['entityId' => $entityId]);
+        $total = (int)$countStmt->fetchColumn();
+        $totalPages = max(1, (int)ceil($total / $pageSize));
+        if ($page > $totalPages) $page = $totalPages;
+        $offset = ($page - 1) * $pageSize;
+
+        $stmt = $db->prepare("
+            SELECT
+                c.contactId,
+                c.contactSalutation,
+                c.contactFirstName,
+                c.contactLastName,
+                c.contactTitle,
+                c.contactPrimaryPhone,
+                c.contactEmail,
+                c.isActive,
+                c.contactEntityId,
+                e.entityName
+            FROM tblContacts c
+            LEFT JOIN tblEntities e ON e.entityId = c.contactEntityId
+            WHERE c.contactEntityId = :entityId
+              AND COALESCE(c.isActive, 1) = 1
+            ORDER BY c.contactLastName ASC, c.contactFirstName ASC
+            LIMIT :limit OFFSET :offset
+        ");
+        $stmt->bindValue('entityId', $entityId, PDO::PARAM_INT);
+        $stmt->bindValue('limit', $pageSize, PDO::PARAM_INT);
+        $stmt->bindValue('offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'type'    => 'contact_list',
+            'list'    => [
+                'page'       => $page,
+                'pageSize'   => $pageSize,
+                'total'      => $total,
+                'totalPages' => $totalPages,
+                'rows'       => $rows
+            ]
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        error_log('[askOpenAI] contactsByEntity failed: ' . $e->getMessage());
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'contact_list',
+            'error'   => 'Unable to load contacts.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
+// =====================================================
 // PROPOSAL INTENT CLASSIFICATION
 // =====================================================
 

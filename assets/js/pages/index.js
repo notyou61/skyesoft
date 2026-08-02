@@ -7237,12 +7237,12 @@ window.SkyIndex = {
 
     // #region 🏢 Entity Workspace Page (SkyWorkspace adapter)
     /**
- * Workspace page renderer for Entity.
- * Returns { titleHtml, bodyHtml, actionsHtml } — does not touch the modal DOM.
- *
- * @param {Object} page  { pageType, objectId, title?, state? }
- * @param {Object} ctx   { push, pop, replace, close, stack, workspace }
- */
+     * Workspace page renderer for Entity.
+     * Returns { titleHtml, bodyHtml, actionsHtml } — does not touch the modal DOM.
+     *
+     * @param {Object} page  { pageType, objectId, title?, state? }
+     * @param {Object} ctx   { push, pop, replace, close, stack, workspace }
+     */
     async renderEntityPage(page, ctx) {
         const entityId = Number(page.objectId);
         if (!Number.isInteger(entityId) || entityId <= 0) {
@@ -7392,7 +7392,7 @@ window.SkyIndex = {
                 `
                 : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
 
-        // Related — Locations navigates via Workspace; others stay on commands until their pages exist
+        // Related — Locations + Contacts via Workspace; others stay on commands until their pages exist
         const parentTitle = (entity.entityName || entity.name || 'Entity')
             .replace(/\\/g, '\\\\')
             .replace(/'/g, "\\'");
@@ -7401,7 +7401,7 @@ window.SkyIndex = {
             ${relatedRow('Locations', locationCount,
                 `SkyWorkspace.push({ pageType: 'locations', objectType: 'location', objectId: ${entityId}, title: 'Locations', parentTitle: '${parentTitle}', state: { page: 1 } })`)}
             ${relatedRow('Contacts', contactCount,
-                `SkyIndex.executeAICommand('show contacts for entity ${entityId}');`)}
+                `SkyWorkspace.push({ pageType: 'contacts', objectType: 'contact', objectId: ${entityId}, title: 'Contacts', parentTitle: '${parentTitle}', state: { page: 1 } })`)}
             ${relatedRow('Orders', orderCount,
                 `SkyIndex.executeAICommand('show orders for entity ${entityId}');`)}
             ${relatedRow('Applications', applicationCount,
@@ -7681,6 +7681,130 @@ window.SkyIndex = {
         return { titleHtml, bodyHtml, actionsHtml: '' };
     },
 
+    // #endregion
+
+    // #region 👤 Contacts Workspace Page (collection)
+    async getContactsForEntity(entityId, pageSize = 200) {
+        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
+        if (actionLocation.latitude === null || actionLocation.longitude === null) {
+            actionLocation = await this.getLocationSafe();
+            if (actionLocation.latitude !== null) this.lastLocation = actionLocation;
+        }
+
+        const res = await fetch('/skyesoft/api/askOpenAI.php?type=contactsByEntity', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                entityId: Number(entityId),
+                page: 1,
+                pageSize: Math.max(1, Math.min(500, Number(pageSize) || 200)),
+                latitude:  actionLocation?.latitude  ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    },
+
+    async renderContactsPage(page, ctx) {
+        const entityId = Number(page.objectId);
+        if (!Number.isInteger(entityId) || entityId <= 0) {
+            throw new Error('Entity not found.');
+        }
+
+        const pageSize = 5;
+        const listPage = Math.max(1, Number(page.state?.page) || 1);
+
+        let allRows = Array.isArray(page.state?.rows) ? page.state.rows : null;
+        let total   = Number(page.state?.total);
+
+        if (!allRows) {
+            const data = await this.getContactsForEntity(entityId, 200);
+            if (!data?.success || !data?.list || !Array.isArray(data.list.rows)) {
+                throw new Error(data?.error || 'Unable to load contacts.');
+            }
+            allRows = data.list.rows;
+            total   = Number(data.list.total) || allRows.length;
+            page.state = { ...(page.state || {}), rows: allRows, total, page: listPage };
+        }
+
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        const pageNum    = Math.min(listPage, totalPages);
+        const start      = (pageNum - 1) * pageSize;
+        const rows       = allRows.slice(start, start + pageSize);
+
+        const rowsHtml = rows.map((r, i) => {
+            const contactId = Number(r.contactId || r.id || 0);
+            const first = this.escapeHtml(r.contactFirstName || '');
+            const last  = this.escapeHtml(r.contactLastName || '');
+            const name  = [first, last].filter(Boolean).join(' ') || 'Unnamed Contact';
+            const title = this.escapeHtml(r.contactTitle || '');
+            const phone = this.escapeHtml(r.contactPrimaryPhone || r.phone || '');
+            const email = this.escapeHtml(r.contactEmail || '');
+            const rowNumber = start + i + 1;
+
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+                            padding:10px 0; border-bottom:1px solid #f0f0f0;">
+                    <div style="min-width:0; flex:1;">
+                        <div style="color:#222; font-weight:600;">${rowNumber}. ${name}</div>
+                        ${title ? `<div style="font-size:0.85em; color:#555; margin-top:2px;">${title}</div>` : ''}
+                        ${phone ? `<div style="font-size:0.85em; color:#666; margin-top:2px;">📞 ${phone}</div>` : ''}
+                        ${email ? `<div style="font-size:0.85em; color:#666; margin-top:1px;">✉ ${email}</div>` : ''}
+                    </div>
+                    ${contactId > 0 ? `<span style="color:#9ca3af; flex-shrink:0;">›</span>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        const hasPrevious = pageNum > 1;
+        const hasNext     = pageNum < totalPages;
+
+        const parentTitleEsc = String(page.parentTitle || 'Entity')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'");
+
+        const goPage = (p) =>
+            `SkyWorkspace.replace({ pageType: 'contacts', objectType: 'contact', objectId: ${entityId}, title: 'Contacts', parentTitle: '${parentTitleEsc}', state: { page: ${p}, rows: SkyWorkspace.stack[SkyWorkspace.stack.length-1].state.rows, total: ${total} } })`;
+
+        const paginationHtml = `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
+                        margin-top:12px; padding-top:10px; border-top:1px solid #eee; font-size:0.85em;">
+                <div>
+                    ${hasPrevious
+                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum - 1)}; return false;"
+                                style="color:#117a8b; font-weight:600; text-decoration:none;">← Previous</a>`
+                        : `<span style="color:#aaa;">← Previous</span>`}
+                </div>
+                <div style="color:#666;">${pageNum} of ${totalPages}</div>
+                <div>
+                    ${hasNext
+                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum + 1)}; return false;"
+                                style="color:#117a8b; font-weight:600; text-decoration:none;">Next →</a>`
+                        : `<span style="color:#aaa;">Next →</span>`}
+                </div>
+            </div>
+        `;
+
+        const titleHtml = `
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+                <span style="font-size:1.15rem;">👤</span>
+                <strong style="color:#222;">Contacts</strong>
+                <span style="font-size:0.78em; color:#888; font-weight:500;">${total} total</span>
+            </span>
+        `;
+
+        const bodyHtml = `
+            <div style="background:#fafafa; border:1px solid #eee; border-radius:10px; padding:10px 14px 12px;">
+                ${rowsHtml || `<div style="color:#999; padding:8px 0;">No contacts for this entity.</div>`}
+                ${paginationHtml}
+            </div>
+        `;
+
+        return { titleHtml, bodyHtml, actionsHtml: '' };
+    },
     // #endregion
 
     // #region 🔎 AI Query Information Card
