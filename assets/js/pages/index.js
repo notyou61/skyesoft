@@ -7809,112 +7809,71 @@ window.SkyIndex = {
         return await res.json();
     },
 
-    async renderContactsPage(page, ctx) {
-        const entityId = Number(page.objectId);
-        if (!Number.isInteger(entityId) || entityId <= 0) {
-            throw new Error('Entity not found.');
+    async renderContactPage(page, ctx) {
+        const contactId = Number(page.objectId);
+        if (!Number.isInteger(contactId) || contactId <= 0) {
+            throw new Error('Contact not found.');
         }
 
-        const pageSize = 5;
-        const listPage = Math.max(1, Number(page.state?.page) || 1);
-
-        let allRows = Array.isArray(page.state?.rows) ? page.state.rows : null;
-        let total   = Number(page.state?.total);
-
-        if (!allRows) {
-            const data = await this.getContactsForEntity(entityId, 200);
-            if (!data?.success || !data?.list || !Array.isArray(data.list.rows)) {
-                throw new Error(data?.error || 'Unable to load contacts.');
-            }
-            allRows = data.list.rows;
-            total   = Number(data.list.total) || allRows.length;
-            page.state = { ...(page.state || {}), rows: allRows, total, page: listPage };
+        const data = await this.getContact(contactId);
+        const c = data?.contact || data;
+        if (!c || !(c.contactId || c.id)) {
+            throw new Error(data?.error || 'Contact not found.');
         }
 
-        const totalPages = Math.max(1, Math.ceil(total / pageSize));
-        const pageNum    = Math.min(listPage, totalPages);
-        const start      = (pageNum - 1) * pageSize;
-        const rows       = allRows.slice(start, start + pageSize);
+        const first = this.escapeHtml(c.contactFirstName || '');
+        const last  = this.escapeHtml(c.contactLastName || '');
+        const name  = [first, last].filter(Boolean).join(' ') || 'Unnamed Contact';
+        const title = this.escapeHtml(c.contactTitle || '');
+        const phone = this.escapeHtml(c.contactPrimaryPhone || c.phone || '');
+        const email = this.escapeHtml(c.contactEmail || '');
+        const entityName = this.escapeHtml(c.entityName || c.entity?.entityName || '');
+        const locationName = this.escapeHtml(c.locationName || c.location?.locationName || '');
 
-        const rowsHtml = rows.map((r, i) => {
-            const contactId = Number(r.contactId || r.id || 0);
-            const first = this.escapeHtml(r.contactFirstName || '');
-            const last  = this.escapeHtml(r.contactLastName || '');
-            const name  = [first, last].filter(Boolean).join(' ') || 'Unnamed Contact';
-            const title = this.escapeHtml(r.contactTitle || '');
-            const phone = this.escapeHtml(r.contactPrimaryPhone || r.phone || '');
-            const email = this.escapeHtml(r.contactEmail || '');
-            const rowNumber = start + i + 1;
+        const section = (t, content) => `
+            <div style="background:#fafafa; border:1px solid #eee; border-radius:10px;
+                        padding:10px 14px 12px; margin-bottom:12px;">
+                <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
+                            color:#888; text-transform:uppercase; padding-bottom:7px;
+                            border-bottom:1px solid #e8e8e8; margin-bottom:8px;">${t}</div>
+                ${content}
+            </div>`;
 
-            const nameEsc = String([r.contactFirstName, r.contactLastName].filter(Boolean).join(' ') || 'Contact')
-                .replace(/\\/g, '\\\\')
-                .replace(/'/g, "\\'");
-
-            const clickAttr = contactId > 0
-                ? `onclick="event.preventDefault(); SkyWorkspace.push({ pageType: 'contact', objectType: 'contact', objectId: ${contactId}, title: '${nameEsc}', parentTitle: 'Contacts' }); return false;"`
-                : '';
-
-            const rowStyle = contactId > 0
-                ? 'display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;'
-                : 'display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0;';
-
+        const row = (label, value) => {
+            if (!value) return '';
             return `
-                <div style="${rowStyle}" ${clickAttr}>
-                    <div style="min-width:0; flex:1;">
-                        <div style="color:${contactId > 0 ? '#117a8b' : '#222'}; font-weight:600;">
-                            ${rowNumber}. ${name}
-                        </div>
-                        ${title ? `<div style="font-size:0.85em; color:#555; margin-top:2px;">${title}</div>` : ''}
-                        ${phone ? `<div style="font-size:0.85em; color:#666; margin-top:2px;">📞 ${phone}</div>` : ''}
-                        ${email ? `<div style="font-size:0.85em; color:#666; margin-top:1px;">✉ ${email}</div>` : ''}
-                    </div>
-                    ${contactId > 0 ? `<span style="color:#9ca3af; flex-shrink:0;">›</span>` : ''}
-                </div>
-            `;
-        }).join('');
-
-        const hasPrevious = pageNum > 1;
-        const hasNext     = pageNum < totalPages;
-
-        const parentTitleEsc = String(page.parentTitle || 'Entity')
-            .replace(/\\/g, '\\\\')
-            .replace(/'/g, "\\'");
-
-        const goPage = (p) =>
-            `SkyWorkspace.replace({ pageType: 'contacts', objectType: 'contact', objectId: ${entityId}, title: 'Contacts', parentTitle: '${parentTitleEsc}', state: { page: ${p}, rows: SkyWorkspace.stack[SkyWorkspace.stack.length-1].state.rows, total: ${total} } })`;
-
-        const paginationHtml = `
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
-                        margin-top:12px; padding-top:10px; border-top:1px solid #eee; font-size:0.85em;">
-                <div>
-                    ${hasPrevious
-                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum - 1)}; return false;"
-                                style="color:#117a8b; font-weight:600; text-decoration:none;">← Previous</a>`
-                        : `<span style="color:#aaa;">← Previous</span>`}
-                </div>
-                <div style="color:#666;">${pageNum} of ${totalPages}</div>
-                <div>
-                    ${hasNext
-                        ? `<a href="#" onclick="event.preventDefault(); ${goPage(pageNum + 1)}; return false;"
-                                style="color:#117a8b; font-weight:600; text-decoration:none;">Next →</a>`
-                        : `<span style="color:#aaa;">Next →</span>`}
-                </div>
-            </div>
-        `;
+                <div style="display:grid; grid-template-columns:110px 1fr; gap:12px; padding:5px 0;">
+                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase;">${label}</div>
+                    <div style="font-size:0.95em; color:#222;">${value}</div>
+                </div>`;
+        };
 
         const titleHtml = `
-            <span style="display:inline-flex; align-items:center; gap:8px;">
+            <span style="display:inline-flex; align-items:center; gap:8px; min-width:0;">
                 <span style="font-size:1.15rem;">👤</span>
-                <strong style="color:#222;">Contacts</strong>
-                <span style="font-size:0.78em; color:#888; font-weight:500;">${total} total</span>
-            </span>
+                <strong style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</strong>
+            </span>`;
+
+        const phoneHtml = phone
+            ? `<a href="tel:${phone}" style="color:#117a8b; text-decoration:none;">${phone}</a>`
+            : null;
+        const emailHtml = email
+            ? `<a href="mailto:${email}" style="color:#117a8b; text-decoration:none;">${email}</a>`
+            : null;
+
+        const identityContent = `
+            ${row('Title', title || null)}
+            ${row('Phone', phoneHtml)}
+            ${row('Email', emailHtml)}
+            ${row('Entity', entityName || null)}
+            ${row('Location', locationName || null)}
+            ${!title && !phone && !email && !entityName && !locationName
+                ? `<div style="color:#999; font-size:0.9em;">No identity details.</div>` : ''}
         `;
 
         const bodyHtml = `
-            <div style="background:#fafafa; border:1px solid #eee; border-radius:10px; padding:10px 14px 12px;">
-                ${rowsHtml || `<div style="color:#999; padding:8px 0;">No contacts for this entity.</div>`}
-                ${paginationHtml}
-            </div>
+            ${section('Identity', identityContent)}
+            ${section('Related', `<div style="color:#999; font-size:0.9em; padding:4px 0;">Related collections soon.</div>`)}
         `;
 
         return { titleHtml, bodyHtml, actionsHtml: '' };
