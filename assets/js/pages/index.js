@@ -7786,6 +7786,29 @@ window.SkyIndex = {
         return await res.json();
     },
 
+    async getContact(contactId) {
+        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
+        if (actionLocation.latitude === null || actionLocation.longitude === null) {
+            actionLocation = await this.getLocationSafe();
+            if (actionLocation.latitude !== null) this.lastLocation = actionLocation;
+        }
+
+        const res = await fetch('/skyesoft/api/askOpenAI.php', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'contactDetail',
+                contactId: Number(contactId),
+                latitude:  actionLocation?.latitude  ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    },
+
     async renderContactsPage(page, ctx) {
         const entityId = Number(page.objectId);
         if (!Number.isInteger(entityId) || entityId <= 0) {
@@ -7823,11 +7846,24 @@ window.SkyIndex = {
             const email = this.escapeHtml(r.contactEmail || '');
             const rowNumber = start + i + 1;
 
+            const nameEsc = String([r.contactFirstName, r.contactLastName].filter(Boolean).join(' ') || 'Contact')
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'");
+
+            const clickAttr = contactId > 0
+                ? `onclick="event.preventDefault(); SkyWorkspace.push({ pageType: 'contact', objectType: 'contact', objectId: ${contactId}, title: '${nameEsc}', parentTitle: 'Contacts' }); return false;"`
+                : '';
+
+            const rowStyle = contactId > 0
+                ? 'display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;'
+                : 'display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0;';
+
             return `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
-                            padding:10px 0; border-bottom:1px solid #f0f0f0;">
+                <div style="${rowStyle}" ${clickAttr}>
                     <div style="min-width:0; flex:1;">
-                        <div style="color:#222; font-weight:600;">${rowNumber}. ${name}</div>
+                        <div style="color:${contactId > 0 ? '#117a8b' : '#222'}; font-weight:600;">
+                            ${rowNumber}. ${name}
+                        </div>
                         ${title ? `<div style="font-size:0.85em; color:#555; margin-top:2px;">${title}</div>` : ''}
                         ${phone ? `<div style="font-size:0.85em; color:#666; margin-top:2px;">📞 ${phone}</div>` : ''}
                         ${email ? `<div style="font-size:0.85em; color:#666; margin-top:1px;">✉ ${email}</div>` : ''}
