@@ -324,7 +324,7 @@
                 "tier": 2,
                 "type": "Structural Standard",
                 "hierarchyOrder": 1,
-                "version": "1.0.0",
+                "version": "1.1.0",
                 "preamble": {
                     "icon": 7,
                     "text": "This Standard operationalizes the constitutional requirement that informational data in Skyesoft is governed by intent rather than format, location, or consuming module. It establishes a uniform framework for classifying governed informational artifacts—excluding structural UI components and execution scaffolding—by defining their authority, longevity, and permissible flows to prevent silent role drift and ambiguity."
@@ -1807,6 +1807,82 @@
                         "extensibility": "New object types extend the graph without changing the interaction architecture.",
                         "authoritativeIdentity": "Persistent objects are identified by their registered object type and stable object ID."
                     }
+                },
+                "workspaceModel": {
+                    "version": "1.0.0",
+                    "name": "Universal Modal Workspace",
+                    "description": "Defines the canonical presentation workspace for all Skyesoft business objects.",
+                    "architecture": {
+                        "shell": "universal",
+                        "pages": "specialized",
+                        "collections": "firstClass",
+                        "navigation": "stack"
+                    },
+                    "businessObjectClasses": {
+                        "masterObjects": [
+                            "entity",
+                            "location",
+                            "contact"
+                        ],
+                        "workObjects": [
+                            "order",
+                            "application",
+                            "note",
+                            "task"
+                        ],
+                        "artifacts": [
+                            "document",
+                            "photo",
+                            "drawing",
+                            "purchaseOrder",
+                            "signOffSheet"
+                        ]
+                    },
+                    "workspace": {
+                        "owns": [
+                            "modalChrome",
+                            "navigationStack",
+                            "header",
+                            "sections",
+                            "pagination",
+                            "editingWorkflow"
+                        ],
+                        "pageResponsibilities": [
+                            "identity",
+                            "relationships",
+                            "metadata",
+                            "businessSpecificPresentation"
+                        ]
+                    },
+                    "navigation": {
+                        "operations": [
+                            "push",
+                            "pop",
+                            "replace",
+                            "peek"
+                        ],
+                        "history": {
+                            "preservePagination": true,
+                            "preserveSorting": true,
+                            "preserveFiltering": true
+                        }
+                    },
+                    "collections": {
+                        "description": "Collections are navigable presentation pages, not business objects.",
+
+                        "features": [
+                            "pagination",
+                            "sorting",
+                            "filtering",
+                            "selection"
+                        ]
+                    },
+                    "principles": [
+                        "Universalize the shell. Specialize the pages.",
+                        "Relationships navigate within the Workspace.",
+                        "Business objects supply presentation only.",
+                        "Collections are first-class presentation surfaces."
+                    ]
                 },
                 "processingPipeline": [
                     {
