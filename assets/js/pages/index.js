@@ -8628,13 +8628,15 @@ window.SkyIndex = {
 // #region 🧾 Page Registration
 window.SkyeApp.registerPage('index', window.SkyIndex);
 
-// Workspace page registry (Entity adapter)
 if (window.SkyWorkspace) {
     if (typeof SkyIndex.renderEntityPage === 'function') {
         SkyWorkspace.registerPage('entity', SkyIndex.renderEntityPage.bind(SkyIndex));
     }
     if (typeof SkyIndex.renderLocationsPage === 'function') {
         SkyWorkspace.registerPage('locations', SkyIndex.renderLocationsPage.bind(SkyIndex));
+    }
+    if (typeof SkyIndex.renderContactsPage === 'function') {
+        SkyWorkspace.registerPage('contacts', SkyIndex.renderContactsPage.bind(SkyIndex));
     }
 }
 // #endregion
