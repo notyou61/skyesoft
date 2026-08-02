@@ -7602,15 +7602,20 @@ window.SkyIndex = {
                 .replace(/'/g, "\\'");
 
             const clickAttr = locationId > 0
-                ? `onclick="event.preventDefault(); SkyWorkspace.push({ pageType: 'location', objectType: 'location', objectId: ${locationId}, title: '${nameEsc}', parentTitle: 'Locations' }); return false;" style="cursor:pointer;"`
+                ? `onclick="event.preventDefault(); SkyWorkspace.push({ pageType: 'location', objectType: 'location', objectId: ${locationId}, title: '${nameEsc}', parentTitle: 'Locations' }); return false;"`
                 : '';
 
+            const rowStyle = locationId > 0
+                ? 'display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;'
+                : 'display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0;';
+
             return `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
-                            padding:10px 0; border-bottom:1px solid #f0f0f0;" ${clickAttr}>
+                <div style="${rowStyle}" ${clickAttr}>
                     <div style="min-width:0; flex:1;">
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="color:#222; font-weight:600;">${rowNumber}. ${locName}</span>
+                            <span style="color:${locationId > 0 ? '#117a8b' : '#222'}; font-weight:600;">
+                                ${rowNumber}. ${locName}
+                            </span>
                             ${isBilling ? `
                                 <span style="background:rgba(13,148,136,0.12); color:#0f766e;
                                              border:1px solid rgba(13,148,136,0.25); padding:1px 7px;
