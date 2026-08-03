@@ -6640,6 +6640,14 @@ window.SkyIndex = {
                             style="padding:5px 11px; border-radius:5px; border:1px solid #0d9488; background:#0d9488; color:#fff; font-size:0.78rem; font-weight:550; cursor:pointer;">
                         Open Profile
                     </button>
+
+                    <button type="button"
+                            onclick="SkyIndex.openLocationZoningReport(${locationId})"
+                            title="Open the Location Zoning &amp; Sign Code Report"
+                            style="padding:5px 11px; border-radius:5px; border:1px solid #0d9488; background:#fff; color:#0f766e; font-size:0.78rem; font-weight:550; cursor:pointer;">
+                        Zoning Report
+                    </button>
+
                     ${contactCount > 0 ? `
                         <button type="button"
                                 onclick="SkyIndex.executeAICommand('show contacts for location ${locationId}')"
