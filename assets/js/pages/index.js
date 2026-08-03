@@ -7465,10 +7465,7 @@ window.SkyIndex = {
 
     /**
      * Location detail page (view + edit) — Location Edit v1.0
-     * Canonical second implementation of the Universal Workspace edit pattern.
-     *
-     * User-maintained fields only are editable.
-     * Derived / reference / relationship-owned fields are read-only.
+     * Visual language aligned with Entity Workspace.
      */
     async renderLocationPage(page, ctx) {
         const locationId = Number(page.objectId);
@@ -7477,15 +7474,12 @@ window.SkyIndex = {
         }
 
         const data = await this.getLocation(locationId);
-        // Normalize response shape
         const loc = data?.location || data;
         if (!loc || !(loc.locationId || loc.id)) {
             throw new Error(data?.error || 'Location not found.');
         }
 
         const isEditing = page.state?.edit === true;
-
-        // Cache for cancel / re-render
         this._currentLocationModalData = { location: loc, locationId };
 
         // ── Core identity ───────────────────────────────────────────────────────
@@ -7498,11 +7492,9 @@ window.SkyIndex = {
         const isBilling   = Number(loc.locationIsBilling) === 1;
         const isNotValid  = Number(loc.locationIsNotValid) === 1;
 
-        // Parent Entity (reference — never editable from Location)
         const entityName  = loc.entity?.entityName || loc.entityName || '';
         const entityId    = Number(loc.entity?.entityId || loc.locationEntityId || 0);
 
-        // Derived geographic (system-owned)
         const parcel      = loc.locationParcelNumber || loc.locationParcelNumberRaw || '';
         const jurisdiction= loc.locationJurisdiction || '';
         const county      = loc.locationCounty || '';
@@ -7510,7 +7502,6 @@ window.SkyIndex = {
         const lat         = loc.locationLatitude  ?? loc.latitude  ?? null;
         const lng         = loc.locationLongitude ?? loc.longitude ?? null;
 
-        // Counts (for Related section)
         const contactCount     = Number(loc.contactCount     ?? 0);
         const orderCount       = Number(loc.orderCount       ?? 0);
         const applicationCount = Number(loc.applicationCount ?? 0);
@@ -7520,8 +7511,8 @@ window.SkyIndex = {
         const createdDate  = loc.createdDate  ? this.escapeHtml(loc.createdDate)  : '—';
         const lastActivity = loc.lastActivity ? this.escapeHtml(loc.lastActivity) : createdDate;
 
-        // ── Helpers (identical visual language to Entity) ───────────────────────
-        const LABEL_WIDTH = '110px';
+        // ── Helpers (tightened to match Entity density) ─────────────────────────
+        const LABEL_WIDTH = '100px';
 
         const attrRow = (label, value, action = null) => {
             if (!value && value !== 0) return '';
@@ -7530,11 +7521,11 @@ window.SkyIndex = {
                         style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
                 : `<span style="color:#222;">${value}</span>`;
             return `
-                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:baseline; padding:5px 0;">
-                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:10px; align-items:baseline; padding:4px 0;">
+                    <div style="font-size:0.72em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
                         ${label}
                     </div>
-                    <div style="font-size:0.95em; line-height:1.4; min-width:0;">
+                    <div style="font-size:0.9em; line-height:1.35; min-width:0;">
                         ${valueHtml}
                     </div>
                 </div>
@@ -7542,15 +7533,15 @@ window.SkyIndex = {
         };
 
         const editField = (label, fieldName, value, type = 'text', extra = '') => `
-            <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:5px 0;">
-                <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+            <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:10px; align-items:center; padding:4px 0;">
+                <div style="font-size:0.72em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
                     ${label}
                 </div>
                 <div style="min-width:0;">
                     <input type="${type}" name="${fieldName}"
                         value="${this.escapeHtml(value || '')}"
-                        style="width:100%; padding:7px 10px; border:1px solid #d1d5db;
-                                border-radius:6px; font-size:0.95em; color:#222;
+                        style="width:100%; padding:6px 9px; border:1px solid #d1d5db;
+                                border-radius:5px; font-size:0.9em; color:#222;
                                 background:#fff; box-sizing:border-box;"
                         ${extra} />
                 </div>
@@ -7563,14 +7554,14 @@ window.SkyIndex = {
                 return `<option value="${this.escapeHtml(o.value)}"${selected}>${this.escapeHtml(o.label)}</option>`;
             }).join('');
             return `
-                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:5px 0;">
-                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:10px; align-items:center; padding:4px 0;">
+                    <div style="font-size:0.72em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
                         ${label}
                     </div>
                     <div style="min-width:0;">
                         <select name="${fieldName}"
-                            style="width:100%; padding:7px 10px; border:1px solid #d1d5db;
-                                    border-radius:6px; font-size:0.95em; color:#222;
+                            style="width:100%; padding:6px 9px; border:1px solid #d1d5db;
+                                    border-radius:5px; font-size:0.9em; color:#222;
                                     background:#fff; box-sizing:border-box;">
                             ${opts}
                         </select>
@@ -7583,7 +7574,7 @@ window.SkyIndex = {
             if (count <= 0) {
                 return `
                     <div style="display:flex; justify-content:space-between; align-items:center;
-                                padding:7px 0; border-bottom:1px solid #f0f0f0; color:#999;">
+                                padding:6px 0; border-bottom:1px solid #f0f0f0; color:#999; font-size:0.9em;">
                         <span>${label}</span>
                         <span>0</span>
                     </div>
@@ -7591,10 +7582,10 @@ window.SkyIndex = {
             }
             return `
                 <div style="display:flex; justify-content:space-between; align-items:center;
-                            padding:7px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
+                            padding:6px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:0.9em;"
                     onclick="event.preventDefault(); ${action}">
                     <span style="color:#117a8b; font-weight:600;">${label}</span>
-                    <span style="display:flex; align-items:center; gap:6px;">
+                    <span style="display:flex; align-items:center; gap:5px;">
                         <strong style="color:#222;">${count}</strong>
                         <span style="color:#9ca3af;">›</span>
                     </span>
@@ -7603,11 +7594,11 @@ window.SkyIndex = {
         };
 
         const section = (title, content) => `
-            <div style="background:#fafafa; border:1px solid #eee; border-radius:10px;
-                        padding:10px 14px 12px; margin-bottom:12px;">
-                <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                            color:#888; text-transform:uppercase; padding-bottom:7px;
-                            border-bottom:1px solid #e8e8e8; margin-bottom:8px;">
+            <div style="background:#fafafa; border:1px solid #e8e8e8; border-radius:8px;
+                        padding:9px 12px 10px; margin-bottom:10px;">
+                <div style="font-size:0.68em; font-weight:600; letter-spacing:0.04em;
+                            color:#888; text-transform:uppercase; padding-bottom:6px;
+                            border-bottom:1px solid #e8e8e8; margin-bottom:6px;">
                     ${title}
                 </div>
                 ${content}
@@ -7624,20 +7615,18 @@ window.SkyIndex = {
         let identityContent;
 
         if (isEditing) {
-            // Only user-maintained fields are editable
             identityContent = `
                 <form id="locationEditForm" onsubmit="return false;">
                     ${editField('Name', 'locationName', loc.locationName || loc.name || '', 'text', 'required')}
                     ${editField('Address', 'locationAddress', address)}
                     ${editField('Suite', 'locationAddressSuite', suite)}
                     ${editField('City', 'locationCity', city)}
-                    ${editField('State', 'locationState', state, 'text', 'maxlength="2" style="width:80px; text-transform:uppercase;"')}
-                    ${editField('Zip', 'locationZip', zip, 'text', 'maxlength="10" style="width:120px;"')}
+                    ${editField('State', 'locationState', state, 'text', 'maxlength="2" style="width:70px; text-transform:uppercase;"')}
+                    ${editField('Zip', 'locationZip', zip, 'text', 'maxlength="10" style="width:110px;"')}
                     ${editSelect('Invalid', 'locationIsNotValid', isNotValid ? '1' : '0', INVALID_OPTIONS)}
                 </form>
             `;
         } else {
-            // View mode — full picture, but still respecting ownership
             const fullAddress = [
                 address + (suite ? ' ' + suite : ''),
                 [city, state, zip].filter(Boolean).join(', ').replace(/, ([A-Z]{2}) /, ', $1 ')
@@ -7660,7 +7649,6 @@ window.SkyIndex = {
         }
 
         // ── Related ─────────────────────────────────────────────────────────────
-        // (Contacts for this location can be wired later; keep structure ready)
         const relatedContent = `
             ${relatedRow('Contacts', contactCount,
                 `SkyIndex.executeAICommand('show contacts for location ${locationId}');`)}
@@ -7676,45 +7664,45 @@ window.SkyIndex = {
 
         // ── Metadata ────────────────────────────────────────────────────────────
         const metadataContent = `
-            <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
-                <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
-                <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
+            <div style="display:flex; gap:24px; font-size:0.82em; color:#555;">
+                <div>Created <strong style="color:#222; margin-left:3px;">${createdDate}</strong></div>
+                <div>Last Activity <strong style="color:#222; margin-left:3px;">${lastActivity}</strong></div>
             </div>
         `;
 
         // ── Header title ────────────────────────────────────────────────────────
         const billingBadge = isBilling
-            ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; color:#0f766e;
+            ? `<span style="padding:1px 7px; font-size:0.68em; font-weight:600; color:#0f766e;
                             background:rgba(13,148,136,0.12); border:1px solid rgba(13,148,136,0.25);
                             border-radius:4px;">Billing</span>`
             : '';
 
         const titleHtml = `
-            <span style="display:inline-flex; align-items:center; gap:8px; min-width:0;">
-                <span style="font-size:1.15rem;">📍</span>
-                <strong style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</strong>
+            <span style="display:inline-flex; align-items:center; gap:7px; min-width:0;">
+                <span style="font-size:1.1rem;">📍</span>
+                <strong style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.98em;">${name}</strong>
                 ${billingBadge}
             </span>
         `;
 
-        // ── Actions (Edit / Save / Cancel) ──────────────────────────────────────
+        // ── Actions ─────────────────────────────────────────────────────────────
         const actionsHtml = isEditing
             ? `
                 <button type="button" onclick="SkyIndex.cancelLocationEditWorkspace();"
-                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
-                            background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                        style="padding:4px 11px; border:1px solid #d1d5db; border-radius:5px;
+                            background:#fff; color:#374151; font-size:0.82em; font-weight:500; cursor:pointer;">
                     Cancel
                 </button>
                 <button type="button" onclick="SkyIndex.saveLocationEditWorkspace(${locationId});"
-                        style="padding:5px 14px; border:1px solid #0d9488; border-radius:6px;
-                            background:#0d9488; color:#fff; font-size:0.85em; font-weight:550; cursor:pointer;">
+                        style="padding:4px 13px; border:1px solid #0d9488; border-radius:5px;
+                            background:#0d9488; color:#fff; font-size:0.82em; font-weight:550; cursor:pointer;">
                     Save
                 </button>
             `
             : `
                 <button type="button" onclick="SkyIndex.editLocationWorkspace();"
-                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
-                            background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                        style="padding:4px 11px; border:1px solid #d1d5db; border-radius:5px;
+                            background:#fff; color:#374151; font-size:0.82em; font-weight:500; cursor:pointer;">
                     Edit
                 </button>
             `;
