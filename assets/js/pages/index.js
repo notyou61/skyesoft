@@ -8006,6 +8006,10 @@ window.SkyIndex = {
         return { titleHtml, bodyHtml, actionsHtml: '' };
     },
 
+    /**
+     * Contact detail page (view + edit) — Contact Edit v1.0
+     * Canonical third implementation of the Universal Workspace edit pattern.
+     */
     async renderContactPage(page, ctx) {
         const contactId = Number(page.objectId);
         if (!Number.isInteger(contactId) || contactId <= 0) {
@@ -8018,63 +8022,366 @@ window.SkyIndex = {
             throw new Error(data?.error || 'Contact not found.');
         }
 
-        const first = this.escapeHtml(c.contactFirstName || '');
-        const last  = this.escapeHtml(c.contactLastName || '');
-        const name  = [first, last].filter(Boolean).join(' ') || 'Unnamed Contact';
-        const title = this.escapeHtml(c.contactTitle || '');
-        const phone = this.escapeHtml(c.contactPrimaryPhone || c.phone || '');
-        const email = this.escapeHtml(c.contactEmail || '');
-        const entityName = this.escapeHtml(c.entityName || c.entity?.entityName || '');
-        const locationName = this.escapeHtml(c.locationName || c.location?.locationName || '');
+        const isEditing = page.state?.edit === true;
+        this._currentContactModalData = { contact: c, contactId };
 
-        const section = (t, content) => `
-            <div style="background:#fafafa; border:1px solid #eee; border-radius:10px;
-                        padding:10px 14px 12px; margin-bottom:12px;">
-                <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                            color:#888; text-transform:uppercase; padding-bottom:7px;
-                            border-bottom:1px solid #e8e8e8; margin-bottom:8px;">${t}</div>
-                ${content}
-            </div>`;
+        // ── Core identity ───────────────────────────────────────────────────────
+        const firstName   = c.contactFirstName || '';
+        const lastName    = c.contactLastName || '';
+        const name        = this.escapeHtml([firstName, lastName].filter(Boolean).join(' ') || 'Unnamed Contact');
+        const salutation  = c.contactSalutation || '';
+        const title       = c.contactTitle || '';
+        const primaryPhone = c.contactPrimaryPhone || '';
+        const primaryExt  = c.contactPrimaryPhoneExtension || '';
+        const secondaryPhone = c.contactSecondaryPhone || '';
+        const email       = c.contactEmail || '';
+        const isNotValid  = Number(c.contactIsNotValid) === 1;
 
-        const row = (label, value) => {
-            if (!value) return '';
-            return `
-                <div style="display:grid; grid-template-columns:110px 1fr; gap:12px; padding:5px 0;">
-                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase;">${label}</div>
-                    <div style="font-size:0.95em; color:#222;">${value}</div>
-                </div>`;
+        // Parent references
+        const entityName  = c.entity?.entityName || c.entityName || '';
+        const entityId    = Number(c.entity?.entityId || c.contactEntityId || 0);
+        const locationName = c.location?.locationName || c.locationName || '';
+        const locationId  = Number(c.location?.locationId || c.contactLocationId || 0);
+
+        // Counts (Related)
+        const orderCount       = Number(c.orderCount       ?? 0);
+        const applicationCount = Number(c.applicationCount ?? 0);
+        const noteCount        = Number(c.noteCount        ?? 0);
+        const taskCount        = Number(c.taskCount        ?? 0);
+
+        // Dates
+        const formatUnix = (unix) => {
+            if (!unix && unix !== 0) return null;
+            const d = new Date(Number(unix) * 1000);
+            if (isNaN(d.getTime())) return null;
+            return d.toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric',
+                timeZone: 'America/Phoenix'
+            });
         };
 
-        const titleHtml = `
-            <span style="display:inline-flex; align-items:center; gap:8px; min-width:0;">
-                <span style="font-size:1.15rem;">👤</span>
-                <strong style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</strong>
-            </span>`;
+        const createdDate  = c.createdDate
+            ? this.escapeHtml(c.createdDate)
+            : (formatUnix(c.contactDate || c.contactCreatedAt) || '—');
+        const lastActivity = c.lastActivity
+            ? this.escapeHtml(c.lastActivity)
+            : (formatUnix(c.contactUpdatedAt || c.lastActivityUnix) || createdDate);
 
-        const phoneHtml = phone
-            ? `<a href="tel:${phone}" style="color:#117a8b; text-decoration:none;">${phone}</a>`
-            : null;
-        const emailHtml = email
-            ? `<a href="mailto:${email}" style="color:#117a8b; text-decoration:none;">${email}</a>`
-            : null;
+        // ── Helpers (identical visual language) ─────────────────────────────────
+        const LABEL_WIDTH = '100px';
 
-        const identityContent = `
-            ${row('Title', title || null)}
-            ${row('Phone', phoneHtml)}
-            ${row('Email', emailHtml)}
-            ${row('Entity', entityName || null)}
-            ${row('Location', locationName || null)}
-            ${!title && !phone && !email && !entityName && !locationName
-                ? `<div style="color:#999; font-size:0.9em;">No identity details.</div>` : ''}
+        const attrRow = (label, value, action = null) => {
+            if (!value && value !== 0) return '';
+            const valueHtml = action
+                ? `<a href="#" onclick="event.preventDefault(); ${action}"
+                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
+                : `<span style="color:#222;">${value}</span>`;
+            return `
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:10px; align-items:baseline; padding:4px 0;">
+                    <div style="font-size:0.72em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                        ${label}
+                    </div>
+                    <div style="font-size:0.9em; line-height:1.35; min-width:0;">
+                        ${valueHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        const editField = (label, fieldName, value, type = 'text', extra = '') => `
+            <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:10px; align-items:center; padding:4px 0;">
+                <div style="font-size:0.72em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                    ${label}
+                </div>
+                <div style="min-width:0;">
+                    <input type="${type}" name="${fieldName}"
+                        value="${this.escapeHtml(value || '')}"
+                        style="width:100%; padding:6px 9px; border:1px solid #d1d5db;
+                                border-radius:5px; font-size:0.9em; color:#222;
+                                background:#fff; box-sizing:border-box;"
+                        ${extra} />
+                </div>
+            </div>
         `;
+
+        const editSelect = (label, fieldName, currentValue, options) => {
+            const opts = options.map(o => {
+                const selected = String(currentValue) === String(o.value) ? ' selected' : '';
+                return `<option value="${this.escapeHtml(o.value)}"${selected}>${this.escapeHtml(o.label)}</option>`;
+            }).join('');
+            return `
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:10px; align-items:center; padding:4px 0;">
+                    <div style="font-size:0.72em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                        ${label}
+                    </div>
+                    <div style="min-width:0;">
+                        <select name="${fieldName}"
+                            style="width:100%; padding:6px 9px; border:1px solid #d1d5db;
+                                    border-radius:5px; font-size:0.9em; color:#222;
+                                    background:#fff; box-sizing:border-box;">
+                            ${opts}
+                        </select>
+                    </div>
+                </div>
+            `;
+        };
+
+        const relatedRow = (label, count, action) => {
+            if (count <= 0) {
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center;
+                                padding:6px 0; border-bottom:1px solid #f0f0f0; color:#999; font-size:0.9em;">
+                        <span>${label}</span>
+                        <span>0</span>
+                    </div>
+                `;
+            }
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            padding:6px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:0.9em;"
+                    onclick="event.preventDefault(); ${action}">
+                    <span style="color:#117a8b; font-weight:600;">${label}</span>
+                    <span style="display:flex; align-items:center; gap:5px;">
+                        <strong style="color:#222;">${count}</strong>
+                        <span style="color:#9ca3af;">›</span>
+                    </span>
+                </div>
+            `;
+        };
+
+        const section = (title, content) => `
+            <div style="background:#fafafa; border:1px solid #e8e8e8; border-radius:8px;
+                        padding:9px 12px 10px; margin-bottom:10px;">
+                <div style="font-size:0.68em; font-weight:600; letter-spacing:0.04em;
+                            color:#888; text-transform:uppercase; padding-bottom:6px;
+                            border-bottom:1px solid #e8e8e8; margin-bottom:6px;">
+                    ${title}
+                </div>
+                ${content}
+            </div>
+        `;
+
+        // ── Option sets ─────────────────────────────────────────────────────────
+        const SALUTATION_OPTIONS = [
+            { value: 'Mr', label: 'Mr' },
+            { value: 'Ms', label: 'Ms' }
+        ];
+        const INVALID_OPTIONS = [
+            { value: '0', label: 'Active' },
+            { value: '1', label: 'Invalid' }
+        ];
+
+        // ── Identity content ────────────────────────────────────────────────────
+        let identityContent;
+
+        if (isEditing) {
+            identityContent = `
+                <form id="contactEditForm" onsubmit="return false;">
+                    ${editSelect('Salutation', 'contactSalutation', salutation || 'Mr', SALUTATION_OPTIONS)}
+                    ${editField('First Name', 'contactFirstName', firstName, 'text', 'required')}
+                    ${editField('Last Name', 'contactLastName', lastName, 'text', 'required')}
+                    ${editField('Title', 'contactTitle', title)}
+                    ${editField('Primary Phone', 'contactPrimaryPhone', primaryPhone)}
+                    ${editField('Extension', 'contactPrimaryPhoneExtension', primaryExt, 'text', 'style="width:100px;"')}
+                    ${editField('Secondary Phone', 'contactSecondaryPhone', secondaryPhone)}
+                    ${editField('Email', 'contactEmail', email, 'email', 'required')}
+                    ${editSelect('Invalid', 'contactIsNotValid', isNotValid ? '1' : '0', INVALID_OPTIONS)}
+                </form>
+            `;
+        } else {
+            const entityAction = entityId > 0
+                ? `SkyWorkspace.push({ pageType: 'entity', objectType: 'entity', objectId: ${entityId}, title: '${String(entityName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}' })`
+                : null;
+            const locationAction = locationId > 0
+                ? `SkyWorkspace.push({ pageType: 'location', objectType: 'location', objectId: ${locationId}, title: '${String(locationName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}' })`
+                : null;
+
+            const phoneDisplay = primaryPhone
+                ? (primaryExt ? `${this.escapeHtml(primaryPhone)} ext. ${this.escapeHtml(primaryExt)}` : this.escapeHtml(primaryPhone))
+                : null;
+
+            identityContent = `
+                ${attrRow('Salutation', salutation ? this.escapeHtml(salutation) : null)}
+                ${attrRow('Title', title ? this.escapeHtml(title) : null)}
+                ${attrRow('Primary Phone', phoneDisplay)}
+                ${attrRow('Secondary Phone', secondaryPhone ? this.escapeHtml(secondaryPhone) : null)}
+                ${attrRow('Email', email ? this.escapeHtml(email) : null)}
+                ${attrRow('Entity', entityName ? this.escapeHtml(entityName) : null, entityAction)}
+                ${attrRow('Location', locationName ? this.escapeHtml(locationName) : null, locationAction)}
+                ${attrRow('Invalid', isNotValid ? 'Invalid' : 'Active')}
+            `;
+        }
+
+        // ── Related ─────────────────────────────────────────────────────────────
+        const relatedContent = `
+            ${relatedRow('Orders', orderCount,
+                `SkyIndex.executeAICommand('show orders for contact ${contactId}');`)}
+            ${relatedRow('Applications', applicationCount,
+                `SkyIndex.executeAICommand('show applications for contact ${contactId}');`)}
+            ${relatedRow('Notes', noteCount,
+                `SkyIndex.executeAICommand('show notes for contact ${contactId}');`)}
+            ${relatedRow('Tasks', taskCount,
+                `SkyIndex.executeAICommand('show tasks for contact ${contactId}');`)}
+        `;
+
+        // ── Metadata ────────────────────────────────────────────────────────────
+        const metadataContent = `
+            <div style="display:flex; gap:24px; font-size:0.82em; color:#555;">
+                <div>Created <strong style="color:#222; margin-left:3px;">${createdDate}</strong></div>
+                <div>Last Activity <strong style="color:#222; margin-left:3px;">${lastActivity}</strong></div>
+            </div>
+        `;
+
+        // ── Header ──────────────────────────────────────────────────────────────
+        const titleHtml = `
+            <span style="display:inline-flex; align-items:center; gap:7px; min-width:0;">
+                <span style="font-size:1.1rem;">👤</span>
+                <strong style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.98em;">${name}</strong>
+            </span>
+        `;
+
+        // ── Actions ─────────────────────────────────────────────────────────────
+        const actionsHtml = isEditing
+            ? `
+                <button type="button" onclick="SkyIndex.cancelContactEditWorkspace();"
+                        style="padding:4px 11px; border:1px solid #d1d5db; border-radius:5px;
+                            background:#fff; color:#374151; font-size:0.82em; font-weight:500; cursor:pointer;">
+                    Cancel
+                </button>
+                <button type="button" onclick="SkyIndex.saveContactEditWorkspace(${contactId});"
+                        style="padding:4px 13px; border:1px solid #0d9488; border-radius:5px;
+                            background:#0d9488; color:#fff; font-size:0.82em; font-weight:550; cursor:pointer;">
+                    Save
+                </button>
+            `
+            : `
+                <button type="button" onclick="SkyIndex.editContactWorkspace();"
+                        style="padding:4px 11px; border:1px solid #d1d5db; border-radius:5px;
+                            background:#fff; color:#374151; font-size:0.82em; font-weight:500; cursor:pointer;">
+                    Edit
+                </button>
+            `;
 
         const bodyHtml = `
             ${section('Identity', identityContent)}
-            ${section('Related', `<div style="color:#999; font-size:0.9em; padding:4px 0;">Related collections soon.</div>`)}
+            ${section('Related', relatedContent)}
+            ${section('Metadata', metadataContent)}
         `;
 
-        return { titleHtml, bodyHtml, actionsHtml: '' };
+        return { titleHtml, bodyHtml, actionsHtml };
     },
+
+    // ── Contact Edit helpers ────────────────────────────────────────────────────
+
+    editContactWorkspace() {
+        const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+        if (!top || top.pageType !== 'contact') return;
+        window.SkyWorkspace.replace({
+            ...top,
+            state: { ...(top.state || {}), edit: true }
+        });
+    },
+
+    cancelContactEditWorkspace() {
+        const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+        if (!top || top.pageType !== 'contact') return;
+        window.SkyWorkspace.replace({
+            ...top,
+            state: { ...(top.state || {}), edit: false }
+        });
+    },
+
+    async saveContactEditWorkspace(contactId) {
+        const form = document.getElementById('contactEditForm');
+        if (!form) return;
+
+        const payload = {
+            contactId:                   Number(contactId),
+            contactSalutation:           form.querySelector('[name="contactSalutation"]')?.value?.trim() || 'Mr',
+            contactFirstName:            form.querySelector('[name="contactFirstName"]')?.value?.trim() || '',
+            contactLastName:             form.querySelector('[name="contactLastName"]')?.value?.trim() || '',
+            contactTitle:                form.querySelector('[name="contactTitle"]')?.value?.trim() || '',
+            contactPrimaryPhone:         form.querySelector('[name="contactPrimaryPhone"]')?.value?.trim() || '',
+            contactPrimaryPhoneExtension: form.querySelector('[name="contactPrimaryPhoneExtension"]')?.value?.trim() || '',
+            contactSecondaryPhone:       form.querySelector('[name="contactSecondaryPhone"]')?.value?.trim() || '',
+            contactEmail:                form.querySelector('[name="contactEmail"]')?.value?.trim() || '',
+            contactIsNotValid:           form.querySelector('[name="contactIsNotValid"]')?.value?.trim() || '0'
+        };
+
+        if (!payload.contactFirstName || !payload.contactLastName) {
+            this.appendSystemLine('First name and last name are required.');
+            return;
+        }
+        if (!payload.contactEmail) {
+            this.appendSystemLine('Email is required.');
+            return;
+        }
+
+        try {
+            const updated = await this.updateContact(payload);
+
+            this._currentContactModalData = {
+                contact: updated,
+                contactId: Number(contactId)
+            };
+
+            const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+            const displayName = [updated.contactFirstName, updated.contactLastName].filter(Boolean).join(' ');
+
+            window.SkyWorkspace.replace({
+                ...(top || {}),
+                pageType:   'contact',
+                objectType: 'contact',
+                objectId:   Number(contactId),
+                title:      displayName || 'Contact',
+                state:      { edit: false }
+            });
+
+            this.appendSystemLine('Contact updated.');
+        } catch (err) {
+            console.error('[SkyIndex] saveContactEditWorkspace failed:', err);
+            this.appendSystemLine(`❌ Failed to update contact: ${err.message || 'Unknown error'}`);
+        }
+    },
+
+    async updateContact(payload) {
+        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
+
+        if (actionLocation.latitude === null || actionLocation.longitude === null) {
+            actionLocation = await this.getLocationSafe();
+            if (actionLocation.latitude !== null && actionLocation.longitude !== null) {
+                this.lastLocation = actionLocation;
+            }
+        }
+
+        const activitySessionId = this.getActivitySessionId();
+
+        const res = await fetch('/skyesoft/api/askOpenAI.php?type=contactUpdate', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...payload,
+                activitySessionId,
+                latitude:  actionLocation?.latitude  ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`HTTP ${res.status} — ${text.slice(0, 200)}`);
+        }
+
+        const data = await res.json();
+
+        if (!data?.success || !data.contact) {
+            throw new Error(data?.error || data?.message || 'Update failed');
+        }
+
+        return data.contact;
+    },
+
     // #endregion
 
     // #region 🔎 AI Query Information Card
