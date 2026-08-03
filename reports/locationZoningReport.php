@@ -415,16 +415,18 @@ ob_start();
 $html = ob_get_clean();
 
 // -------------------------------------------------------------------------
-// 5. Render PDF with mPDF (Letter + Narrow Margins)
+// 5. Render PDF with mPDF (Letter + Expanded Body & Header Clearance)
 // -------------------------------------------------------------------------
 try {
     $mpdf = new \Mpdf\Mpdf([
         'mode'          => 'utf-8',
         'format'        => 'Letter',
-        'margin_left'   => 11.43, // 0.45 inch
-        'margin_right'  => 11.43, // 0.45 inch
-        'margin_top'    => 27,    // Header clearance
-        'margin_bottom' => 14     // Footer clearance
+        'margin_left'   => 8.5,   // ~0.33 in (expands body width)
+        'margin_right'  => 8.5,   // ~0.33 in
+        'margin_top'    => 33,    // Increased clearance so body starts below header
+        'margin_bottom' => 14,    // Clearance for footer
+        'margin_header' => 6,     // Moves header closer to top edge
+        'margin_footer' => 6      // Moves footer closer to bottom edge
     ]);
 
     $mpdf->SetTitle('Location Zoning & Sign Code Report - ' . ($loc['locationName'] ?? 'Location #' . $locationId));
