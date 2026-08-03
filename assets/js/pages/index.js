@@ -7755,51 +7755,57 @@ window.SkyIndex = {
         });
     },
 
-    async saveLocationEditWorkspace(locationId) {
-        const form = document.getElementById('locationEditForm');
-        if (!form) return;
+    /**
+     * Persist location changes.
+     * Temporary bridge: routes through skyebot until a dedicated
+     * type=locationUpdate handler exists on the server.
+     * Once the real handler is live, switch the URL back to
+     * ?type=locationUpdate and remove the userQuery / locationUpdate wrapper.
+     */
+    async updateLocation(payload) {
+        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
 
-        // Only user-maintained fields are submitted.
-        // Derived geographic fields are never sent — the Location service owns them.
-        const payload = {
-            locationId:            Number(locationId),
-            locationName:          form.querySelector('[name="locationName"]')?.value?.trim() || '',
-            locationAddress:       form.querySelector('[name="locationAddress"]')?.value?.trim() || '',
-            locationAddressSuite:  form.querySelector('[name="locationAddressSuite"]')?.value?.trim() || '',
-            locationCity:          form.querySelector('[name="locationCity"]')?.value?.trim() || '',
-            locationState:         (form.querySelector('[name="locationState"]')?.value || '').trim().toUpperCase() || '',
-            locationZip:           form.querySelector('[name="locationZip"]')?.value?.trim() || '',
-            locationIsNotValid:    form.querySelector('[name="locationIsNotValid"]')?.value?.trim() || '0'
-        };
-
-        if (!payload.locationName) {
-            this.appendSystemLine('Location name is required.');
-            return;
+        if (actionLocation.latitude === null || actionLocation.longitude === null) {
+            actionLocation = await this.getLocationSafe();
+            if (actionLocation.latitude !== null && actionLocation.longitude !== null) {
+                this.lastLocation = actionLocation;
+            }
         }
 
-        try {
-            const updated = await this.updateLocation(payload);
+        const activitySessionId = this.getActivitySessionId();
 
-            this._currentLocationModalData = {
-                location: updated,
-                locationId: Number(locationId)
-            };
+        const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                // Required by the current generic handler
+                userQuery: `update location ${payload.locationId}`,
 
-            const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
-            window.SkyWorkspace.replace({
-                ...(top || {}),
-                pageType:   'location',
-                objectType: 'location',
-                objectId:   Number(locationId),
-                title:      updated.locationName || updated.name,
-                state:      { edit: false }
-            });
+                // Structured data the backend can inspect
+                locationUpdate: payload,
 
-            this.appendSystemLine('Location updated.');
-        } catch (err) {
-            console.error('[SkyIndex] saveLocationEditWorkspace failed:', err);
-            this.appendSystemLine(`❌ Failed to update location: ${err.message || 'Unknown error'}`);
+                activitySessionId,
+                latitude:  actionLocation?.latitude  ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`HTTP ${res.status} — ${text.slice(0, 200)}`);
         }
+
+        const data = await res.json();
+
+        // The temporary bridge may return the updated location in different shapes
+        const updated = data.location || data.updatedLocation || data.result?.location;
+
+        if (!data?.success || !updated) {
+            throw new Error(data?.error || data?.message || 'Update failed');
+        }
+
+        return updated;
     },
 
     /**
