@@ -6756,6 +6756,126 @@ window.SkyIndex = {
         this.appendSystemHtml(html);
     },
 
+    renderLocationListCard(list) {
+        if (!list || !Array.isArray(list.rows)) {
+            this.appendSystemLine('No locations to display.');
+            return;
+        }
+
+        const page       = Math.max(1, Number(list.page) || 1);
+        const pageSize   = Math.max(1, Number(list.pageSize) || 5);
+        const totalPages = Math.max(1, Number(list.totalPages) || 1);
+        const total      = Number(list.total) || list.rows.length;
+        const rows       = list.rows;
+
+        const rowsHtml = rows.map((r, i) => {
+            const locationId = Number(r.locationId || r.id || 0);
+            const name       = this.escapeHtml(r.locationName || r.name || 'Unnamed Location');
+            const address    = this.escapeHtml(r.locationAddress || r.address || '');
+            const city       = this.escapeHtml(r.locationCity || r.city || '');
+            const state      = this.escapeHtml(r.locationState || r.state || '');
+            const zip        = this.escapeHtml(r.locationZip || r.zip || '');
+            const parcel     = this.escapeHtml(r.locationParcelNumber || r.locationParcelNumberRaw || r.parcel || '');
+            const isBilling  = Number(r.locationIsBilling) === 1;
+
+            const entityName = r.entityName || r.entity?.entityName || '';
+            const entityId   = Number(r.entityId || r.entity?.entityId || 0);
+
+            const rowNumber = i + 1 + ((page - 1) * pageSize);
+
+            let cityStateZip = '';
+            if (city && state) {
+                cityStateZip = `${city}, ${state}${zip ? ' ' + zip : ''}`;
+            } else {
+                cityStateZip = [city, state, zip].filter(Boolean).join(' ');
+            }
+
+            const nameHtml = locationId > 0
+                ? `<a href="#" onclick="event.preventDefault(); SkyIndex.showLocationModal(${locationId});"
+                        style="color:#117a8b; font-weight:600; text-decoration:none;">${name}</a>`
+                : `<span style="font-weight:600; color:#222;">${name}</span>`;
+
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0;">
+                    <div style="min-width:0; flex:1;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                            <div style="color:#222;">
+                                ${rowNumber}. ${nameHtml}
+                            </div>
+                            ${isBilling ? `
+                                <span style="background:rgba(13,148,136,0.12); color:#0f766e; border:1px solid rgba(13,148,136,0.25); padding:1px 7px; border-radius:4px; font-size:0.68em; font-weight:600; flex-shrink:0;">
+                                    Billing
+                                </span>
+                            ` : ''}
+                        </div>
+                        ${address ? `<div style="font-size:0.85em; color:#555; margin-top:3px;">${address}</div>` : ''}
+                        ${cityStateZip ? `<div style="font-size:0.85em; color:#666; margin-top:1px;">${cityStateZip}</div>` : ''}
+                        ${entityName ? `
+                            <div style="font-size:0.82em; color:#555; margin-top:5px;">
+                                🏢 ${entityId > 0
+                                    ? `<a href="#" onclick="event.preventDefault(); SkyIndex.renderEntityCard(${entityId});" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(entityName)}</a>`
+                                    : this.escapeHtml(entityName)}
+                            </div>
+                        ` : ''}
+                        ${parcel ? `<div style="font-size:0.8em; color:#666; margin-top:2px;">📐 Parcel ${parcel}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const hasPrevious = page > 1;
+        const hasNext     = page < totalPages;
+
+        const previousHtml = hasPrevious
+            ? `<a href="#" onclick="event.preventDefault(); SkyIndex.loadLocationPage(${page - 1});"
+                    style="color:#117a8b; font-weight:600; text-decoration:none;">← Back</a>`
+            : `<span style="color:#aaa;">← Back</span>`;
+
+        const nextHtml = hasNext
+            ? `<a href="#" onclick="event.preventDefault(); SkyIndex.loadLocationPage(${page + 1});"
+                    style="color:#117a8b; font-weight:600; text-decoration:none;">Next →</a>`
+            : `<span style="color:#aaa;">Next →</span>`;
+
+        const html = `
+            <div id="skyLocationListCard" class="commandLine system html">
+                <div class="result-card" style="border-left:5px solid #0d9488; background:#fff; width:100%; max-width:100%;">
+                    <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="result-icon">📍</span>
+                            <div style="display:flex; flex-direction:column;">
+                                <strong class="result-title" style="color:#222;">Locations</strong>
+                                <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
+                                    Page ${page} of ${totalPages} · showing ${rows.length} of ${total}
+                                </small>
+                            </div>
+                        </div>
+                        <span style="background:rgba(13,148,136,0.12); color:#0f766e; border:1px solid rgba(13,148,136,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
+                            LIST
+                        </span>
+                    </div>
+                    <div class="result-body" style="padding:4px 16px 12px;">
+                        ${rowsHtml || `<div style="color:#666; padding:12px 0;">No locations found on this page.</div>`}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 16px; border-top:1px solid #eee; background:#fafafa; font-size:0.85em;">
+                        <div>${previousHtml}</div>
+                        <div style="color:#666;">Page ${page} of ${totalPages}</div>
+                        <div>${nextHtml}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const existingCard = document.getElementById('skyLocationListCard');
+        if (existingCard) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html.trim();
+            const replacementCard = wrapper.firstElementChild;
+            if (replacementCard) existingCard.replaceWith(replacementCard);
+        } else {
+            this.appendSystemHtml(html);
+        }
+    },
+
     /**
      * Canonical entry point for any Location detail.
      * Always opens via SkyWorkspace so Edit / Save / Cancel appear.
