@@ -7735,7 +7735,7 @@ window.SkyIndex = {
         return { titleHtml, bodyHtml, actionsHtml };
     },
 
-    // ── Location Edit helpers (mirror Entity pattern exactly) ───────────────────
+    // ── Location Edit helpers (must live inside SkyIndex) ───────────────────────
 
     editLocationWorkspace() {
         const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
@@ -7755,12 +7755,56 @@ window.SkyIndex = {
         });
     },
 
+    async saveLocationEditWorkspace(locationId) {
+        const form = document.getElementById('locationEditForm');
+        if (!form) return;
+
+        // Only user-maintained fields are submitted.
+        // Derived geographic fields are never sent — the Location service owns them.
+        const payload = {
+            locationId:            Number(locationId),
+            locationName:          form.querySelector('[name="locationName"]')?.value?.trim() || '',
+            locationAddress:       form.querySelector('[name="locationAddress"]')?.value?.trim() || '',
+            locationAddressSuite:  form.querySelector('[name="locationAddressSuite"]')?.value?.trim() || '',
+            locationCity:          form.querySelector('[name="locationCity"]')?.value?.trim() || '',
+            locationState:         (form.querySelector('[name="locationState"]')?.value || '').trim().toUpperCase() || '',
+            locationZip:           form.querySelector('[name="locationZip"]')?.value?.trim() || '',
+            locationIsNotValid:    form.querySelector('[name="locationIsNotValid"]')?.value?.trim() || '0'
+        };
+
+        if (!payload.locationName) {
+            this.appendSystemLine('Location name is required.');
+            return;
+        }
+
+        try {
+            const updated = await this.updateLocation(payload);
+
+            this._currentLocationModalData = {
+                location: updated,
+                locationId: Number(locationId)
+            };
+
+            const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+            window.SkyWorkspace.replace({
+                ...(top || {}),
+                pageType:   'location',
+                objectType: 'location',
+                objectId:   Number(locationId),
+                title:      updated.locationName || updated.name,
+                state:      { edit: false }
+            });
+
+            this.appendSystemLine('Location updated.');
+        } catch (err) {
+            console.error('[SkyIndex] saveLocationEditWorkspace failed:', err);
+            this.appendSystemLine(`❌ Failed to update location: ${err.message || 'Unknown error'}`);
+        }
+    },
+
     /**
      * Persist location changes.
-     * Temporary bridge: routes through skyebot until a dedicated
-     * type=locationUpdate handler exists on the server.
-     * Once the real handler is live, switch the URL back to
-     * ?type=locationUpdate and remove the userQuery / locationUpdate wrapper.
+     * Temporary bridge while a dedicated type=locationUpdate handler is built.
      */
     async updateLocation(payload) {
         let actionLocation = this.lastLocation || { latitude: null, longitude: null };
@@ -7779,12 +7823,8 @@ window.SkyIndex = {
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                // Required by the current generic handler
                 userQuery: `update location ${payload.locationId}`,
-
-                // Structured data the backend can inspect
                 locationUpdate: payload,
-
                 activitySessionId,
                 latitude:  actionLocation?.latitude  ?? null,
                 longitude: actionLocation?.longitude ?? null
@@ -7798,7 +7838,6 @@ window.SkyIndex = {
 
         const data = await res.json();
 
-        // The temporary bridge may return the updated location in different shapes
         const updated = data.location || data.updatedLocation || data.result?.location;
 
         if (!data?.success || !updated) {
@@ -7806,49 +7845,6 @@ window.SkyIndex = {
         }
 
         return updated;
-    },
-
-    /**
-     * Persist location changes via askOpenAI.php?type=locationUpdate
-     * Sends only user-maintained fields + activitySessionId + geo for tblActions.
-     * Server is responsible for any re-derivation of parcel / jurisdiction / etc.
-     */
-    async updateLocation(payload) {
-        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
-
-        if (actionLocation.latitude === null || actionLocation.longitude === null) {
-            actionLocation = await this.getLocationSafe();
-            if (actionLocation.latitude !== null && actionLocation.longitude !== null) {
-                this.lastLocation = actionLocation;
-            }
-        }
-
-        const activitySessionId = this.getActivitySessionId();
-
-        const res = await fetch('/skyesoft/api/askOpenAI.php?type=locationUpdate', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ...payload,
-                activitySessionId,
-                latitude:  actionLocation?.latitude  ?? null,
-                longitude: actionLocation?.longitude ?? null
-            })
-        });
-
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`HTTP ${res.status} — ${text.slice(0, 200)}`);
-        }
-
-        const data = await res.json();
-
-        if (!data?.success || !data.location) {
-            throw new Error(data?.error || data?.message || 'Update failed');
-        }
-
-        return data.location;
     },
 
     // #endregion
