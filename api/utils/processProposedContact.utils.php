@@ -2002,159 +2002,226 @@ function parseCityStateZip(string $line): ?array
 }
 
 /**
- * parseLocationProposal — Clean parser for location-only proposals (PC-5+)
- * Supports both labeled and positional formats.
- * Precedence: clientData → labeled → positional
+ * parseLocationProposal — Deterministic field-based parser for location-only proposals (PC-4 / PC-5)
+ *
+ * Supports both:
+ *   Location:
+ *   Phoenix Flowers – Cave Creek
+ *
+ * and:
+ *   Location: Phoenix Flowers – Cave Creek
+ *
+ * Each recognized field is independent. Address is never inferred from
+ * "everything after Location". Labels are never embedded in values.
  */
 function parseLocationProposal(array $lines, array $clientData, string $rawInputOriginal): array
 {
-    // Clean and filter lines
-    $lines = array_values(array_filter(array_map('trim', $lines), fn($l) => $l !== ''));
-
+    // -------------------------------------------------
+    // 0. Prefer any structured client data already supplied
+    // -------------------------------------------------
     $entityName   = trim($clientData['entity']['entityName'] ?? '');
     $locationName = trim($clientData['location']['locationName'] ?? '');
     $address      = trim($clientData['location']['locationAddress'] ?? $clientData['location']['address'] ?? '');
-    $city         = trim($clientData['location']['locationCity'] ?? '');
-    $state        = trim($clientData['location']['locationState'] ?? '');
-    $zip          = trim($clientData['location']['locationZip'] ?? '');
+    $suite        = trim($clientData['location']['locationAddressSuite'] ?? $clientData['location']['suite'] ?? '');
+    $city         = trim($clientData['location']['locationCity'] ?? $clientData['location']['city'] ?? '');
+    $state        = trim($clientData['location']['locationState'] ?? $clientData['location']['state'] ?? '');
+    $zip          = trim($clientData['location']['locationZip'] ?? $clientData['location']['zip'] ?? '');
 
     // -------------------------------------------------
-    // 1. Label-aware parsing
+    // 1. Normalize lines
     // -------------------------------------------------
-    $addressLines = [];
+    $lines = array_values(array_filter(
+        array_map('trim', $lines),
+        fn($l) => $l !== ''
+    ));
+
+    // -------------------------------------------------
+    // 2. Recognized field labels (case-insensitive)
+    // -------------------------------------------------
+    $fieldLabels = [
+        'entity',
+        'location',
+        'address',
+        'suite',
+        'city',
+        'state',
+        'zip',
+        'zip code',
+        'postal',
+        'contact',
+        'title',
+        'phone',
+        'email',
+        'website',
+        'notes',
+        'status',
+        'location type',
+        'type'
+    ];
+
+    // Build a quick lookup set
+    $labelSet = [];
+    foreach ($fieldLabels as $lab) {
+        $labelSet[strtolower($lab)] = true;
+    }
+
+    /**
+     * Returns the canonical field key if the line is a label, otherwise null.
+     * Handles both:
+     *   "Address:"
+     *   "Address: 15421 N Cave Creek Rd"
+     */
+    $detectLabel = function (string $line) use ($labelSet): ?array {
+        // Inline form: "Label: value"
+        if (preg_match('/^([A-Za-z][A-Za-z0-9 \-]{0,30}?)\s*:\s*(.*)$/', $line, $m)) {
+            $key = strtolower(trim($m[1]));
+            if (isset($labelSet[$key])) {
+                return [
+                    'key'   => $key,
+                    'value' => trim($m[2])
+                ];
+            }
+        }
+        return null;
+    };
+
+    // -------------------------------------------------
+    // 3. Walk lines and collect fields
+    // -------------------------------------------------
+    $fields = [
+        'entity'   => $entityName,
+        'location' => $locationName,
+        'address'  => $address,
+        'suite'    => $suite,
+        'city'     => $city,
+        'state'    => $state,
+        'zip'      => $zip
+    ];
+
+    $currentKey = null;
 
     for ($i = 0; $i < count($lines); $i++) {
         $line = $lines[$i];
+        $detected = $detectLabel($line);
 
-        // Only treat lines that actually end with a colon as labels
-        if (!preg_match('/^[^:]+:\s*$/', $line)) {
-            continue;
-        }
+        if ($detected !== null) {
+            // New field starts
+            $currentKey = $detected['key'];
 
-        $label = strtolower(rtrim($line, ':'));
-
-        if ($label === 'entity' && empty($entityName)) {
-            $candidate = trim($lines[$i + 1] ?? '');
-            if ($candidate !== '' && !str_ends_with($candidate, ':')) {
-                $entityName = $candidate;
+            // Normalize aliases
+            if ($currentKey === 'zip code' || $currentKey === 'postal') {
+                $currentKey = 'zip';
             }
-            $i++;
-            continue;
-        }
 
-        if ($label === 'location' && empty($locationName)) {
-            $candidate = trim($lines[$i + 1] ?? '');
-            if ($candidate !== '' && !str_ends_with($candidate, ':')) {
-                $locationName = $candidate;
-            }
-            $i++;
-
-            // Collect following address lines until next label or end
-            while (
-                isset($lines[$i + 1]) &&
-                !preg_match('/^[^:]+:\s*$/', $lines[$i + 1])
-            ) {
-                $addressLines[] = $lines[++$i];
-            }
-            continue;
-        }
-    }
-
-    // -------------------------------------------------
-    // 2. Positional fallback
-    // -------------------------------------------------
-    if (empty($entityName) && !empty($lines[0]) && !str_ends_with($lines[0], ':')) {
-        $entityName = $lines[0];
-    }
-
-    if (empty($locationName) && count($lines) >= 2) {
-        $potential = $lines[1];
-        if (
-            !preg_match('/^\d+\s+[A-Za-z]/', $potential) &&
-            !preg_match('/^\d{5}/', $potential) &&
-            strlen($potential) > 3 &&
-            !str_ends_with($potential, ':')
-        ) {
-            $locationName = $potential;
-        }
-    }
-
-    // -------------------------------------------------
-    // 3. Address + City/State/Zip handling
-    // -------------------------------------------------
-    if (empty($address)) {
-        if (!empty($addressLines)) {
-            $cityLineCandidate = array_pop($addressLines);
-            $address = implode(', ', $addressLines);
-
-            if ($parsedCity = parseCityStateZip($cityLineCandidate)) {
-                $city  = $city  ?: $parsedCity['city'];
-                $state = $state ?: $parsedCity['state'];
-                $zip   = $zip   ?: $parsedCity['zip'];
-            } else {
-                $address = trim($address . ', ' . $cityLineCandidate, ', ');
-            }
-        } else {
-            // Classic positional fallback
-            $start = empty($locationName) ? 1 : 2;
-            $remaining = array_slice($lines, $start);
-
-            if (count($remaining) > 1) {
-                $cityLineCandidate = array_pop($remaining);
-                $address = implode(', ', $remaining);
-
-                if ($parsedCity = parseCityStateZip($cityLineCandidate)) {
-                    $city  = $city  ?: $parsedCity['city'];
-                    $state = $state ?: $parsedCity['state'];
-                    $zip   = $zip   ?: $parsedCity['zip'];
-                } else {
-                    $address = trim($address . ', ' . $cityLineCandidate, ', ');
+            // Only store values for fields we care about
+            if (array_key_exists($currentKey, $fields)) {
+                if ($detected['value'] !== '') {
+                    // Inline value present
+                    if ($fields[$currentKey] === '') {
+                        $fields[$currentKey] = $detected['value'];
+                    }
                 }
-            } elseif (!empty($remaining)) {
-                $address = $remaining[0];
+                // If value is empty, the next non-label line(s) belong to this field
+            } else {
+                // Unrecognized / contact-related label → stop collecting for location fields
+                $currentKey = null;
+            }
+            continue;
+        }
+
+        // Not a label. If we are inside a known field, append / assign the value.
+        if ($currentKey !== null && array_key_exists($currentKey, $fields)) {
+            if ($fields[$currentKey] === '') {
+                $fields[$currentKey] = $line;
+            } elseif (in_array($currentKey, ['address', 'location', 'entity'], true)) {
+                // Allow multi-line only for these; join cleanly
+                $fields[$currentKey] = trim($fields[$currentKey] . ' ' . $line);
+            }
+            // For single-value fields (city/state/zip/suite) we already took the first line
+        }
+    }
+
+    // -------------------------------------------------
+    // 4. City / State / ZIP line recovery
+    //    If city/state/zip are still empty, try to parse a trailing "City, ST 12345" line
+    // -------------------------------------------------
+    if (($fields['city'] === '' || $fields['state'] === '' || $fields['zip'] === '') && !empty($lines)) {
+        // Prefer the last line that looks like a city/state/zip
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            $candidate = $lines[$i];
+            // Skip pure labels
+            if ($detectLabel($candidate) !== null) {
+                continue;
+            }
+            if ($parsedCity = parseCityStateZip($candidate)) {
+                if ($fields['city'] === '')  $fields['city']  = $parsedCity['city'];
+                if ($fields['state'] === '') $fields['state'] = $parsedCity['state'];
+                if ($fields['zip'] === '')   $fields['zip']   = $parsedCity['zip'];
+                break;
             }
         }
     }
 
-    // Final fallback from last line if still missing
-    if ((empty($city) || empty($state) || empty($zip)) && !empty($lines)) {
-        $lastLine = $lines[count($lines) - 1];
-        if ($parsedCity = parseCityStateZip($lastLine)) {
-            $city  = $city  ?: $parsedCity['city'];
-            $state = $state ?: $parsedCity['state'];
-            $zip   = $zip   ?: $parsedCity['zip'];
-        }
+    // -------------------------------------------------
+    // 5. Final cleanup — never allow label text inside values
+    // -------------------------------------------------
+    foreach ($fields as $k => $v) {
+        // Strip any residual "Label:" prefixes that slipped through
+        $fields[$k] = trim(preg_replace(
+            '/^(Entity|Location|Address|Suite|City|State|Zip|ZIP|Postal)\s*:\s*/i',
+            '',
+            $v
+        ));
     }
 
+    $entityName   = $fields['entity'];
+    $locationName = $fields['location'];
+    $address      = $fields['address'];
+    $suite        = $fields['suite'];
+    $city         = $fields['city'];
+    $state        = strtoupper($fields['state']);
+    $zip          = $fields['zip'];
+
+    // -------------------------------------------------
+    // 6. Build the standard parsed structure
+    // -------------------------------------------------
     $parsed = [
         'entity' => [
             'name'          => $entityName,
             'nameInferred'  => false,
-            'nameConfirmed' => !empty($entityName),
+            'nameConfirmed' => $entityName !== '',
             'nameSource'    => 'location_proposal_parser'
         ],
         'contact' => [
-            'firstName'        => '',
-            'lastName'         => '',
-            'salutation'       => '',
-            'title'            => '',
-            'primaryPhone'     => '',
-            'primaryPhoneRaw'  => '',
-            'email'            => ''
+            'firstName'       => '',
+            'lastName'        => '',
+            'salutation'      => '',
+            'title'           => '',
+            'primaryPhone'    => '',
+            'primaryPhoneRaw' => '',
+            'email'           => ''
         ],
         'location' => [
             'address'               => $address,
+            'suite'                 => $suite,
             'city'                  => $city,
-            'state'                 => strtoupper($state),
+            'state'                 => $state,
             'zip'                   => $zip,
-            'suite'                 => '',
             'locationName'          => $locationName,
-            'locationNameConfirmed' => !empty($locationName),
-            'locationNameInferred'  => empty($locationName)
+            'locationNameConfirmed' => $locationName !== '',
+            'locationNameInferred'  => $locationName === ''
         ]
     ];
 
-    error_log("[PPC][LocationParser] SUCCESS - Entity='{$entityName}' | LocationName='{$locationName}' | Address='{$address}' | City='{$city}'");
+    error_log(sprintf(
+        "[PPC][LocationParser] DETERMINISTIC - Entity='%s' | LocationName='%s' | Address='%s' | City='%s' | State='%s' | Zip='%s'",
+        $entityName,
+        $locationName,
+        $address,
+        $city,
+        $state,
+        $zip
+    ));
 
     return $parsed;
 }
