@@ -7618,7 +7618,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📍 Locations Workspace Page (collection)
+    // #region 📍 Locations Workspace Page (collection + detail)
 
     /**
      * Typed list: all locations for one entity (client paginates).
@@ -7713,8 +7713,8 @@ window.SkyIndex = {
                             </span>
                             ${isBilling ? `
                                 <span style="background:rgba(13,148,136,0.12); color:#0f766e;
-                                             border:1px solid rgba(13,148,136,0.25); padding:1px 7px;
-                                             border-radius:4px; font-size:0.68em; font-weight:600;">
+                                            border:1px solid rgba(13,148,136,0.25); padding:1px 7px;
+                                            border-radius:4px; font-size:0.68em; font-weight:600;">
                                     Billing
                                 </span>
                             ` : ''}
@@ -7774,6 +7774,13 @@ window.SkyIndex = {
         return { titleHtml, bodyHtml, actionsHtml: '' };
     },
 
+    /**
+     * Location detail page (view + edit) — Location Edit v1.0
+     * Canonical second implementation of the Universal Workspace edit pattern.
+     *
+     * User-maintained fields only are editable.
+     * Derived / reference / relationship-owned fields are read-only.
+     */
     async renderLocationPage(page, ctx) {
         const locationId = Number(page.objectId);
         if (!Number.isInteger(locationId) || locationId <= 0) {
@@ -7781,44 +7788,212 @@ window.SkyIndex = {
         }
 
         const data = await this.getLocation(locationId);
-        // getLocation may return { success, location } or the location object — normalize:
+        // Normalize response shape
         const loc = data?.location || data;
         if (!loc || !(loc.locationId || loc.id)) {
             throw new Error(data?.error || 'Location not found.');
         }
 
-        const name = this.escapeHtml(loc.locationName || loc.name || 'Unnamed Location');
-        const address = this.escapeHtml(loc.locationAddress || '');
-        const suite = this.escapeHtml(loc.locationAddressSuite || '');
-        const city = this.escapeHtml(loc.locationCity || '');
-        const state = this.escapeHtml(loc.locationState || '');
-        const zip = this.escapeHtml(loc.locationZip || '');
-        const parcel = this.escapeHtml(loc.locationParcelNumber || '');
-        const jurisdiction = this.escapeHtml(loc.locationJurisdiction || '');
-        const isBilling = Number(loc.locationIsBilling) === 1;
+        const isEditing = page.state?.edit === true;
 
-        let cityStateZip = '';
-        if (city && state) cityStateZip = `${city}, ${state}${zip ? ' ' + zip : ''}`;
-        else cityStateZip = [city, state, zip].filter(Boolean).join(' ');
+        // Cache for cancel / re-render
+        this._currentLocationModalData = { location: loc, locationId };
+
+        // ── Core identity ───────────────────────────────────────────────────────
+        const name        = this.escapeHtml(loc.locationName || loc.name || 'Unnamed Location');
+        const address     = loc.locationAddress || '';
+        const suite       = loc.locationAddressSuite || '';
+        const city        = loc.locationCity || '';
+        const state       = loc.locationState || '';
+        const zip         = loc.locationZip || '';
+        const isBilling   = Number(loc.locationIsBilling) === 1;
+        const isNotValid  = Number(loc.locationIsNotValid) === 1;
+
+        // Parent Entity (reference — never editable from Location)
+        const entityName  = loc.entity?.entityName || loc.entityName || '';
+        const entityId    = Number(loc.entity?.entityId || loc.locationEntityId || 0);
+
+        // Derived geographic (system-owned)
+        const parcel      = loc.locationParcelNumber || loc.locationParcelNumberRaw || '';
+        const jurisdiction= loc.locationJurisdiction || '';
+        const county      = loc.locationCounty || '';
+        const zone        = loc.locationZone || '';
+        const lat         = loc.locationLatitude  ?? loc.latitude  ?? null;
+        const lng         = loc.locationLongitude ?? loc.longitude ?? null;
+
+        // Counts (for Related section)
+        const contactCount     = Number(loc.contactCount     ?? 0);
+        const orderCount       = Number(loc.orderCount       ?? 0);
+        const applicationCount = Number(loc.applicationCount ?? 0);
+        const noteCount        = Number(loc.noteCount        ?? 0);
+        const taskCount        = Number(loc.taskCount        ?? 0);
+
+        const createdDate  = loc.createdDate  ? this.escapeHtml(loc.createdDate)  : '—';
+        const lastActivity = loc.lastActivity ? this.escapeHtml(loc.lastActivity) : createdDate;
+
+        // ── Helpers (identical visual language to Entity) ───────────────────────
+        const LABEL_WIDTH = '110px';
+
+        const attrRow = (label, value, action = null) => {
+            if (!value && value !== 0) return '';
+            const valueHtml = action
+                ? `<a href="#" onclick="event.preventDefault(); ${action}"
+                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
+                : `<span style="color:#222;">${value}</span>`;
+            return `
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:baseline; padding:5px 0;">
+                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                        ${label}
+                    </div>
+                    <div style="font-size:0.95em; line-height:1.4; min-width:0;">
+                        ${valueHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        const editField = (label, fieldName, value, type = 'text', extra = '') => `
+            <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:5px 0;">
+                <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                    ${label}
+                </div>
+                <div style="min-width:0;">
+                    <input type="${type}" name="${fieldName}"
+                        value="${this.escapeHtml(value || '')}"
+                        style="width:100%; padding:7px 10px; border:1px solid #d1d5db;
+                                border-radius:6px; font-size:0.95em; color:#222;
+                                background:#fff; box-sizing:border-box;"
+                        ${extra} />
+                </div>
+            </div>
+        `;
+
+        const editSelect = (label, fieldName, currentValue, options) => {
+            const opts = options.map(o => {
+                const selected = String(currentValue) === String(o.value) ? ' selected' : '';
+                return `<option value="${this.escapeHtml(o.value)}"${selected}>${this.escapeHtml(o.label)}</option>`;
+            }).join('');
+            return `
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:5px 0;">
+                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                        ${label}
+                    </div>
+                    <div style="min-width:0;">
+                        <select name="${fieldName}"
+                            style="width:100%; padding:7px 10px; border:1px solid #d1d5db;
+                                    border-radius:6px; font-size:0.95em; color:#222;
+                                    background:#fff; box-sizing:border-box;">
+                            ${opts}
+                        </select>
+                    </div>
+                </div>
+            `;
+        };
+
+        const relatedRow = (label, count, action) => {
+            if (count <= 0) {
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center;
+                                padding:7px 0; border-bottom:1px solid #f0f0f0; color:#999;">
+                        <span>${label}</span>
+                        <span>0</span>
+                    </div>
+                `;
+            }
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            padding:7px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
+                    onclick="event.preventDefault(); ${action}">
+                    <span style="color:#117a8b; font-weight:600;">${label}</span>
+                    <span style="display:flex; align-items:center; gap:6px;">
+                        <strong style="color:#222;">${count}</strong>
+                        <span style="color:#9ca3af;">›</span>
+                    </span>
+                </div>
+            `;
+        };
 
         const section = (title, content) => `
             <div style="background:#fafafa; border:1px solid #eee; border-radius:10px;
                         padding:10px 14px 12px; margin-bottom:12px;">
                 <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
                             color:#888; text-transform:uppercase; padding-bottom:7px;
-                            border-bottom:1px solid #e8e8e8; margin-bottom:8px;">${title}</div>
+                            border-bottom:1px solid #e8e8e8; margin-bottom:8px;">
+                    ${title}
+                </div>
                 ${content}
-            </div>`;
+            </div>
+        `;
 
-        const row = (label, value) => {
-            if (!value) return '';
-            return `
-                <div style="display:grid; grid-template-columns:110px 1fr; gap:12px; padding:5px 0;">
-                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase;">${label}</div>
-                    <div style="font-size:0.95em; color:#222;">${value}</div>
-                </div>`;
-        };
+        // ── Option sets ─────────────────────────────────────────────────────────
+        const INVALID_OPTIONS = [
+            { value: '0', label: 'Active' },
+            { value: '1', label: 'Invalid' }
+        ];
 
+        // ── Identity content ────────────────────────────────────────────────────
+        let identityContent;
+
+        if (isEditing) {
+            // Only user-maintained fields are editable
+            identityContent = `
+                <form id="locationEditForm" onsubmit="return false;">
+                    ${editField('Name', 'locationName', loc.locationName || loc.name || '', 'text', 'required')}
+                    ${editField('Address', 'locationAddress', address)}
+                    ${editField('Suite', 'locationAddressSuite', suite)}
+                    ${editField('City', 'locationCity', city)}
+                    ${editField('State', 'locationState', state, 'text', 'maxlength="2" style="width:80px; text-transform:uppercase;"')}
+                    ${editField('Zip', 'locationZip', zip, 'text', 'maxlength="10" style="width:120px;"')}
+                    ${editSelect('Invalid', 'locationIsNotValid', isNotValid ? '1' : '0', INVALID_OPTIONS)}
+                </form>
+            `;
+        } else {
+            // View mode — full picture, but still respecting ownership
+            const fullAddress = [
+                address + (suite ? ' ' + suite : ''),
+                [city, state, zip].filter(Boolean).join(', ').replace(/, ([A-Z]{2}) /, ', $1 ')
+            ].filter(Boolean).join('<br>');
+
+            const entityAction = entityId > 0
+                ? `SkyWorkspace.push({ pageType: 'entity', objectType: 'entity', objectId: ${entityId}, title: '${String(entityName).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}' })`
+                : null;
+
+            identityContent = `
+                ${attrRow('Address', fullAddress || null)}
+                ${attrRow('Entity', entityName ? this.escapeHtml(entityName) : null, entityAction)}
+                ${attrRow('Parcel', parcel ? this.escapeHtml(parcel) : null)}
+                ${attrRow('Jurisdiction', jurisdiction ? this.escapeHtml(jurisdiction) : null)}
+                ${attrRow('County', county ? this.escapeHtml(county) : null)}
+                ${attrRow('Zone', zone ? this.escapeHtml(zone) : null)}
+                ${attrRow('Coordinates', (lat != null && lng != null) ? `${lat}, ${lng}` : null)}
+                ${attrRow('Invalid', isNotValid ? 'Invalid' : 'Active')}
+            `;
+        }
+
+        // ── Related ─────────────────────────────────────────────────────────────
+        // (Contacts for this location can be wired later; keep structure ready)
+        const relatedContent = `
+            ${relatedRow('Contacts', contactCount,
+                `SkyIndex.executeAICommand('show contacts for location ${locationId}');`)}
+            ${relatedRow('Orders', orderCount,
+                `SkyIndex.executeAICommand('show orders for location ${locationId}');`)}
+            ${relatedRow('Applications', applicationCount,
+                `SkyIndex.executeAICommand('show applications for location ${locationId}');`)}
+            ${relatedRow('Notes', noteCount,
+                `SkyIndex.executeAICommand('show notes for location ${locationId}');`)}
+            ${relatedRow('Tasks', taskCount,
+                `SkyIndex.executeAICommand('show tasks for location ${locationId}');`)}
+        `;
+
+        // ── Metadata ────────────────────────────────────────────────────────────
+        const metadataContent = `
+            <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
+                <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
+                <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
+            </div>
+        `;
+
+        // ── Header title ────────────────────────────────────────────────────────
         const billingBadge = isBilling
             ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; color:#0f766e;
                             background:rgba(13,148,136,0.12); border:1px solid rgba(13,148,136,0.25);
@@ -7830,28 +8005,148 @@ window.SkyIndex = {
                 <span style="font-size:1.15rem;">📍</span>
                 <strong style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</strong>
                 ${billingBadge}
-            </span>`;
-
-        const identityContent = `
-            ${row('Address', address ? `${address}${suite ? ' ' + suite : ''}` : null)}
-            ${row('City/State', cityStateZip || null)}
-            ${row('Parcel', parcel || null)}
-            ${row('Jurisdiction', jurisdiction || null)}
-            ${!address && !cityStateZip && !parcel
-                ? `<div style="color:#999; font-size:0.9em;">No identity details.</div>` : ''}
+            </span>
         `;
 
-        // Related placeholder — Contacts for this location can come later
-        const relatedContent = `
-            <div style="color:#999; font-size:0.9em; padding:4px 0;">Related collections soon.</div>
-        `;
+        // ── Actions (Edit / Save / Cancel) ──────────────────────────────────────
+        const actionsHtml = isEditing
+            ? `
+                <button type="button" onclick="SkyIndex.cancelLocationEditWorkspace();"
+                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
+                            background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                    Cancel
+                </button>
+                <button type="button" onclick="SkyIndex.saveLocationEditWorkspace(${locationId});"
+                        style="padding:5px 14px; border:1px solid #0d9488; border-radius:6px;
+                            background:#0d9488; color:#fff; font-size:0.85em; font-weight:550; cursor:pointer;">
+                    Save
+                </button>
+            `
+            : `
+                <button type="button" onclick="SkyIndex.editLocationWorkspace();"
+                        style="padding:5px 12px; border:1px solid #d1d5db; border-radius:6px;
+                            background:#fff; color:#374151; font-size:0.85em; font-weight:500; cursor:pointer;">
+                    Edit
+                </button>
+            `;
 
         const bodyHtml = `
             ${section('Identity', identityContent)}
             ${section('Related', relatedContent)}
+            ${section('Metadata', metadataContent)}
         `;
 
-        return { titleHtml, bodyHtml, actionsHtml: '' };
+        return { titleHtml, bodyHtml, actionsHtml };
+    },
+
+    // ── Location Edit helpers (mirror Entity pattern exactly) ───────────────────
+
+    editLocationWorkspace() {
+        const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+        if (!top || top.pageType !== 'location') return;
+        window.SkyWorkspace.replace({
+            ...top,
+            state: { ...(top.state || {}), edit: true }
+        });
+    },
+
+    cancelLocationEditWorkspace() {
+        const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+        if (!top || top.pageType !== 'location') return;
+        window.SkyWorkspace.replace({
+            ...top,
+            state: { ...(top.state || {}), edit: false }
+        });
+    },
+
+    async saveLocationEditWorkspace(locationId) {
+        const form = document.getElementById('locationEditForm');
+        if (!form) return;
+
+        // Only user-maintained fields are submitted.
+        // Derived geographic fields are never sent — the Location service owns them.
+        const payload = {
+            locationId:            Number(locationId),
+            locationName:          form.querySelector('[name="locationName"]')?.value?.trim() || '',
+            locationAddress:       form.querySelector('[name="locationAddress"]')?.value?.trim() || '',
+            locationAddressSuite:  form.querySelector('[name="locationAddressSuite"]')?.value?.trim() || '',
+            locationCity:          form.querySelector('[name="locationCity"]')?.value?.trim() || '',
+            locationState:         (form.querySelector('[name="locationState"]')?.value || '').trim().toUpperCase() || '',
+            locationZip:           form.querySelector('[name="locationZip"]')?.value?.trim() || '',
+            locationIsNotValid:    form.querySelector('[name="locationIsNotValid"]')?.value?.trim() || '0'
+        };
+
+        if (!payload.locationName) {
+            this.appendSystemLine('Location name is required.');
+            return;
+        }
+
+        try {
+            const updated = await this.updateLocation(payload);
+
+            this._currentLocationModalData = {
+                location: updated,
+                locationId: Number(locationId)
+            };
+
+            const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
+            window.SkyWorkspace.replace({
+                ...(top || {}),
+                pageType:   'location',
+                objectType: 'location',
+                objectId:   Number(locationId),
+                title:      updated.locationName || updated.name,
+                state:      { edit: false }
+            });
+
+            this.appendSystemLine('Location updated.');
+        } catch (err) {
+            console.error('[SkyIndex] saveLocationEditWorkspace failed:', err);
+            this.appendSystemLine(`❌ Failed to update location: ${err.message || 'Unknown error'}`);
+        }
+    },
+
+    /**
+     * Persist location changes via askOpenAI.php?type=locationUpdate
+     * Sends only user-maintained fields + activitySessionId + geo for tblActions.
+     * Server is responsible for any re-derivation of parcel / jurisdiction / etc.
+     */
+    async updateLocation(payload) {
+        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
+
+        if (actionLocation.latitude === null || actionLocation.longitude === null) {
+            actionLocation = await this.getLocationSafe();
+            if (actionLocation.latitude !== null && actionLocation.longitude !== null) {
+                this.lastLocation = actionLocation;
+            }
+        }
+
+        const activitySessionId = this.getActivitySessionId();
+
+        const res = await fetch('/skyesoft/api/askOpenAI.php?type=locationUpdate', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...payload,
+                activitySessionId,
+                latitude:  actionLocation?.latitude  ?? null,
+                longitude: actionLocation?.longitude ?? null
+            })
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`HTTP ${res.status} — ${text.slice(0, 200)}`);
+        }
+
+        const data = await res.json();
+
+        if (!data?.success || !data.location) {
+            throw new Error(data?.error || data?.message || 'Update failed');
+        }
+
+        return data.location;
     },
 
     // #endregion
