@@ -2367,4 +2367,146 @@ function generateProposalArtifacts(array $location, string $proposalId, string $
     return $artifacts;
 }
 
+/**
+ * Re-derive parcel + zoning data for a Location after an address change.
+ * Only runs for Maricopa (or when county is still unknown and we need to discover it).
+ */
+function refreshLocationParcelDetails(PDO $db, int $locationId): void
+{
+    // 1. Load current address
+    $stmt = $db->prepare("
+        SELECT locationAddress, locationAddressSuite, locationCity,
+               locationState, locationZip, locationCounty
+        FROM tblLocations
+        WHERE locationId = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$locationId]);
+    $loc = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$loc) return;
+
+    $fullAddress = trim(implode(', ', array_filter([
+        $loc['locationAddress'],
+        $loc['locationAddressSuite'],
+        $loc['locationCity'],
+        $loc['locationState'],
+        $loc['locationZip']
+    ])));
+
+    if ($fullAddress === '') {
+        // Clear any existing parcel data
+        clearLocationParcelDetails($db, $locationId);
+        return;
+    }
+
+    // 2. Only attempt Maricopa lookup when appropriate
+    $county = strtoupper(trim($loc['locationCounty'] ?? ''));
+    $isMaricopa = ($county === 'MARICOPA' || $county === '');
+
+    if (!$isMaricopa) {
+        clearLocationParcelDetails($db, $locationId);
+        return;
+    }
+
+    // 3. Call the existing service
+    $clean = sanitizeAddressForLookup($fullAddress);
+    $candidates = lookupMaricopaParcel($clean);
+
+    if (empty($candidates)) {
+        clearLocationParcelDetails($db, $locationId);
+        return;
+    }
+
+    // 4. Write results (primary candidate + any additional)
+    writeLocationParcelDetails($db, $locationId, $candidates);
+}
+
+function clearLocationParcelDetails(PDO $db, int $locationId): void
+{
+    $db->prepare("DELETE FROM tblLocationParcelDetails WHERE locationId = ?")
+       ->execute([$locationId]);
+
+    $db->prepare("
+        UPDATE tblLocations SET
+            locationParcelNumber     = NULL,
+            locationParcelNumberRaw  = NULL,
+            locationHasMultipleParcels = 0,
+            locationParcelCount      = 1,
+            locationJurisdiction     = NULL,
+            locationCounty           = NULL,
+            locationCountyFips       = NULL,
+            locationZone             = NULL,
+            locationLatitude         = NULL,
+            locationLongitude        = NULL
+        WHERE locationId = ?
+    ")->execute([$locationId]);
+}
+
+function writeLocationParcelDetails(PDO $db, int $locationId, array $candidates): void
+{
+    // Clear old rows first
+    $db->prepare("DELETE FROM tblLocationParcelDetails WHERE locationId = ?")
+       ->execute([$locationId]);
+
+    $now = time();
+    $primary = $candidates[0];
+    $count   = count($candidates);
+
+    // Insert detail rows
+    $ins = $db->prepare("
+        INSERT INTO tblLocationParcelDetails (
+            locationId, apnRaw, ownerName, subdivision, lotSize, yearBuilt,
+            zoningCode, zoningDescription, zoningSource, source, confidence,
+            createdAt, updatedAt
+        ) VALUES (
+            :locationId, :apnRaw, :ownerName, :subdivision, :lotSize, :yearBuilt,
+            :zoningCode, :zoningDescription, :zoningSource, :source, :confidence,
+            :createdAt, :updatedAt
+        )
+    ");
+
+    foreach ($candidates as $c) {
+        $ins->execute([
+            'locationId'         => $locationId,
+            'apnRaw'             => $c['apnRaw'],
+            'ownerName'          => $c['owner'] ?? null,
+            'subdivision'        => $c['subdivision'] ?? null,
+            'lotSize'            => $c['lotSizeSqFt'] ?? null,
+            'yearBuilt'          => $c['yearBuilt'] ?? null,
+            'zoningCode'         => null,          // zoning is a separate call if needed
+            'zoningDescription'  => null,
+            'zoningSource'       => null,
+            'source'             => $c['source'] ?? 'mca_arcgis_mcassessor',
+            'confidence'         => $c['confidence'] ?? 80,
+            'createdAt'          => $now,
+            'updatedAt'          => $now
+        ]);
+    }
+
+    // Update summary fields on tblLocations
+    $db->prepare("
+        UPDATE tblLocations SET
+            locationParcelNumber      = :apnDisplay,
+            locationParcelNumberRaw   = :apnRaw,
+            locationHasMultipleParcels = :multi,
+            locationParcelCount       = :count,
+            locationJurisdiction      = :jurisdiction,
+            locationCounty            = 'Maricopa',
+            locationCountyFips        = '04013',
+            locationLatitude          = :lat,
+            locationLongitude         = :lng
+        WHERE locationId = :id
+    ")->execute([
+        'apnDisplay'   => $primary['apnDisplay'] ?? $primary['apnRaw'],
+        'apnRaw'       => $primary['apnRaw'],
+        'multi'        => $count > 1 ? 1 : 0,
+        'count'        => $count,
+        'jurisdiction' => $primary['jurisdiction'] ?? null,
+        'lat'          => $primary['latitude'] ?? null,
+        'lng'          => $primary['longitude'] ?? null,
+        'id'           => $locationId
+    ]);
+}
+
 ?>

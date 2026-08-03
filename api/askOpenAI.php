@@ -3140,9 +3140,16 @@ if ($type === 'locationUpdate') {
     $locationZip          = mb_substr($locationZip, 0, 20);
 
     try {
-        // Confirm exists
+        // Confirm exists + load current address fields for change detection
         $check = $db->prepare("
-            SELECT locationId, locationEntityId
+            SELECT
+                locationId,
+                locationEntityId,
+                locationAddress,
+                locationAddressSuite,
+                locationCity,
+                locationState,
+                locationZip
             FROM tblLocations
             WHERE locationId = :locationId
             LIMIT 1
@@ -3162,6 +3169,7 @@ if ($type === 'locationUpdate') {
 
         $nowUnix = time();
 
+        // ── Write user-maintained fields only ───────────────────────────────
         $sql = "
             UPDATE tblLocations
             SET
@@ -3190,9 +3198,22 @@ if ($type === 'locationUpdate') {
             'locationUpdatedUnix'   => $nowUnix
         ]);
 
-        // Reload full record (mirror loadEntityDetail pattern)
-        // If you already have a loadLocationDetail($db, $id) helper, use it.
-        // Otherwise the query below is sufficient.
+        // ── Detect address change → re-derive parcel / zoning ───────────────
+        $addressChanged = (
+            $locationAddress      !== (string)($current['locationAddress'] ?? '') ||
+            $locationAddressSuite !== (string)($current['locationAddressSuite'] ?? '') ||
+            $locationCity         !== (string)($current['locationCity'] ?? '') ||
+            $locationState        !== (string)($current['locationState'] ?? '') ||
+            $locationZip          !== (string)($current['locationZip'] ?? '')
+        );
+
+        if ($addressChanged) {
+            // Single authoritative owner: re-use the same Maricopa service
+            // that the proposal pipeline already uses.
+            refreshLocationParcelDetails($db, $targetLocationId);
+        }
+
+        // ── Reload full record (after possible parcel refresh) ──────────────
         $reload = $db->prepare("
             SELECT l.*,
                    e.entityId, e.entityName
@@ -3250,7 +3271,7 @@ if ($type === 'locationUpdate') {
             'taskCount'        => 0
         ];
 
-        // Audit (same helper the entity handler uses)
+        // Audit
         if ($actorContactId > 0) {
             try {
                 insertActionPrompt([
@@ -3272,6 +3293,7 @@ if ($type === 'locationUpdate') {
                     'actionPayloadData' => [
                         'operation'        => 'locations.update',
                         'targetLocationId' => $targetLocationId,
+                        'addressChanged'   => $addressChanged,
                         'fields'           => [
                             'locationName'         => $locationName,
                             'locationAddress'      => $locationAddress !== '' ? $locationAddress : null,
@@ -3285,7 +3307,8 @@ if ($type === 'locationUpdate') {
                     ],
                     'actionResponseData' => [
                         'success'          => true,
-                        'targetLocationId' => $targetLocationId
+                        'targetLocationId' => $targetLocationId,
+                        'addressChanged'   => $addressChanged
                     ]
                 ], $db);
             } catch (Throwable $e) {
