@@ -6576,36 +6576,20 @@ window.SkyIndex = {
 
     async loadLocationPage(page = 1) {
         const requestedPage = Math.max(1, Number(page) || 1);
-
-        await this.executeAICommand(
-            `show locations page ${requestedPage}`
-        );
+        await this.executeAICommand(`show locations page ${requestedPage}`);
     },
 
     /**
      * Retrieves a complete Location object from the server.
      * Identifier can be: locationId, name, address, parcel, placeId, etc.
      * Server is responsible for resolution order.
-     *
-     * @param {string|number} identifier
-     * @returns {Promise<Object>}
      */
     async getLocation(identifier) {
-        // Resolve location for READ action logging (same pattern as Entity)
-        let actionLocation = this.lastLocation || {
-            latitude: null,
-            longitude: null
-        };
+        let actionLocation = this.lastLocation || { latitude: null, longitude: null };
 
-        if (
-            actionLocation.latitude === null ||
-            actionLocation.longitude === null
-        ) {
+        if (actionLocation.latitude === null || actionLocation.longitude === null) {
             actionLocation = await this.getLocationSafe();
-            if (
-                actionLocation.latitude !== null &&
-                actionLocation.longitude !== null
-            ) {
+            if (actionLocation.latitude !== null && actionLocation.longitude !== null) {
                 this.lastLocation = actionLocation;
             }
         }
@@ -6613,20 +6597,15 @@ window.SkyIndex = {
         const res = await fetch('/skyesoft/api/askOpenAI.php?type=locationDetail', {
             method: 'POST',
             credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 identifier: String(identifier).trim(),
-                latitude: actionLocation?.latitude ?? null,
+                latitude:  actionLocation?.latitude  ?? null,
                 longitude: actionLocation?.longitude ?? null
             })
         });
 
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-        }
-
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.json();
     },
 
@@ -6721,10 +6700,9 @@ window.SkyIndex = {
             <!-- Body -->
             <div class="result-body" style="padding:0 14px 12px;">
 
-                <!-- Address + Entity + Parcel (cleaner, less repetitive) -->
+                <!-- Address + Entity + Parcel -->
                 <div style="padding:2px 0 8px; border-bottom:1px solid #f0f0f0;">
-
-                    ${addressHtml.replace('📍 ', '') /* remove the pin – header already has one */}
+                    ${addressHtml.replace('📍 ', '')}
 
                     ${entityName ? `
                         <div style="margin-top:7px; font-size:0.85em; color:#555;">
@@ -6778,93 +6756,47 @@ window.SkyIndex = {
         this.appendSystemHtml(html);
     },
 
+    /**
+     * Canonical entry point for any Location detail.
+     * Always opens via SkyWorkspace so Edit / Save / Cancel appear.
+     * This is the single path — no legacy modal remains.
+     */
     async showLocationModal(locationId) {
         const resolvedId = Number(locationId);
-
         if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
             this.appendSystemLine('Location not found.');
             return;
         }
 
+        // Defensive: remove any leftover legacy modal DOM
         this.closeLocationModal();
 
-        const modal = document.createElement('div');
-        modal.id = 'locationDetailModal';
-        modal.className = 'modal-backdrop';
-        modal.style.cssText = `
-            position:fixed;
-            inset:0;
-            z-index:10000;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-            background:rgba(0,0,0,0.58);
-        `;
-
-        modal.innerHTML = `
-            <div role="dialog"
-                aria-modal="true"
-                aria-labelledby="locationDetailTitle"
-                style="width:100%; max-width:680px; background:#fff; border-radius:8px;
-                        box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;">
-                <div style="display:flex; justify-content:space-between; align-items:center;
-                            gap:12px; padding:14px 18px; border-bottom:1px solid #e8e8e8;">
-                    <div style="display:flex; align-items:center; gap:9px;">
-                        <span style="font-size:1.25rem;">📍</span>
-                        <strong id="locationDetailTitle" style="color:#222;">
-                            Location Profile
-                        </strong>
-                    </div>
-                    <button type="button"
-                            onclick="SkyIndex.closeLocationModal();"
-                            aria-label="Close location profile"
-                            style="border:0; background:transparent; color:#666; cursor:pointer;
-                                font-size:1.5rem; line-height:1;">
-                        ×
-                    </button>
-                </div>
-                <div style="padding:28px 18px; text-align:center; color:#666;">
-                    Loading location details...
-                </div>
-            </div>
-        `;
-
-        modal.addEventListener('click', event => {
-            if (event.target === modal) {
-                this.closeLocationModal();
-            }
-        });
-
-        document.body.appendChild(modal);
-        document.addEventListener('keydown', this.handleLocationModalKeydown);
-
+        // Resolve a clean title for the stack
+        let title = 'Location';
         try {
             const data = await this.getLocation(resolvedId);
-
-            if (!data.success || !data.location) {
-                throw new Error(data.error || 'Location not found.');
+            const loc = data?.location || data;
+            if (loc) {
+                title = loc.locationName || loc.name || title;
             }
+        } catch (e) {
+            // title stays generic – Workspace page will load the real data
+        }
 
-            this.renderLocationModal(data.location, resolvedId);
-
-        } catch (error) {
-            console.error('[SkyIndex] showLocationModal failed:', error);
-
-            const modalEl = document.getElementById('locationDetailModal');
-            if (modalEl) {
-                const body = modalEl.querySelector('[role="dialog"] > div:last-child');
-                if (body) {
-                    body.innerHTML = `
-                        <div style="padding:24px 18px; color:#c0392b; text-align:center;">
-                            ${this.escapeHtml(error.message || 'Failed to load location.')}
-                        </div>
-                    `;
-                }
-            }
+        if (window.SkyWorkspace) {
+            window.SkyWorkspace.push({
+                pageType:    'location',
+                objectType:  'location',
+                objectId:    resolvedId,
+                title:       title,
+                parentTitle: 'Locations'
+            });
+        } else {
+            this.appendSystemLine('Workspace unavailable – cannot open Location.');
         }
     },
 
+    // Residual cleanup helpers (safe to keep; they only remove DOM that should no longer exist)
     closeLocationModal() {
         const modal = document.getElementById('locationDetailModal');
         if (modal) modal.remove();
@@ -6877,369 +6809,6 @@ window.SkyIndex = {
         }
     },
 
-    /**
-     * Full Location Profile (modal)
-     *
-     * Visual hierarchy:
-     *   1. Header      → 📍 + Location Name (hero)
-     *   2. Identity    → Address (supporting, no label)
-     *   3. Divider
-     *   4. Attributes  → Entity / Parcel / Jurisdiction
-     *   5. Related     → collection counts
-     */
-    renderLocationModal(location, locationId) {
-        const modal = document.getElementById('locationDetailModal');
-        if (!modal) return;
-
-        const dialog = modal.querySelector('[role="dialog"]');
-        if (!dialog) return;
-
-        const resolvedId = Number(locationId || location.locationId || 0);
-
-        const name = this.escapeHtml(
-            location.locationName || location.name || 'Unnamed Location'
-        );
-        const isBilling = Number(location.locationIsBilling) === 1;
-
-        // Counts
-        const contactCount     = Number(location.contactCount     ?? 0);
-        const orderCount       = Number(location.orderCount       ?? 0);
-        const applicationCount = Number(location.applicationCount ?? 0);
-        const noteCount        = Number(location.noteCount        ?? 0);
-        const taskCount        = Number(location.taskCount        ?? 0);
-
-        // Address
-        const line1 = this.escapeHtml(location.locationAddress || '');
-        const suite = location.locationAddressSuite ? this.escapeHtml(location.locationAddressSuite) : '';
-        const city  = this.escapeHtml(location.locationCity || '');
-        const state = this.escapeHtml(location.locationState || '');
-        const zip   = this.escapeHtml(location.locationZip || '');
-
-        let cityStateZip = '';
-        if (city && state) {
-            cityStateZip = `${city}, ${state}${zip ? ' ' + zip : ''}`;
-        } else {
-            cityStateZip = [city, state, zip].filter(Boolean).join(' ');
-        }
-
-        const fullAddress = [line1 + (suite ? ' ' + suite : ''), cityStateZip]
-            .filter(Boolean).join('<br>');
-
-        // Attributes
-        const jurisdiction = this.escapeHtml(location.locationJurisdiction || '');
-        const county       = this.escapeHtml(location.locationCounty || '');
-        const zone         = this.escapeHtml(location.locationZone || '');
-        const parcel       = this.escapeHtml(
-            location.locationParcelNumber || location.locationParcelNumberRaw || ''
-        );
-
-        const jurisdictionParts = [];
-        if (jurisdiction) jurisdictionParts.push(jurisdiction);
-        if (county)       jurisdictionParts.push(county + ' County');
-        if (zone)         jurisdictionParts.push(zone);
-        const jurisdictionLine = jurisdictionParts.join(' • ') || null;
-
-        const entityName = this.escapeHtml(
-            location.entity?.entityName || location.entityName || ''
-        );
-        const entityId = Number(
-            location.entity?.entityId || location.locationEntityId || 0
-        );
-
-        const createdDate  = location.createdDate  ? this.escapeHtml(location.createdDate)  : '—';
-        const lastActivity = location.lastActivity ? this.escapeHtml(location.lastActivity) : createdDate;
-
-        // ── Helpers ─────────────────────────────────────────────────
-        const attrRow = (label, value, action = null) => {
-            if (!value) return '';
-            const valueHtml = action
-                ? `<a href="#" onclick="event.preventDefault(); ${action}"
-                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
-                : `<span style="color:#222;">${value}</span>`;
-            return `
-                <div style="display:flex; align-items:flex-start; gap:10px; padding:7px 0;">
-                    <div style="width:110px; flex-shrink:0; font-size:0.78em; font-weight:600;
-                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:2px;">
-                        ${label}
-                    </div>
-                    <div style="min-width:0; font-size:0.95em; line-height:1.4;">
-                        ${valueHtml}
-                    </div>
-                </div>
-            `;
-        };
-
-        const relatedRow = (label, count, action) => {
-            if (count <= 0) {
-                return `
-                    <div style="display:flex; justify-content:space-between; align-items:center;
-                                padding:9px 0; border-bottom:1px solid #f0f0f0; color:#999;">
-                        <span>${label}</span>
-                        <span>0</span>
-                    </div>
-                `;
-            }
-            return `
-                <div style="display:flex; justify-content:space-between; align-items:center;
-                            padding:9px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;"
-                     onclick="event.preventDefault(); ${action}">
-                    <span style="color:#117a8b; font-weight:600;">${label}</span>
-                    <span style="display:flex; align-items:center; gap:6px;">
-                        <strong style="color:#222;">${count}</strong>
-                        <span style="color:#9ca3af;">›</span>
-                    </span>
-                </div>
-            `;
-        };
-
-        dialog.innerHTML = `
-            <!-- 1. HEADER -->
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
-                        padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
-                <div style="display:flex; align-items:center; gap:9px; min-width:0;">
-                    <span style="font-size:1.25rem; flex-shrink:0;">📍</span>
-                    <strong id="locationDetailTitle"
-                            style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${name}
-                    </strong>
-                    ${isBilling ? `
-                        <span style="padding:2px 8px; font-size:0.72em; font-weight:600;
-                                    color:#0f766e; background:rgba(13,148,136,0.12);
-                                    border:1px solid rgba(13,148,136,0.25); border-radius:4px;">
-                            Billing
-                        </span>
-                    ` : ''}
-                </div>
-                <button type="button" onclick="SkyIndex.closeLocationModal();"
-                        aria-label="Close location profile"
-                        style="border:0; background:transparent; color:#666; cursor:pointer;
-                               font-size:1.5rem; line-height:1; flex-shrink:0;">×</button>
-            </div>
-
-            <div style="padding:16px 18px 18px; max-height:70vh; overflow-y:auto;">
-
-                <!-- 2. IDENTITY -->
-                <div style="margin-bottom:20px;">
-                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                                color:#888; text-transform:uppercase; margin-bottom:6px;">
-                        Identity
-                    </div>
-                    ${attrRow('Address', fullAddress || null)}
-                    ${attrRow('Entity', entityName,
-                        entityId > 0
-                            ? `SkyIndex.closeLocationModal(); SkyIndex.showEntityModal(${entityId});`
-                            : null)}
-                    ${attrRow('Parcel', parcel)}
-                    ${attrRow('Jurisdiction', jurisdictionLine)}
-                </div>
-
-                <!-- 3. RELATED -->
-                <div style="margin-bottom:20px;">
-                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                                color:#888; text-transform:uppercase; margin-bottom:4px;">
-                        Related
-                    </div>
-                    ${relatedRow('Contacts', contactCount,
-                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show contacts for location ${resolvedId}');`)}
-                    ${relatedRow('Orders', orderCount,
-                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show orders for location ${resolvedId}');`)}
-                    ${relatedRow('Applications', applicationCount,
-                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show applications for location ${resolvedId}');`)}
-                    ${relatedRow('Notes', noteCount,
-                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show notes for location ${resolvedId}');`)}
-                    ${relatedRow('Tasks', taskCount,
-                        `SkyIndex.closeLocationModal(); SkyIndex.executeAICommand('show tasks for location ${resolvedId}');`)}
-                </div>
-
-                <!-- 4. METADATA -->
-                <div>
-                    <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                                color:#888; text-transform:uppercase; margin-bottom:6px;">
-                        Metadata
-                    </div>
-                    <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
-                        <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
-                        <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
-                    </div>
-                </div>
-            </div>
-        `;
-    },
-
-    // #endregion
-
-    // #region 📍 Location List Card (paginated)
-    renderLocationListCard(list) {
-        if (!list || !Array.isArray(list.rows)) {
-            this.appendSystemLine('No locations to display.');
-            return;
-        }
-
-        // Pagination values
-        const page       = Math.max(1, Number(list.page) || 1);
-        const pageSize   = Math.max(1, Number(list.pageSize) || 5);
-        const totalPages = Math.max(1, Number(list.totalPages) || 1);
-        const total      = Number(list.total) || list.rows.length;
-        const rows       = list.rows;
-
-        // Build location rows
-        const rowsHtml = rows.map((r, i) => {
-            const locationId = Number(r.locationId || r.id || 0);
-            const name       = this.escapeHtml(r.locationName || r.name || 'Unnamed Location');
-            const address    = this.escapeHtml(r.locationAddress || r.address || '');
-            const city       = this.escapeHtml(r.locationCity || r.city || '');
-            const state      = this.escapeHtml(r.locationState || r.state || '');
-            const zip        = this.escapeHtml(r.locationZip || r.zip || '');
-            const parcel     = this.escapeHtml(r.locationParcelNumber || r.locationParcelNumberRaw || r.parcel || '');
-            const isBilling  = Number(r.locationIsBilling) === 1;
-
-            // Parent Entity
-            const entityName = r.entityName || r.entity?.entityName || '';
-            const entityId   = Number(r.entityId || r.entity?.entityId || 0);
-
-            const rowNumber = i + 1 + ((page - 1) * pageSize);
-
-            // City, ST ZIP
-            let cityStateZip = '';
-            if (city && state) {
-                cityStateZip = `${city}, ${state}${zip ? ' ' + zip : ''}`;
-            } else {
-                cityStateZip = [city, state, zip].filter(Boolean).join(' ');
-            }
-
-            // Clickable location name
-            const nameHtml = locationId > 0
-                ? `
-                    <a href="#"
-                    onclick="event.preventDefault(); SkyIndex.showLocationModal(${locationId});"
-                    style="color:#117a8b; font-weight:600; text-decoration:none;">
-                        ${name}
-                    </a>
-                `
-                : `<span style="font-weight:600; color:#222;">${name}</span>`;
-
-            return `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0;">
-                    <div style="min-width:0; flex:1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                            <div style="color:#222;">
-                                ${rowNumber}. ${nameHtml}
-                            </div>
-                            ${isBilling ? `
-                                <span style="background:rgba(13,148,136,0.12); color:#0f766e; border:1px solid rgba(13,148,136,0.25); padding:1px 7px; border-radius:4px; font-size:0.68em; font-weight:600; flex-shrink:0;">
-                                    Billing
-                                </span>
-                            ` : ''}
-                        </div>
-
-                        ${address ? `
-                            <div style="font-size:0.85em; color:#555; margin-top:3px;">
-                                ${address}
-                            </div>
-                        ` : ''}
-
-                        ${cityStateZip ? `
-                            <div style="font-size:0.85em; color:#666; margin-top:1px;">
-                                ${cityStateZip}
-                            </div>
-                        ` : ''}
-
-                        ${entityName ? `
-                            <div style="font-size:0.82em; color:#555; margin-top:5px;">
-                                🏢 ${entityId > 0
-                                    ? `<a href="#" onclick="event.preventDefault(); SkyIndex.renderEntityCard(${entityId});" style="color:#117a8b; text-decoration:none;">${this.escapeHtml(entityName)}</a>`
-                                    : this.escapeHtml(entityName)}
-                            </div>
-                        ` : ''}
-
-                        ${parcel ? `
-                            <div style="font-size:0.8em; color:#666; margin-top:2px;">
-                                📐 Parcel ${parcel}
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // Pagination
-        const hasPrevious = page > 1;
-        const hasNext     = page < totalPages;
-
-        const previousHtml = hasPrevious
-            ? `
-                <a href="#"
-                onclick="event.preventDefault(); SkyIndex.loadLocationPage(${page - 1});"
-                style="color:#117a8b; font-weight:600; text-decoration:none;">
-                    ← Back
-                </a>
-            `
-            : `<span style="color:#aaa;">← Back</span>`;
-
-        const nextHtml = hasNext
-            ? `
-                <a href="#"
-                onclick="event.preventDefault(); SkyIndex.loadLocationPage(${page + 1});"
-                style="color:#117a8b; font-weight:600; text-decoration:none;">
-                    Next →
-                </a>
-            `
-            : `<span style="color:#aaa;">Next →</span>`;
-
-        // Card
-        const html = `
-            <div id="skyLocationListCard" class="commandLine system html">
-                <div class="result-card" style="border-left:5px solid #0d9488; background:#fff; width:100%; max-width:100%;">
-                    <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span class="result-icon">📍</span>
-                            <div style="display:flex; flex-direction:column;">
-                                <strong class="result-title" style="color:#222;">
-                                    Locations
-                                </strong>
-                                <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
-                                    Page ${page} of ${totalPages} · showing ${rows.length} of ${total}
-                                </small>
-                            </div>
-                        </div>
-                        <span style="background:rgba(13,148,136,0.12); color:#0f766e; border:1px solid rgba(13,148,136,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
-                            LIST
-                        </span>
-                    </div>
-
-                    <div class="result-body" style="padding:4px 16px 12px;">
-                        ${rowsHtml || `
-                            <div style="color:#666; padding:12px 0;">
-                                No locations found on this page.
-                            </div>
-                        `}
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 16px; border-top:1px solid #eee; background:#fafafa; font-size:0.85em;">
-                        <div>${previousHtml}</div>
-                        <div style="color:#666;">
-                            Page ${page} of ${totalPages}
-                        </div>
-                        <div>${nextHtml}</div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Replace existing list or append
-        const existingCard = document.getElementById('skyLocationListCard');
-
-        if (existingCard) {
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = html.trim();
-            const replacementCard = wrapper.firstElementChild;
-            if (replacementCard) {
-                existingCard.replaceWith(replacementCard);
-            }
-        } else {
-            this.appendSystemHtml(html);
-        }
-    },
     // #endregion
 
     // #region 🏢 Entity Workspace Page (SkyWorkspace adapter)
