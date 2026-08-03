@@ -3413,6 +3413,269 @@ if ($type === 'locationDetail') {
 }
 
 // =====================================================
+// CONTACT UPDATE (mutation) — Contact Edit v1.0
+// =====================================================
+
+if ($type === 'contactUpdate') {
+
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    $activitySessionId = $_SESSION['activitySessionId']
+                      ?? session_id();
+
+    $latitude  = is_numeric($input['latitude']  ?? null) ? (float)$input['latitude']  : null;
+    $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
+
+    $targetContactId = (int)($input['contactId'] ?? 0);
+
+    if ($targetContactId <= 0) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'contact_update',
+            'error'   => 'Valid contactId is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Collect only user-maintained fields
+    $contactSalutation            = trim((string)($input['contactSalutation'] ?? 'Mr'));
+    $contactFirstName             = trim((string)($input['contactFirstName'] ?? ''));
+    $contactLastName              = trim((string)($input['contactLastName'] ?? ''));
+    $contactTitle                 = trim((string)($input['contactTitle'] ?? ''));
+    $contactPrimaryPhone          = trim((string)($input['contactPrimaryPhone'] ?? ''));
+    $contactPrimaryPhoneExtension = trim((string)($input['contactPrimaryPhoneExtension'] ?? ''));
+    $contactSecondaryPhone        = trim((string)($input['contactSecondaryPhone'] ?? ''));
+    $contactEmail                 = trim((string)($input['contactEmail'] ?? ''));
+    $contactIsNotValid            = (int)($input['contactIsNotValid'] ?? 0) ? 1 : 0;
+
+    if ($contactFirstName === '' || $contactLastName === '') {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'contact_update',
+            'error'   => 'First name and last name are required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    if ($contactEmail === '') {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'contact_update',
+            'error'   => 'Email is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Normalize derived fields (server-owned)
+    $contactEmailNormalized = strtolower($contactEmail);
+    $contactPrimaryPhoneRaw = preg_replace('/\D/', '', $contactPrimaryPhone);
+    $contactSecondaryPhoneRaw = preg_replace('/\D/', '', $contactSecondaryPhone);
+
+    // Validate salutation
+    if (!in_array($contactSalutation, ['Mr', 'Ms'], true)) {
+        $contactSalutation = 'Mr';
+    }
+
+    // Length guards
+    $contactFirstName             = mb_substr($contactFirstName, 0, 100);
+    $contactLastName              = mb_substr($contactLastName, 0, 100);
+    $contactTitle                 = mb_substr($contactTitle, 0, 150);
+    $contactPrimaryPhone          = mb_substr($contactPrimaryPhone, 0, 25);
+    $contactPrimaryPhoneExtension = mb_substr($contactPrimaryPhoneExtension, 0, 10);
+    $contactSecondaryPhone        = mb_substr($contactSecondaryPhone, 0, 25);
+    $contactEmail                 = mb_substr($contactEmail, 0, 255);
+
+    try {
+        // Confirm exists
+        $check = $db->prepare("
+            SELECT contactId, contactEntityId, contactLocationId
+            FROM tblContacts
+            WHERE contactId = :contactId
+            LIMIT 1
+        ");
+        $check->execute(['contactId' => $targetContactId]);
+        $current = $check->fetch(PDO::FETCH_ASSOC);
+
+        if (!$current) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'type'    => 'contact_update',
+                'error'   => 'Contact not found.'
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $nowUnix = time();
+
+        $sql = "
+            UPDATE tblContacts
+            SET
+                contactSalutation            = :contactSalutation,
+                contactFirstName             = :contactFirstName,
+                contactLastName              = :contactLastName,
+                contactTitle                 = :contactTitle,
+                contactPrimaryPhone          = :contactPrimaryPhone,
+                contactPrimaryPhoneRaw       = :contactPrimaryPhoneRaw,
+                contactPrimaryPhoneExtension = :contactPrimaryPhoneExtension,
+                contactSecondaryPhone        = :contactSecondaryPhone,
+                contactSecondaryPhoneRaw     = :contactSecondaryPhoneRaw,
+                contactEmail                 = :contactEmail,
+                contactEmailNormalized       = :contactEmailNormalized,
+                contactIsNotValid            = :contactIsNotValid,
+                contactUpdatedAt             = :contactUpdatedAt
+            WHERE contactId = :contactId
+            LIMIT 1
+        ";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            'contactId'                    => $targetContactId,
+            'contactSalutation'            => $contactSalutation,
+            'contactFirstName'             => $contactFirstName,
+            'contactLastName'              => $contactLastName,
+            'contactTitle'                 => ($contactTitle !== '') ? $contactTitle : null,
+            'contactPrimaryPhone'          => ($contactPrimaryPhone !== '') ? $contactPrimaryPhone : null,
+            'contactPrimaryPhoneRaw'       => ($contactPrimaryPhoneRaw !== '') ? $contactPrimaryPhoneRaw : null,
+            'contactPrimaryPhoneExtension' => ($contactPrimaryPhoneExtension !== '') ? $contactPrimaryPhoneExtension : null,
+            'contactSecondaryPhone'        => ($contactSecondaryPhone !== '') ? $contactSecondaryPhone : null,
+            'contactSecondaryPhoneRaw'     => ($contactSecondaryPhoneRaw !== '') ? $contactSecondaryPhoneRaw : null,
+            'contactEmail'                 => $contactEmail,
+            'contactEmailNormalized'       => $contactEmailNormalized,
+            'contactIsNotValid'            => $contactIsNotValid,
+            'contactUpdatedAt'             => $nowUnix
+        ]);
+
+        // Reload
+        $reload = $db->prepare("
+            SELECT c.*,
+                   e.entityId, e.entityName,
+                   l.locationId, l.locationName
+            FROM tblContacts c
+            LEFT JOIN tblEntities e ON e.entityId = c.contactEntityId
+            LEFT JOIN tblLocations l ON l.locationId = c.contactLocationId
+            WHERE c.contactId = :contactId
+            LIMIT 1
+        ");
+        $reload->execute(['contactId' => $targetContactId]);
+        $row = $reload->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            throw new RuntimeException('Contact updated but reload failed.');
+        }
+
+        $createdDate  = !empty($row['contactDate'] ?? $row['contactCreatedAt'])
+            ? date('M j, Y', (int)($row['contactDate'] ?? $row['contactCreatedAt']))
+            : null;
+        $lastActivity = !empty($row['contactUpdatedAt'])
+            ? date('M j, Y', (int)$row['contactUpdatedAt'])
+            : $createdDate;
+
+        $contact = [
+            'contactId'                    => (int)$row['contactId'],
+            'contactSalutation'            => $row['contactSalutation'],
+            'contactFirstName'             => $row['contactFirstName'],
+            'contactLastName'              => $row['contactLastName'],
+            'contactTitle'                 => $row['contactTitle'],
+            'contactPrimaryPhone'          => $row['contactPrimaryPhone'],
+            'contactPrimaryPhoneExtension' => $row['contactPrimaryPhoneExtension'],
+            'contactSecondaryPhone'        => $row['contactSecondaryPhone'],
+            'contactEmail'                 => $row['contactEmail'],
+            'contactIsNotValid'            => (int)$row['contactIsNotValid'],
+            'contactEntityId'              => (int)$row['contactEntityId'],
+            'contactLocationId'            => (int)$row['contactLocationId'],
+            'contactDate'                  => (int)($row['contactDate'] ?? $row['contactCreatedAt'] ?? 0),
+            'contactUpdatedAt'             => (int)$row['contactUpdatedAt'],
+            'createdDate'                  => $createdDate,
+            'lastActivity'                 => $lastActivity,
+            'entity' => !empty($row['entityId']) ? [
+                'entityId'   => (int)$row['entityId'],
+                'entityName' => $row['entityName']
+            ] : null,
+            'location' => !empty($row['locationId']) ? [
+                'locationId'   => (int)$row['locationId'],
+                'locationName' => $row['locationName']
+            ] : null,
+            'orderCount'       => 0,
+            'applicationCount' => 0,
+            'noteCount'        => 0,
+            'taskCount'        => 0
+        ];
+
+        // Audit
+        if ($actorContactId > 0) {
+            try {
+                insertActionPrompt([
+                    'contactId'         => $actorContactId,
+                    'promptText'        => 'Update contact profile',
+                    'responseText'      => sprintf(
+                        'Updated contact #%d (%s %s).',
+                        $targetContactId,
+                        $contactFirstName,
+                        $contactLastName
+                    ),
+                    'intent'            => 'contacts.update',
+                    'intentConfidence'  => 1.0,
+                    'activitySessionId' => $activitySessionId,
+                    'latitude'          => $latitude,
+                    'longitude'         => $longitude,
+                    'actionTypeId'      => 13, // TODO: dedicated CONTACT_UPDATE type when available
+                    'origin'            => ACTION_ORIGIN_USER,
+                    'actionPayloadData' => [
+                        'operation'       => 'contacts.update',
+                        'targetContactId' => $targetContactId,
+                        'fields'          => [
+                            'contactSalutation'            => $contactSalutation,
+                            'contactFirstName'             => $contactFirstName,
+                            'contactLastName'              => $contactLastName,
+                            'contactTitle'                 => $contactTitle !== '' ? $contactTitle : null,
+                            'contactPrimaryPhone'          => $contactPrimaryPhone !== '' ? $contactPrimaryPhone : null,
+                            'contactPrimaryPhoneExtension' => $contactPrimaryPhoneExtension !== '' ? $contactPrimaryPhoneExtension : null,
+                            'contactSecondaryPhone'        => $contactSecondaryPhone !== '' ? $contactSecondaryPhone : null,
+                            'contactEmail'                 => $contactEmail,
+                            'contactIsNotValid'            => $contactIsNotValid,
+                            'contactUpdatedAt'             => $nowUnix
+                        ]
+                    ],
+                    'actionResponseData' => [
+                        'success'         => true,
+                        'targetContactId' => $targetContactId
+                    ]
+                ], $db);
+            } catch (Throwable $e) {
+                error_log('[askOpenAI] Contact-update action logging failed: ' . $e->getMessage());
+            }
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'type'    => 'contact_update',
+            'contact' => $contact
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        error_log('[askOpenAI] contactUpdate failed: ' . $e->getMessage());
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'contact_update',
+            'error'   => 'Update failed: ' . $e->getMessage()
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
+// =====================================================
 // LOCATIONS BY ENTITY (paginated list for Workspace)
 // =====================================================
 if ($type === 'locationsByEntity') {
