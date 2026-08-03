@@ -1806,6 +1806,16 @@
                         "progressiveNavigation": "The interface must feel like movement through connected information rather than a collection of unrelated screens.",
                         "extensibility": "New object types extend the graph without changing the interaction architecture.",
                         "authoritativeIdentity": "Persistent objects are identified by their registered object type and stable object ID."
+                    },
+                    "navigationContext": {
+                        "description": "Defines how a business object is presented based on the page from which it was opened.",
+                        "principles": [
+                            "Business object pages are independent of navigation context.",
+                            "Navigation context is owned by the Workspace.",
+                            "The Workspace determines breadcrumb presentation.",
+                            "The Workspace determines return destination after Save or Cancel.",
+                            "The Workspace preserves collection state."
+                        ]
                     }
                 },
                 "workspaceModel": {
