@@ -71,17 +71,39 @@ try {
 /**
  * Display helper supporting scalar types with htmlspecialchars encoding.
  */
-function displayValue(
-    mixed $value,
-    string $fallback = 'Not Yet Verified'
-): string {
+/**
+ * Display helper supporting scalar types with htmlspecialchars encoding.
+ */
+function displayValue(mixed $value, string $fallback = 'Not Yet Verified'): string
+{
     $trimmed = trim((string)($value ?? ''));
 
     return $trimmed !== ''
         ? htmlspecialchars($trimmed, ENT_QUOTES, 'UTF-8')
-        : '<span class="unverified">' .
-            htmlspecialchars($fallback, ENT_QUOTES, 'UTF-8') .
-          '</span>';
+        : '<span class="unverified">' . htmlspecialchars($fallback, ENT_QUOTES, 'UTF-8') . '</span>';
+}
+
+/**
+ * Build an mPDF-compatible section heading table with local PNG icon.
+ */
+function buildReportSectionHeading(
+    string $title,
+    string $iconFile
+): string {
+    $iconPath = __DIR__ . '/../assets/images/icons/' . basename($iconFile);
+
+    $iconHtml = file_exists($iconPath)
+        ? '<img src="' . htmlspecialchars($iconPath, ENT_QUOTES, 'UTF-8') . '" class="section-icon" alt="" />'
+        : '';
+
+    return '
+        <table class="section-heading-table">
+            <tr>
+                <td class="section-icon-cell">' . $iconHtml . '</td>
+                <td class="section-title-cell">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</td>
+            </tr>
+        </table>
+    ';
 }
 
 // APN Fallback logic
@@ -155,6 +177,11 @@ $css = '
         font-size: 8.5pt;
         color: #555555;
     }
+    .header-report-date {
+        margin-top: 2px;
+        font-size: 8pt;
+        color: #666666;
+    }
     .footer-table {
         width: 100%;
         border-top: 1px solid #ccc;
@@ -163,18 +190,32 @@ $css = '
         color: #666666;
     }
 
-    /* Section Control & Headers */
+    /* Section Control & Headings with PNG Icons */
     .section-block {
         page-break-inside: avoid;
         margin-bottom: 12px;
     }
-    .section-heading {
-        margin: 6px 0 3px 0;
-        padding-bottom: 2px;
+    .section-heading-table {
+        width: 100%;
+        border-collapse: collapse;
+        border-bottom: 1px solid #ccc;
+        margin: 6px 0 4px;
+    }
+    .section-icon-cell {
+        width: 20px;
+        padding: 0 5px 2px 0;
+        vertical-align: middle;
+    }
+    .section-icon {
+        width: 15px;
+        height: 15px;
+    }
+    .section-title-cell {
+        padding: 0 0 2px;
+        vertical-align: middle;
         font-size: 10pt;
         font-weight: bold;
         color: #14377c;
-        border-bottom: 1px solid #ccc;
     }
 
     /* Fully Bordered Magnolia Data Tables */
@@ -217,10 +258,16 @@ $css = '
         padding: 8px 10px;
         margin-top: 4px;
     }
-    .callout-box h3 {
-        margin: 0 0 4px 0;
+    .callout-title-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 4px;
+    }
+    .callout-title-cell {
         font-size: 9.5pt;
+        font-weight: bold;
         color: #14377c;
+        vertical-align: middle;
     }
 ';
 
@@ -235,6 +282,7 @@ $headerHtml = '
             <div class="header-title">Location Zoning &amp; Sign Code Report</div>
             <div class="header-subtitle-main">' . displayValue($loc['locationName']) . '</div>
             <div class="header-subtitle-sub">' . displayValue($fullAddress) . '</div>
+            <div class="header-report-date">Report Date: ' . date('F j, Y') . '</div>
         </td>
     </tr>
 </table>';
@@ -248,12 +296,18 @@ $footerHtml = '
     </tr>
 </table>';
 
+// Target Icon path for Callout Box
+$targetIconPath = __DIR__ . '/../assets/images/icons/target.png';
+$targetIconHtml = file_exists($targetIconPath)
+    ? '<img src="' . htmlspecialchars($targetIconPath, ENT_QUOTES, 'UTF-8') . '" class="section-icon" alt="" />'
+    : '';
+
 // Body Content
 ob_start();
 ?>
 <!-- 1. Property Overview -->
 <div class="section-block">
-    <div class="section-heading">Property Overview</div>
+    <?= buildReportSectionHeading('Property Overview', 'property.png') ?>
     <table class="data-table">
         <tr>
             <th>Location</th>
@@ -279,16 +333,12 @@ ob_start();
             <th>County</th>
             <td><?= displayValue($loc['locationCounty']) ?></td>
         </tr>
-        <tr>
-            <th>Report Date</th>
-            <td><?= date('F j, Y') ?></td>
-        </tr>
     </table>
 </div>
 
 <!-- 2. Zoning Summary -->
 <div class="section-block">
-    <div class="section-heading">Zoning Summary</div>
+    <?= buildReportSectionHeading('Zoning Summary', 'temple.png') ?>
     <table class="data-table">
         <tr>
             <th>Zoning District</th>
@@ -307,7 +357,7 @@ ob_start();
 
 <!-- 3. Sign Ordinance Summary -->
 <div class="section-block">
-    <div class="section-heading">Sign Ordinance Summary</div>
+    <?= buildReportSectionHeading('Sign Ordinance Summary', 'scroll.png') ?>
     <table class="data-table">
         <tr>
             <th>Sign Code Jurisdiction</th>
@@ -339,7 +389,14 @@ ob_start();
 <!-- 4. Recommended Next Steps -->
 <div class="section-block">
     <div class="callout-box">
-        <h3>Recommended Next Steps</h3>
+        <table class="callout-title-table">
+            <tr>
+                <?php if ($targetIconHtml !== ''): ?>
+                    <td class="section-icon-cell"><?= $targetIconHtml ?></td>
+                <?php endif; ?>
+                <td class="callout-title-cell">Recommended Next Steps</td>
+            </tr>
+        </table>
         <ol style="margin: 0; padding-left: 18px;">
             <li>Verify zoning designation and sign ordinance requirements with municipal staff or GIS resources.</li>
             <li>Confirm whether any site-specific Master Sign Plan or overlay restrictions exist for this parcel.</li>
@@ -358,16 +415,16 @@ ob_start();
 $html = ob_get_clean();
 
 // -------------------------------------------------------------------------
-// 5. Render PDF with mPDF (Letter + Explicit CSS Parsing Pass)
+// 5. Render PDF with mPDF (Letter + Narrow Margins)
 // -------------------------------------------------------------------------
 try {
     $mpdf = new \Mpdf\Mpdf([
         'mode'          => 'utf-8',
         'format'        => 'Letter',
-        'margin_left'   => 17.78, // ~0.70 in
-        'margin_right'  => 17.78, // ~0.70 in
-        'margin_top'    => 30.5,  // Header offset
-        'margin_bottom' => 17     // Footer offset
+        'margin_left'   => 11.43, // 0.45 inch
+        'margin_right'  => 11.43, // 0.45 inch
+        'margin_top'    => 27,    // Header clearance
+        'margin_bottom' => 14     // Footer clearance
     ]);
 
     $mpdf->SetTitle('Location Zoning & Sign Code Report - ' . ($loc['locationName'] ?? 'Location #' . $locationId));
