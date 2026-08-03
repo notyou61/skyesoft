@@ -6664,6 +6664,36 @@ window.SkyIndex = {
         this.appendSystemHtml(html);
     },
 
+    // Open location zoning and sign code report
+    openLocationZoningReport(locationId) {
+        const validLocationId = Number(locationId);
+
+        // Location check
+        if (!Number.isInteger(validLocationId) || validLocationId <= 0) {
+            console.error(
+                'Invalid location ID for zoning report:',
+                locationId
+            );
+
+            this.appendSystemLine(
+                'Unable to open the zoning report: invalid location.'
+            );
+
+            return;
+        }
+
+        // Build report URL
+        const reportUrl =
+            `/skyesoft/reports/locationZoningReport.php?locationId=${encodeURIComponent(validLocationId)}`;
+
+        // Open PDF report
+        window.open(
+            reportUrl,
+            '_blank',
+            'noopener,noreferrer'
+        );
+    },
+
     renderLocationListCard(list) {
         if (!list || !Array.isArray(list.rows)) {
             this.appendSystemLine('No locations to display.');
