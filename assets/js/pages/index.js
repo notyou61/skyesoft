@@ -7818,13 +7818,12 @@ window.SkyIndex = {
 
         const activitySessionId = this.getActivitySessionId();
 
-        const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
+        const res = await fetch('/skyesoft/api/askOpenAI.php?type=locationUpdate', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userQuery: `update location ${payload.locationId}`,
-                locationUpdate: payload,
+                ...payload,
                 activitySessionId,
                 latitude:  actionLocation?.latitude  ?? null,
                 longitude: actionLocation?.longitude ?? null
@@ -7838,13 +7837,11 @@ window.SkyIndex = {
 
         const data = await res.json();
 
-        const updated = data.location || data.updatedLocation || data.result?.location;
-
-        if (!data?.success || !updated) {
+        if (!data?.success || !data.location) {
             throw new Error(data?.error || data?.message || 'Update failed');
         }
 
-        return updated;
+        return data.location;
     },
 
     // #endregion
