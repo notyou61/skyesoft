@@ -890,15 +890,35 @@ function loadContactDetail(?PDO $db, int $contactId): ?array
         $stmt = $db->prepare("
             SELECT
                 c.contactId,
+                c.contactEntityId,
+                c.contactLocationId,
                 c.contactSalutation,
                 c.contactFirstName,
                 c.contactLastName,
                 c.contactTitle,
+                c.contactIsBilling,
                 c.contactPrimaryPhone,
+                c.contactPrimaryPhoneRaw,
+                c.contactPrimaryPhoneExtension,
+                c.contactSecondaryPhone,
+                c.contactSecondaryPhoneRaw,
                 c.contactEmail,
-                c.isActive,
+                c.contactEmailNormalized,
+                c.contactEmailConfirmed,
+                c.contactNote,
+                c.contactDate,
                 c.contactIsNotValid,
+                c.isActive,
+                c.contactCreatedAt,
+                c.contactUpdatedAt,
+                c.contactEndedAt,
+                c.lastActivityUnix,
+
+                e.entityId,
                 e.entityName,
+
+                l.locationId,
+                l.locationName,
                 l.locationAddress,
                 l.locationCity,
                 l.locationState,
@@ -916,16 +936,76 @@ function loadContactDetail(?PDO $db, int $contactId): ?array
             'contactId' => $contactId
         ]);
 
-        $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return is_array($contact) ? $contact : null;
+        if (!is_array($row)) {
+            return null;
+        }
+
+        // Format dates for the client
+        $createdUnix = (int)($row['contactDate'] ?? $row['contactCreatedAt'] ?? 0);
+        $updatedUnix = (int)($row['contactUpdatedAt'] ?? $row['lastActivityUnix'] ?? 0);
+
+        $createdDate  = $createdUnix > 0
+            ? date('M j, Y', $createdUnix)
+            : null;
+        $lastActivity = $updatedUnix > 0
+            ? date('M j, Y', $updatedUnix)
+            : $createdDate;
+
+        return [
+            'contactId'                    => (int)$row['contactId'],
+            'contactEntityId'              => (int)$row['contactEntityId'],
+            'contactLocationId'            => (int)$row['contactLocationId'],
+            'contactSalutation'            => $row['contactSalutation'],
+            'contactFirstName'             => $row['contactFirstName'],
+            'contactLastName'              => $row['contactLastName'],
+            'contactTitle'                 => $row['contactTitle'],
+            'contactIsBilling'             => (int)$row['contactIsBilling'],
+            'contactPrimaryPhone'          => $row['contactPrimaryPhone'],
+            'contactPrimaryPhoneRaw'       => $row['contactPrimaryPhoneRaw'],
+            'contactPrimaryPhoneExtension' => $row['contactPrimaryPhoneExtension'],
+            'contactSecondaryPhone'        => $row['contactSecondaryPhone'],
+            'contactSecondaryPhoneRaw'     => $row['contactSecondaryPhoneRaw'],
+            'contactEmail'                 => $row['contactEmail'],
+            'contactEmailNormalized'       => $row['contactEmailNormalized'],
+            'contactEmailConfirmed'        => (int)$row['contactEmailConfirmed'],
+            'contactNote'                  => $row['contactNote'],
+            'contactDate'                  => $createdUnix,
+            'contactIsNotValid'            => (int)$row['contactIsNotValid'],
+            'isActive'                     => (int)$row['isActive'],
+            'contactCreatedAt'             => (int)($row['contactCreatedAt'] ?? 0),
+            'contactUpdatedAt'             => $updatedUnix,
+            'contactEndedAt'               => (int)($row['contactEndedAt'] ?? 0),
+            'createdDate'                  => $createdDate,
+            'lastActivity'                 => $lastActivity,
+
+            'entity' => !empty($row['entityId']) ? [
+                'entityId'   => (int)$row['entityId'],
+                'entityName' => $row['entityName']
+            ] : null,
+
+            'location' => !empty($row['locationId']) ? [
+                'locationId'      => (int)$row['locationId'],
+                'locationName'    => $row['locationName'],
+                'locationAddress' => $row['locationAddress'],
+                'locationCity'    => $row['locationCity'],
+                'locationState'   => $row['locationState'],
+                'locationZip'     => $row['locationZip']
+            ] : null,
+
+            // Counts left at 0 for now; can be filled later
+            'orderCount'       => 0,
+            'applicationCount' => 0,
+            'noteCount'        => 0,
+            'taskCount'        => 0
+        ];
 
     } catch (Throwable $e) {
         error_log(
             '[skyebot] loadContactDetail failed: ' .
             $e->getMessage()
         );
-
         return null;
     }
 }
