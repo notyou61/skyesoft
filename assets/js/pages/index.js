@@ -8382,6 +8382,38 @@ window.SkyIndex = {
         return data.contact;
     },
 
+    async showContactModal(contactId) {
+        const resolvedId = Number(contactId);
+        if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
+            this.appendSystemLine('Contact not found.');
+            return;
+        }
+
+        // Close any residual legacy modal
+        this.closeContactModal?.();
+
+        let title = 'Contact';
+        try {
+            const cached = this._currentContactModalData?.contact;
+            if (cached && Number(cached.contactId) === resolvedId) {
+                title = [cached.contactFirstName, cached.contactLastName]
+                    .filter(Boolean).join(' ') || title;
+            }
+        } catch (_) {}
+
+        if (window.SkyWorkspace) {
+            window.SkyWorkspace.push({
+                pageType:    'contact',
+                objectType:  'contact',
+                objectId:    resolvedId,
+                title:       title,
+                parentTitle: 'Contacts'
+            });
+        } else {
+            this.appendSystemLine('Workspace is not available.');
+        }
+    },
+
     // #endregion
 
     // #region 🔎 AI Query Information Card
@@ -8610,6 +8642,17 @@ window.SkyIndex = {
             if (data?.type === 'contact_list' && data?.list) {
                 this.renderContactListCard(data.list);
                 return;
+            }
+
+            // --------------------------------------------------
+            // 👤 CONTACT DETAIL
+            // --------------------------------------------------
+            if (data?.type === 'contact_detail' && (data?.contact || data?.contactId)) {
+                const id = Number(data.contact?.contactId || data.contactId || data.contact?.id);
+                if (id > 0) {
+                    await this.showContactModal(id);   // must go through Workspace
+                    return;
+                }
             }
 
             // --------------------------------------------------
