@@ -71,13 +71,17 @@ try {
 /**
  * Display helper supporting scalar types with htmlspecialchars encoding.
  */
-function displayValue($value, string $fallback = 'Not Yet Verified'): string
-{
+function displayValue(
+    mixed $value,
+    string $fallback = 'Not Yet Verified'
+): string {
     $trimmed = trim((string)($value ?? ''));
 
     return $trimmed !== ''
         ? htmlspecialchars($trimmed, ENT_QUOTES, 'UTF-8')
-        : '<span class="unverified">' . htmlspecialchars($fallback, ENT_QUOTES, 'UTF-8') . '</span>';
+        : '<span class="unverified">' .
+            htmlspecialchars($fallback, ENT_QUOTES, 'UTF-8') .
+          '</span>';
 }
 
 // APN Fallback logic
