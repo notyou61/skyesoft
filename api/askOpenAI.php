@@ -3083,61 +3083,55 @@ if ($type === 'entityUpdate') {
 }
 
 // =====================================================
-// Location UPDATE 
+// LOCATION UPDATE (mutation) — Location Edit v1.0
 // =====================================================
 
 if ($type === 'locationUpdate') {
 
-    // Use the same $pdo that the rest of askOpenAI.php already created.
-    // If your file uses a different variable name, change it here.
-    global $pdo;          // only if it is truly global
-    // or
-    // $pdo = $GLOBALS['pdo'] ?? null;
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
 
-    if (!$pdo instanceof PDO) {
-        echo json_encode(['success' => false, 'error' => 'Database connection unavailable']);
+    $activitySessionId = $_SESSION['activitySessionId']
+                      ?? session_id();
+
+    $latitude  = is_numeric($input['latitude']  ?? null) ? (float)$input['latitude']  : null;
+    $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
+
+    $targetLocationId = (int)($input['locationId'] ?? 0);
+
+    if ($targetLocationId <= 0) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'location_update',
+            'error'   => 'Valid locationId is required.'
+        ], JSON_UNESCAPED_SLASHES);
         exit;
     }
 
-    // ── 1. Auth / session guard ─────────────────────────────────────────────
-    if (empty($_SESSION['authenticated']) || empty($_SESSION['userId'])) {
-        echo json_encode(['success' => false, 'error' => 'Authentication required']);
-        exit;
-    }
-
-    $input = json_decode(file_get_contents('php://input'), true) ?? [];
-
-    $locationId = (int)($input['locationId'] ?? 0);
-    if ($locationId <= 0) {
-        echo json_encode(['success' => false, 'error' => 'locationId is required']);
-        exit;
-    }
-
-    // ── 2. Load current record (ownership check) ────────────────────────────
-    $stmt = $pdo->prepare("SELECT * FROM tblLocations WHERE locationId = ? LIMIT 1");
-    $stmt->execute([$locationId]);
-    $current = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$current) {
-        echo json_encode(['success' => false, 'error' => 'Location not found']);
-        exit;
-    }
-
-    // ── 3. Sanitize user-maintained fields only ─────────────────────────────
-    $locationName         = trim($input['locationName'] ?? '');
-    $locationAddress      = trim($input['locationAddress'] ?? '');
-    $locationAddressSuite = trim($input['locationAddressSuite'] ?? '');
-    $locationCity         = trim($input['locationCity'] ?? '');
-    $locationState        = strtoupper(trim($input['locationState'] ?? ''));
-    $locationZip          = trim($input['locationZip'] ?? '');
-    $locationIsNotValid   = (int)($input['locationIsNotValid'] ?? 0) === 1 ? 1 : 0;
+    // Collect only user-maintained fields
+    $locationName         = trim((string)($input['locationName']         ?? ''));
+    $locationAddress      = trim((string)($input['locationAddress']      ?? ''));
+    $locationAddressSuite = trim((string)($input['locationAddressSuite'] ?? ''));
+    $locationCity         = trim((string)($input['locationCity']         ?? ''));
+    $locationState        = strtoupper(trim((string)($input['locationState'] ?? '')));
+    $locationZip          = trim((string)($input['locationZip']          ?? ''));
+    $locationIsNotValid   = (int)($input['locationIsNotValid'] ?? 0) ? 1 : 0;
 
     if ($locationName === '') {
-        echo json_encode(['success' => false, 'error' => 'Location name is required']);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'location_update',
+            'error'   => 'Location name is required.'
+        ], JSON_UNESCAPED_SLASHES);
         exit;
     }
 
-    // Basic length guards (match column sizes)
+    // Length guards matching column sizes
     $locationName         = mb_substr($locationName, 0, 255);
     $locationAddress      = mb_substr($locationAddress, 0, 255);
     $locationAddressSuite = mb_substr($locationAddressSuite, 0, 100);
@@ -3145,139 +3139,179 @@ if ($type === 'locationUpdate') {
     $locationState        = mb_substr($locationState, 0, 10);
     $locationZip          = mb_substr($locationZip, 0, 20);
 
-    $now = time();
-
-    // ── 4. Update ───────────────────────────────────────────────────────────
-    $sql = "
-        UPDATE tblLocations SET
-            locationName         = :name,
-            locationAddress      = :address,
-            locationAddressSuite = :suite,
-            locationCity         = :city,
-            locationState        = :state,
-            locationZip          = :zip,
-            locationIsNotValid   = :isNotValid,
-            locationUpdatedUnix  = :updated
-        WHERE locationId = :id
-        LIMIT 1
-    ";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
-        ':name'       => $locationName,
-        ':address'    => $locationAddress ?: null,
-        ':suite'      => $locationAddressSuite ?: null,
-        ':city'       => $locationCity ?: null,
-        ':state'      => $locationState ?: null,
-        ':zip'        => $locationZip ?: null,
-        ':isNotValid' => $locationIsNotValid,
-        ':updated'    => $now,
-        ':id'         => $locationId
-    ]);
-
-    // ── 5. Action log (tblActions) ──────────────────────────────────────────
-    $activitySessionId = $input['activitySessionId'] ?? ($_SESSION['activitySessionId'] ?? null);
-    $lat = isset($input['latitude'])  ? (float)$input['latitude']  : null;
-    $lng = isset($input['longitude']) ? (float)$input['longitude'] : null;
-
-    // Adjust column names / actionTypeId to match your existing pattern
-    $actionSql = "
-        INSERT INTO tblActions (
-            actionTypeId, actionUserId, actionEntityId, actionLocationId,
-            actionSessionId, actionLatitude, actionLongitude,
-            actionUnix, actionNote
-        ) VALUES (
-            :typeId, :userId, :entityId, :locationId,
-            :sessionId, :lat, :lng,
-            :unix, :note
-        )
-    ";
-    // Example actionTypeId — replace with your real “Location Updated” type
-    $actionTypeId = 42; // ← change to the correct ID from tblActionTypes
-
     try {
-        $pdo->prepare($actionSql)->execute([
-            ':typeId'     => $actionTypeId,
-            ':userId'     => $_SESSION['userId'],
-            ':entityId'   => $current['locationEntityId'] ?: null,
-            ':locationId' => $locationId,
-            ':sessionId'  => $activitySessionId,
-            ':lat'        => $lat,
-            ':lng'        => $lng,
-            ':unix'       => $now,
-            ':note'       => 'Location identity updated via Workspace'
+        // Confirm exists
+        $check = $db->prepare("
+            SELECT locationId, locationEntityId
+            FROM tblLocations
+            WHERE locationId = :locationId
+            LIMIT 1
+        ");
+        $check->execute(['locationId' => $targetLocationId]);
+        $current = $check->fetch(PDO::FETCH_ASSOC);
+
+        if (!$current) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'type'    => 'location_update',
+                'error'   => 'Location not found.'
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $nowUnix = time();
+
+        $sql = "
+            UPDATE tblLocations
+            SET
+                locationName         = :locationName,
+                locationAddress      = :locationAddress,
+                locationAddressSuite = :locationAddressSuite,
+                locationCity         = :locationCity,
+                locationState        = :locationState,
+                locationZip          = :locationZip,
+                locationIsNotValid   = :locationIsNotValid,
+                locationUpdatedUnix  = :locationUpdatedUnix
+            WHERE locationId = :locationId
+            LIMIT 1
+        ";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            'locationId'            => $targetLocationId,
+            'locationName'          => $locationName,
+            'locationAddress'       => ($locationAddress !== '') ? $locationAddress : null,
+            'locationAddressSuite'  => ($locationAddressSuite !== '') ? $locationAddressSuite : null,
+            'locationCity'          => ($locationCity !== '') ? $locationCity : null,
+            'locationState'         => ($locationState !== '') ? $locationState : null,
+            'locationZip'           => ($locationZip !== '') ? $locationZip : null,
+            'locationIsNotValid'    => $locationIsNotValid,
+            'locationUpdatedUnix'   => $nowUnix
         ]);
+
+        // Reload full record (mirror loadEntityDetail pattern)
+        // If you already have a loadLocationDetail($db, $id) helper, use it.
+        // Otherwise the query below is sufficient.
+        $reload = $db->prepare("
+            SELECT l.*,
+                   e.entityId, e.entityName
+            FROM tblLocations l
+            LEFT JOIN tblEntities e ON e.entityId = l.locationEntityId
+            WHERE l.locationId = :locationId
+            LIMIT 1
+        ");
+        $reload->execute(['locationId' => $targetLocationId]);
+        $row = $reload->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            throw new RuntimeException('Location updated but reload failed.');
+        }
+
+        $createdDate  = !empty($row['locationDate'])
+            ? date('M j, Y', (int)$row['locationDate'])
+            : null;
+        $lastActivity = !empty($row['locationUpdatedUnix'])
+            ? date('M j, Y', (int)$row['locationUpdatedUnix'])
+            : $createdDate;
+
+        $location = [
+            'locationId'              => (int)$row['locationId'],
+            'locationName'            => $row['locationName'],
+            'name'                    => $row['locationName'],
+            'locationAddress'         => $row['locationAddress'],
+            'locationAddressSuite'    => $row['locationAddressSuite'],
+            'locationCity'            => $row['locationCity'],
+            'locationState'           => $row['locationState'],
+            'locationZip'             => $row['locationZip'],
+            'locationParcelNumber'    => $row['locationParcelNumber'],
+            'locationParcelNumberRaw' => $row['locationParcelNumberRaw'],
+            'locationJurisdiction'    => $row['locationJurisdiction'],
+            'locationCounty'          => $row['locationCounty'],
+            'locationZone'            => $row['locationZone'],
+            'locationLatitude'        => $row['locationLatitude'],
+            'locationLongitude'       => $row['locationLongitude'],
+            'locationIsBilling'       => (int)$row['locationIsBilling'],
+            'locationIsNotValid'      => (int)$row['locationIsNotValid'],
+            'locationIsLocationOnly'  => (int)$row['locationIsLocationOnly'],
+            'locationEntityId'        => (int)$row['locationEntityId'],
+            'locationDate'            => (int)$row['locationDate'],
+            'locationUpdatedUnix'     => (int)$row['locationUpdatedUnix'],
+            'createdDate'             => $createdDate,
+            'lastActivity'            => $lastActivity,
+            'entity' => !empty($row['entityId']) ? [
+                'entityId'   => (int)$row['entityId'],
+                'entityName' => $row['entityName']
+            ] : null,
+            'contactCount'     => 0,
+            'orderCount'       => 0,
+            'applicationCount' => 0,
+            'noteCount'        => 0,
+            'taskCount'        => 0
+        ];
+
+        // Audit (same helper the entity handler uses)
+        if ($actorContactId > 0) {
+            try {
+                insertActionPrompt([
+                    'contactId'         => $actorContactId,
+                    'promptText'        => 'Update location profile',
+                    'responseText'      => sprintf(
+                        'Updated location #%d (%s).',
+                        $targetLocationId,
+                        $locationName
+                    ),
+                    'intent'            => 'locations.update',
+                    'intentConfidence'  => 1.0,
+                    'activitySessionId' => $activitySessionId,
+                    'latitude'          => $latitude,
+                    'longitude'         => $longitude,
+                    // TODO: replace with dedicated LOCATION_UPDATE actionTypeId when added
+                    'actionTypeId'      => 13,
+                    'origin'            => ACTION_ORIGIN_USER,
+                    'actionPayloadData' => [
+                        'operation'        => 'locations.update',
+                        'targetLocationId' => $targetLocationId,
+                        'fields'           => [
+                            'locationName'         => $locationName,
+                            'locationAddress'      => $locationAddress !== '' ? $locationAddress : null,
+                            'locationAddressSuite' => $locationAddressSuite !== '' ? $locationAddressSuite : null,
+                            'locationCity'         => $locationCity !== '' ? $locationCity : null,
+                            'locationState'        => $locationState !== '' ? $locationState : null,
+                            'locationZip'          => $locationZip !== '' ? $locationZip : null,
+                            'locationIsNotValid'   => $locationIsNotValid,
+                            'locationUpdatedUnix'  => $nowUnix
+                        ]
+                    ],
+                    'actionResponseData' => [
+                        'success'          => true,
+                        'targetLocationId' => $targetLocationId
+                    ]
+                ], $db);
+            } catch (Throwable $e) {
+                error_log('[askOpenAI] Location-update action logging failed: ' . $e->getMessage());
+            }
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success'  => true,
+            'type'     => 'location_update',
+            'location' => $location
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
     } catch (Throwable $e) {
-        // Non-fatal — log but do not fail the update
-        error_log('[locationUpdate] action log failed: ' . $e->getMessage());
-    }
+        error_log('[askOpenAI] locationUpdate failed: ' . $e->getMessage());
 
-    // ── 6. Re-fetch the full record for the client ──────────────────────────
-    $stmt = $pdo->prepare("
-        SELECT l.*,
-               e.entityId, e.entityName
-        FROM tblLocations l
-        LEFT JOIN tblEntities e ON e.entityId = l.locationEntityId
-        WHERE l.locationId = ?
-        LIMIT 1
-    ");
-    $stmt->execute([$locationId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$row) {
-        echo json_encode(['success' => false, 'error' => 'Location disappeared after update']);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'type'    => 'location_update',
+            'error'   => 'Update failed: ' . $e->getMessage()
+        ], JSON_UNESCAPED_SLASHES);
         exit;
     }
-
-    // Format dates the same way Entity does
-    $createdDate  = $row['locationDate']
-        ? date('M j, Y', (int)$row['locationDate'])
-        : null;
-    $lastActivity = $row['locationUpdatedUnix']
-        ? date('M j, Y', (int)$row['locationUpdatedUnix'])
-        : $createdDate;
-
-    $location = [
-        'locationId'              => (int)$row['locationId'],
-        'locationName'            => $row['locationName'],
-        'name'                    => $row['locationName'],
-        'locationAddress'         => $row['locationAddress'],
-        'locationAddressSuite'    => $row['locationAddressSuite'],
-        'locationCity'            => $row['locationCity'],
-        'locationState'           => $row['locationState'],
-        'locationZip'             => $row['locationZip'],
-        'locationParcelNumber'    => $row['locationParcelNumber'],
-        'locationParcelNumberRaw' => $row['locationParcelNumberRaw'],
-        'locationJurisdiction'    => $row['locationJurisdiction'],
-        'locationCounty'          => $row['locationCounty'],
-        'locationZone'            => $row['locationZone'],
-        'locationLatitude'        => $row['locationLatitude'],
-        'locationLongitude'       => $row['locationLongitude'],
-        'locationIsBilling'       => (int)$row['locationIsBilling'],
-        'locationIsNotValid'      => (int)$row['locationIsNotValid'],
-        'locationIsLocationOnly'  => (int)$row['locationIsLocationOnly'],
-        'locationEntityId'        => (int)$row['locationEntityId'],
-        'locationDate'            => (int)$row['locationDate'],
-        'locationUpdatedUnix'     => (int)$row['locationUpdatedUnix'],
-        'createdDate'             => $createdDate,
-        'lastActivity'            => $lastActivity,
-        'entity' => $row['entityId'] ? [
-            'entityId'   => (int)$row['entityId'],
-            'entityName' => $row['entityName']
-        ] : null,
-        // Counts can be added later if needed; client currently tolerates 0
-        'contactCount'     => 0,
-        'orderCount'       => 0,
-        'applicationCount' => 0,
-        'noteCount'        => 0,
-        'taskCount'        => 0
-    ];
-
-    echo json_encode([
-        'success'  => true,
-        'location' => $location
-    ]);
-    exit;
 }
 
 // =====================================================
