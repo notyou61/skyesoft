@@ -5332,140 +5332,40 @@ window.SkyIndex = {
     },
 
     // Render complete contact modal
-    renderContactModal(contact) {
-        const modal = document.getElementById('contactDetailModal');
-        if (!modal || !contact) return;
+    async renderContactModal(contactIdOrData) {
+        // Accept either a numeric ID or a full contact object
+        let contactId = null;
+        let title = 'Contact';
 
-        const fullName = [
-            contact.contactSalutation,
-            contact.contactFirstName,
-            contact.contactLastName
-        ].filter(Boolean).join(' ').trim() || 'Unnamed Contact';
+        if (typeof contactIdOrData === 'object' && contactIdOrData !== null) {
+            contactId = Number(contactIdOrData.contactId || contactIdOrData.id || 0);
+            title = [contactIdOrData.contactFirstName, contactIdOrData.contactLastName]
+                .filter(Boolean).join(' ') || title;
+            // Cache for later use
+            this._currentContactModalData = { contact: contactIdOrData, contactId };
+        } else {
+            contactId = Number(contactIdOrData);
+        }
 
-        const name    = this.escapeHtml(fullName);
-        const title   = contact.contactTitle ? this.escapeHtml(contact.contactTitle) : '';
-        const entity  = contact.entityName ? this.escapeHtml(contact.entityName) : '';
-        const entityId = Number(contact.entityId || contact.contactEntityId || 0);
-        const phone   = contact.contactPrimaryPhone ? this.escapeHtml(contact.contactPrimaryPhone) : '';
-        const email   = contact.contactEmail ? this.escapeHtml(contact.contactEmail) : '';
+        if (!Number.isInteger(contactId) || contactId <= 0) {
+            this.appendSystemLine('Contact not found.');
+            return;
+        }
 
-        const addressParts = [
-            contact.locationAddress,
-            contact.locationCity,
-            contact.locationState,
-            contact.locationZip
-        ].filter(Boolean).map(v => this.escapeHtml(v));
-        const address = addressParts.join(', ');
+        // Close any residual legacy DOM if it still exists
+        this.closeContactModal?.();
 
-        const locationId = Number(contact.locationId || contact.contactLocationId || 0);
-
-        const isInactive = Number(contact.isActive) === 0 ||
-                           Number(contact.contactIsNotValid) === 1;
-
-        const createdDate  = contact.createdDate  ? this.escapeHtml(contact.createdDate)  : '—';
-        const lastActivity = contact.lastActivity ? this.escapeHtml(contact.lastActivity) : createdDate;
-
-        // ── Helpers ─────────────────────────────────────────────────
-        const attrRow = (label, value, action = null) => {
-            if (!value) return '';
-            const valueHtml = action
-                ? `<a href="#" onclick="event.preventDefault(); ${action}"
-                        style="color:#117a8b; font-weight:500; text-decoration:none;">${value}</a>`
-                : `<span style="color:#222;">${value}</span>`;
-            return `
-                <div style="display:flex; align-items:flex-start; gap:10px; padding:7px 0;">
-                    <div style="width:110px; flex-shrink:0; font-size:0.78em; font-weight:600;
-                                color:#888; text-transform:uppercase; letter-spacing:0.03em; padding-top:2px;">
-                        ${label}
-                    </div>
-                    <div style="min-width:0; font-size:0.95em; line-height:1.4;">
-                        ${valueHtml}
-                    </div>
-                </div>
-            `;
-        };
-
-        const inactiveBadge = isInactive
-            ? `<span style="padding:2px 8px; font-size:0.72em; font-weight:600; letter-spacing:0.03em;
-                            color:#8a6d3b; background:#fcf8e3; border:1px solid #faebcc;
-                            border-radius:4px;">Inactive</span>`
-            : '';
-
-        // Note: Contact modal currently rebuilds the entire modal element.
-        // We keep that pattern for compatibility.
-        modal.innerHTML = `
-            <div role="dialog" aria-modal="true" aria-labelledby="contactDetailTitle"
-                 style="width:100%; max-width:620px; max-height:90vh; background:#fff;
-                        border-radius:8px; box-shadow:0 18px 48px rgba(0,0,0,0.28); overflow:hidden;
-                        display:flex; flex-direction:column;">
-
-                <!-- 1. HEADER -->
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;
-                            padding:14px 18px; border-bottom:1px solid #e8e8e8; background:#fafafa;">
-                    <div style="display:flex; align-items:center; gap:9px; min-width:0;">
-                        <span style="font-size:1.25rem; flex-shrink:0;">👤</span>
-                        <strong id="contactDetailTitle"
-                                style="color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            ${name}
-                        </strong>
-                        ${inactiveBadge}
-                    </div>
-                    <button type="button" onclick="SkyIndex.closeContactModal();"
-                            aria-label="Close contact profile"
-                            style="border:0; background:transparent; color:#666; cursor:pointer;
-                                   font-size:1.5rem; line-height:1; flex-shrink:0;">×</button>
-                </div>
-
-                <div style="padding:16px 18px 18px; max-height:70vh; overflow-y:auto;">
-
-                    <!-- 2. IDENTITY -->
-                    <div style="margin-bottom:20px;">
-                        <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                                    color:#888; text-transform:uppercase; margin-bottom:6px;">
-                            Identity
-                        </div>
-                        ${attrRow('Title', title)}
-                        ${attrRow('Entity', entity,
-                            entityId > 0
-                                ? `SkyIndex.closeContactModal(); SkyIndex.showEntityModal(${entityId});`
-                                : null)}
-                        ${attrRow('Location', address,
-                            locationId > 0
-                                ? `SkyIndex.closeContactModal(); SkyIndex.showLocationModal(${locationId});`
-                                : null)}
-                        ${attrRow('Phone', phone
-                            ? `<a href="tel:${phone}" style="color:#117a8b; text-decoration:none;">${phone}</a>`
-                            : null)}
-                        ${attrRow('Email', email
-                            ? `<a href="mailto:${email}" style="color:#117a8b; text-decoration:none;">${email}</a>`
-                            : null)}
-                    </div>
-
-                    <!-- 3. RELATED (placeholder – contacts currently have limited related counts) -->
-                    <div style="margin-bottom:20px;">
-                        <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                                    color:#888; text-transform:uppercase; margin-bottom:4px;">
-                            Related
-                        </div>
-                        <div style="color:#999; font-size:0.9em; padding:6px 0;">
-                            No related collections available for contacts yet.
-                        </div>
-                    </div>
-
-                    <!-- 4. METADATA -->
-                    <div>
-                        <div style="font-size:0.72em; font-weight:600; letter-spacing:0.04em;
-                                    color:#888; text-transform:uppercase; margin-bottom:6px;">
-                            Metadata
-                        </div>
-                        <div style="display:flex; gap:28px; font-size:0.88em; color:#555;">
-                            <div>Created <strong style="color:#222; margin-left:4px;">${createdDate}</strong></div>
-                            <div>Last Activity <strong style="color:#222; margin-left:4px;">${lastActivity}</strong></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+        if (window.SkyWorkspace) {
+            window.SkyWorkspace.push({
+                pageType:    'contact',
+                objectType:  'contact',
+                objectId:    contactId,
+                title:       title,
+                parentTitle: 'Contacts'
+            });
+        } else {
+            this.appendSystemLine('Workspace is not available.');
+        }
     },
 
     // Close contact modal
