@@ -7466,6 +7466,7 @@ window.SkyIndex = {
     /**
      * Location detail page (view + edit) — Location Edit v1.0
      * Visual language aligned with Entity Workspace.
+     * Supports both formatted date strings and raw Unix timestamps.
      */
     async renderLocationPage(page, ctx) {
         const locationId = Number(page.objectId);
@@ -7508,8 +7509,26 @@ window.SkyIndex = {
         const noteCount        = Number(loc.noteCount        ?? 0);
         const taskCount        = Number(loc.taskCount        ?? 0);
 
-        const createdDate  = loc.createdDate  ? this.escapeHtml(loc.createdDate)  : '—';
-        const lastActivity = loc.lastActivity ? this.escapeHtml(loc.lastActivity) : createdDate;
+        // ── Date formatting (handles both formatted strings and Unix timestamps) ─
+        const formatUnix = (unix) => {
+            if (!unix && unix !== 0) return null;
+            const d = new Date(Number(unix) * 1000);
+            if (isNaN(d.getTime())) return null;
+            return d.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                timeZone: 'America/Phoenix'
+            });
+        };
+
+        const createdDate = loc.createdDate
+            ? this.escapeHtml(loc.createdDate)
+            : (formatUnix(loc.locationDate) || '—');
+
+        const lastActivity = loc.lastActivity
+            ? this.escapeHtml(loc.lastActivity)
+            : (formatUnix(loc.locationUpdatedUnix) || createdDate);
 
         // ── Helpers (tightened to match Entity density) ─────────────────────────
         const LABEL_WIDTH = '100px';
