@@ -7247,6 +7247,8 @@ window.SkyIndex = {
      * Workspace page renderer for Entity.
      * Returns { titleHtml, bodyHtml, actionsHtml } — does not touch the modal DOM.
      *
+     * Entity Edit v1.0 (canonical pattern for all future business-object edit pages)
+     *
      * @param {Object} page  { pageType, objectId, title?, state? }
      * @param {Object} ctx   { push, pop, replace, close, stack, workspace }
      */
@@ -7269,7 +7271,8 @@ window.SkyIndex = {
 
         const name       = this.escapeHtml(entity.entityName || entity.name || 'Unnamed Entity');
         const legalName  = entity.entityLegalName || '';
-        const entityType = entity.entityType || '';
+        const entityType = (entity.entityType || '').toLowerCase();
+        const structure  = entity.entityStructure || '';
         const status     = entity.entityStatus || entity.status || '';
 
         const locationCount    = Number(entity.locationCount    ?? 0);
@@ -7282,7 +7285,7 @@ window.SkyIndex = {
         const createdDate  = entity.createdDate  ? this.escapeHtml(entity.createdDate)  : '—';
         const lastActivity = entity.lastActivity ? this.escapeHtml(entity.lastActivity) : createdDate;
 
-        // ── Helpers (same as current modal) ─────────────────────────────
+        // ── Helpers ─────────────────────────────────────────────────────────────
         const LABEL_WIDTH = '110px';
 
         const attrRow = (label, value, action = null) => {
@@ -7318,6 +7321,30 @@ window.SkyIndex = {
                 </div>
             </div>
         `;
+
+        const editSelect = (label, fieldName, currentValue, options, extraAttrs = '') => {
+            const opts = options.map(o => {
+                const val = o.value;
+                const lab = o.label;
+                const selected = String(currentValue).toLowerCase() === String(val).toLowerCase() ? ' selected' : '';
+                return `<option value="${this.escapeHtml(val)}"${selected}>${this.escapeHtml(lab)}</option>`;
+            }).join('');
+            return `
+                <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:5px 0;">
+                    <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                        ${label}
+                    </div>
+                    <div style="min-width:0;">
+                        <select name="${fieldName}" ${extraAttrs}
+                            style="width:100%; padding:7px 10px; border:1px solid #d1d5db;
+                                    border-radius:6px; font-size:0.95em; color:#222;
+                                    background:#fff; box-sizing:border-box;">
+                            ${opts}
+                        </select>
+                    </div>
+                </div>
+            `;
+        };
 
         const relatedRow = (label, count, action) => {
             if (count <= 0) {
@@ -7367,37 +7394,70 @@ window.SkyIndex = {
                             border-radius:4px; text-transform:capitalize;">${this.escapeHtml(status)}</span>`
             : '';
 
-        // Identity
-        const hasIdentity =
-            (legalName && legalName !== (entity.entityName || entity.name)) ||
-            entity.entityStructure ||
-            entity.entityNormalizedName ||
-            entity.entityAccNumber ||
-            entityType ||
-            (entity.entityIsNotValid !== undefined && entity.entityIsNotValid !== null);
+        // ── Type / Structure option sets (canonical) ────────────────────────────
+        const TYPE_OPTIONS = [
+            { value: 'company',      label: 'Company' },
+            { value: 'customer',     label: 'Customer' },
+            { value: 'vendor',       label: 'Vendor' },
+            { value: 'jurisdiction', label: 'Jurisdiction' }
+        ];
 
+        const STRUCTURE_OPTIONS = [
+            { value: 'Corporation',         label: 'Corporation' },
+            { value: 'LLC',                 label: 'LLC' },
+            { value: 'Partnership',         label: 'Partnership' },
+            { value: 'Sole Proprietorship', label: 'Sole Proprietorship' },
+            { value: 'Government',          label: 'Government' }
+        ];
+
+        const INVALID_OPTIONS = [
+            { value: '0', label: 'Active' },
+            { value: '1', label: 'Invalid' }
+        ];
+
+        // Current values for form
+        const currentType      = entityType || 'company';
+        const currentStructure = structure || '';
+        const currentInvalid   = String(entity.entityIsNotValid ?? 0);
+
+        // Jurisdiction forces Structure = Government and disables the control
+        const isJurisdiction = currentType === 'jurisdiction';
+        const structureValue = isJurisdiction ? 'Government' : currentStructure;
+        const structureDisabled = isJurisdiction ? 'disabled' : '';
+
+        // Normalized is always read-only (server recalculates on save)
+        const normalizedDisplay = this.escapeHtml(
+            entity.entityNormalizedName || (entity.entityName || entity.name || '').toLowerCase().trim()
+        );
+
+        // ── Identity content ────────────────────────────────────────────────────
         const identityContent = isEditing
             ? `
                 <form id="entityEditForm" onsubmit="return false;">
                     ${editField('Name', 'entityName', entity.entityName || entity.name || '')}
                     ${editField('Legal Name', 'entityLegalName', legalName)}
-                    ${editField('Structure', 'entityStructure', entity.entityStructure || '')}
-                    ${editField('Normalized', 'entityNormalizedName', entity.entityNormalizedName || '')}
+                    ${editSelect('Type', 'entityType', currentType, TYPE_OPTIONS, `onchange="SkyIndex.onEntityTypeChange(this)"`)}
+                    ${editSelect('Structure', 'entityStructure', structureValue, STRUCTURE_OPTIONS, structureDisabled)}
+                    <div style="display:grid; grid-template-columns:${LABEL_WIDTH} 1fr; gap:12px; align-items:center; padding:5px 0;">
+                        <div style="font-size:0.78em; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.03em;">
+                            Normalized
+                        </div>
+                        <div style="min-width:0; font-size:0.95em; color:#555; padding:7px 0;">
+                            ${normalizedDisplay || '<span style="color:#999;">(generated from Name on save)</span>'}
+                        </div>
+                    </div>
                     ${editField('Account #', 'entityAccNumber', entity.entityAccNumber || '')}
-                    ${editField('Type', 'entityType', entityType)}
-                    ${editField('Invalid', 'entityIsNotValid', String(entity.entityIsNotValid ?? 0))}
+                    ${editSelect('Invalid', 'entityIsNotValid', currentInvalid, INVALID_OPTIONS)}
                 </form>
             `
-            : hasIdentity
-                ? `
-                    ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
-                    ${attrRow('Structure', entity.entityStructure ? this.escapeHtml(entity.entityStructure) : null)}
-                    ${attrRow('Normalized', entity.entityNormalizedName ? this.escapeHtml(entity.entityNormalizedName) : null)}
-                    ${attrRow('Account #', entity.entityAccNumber ? this.escapeHtml(entity.entityAccNumber) : null)}
-                    ${attrRow('Type', entityType ? this.escapeHtml(entityType) : null)}
-                    ${attrRow('Invalid', entity.entityIsNotValid == 1 ? 'Yes' : (entity.entityIsNotValid == 0 ? 'No' : null))}
-                `
-                : `<div style="color:#999; font-size:0.9em;">No additional identity details.</div>`;
+            : `
+                ${attrRow('Legal Name', legalName && legalName !== (entity.entityName || entity.name) ? this.escapeHtml(legalName) : null)}
+                ${attrRow('Type', entityType ? this.escapeHtml(entityType.charAt(0).toUpperCase() + entityType.slice(1)) : null)}
+                ${attrRow('Structure', structure ? this.escapeHtml(structure) : null)}
+                ${attrRow('Normalized', entity.entityNormalizedName ? this.escapeHtml(entity.entityNormalizedName) : null)}
+                ${attrRow('Account #', entity.entityAccNumber ? this.escapeHtml(entity.entityAccNumber) : null)}
+                ${attrRow('Invalid', entity.entityIsNotValid == 1 ? 'Invalid' : 'Active')}
+            `;
 
         // Related — Locations + Contacts via Workspace; others stay on commands until their pages exist
         const parentTitle = (entity.entityName || entity.name || 'Entity')
@@ -7469,6 +7529,29 @@ window.SkyIndex = {
         return { titleHtml, bodyHtml, actionsHtml };
     },
 
+    /**
+     * Type → Structure business rule (Entity Edit v1.0)
+     * When Type = Jurisdiction, force Structure = Government and disable the control.
+     * When Type changes away from Jurisdiction, re-enable Structure.
+     */
+    onEntityTypeChange(selectEl) {
+        const form = selectEl.closest('form');
+        if (!form) return;
+
+        const structureSelect = form.querySelector('[name="entityStructure"]');
+        if (!structureSelect) return;
+
+        const type = (selectEl.value || '').toLowerCase();
+
+        if (type === 'jurisdiction') {
+            structureSelect.value = 'Government';
+            structureSelect.disabled = true;
+        } else {
+            structureSelect.disabled = false;
+            // Do not force a different value; leave whatever the user had (or empty)
+        }
+    },
+
     // Edit mode via Workspace replace (keeps stack, flips state.edit)
     editEntityWorkspace() {
         const top = window.SkyWorkspace?.stack?.[window.SkyWorkspace.stack.length - 1];
@@ -7492,16 +7575,21 @@ window.SkyIndex = {
         const form = document.getElementById('entityEditForm');
         if (!form) return;
 
+        // Only fields that exist on tblEntities (Normalized is never sent — server recalculates)
         const payload = {
             entityId:             Number(entityId),
             entityName:           form.querySelector('[name="entityName"]')?.value?.trim() || '',
             entityLegalName:      form.querySelector('[name="entityLegalName"]')?.value?.trim() || '',
             entityStructure:      form.querySelector('[name="entityStructure"]')?.value?.trim() || '',
-            entityNormalizedName: form.querySelector('[name="entityNormalizedName"]')?.value?.trim() || '',
             entityAccNumber:      form.querySelector('[name="entityAccNumber"]')?.value?.trim() || '',
-            entityType:           form.querySelector('[name="entityType"]')?.value?.trim() || '',
+            entityType:           (form.querySelector('[name="entityType"]')?.value || '').toLowerCase().trim() || 'company',
             entityIsNotValid:     form.querySelector('[name="entityIsNotValid"]')?.value?.trim() || '0'
         };
+
+        // Enforce Jurisdiction → Government rule on the client as well (defense in depth)
+        if (payload.entityType === 'jurisdiction') {
+            payload.entityStructure = 'Government';
+        }
 
         if (!payload.entityName) {
             this.appendSystemLine('Entity name is required.');
