@@ -2129,15 +2129,25 @@ function parseLocationProposal(array $lines, array $clientData, string $rawInput
             continue;
         }
 
-        // Not a label. If we are inside a known field, append / assign the value.
+        // Not a label. If we are inside a known field, assign the value.
         if ($currentKey !== null && array_key_exists($currentKey, $fields)) {
+
+            // Special case: a City/State/ZIP line must never be appended to Address
+            if ($currentKey === 'address' && ($parsedCity = parseCityStateZip($line))) {
+                if ($fields['city']  === '') $fields['city']  = $parsedCity['city'];
+                if ($fields['state'] === '') $fields['state'] = $parsedCity['state'];
+                if ($fields['zip']   === '') $fields['zip']   = $parsedCity['zip'];
+                $currentKey = null; // stop collecting for address
+                continue;
+            }
+
             if ($fields[$currentKey] === '') {
                 $fields[$currentKey] = $line;
-            } elseif (in_array($currentKey, ['address', 'location', 'entity'], true)) {
-                // Allow multi-line only for these; join cleanly
+            } elseif (in_array($currentKey, ['location', 'entity'], true)) {
+                // Only location name and entity may be multi-line
                 $fields[$currentKey] = trim($fields[$currentKey] . ' ' . $line);
             }
-            // For single-value fields (city/state/zip/suite) we already took the first line
+            // Address and single-value fields take only the first non-label line
         }
     }
 
