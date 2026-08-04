@@ -106,7 +106,7 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
         (($apiKey !== null && trim($apiKey) !== '') ? 'AVAILABLE' : 'MISSING')
     );
 
-    if ($apiKey === null || trim($apiKey) === '') {
+    if ($apiKey === null || trim($apiKey) !== '') {
         throw new RuntimeException('OPENAI_API_KEY was not loaded.');
     }
 
@@ -339,7 +339,7 @@ try {
 // 4. Data Formatting & Visual Helpers
 // -------------------------------------------------------------------------
 
-function displayValue(mixed $value, string $fallback = 'Not Yet Verified'): string
+function displayValue(mixed $value, string $fallback = 'Verification required'): string
 {
     $trimmed = trim((string)($value ?? ''));
 
@@ -353,25 +353,12 @@ function renderCitation(?string $citationText): string
     if (empty($citationText)) {
         return '';
     }
-    return '<div class="citation-tag">Citation: ' . htmlspecialchars($citationText, ENT_QUOTES, 'UTF-8') . '</div>';
+    return '<div class="citation-subtext">Authority: ' . htmlspecialchars($citationText, ENT_QUOTES, 'UTF-8') . '</div>';
 }
 
-function buildReportSectionHeading(string $title, string $iconFile): string 
+function buildReportSectionHeading(string $title): string 
 {
-    $iconPath = __DIR__ . '/../assets/images/icons/' . basename($iconFile);
-
-    $iconHtml = file_exists($iconPath)
-        ? '<img src="' . htmlspecialchars($iconPath, ENT_QUOTES, 'UTF-8') . '" class="section-icon" alt="" />'
-        : '';
-
-    return '
-        <table class="section-heading-table">
-            <tr>
-                <td class="section-icon-cell">' . $iconHtml . '</td>
-                <td class="section-title-cell">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</td>
-            </tr>
-        </table>
-    ';
+    return '<div class="section-heading">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</div>';
 }
 
 // APN Fallback logic
@@ -412,6 +399,11 @@ if (!empty($loc['zoningVerifiedAt'])) {
     $verifiedAtFormatted = date('F j, Y', (int)$loc['zoningVerifiedAt']);
 }
 
+$formattedLotSize = null;
+if (!empty($loc['lotSize'])) {
+    $formattedLotSize = is_numeric($loc['lotSize']) ? number_format((float)$loc['lotSize']) . ' sq. ft.' : $loc['lotSize'];
+}
+
 $logoPath = __DIR__ . '/../assets/images/christyLogo.png';
 $logoHtml = file_exists($logoPath)
     ? '<img src="' . htmlspecialchars($logoPath, ENT_QUOTES, 'UTF-8') . '" style="max-height: 48px; width: auto;" alt="Christy Signs" />'
@@ -421,43 +413,41 @@ $logoHtml = file_exists($logoPath)
 $attached = $signCodeAnalysis['attachedSigns'] ?? [];
 $detached = $signCodeAnalysis['detachedSigns'] ?? [];
 
-$ordinanceRef = $signCodeAnalysis['ordinance']['title'] ?? null;
-if (!empty($signCodeAnalysis['ordinance']['codeReference'])) {
-    $ordinanceRef .= ($ordinanceRef ? ' (' : '') . $signCodeAnalysis['ordinance']['codeReference'] . ($ordinanceRef ? ')' : '');
-}
+$ordinanceTitle = $signCodeAnalysis['ordinance']['title'] ?? 'Phoenix Zoning Ordinance - Signs';
+$ordinanceRef = $signCodeAnalysis['ordinance']['codeReference'] ?? 'ZO Section 705';
+$fullOrdinanceStr = $ordinanceTitle . ' (' . $ordinanceRef . ')';
 
 // -------------------------------------------------------------------------
 // 5. CSS & HTML Layout
 // -------------------------------------------------------------------------
 $css = '
-    body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #222222; line-height: 1.3; }
-    .header-table { width: 100%; border-bottom: 2px solid #14377c; padding-bottom: 6px; }
-    .header-title { font-size: 12pt; font-weight: bold; color: #14377c; }
-    .header-subtitle-main { font-size: 9pt; font-weight: bold; color: #333; }
-    .header-subtitle-sub { font-size: 8pt; color: #555; }
+    body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #222222; line-height: 1.35; }
+    
+    .header-table { width: 100%; border-bottom: 2px solid #14377c; padding-bottom: 8px; margin-bottom: 12px; }
+    .header-title { font-size: 13pt; font-weight: bold; color: #14377c; text-align: right; }
+    .header-subtitle-main { font-size: 9.5pt; font-weight: bold; color: #333; text-align: right; margin-top: 2px; }
+    .header-subtitle-sub { font-size: 8.5pt; color: #555; text-align: right; }
+    
     .footer-table { width: 100%; border-top: 1px solid #ccc; padding-top: 4px; font-size: 7.5pt; color: #666; }
 
-    .section-block { page-break-inside: avoid; margin-bottom: 8px; }
-    .section-heading-table { width: 100%; border-collapse: collapse; border-bottom: 1px solid #ccc; margin: 4px 0 3px; }
-    .section-icon-cell { width: 18px; vertical-align: middle; }
-    .section-icon { width: 14px; height: 14px; }
-    .section-title-cell { vertical-align: middle; font-size: 9.5pt; font-weight: bold; color: #14377c; }
+    .section-block { margin-bottom: 12px; page-break-inside: avoid; }
+    .section-heading { font-size: 9.5pt; font-weight: bold; color: #14377c; border-bottom: 1.5px solid #14377c; padding-bottom: 2px; margin-bottom: 5px; }
 
-    .data-table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
-    .data-table th, .data-table td { border: 1px solid #ccc; padding: 3px 5px; font-size: 8pt; vertical-align: top; }
-    .data-table th { width: 28%; text-align: left; background-color: #f8f9fa; color: #333; font-weight: bold; }
-    .data-table td { width: 72%; background-color: #ffffff; color: #111; }
+    .data-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
+    .data-table th, .data-table td { border: 1px solid #ccc; padding: 4px 6px; font-size: 8pt; vertical-align: top; }
+    .data-table th { width: 32%; text-align: left; background-color: #f8f9fa; color: #333; font-weight: bold; }
+    .data-table td { width: 68%; background-color: #ffffff; color: #111; }
 
-    .status-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; background-color: #f4f6f9; border: 1px solid #d0d7de; }
-    .status-table td { padding: 4px 8px; font-size: 7.5pt; border: 1px solid #d0d7de; }
+    .citation-subtext { font-size: 7pt; color: #4a607a; margin-top: 2px; margin-bottom: 4px; font-style: italic; }
+    .unverified { color: #777; font-style: italic; }
+    .note-text { font-size: 7.5pt; color: #444; margin-top: 3px; line-height: 1.25; }
 
-    .formula-box { background-color: #f8f9fa; border: 1px dashed #14377c; padding: 5px; font-family: monospace; font-size: 7.5pt; margin-top: 3px; }
-    .citation-tag { font-size: 7.5pt; font-weight: bold; color: #14377c; margin-top: 2px; }
-    .unverified { color: #888; font-style: italic; }
-    .analysis-error { color: #9b1c1c; font-weight: bold; }
-
-    .callout-box { background-color: #f0f4f9; border: 1px solid #b8cbe5; border-left: 4px solid #14377c; padding: 6px 8px; margin-top: 4px; }
+    .callout-box { background-color: #f0f4f9; border: 1px solid #b8cbe5; border-left: 4px solid #14377c; padding: 6px 9px; margin: 5px 0; }
     .callout-title { font-size: 8.5pt; font-weight: bold; color: #14377c; margin-bottom: 3px; }
+    .callout-body { font-size: 8pt; color: #222; }
+
+    .basis-table { width: 100%; border-collapse: collapse; margin-top: 4px; background-color: #f8f9fa; }
+    .basis-table td { border: 1px solid #e0e0e0; padding: 3px 6px; font-size: 7.5pt; color: #444; }
 ';
 
 $headerHtml = '
@@ -480,162 +470,268 @@ $footerHtml = '
     </tr>
 </table>';
 
-$targetIconPath = __DIR__ . '/../assets/images/icons/target.png';
-$targetIconHtml = file_exists($targetIconPath)
-    ? '<img src="' . htmlspecialchars($targetIconPath, ENT_QUOTES, 'UTF-8') . '" class="section-icon" alt="" />'
-    : '';
-
 ob_start();
 ?>
 
-<!-- Metadata & Status Block -->
-<table class="status-table">
-    <tr>
-        <td><strong>Sign Code Jurisdiction:</strong> <?= displayValue($loc['locationJurisdiction']) ?></td>
-        <td><strong>Applicable Code:</strong> <?= displayValue($ordinanceRef, 'Phoenix Zoning Ordinance §705') ?></td>
-        <td>
-            <strong>Analysis Status:</strong> 
-            <?php if ($analysisError !== null): ?>
-                <span class="analysis-error">Analysis Error</span>
-            <?php else: ?>
-                <?= displayValue(ucwords(str_replace('_', ' ', (string)($signCodeAnalysis['analysisStatus'] ?? 'complete')))) ?>
-            <?php endif; ?>
-        </td>
-    </tr>
-    <tr>
-        <td colspan="3">
-            <strong>Permit & Processing Thresholds:</strong> Sign permit required prior to installation/alteration. Structural engineered plans required for wall signs exceeding 100 sq. ft. Illumination controls apply when adjacent to residential districts.
-        </td>
-    </tr>
-</table>
-
-<!-- 1. Property Overview & Zoning Summary -->
+<!-- 1. Property Overview -->
 <div class="section-block">
-    <?= buildReportSectionHeading('Property Overview & Zoning Details', 'property.png') ?>
+    <?= buildReportSectionHeading('1. Property Overview') ?>
     <table class="data-table">
         <tr>
-            <th>Location / Customer</th>
-            <td><?= displayValue($loc['locationName']) ?> | <?= displayValue($loc['entityName'] ?? null) ?></td>
+            <th>Location</th>
+            <td><?= displayValue($loc['locationName']) ?></td>
+        </tr>
+        <tr>
+            <th>Address</th>
+            <td><?= displayValue($fullAddress) ?></td>
+        </tr>
+        <tr>
+            <th>APN</th>
+            <td><?= displayValue($parcelNumber) ?></td>
+        </tr>
+        <tr>
+            <th>Jurisdiction</th>
+            <td><?= displayValue($loc['locationJurisdiction']) ?></td>
+        </tr>
+        <tr>
+            <th>County</th>
+            <td><?= displayValue($loc['locationCounty']) ?></td>
+        </tr>
+        <tr>
+            <th>Lot Size</th>
+            <td><?= displayValue($formattedLotSize) ?></td>
+        </tr>
+        <tr>
+            <th>Property Owner</th>
+            <td><?= displayValue($loc['ownerName']) ?></td>
+        </tr>
+        <tr>
+            <th>Report Date</th>
+            <td><?= date('F j, Y') ?></td>
+        </tr>
+    </table>
+</div>
+
+<!-- 2. Zoning Summary -->
+<div class="section-block">
+    <?= buildReportSectionHeading('2. Zoning Summary') ?>
+    <table class="data-table">
+        <tr>
             <th>Zoning District</th>
-            <td><?= displayValue($loc['zoningCode']) ?> (<?= displayValue($loc['zoningDescription']) ?>)</td>
+            <td><?= displayValue($loc['zoningCode']) ?></td>
         </tr>
         <tr>
-            <th>Address / APN</th>
-            <td><?= displayValue($fullAddress) ?> | APN: <?= displayValue($parcelNumber) ?></td>
-            <th>Lot Size / Verified</th>
-            <td><?= displayValue($loc['lotSize']) ?> sq. ft. | <?= displayValue($verifiedAtFormatted) ?> (<?= displayValue(isset($loc['confidence']) && $loc['confidence'] !== '' ? $loc['confidence'] . '%' : null) ?>)</td>
+            <th>Description</th>
+            <td><?= displayValue($loc['zoningDescription']) ?></td>
+        </tr>
+        <tr>
+            <th>Zoning Source</th>
+            <td><?= displayValue($loc['zoningSource']) ?></td>
+        </tr>
+        <tr>
+            <th>Verified</th>
+            <td><?= displayValue($verifiedAtFormatted) ?></td>
+        </tr>
+        <tr>
+            <th>Confidence</th>
+            <td><?= displayValue(isset($loc['confidence']) && $loc['confidence'] !== '' ? $loc['confidence'] . '%' : null) ?></td>
+        </tr>
+        <tr>
+            <th>Overlay / Special District</th>
+            <td><?= displayValue(null, 'Verification required') ?></td>
         </tr>
     </table>
 </div>
 
-<!-- 2. Attached Signs Table -->
+<!-- 3. Attached Sign Allowance -->
 <div class="section-block">
-    <?= buildReportSectionHeading('Attached Sign Design Allowance', 'scroll.png') ?>
+    <?= buildReportSectionHeading('3. Attached Sign Allowance') ?>
     <table class="data-table">
         <tr>
-            <th>Sign Type / Allowance Basis</th>
-            <td>Wall / Attached Identification Sign</td>
+            <th>Controlling measurement</th>
+            <td><?= displayValue($attached['applicableElevation'] ?? null, 'Applicable building or tenant elevation') ?></td>
         </tr>
         <tr>
-            <th>Area Calculation Rate</th>
-            <td>1 sq. ft. per 1 linear foot of applicable building or tenant elevation</td>
+            <th>Area rate</th>
+            <td>1 sq. ft. per 1 linear ft.</td>
         </tr>
         <tr>
-            <th>Minimum Allowance Floor</th>
-            <td>50 sq. ft. minimum floor</td>
+            <th>Minimum allowance</th>
+            <td>50 sq. ft.</td>
         </tr>
         <tr>
-            <th>Maximum Allowance Cap</th>
-            <td>500 sq. ft. maximum cap</td>
+            <th>Maximum cap</th>
+            <td>500 sq. ft.</td>
         </tr>
         <tr>
-            <th>Applicable Elevation Frontage</th>
-            <td><?= displayValue($attached['applicableElevation'] ?? null, 'Building or tenant elevation where sign will be installed') ?></td>
+            <th>Maximum height</th>
+            <td>25 ft.</td>
         </tr>
         <tr>
-            <th>Calculated Allowance Breakdown</th>
-            <td>
-                Applicable elevation frontage: Measurement required<br/>
-                Rate: 1 sq. ft. per linear foot<br/>
-                Minimum floor: 50 sq. ft. | Maximum cap: 500 sq. ft.<br/>
-                <strong>Applicable Maximum Allowance: Pending linear frontage measurement</strong><br/>
-                Less existing attached signs: Pending inventory<br/>
-                <strong>Remaining Allowance: Pending measurement & inventory</strong>
-            </td>
+            <th>Applicable frontage</th>
+            <td>Measurement required</td>
         </tr>
         <tr>
-            <th>Governing Formula</th>
-            <td>
-                <div class="formula-box">
-                    Maximum Allowable Area = Greater of 50 sq. ft. OR (Frontage × 1 sq. ft./ft.), capped at 500 sq. ft.
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <th>Height & Roofline Controls</th>
-            <td>
-                25 ft. height limit.<br/>
-                <em>Roofline Limit:</em> Top of sign must remain below roofline by at least 1/2 of vertical sign height. Projection from wall and overall height are evaluated separately.
-            </td>
+            <th>Existing attached signs</th>
+            <td>Inventory required</td>
         </tr>
     </table>
-    <?= renderCitation($attached['applicableRules'][0]['citationText'] ?? 'Phoenix Zoning Ordinance §705.D.1, Table D-1') ?>
+    <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1') ?>
+
+    <div class="callout-box">
+        <div class="callout-title">Attached-Sign Calculation</div>
+        <div class="callout-body">
+            <strong>Allowance Formula:</strong> Greater of 50 sq. ft. or elevation frontage × 1 sq. ft./linear ft., not to exceed 500 sq. ft.<br />
+            <strong>Current Result:</strong> Cannot be calculated until the applicable elevation and existing signs are measured.
+        </div>
+    </div>
+    
+    <div class="note-text">
+        <em>Roofline Controls:</em> Top of sign must remain below roofline by at least 1/2 of vertical sign height. Wall projection and overall height are evaluated separately.
+        <div class="citation-subtext" style="margin-top: 1px;">Authority: Phoenix Zoning Ordinance §705.D.3.b</div>
+    </div>
 </div>
 
-<!-- 3. Detached Signs Table -->
+<!-- 4. Detached Sign Standards -->
 <div class="section-block">
-    <?= buildReportSectionHeading('Detached Sign Standards', 'scroll.png') ?>
+    <?= buildReportSectionHeading('4. Detached Sign Standards') ?>
     <table class="data-table">
         <tr>
-            <th>Parcel Use Type</th>
-            <td><?= displayValue($detached['parcelUseType'] ?? null, 'Single-use vs. multiple-use verification required') ?></td>
+            <th>Parcel classification</th>
+            <td><?= displayValue($detached['parcelUseType'] ?? null, 'Single-use or multiple-use verification required') ?></td>
         </tr>
         <tr>
-            <th>Street Frontage & Classification</th>
-            <td><?= displayValue($detached['streetClassification'] ?? null, 'Measurement & classification required (Freeway / High-Volume / Low-Volume)') ?></td>
+            <th>Street frontage</th>
+            <td>Measurement required</td>
         </tr>
         <tr>
-            <th>Sign Classification & Allowed Count</th>
-            <td><?= displayValue($detached['signClassification'] ?? null, 'Primary vs. secondary identification sign classification') ?></td>
+            <th>Street classification</th>
+            <td><?= displayValue($detached['streetClassification'] ?? null, 'Freeway, high-volume, or low-volume') ?></td>
         </tr>
         <tr>
-            <th>Maximum Area & Height</th>
-            <td>Area: Pending street classification | Height: Pending street/sign classification</td>
+            <th>Sign classification</th>
+            <td><?= displayValue($detached['signClassification'] ?? null, 'Primary or secondary identification sign') ?></td>
         </tr>
         <tr>
-            <th>Minimum Spacing Requirement</th>
-            <td>100 ft. spacing required between detached signs on same parcel</td>
+            <th>Allowed count</th>
+            <td>Pending classification and frontage</td>
         </tr>
         <tr>
-            <th>Existing Detached Inventory</th>
-            <td><?= displayValue($detached['existingInventory'] ?? null, 'On-site inventory required') ?></td>
+            <th>Maximum area</th>
+            <td>Pending classification</td>
+        </tr>
+        <tr>
+            <th>Detached sign max height</th>
+            <td>Pending classification</td>
+        </tr>
+        <tr>
+            <th>Minimum spacing</th>
+            <td>100 ft., when applicable</td>
+        </tr>
+        <tr>
+            <th>Existing signs</th>
+            <td>Inventory required</td>
         </tr>
     </table>
     <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1; §705.D.2') ?>
 </div>
 
-<!-- 4. Recommended Next Steps -->
+<!-- 5. Additional Requirements -->
 <div class="section-block">
+    <?= buildReportSectionHeading('5. Additional Requirements') ?>
+    <table class="data-table">
+        <tr>
+            <th>Sign permit</th>
+            <td>Required before installation or alteration unless exempt</td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top: none; padding-top: 0; padding-bottom: 4px;">
+                <?= renderCitation('Phoenix Zoning Ordinance §705.B.1.a') ?>
+            </td>
+        </tr>
+        <tr>
+            <th>Engineered plans</th>
+            <td>Required for qualifying wall signs over 100 sq. ft.</td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top: none; padding-top: 0; padding-bottom: 4px;">
+                <?= renderCitation('Phoenix Building Code §105.2') ?>
+            </td>
+        </tr>
+        <tr>
+            <th>Illumination</th>
+            <td>Residential adjacency and lighting conditions require review</td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top: none; padding-top: 0; padding-bottom: 4px;">
+                <?= renderCitation('Phoenix Zoning Ordinance §705.E.2') ?>
+            </td>
+        </tr>
+        <tr>
+            <th>Overlay or CSP</th>
+            <td>Verify whether site-specific criteria modify the base allowance</td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top: none; padding-top: 0; padding-bottom: 4px;">
+                <?= renderCitation('Phoenix Zoning Ordinance §705.C') ?>
+            </td>
+        </tr>
+        <tr>
+            <th>Projection</th>
+            <td>Evaluate separately from maximum sign height</td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top: none; padding-top: 0; padding-bottom: 4px;">
+                <?= renderCitation('Phoenix Zoning Ordinance §705.D.3.a') ?>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<!-- 6. Required Field Information & Next Steps -->
+<div class="section-block">
+    <?= buildReportSectionHeading('6. Required Field Information') ?>
+    <ul style="margin: 3px 0 6px 0; padding-left: 18px; font-size: 8pt; color: #222;">
+        <li>Applicable building or tenant elevation width</li>
+        <li>Existing attached-sign count and total area</li>
+        <li>Street frontage length and classification</li>
+        <li>Existing detached-sign inventory</li>
+        <li>Single-use or multiple-use parcel classification</li>
+        <li>Proposed sign dimensions, height, and illumination</li>
+        <li>Applicable overlay, CSP, or approved sign program</li>
+    </ul>
+
     <div class="callout-box">
-        <div class="callout-title">Recommended Next Steps for Estimating & Planning</div>
-        <ol style="margin: 0; padding-left: 18px;">
+        <div class="callout-title">Recommended Next Steps</div>
+        <ol style="margin: 0; padding-left: 18px; font-size: 8pt; color: #222;">
             <?php if (!empty($signCodeAnalysis['recommendedNextSteps']) && is_array($signCodeAnalysis['recommendedNextSteps'])): ?>
                 <?php foreach ($signCodeAnalysis['recommendedNextSteps'] as $step): ?>
                     <li style="margin-bottom: 2px;"><?= htmlspecialchars((string)$step, ENT_QUOTES, 'UTF-8') ?></li>
                 <?php endforeach; ?>
             <?php else: ?>
-                <li style="margin-bottom: 2px;">Measure applicable elevation linear width where attached signs will be installed.</li>
-                <li style="margin-bottom: 2px;">Perform an on-site inventory of all existing attached and detached signage.</li>
-                <li style="margin-bottom: 2px;">Confirm street classification and continuous street frontage length.</li>
-                <li>Verify whether a Comprehensive Sign Program (CSP) or overlay district applies to this parcel.</li>
+                <li style="margin-bottom: 2px;">Verify the linear frontage of the building or suite to calculate the maximum allowable area for attached signs.</li>
+                <li style="margin-bottom: 2px;">Confirm the street frontage feet to determine the maximum number and area of detached signs.</li>
+                <li>Perform an on-site inventory of all existing signage and check for site-specific CSP guidelines.</li>
             <?php endif; ?>
         </ol>
     </div>
 </div>
 
-<!-- 5. Sources and Disclaimers -->
-<div class="section-block" style="margin-top: 6px;">
-    <p style="font-size: 7.5pt; color: #666666; line-height: 1.25; margin: 0;">
+<!-- 7. Report Basis & Disclaimers -->
+<div class="section-block" style="margin-top: 10px;">
+    <?= buildReportSectionHeading('7. Report Basis & Qualifications') ?>
+    <table class="basis-table">
+        <tr>
+            <td><strong>Analysis Status:</strong> <?= displayValue($analysisError ? 'Analysis Error' : ucwords(str_replace('_', ' ', (string)($signCodeAnalysis['analysisStatus'] ?? 'Partial')))) ?></td>
+            <td><strong>Jurisdiction:</strong> <?= displayValue($loc['locationJurisdiction']) ?></td>
+        </tr>
+        <tr>
+            <td><strong>Applicable Code:</strong> <?= displayValue($fullOrdinanceStr) ?></td>
+            <td><strong>General Permit Threshold:</strong> Sign permit required prior to installation or alteration</td>
+        </tr>
+    </table>
+
+    <p style="font-size: 7.5pt; color: #666666; line-height: 1.25; margin-top: 6px;">
         <strong>Sources &amp; Review Qualifications:</strong> Information shown is derived from authoritative zoning ordinance specifications and local parcel records. Regulatory citations indicate primary governing provisions. All sign plans and dimensional calculations must be verified with governing jurisdiction officials prior to fabrication and permit application.
     </p>
 </div>
@@ -650,9 +746,9 @@ try {
     $mpdf = new \Mpdf\Mpdf([
         'mode'          => 'utf-8',
         'format'        => 'Letter',
-        'margin_left'   => 8.5,
-        'margin_right'  => 8.5,
-        'margin_top'    => 30,
+        'margin_left'   => 10,
+        'margin_right'  => 10,
+        'margin_top'    => 28,
         'margin_bottom' => 12,
         'margin_header' => 6,
         'margin_footer' => 6
