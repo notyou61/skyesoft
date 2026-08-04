@@ -90,10 +90,18 @@ try {
  */
 function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
 {
-    // Use the same environment accessor as askOpenAI.php
-    $apiKey = skyesoftGetEnv('OPENAI_API_KEY') ?? '';
-    if (empty($apiKey)) {
-        throw new RuntimeException('OPENAI_API_KEY environment variable is missing.');
+    // Verify API key availability without logging the key itself
+    $apiKey = skyesoftGetEnv('OPENAI_API_KEY');
+
+    error_log(
+        '[locationZoningReport] OPENAI_API_KEY: ' .
+        (($apiKey !== null && trim($apiKey) !== '') ? 'AVAILABLE' : 'MISSING')
+    );
+
+    if ($apiKey === null || trim($apiKey) === '') {
+        throw new RuntimeException(
+            'OPENAI_API_KEY was not loaded.'
+        );
     }
 
     $payload = [
@@ -116,6 +124,7 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
+        CURLOPT_HEADER => true, // Include HTTP response headers in the output string
         CURLOPT_HTTPHEADER => [
             'Content-Type: application/json',
             'Authorization: Bearer ' . $apiKey
@@ -128,16 +137,37 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
     $response = curl_exec($ch);
     $error = curl_error($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
     curl_close($ch);
 
-    if ($error) {
-        throw new RuntimeException('OpenAI cURL Error: ' . $error);
-    }
-    if ($httpCode !== 200) {
-        throw new RuntimeException('OpenAI API Returned HTTP ' . $httpCode . ': ' . $response);
+    if ($response === false) {
+        $statusLine = 'No HTTP response';
+        error_log('[locationZoningReport] OpenAI HTTP status: ' . $statusLine);
+        throw new RuntimeException('OpenAI cURL Error: ' . ($error ?: 'Unknown network/cURL failure'));
     }
 
-    $responseData = json_decode($response, true);
+    // Split headers and body
+    $headers = substr($response, 0, $headerSize);
+    $rawResponse = substr($response, $headerSize);
+
+    // Extract HTTP status line
+    $headerLines = explode("\r\n", trim($headers));
+    $statusLine = $headerLines[0] ?? ('HTTP/1.1 ' . $httpCode);
+
+    error_log('[locationZoningReport] OpenAI HTTP status: ' . $statusLine);
+
+    if ($httpCode !== 200) {
+        error_log(
+            '[locationZoningReport] OpenAI error response: ' .
+            substr($rawResponse, 0, 2000)
+        );
+
+        throw new RuntimeException(
+            'OpenAI returned ' . $statusLine
+        );
+    }
+
+    $responseData = json_decode($rawResponse, true);
     $finishReason = $responseData['choices'][0]['finish_reason'] ?? null;
     if ($finishReason === 'length') {
         throw new RuntimeException('OpenAI response was truncated before the JSON analysis was complete.');
@@ -296,13 +326,22 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
     return $analysisResult;
 }
 
-// Execute analysis with fallback handling
+// Execute analysis with fallback handling and diagnostic logging
 $signCodeAnalysis = [];
 $analysisError = null;
 try {
     $signCodeAnalysis = getOrRunSignCodeAnalysis($db, $loc, $forceRefresh);
 } catch (Throwable $e) {
-    error_log('Sign Code Analysis execution failed: ' . $e->getMessage());
+
+    // Log complete analysis failure
+    error_log(
+        '[locationZoningReport] Sign-code analysis failed | ' .
+        get_class($e) . ' | ' .
+        $e->getMessage() . ' | File: ' .
+        $e->getFile() . ' | Line: ' .
+        $e->getLine()
+    );
+
     $analysisError = $e->getMessage();
 }
 
