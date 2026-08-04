@@ -2458,24 +2458,45 @@ function resolveLocationByPhrase(?PDO $db, string $phrase, bool $force = false):
                 l.locationParcelNumberRaw,
                 l.locationJurisdiction,
                 l.locationCounty,
-                l.locationZone,
                 l.locationIsBilling,
                 l.locationIsNotValid,
+
+                p.parcelOwnerName,
+                p.parcelOwnerAddress,
+                p.parcelOwnerCity,
+                p.parcelOwnerState,
+                p.parcelOwnerZip,
+                p.parcelZoningCode,
+                p.parcelZoningDescription,
+                p.parcelLandUse,
+                p.parcelSubdivision,
+                p.parcelLotNumber,
+                p.parcelVerifiedUnix,
+                p.parcelVerifiedBy,
+
                 e.entityId,
                 e.entityName,
                 e.entityType,
                 e.entityStatus
+
             FROM tblLocations l
-            LEFT JOIN tblEntities e ON e.entityId = l.locationEntityId
-            WHERE COALESCE(l.locationIsNotValid, 0) = 0
-              AND (
+
+            LEFT JOIN tblEntities e
+                ON e.entityId = l.locationEntityId
+
+            LEFT JOIN tblLocationParcelDetails p
+                ON p.locationId = l.locationId
+
+            WHERE COALESCE(l.locationIsNotValid,0)=0
+            AND (
                     LOWER(l.locationName) LIKE :like1
-                 OR LOWER(l.locationAddress) LIKE :like2
-                 OR l.locationParcelNumber = :exactParcel
-                 OR l.locationParcelNumberRaw = :exactParcelRaw
-                 OR l.locationPlaceId = :exactPlace
-                 OR LOWER(REPLACE(l.locationName, ' ', '')) LIKE :nospace
-              )
+                OR LOWER(l.locationAddress) LIKE :like2
+                OR l.locationParcelNumber = :exactParcel
+                OR l.locationParcelNumberRaw = :exactParcelRaw
+                OR l.locationPlaceId = :exactPlace
+                OR LOWER(REPLACE(l.locationName,' ','')) LIKE :nospace
+            )
+
             ORDER BY l.locationName ASC
             LIMIT 25
         ");
@@ -2559,9 +2580,26 @@ function resolveLocationByPhrase(?PDO $db, string $phrase, bool $force = false):
             'locationParcelNumberRaw' => $row['locationParcelNumberRaw'],
             'locationJurisdiction'    => $row['locationJurisdiction'],
             'locationCounty'          => $row['locationCounty'],
-            'locationZone'            => $row['locationZone'],
             'locationIsBilling'       => $row['locationIsBilling'],
             'locationIsNotValid'      => $row['locationIsNotValid'],
+
+            'parcel' => [
+                'ownerName'         => $row['parcelOwnerName'],
+                'ownerAddress'      => $row['parcelOwnerAddress'],
+                'ownerCity'         => $row['parcelOwnerCity'],
+                'ownerState'        => $row['parcelOwnerState'],
+                'ownerZip'          => $row['parcelOwnerZip'],
+
+                'zoningCode'        => $row['parcelZoningCode'],
+                'zoningDescription' => $row['parcelZoningDescription'],
+
+                'landUse'           => $row['parcelLandUse'],
+                'subdivision'       => $row['parcelSubdivision'],
+                'lotNumber'         => $row['parcelLotNumber'],
+
+                'verifiedUnix'      => $row['parcelVerifiedUnix'],
+                'verifiedBy'        => $row['parcelVerifiedBy']
+            ],
             'entity' => [
                 'entityId'     => (string)($row['entityId'] ?? ''),
                 'entityName'   => $row['entityName'] ?? null,
