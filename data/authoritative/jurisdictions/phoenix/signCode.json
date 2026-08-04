@@ -1,0 +1,342 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactType": "jurisdictionalSignCode",
+  "jurisdiction": {
+    "id": "phoenix-az",
+    "label": "Phoenix",
+    "jurisdictionType": "City",
+    "state": "AZ",
+    "country": "US"
+  },
+  "ordinance": {
+    "title": "Phoenix Zoning Ordinance - Signs",
+    "codeReference": "ZO Section 705",
+    "authority": "City of Phoenix",
+    "officialSourceUrl": "https://phoenix.municipal.codes/ZO/705",
+    "localPdf": "signOrdinance.pdf",
+    "currentThroughOrdinance": "G-7461",
+    "currentThroughDate": "2025-12-03",
+    "retrievedDate": "2026-08-04",
+    "currencyNotice": "The City Clerk's Office maintains the official version. Check for ordinances adopted after the stated currency date before relying on this artifact."
+  },
+  "governance": {
+    "status": "reviewed-draft",
+    "runtimeUse": "report-support",
+    "requiresInterpretation": true,
+    "blindTranscription": false,
+    "sourcePriority": [
+      "signOrdinance.pdf",
+      "officialSourceUrl"
+    ],
+    "pdfPageMappingStatus": "pending",
+    "attestation": {
+      "ruleValuesVerifiedAgainstOfficialText": true,
+      "localPdfReachableDuringBuild": false,
+      "notes": "Exact ordinance subsections are verified. Local PDF page numbers remain null until the preserved server copy can be opened and mapped."
+    }
+  },
+  "reporting": {
+    "defaultMissingValue": "Not Yet Verified",
+    "defaultConditionalValue": "Additional project information is required before this provision can be evaluated.",
+    "disclaimer": "This structured artifact supports zoning and sign-code research. It does not replace review of the ordinance, approved plans, zoning stipulations, overlays, special districts, comprehensive sign plans, or confirmation by the City of Phoenix."
+  },
+  "requiredInputs": [
+    "zoningDistrict",
+    "landUseCategory",
+    "signType",
+    "parcelType",
+    "streetClassification",
+    "streetFrontageFeet",
+    "buildingOrSuiteFrontageFeet",
+    "signAreaSquareFeet",
+    "signHeightFeet",
+    "illuminationType",
+    "distanceToSingleFamilyResidentialFeet",
+    "existingSignInventory",
+    "specialDistricts",
+    "approvedComprehensiveSignPlan"
+  ],
+  "classifications": {
+    "landUseCategories": {
+      "singleFamilyResidential": {
+        "zoningDistricts": ["S-1", "S-2", "RE-43", "RE-35", "RE-24", "R1-18", "R1-14", "R1-10", "R1-8", "R1-6", "R-2", "PAD-1", "PAD-2", "PAD-3", "PAD-4", "PAD-5", "PAD-6", "PAD-7", "PAD-8", "PAD-9", "PAD-10", "PAD-11"],
+        "citation": {"section": "705.D.1.a(1)", "pdfPage": null}
+      },
+      "multipleFamilyResidential": {
+        "zoningDistricts": ["R-3", "R-3A", "R-4", "R-4A", "R-5", "PAD-12", "PAD-13", "PAD-14", "PAD-15"],
+        "citation": {"section": "705.D.1.a(2)", "pdfPage": null}
+      },
+      "commercialIndustrial": {
+        "zoningDistricts": ["C-O", "C-1", "C-2", "C-3", "PSC", "RSC", "Commerce Park", "A-1", "A-2", "Resort", "P-1", "P-2"],
+        "citation": {"section": "705.D.1.a(4)", "pdfPage": null}
+      }
+    },
+    "streetClasses": {
+      "freeway": ["freeway", "expressway"],
+      "highVolume": ["major arterial", "arterial", "collector"],
+      "lowVolume": ["minor collector", "local"]
+    }
+  },
+  "citywideRules": [
+    {
+      "id": "PHX-705-PERMIT-001",
+      "topic": "permit",
+      "summary": "A sign permit is generally required before a sign is erected, displayed, relocated, or altered unless an express exemption applies.",
+      "operator": "required_unless_exempt",
+      "citation": {"section": "705.B.1.a", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ENGINEERING-001",
+      "topic": "engineering",
+      "signType": "roof_canopy_marquee",
+      "condition": {"faceAreaOrAggregateAreaSquareFeet": {"greaterThan": 25}},
+      "result": {"engineeredPlansRequired": true},
+      "citation": {"section": "705.B.1.d(1)(a)", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ENGINEERING-002",
+      "topic": "engineering",
+      "signType": "combination",
+      "condition": {"areaSquareFeet": {"greaterThan": 50}},
+      "result": {"engineeredPlansRequired": true},
+      "citation": {"section": "705.B.1.d(1)(b)", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ENGINEERING-003",
+      "topic": "engineering",
+      "signType": "projecting",
+      "condition": {"any": [{"areaSquareFeet": {"greaterThan": 50}}, {"widthFeet": {"greaterThan": 12}}]},
+      "result": {"engineeredPlansRequired": true},
+      "citation": {"section": "705.B.1.d(1)(c)", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ENGINEERING-004",
+      "topic": "engineering",
+      "signType": "ground_or_pole",
+      "condition": {"all": [{"faceAreaOrAggregateAreaSquareFeet": {"greaterThan": 35}}, {"structureHeightFeet": {"greaterThan": 6}}]},
+      "result": {"engineeredPlansRequired": true},
+      "citation": {"section": "705.B.1.d(1)(d)", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ENGINEERING-005",
+      "topic": "engineering",
+      "signType": "wall",
+      "condition": {"areaSquareFeet": {"greaterThan": 100}},
+      "result": {"engineeredPlansRequired": true},
+      "exceptions": ["Direct-mounted cut-out letters and insignia where no individual letter exceeds 100 square feet", "Signs painted directly on a building wall"],
+      "citation": {"section": "705.B.1.d(1)(e)", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ROW-001",
+      "topic": "right_of_way",
+      "summary": "Signs may not occupy public property or cross a property line bordering a public or private right-of-way, subject to the limited wall-sign projection exception.",
+      "result": {"maximumWallSignProjectionIntoRightOfWayInches": 18, "minimumBottomClearanceFeet": 8},
+      "citation": {"section": "705.B.3.a", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-PROJECTING-001",
+      "topic": "clearance",
+      "signType": "projecting",
+      "result": {"minimumBottomClearanceFeet": 8, "maximumSolidConstructionThicknessInches": 48},
+      "citation": {"section": "705.B.3.b", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ROOFLINE-001",
+      "topic": "roofline",
+      "summary": "Unless another provision applies, signs may not be erected on or through a roof and building-mounted signs may not extend above the roofline.",
+      "citation": {"section": "705.B.3.f", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-PORTABLE-001",
+      "topic": "prohibited_sign",
+      "signType": "portable_ground",
+      "result": {"permitted": false},
+      "notes": "Includes A-frame signs unless specifically permitted elsewhere.",
+      "citation": {"section": "705.B.3.g", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ILLUMINATION-001",
+      "topic": "illumination",
+      "summary": "Indirect illumination must be oriented or shielded so the source is not visible from a residential use or public thoroughfare.",
+      "citation": {"section": "705.C.6.a", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ILLUMINATION-002",
+      "topic": "illumination",
+      "condition": {"directlyIlluminatedTotalFaceWattage": {"greaterThan": 150}},
+      "result": {"prohibitedHours": {"start": "23:00", "end": "sunrise"}},
+      "citation": {"section": "705.C.6.c", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ILLUMINATION-003",
+      "topic": "illumination",
+      "condition": {"distanceToSingleFamilyResidentialFeet": {"lessThan": 60}},
+      "result": {"illuminatedSignPermitted": false},
+      "exceptions": ["The sign does not face or is not oriented to the residential property", "A use permit is obtained under Section 307"],
+      "citation": {"section": "705.C.6.d", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ILLUMINATION-004",
+      "topic": "illumination",
+      "result": {"flashingBlinkingRotatingLightsPermitted": false, "metalHalideOver75WattsPermitted": false, "highOrLowPressureSodiumPermitted": false, "mercuryVaporPermitted": false},
+      "citation": {"section": "705.C.6.e", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-ILLUMINATION-005",
+      "topic": "illumination",
+      "summary": "All sign illumination must comply with the Phoenix Dark Sky Ordinance.",
+      "crossReference": "Phoenix City Code Section 23-100",
+      "citation": {"section": "705.C.6.f", "pdfPage": null}
+    }
+  ],
+  "electronicMessageDisplayRules": [
+    {
+      "id": "PHX-705-EMD-001",
+      "result": {"minimumMessageDurationSeconds": 8, "transitionType": "immediate", "movementOrFlashingPermitted": false},
+      "citation": {"section": "705.C.13.a-b", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-EMD-002",
+      "result": {"photocellRequired": true, "maximumNightBrightnessNits": 300},
+      "citation": {"section": "705.C.13.c", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-EMD-003",
+      "condition": {"all": [{"distanceToSingleFamilyResidentialFeet": {"lessThanOrEqual": 150}}, {"visibleFromResidentialProperty": true}]},
+      "result": {"prohibitedHours": {"start": "23:00", "end": "sunrise"}},
+      "citation": {"section": "705.C.13.d", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-EMD-004",
+      "condition": {"distanceToTrafficSignalFeet": {"lessThanOrEqual": 50}},
+      "result": {"maximumDisplayHeightFeet": 8, "additionalSetbackForEachAdditionalFootOfHeightFeet": 12},
+      "citation": {"section": "705.C.13.h", "pdfPage": null}
+    }
+  ],
+  "identificationSignStandards": {
+    "tableReference": "Table D-1",
+    "designReviewNotation": "Values in designReviewMaximum represent the parenthetical allowances in Table D-1.",
+    "commercialIndustrial": {
+      "wall": {
+        "maximumHeightFeet": 25,
+        "rooflineClearanceRule": "The top must be no closer to the roofline than one-half the vertical dimension of the sign unless another approved provision applies.",
+        "areaFormula": {"squareFeetPerLinearFootOfElevation": 1, "minimumSquareFeet": 50, "maximumSquareFeet": 500},
+        "citation": {"section": "705.D.1, Table D-1", "pdfPage": null}
+      },
+      "ground": {
+        "minimumSpacingFeet": 100,
+        "streetClassStandards": {
+          "freeway": {"asOfRight": {"maximumHeightFeet": 35, "maximumAreaSquareFeet": 200}, "designReviewMaximum": {"maximumHeightFeet": 48, "maximumAreaSquareFeet": 200}},
+          "highVolumePrimary": {"asOfRight": {"maximumHeightFeet": 16, "maximumAreaSquareFeet": 110}, "designReviewMaximum": {"maximumHeightFeet": 20, "maximumAreaSquareFeet": 150}},
+          "lowVolumePrimary": {"asOfRight": {"maximumHeightFeet": 12, "maximumAreaSquareFeet": 80}, "designReviewMaximum": {"maximumHeightFeet": 15, "maximumAreaSquareFeet": 110}},
+          "highVolumeSecondary": {"asOfRight": {"maximumHeightFeet": 12, "maximumAreaSquareFeet": 80}, "designReviewMaximum": {"maximumHeightFeet": 15, "maximumAreaSquareFeet": 110}},
+          "lowVolumeSecondary": {"asOfRight": {"maximumHeightFeet": null, "maximumAreaSquareFeet": 60}, "designReviewMaximum": {"maximumHeightFeet": 10, "maximumAreaSquareFeet": 80}, "reviewNote": "The source table displays the low-volume secondary height as '(10)'; confirm the as-of-right height during PDF table attestation."}
+        },
+        "citation": {"section": "705.D.1, Table D-1", "pdfPage": null}
+      }
+    }
+  },
+  "groundSignRules": [
+    {
+      "id": "PHX-705-GROUND-001",
+      "topic": "number_by_frontage",
+      "parcelType": "multiple_use",
+      "result": {"primarySigns": "One for the first 300 feet or portion thereof, plus one for each additional full 300 feet", "secondarySigns": "One per 150 feet, reduced by the number of primary signs on the same street frontage"},
+      "citation": {"section": "705.D.2.a", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-GROUND-002",
+      "topic": "number_by_frontage",
+      "parcelType": "single_use",
+      "bands": [
+        {"maximumFrontageFeet": 100, "permitted": "one secondary identification sign"},
+        {"minimumFrontageFeetExclusive": 100, "maximumFrontageFeet": 300, "permitted": "one primary identification sign"},
+        {"minimumFrontageFeetExclusive": 300, "permitted": "same number and sizes as a multiple-use parcel with the same frontage"}
+      ],
+      "citation": {"section": "705.D.2.b", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-GROUND-003",
+      "topic": "location",
+      "result": {"permittedYards": ["front yard", "corner-lot side yard adjacent to a street"], "minimumDistanceFromBackOfCurbOrSidewalkFeet": 2, "propertyLineLocationPotentiallyPermitted": true},
+      "citation": {"section": "705.D.2.f", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-GROUND-004",
+      "topic": "building_separation",
+      "condition": {"heightFeet": {"greaterThan": 8}},
+      "result": {"minimumBuildingSeparation": "One times the sign width at its widest point"},
+      "exception": "A closer sign must be attached as a wall or projecting sign unless approved through design review.",
+      "citation": {"section": "705.D.2.g", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-GROUND-005",
+      "topic": "information_items",
+      "result": {"maximumItemsOfInformation": 10},
+      "citation": {"section": "705.D.2.h", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-GROUND-006",
+      "topic": "address",
+      "result": {"addressRequired": true, "minimumNumeralHeightInches": 6, "maximumAddressAreaSquareFeet": 6, "excludedFromSignArea": true, "excludedFromItemsOfInformation": true},
+      "exception": "Ground signs on corner parcels",
+      "citation": {"section": "705.D.2.j", "pdfPage": null}
+    }
+  ],
+  "wallSignRules": [
+    {
+      "id": "PHX-705-WALL-001",
+      "topic": "area_calculation",
+      "summary": "Permitted wall-sign area is based on the linear frontage of the building or suite occupied by the use being identified.",
+      "citation": {"section": "705.D.3.b", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-WALL-002",
+      "topic": "number",
+      "result": {"maximumNumber": null, "limitType": "aggregate permitted wall-sign area"},
+      "citation": {"section": "705.D.3.c", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-WALL-003",
+      "topic": "above_roofline",
+      "result": {"designReviewRequired": true, "mayBreakBuildingSilhouette": false},
+      "citation": {"section": "705.D.3.g", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-WALL-004",
+      "topic": "high_wall_sign",
+      "condition": {"heightFeet": {"greaterThan": 56}},
+      "result": {"maximumAreaPercentOfElevation": 1, "placementWithinTopPercentOfWall": 10, "maximumWidthPercentOfBuildingFace": 80, "minimumSideEdgeClearance": "One-half the width of the largest letter or sign element", "comprehensiveSignPlanRequired": true},
+      "citation": {"section": "705.D.3.i and Table D-1 note 7", "pdfPage": null}
+    }
+  ],
+  "flexibilityRules": [
+    {
+      "id": "PHX-705-FLEX-001",
+      "topic": "design_review",
+      "summary": "Design review may authorize the parenthetical ground-sign height and area values shown in Table D-1 when the applicable design-review guidelines are satisfied.",
+      "citation": {"section": "705.E.1", "pdfPage": null}
+    },
+    {
+      "id": "PHX-705-FLEX-002",
+      "topic": "comprehensive_sign_plan",
+      "result": {"maximumHeightIncreasePercentOverDesignReviewMaximum": 50, "maximumAreaIncreasePercentOverDesignReviewMaximum": 25},
+      "citation": {"section": "705.E.2.b(3)", "pdfPage": null}
+    }
+  ],
+  "reportSelection": {
+    "alwaysIncludeTopics": ["permit", "engineering", "illumination", "right_of_way"],
+    "includeBySignType": {
+      "wall": ["wallSignRules", "identificationSignStandards.commercialIndustrial.wall"],
+      "ground": ["groundSignRules", "identificationSignStandards.commercialIndustrial.ground"],
+      "electronic_message_display": ["electronicMessageDisplayRules"],
+      "projecting": ["PHX-705-PROJECTING-001", "PHX-705-ENGINEERING-003"]
+    },
+    "warnings": [
+      "Check overlays, special planning districts, deed restrictions, and approved comprehensive sign plans.",
+      "Confirm parcel configuration and street classification before calculating ground-sign allowances.",
+      "Confirm building or suite frontage before calculating wall-sign area.",
+      "Confirm existing sign inventory before concluding that additional sign area or sign count is available."
+    ]
+  }
+}

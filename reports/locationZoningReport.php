@@ -20,6 +20,8 @@ if (!$locationId) {
     die('Invalid or missing locationId parameter.');
 }
 
+$forceRefresh = filter_input(INPUT_GET, 'refresh', FILTER_VALIDATE_BOOLEAN) ?? false;
+
 // -------------------------------------------------------------------------
 // 2. Database Retrieval (Skyesoft Schema)
 // -------------------------------------------------------------------------
@@ -80,7 +82,164 @@ try {
 }
 
 // -------------------------------------------------------------------------
-// 3. Data Formatting & Helpers
+// 3. AI Sign Code Analysis Pipeline & Helper Functions
+// -------------------------------------------------------------------------
+
+/**
+ * Execute an OpenAI chat completion call using application/json formatting.
+ */
+function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
+{
+    $apiKey = getenv('OPENAI_API_KEY') ?: $_ENV['OPENAI_API_KEY'] ?? '';
+    if (empty($apiKey)) {
+        throw new RuntimeException('OPENAI_API_KEY environment variable is missing.');
+    }
+
+    $payload = [
+        'model' => 'gpt-4o',
+        'messages' => [
+            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'user', 'content' => $userPrompt]
+        ],
+        'response_format' => ['type' => 'json_object'],
+        'temperature' => 0.1
+    ];
+
+    $ch = curl_init('https://api.openai.com/v1/chat/completions');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $apiKey
+        ],
+        CURLOPT_POSTFIELDS => json_encode($payload),
+        CURLOPT_TIMEOUT => 45
+    ]);
+
+    $response = curl_exec($ch);
+    $error = curl_error($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($error) {
+        throw new RuntimeException('OpenAI cURL Error: ' . $error);
+    }
+    if ($httpCode !== 200) {
+        throw new RuntimeException('OpenAI API Returned HTTP ' . $httpCode . ': ' . $response);
+    }
+
+    $responseData = json_decode($response, true);
+    $content = $responseData['choices'][0]['message']['content'] ?? null;
+    if (!$content) {
+        throw new RuntimeException('OpenAI response missing message content.');
+    }
+
+    $decodedJson = json_decode($content, true);
+    if (!is_array($decodedJson)) {
+        throw new RuntimeException('Failed to parse OpenAI JSON content response.');
+    }
+
+    return $decodedJson;
+}
+
+/**
+ * Perform sign code analysis using jurisdiction local filesystem assets and cached database entries.
+ */
+function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = false): array
+{
+    $cacheDir = __DIR__ . '/../data/cache/signReports';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0755, true);
+    }
+    $cacheFile = $cacheDir . '/location_' . $loc['locationId'] . '.json';
+
+    if (!$forceRefresh && file_exists($cacheFile)) {
+        $cached = json_decode((string)file_get_contents($cacheFile), true);
+        if (is_array($cached)) {
+            return $cached;
+        }
+    }
+
+    // Determine jurisdiction path
+    $jurisdictionSlug = strtolower(trim($loc['locationJurisdiction'] ?? 'phoenix'));
+    $jurisdictionDir = __DIR__ . '/../data/authoritative/jurisdictions/' . $jurisdictionSlug;
+
+    if (!is_dir($jurisdictionDir)) {
+        // Fallback to Phoenix if jurisdiction folder not found
+        $jurisdictionDir = __DIR__ . '/../data/authoritative/jurisdictions/phoenix';
+    }
+
+    $signCodeJsonPath = $jurisdictionDir . '/signCode.json';
+    $promptPath = __DIR__ . '/../codex/prompts/signCodeReportAnalysis.prompt.md';
+
+    if (!file_exists($signCodeJsonPath)) {
+        throw new RuntimeException('Missing required signCode.json at ' . $signCodeJsonPath);
+    }
+    if (!file_exists($promptPath)) {
+        throw new RuntimeException('Missing required system prompt at ' . $promptPath);
+    }
+
+    $signCodeJson = file_get_contents($signCodeJsonPath);
+    $promptTemplate = file_get_contents($promptPath);
+
+    // Context payloads
+    $locationDataJson = json_encode([
+        'locationId' => $loc['locationId'],
+        'locationName' => $loc['locationName'],
+        'address' => $loc['locationAddress'],
+        'city' => $loc['locationCity'],
+        'state' => $loc['locationState'],
+        'zip' => $loc['locationZip'],
+        'jurisdiction' => $loc['locationJurisdiction'],
+        'county' => $loc['locationCounty'],
+        'parcelNumber' => $loc['locationParcelNumberRaw'] ?: $loc['locationParcelNumber'],
+        'zoningCode' => $loc['zoningCode'],
+        'zoningDescription' => $loc['zoningDescription'],
+        'zoningSource' => $loc['zoningSource'],
+        'zoningVerifiedAt' => $loc['zoningVerifiedAt'],
+        'lotSize' => $loc['lotSize']
+    ], JSON_PRETTY_PRINT);
+
+    $projectSignDataJson = json_encode([
+        'existingSigns' => [],
+        'proposedSigns' => []
+    ], JSON_PRETTY_PRINT);
+
+    $codexContextJson = json_encode([
+        'reportType' => 'Location Zoning & Sign Code Report',
+        'targetClient' => $loc['entityName'] ?? 'Internal Review'
+    ], JSON_PRETTY_PRINT);
+
+    // Interpolate values into system prompt variables
+    $userPrompt = str_replace(
+        ['{{LOCATION_DATA_JSON}}', '{{SIGN_CODE_JSON}}', '{{PROJECT_SIGN_DATA_JSON}}', '{{CODEX_CONTEXT_JSON}}'],
+        [$locationDataJson, $signCodeJson, $projectSignDataJson, $codexContextJson],
+        $promptTemplate
+    );
+
+    $systemPrompt = "You are the Skyesoft Sign Code Report Analyst. Perform regulatory sign code analysis and return strict JSON adhering to prompt schema.";
+
+    $analysisResult = callOpenAIForSignCode($systemPrompt, $userPrompt);
+
+    // Save cache locally
+    file_put_contents($cacheFile, json_encode($analysisResult, JSON_PRETTY_PRINT));
+
+    return $analysisResult;
+}
+
+// Execute analysis with fallback handling
+$signCodeAnalysis = [];
+$analysisError = null;
+try {
+    $signCodeAnalysis = getOrRunSignCodeAnalysis($db, $loc, $forceRefresh);
+} catch (Exception $e) {
+    error_log('Sign Code Analysis execution failed: ' . $e->getMessage());
+    $analysisError = $e->getMessage();
+}
+
+// -------------------------------------------------------------------------
+// 4. Data Formatting & Visual Helpers
 // -------------------------------------------------------------------------
 
 /**
@@ -93,6 +252,17 @@ function displayValue(mixed $value, string $fallback = 'Not Yet Verified'): stri
     return $trimmed !== ''
         ? htmlspecialchars($trimmed, ENT_QUOTES, 'UTF-8')
         : '<span class="unverified">' . htmlspecialchars($fallback, ENT_QUOTES, 'UTF-8') . '</span>';
+}
+
+/**
+ * Renders citation text with styled block tag.
+ */
+function renderCitation(?string $citationText): string
+{
+    if (empty($citationText)) {
+        return '';
+    }
+    return '<div class="citation-tag">Citation: ' . htmlspecialchars($citationText, ENT_QUOTES, 'UTF-8') . '</div>';
 }
 
 /**
@@ -163,8 +333,64 @@ $logoHtml = file_exists($logoPath)
     ? '<img src="' . htmlspecialchars($logoPath, ENT_QUOTES, 'UTF-8') . '" style="max-height: 48px; width: auto;" alt="Christy Signs" />'
     : '<div style="font-size: 16px; font-weight: bold; color: #14377c;">Christy Signs</div>';
 
+// Extract Analysis Data Fields safely
+$ordinanceRef = $signCodeAnalysis['ordinance']['title'] ?? null;
+if (!empty($signCodeAnalysis['ordinance']['codeReference'])) {
+    $ordinanceRef .= ($ordinanceRef ? ' (' : '') . $signCodeAnalysis['ordinance']['codeReference'] . ($ordinanceRef ? ')' : '');
+}
+
+$attachedSigns = $signCodeAnalysis['attachedSigns'] ?? [];
+$detachedSigns = $signCodeAnalysis['detachedSigns'] ?? [];
+$generalReqs   = $signCodeAnalysis['generalRequirements'] ?? [];
+$missingInputs = $signCodeAnalysis['missingInputs'] ?? [];
+
+// Calculate display text for Attached Area
+$attachedAreaDisplay = null;
+if (!empty($attachedSigns['calculation']['displayedResult'])) {
+    $attachedAreaDisplay = $attachedSigns['calculation']['displayedResult'];
+} elseif (isset($attachedSigns['maximumAreaSquareFeet'])) {
+    $attachedAreaDisplay = $attachedSigns['maximumAreaSquareFeet'] . ' sq ft max';
+}
+
+// Calculate display text for Height/Projection
+$heightProjDisplay = null;
+$heightParts = [];
+if (!empty($attachedSigns['heightLimitFeet'])) {
+    $heightParts[] = 'Height: ' . $attachedSigns['heightLimitFeet'] . ' ft max';
+}
+if (!empty($attachedSigns['projectionLimitInches'])) {
+    $heightParts[] = 'Projection: ' . $attachedSigns['projectionLimitInches'] . ' in max';
+}
+if (!empty($detachedSigns['maximumHeightFeet'])) {
+    $heightParts[] = 'Detached Height: ' . $detachedSigns['maximumHeightFeet'] . ' ft max';
+}
+if (count($heightParts) > 0) {
+    $heightProjDisplay = implode(' | ', $heightParts);
+}
+
+// Find Illumination and Permit Rules from Findings or General Requirements
+$illuminationRule = null;
+$permitRule = null;
+
+if (isset($signCodeAnalysis['findings']) && is_array($signCodeAnalysis['findings'])) {
+    foreach ($signCodeAnalysis['findings'] as $finding) {
+        if (($finding['category'] ?? '') === 'illumination' && empty($illuminationRule)) {
+            $illuminationRule = [
+                'text' => $finding['finding'],
+                'citationText' => $finding['citationText'] ?? null
+            ];
+        }
+        if (($finding['category'] ?? '') === 'permit' && empty($permitRule)) {
+            $permitRule = [
+                'text' => $finding['finding'],
+                'citationText' => $finding['citationText'] ?? null
+            ];
+        }
+    }
+}
+
 // -------------------------------------------------------------------------
-// 4. CSS & HTML Layout (Magnolia Archetype Standards)
+// 5. CSS & HTML Layout (Magnolia Archetype Standards)
 // -------------------------------------------------------------------------
 $css = '
     body {
@@ -260,6 +486,15 @@ $css = '
         width: 72%;
         background-color: #ffffff;
         color: #111111;
+    }
+
+    /* Citation Tags */
+    .citation-tag {
+        font-size: 7.5pt;
+        font-weight: bold;
+        color: #14377c;
+        margin-top: 3px;
+        font-style: normal;
     }
 
     /* Unverified Fallback Text */
@@ -407,23 +642,41 @@ ob_start();
         </tr>
         <tr>
             <th>Applicable Code / Section</th>
-            <td><?= displayValue(null) ?></td>
+            <td>
+                <?= displayValue($ordinanceRef) ?>
+                <?= renderCitation($signCodeAnalysis['ordinance']['citationText'] ?? null) ?>
+            </td>
         </tr>
         <tr>
-            <th>Max Allowable Area</th>
-            <td><?= displayValue(null) ?></td>
+            <th>Attached Sign Allowance</th>
+            <td>
+                <?= displayValue($attachedAreaDisplay, 'Requires elevation measurement') ?>
+                <?php if (!empty($attachedSigns['allowanceBasis'])): ?>
+                    <br/><span style="font-size: 8pt; color: #555555;">Basis: <?= htmlspecialchars($attachedSigns['allowanceBasis'], ENT_QUOTES, 'UTF-8') ?></span>
+                <?php endif; ?>
+                <?= renderCitation($attachedSigns['applicableRules'][0]['citationText'] ?? null) ?>
+            </td>
         </tr>
         <tr>
             <th>Max Height / Projection</th>
-            <td><?= displayValue(null) ?></td>
+            <td>
+                <?= displayValue($heightProjDisplay) ?>
+                <?= renderCitation($attachedSigns['applicableRules'][0]['citationText'] ?? null) ?>
+            </td>
         </tr>
         <tr>
             <th>Illumination Rules</th>
-            <td><?= displayValue(null) ?></td>
+            <td>
+                <?= displayValue($illuminationRule['text'] ?? null) ?>
+                <?= renderCitation($illuminationRule['citationText'] ?? null) ?>
+            </td>
         </tr>
         <tr>
             <th>Permit Requirements</th>
-            <td><?= displayValue(null) ?></td>
+            <td>
+                <?= displayValue($permitRule['text'] ?? null) ?>
+                <?= renderCitation($permitRule['citationText'] ?? null) ?>
+            </td>
         </tr>
     </table>
 </div>
@@ -440,9 +693,15 @@ ob_start();
             </tr>
         </table>
         <ol style="margin: 0; padding-left: 18px;">
-            <li>Verify zoning designation and sign ordinance requirements with municipal staff or GIS resources.</li>
-            <li>Confirm whether any site-specific Master Sign Plan or overlay restrictions exist for this parcel.</li>
-            <li>Document verified zoning, applicable code sections, and sign allowances as the location review progresses.</li>
+            <?php if (!empty($signCodeAnalysis['recommendedNextSteps']) && is_array($signCodeAnalysis['recommendedNextSteps'])): ?>
+                <?php foreach ($signCodeAnalysis['recommendedNextSteps'] as $step): ?>
+                    <li style="margin-bottom: 3px;"><?= htmlspecialchars((string)$step, ENT_QUOTES, 'UTF-8') ?></li>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <li>Verify zoning designation and sign ordinance requirements with municipal staff or GIS resources.</li>
+                <li>Confirm whether any site-specific Master Sign Plan or overlay restrictions exist for this parcel.</li>
+                <li>Measure building elevation width and tenant frontage to complete attached-sign area calculations.</li>
+            <?php endif; ?>
         </ol>
     </div>
 </div>
@@ -450,25 +709,25 @@ ob_start();
 <!-- 5. Sources and Disclaimers -->
 <div class="section-block" style="margin-top: 10px;">
     <p style="font-size: 7.5pt; color: #666666; line-height: 1.25; margin: 0;">
-        <strong>Sources &amp; Review Qualifications:</strong> Information shown is based on the current Skyesoft location record together with parcel information stored in the Skyesoft parcel database. Zoning and sign-code requirements should be verified with the governing jurisdiction before design or permitting.
+        <strong>Sources &amp; Review Qualifications:</strong> Information shown is derived from authoritative zoning ordinance specifications and local parcel records. Regulatory citations indicate primary governing provisions. All sign plans and dimensional calculations must be verified with governing jurisdiction officials prior to fabrication and permit application.
     </p>
 </div>
 <?php
 $html = ob_get_clean();
 
 // -------------------------------------------------------------------------
-// 5. Render PDF with mPDF (Letter + Expanded Body & Header Clearance)
+// 6. Render PDF with mPDF (Letter + Expanded Body & Header Clearance)
 // -------------------------------------------------------------------------
 try {
     $mpdf = new \Mpdf\Mpdf([
         'mode'          => 'utf-8',
         'format'        => 'Letter',
-        'margin_left'   => 8.5,   // ~0.33 in (expands body width)
+        'margin_left'   => 8.5,   // ~0.33 in
         'margin_right'  => 8.5,   // ~0.33 in
-        'margin_top'    => 33,    // Increased clearance so body starts below header
+        'margin_top'    => 33,    // Height clearance for header
         'margin_bottom' => 14,    // Clearance for footer
-        'margin_header' => 6,     // Moves header closer to top edge
-        'margin_footer' => 6      // Moves footer closer to bottom edge
+        'margin_header' => 6,
+        'margin_footer' => 6
     ]);
 
     $mpdf->SetTitle('Location Zoning & Sign Code Report - ' . ($loc['locationName'] ?? 'Location #' . $locationId));
