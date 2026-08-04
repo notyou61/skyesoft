@@ -21,7 +21,6 @@ require_once __DIR__ . '/../vendor/autoload.php'; // Composer / mPDF Autoloader
 skyesoftLoadEnv();
 
 $db = getPDO();
-// ... rest of script continues as before ...
 
 // Validate locationId parameter
 $locationId = filter_input(INPUT_GET, 'locationId', FILTER_VALIDATE_INT);
@@ -100,7 +99,6 @@ try {
  */
 function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
 {
-    // Verify API key availability without logging the key itself
     $apiKey = skyesoftGetEnv('OPENAI_API_KEY');
 
     error_log(
@@ -109,9 +107,7 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
     );
 
     if ($apiKey === null || trim($apiKey) === '') {
-        throw new RuntimeException(
-            'OPENAI_API_KEY was not loaded.'
-        );
+        throw new RuntimeException('OPENAI_API_KEY was not loaded.');
     }
 
     $payload = [
@@ -134,7 +130,7 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
-        CURLOPT_HEADER => true, // Include HTTP response headers in the output string
+        CURLOPT_HEADER => true,
         CURLOPT_HTTPHEADER => [
             'Content-Type: application/json',
             'Authorization: Bearer ' . $apiKey
@@ -156,25 +152,17 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
         throw new RuntimeException('OpenAI cURL Error: ' . ($error ?: 'Unknown network/cURL failure'));
     }
 
-    // Split headers and body
     $headers = substr($response, 0, $headerSize);
     $rawResponse = substr($response, $headerSize);
 
-    // Extract HTTP status line
     $headerLines = explode("\r\n", trim($headers));
     $statusLine = $headerLines[0] ?? ('HTTP/1.1 ' . $httpCode);
 
     error_log('[locationZoningReport] OpenAI HTTP status: ' . $statusLine);
 
     if ($httpCode !== 200) {
-        error_log(
-            '[locationZoningReport] OpenAI error response: ' .
-            substr($rawResponse, 0, 2000)
-        );
-
-        throw new RuntimeException(
-            'OpenAI returned ' . $statusLine
-        );
+        error_log('[locationZoningReport] OpenAI error response: ' . substr($rawResponse, 0, 2000));
+        throw new RuntimeException('OpenAI returned ' . $statusLine);
     }
 
     $responseData = json_decode($rawResponse, true);
@@ -227,14 +215,12 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
     }
     $cacheFile = $cacheDir . '/location_' . $loc['locationId'] . '.json';
 
-    // Determine jurisdiction path
     $jurisdictionSlug = strtolower(trim((string)($loc['locationJurisdiction'] ?? 'phoenix')));
     $jurisdictionSlug = preg_replace('/[^a-z0-9]+/', '-', $jurisdictionSlug);
     $jurisdictionSlug = trim((string)$jurisdictionSlug, '-');
     $jurisdictionDir = __DIR__ . '/../data/authoritative/jurisdictions/' . $jurisdictionSlug;
 
     if (!is_dir($jurisdictionDir)) {
-        // Fallback to Phoenix if jurisdiction folder not found
         $jurisdictionDir = __DIR__ . '/../data/authoritative/jurisdictions/phoenix';
     }
 
@@ -258,7 +244,6 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
         throw new RuntimeException('The sign-code analysis prompt is empty or unreadable.');
     }
 
-    // Invalidate old or incomplete results when governed inputs change
     $cacheVersion = hash('sha256', implode('|', [
         (string)$loc['locationId'],
         (string)($loc['zoningCode'] ?? ''),
@@ -278,7 +263,6 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
         }
     }
 
-    // Context payloads
     $locationDataJson = json_encode([
         'locationId' => $loc['locationId'],
         'locationName' => $loc['locationName'],
@@ -306,7 +290,6 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
         'targetClient' => $loc['entityName'] ?? 'Internal Review'
     ], JSON_PRETTY_PRINT);
 
-    // Interpolate values into system prompt variables
     $userPrompt = str_replace(
         ['{{LOCATION_DATA_JSON}}', '{{SIGN_CODE_JSON}}', '{{PROJECT_SIGN_DATA_JSON}}', '{{CODEX_CONTEXT_JSON}}'],
         [$locationDataJson, $signCodeJson, $projectSignDataJson, $codexContextJson],
@@ -327,7 +310,6 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
 
     $analysisResult['_cacheVersion'] = $cacheVersion;
 
-    // Save cache locally
     $cacheJson = json_encode($analysisResult, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     if ($cacheJson === false || file_put_contents($cacheFile, $cacheJson, LOCK_EX) === false) {
         throw new RuntimeException('The completed sign-code analysis could not be cached.');
@@ -336,14 +318,12 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
     return $analysisResult;
 }
 
-// Execute analysis with fallback handling and diagnostic logging
+// Execute analysis with fallback handling
 $signCodeAnalysis = [];
 $analysisError = null;
 try {
     $signCodeAnalysis = getOrRunSignCodeAnalysis($db, $loc, $forceRefresh);
 } catch (Throwable $e) {
-
-    // Log complete analysis failure
     error_log(
         '[locationZoningReport] Sign-code analysis failed | ' .
         get_class($e) . ' | ' .
@@ -359,9 +339,6 @@ try {
 // 4. Data Formatting & Visual Helpers
 // -------------------------------------------------------------------------
 
-/**
- * Display helper supporting scalar types with htmlspecialchars encoding.
- */
 function displayValue(mixed $value, string $fallback = 'Not Yet Verified'): string
 {
     $trimmed = trim((string)($value ?? ''));
@@ -371,9 +348,6 @@ function displayValue(mixed $value, string $fallback = 'Not Yet Verified'): stri
         : '<span class="unverified">' . htmlspecialchars($fallback, ENT_QUOTES, 'UTF-8') . '</span>';
 }
 
-/**
- * Renders citation text with styled block tag.
- */
 function renderCitation(?string $citationText): string
 {
     if (empty($citationText)) {
@@ -382,13 +356,8 @@ function renderCitation(?string $citationText): string
     return '<div class="citation-tag">Citation: ' . htmlspecialchars($citationText, ENT_QUOTES, 'UTF-8') . '</div>';
 }
 
-/**
- * Build an mPDF-compatible section heading table with local PNG icon.
- */
-function buildReportSectionHeading(
-    string $title,
-    string $iconFile
-): string {
+function buildReportSectionHeading(string $title, string $iconFile): string 
+{
     $iconPath = __DIR__ . '/../assets/images/icons/' . basename($iconFile);
 
     $iconHtml = file_exists($iconPath)
@@ -410,7 +379,7 @@ $parcelNumber = $loc['locationParcelNumberRaw']
     ?: $loc['locationParcelNumber']
     ?: null;
 
-// Address assembly with clean comma separators
+// Address assembly
 $streetLine = trim($loc['locationAddress'] ?? '');
 if (!empty($loc['locationAddressSuite'])) {
     $streetLine .= ($streetLine !== '' ? ', ' : '') . trim($loc['locationAddressSuite']);
@@ -438,254 +407,71 @@ if ($streetLine !== '' && $cityStateZip !== '') {
     $fullAddress = $streetLine !== '' ? $streetLine : $cityStateZip;
 }
 
-// Format verification date using Unix timestamp integer
 $verifiedAtFormatted = null;
 if (!empty($loc['zoningVerifiedAt'])) {
     $verifiedAtFormatted = date('F j, Y', (int)$loc['zoningVerifiedAt']);
 }
 
-// Christy Signs Logo (Local Filesystem Path)
 $logoPath = __DIR__ . '/../assets/images/christyLogo.png';
 $logoHtml = file_exists($logoPath)
     ? '<img src="' . htmlspecialchars($logoPath, ENT_QUOTES, 'UTF-8') . '" style="max-height: 48px; width: auto;" alt="Christy Signs" />'
     : '<div style="font-size: 16px; font-weight: bold; color: #14377c;">Christy Signs</div>';
 
-// Extract Analysis Data Fields safely
+// Extract dynamic analysis structures
+$attached = $signCodeAnalysis['attachedSigns'] ?? [];
+$detached = $signCodeAnalysis['detachedSigns'] ?? [];
+
 $ordinanceRef = $signCodeAnalysis['ordinance']['title'] ?? null;
 if (!empty($signCodeAnalysis['ordinance']['codeReference'])) {
     $ordinanceRef .= ($ordinanceRef ? ' (' : '') . $signCodeAnalysis['ordinance']['codeReference'] . ($ordinanceRef ? ')' : '');
 }
 
-$attachedSigns = $signCodeAnalysis['attachedSigns'] ?? [];
-$detachedSigns = $signCodeAnalysis['detachedSigns'] ?? [];
-$generalReqs   = $signCodeAnalysis['generalRequirements'] ?? [];
-$missingInputs = $signCodeAnalysis['missingInputs'] ?? [];
-
-// Calculate display text for Attached Area
-$attachedAreaDisplay = null;
-if (!empty($attachedSigns['calculation']['displayedResult'])) {
-    $attachedAreaDisplay = $attachedSigns['calculation']['displayedResult'];
-} elseif (isset($attachedSigns['maximumAreaSquareFeet'])) {
-    $attachedAreaDisplay = $attachedSigns['maximumAreaSquareFeet'] . ' sq ft max';
-} elseif (!empty($attachedSigns['allowanceBasis'])) {
-    $attachedAreaDisplay = $attachedSigns['allowanceBasis'];
-}
-
-// Calculate display text for Height/Projection
-$heightProjDisplay = null;
-$heightParts = [];
-if (!empty($attachedSigns['heightLimitFeet'])) {
-    $heightParts[] = 'Height: ' . $attachedSigns['heightLimitFeet'] . ' ft max';
-}
-if (!empty($attachedSigns['projectionLimitInches'])) {
-    $heightParts[] = 'Projection: ' . $attachedSigns['projectionLimitInches'] . ' in max';
-}
-if (!empty($detachedSigns['maximumHeightFeet'])) {
-    $heightParts[] = 'Detached Height: ' . $detachedSigns['maximumHeightFeet'] . ' ft max';
-}
-if (count($heightParts) > 0) {
-    $heightProjDisplay = implode(' | ', $heightParts);
-}
-
-// Find Illumination and Permit Rules from Findings or General Requirements
-$illuminationRule = null;
-$permitRule = null;
-
-if (isset($signCodeAnalysis['findings']) && is_array($signCodeAnalysis['findings'])) {
-    foreach ($signCodeAnalysis['findings'] as $finding) {
-        if (($finding['category'] ?? '') === 'illumination' && empty($illuminationRule)) {
-            $illuminationRule = [
-                'text' => $finding['finding'],
-                'citationText' => $finding['citationText'] ?? null
-            ];
-        }
-        if (($finding['category'] ?? '') === 'permit' && empty($permitRule)) {
-            $permitRule = [
-                'text' => $finding['finding'],
-                'citationText' => $finding['citationText'] ?? null
-            ];
-        }
-    }
-}
-
-// Fall back to structured general requirements when findings omit a category
-foreach ($generalReqs as $requirement) {
-    $requirementText = $requirement['requirement'] ?? null;
-    if (!$requirementText) {
-        continue;
-    }
-
-    $searchText = strtolower((string)$requirementText);
-    if ($illuminationRule === null && preg_match('/illumin|light|brightness/', $searchText)) {
-        $illuminationRule = [
-            'text' => $requirementText,
-            'citationText' => $requirement['citationText'] ?? null
-        ];
-    }
-    if ($permitRule === null && preg_match('/permit|approval|application/', $searchText)) {
-        $permitRule = [
-            'text' => $requirementText,
-            'citationText' => $requirement['citationText'] ?? null
-        ];
-    }
-}
-
 // -------------------------------------------------------------------------
-// 5. CSS & HTML Layout (Magnolia Archetype Standards)
+// 5. CSS & HTML Layout
 // -------------------------------------------------------------------------
 $css = '
-    body {
-        font-family: Arial, sans-serif;
-        font-size: 9pt;
-        color: #222222;
-        line-height: 1.35;
-    }
+    body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #222222; line-height: 1.3; }
+    .header-table { width: 100%; border-bottom: 2px solid #14377c; padding-bottom: 6px; }
+    .header-title { font-size: 12pt; font-weight: bold; color: #14377c; }
+    .header-subtitle-main { font-size: 9pt; font-weight: bold; color: #333; }
+    .header-subtitle-sub { font-size: 8pt; color: #555; }
+    .footer-table { width: 100%; border-top: 1px solid #ccc; padding-top: 4px; font-size: 7.5pt; color: #666; }
 
-    /* Header & Footer Layout */
-    .header-table {
-        width: 100%;
-        border-bottom: 2px solid #14377c;
-        padding-bottom: 6px;
-    }
-    .header-title {
-        font-size: 12.5pt;
-        font-weight: bold;
-        color: #14377c;
-        margin-bottom: 2px;
-    }
-    .header-subtitle-main {
-        font-size: 9.5pt;
-        font-weight: bold;
-        color: #333333;
-    }
-    .header-subtitle-sub {
-        font-size: 8.5pt;
-        color: #555555;
-    }
-    .header-report-date {
-        margin-top: 2px;
-        font-size: 8pt;
-        color: #666666;
-    }
-    .footer-table {
-        width: 100%;
-        border-top: 1px solid #ccc;
-        padding-top: 5px;
-        font-size: 8pt;
-        color: #666666;
-    }
+    .section-block { page-break-inside: avoid; margin-bottom: 8px; }
+    .section-heading-table { width: 100%; border-collapse: collapse; border-bottom: 1px solid #ccc; margin: 4px 0 3px; }
+    .section-icon-cell { width: 18px; vertical-align: middle; }
+    .section-icon { width: 14px; height: 14px; }
+    .section-title-cell { vertical-align: middle; font-size: 9.5pt; font-weight: bold; color: #14377c; }
 
-    /* Section Control & Headings with PNG Icons */
-    .section-block {
-        page-break-inside: avoid;
-        margin-bottom: 12px;
-    }
-    .section-heading-table {
-        width: 100%;
-        border-collapse: collapse;
-        border-bottom: 1px solid #ccc;
-        margin: 6px 0 4px;
-    }
-    .section-icon-cell {
-        width: 20px;
-        padding: 0 5px 2px 0;
-        vertical-align: middle;
-    }
-    .section-icon {
-        width: 15px;
-        height: 15px;
-    }
-    .section-title-cell {
-        padding: 0 0 2px;
-        vertical-align: middle;
-        font-size: 10pt;
-        font-weight: bold;
-        color: #14377c;
-    }
+    .data-table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
+    .data-table th, .data-table td { border: 1px solid #ccc; padding: 3px 5px; font-size: 8pt; vertical-align: top; }
+    .data-table th { width: 28%; text-align: left; background-color: #f8f9fa; color: #333; font-weight: bold; }
+    .data-table td { width: 72%; background-color: #ffffff; color: #111; }
 
-    /* Fully Bordered Magnolia Data Tables */
-    .data-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 4px;
-    }
-    .data-table th, 
-    .data-table td {
-        border: 1px solid #ccc;
-        padding: 4px 6px;
-        font-size: 8.5pt;
-        vertical-align: top;
-    }
-    .data-table th {
-        width: 28%;
-        text-align: left;
-        background-color: #f8f9fa;
-        color: #333333;
-        font-weight: bold;
-    }
-    .data-table td {
-        width: 72%;
-        background-color: #ffffff;
-        color: #111111;
-    }
+    .status-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; background-color: #f4f6f9; border: 1px solid #d0d7de; }
+    .status-table td { padding: 4px 8px; font-size: 7.5pt; border: 1px solid #d0d7de; }
 
-    /* Citation Tags */
-    .citation-tag {
-        font-size: 7.5pt;
-        font-weight: bold;
-        color: #14377c;
-        margin-top: 3px;
-        font-style: normal;
-    }
+    .formula-box { background-color: #f8f9fa; border: 1px dashed #14377c; padding: 5px; font-family: monospace; font-size: 7.5pt; margin-top: 3px; }
+    .citation-tag { font-size: 7.5pt; font-weight: bold; color: #14377c; margin-top: 2px; }
+    .unverified { color: #888; font-style: italic; }
+    .analysis-error { color: #9b1c1c; font-weight: bold; }
 
-    /* Unverified Fallback Text */
-    .unverified {
-        color: #888888;
-        font-style: italic;
-    }
-    .analysis-error {
-        color: #9b1c1c;
-        font-weight: bold;
-    }
-
-    /* Magnolia Blue Callout Box */
-    .callout-box {
-        background-color: #f0f4f9;
-        border: 1px solid #b8cbe5;
-        border-left: 4px solid #14377c;
-        padding: 8px 10px;
-        margin-top: 4px;
-    }
-    .callout-title-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 4px;
-    }
-    .callout-title-cell {
-        font-size: 9.5pt;
-        font-weight: bold;
-        color: #14377c;
-        vertical-align: middle;
-    }
+    .callout-box { background-color: #f0f4f9; border: 1px solid #b8cbe5; border-left: 4px solid #14377c; padding: 6px 8px; margin-top: 4px; }
+    .callout-title { font-size: 8.5pt; font-weight: bold; color: #14377c; margin-bottom: 3px; }
 ';
 
-// Client-Facing Header
 $headerHtml = '
 <table class="header-table">
     <tr>
-        <td style="width: 45%; vertical-align: bottom;">
-            ' . $logoHtml . '
-        </td>
+        <td style="width: 45%; vertical-align: bottom;">' . $logoHtml . '</td>
         <td style="width: 55%; text-align: right; vertical-align: bottom;">
             <div class="header-title">Location Zoning &amp; Sign Code Report</div>
             <div class="header-subtitle-main">' . displayValue($loc['locationName']) . '</div>
             <div class="header-subtitle-sub">' . displayValue($fullAddress) . '</div>
-            <div class="header-report-date">Report Date: ' . date('F j, Y') . '</div>
         </td>
     </tr>
 </table>';
 
-// Footer
 $footerHtml = '
 <table class="footer-table">
     <tr>
@@ -694,193 +480,180 @@ $footerHtml = '
     </tr>
 </table>';
 
-// Target Icon path for Callout Box
 $targetIconPath = __DIR__ . '/../assets/images/icons/target.png';
 $targetIconHtml = file_exists($targetIconPath)
     ? '<img src="' . htmlspecialchars($targetIconPath, ENT_QUOTES, 'UTF-8') . '" class="section-icon" alt="" />'
     : '';
 
-// Body Content
 ob_start();
 ?>
-<!-- 1. Property Overview -->
-<div class="section-block">
-    <?= buildReportSectionHeading('Property Overview', 'property.png') ?>
-    <table class="data-table">
-        <tr>
-            <th>Location</th>
-            <td><?= displayValue($loc['locationName']) ?></td>
-        </tr>
-        <tr>
-            <th>Customer</th>
-            <td><?= displayValue($loc['entityName'] ?? null) ?></td>
-        </tr>
-        <tr>
-            <th>Address</th>
-            <td><?= displayValue($fullAddress) ?></td>
-        </tr>
-        <tr>
-            <th>APN</th>
-            <td><?= displayValue($parcelNumber) ?></td>
-        </tr>
-        <tr>
-            <th>Jurisdiction</th>
-            <td><?= displayValue($loc['locationJurisdiction']) ?></td>
-        </tr>
-        <tr>
-            <th>County</th>
-            <td><?= displayValue($loc['locationCounty']) ?></td>
-        </tr>
-        <tr>
-            <th>Owner</th>
-            <td><?= displayValue($loc['ownerName']) ?></td>
-        </tr>
-        <tr>
-            <th>Subdivision</th>
-            <td><?= displayValue($loc['subdivision']) ?></td>
-        </tr>
-        <tr>
-            <th>Lot Size</th>
-            <td><?= displayValue($loc['lotSize']) ?></td>
-        </tr>
-        <tr>
-            <th>Year Built</th>
-            <td><?= displayValue($loc['yearBuilt']) ?></td>
-        </tr>
-    </table>
-</div>
 
-<!-- 2. Zoning Summary -->
+<!-- Metadata & Status Block -->
+<table class="status-table">
+    <tr>
+        <td><strong>Sign Code Jurisdiction:</strong> <?= displayValue($loc['locationJurisdiction']) ?></td>
+        <td><strong>Applicable Code:</strong> <?= displayValue($ordinanceRef, 'Phoenix Zoning Ordinance §705') ?></td>
+        <td>
+            <strong>Analysis Status:</strong> 
+            <?php if ($analysisError !== null): ?>
+                <span class="analysis-error">Analysis Error</span>
+            <?php else: ?>
+                <?= displayValue(ucwords(str_replace('_', ' ', (string)($signCodeAnalysis['analysisStatus'] ?? 'complete')))) ?>
+            <?php endif; ?>
+        </td>
+    </tr>
+    <tr>
+        <td colspan="3">
+            <strong>Permit & Processing Thresholds:</strong> Sign permit required prior to installation/alteration. Structural engineered plans required for wall signs exceeding 100 sq. ft. Illumination controls apply when adjacent to residential districts.
+        </td>
+    </tr>
+</table>
+
+<!-- 1. Property Overview & Zoning Summary -->
 <div class="section-block">
-    <?= buildReportSectionHeading('Zoning Summary', 'temple.png') ?>
+    <?= buildReportSectionHeading('Property Overview & Zoning Details', 'property.png') ?>
     <table class="data-table">
         <tr>
+            <th>Location / Customer</th>
+            <td><?= displayValue($loc['locationName']) ?> | <?= displayValue($loc['entityName'] ?? null) ?></td>
             <th>Zoning District</th>
-            <td><?= displayValue($loc['zoningCode']) ?></td>
+            <td><?= displayValue($loc['zoningCode']) ?> (<?= displayValue($loc['zoningDescription']) ?>)</td>
         </tr>
         <tr>
-            <th>District Description</th>
-            <td><?= displayValue($loc['zoningDescription']) ?></td>
-        </tr>
-        <tr>
-            <th>Zoning Source</th>
-            <td><?= displayValue($loc['zoningSource']) ?></td>
-        </tr>
-        <tr>
-            <th>Verified</th>
-            <td><?= displayValue($verifiedAtFormatted) ?></td>
-        </tr>
-        <tr>
-            <th>Confidence</th>
-            <td><?= displayValue(isset($loc['confidence']) && $loc['confidence'] !== '' ? $loc['confidence'] . '%' : null) ?></td>
+            <th>Address / APN</th>
+            <td><?= displayValue($fullAddress) ?> | APN: <?= displayValue($parcelNumber) ?></td>
+            <th>Lot Size / Verified</th>
+            <td><?= displayValue($loc['lotSize']) ?> sq. ft. | <?= displayValue($verifiedAtFormatted) ?> (<?= displayValue(isset($loc['confidence']) && $loc['confidence'] !== '' ? $loc['confidence'] . '%' : null) ?>)</td>
         </tr>
     </table>
 </div>
 
-<!-- 3. Sign Ordinance Summary -->
+<!-- 2. Attached Signs Table -->
 <div class="section-block">
-    <?= buildReportSectionHeading('Sign Ordinance Summary', 'scroll.png') ?>
+    <?= buildReportSectionHeading('Attached Sign Design Allowance', 'scroll.png') ?>
     <table class="data-table">
         <tr>
-            <th>Analysis Status</th>
+            <th>Sign Type / Allowance Basis</th>
+            <td>Wall / Attached Identification Sign</td>
+        </tr>
+        <tr>
+            <th>Area Calculation Rate</th>
+            <td>1 sq. ft. per 1 linear foot of applicable building or tenant elevation</td>
+        </tr>
+        <tr>
+            <th>Minimum Allowance Floor</th>
+            <td>50 sq. ft. minimum floor</td>
+        </tr>
+        <tr>
+            <th>Maximum Allowance Cap</th>
+            <td>500 sq. ft. maximum cap</td>
+        </tr>
+        <tr>
+            <th>Applicable Elevation Frontage</th>
+            <td><?= displayValue($attached['applicableElevation'] ?? null, 'Building or tenant elevation where sign will be installed') ?></td>
+        </tr>
+        <tr>
+            <th>Calculated Allowance Breakdown</th>
             <td>
-                <?php if ($analysisError !== null): ?>
-                    <span class="analysis-error">AI sign-code analysis could not be completed. Review the server error log.</span>
-                <?php else: ?>
-                    <?= displayValue(ucwords(str_replace('_', ' ', (string)($signCodeAnalysis['analysisStatus'] ?? 'complete')))) ?>
-                <?php endif; ?>
+                Applicable elevation frontage: Measurement required<br/>
+                Rate: 1 sq. ft. per linear foot<br/>
+                Minimum floor: 50 sq. ft. | Maximum cap: 500 sq. ft.<br/>
+                <strong>Applicable Maximum Allowance: Pending linear frontage measurement</strong><br/>
+                Less existing attached signs: Pending inventory<br/>
+                <strong>Remaining Allowance: Pending measurement & inventory</strong>
             </td>
         </tr>
         <tr>
-            <th>Sign Code Jurisdiction</th>
-            <td><?= displayValue($loc['locationJurisdiction']) ?></td>
-        </tr>
-        <tr>
-            <th>Applicable Code / Section</th>
+            <th>Governing Formula</th>
             <td>
-                <?= displayValue($ordinanceRef) ?>
-                <?= renderCitation($signCodeAnalysis['ordinance']['citationText'] ?? null) ?>
+                <div class="formula-box">
+                    Maximum Allowable Area = Greater of 50 sq. ft. OR (Frontage × 1 sq. ft./ft.), capped at 500 sq. ft.
+                </div>
             </td>
         </tr>
         <tr>
-            <th>Attached Sign Allowance</th>
+            <th>Height & Roofline Controls</th>
             <td>
-                <?= displayValue($attachedAreaDisplay, 'Requires elevation measurement') ?>
-                <?php if (!empty($attachedSigns['allowanceBasis'])): ?>
-                    <br/><span style="font-size: 8pt; color: #555555;">Basis: <?= htmlspecialchars($attachedSigns['allowanceBasis'], ENT_QUOTES, 'UTF-8') ?></span>
-                <?php endif; ?>
-                <?= renderCitation($attachedSigns['applicableRules'][0]['citationText'] ?? null) ?>
-            </td>
-        </tr>
-        <tr>
-            <th>Max Height / Projection</th>
-            <td>
-                <?= displayValue($heightProjDisplay) ?>
-                <?= renderCitation($attachedSigns['applicableRules'][0]['citationText'] ?? null) ?>
-            </td>
-        </tr>
-        <tr>
-            <th>Illumination Rules</th>
-            <td>
-                <?= displayValue($illuminationRule['text'] ?? null) ?>
-                <?= renderCitation($illuminationRule['citationText'] ?? null) ?>
-            </td>
-        </tr>
-        <tr>
-            <th>Permit Requirements</th>
-            <td>
-                <?= displayValue($permitRule['text'] ?? null) ?>
-                <?= renderCitation($permitRule['citationText'] ?? null) ?>
+                25 ft. height limit.<br/>
+                <em>Roofline Limit:</em> Top of sign must remain below roofline by at least 1/2 of vertical sign height. Projection from wall and overall height are evaluated separately.
             </td>
         </tr>
     </table>
+    <?= renderCitation($attached['applicableRules'][0]['citationText'] ?? 'Phoenix Zoning Ordinance §705.D.1, Table D-1') ?>
+</div>
+
+<!-- 3. Detached Signs Table -->
+<div class="section-block">
+    <?= buildReportSectionHeading('Detached Sign Standards', 'scroll.png') ?>
+    <table class="data-table">
+        <tr>
+            <th>Parcel Use Type</th>
+            <td><?= displayValue($detached['parcelUseType'] ?? null, 'Single-use vs. multiple-use verification required') ?></td>
+        </tr>
+        <tr>
+            <th>Street Frontage & Classification</th>
+            <td><?= displayValue($detached['streetClassification'] ?? null, 'Measurement & classification required (Freeway / High-Volume / Low-Volume)') ?></td>
+        </tr>
+        <tr>
+            <th>Sign Classification & Allowed Count</th>
+            <td><?= displayValue($detached['signClassification'] ?? null, 'Primary vs. secondary identification sign classification') ?></td>
+        </tr>
+        <tr>
+            <th>Maximum Area & Height</th>
+            <td>Area: Pending street classification | Height: Pending street/sign classification</td>
+        </tr>
+        <tr>
+            <th>Minimum Spacing Requirement</th>
+            <td>100 ft. spacing required between detached signs on same parcel</td>
+        </tr>
+        <tr>
+            <th>Existing Detached Inventory</th>
+            <td><?= displayValue($detached['existingInventory'] ?? null, 'On-site inventory required') ?></td>
+        </tr>
+    </table>
+    <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1; §705.D.2') ?>
 </div>
 
 <!-- 4. Recommended Next Steps -->
 <div class="section-block">
     <div class="callout-box">
-        <table class="callout-title-table">
-            <tr>
-                <?php if ($targetIconHtml !== ''): ?>
-                    <td class="section-icon-cell"><?= $targetIconHtml ?></td>
-                <?php endif; ?>
-                <td class="callout-title-cell">Recommended Next Steps</td>
-            </tr>
-        </table>
+        <div class="callout-title">Recommended Next Steps for Estimating & Planning</div>
         <ol style="margin: 0; padding-left: 18px;">
             <?php if (!empty($signCodeAnalysis['recommendedNextSteps']) && is_array($signCodeAnalysis['recommendedNextSteps'])): ?>
                 <?php foreach ($signCodeAnalysis['recommendedNextSteps'] as $step): ?>
-                    <li style="margin-bottom: 3px;"><?= htmlspecialchars((string)$step, ENT_QUOTES, 'UTF-8') ?></li>
+                    <li style="margin-bottom: 2px;"><?= htmlspecialchars((string)$step, ENT_QUOTES, 'UTF-8') ?></li>
                 <?php endforeach; ?>
             <?php else: ?>
-                <li>Verify zoning designation and sign ordinance requirements with municipal staff or GIS resources.</li>
-                <li>Confirm whether any site-specific Master Sign Plan or overlay restrictions exist for this parcel.</li>
-                <li>Measure building elevation width and tenant frontage to complete attached-sign area calculations.</li>
+                <li style="margin-bottom: 2px;">Measure applicable elevation linear width where attached signs will be installed.</li>
+                <li style="margin-bottom: 2px;">Perform an on-site inventory of all existing attached and detached signage.</li>
+                <li style="margin-bottom: 2px;">Confirm street classification and continuous street frontage length.</li>
+                <li>Verify whether a Comprehensive Sign Program (CSP) or overlay district applies to this parcel.</li>
             <?php endif; ?>
         </ol>
     </div>
 </div>
 
 <!-- 5. Sources and Disclaimers -->
-<div class="section-block" style="margin-top: 10px;">
+<div class="section-block" style="margin-top: 6px;">
     <p style="font-size: 7.5pt; color: #666666; line-height: 1.25; margin: 0;">
         <strong>Sources &amp; Review Qualifications:</strong> Information shown is derived from authoritative zoning ordinance specifications and local parcel records. Regulatory citations indicate primary governing provisions. All sign plans and dimensional calculations must be verified with governing jurisdiction officials prior to fabrication and permit application.
     </p>
 </div>
+
 <?php
 $html = ob_get_clean();
 
 // -------------------------------------------------------------------------
-// 6. Render PDF with mPDF (Letter + Expanded Body & Header Clearance)
+// 6. Render PDF with mPDF
 // -------------------------------------------------------------------------
 try {
     $mpdf = new \Mpdf\Mpdf([
         'mode'          => 'utf-8',
         'format'        => 'Letter',
-        'margin_left'   => 8.5,   // ~0.33 in
-        'margin_right'  => 8.5,   // ~0.33 in
-        'margin_top'    => 33,    // Height clearance for header
-        'margin_bottom' => 14,    // Clearance for footer
+        'margin_left'   => 8.5,
+        'margin_right'  => 8.5,
+        'margin_top'    => 30,
+        'margin_bottom' => 12,
         'margin_header' => 6,
         'margin_footer' => 6
     ]);
@@ -888,17 +661,11 @@ try {
     $mpdf->SetTitle('Location Zoning & Sign Code Report - ' . ($loc['locationName'] ?? 'Location #' . $locationId));
     $mpdf->SetAuthor('Steve Skye');
 
-    // 1. Pass styles first so headers/footers inherit stylesheet classes
     $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
-
-    // 2. Set headers and footers
     $mpdf->SetHTMLHeader($headerHtml);
     $mpdf->SetHTMLFooter($footerHtml);
-
-    // 3. Output body HTML
     $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
 
-    // Stream inline to open directly in browser tab
     $mpdf->Output('Location_Zoning_Report_' . $locationId . '.pdf', \Mpdf\Output\Destination::INLINE);
 } catch (\Mpdf\MpdfException $e) {
     http_response_code(500);
