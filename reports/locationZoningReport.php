@@ -90,7 +90,8 @@ try {
  */
 function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
 {
-    $apiKey = getenv('OPENAI_API_KEY') ?: $_ENV['OPENAI_API_KEY'] ?? '';
+    // Use the same environment accessor as askOpenAI.php
+    $apiKey = skyesoftGetEnv('OPENAI_API_KEY') ?? '';
     if (empty($apiKey)) {
         throw new RuntimeException('OPENAI_API_KEY environment variable is missing.');
     }
@@ -102,8 +103,14 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
             ['role' => 'user', 'content' => $userPrompt]
         ],
         'response_format' => ['type' => 'json_object'],
-        'temperature' => 0.1
+        'temperature' => 0.1,
+        'max_tokens' => 5000
     ];
+
+    $encodedPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    if ($encodedPayload === false) {
+        throw new RuntimeException('Unable to encode the OpenAI request payload.');
+    }
 
     $ch = curl_init('https://api.openai.com/v1/chat/completions');
     curl_setopt_array($ch, [
@@ -113,8 +120,9 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
             'Content-Type: application/json',
             'Authorization: Bearer ' . $apiKey
         ],
-        CURLOPT_POSTFIELDS => json_encode($payload),
-        CURLOPT_TIMEOUT => 45
+        CURLOPT_POSTFIELDS => $encodedPayload,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 90
     ]);
 
     $response = curl_exec($ch);
@@ -130,6 +138,11 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
     }
 
     $responseData = json_decode($response, true);
+    $finishReason = $responseData['choices'][0]['finish_reason'] ?? null;
+    if ($finishReason === 'length') {
+        throw new RuntimeException('OpenAI response was truncated before the JSON analysis was complete.');
+    }
+
     $content = $responseData['choices'][0]['message']['content'] ?? null;
     if (!$content) {
         throw new RuntimeException('OpenAI response missing message content.');
@@ -144,6 +157,26 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
 }
 
 /**
+ * Confirm that an AI result uses the current report schema.
+ */
+function isUsableSignCodeAnalysis(array $analysis): bool
+{
+    return isset(
+        $analysis['analysisStatus'],
+        $analysis['ordinance'],
+        $analysis['attachedSigns'],
+        $analysis['detachedSigns'],
+        $analysis['findings'],
+        $analysis['recommendedNextSteps']
+    )
+        && is_array($analysis['ordinance'])
+        && is_array($analysis['attachedSigns'])
+        && is_array($analysis['detachedSigns'])
+        && is_array($analysis['findings'])
+        && is_array($analysis['recommendedNextSteps']);
+}
+
+/**
  * Perform sign code analysis using jurisdiction local filesystem assets and cached database entries.
  */
 function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = false): array
@@ -154,15 +187,10 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
     }
     $cacheFile = $cacheDir . '/location_' . $loc['locationId'] . '.json';
 
-    if (!$forceRefresh && file_exists($cacheFile)) {
-        $cached = json_decode((string)file_get_contents($cacheFile), true);
-        if (is_array($cached)) {
-            return $cached;
-        }
-    }
-
     // Determine jurisdiction path
-    $jurisdictionSlug = strtolower(trim($loc['locationJurisdiction'] ?? 'phoenix'));
+    $jurisdictionSlug = strtolower(trim((string)($loc['locationJurisdiction'] ?? 'phoenix')));
+    $jurisdictionSlug = preg_replace('/[^a-z0-9]+/', '-', $jurisdictionSlug);
+    $jurisdictionSlug = trim((string)$jurisdictionSlug, '-');
     $jurisdictionDir = __DIR__ . '/../data/authoritative/jurisdictions/' . $jurisdictionSlug;
 
     if (!is_dir($jurisdictionDir)) {
@@ -182,6 +210,33 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
 
     $signCodeJson = file_get_contents($signCodeJsonPath);
     $promptTemplate = file_get_contents($promptPath);
+
+    if ($signCodeJson === false || json_decode($signCodeJson, true) === null) {
+        throw new RuntimeException('The jurisdiction signCode.json is missing or invalid.');
+    }
+    if ($promptTemplate === false || trim($promptTemplate) === '') {
+        throw new RuntimeException('The sign-code analysis prompt is empty or unreadable.');
+    }
+
+    // Invalidate old or incomplete results when governed inputs change
+    $cacheVersion = hash('sha256', implode('|', [
+        (string)$loc['locationId'],
+        (string)($loc['zoningCode'] ?? ''),
+        (string)($loc['zoningVerifiedAt'] ?? ''),
+        hash('sha256', $signCodeJson),
+        hash('sha256', $promptTemplate)
+    ]));
+
+    if (!$forceRefresh && file_exists($cacheFile)) {
+        $cached = json_decode((string)file_get_contents($cacheFile), true);
+        if (
+            is_array($cached)
+            && ($cached['_cacheVersion'] ?? '') === $cacheVersion
+            && isUsableSignCodeAnalysis($cached)
+        ) {
+            return $cached;
+        }
+    }
 
     // Context payloads
     $locationDataJson = json_encode([
@@ -218,12 +273,25 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
         $promptTemplate
     );
 
+    if (preg_match('/\{\{[A-Z0-9_]+\}\}/', $userPrompt, $unresolved)) {
+        throw new RuntimeException('Unresolved prompt placeholder: ' . $unresolved[0]);
+    }
+
     $systemPrompt = "You are the Skyesoft Sign Code Report Analyst. Perform regulatory sign code analysis and return strict JSON adhering to prompt schema.";
 
     $analysisResult = callOpenAIForSignCode($systemPrompt, $userPrompt);
 
+    if (!isUsableSignCodeAnalysis($analysisResult)) {
+        throw new RuntimeException('OpenAI returned JSON that does not match the current sign-code report schema.');
+    }
+
+    $analysisResult['_cacheVersion'] = $cacheVersion;
+
     // Save cache locally
-    file_put_contents($cacheFile, json_encode($analysisResult, JSON_PRETTY_PRINT));
+    $cacheJson = json_encode($analysisResult, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    if ($cacheJson === false || file_put_contents($cacheFile, $cacheJson, LOCK_EX) === false) {
+        throw new RuntimeException('The completed sign-code analysis could not be cached.');
+    }
 
     return $analysisResult;
 }
@@ -233,7 +301,7 @@ $signCodeAnalysis = [];
 $analysisError = null;
 try {
     $signCodeAnalysis = getOrRunSignCodeAnalysis($db, $loc, $forceRefresh);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Sign Code Analysis execution failed: ' . $e->getMessage());
     $analysisError = $e->getMessage();
 }
@@ -350,6 +418,8 @@ if (!empty($attachedSigns['calculation']['displayedResult'])) {
     $attachedAreaDisplay = $attachedSigns['calculation']['displayedResult'];
 } elseif (isset($attachedSigns['maximumAreaSquareFeet'])) {
     $attachedAreaDisplay = $attachedSigns['maximumAreaSquareFeet'] . ' sq ft max';
+} elseif (!empty($attachedSigns['allowanceBasis'])) {
+    $attachedAreaDisplay = $attachedSigns['allowanceBasis'];
 }
 
 // Calculate display text for Height/Projection
@@ -386,6 +456,28 @@ if (isset($signCodeAnalysis['findings']) && is_array($signCodeAnalysis['findings
                 'citationText' => $finding['citationText'] ?? null
             ];
         }
+    }
+}
+
+// Fall back to structured general requirements when findings omit a category
+foreach ($generalReqs as $requirement) {
+    $requirementText = $requirement['requirement'] ?? null;
+    if (!$requirementText) {
+        continue;
+    }
+
+    $searchText = strtolower((string)$requirementText);
+    if ($illuminationRule === null && preg_match('/illumin|light|brightness/', $searchText)) {
+        $illuminationRule = [
+            'text' => $requirementText,
+            'citationText' => $requirement['citationText'] ?? null
+        ];
+    }
+    if ($permitRule === null && preg_match('/permit|approval|application/', $searchText)) {
+        $permitRule = [
+            'text' => $requirementText,
+            'citationText' => $requirement['citationText'] ?? null
+        ];
     }
 }
 
@@ -501,6 +593,10 @@ $css = '
     .unverified {
         color: #888888;
         font-style: italic;
+    }
+    .analysis-error {
+        color: #9b1c1c;
+        font-weight: bold;
     }
 
     /* Magnolia Blue Callout Box */
@@ -636,6 +732,16 @@ ob_start();
 <div class="section-block">
     <?= buildReportSectionHeading('Sign Ordinance Summary', 'scroll.png') ?>
     <table class="data-table">
+        <tr>
+            <th>Analysis Status</th>
+            <td>
+                <?php if ($analysisError !== null): ?>
+                    <span class="analysis-error">AI sign-code analysis could not be completed. Review the server error log.</span>
+                <?php else: ?>
+                    <?= displayValue(ucwords(str_replace('_', ' ', (string)($signCodeAnalysis['analysisStatus'] ?? 'complete')))) ?>
+                <?php endif; ?>
+            </td>
+        </tr>
         <tr>
             <th>Sign Code Jurisdiction</th>
             <td><?= displayValue($loc['locationJurisdiction']) ?></td>
