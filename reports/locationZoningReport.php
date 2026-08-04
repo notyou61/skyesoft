@@ -25,7 +25,7 @@ if (!$locationId) {
 // -------------------------------------------------------------------------
 try {
     $stmt = $db->prepare("
-        SELECT 
+        SELECT
             l.locationId,
             l.locationEntityId,
             l.locationName,
@@ -39,17 +39,32 @@ try {
             l.locationParcelNumberRaw,
             l.locationJurisdiction,
             l.locationCounty,
-            l.locationZone,
             l.locationIsBilling,
             l.locationIsNotValid,
+
+            p.ownerName,
+            p.subdivision,
+            p.lotSize,
+            p.yearBuilt,
+            p.zoningCode,
+            p.zoningDescription,
+            p.zoningSource,
+            p.zoningVerifiedAt,
+            p.source,
+            p.confidence,
+
             e.entityId,
             e.entityName,
             e.entityType,
             e.entityStatus
+
         FROM tblLocations l
-        LEFT JOIN tblEntities e ON l.locationEntityId = e.entityId
+        LEFT JOIN tblEntities e
+            ON l.locationEntityId = e.entityId
+        LEFT JOIN tblLocationParcelDetails p
+            ON p.locationId = l.locationId
         WHERE l.locationId = :locationId
-        LIMIT 1
+        LIMIT 1;
     ");
     $stmt->execute([':locationId' => $locationId]);
     $loc = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -68,9 +83,6 @@ try {
 // 3. Data Formatting & Helpers
 // -------------------------------------------------------------------------
 
-/**
- * Display helper supporting scalar types with htmlspecialchars encoding.
- */
 /**
  * Display helper supporting scalar types with htmlspecialchars encoding.
  */
@@ -137,6 +149,12 @@ if ($streetLine !== '' && $cityStateZip !== '') {
     $fullAddress = $streetLine . ', ' . $cityStateZip;
 } else {
     $fullAddress = $streetLine !== '' ? $streetLine : $cityStateZip;
+}
+
+// Format verification date using Unix timestamp integer
+$verifiedAtFormatted = null;
+if (!empty($loc['zoningVerifiedAt'])) {
+    $verifiedAtFormatted = date('F j, Y', (int)$loc['zoningVerifiedAt']);
 }
 
 // Christy Signs Logo (Local Filesystem Path)
@@ -333,6 +351,22 @@ ob_start();
             <th>County</th>
             <td><?= displayValue($loc['locationCounty']) ?></td>
         </tr>
+        <tr>
+            <th>Owner</th>
+            <td><?= displayValue($loc['ownerName']) ?></td>
+        </tr>
+        <tr>
+            <th>Subdivision</th>
+            <td><?= displayValue($loc['subdivision']) ?></td>
+        </tr>
+        <tr>
+            <th>Lot Size</th>
+            <td><?= displayValue($loc['lotSize']) ?></td>
+        </tr>
+        <tr>
+            <th>Year Built</th>
+            <td><?= displayValue($loc['yearBuilt']) ?></td>
+        </tr>
     </table>
 </div>
 
@@ -342,15 +376,23 @@ ob_start();
     <table class="data-table">
         <tr>
             <th>Zoning District</th>
-            <td><?= displayValue($loc['locationZone']) ?></td>
-        </tr>
-        <tr>
-            <th>Overlay / Special District</th>
-            <td><?= displayValue(null) ?></td>
+            <td><?= displayValue($loc['zoningCode']) ?></td>
         </tr>
         <tr>
             <th>District Description</th>
-            <td><?= displayValue(null) ?></td>
+            <td><?= displayValue($loc['zoningDescription']) ?></td>
+        </tr>
+        <tr>
+            <th>Zoning Source</th>
+            <td><?= displayValue($loc['zoningSource']) ?></td>
+        </tr>
+        <tr>
+            <th>Verified</th>
+            <td><?= displayValue($verifiedAtFormatted) ?></td>
+        </tr>
+        <tr>
+            <th>Confidence</th>
+            <td><?= displayValue(isset($loc['confidence']) && $loc['confidence'] !== '' ? $loc['confidence'] . '%' : null) ?></td>
         </tr>
     </table>
 </div>
@@ -408,7 +450,7 @@ ob_start();
 <!-- 5. Sources and Disclaimers -->
 <div class="section-block" style="margin-top: 10px;">
     <p style="font-size: 7.5pt; color: #666666; line-height: 1.25; margin: 0;">
-        <strong>Sources &amp; Review Qualifications:</strong> Information shown is based on the current Skyesoft location record. Zoning and sign-code requirements marked “Not Yet Verified” require jurisdictional research before they may be relied upon for design or permitting.
+        <strong>Sources &amp; Review Qualifications:</strong> Information shown is based on the current Skyesoft location record together with parcel information stored in the Skyesoft parcel database. Zoning and sign-code requirements should be verified with the governing jurisdiction before design or permitting.
     </p>
 </div>
 <?php
