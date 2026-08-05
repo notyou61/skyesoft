@@ -39,6 +39,7 @@ $adotFunctionalUrl = 'https://services6.arcgis.com/clPWQMwZfdWn4MQZ/arcgis/rest/
 
 $locationId = requestInteger('locationId', null);
 $parcelDetailsId = requestInteger('parcelDetailsId', null);
+$afterParcelDetailsId = requestInteger('afterParcelDetailsId', null);
 $limit = requestInteger('limit', $defaultLimit);
 $offset = requestInteger('offset', 0);
 $writeRequested = requestBoolean('write', false);
@@ -357,6 +358,23 @@ function normalizeStreetName($streetName)
 }
 
 /**
+ * Identify named GIS features that are not public roadway frontages.
+ */
+function isExcludedStreetCandidate($streetName)
+{
+    $name = normalizeStreetName($streetName);
+
+    if ($name === '') return true;
+
+    $excludedNames = array(
+        'ARIZONA CANAL',
+        'MOBILE HOME PARK'
+    );
+
+    return in_array($name, $excludedNames, true);
+}
+
+/**
  * Translate Phoenix street class codes.
  */
 function describePhoenixStreetClass($classCode)
@@ -424,7 +442,14 @@ function describeAdotFunctionalSystem($value, $description)
 /**
  * Load parcel-detail/location records.
  */
-function loadSourceRecords($db, $locationId, $parcelDetailsId, $limit, $offset)
+function loadSourceRecords(
+    $db,
+    $locationId,
+    $parcelDetailsId,
+    $afterParcelDetailsId,
+    $limit,
+    $offset
+)
 {
     $where = array("UPPER(COALESCE(l.locationCounty, '')) = 'MARICOPA'");
     $params = array();
@@ -437,6 +462,12 @@ function loadSourceRecords($db, $locationId, $parcelDetailsId, $limit, $offset)
     if ($parcelDetailsId !== null) {
         $where[] = 'pd.parcelDetailsId = :parcelDetailsId';
         $params[':parcelDetailsId'] = $parcelDetailsId;
+    }
+
+    // Keyset cursor (ignored when an exact parcel is requested).
+    if ($parcelDetailsId === null && $afterParcelDetailsId !== null) {
+        $where[] = 'pd.parcelDetailsId > :afterParcelDetailsId';
+        $params[':afterParcelDetailsId'] = $afterParcelDetailsId;
     }
 
     $sql = "SELECT
@@ -528,6 +559,7 @@ function retrieveCountyStreets($envelope, $countyStreetUrl, $spatialReference, $
         $paths = isset($feature['geometry']['paths']) ? $feature['geometry']['paths'] : array();
 
         if ($streetName === '' || empty($paths)) continue;
+        if (isExcludedStreetCandidate($streetName)) continue;
 
         $streets[] = array(
             'objectId' => firstAttribute($attributes, array('OBJECTID')),
@@ -892,12 +924,28 @@ $summary = array(
 );
 
 try {
-    $records = loadSourceRecords($db, $locationId, $parcelDetailsId, $limit, $offset);
+    $records = loadSourceRecords(
+        $db,
+        $locationId,
+        $parcelDetailsId,
+        $afterParcelDetailsId,
+        $limit,
+        $offset
+    );
 } catch (Exception $exception) {
     fail('Unable to load source records.', 500, array('message' => $exception->getMessage()));
 }
 
 $summary['sourceRecords'] = count($records);
+$sourceParcelDetailsIds = array_map(
+    function ($record) {
+        return (int)$record['parcelDetailsId'];
+    },
+    $records
+);
+$nextAfterParcelDetailsId = empty($sourceParcelDetailsIds)
+    ? $afterParcelDetailsId
+    : max($sourceParcelDetailsIds);
 
 foreach ($records as $record) {
     $summary['locationsProcessed']++;
@@ -1037,6 +1085,7 @@ outputJson(array(
     'filters' => array(
         'locationId' => $locationId,
         'parcelDetailsId' => $parcelDetailsId,
+        'afterParcelDetailsId' => $afterParcelDetailsId,
         'limit' => $limit,
         'offset' => $offset,
         'includeEvidence' => $includeEvidence,
@@ -1053,6 +1102,11 @@ outputJson(array(
         'regionalClassificationSource' => 'ADOT 2024 Functional System'
     ),
     'summary' => $summary,
+    'batch' => array(
+        'sourceParcelDetailsIds' => $sourceParcelDetailsIds,
+        'nextAfterParcelDetailsId' => $nextAfterParcelDetailsId,
+        'complete' => count($records) === 0
+    ),
     'results' => $results,
     'exceptions' => $exceptions,
     'startedAt' => $startedAt,
