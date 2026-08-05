@@ -4,7 +4,7 @@
             "icon": 58,
             "text": "Skyesoft Codex Meta"
         },
-        "version": "1.1.1",
+        "version": "1.1.2",
         "purpose": {
             "icon": 6,
             "text": "Defines what the Codex is, how it governs Skyesoft, and how AI interacts with human-approved doctrine."
@@ -6206,6 +6206,314 @@
                     "Operational identity and parcel intelligence intentionally remain separated.",
                     "The architecture supports future AI-driven zoning and sign ordinance analysis.",
                     "Phase 1 zoning intentionally stores minimal normalized zoning intelligence."
+                ]
+            },
+            "gisVerifiedStreetFrontageStandard": {
+                "title": {
+                    "icon": 15,
+                    "text": "GIS-Verified Street Frontage Standard"
+                },
+                "tier": 2,
+                "type": "Relational GIS & Street Frontage Intelligence Standard",
+                "hierarchyOrder": 7,
+                "preamble": {
+                    "text": "Defines the county-wide GIS architecture governing parcel street-frontage identification, measurement, roadway classification, jurisdictional interpretation, verification, storage, and zoning-report use within Skyesoft. This Standard extends the ELC Parcel & Zoning Architecture Standard by treating each frontage as a separate parcel-related fact and by distinguishing reproducible GIS verification from survey certification."
+                },
+                "purpose": {
+                    "icon": 6,
+                    "text": "Establish a scalable Maricopa County frontage-resolution model that identifies every street abutting a parcel, calculates each qualifying frontage from authoritative government geometry, enriches it with roadway classification, stores it without duplication, and makes the result available for preliminary zoning and sign-code analysis."
+                },
+                "dependsOn": [
+                    "elcParcelZoningArchitecture"
+                ],
+                "corePrinciples": {
+                    "rules": [
+                        "Street frontage is parcel-related intelligence and must remain separate from operational location identity.",
+                        "One parcel or operational location may have zero, one, or multiple street frontages.",
+                        "Each qualifying street frontage must be stored as a separate relational record.",
+                        "Frontage geometry and street classification are separate resolution concerns.",
+                        "A valid frontage measurement must not be rejected solely because jurisdiction-specific road-tier mapping is unavailable.",
+                        "Authoritative government GIS sources must be preferred over inferred, commercial, or address-only sources.",
+                        "GIS-Verified means reproducible from authoritative mapped geometry; it does not mean survey-certified.",
+                        "No unresolved or ambiguous frontage may be presented as verified.",
+                        "Routine office-based GIS analysis may replace measuring-wheel collection only when all verification rules pass.",
+                        "Field or survey verification remains required when geometry conflicts, parcel conditions are ambiguous, or the jurisdiction requires certified dimensions."
+                    ]
+                },
+                "frontageModel": {
+                    "description": "Defines one-to-many street-frontage intelligence related to operational locations and parcel-detail records.",
+                    "table": "tblLocationFrontages",
+                    "rules": [
+                        "tblLocationFrontages stores one record for each resolved street frontage.",
+                        "locationId identifies the related operational location.",
+                        "parcelDetailsId identifies the parcel-detail record used for the calculation.",
+                        "Corner and through parcels may produce multiple frontage records.",
+                        "A failed calculation must produce an exception rather than a blank or invented frontage record.",
+                        "Rerunning the resolver must update the same parcel-and-street record rather than create a duplicate.",
+                        "Tenant and suite locations inherit parcel frontage for zoning analysis; parcel frontage must not be represented as storefront width."
+                    ],
+                    "identity": {
+                        "primaryKey": "frontageId",
+                        "idempotentKey": [
+                            "parcelDetailsId",
+                            "streetName"
+                        ]
+                    },
+                    "fields": {
+                        "streetName": {
+                            "description": "Canonical name of the street abutting the parcel"
+                        },
+                        "frontageLengthFeet": {
+                            "description": "GIS-calculated frontage length in feet"
+                        },
+                        "frontageMethod": {
+                            "description": "Named geometry method used to produce the frontage measurement"
+                        },
+                        "streetClassCode": {
+                            "description": "Source roadway-classification code"
+                        },
+                        "streetClassification": {
+                            "description": "Human-readable roadway classification"
+                        },
+                        "roadTier": {
+                            "description": "Jurisdiction-specific sign-code road tier when a governed mapping exists"
+                        },
+                        "parcelSource": {
+                            "description": "Authoritative source of parcel geometry"
+                        },
+                        "streetSource": {
+                            "description": "Authoritative source of roadway geometry or classification"
+                        },
+                        "parcelSourceObjectId": {
+                            "description": "Source-system identifier for the parcel feature"
+                        },
+                        "streetSourceObjectId": {
+                            "description": "Source-system identifier for the roadway feature"
+                        },
+                        "verificationStatus": {
+                            "description": "Controlled verification state of the frontage result"
+                        },
+                        "confidence": {
+                            "description": "Resolver confidence score from 0 through 100"
+                        },
+                        "requiresManualReview": {
+                            "description": "Boolean review flag for unresolved or ambiguous evidence"
+                        },
+                        "verifiedAt": {
+                            "description": "Unix timestamp when verification was completed"
+                        }
+                    }
+                },
+                "relationshipModel": {
+                    "description": "Defines how operational locations, parcel intelligence, and street frontages relate.",
+                    "structure": [
+                        "tblLocations",
+                        "tblLocationParcelDetails",
+                        "tblLocationFrontages"
+                    ],
+                    "rules": [
+                        "tblLocations remains the source of operational location identity.",
+                        "tblLocationParcelDetails remains the source of parcel-wide assessor and zoning intelligence.",
+                        "tblLocationFrontages remains the source of per-street frontage and roadway intelligence.",
+                        "Frontage resolution must not overwrite operational location or parcel identity fields.",
+                        "Multiple operational locations may retain separate frontage records even when they reference the same physical parcel.",
+                        "Parcel-wide facts must not be duplicated inside tblLocationFrontages."
+                    ]
+                },
+                "geographicScope": {
+                    "primaryCoverage": "All addresses and parcels within Maricopa County, Arizona",
+                    "rules": [
+                        "Phoenix is a canonical validation case and must not define the system boundary.",
+                        "The frontage engine must use county-wide parcel and roadway geometry.",
+                        "Municipal adapters may enrich classification but must not control whether frontage geometry can be calculated.",
+                        "Locations outside Maricopa County require a separately governed geographic adapter before automated verification."
+                    ]
+                },
+                "sourceHierarchy": {
+                    "parcelGeometry": [
+                        "Maricopa County authoritative parcel GIS"
+                    ],
+                    "streetGeometry": [
+                        "Maricopa County authoritative street-centerline GIS"
+                    ],
+                    "streetClassification": [
+                        "Governing jurisdiction authoritative street classification",
+                        "Governing jurisdiction adopted transportation or General Plan mapping",
+                        "MAG or ADOT regional functional classification",
+                        "Manual review"
+                    ],
+                    "ordinanceRoadTier": [
+                        "Jurisdiction mapping governed by signCode.json",
+                        "Manual review when no governed mapping exists"
+                    ],
+                    "rules": [
+                        "Every stored frontage must identify its actual parcel and street sources.",
+                        "Regional roadway classification must not be represented as a municipal classification.",
+                        "A classification fallback may support analysis but must preserve its source and confidence.",
+                        "Road-tier meaning must be determined by the governing jurisdiction rather than by Phoenix rules or a universal assumption."
+                    ]
+                },
+                "measurementModel": {
+                    "analysisSpatialReference": 2223,
+                    "analysisSpatialReferenceName": "NAD83 Arizona Central StatePlane, US survey feet",
+                    "canonicalMethod": "countyParcelBoundaryToCountyStreetCenterline",
+                    "rules": [
+                        "Geometry calculations must be performed in a foot-based projected coordinate system.",
+                        "The stored APN must resolve to the authoritative parcel polygon.",
+                        "Parcel evidence must agree with the operational location coordinates and address evidence.",
+                        "Nearby road centerlines must be evaluated against individual parcel-boundary segments.",
+                        "A frontage candidate must satisfy governed adjacency, parallelism, minimum-length, and confidence thresholds.",
+                        "Adjacent qualifying segments belonging to the same street must be grouped before the final frontage length is stored.",
+                        "Nearby streets that do not geometrically front the parcel must be rejected.",
+                        "Curved, irregular, multi-parcel, conflicting, or otherwise ambiguous conditions must be flagged for review."
+                    ],
+                    "defaultThresholds": {
+                        "streetSearchDistanceFeet": 300,
+                        "frontageMaximumDistanceFeet": 100,
+                        "minimumParallelAlignment": 0.75,
+                        "minimumFrontageFeet": 8
+                    }
+                },
+                "verificationModel": {
+                    "statuses": {
+                        "gis_calculated": {
+                            "description": "A GIS calculation exists but one or more verification requirements remain unresolved."
+                        },
+                        "gis_verified": {
+                            "description": "Authoritative parcel and roadway geometries matched and all governed validation checks passed."
+                        },
+                        "manual_verified": {
+                            "description": "The value was confirmed from an authoritative parcel map, plan, or comparable official record."
+                        },
+                        "field_verified": {
+                            "description": "The value was physically measured or confirmed in the field."
+                        },
+                        "survey_certified": {
+                            "description": "The value is supported by a survey sealed by a registered land surveyor."
+                        }
+                    },
+                    "gisVerifiedRequirements": [
+                        "The stored APN resolves to a matching parcel polygon.",
+                        "The parcel agrees with location coordinates and address evidence.",
+                        "The road is geometrically adjacent to the parcel.",
+                        "The selected parcel edge satisfies the parallel-alignment threshold.",
+                        "The street name is reliably identified.",
+                        "The distance and minimum-frontage thresholds pass.",
+                        "No unresolved contradictory evidence remains."
+                    ],
+                    "rules": [
+                        "Only survey_certified may be described as certified.",
+                        "gis_verified must never be described as a boundary survey.",
+                        "A frontage with unresolved classification may remain gis_verified when the frontage geometry itself passes all requirements.",
+                        "Ambiguous results must use gis_calculated with requiresManualReview set to true.",
+                        "No defensible result must be omitted from storage and included in the resolver exception report."
+                    ]
+                },
+                "resolverModel": {
+                    "implementation": "tools/resolveLocationFrontages.php",
+                    "runtime": "PHP 8.4",
+                    "defaultMode": "dryRun",
+                    "steps": [
+                        "loadLocationAndParcelDetails",
+                        "confirmMaricopaCountyScope",
+                        "resolveAuthoritativeParcelPolygon",
+                        "validateParcelAgainstLocationEvidence",
+                        "retrieveCountyWideStreetCenterlines",
+                        "projectGeometryToEPSG2223",
+                        "evaluateParcelEdgesAgainstRoads",
+                        "identifyAndGroupQualifyingFrontages",
+                        "calculateFrontageLengths",
+                        "resolveBestAvailableStreetClassification",
+                        "mapClassificationToJurisdictionRoadTier",
+                        "applyVerificationRules",
+                        "reportCandidatesAndExceptions",
+                        "conditionallyInsertOrUpdateFrontages"
+                    ],
+                    "operatingModes": {
+                        "dryRun": "Calculates and reports results without database mutation.",
+                        "write": "Explicitly inserts or updates validated results.",
+                        "locationId": "Restricts processing to one operational location.",
+                        "parcelDetailsId": "Restricts processing to one parcel-detail record.",
+                        "limit": "Restricts the number of source records in a controlled batch.",
+                        "offset": "Advances controlled batch processing.",
+                        "includeEvidence": "Includes parcel-edge evidence for technical review."
+                    },
+                    "writeRules": [
+                        "Dry-run mode must be the default.",
+                        "Database writes require an explicit write request and authenticated authority.",
+                        "Writes must be idempotent using parcelDetailsId and streetName.",
+                        "Successful reruns must update existing frontage records rather than duplicate them.",
+                        "No blank frontage record may be created for a failed calculation.",
+                        "Batch summaries must report processed, resolved, verified, review-required, inserted, updated, and error counts."
+                    ]
+                },
+                "reportingModel": {
+                    "displayLabel": "GIS-Verified Street Frontage",
+                    "preferredDisplay": "131 ft along N 33rd Avenue",
+                    "rules": [
+                        "Human-readable zoning reports may round the stored GIS measurement for clear display while retaining the precise database value.",
+                        "The report must identify the street associated with each displayed frontage.",
+                        "Parcel frontage must be labeled distinctly from storefront, building, or tenant-space width.",
+                        "Street classification and road tier must identify their governing source when material to the sign-code analysis.",
+                        "Reports using GIS-Verified values must include the governed GIS disclaimer."
+                    ],
+                    "disclaimer": "Street frontage, parcel boundaries, zoning, jurisdiction, and roadway classifications identified as GIS-Verified are derived from authoritative government GIS records and calculated using mapped parcel and street geometry. These results are intended for preliminary zoning and sign-code analysis. GIS measurements are not a boundary survey and are not certified by a registered land surveyor. Field or survey verification may be required when records conflict, site conditions are ambiguous, or the governing jurisdiction requires certified dimensions."
+                },
+                "canonicalValidation": {
+                    "name": "Christy Signs Frontage Control Case",
+                    "locationId": 1,
+                    "parcelDetailsId": 1,
+                    "apnRaw": "108-03-009E",
+                    "streetName": "N 33RD AVE",
+                    "frontageLengthFeet": 131.38,
+                    "parcelMapDisplayFeet": 131,
+                    "varianceFeet": 0.38,
+                    "distanceToCenterlineFeet": 24.9,
+                    "parallelAlignment": 1,
+                    "streetClassCode": "LO",
+                    "streetClassification": "Local",
+                    "roadTier": "lowVolume",
+                    "verificationStatus": "gis_verified",
+                    "confidence": 100,
+                    "requiresManualReview": false,
+                    "rules": [
+                        "The resolver must continue to reproduce the canonical frontage within reasonable GIS precision.",
+                        "W Flower Street is nearby but must not be selected because it is not a parcel frontage.",
+                        "The stored APN is authoritative for this analysis when conflicting geocoder APNs are diagnostic only.",
+                        "Regression failure against this control case must block unreviewed production rollout."
+                    ]
+                },
+                "databaseRules": {
+                    "rules": [
+                        "tblLocations must not store parcel frontage measurements.",
+                        "tblLocationParcelDetails must not be expanded with repeated per-street frontage fields.",
+                        "tblLocationFrontages must remain one-to-many and frontage-specific.",
+                        "The unique key parcelDetailsId + streetName must prevent duplicate frontage records.",
+                        "Source object identifiers and verification timestamps must be retained for reproducibility.",
+                        "Existing frontage records must be updated when governed source data or calculation evidence changes."
+                    ]
+                },
+                "futureExpansion": {
+                    "description": "Defines planned expansion beyond the initial Maricopa County implementation.",
+                    "plannedCapabilities": [
+                        "Additional Arizona county parcel adapters",
+                        "Additional municipal street-classification adapters",
+                        "Automated jurisdiction road-tier mappings",
+                        "Curved-frontage calculation refinement",
+                        "Multi-parcel frontage aggregation",
+                        "Frontage change detection when government GIS records are revised",
+                        "Zoning-report auto-population from verified frontage records"
+                    ]
+                },
+                "milestone": {
+                    "date": "2026-08-05",
+                    "statement": "Skyesoft can replace routine measuring-wheel frontage collection with office-based, reproducible GIS analysis for ordinary Maricopa County parcels that satisfy this verification Standard."
+                },
+                "notes": [
+                    "This Standard formalizes the separation of frontage geometry, roadway classification, and jurisdictional sign-code interpretation.",
+                    "Phoenix supplied the first municipal classification adapter but is not the boundary of the county-wide resolver.",
+                    "The Christy Signs control case independently reproduced the County parcel-map frontage within 0.38 feet.",
+                    "GIS verification materially improves preliminary zoning analysis while preserving the legal distinction between mapped GIS evidence and a sealed boundary survey."
                 ]
             },
             "systemInitializationStandard": {
