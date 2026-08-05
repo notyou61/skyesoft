@@ -629,11 +629,11 @@ ob_start();
     <table class="data-table">
         <tr>
             <th>Controlling measurement</th>
-            <td><?= displayValue($attached['applicableElevation'] ?? null, 'Applicable building or tenant elevation') ?></td>
+            <td><?= displayValue($attached['applicableElevation'] ?? null, 'Occupied building or tenant elevation width') ?></td>
         </tr>
         <tr>
             <th>Area rate</th>
-            <td><?= displayValue($wallAreaRate) ?> sq. ft. per 1 linear ft.</td>
+            <td><?= displayValue($wallAreaRate) ?> sq. ft. per 1 linear ft. of elevation</td>
         </tr>
         <tr>
             <th>Minimum allowance</th>
@@ -647,22 +647,14 @@ ob_start();
             <th>Standard placement height</th>
             <td>Up to <?= displayValue($wallPlacementHeight) ?> ft. above grade; this is not an absolute height limit</td>
         </tr>
-        <tr>
-            <th>Applicable frontage</th>
-            <td>Measurement required</td>
-        </tr>
-        <tr>
-            <th>Existing attached signs</th>
-            <td>Inventory required</td>
-        </tr>
     </table>
     <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1') ?>
 
     <div class="callout-box">
-        <div class="callout-title">Attached-Sign Calculation</div>
+        <div class="callout-title">Attached-Sign Allowance Formula</div>
         <div class="callout-body">
-            <strong>Allowance Formula:</strong> Greater of <?= displayValue($wallMinimumArea) ?> sq. ft. or elevation frontage × <?= displayValue($wallAreaRate) ?> sq. ft./linear ft., not to exceed <?= displayValue($wallMaximumArea) ?> sq. ft.<br />
-            <strong>Current Result:</strong> <?= displayValue($attached['calculation']['displayedResult'] ?? null, 'Cannot be calculated until the applicable elevation and existing signs are measured.') ?>
+            <strong>Formula:</strong> Greater of <?= displayValue($wallMinimumArea) ?> sq. ft. or elevation width × <?= displayValue($wallAreaRate) ?> sq. ft./linear ft. (capped at <?= displayValue($wallMaximumArea) ?> sq. ft.).<br />
+            <strong>Final Calculation:</strong> Requires physical elevation frontage and inventory of existing signage.
         </div>
     </div>
     
