@@ -645,23 +645,20 @@ ob_start();
         </tr>
         <tr>
             <th>Standard placement height</th>
-            <td>Up to <?= displayValue($wallPlacementHeight) ?> ft. above grade; this is not an absolute height limit</td>
+            <td>Up to <?= displayValue($wallPlacementHeight) ?> ft. above grade (not an absolute maximum height)</td>
         </tr>
     </table>
     <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1') ?>
 
     <div class="callout-box">
-        <div class="callout-title">Attached-Sign Allowance Formula</div>
+        <div class="callout-title">Attached-Sign Allowance Rules & Controls</div>
         <div class="callout-body">
             <strong>Formula:</strong> Greater of <?= displayValue($wallMinimumArea) ?> sq. ft. or elevation width × <?= displayValue($wallAreaRate) ?> sq. ft./linear ft. (capped at <?= displayValue($wallMaximumArea) ?> sq. ft.).<br />
+            <strong>Placement / Roofline Controls:</strong> When placed above <?= displayValue($wallPlacementHeight) ?> ft., the top of the sign must remain below the roofline by at least 1/2 of the sign's vertical height.<br />
             <strong>Final Calculation:</strong> Requires physical elevation frontage and inventory of existing signage.
         </div>
     </div>
-    
-    <div class="note-text">
-        <em>Placement / Roofline Controls:</em> Signs may be placed up to 25 ft. above grade[cite: 3]. When placed above 25 ft., the top of the sign must remain below the roofline by at least 1/2 of the sign's vertical height[cite: 3].
-        <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1; §705.D.3.i, when applicable') ?>
-    </div>
+    <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1; §705.D.3.i') ?>
 </div>
 
 <!-- 4. Detached Sign Allowance -->
