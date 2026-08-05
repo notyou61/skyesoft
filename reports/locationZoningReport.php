@@ -395,13 +395,17 @@ function loadReportSignCode(array $loc): array
 /**
  * Format a dimensional value without inventing a value when none exists.
  */
-function formatDimension($value, string $unit): string
+function formatDimension(mixed $value, string $unit): string
 {
     if ($value === null || $value === '') {
         return '—';
     }
 
-    return htmlspecialchars((string)$value . ' ' . $unit, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars(
+        (string)$value . ' ' . $unit,
+        ENT_QUOTES,
+        'UTF-8'
+    );
 }
 
 // APN Fallback logic
