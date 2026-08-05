@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "artifactType": "jurisdictionalSignCode",
   "jurisdiction": {
     "id": "phoenix-az",
@@ -18,6 +18,69 @@
     "currentThroughDate": "2025-12-03",
     "retrievedDate": "2026-08-04",
     "currencyNotice": "The City Clerk's Office maintains the official version. Check for ordinances adopted after the stated currency date before relying on this artifact."
+  },
+  "sources": {
+    "regulatoryAuthority": [
+      {
+        "id": "phoenix-zo-705",
+        "title": "Phoenix Zoning Ordinance Section 705 - Signs",
+        "status": "controlling",
+        "localPdf": "signOrdinance.pdf",
+        "currentThroughOrdinance": "G-7461",
+        "currentThroughDate": "2025-12-03"
+      },
+      {
+        "id": "phoenix-fee-schedule-2026",
+        "title": "City of Phoenix Planning and Development Department Fee Schedule",
+        "status": "controlling-for-fees",
+        "localPdf": "sources/phoenix-pdd-fee-schedule-2026.pdf",
+        "currentThroughOrdinance": "G-7465",
+        "effectiveYear": 2026,
+        "effectiveDate": "2026-01-20"
+      }
+    ],
+    "proceduralReferences": [
+      {
+        "id": "phoenix-sign-faq-2022",
+        "title": "City of Phoenix Sign FAQ",
+        "publicationYear": 2022,
+        "status": "secondary",
+        "localPdf": "sources/phoenix-sign-faq-2022.pdf",
+        "usageNotice": "Use for procedural context only; verify dimensional rules, engineering thresholds, fees, and current procedure against controlling sources."
+      },
+      {
+        "id": "phoenix-sign-submittal-checklist-2013",
+        "title": "Sign Permit Submittal Checklist",
+        "publicationYear": 2013,
+        "status": "secondary",
+        "localPdf": "sources/phoenix-sign-permit-submittal-checklist-2013.pdf",
+        "usageNotice": "Useful drawing and field-verification checklist; confirm current submittal procedure before filing."
+      },
+      {
+        "id": "phoenix-sign-design-review-2012",
+        "title": "Sign Design Review Handout",
+        "publicationYear": 2012,
+        "status": "secondary",
+        "localPdf": "sources/phoenix-sign-design-review-handout-2012.pdf",
+        "usageNotice": "Supporting design guidance only; not primary ordinance authority."
+      }
+    ],
+    "historicalReferences": [
+      {
+        "id": "phoenix-general-sign-information-2019",
+        "title": "General Sign Information",
+        "publicationYear": 2019,
+        "status": "historical",
+        "localPdf": "sources/phoenix-general-sign-information-2019.pdf"
+      },
+      {
+        "id": "phoenix-sign-video-transcript",
+        "title": "City of Phoenix Signs Information Video Transcript",
+        "status": "general-public-explanation",
+        "usageNotice": "Do not use pandemic banner relief, stated fees, or stated review times as current requirements."
+      }
+    ],
+    "conflictRule": "When sources conflict, apply the current ordinance for regulatory requirements and the current fee schedule for fees. Secondary and historical sources may explain procedure but may not override a controlling source."
   },
   "governance": {
     "status": "reviewed-draft",
@@ -54,7 +117,15 @@
     "distanceToSingleFamilyResidentialFeet",
     "existingSignInventory",
     "specialDistricts",
-    "approvedComprehensiveSignPlan"
+    "approvedComprehensiveSignPlan",
+    "occupiedElevationWidthFeet",
+    "existingAttachedSignAreaSquareFeet",
+    "existingDetachedSignCountByFrontage",
+    "distanceToRooflineFeet",
+    "distanceToNearestDrivewayFeet",
+    "distanceToPropertyLineFeet",
+    "sightDistanceTriangle",
+    "nearbyUtilities"
   ],
   "classifications": {
     "landUseCategories": {
@@ -218,8 +289,9 @@
     "designReviewNotation": "Values in designReviewMaximum represent the parenthetical allowances in Table D-1.",
     "commercialIndustrial": {
       "wall": {
-        "maximumHeightFeet": 25,
-        "rooflineClearanceRule": "The top must be no closer to the roofline than one-half the vertical dimension of the sign unless another approved provision applies.",
+        "standardPlacementHeightFeet": 25,
+        "standardPlacementRule": "A wall sign may be placed up to 25 feet above grade. Above 25 feet, Table D-1 roofline clearance and other applicable high-wall-sign provisions control; 25 feet is not an absolute maximum height.",
+        "rooflineClearanceRule": "When the sign is above 25 feet, the top must remain below the roofline by at least one-half the vertical dimension of the sign unless another approved provision applies.",
         "areaFormula": {"squareFeetPerLinearFootOfElevation": 1, "minimumSquareFeet": 50, "maximumSquareFeet": 500},
         "citation": {"section": "705.D.1, Table D-1", "pdfPage": null}
       },
@@ -230,7 +302,7 @@
           "highVolumePrimary": {"asOfRight": {"maximumHeightFeet": 16, "maximumAreaSquareFeet": 110}, "designReviewMaximum": {"maximumHeightFeet": 20, "maximumAreaSquareFeet": 150}},
           "lowVolumePrimary": {"asOfRight": {"maximumHeightFeet": 12, "maximumAreaSquareFeet": 80}, "designReviewMaximum": {"maximumHeightFeet": 15, "maximumAreaSquareFeet": 110}},
           "highVolumeSecondary": {"asOfRight": {"maximumHeightFeet": 12, "maximumAreaSquareFeet": 80}, "designReviewMaximum": {"maximumHeightFeet": 15, "maximumAreaSquareFeet": 110}},
-          "lowVolumeSecondary": {"asOfRight": {"maximumHeightFeet": null, "maximumAreaSquareFeet": 60}, "designReviewMaximum": {"maximumHeightFeet": 10, "maximumAreaSquareFeet": 80}, "reviewNote": "The source table displays the low-volume secondary height as '(10)'; confirm the as-of-right height during PDF table attestation."}
+          "lowVolumeSecondary": {"asOfRight": {"maximumHeightFeet": 8, "maximumAreaSquareFeet": 60}, "designReviewMaximum": {"maximumHeightFeet": 10, "maximumAreaSquareFeet": 80}}
         },
         "citation": {"section": "705.D.1, Table D-1", "pdfPage": null}
       }
@@ -310,6 +382,74 @@
       "citation": {"section": "705.D.3.i and Table D-1 note 7", "pdfPage": null}
     }
   ],
+  "windowSignRules": [
+    {
+      "id": "PHX-705-WINDOW-001",
+      "topic": "area_and_placement",
+      "result": {
+        "maximumPercentOfEachGroundFloorWindowArea": 30,
+        "deductedFromWallSignAllowance": false,
+        "glassDoorPlacementPermitted": false
+      },
+      "notes": "Apply the current ordinance text and any site-specific restrictions before final determination.",
+      "citation": {"section": "705.C, window-sign provisions", "pdfPage": null}
+    }
+  ],
+  "directionalSignRules": [
+    {
+      "id": "PHX-705-DIRECTIONAL-001",
+      "topic": "driveway_directional",
+      "result": {"maximumSignsPerDriveway": 2, "maximumAreaSquareFeet": 6, "maximumHeightFeet": 3},
+      "notes": "Verify placement, copy, and sight-distance conditions in the current ordinance.",
+      "citation": {"section": "705.C, directional-sign provisions", "pdfPage": null}
+    }
+  ],
+  "permitPreparationRequirements": {
+    "status": "procedural-reference-confirm-current-requirements",
+    "sourceId": "phoenix-sign-submittal-checklist-2013",
+    "wallSigns": [
+      "Length of the occupied building elevation or tenant space",
+      "Elevation drawing showing the proposed sign location",
+      "Distance from the sign to the roofline",
+      "Distance from the sign to each side of the building or tenant elevation",
+      "Height from grade to the top of the sign",
+      "Overall building height",
+      "Proposed sign dimensions and calculated area",
+      "Installation, attachment, and electrical details"
+    ],
+    "groundSigns": [
+      "Leading edge of sign to property line",
+      "Distance from sign to nearest driveway",
+      "Nearby utility locations",
+      "Height measured from adjacent street grade",
+      "Sight-distance triangle",
+      "Existing sign-structure permit number when a structure will be reused",
+      "Linear street frontage of the parcel",
+      "Pole, post, cabinet, and footing dimensions",
+      "Approved site plan showing proposed and existing signs"
+    ]
+  },
+  "administrativeFees": {
+    "authoritySourceId": "phoenix-fee-schedule-2026",
+    "currencyYear": 2026,
+    "estimateNotice": "These are base schedule amounts and are not guaranteed project totals. Additional review, engineering, electrical, inspection, surcharge, or plan-specific fees may apply.",
+    "items": [
+      {"id": "wall-or-similar-sign-permit", "label": "Wall, marquee, projecting, roof, painted-wall, flag, pump, or window sign permit", "amountUsd": 98, "unit": "per sign"},
+      {"id": "ground-or-combination-sign-permit", "label": "Ground or combination sign permit", "amountUsd": 195, "unit": "per sign"},
+      {"id": "additional-ground-cabinet", "label": "Additional cabinet on the same ground-sign structure", "amountUsd": 98, "unit": "each"},
+      {"id": "directional-sign-permit", "label": "Directional sign permit", "amountUsd": 98, "unit": "per sign"},
+      {"id": "temporary-event-sign-permit", "label": "Temporary-event sign permit", "amountUsd": 195, "unit": "per event"},
+      {"id": "sign-plan-review", "label": "Sign plan review", "amountUsd": 195, "unit": "per hour", "minimumHours": 1},
+      {"id": "design-review", "label": "Design Review", "amountUsd": 195, "unit": "per hour", "minimumHours": 1},
+      {"id": "sign-engineering-review", "label": "Sign engineering review", "amountUsd": 195, "unit": "per hour", "minimumHours": 2},
+      {"id": "electrical-sign-review", "label": "Electrical sign review", "amountUsd": 195, "unit": "per hour", "additional": true},
+      {"id": "electrical-component-inspection", "label": "Electrical-component inspection", "amountUsd": 195, "unit": "per sign"},
+      {"id": "comprehensive-sign-plan", "label": "Comprehensive Sign Plan", "amountUsd": 1710, "unit": "application"},
+      {"id": "minor-csp-amendment", "label": "Minor Comprehensive Sign Plan amendment", "amountUsd": 270, "unit": "application"},
+      {"id": "major-csp-amendment", "label": "Major Comprehensive Sign Plan amendment", "amountUsd": 1080, "unit": "application"},
+      {"id": "variance-or-use-permit", "label": "Variance or Use Permit", "amountUsd": 1080, "unit": "application"}
+    ]
+  },
   "flexibilityRules": [
     {
       "id": "PHX-705-FLEX-001",
@@ -327,8 +467,10 @@
   "reportSelection": {
     "alwaysIncludeTopics": ["permit", "engineering", "illumination", "right_of_way"],
     "includeBySignType": {
-      "wall": ["wallSignRules", "identificationSignStandards.commercialIndustrial.wall"],
-      "ground": ["groundSignRules", "identificationSignStandards.commercialIndustrial.ground"],
+      "wall": ["wallSignRules", "identificationSignStandards.commercialIndustrial.wall", "permitPreparationRequirements.wallSigns"],
+      "ground": ["groundSignRules", "identificationSignStandards.commercialIndustrial.ground", "permitPreparationRequirements.groundSigns"],
+      "window": ["windowSignRules"],
+      "directional": ["directionalSignRules"],
       "electronic_message_display": ["electronicMessageDisplayRules"],
       "projecting": ["PHX-705-PROJECTING-001", "PHX-705-ENGINEERING-003"]
     },
