@@ -7,12 +7,12 @@ declare(strict_types=1);
 //  Runtime: PHP 8.4
 // ========================================================================
 
+#region SECTION 0 — Configuration
+
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
 set_time_limit(0);
-
-// #region Configuration
 
 require_once __DIR__ . '/../api/sessionBootstrap.php';
 require_once __DIR__ . '/../api/utils/envLoader.php';
@@ -44,6 +44,10 @@ $offset = requestInteger('offset', 0);
 $writeRequested = requestBoolean('write', false);
 $dryRun = !$writeRequested;
 $includeEvidence = requestBoolean('includeEvidence', false);
+$includeGeometry = requestBoolean('includeGeometry', false);
+
+// Geometry requires edge evidence so rendered frontage segments remain traceable.
+if ($includeGeometry) $includeEvidence = true;
 
 if ($limit !== null && $limit < 0) $limit = $defaultLimit;
 if ($offset === null || $offset < 0) $offset = 0;
@@ -51,9 +55,9 @@ if (PHP_SAPI !== 'cli' && empty($_SESSION['authenticated'])) {
     fail('Authentication is required.', 401, array());
 }
 
-// #endregion
+ #endregion
 
-// #region Request & Output Helpers
+#region SECTION 1 — Request & Output Helpers
 
 /**
  * Return a request value from GET or CLI arguments.
@@ -124,9 +128,9 @@ function fail($message, $statusCode, $details)
     ), $statusCode);
 }
 
-// #endregion
+#endregion
 
-// #region ArcGIS Helpers
+#region SECTION 2 — ArcGIS Helpers
 
 /**
  * Execute an ArcGIS REST request.
@@ -199,9 +203,9 @@ function normalizeParcelNumber($parcelNumber)
     return strtoupper(preg_replace('/[^A-Z0-9]/i', '', (string)$parcelNumber));
 }
 
-// #endregion
+#endregion
 
-// #region Geometry Helpers
+#region SECTION 2 — Geometry Helpers
 
 /**
  * Calculate an envelope surrounding polygon rings.
@@ -304,9 +308,9 @@ function matchEdgeToStreet($edgeStart, $edgeEnd, $paths)
     return $bestMatch;
 }
 
-// #endregion
+#endregion
 
-// #region Street Helpers
+#region SECTION 3 — Street Helpers
 
 /**
  * Build a complete County street name.
@@ -539,9 +543,9 @@ function retrieveCountyStreets($envelope, $countyStreetUrl, $spatialReference, $
     return $streets;
 }
 
-// #endregion
+#endregion
 
-// #region Frontage Resolution
+#region SECTION 4 — Frontage Resolution
 
 /**
  * Calculate frontage groups from parcel and street geometry.
@@ -588,7 +592,9 @@ function calculateFrontages($rings, $streets, $maximumDistance, $minimumAlignmen
                         : round($selectedMatch['distanceFeet'], 2),
                     'parallelAlignment' => $selectedMatch === null
                         ? null
-                        : round($selectedMatch['parallelAlignment'], 4)
+                        : round($selectedMatch['parallelAlignment'], 4),
+                    'start' => array(round((float)$edgeStart[0], 3), round((float)$edgeStart[1], 3)),
+                    'end' => array(round((float)$edgeEnd[0], 3), round((float)$edgeEnd[1], 3))
                 );
             }
 
@@ -863,9 +869,9 @@ function saveFrontage($db, $record, $frontage, $timestamp)
     return 'inserted';
 }
 
-// #endregion
+#endregion
 
-// #region Batch Execution
+#region SECTION 5 — Batch Execution
 
 if (!extension_loaded('curl')) fail('The PHP cURL extension is required.', 500, array());
 
@@ -1002,6 +1008,15 @@ foreach ($records as $record) {
         );
 
         if ($includeEvidence) $result['edgeEvidence'] = $calculation['edgeEvidence'];
+        if ($includeGeometry) {
+            $result['parcelGeometry'] = array(
+                'geometryType' => 'Polygon',
+                'spatialReference' => $analysisSpatialReference,
+                'sourceObjectId' => (string)$parcelObjectId,
+                'rings' => $parcel['rings'],
+                'envelope' => $parcel['envelope']
+            );
+        }
         $results[] = $result;
     } catch (Exception $exception) {
         $summary['errors']++;
@@ -1024,7 +1039,8 @@ outputJson(array(
         'parcelDetailsId' => $parcelDetailsId,
         'limit' => $limit,
         'offset' => $offset,
-        'includeEvidence' => $includeEvidence
+        'includeEvidence' => $includeEvidence,
+        'includeGeometry' => $includeGeometry
     ),
     'configuration' => array(
         'analysisSpatialReference' => $analysisSpatialReference,
@@ -1044,4 +1060,4 @@ outputJson(array(
     'disclaimer' => 'GIS-verified measurements are derived from authoritative government GIS geometry. They are not a boundary survey and are not certified by a registered land surveyor.'
 ), 200);
 
-// #endregion
+#endregion
