@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 // Force PHP error logging to local folder (skyesoft/reports/php-error.log)
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/php-error.log');
 error_reporting(E_ALL);
@@ -106,7 +106,7 @@ function callOpenAIForSignCode(string $systemPrompt, string $userPrompt): array
         (($apiKey !== null && trim($apiKey) !== '') ? 'AVAILABLE' : 'MISSING')
     );
 
-    if ($apiKey === null || trim($apiKey) !== '') {
+    if ($apiKey === null || trim($apiKey) === '') {
         throw new RuntimeException('OPENAI_API_KEY was not loaded.');
     }
 
@@ -215,13 +215,18 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
     }
     $cacheFile = $cacheDir . '/location_' . $loc['locationId'] . '.json';
 
-    $jurisdictionSlug = strtolower(trim((string)($loc['locationJurisdiction'] ?? 'phoenix')));
+    $jurisdictionSlug = strtolower(trim((string)($loc['locationJurisdiction'] ?? '')));
     $jurisdictionSlug = preg_replace('/[^a-z0-9]+/', '-', $jurisdictionSlug);
     $jurisdictionSlug = trim((string)$jurisdictionSlug, '-');
+
+    if ($jurisdictionSlug === '') {
+        throw new RuntimeException('The location jurisdiction must be verified before sign-code analysis.');
+    }
+
     $jurisdictionDir = __DIR__ . '/../data/authoritative/jurisdictions/' . $jurisdictionSlug;
 
     if (!is_dir($jurisdictionDir)) {
-        $jurisdictionDir = __DIR__ . '/../data/authoritative/jurisdictions/phoenix';
+        throw new RuntimeException('No authoritative sign-code package exists for jurisdiction: ' . $jurisdictionSlug);
     }
 
     $signCodeJsonPath = $jurisdictionDir . '/signCode.json';
@@ -361,6 +366,44 @@ function buildReportSectionHeading(string $title): string
     return '<div class="section-heading">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</div>';
 }
 
+/**
+ * Resolve and load the structured sign-code package used by the report.
+ */
+function loadReportSignCode(array $loc): array
+{
+    $jurisdictionSlug = strtolower(trim((string)($loc['locationJurisdiction'] ?? '')));
+    $jurisdictionSlug = preg_replace('/[^a-z0-9]+/', '-', $jurisdictionSlug);
+    $jurisdictionSlug = trim((string)$jurisdictionSlug, '-');
+
+    if ($jurisdictionSlug === '') {
+        return [];
+    }
+
+    $jurisdictionDir = __DIR__ . '/../data/authoritative/jurisdictions/' . $jurisdictionSlug;
+
+    if (!is_dir($jurisdictionDir)) {
+        return [];
+    }
+
+    $signCodePath = $jurisdictionDir . '/signCode.json';
+    $signCodeJson = file_exists($signCodePath) ? file_get_contents($signCodePath) : false;
+    $signCodeData = $signCodeJson !== false ? json_decode($signCodeJson, true) : null;
+
+    return is_array($signCodeData) ? $signCodeData : [];
+}
+
+/**
+ * Format a dimensional value without inventing a value when none exists.
+ */
+function formatDimension($value, string $unit): string
+{
+    if ($value === null || $value === '') {
+        return '—';
+    }
+
+    return htmlspecialchars((string)$value . ' ' . $unit, ENT_QUOTES, 'UTF-8');
+}
+
 // APN Fallback logic
 $parcelNumber = $loc['locationParcelNumberRaw']
     ?: $loc['locationParcelNumber']
@@ -396,7 +439,13 @@ if ($streetLine !== '' && $cityStateZip !== '') {
 
 $verifiedAtFormatted = null;
 if (!empty($loc['zoningVerifiedAt'])) {
-    $verifiedAtFormatted = date('F j, Y', (int)$loc['zoningVerifiedAt']);
+    $verifiedTimestamp = is_numeric($loc['zoningVerifiedAt'])
+        ? (int)$loc['zoningVerifiedAt']
+        : strtotime((string)$loc['zoningVerifiedAt']);
+
+    if ($verifiedTimestamp !== false && $verifiedTimestamp > 0) {
+        $verifiedAtFormatted = date('F j, Y', $verifiedTimestamp);
+    }
 }
 
 $formattedLotSize = null;
@@ -412,6 +461,23 @@ $logoHtml = file_exists($logoPath)
 // Extract dynamic analysis structures
 $attached = $signCodeAnalysis['attachedSigns'] ?? [];
 $detached = $signCodeAnalysis['detachedSigns'] ?? [];
+$signCodeData = loadReportSignCode($loc);
+
+$commercialIndustrial = $signCodeData['identificationSignStandards']['commercialIndustrial'] ?? [];
+$wallStandard = $commercialIndustrial['wall'] ?? [];
+$groundStandard = $commercialIndustrial['ground'] ?? [];
+$groundClassStandards = $groundStandard['streetClassStandards'] ?? [];
+$groundRules = $signCodeData['groundSignRules'] ?? [];
+$citywideRules = $signCodeData['citywideRules'] ?? [];
+$permitPreparation = $signCodeData['permitPreparationRequirements'] ?? [];
+$administrativeFees = $signCodeData['administrativeFees'] ?? [];
+
+$wallFormula = $wallStandard['areaFormula'] ?? [];
+$wallAreaRate = $wallFormula['squareFeetPerLinearFootOfElevation'] ?? 1;
+$wallMinimumArea = $wallFormula['minimumSquareFeet'] ?? 50;
+$wallMaximumArea = $wallFormula['maximumSquareFeet'] ?? 500;
+$wallPlacementHeight = $wallStandard['standardPlacementHeightFeet'] ?? 25;
+$groundSpacing = $groundStandard['minimumSpacingFeet'] ?? null;
 
 $ordinanceTitle = $signCodeAnalysis['ordinance']['title'] ?? 'Phoenix Zoning Ordinance - Signs';
 $ordinanceRef = $signCodeAnalysis['ordinance']['codeReference'] ?? 'ZO Section 705';
@@ -437,6 +503,16 @@ $css = '
     .data-table th, .data-table td { border: 1px solid #ccc; padding: 4px 6px; font-size: 8pt; vertical-align: top; }
     .data-table th { width: 32%; text-align: left; background-color: #f8f9fa; color: #333; font-weight: bold; }
     .data-table td { width: 68%; background-color: #ffffff; color: #111; }
+
+    .matrix-table { width: 100%; border-collapse: collapse; margin: 3px 0; }
+    .matrix-table th, .matrix-table td { border: 1px solid #ccc; padding: 3px 4px; font-size: 7.4pt; text-align: center; vertical-align: middle; }
+    .matrix-table th { background-color: #eef3f8; color: #263d59; font-weight: bold; }
+    .matrix-table td:first-child { text-align: left; font-weight: bold; background-color: #f8f9fa; }
+
+    .two-column-table { width: 100%; border-collapse: separate; border-spacing: 5px 0; margin-left: -5px; margin-right: -5px; }
+    .two-column-table td { width: 50%; vertical-align: top; }
+    .compact-list { margin: 2px 0 3px 0; padding-left: 16px; font-size: 7.5pt; line-height: 1.25; }
+    .compact-list li { margin-bottom: 2px; }
 
     .citation-subtext { font-size: 7pt; color: #4a607a; margin-top: 2px; margin-bottom: 4px; font-style: italic; }
     .unverified { color: #777; font-style: italic; }
@@ -553,19 +629,19 @@ ob_start();
         </tr>
         <tr>
             <th>Area rate</th>
-            <td>1 sq. ft. per 1 linear ft.</td>
+            <td><?= displayValue($wallAreaRate) ?> sq. ft. per 1 linear ft.</td>
         </tr>
         <tr>
             <th>Minimum allowance</th>
-            <td>50 sq. ft.</td>
+            <td><?= displayValue($wallMinimumArea) ?> sq. ft.</td>
         </tr>
         <tr>
             <th>Maximum cap</th>
-            <td>500 sq. ft.</td>
+            <td><?= displayValue($wallMaximumArea) ?> sq. ft.</td>
         </tr>
         <tr>
-            <th>Maximum height</th>
-            <td>25 ft.</td>
+            <th>Standard placement height</th>
+            <td>Up to <?= displayValue($wallPlacementHeight) ?> ft. above grade; this is not an absolute height limit</td>
         </tr>
         <tr>
             <th>Applicable frontage</th>
@@ -581,20 +657,56 @@ ob_start();
     <div class="callout-box">
         <div class="callout-title">Attached-Sign Calculation</div>
         <div class="callout-body">
-            <strong>Allowance Formula:</strong> Greater of 50 sq. ft. or elevation frontage × 1 sq. ft./linear ft., not to exceed 500 sq. ft.<br />
-            <strong>Current Result:</strong> Cannot be calculated until the applicable elevation and existing signs are measured.
+            <strong>Allowance Formula:</strong> Greater of <?= displayValue($wallMinimumArea) ?> sq. ft. or elevation frontage × <?= displayValue($wallAreaRate) ?> sq. ft./linear ft., not to exceed <?= displayValue($wallMaximumArea) ?> sq. ft.<br />
+            <strong>Current Result:</strong> <?= displayValue($attached['calculation']['displayedResult'] ?? null, 'Cannot be calculated until the applicable elevation and existing signs are measured.') ?>
         </div>
     </div>
     
     <div class="note-text">
-        <em>Roofline Controls:</em> Top of sign must remain below roofline by at least 1/2 of vertical sign height. Wall projection and overall height are evaluated separately.
-        <div class="citation-subtext" style="margin-top: 1px;">Authority: Phoenix Zoning Ordinance §705.D.3.b</div>
+        <em>Placement / Roofline Controls:</em> <?= displayValue($wallStandard['standardPlacementRule'] ?? null, 'Above 25 ft., roofline clearance and other high-wall-sign provisions must be evaluated.') ?>
+        <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1; §705.D.3.i, when applicable') ?>
     </div>
 </div>
 
-<!-- 4. Detached Sign Standards -->
+<!-- 4. Detached Sign Allowance -->
 <div class="section-block">
-    <?= buildReportSectionHeading('4. Detached Sign Standards') ?>
+    <?= buildReportSectionHeading('4. Detached Sign Allowance') ?>
+    <table class="matrix-table">
+        <tr>
+            <th rowspan="2" style="width: 30%;">Sign / Street Class</th>
+            <th colspan="2">As of Right</th>
+            <th colspan="2">Design Review Maximum</th>
+        </tr>
+        <tr>
+            <th>Height</th>
+            <th>Area</th>
+            <th>Height</th>
+            <th>Area</th>
+        </tr>
+        <?php
+        $groundLabels = [
+            'freeway' => 'Freeway',
+            'highVolumePrimary' => 'High-volume primary',
+            'lowVolumePrimary' => 'Low-volume primary',
+            'highVolumeSecondary' => 'High-volume secondary',
+            'lowVolumeSecondary' => 'Low-volume secondary'
+        ];
+        foreach ($groundLabels as $groundKey => $groundLabel):
+            $groundRow = $groundClassStandards[$groundKey] ?? [];
+            $asOfRight = $groundRow['asOfRight'] ?? [];
+            $designReview = $groundRow['designReviewMaximum'] ?? [];
+        ?>
+            <tr>
+                <td><?= htmlspecialchars($groundLabel, ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= formatDimension($asOfRight['maximumHeightFeet'] ?? null, 'ft.') ?></td>
+                <td><?= formatDimension($asOfRight['maximumAreaSquareFeet'] ?? null, 'sq. ft.') ?></td>
+                <td><?= formatDimension($designReview['maximumHeightFeet'] ?? null, 'ft.') ?></td>
+                <td><?= formatDimension($designReview['maximumAreaSquareFeet'] ?? null, 'sq. ft.') ?></td>
+            </tr>
+        <?php endforeach; ?>
+    </table>
+    <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1') ?>
+
     <table class="data-table">
         <tr>
             <th>Parcel classification</th>
@@ -621,19 +733,39 @@ ob_start();
             <td>Pending classification</td>
         </tr>
         <tr>
-            <th>Detached sign max height</th>
-            <td>Pending classification</td>
-        </tr>
-        <tr>
             <th>Minimum spacing</th>
-            <td>100 ft., when applicable</td>
+            <td><?= displayValue($groundSpacing, '100') ?> ft., when applicable</td>
         </tr>
         <tr>
             <th>Existing signs</th>
             <td>Inventory required</td>
         </tr>
     </table>
-    <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1; §705.D.2') ?>
+    <?= renderCitation('Phoenix Zoning Ordinance §705.D.2.a–b') ?>
+
+    <div class="callout-box">
+        <div class="callout-title">Detached-Sign Determination</div>
+        <div class="callout-body">
+            <strong>Allowance Basis:</strong> Count and classification depend on parcel use, the separately measured frontage of each street, street classification, and existing detached signs.<br />
+            <strong>Current Result:</strong> <?= displayValue($detached['calculation']['displayedResult'] ?? null, 'The applicable count, maximum area, and maximum height cannot be finalized until those site conditions are verified.') ?><br />
+            <strong>Design Review:</strong> Enhanced values shown above are conditional maximums and are not the ordinary as-of-right allowance.
+        </div>
+        <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1; §705.D.2.a–b') ?>
+    </div>
+
+    <table class="data-table">
+        <tr><th>Single-use: 100 ft. or less</th><td>One secondary identification sign</td></tr>
+        <tr><th>Single-use: over 100–300 ft.</th><td>One primary identification sign</td></tr>
+        <tr><th>Single-use: over 300 ft.</th><td>Same number and sizes as a multiple-use parcel with the same frontage</td></tr>
+        <tr><th>Multiple-use primary signs</th><td>One for the first 300 ft. or portion, plus one for each additional full 300 ft.</td></tr>
+        <tr><th>Multiple-use secondary signs</th><td>One per 150 ft., reduced by primary signs on the same frontage</td></tr>
+    </table>
+    <?= renderCitation('Phoenix Zoning Ordinance §705.D.2.a–b') ?>
+
+    <div class="note-text">
+        <strong>Placement controls:</strong> Verify the permitted yard, property-line/back-of-curb relationship, building separation for signs over 8 ft., sight-distance conditions, required address copy, and the ten-item information limit.
+        <?= renderCitation('Phoenix Zoning Ordinance §705.D.2.f–j') ?>
+    </div>
 </div>
 
 <!-- 5. Additional Requirements -->
@@ -651,11 +783,11 @@ ob_start();
         </tr>
         <tr>
             <th>Engineered plans</th>
-            <td>Required for qualifying wall signs over 100 sq. ft.</td>
+            <td>Threshold depends on sign type: wall signs over 100 sq. ft.; ground/pole signs over 35 sq. ft. and over 6 ft. high; other sign types have separate thresholds and exceptions.</td>
         </tr>
         <tr>
             <td colspan="2" style="border-top: none; padding-top: 0; padding-bottom: 4px;">
-                <?= renderCitation('Phoenix Building Code §105.2') ?>
+                <?= renderCitation('Phoenix Zoning Ordinance §705.B.1.d(1)(a)–(e)') ?>
             </td>
         </tr>
         <tr>
@@ -664,7 +796,7 @@ ob_start();
         </tr>
         <tr>
             <td colspan="2" style="border-top: none; padding-top: 0; padding-bottom: 4px;">
-                <?= renderCitation('Phoenix Zoning Ordinance §705.E.2') ?>
+                <?= renderCitation('Phoenix Zoning Ordinance §705.C.6') ?>
             </td>
         </tr>
         <tr>
@@ -673,7 +805,7 @@ ob_start();
         </tr>
         <tr>
             <td colspan="2" style="border-top: none; padding-top: 0; padding-bottom: 4px;">
-                <?= renderCitation('Phoenix Zoning Ordinance §705.C') ?>
+                <?= renderCitation('Phoenix Zoning Ordinance §705; applicable overlay, stipulation, and approved-plan provisions') ?>
             </td>
         </tr>
         <tr>
@@ -682,15 +814,41 @@ ob_start();
         </tr>
         <tr>
             <td colspan="2" style="border-top: none; padding-top: 0; padding-bottom: 4px;">
-                <?= renderCitation('Phoenix Zoning Ordinance §705.D.3.a') ?>
+                <?= renderCitation('Phoenix Zoning Ordinance §705.B.3.a–b') ?>
             </td>
         </tr>
     </table>
 </div>
 
-<!-- 6. Required Field Information & Next Steps -->
+<!-- 6. Permit Drawing & Field Verification Requirements -->
 <div class="section-block">
-    <?= buildReportSectionHeading('6. Required Field Information') ?>
+    <?= buildReportSectionHeading('6. Permit Drawing & Field Verification Requirements') ?>
+    <table class="two-column-table">
+        <tr>
+            <td>
+                <table class="data-table">
+                    <tr><th colspan="2" style="width: 100%; background-color: #eef3f8; color: #14377c;">Attached Signs</th></tr>
+                    <?php foreach (($permitPreparation['wallSigns'] ?? []) as $requirement): ?>
+                        <tr><td style="width: 100%;"><?= htmlspecialchars((string)$requirement, ENT_QUOTES, 'UTF-8') ?></td></tr>
+                    <?php endforeach; ?>
+                </table>
+            </td>
+            <td>
+                <table class="data-table">
+                    <tr><th colspan="2" style="width: 100%; background-color: #eef3f8; color: #14377c;">Detached Signs</th></tr>
+                    <?php foreach (($permitPreparation['groundSigns'] ?? []) as $requirement): ?>
+                        <tr><td style="width: 100%;"><?= htmlspecialchars((string)$requirement, ENT_QUOTES, 'UTF-8') ?></td></tr>
+                    <?php endforeach; ?>
+                </table>
+            </td>
+        </tr>
+    </table>
+    <div class="citation-subtext">Procedural reference: City of Phoenix Sign Permit Submittal Checklist. Confirm current submittal requirements before filing.</div>
+</div>
+
+<!-- 7. Required Field Information & Next Steps -->
+<div class="section-block">
+    <?= buildReportSectionHeading('7. Required Field Information') ?>
     <ul style="margin: 3px 0 6px 0; padding-left: 18px; font-size: 8pt; color: #222;">
         <li>Applicable building or tenant elevation width</li>
         <li>Existing attached-sign count and total area</li>
@@ -717,9 +875,9 @@ ob_start();
     </div>
 </div>
 
-<!-- 7. Report Basis & Disclaimers -->
+<!-- 8. Report Basis & Disclaimers -->
 <div class="section-block" style="margin-top: 10px;">
-    <?= buildReportSectionHeading('7. Report Basis & Qualifications') ?>
+    <?= buildReportSectionHeading('8. Report Basis & Qualifications') ?>
     <table class="basis-table">
         <tr>
             <td><strong>Analysis Status:</strong> <?= displayValue($analysisError ? 'Analysis Error' : ucwords(str_replace('_', ' ', (string)($signCodeAnalysis['analysisStatus'] ?? 'Partial')))) ?></td>
@@ -732,7 +890,7 @@ ob_start();
     </table>
 
     <p style="font-size: 7.5pt; color: #666666; line-height: 1.25; margin-top: 6px;">
-        <strong>Sources &amp; Review Qualifications:</strong> Information shown is derived from authoritative zoning ordinance specifications and local parcel records. Regulatory citations indicate primary governing provisions. All sign plans and dimensional calculations must be verified with governing jurisdiction officials prior to fabrication and permit application.
+        <strong>Sources &amp; Review Qualifications:</strong> Information shown is derived from structured ordinance data and local parcel records. Regulatory citations identify the underlying ordinance; procedural references do not override current ordinance requirements. Base zoning may be modified by approved plans, stipulations, overlays, special districts, a Comprehensive Sign Plan, or nonconforming conditions. Verify all site measurements, existing signs, citations, and final requirements with the governing jurisdiction before design completion, fabrication, or permit filing.
     </p>
 </div>
 
