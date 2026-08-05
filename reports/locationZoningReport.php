@@ -659,7 +659,7 @@ ob_start();
     </div>
     
     <div class="note-text">
-        <em>Placement / Roofline Controls:</em> <?= displayValue($wallStandard['standardPlacementRule'] ?? null, 'Above 25 ft., roofline clearance and other high-wall-sign provisions must be evaluated.') ?>
+        <em>Placement / Roofline Controls:</em> Signs may be placed up to 25 ft. above grade[cite: 3]. When placed above 25 ft., the top of the sign must remain below the roofline by at least 1/2 of the sign's vertical height[cite: 3].
         <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1; §705.D.3.i, when applicable') ?>
     </div>
 </div>
