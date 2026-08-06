@@ -54,6 +54,7 @@ try {
             l.locationIsNotValid,
 
             p.ownerName,
+            p.parcelDetailsId,
             p.subdivision,
             p.lotSize,
             p.yearBuilt,
@@ -84,6 +85,33 @@ try {
         http_response_code(404);
         die('Location record not found.');
     }
+
+    // Load all resolved street frontages for the parcel
+    $frontageStmt = $db->prepare("
+        SELECT
+            frontageId,
+            streetName,
+            frontageLengthFeet,
+            frontageMethod,
+            streetClassCode,
+            streetClassification,
+            roadwayTier,
+            verificationStatus,
+            confidence,
+            requiresManualReview,
+            parcelSource,
+            streetGeometrySource,
+            verifiedAt
+        FROM tblLocationFrontages
+        WHERE parcelDetailsId = :parcelDetailsId
+        ORDER BY
+            requiresManualReview ASC,
+            streetName ASC;
+    ");
+    $frontageStmt->execute([
+        ':parcelDetailsId' => $loc['parcelDetailsId']
+    ]);
+    $streetFrontages = $frontageStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     http_response_code(500);
     error_log('Database query failed in locationZoningReport.php: ' . $e->getMessage());
@@ -207,7 +235,12 @@ function isUsableSignCodeAnalysis(array $analysis): bool
 /**
  * Perform sign code analysis using jurisdiction local filesystem assets and cached database entries.
  */
-function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = false): array
+function getOrRunSignCodeAnalysis(
+    PDO $db,
+    array $loc,
+    array $streetFrontages,
+    bool $forceRefresh = false
+): array
 {
     $cacheDir = __DIR__ . '/../data/cache/signReports';
     if (!is_dir($cacheDir)) {
@@ -253,6 +286,7 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
         (string)$loc['locationId'],
         (string)($loc['zoningCode'] ?? ''),
         (string)($loc['zoningVerifiedAt'] ?? ''),
+        hash('sha256', (string)json_encode($streetFrontages, JSON_UNESCAPED_SLASHES)),
         hash('sha256', $signCodeJson),
         hash('sha256', $promptTemplate)
     ]));
@@ -282,7 +316,32 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
         'zoningDescription' => $loc['zoningDescription'],
         'zoningSource' => $loc['zoningSource'],
         'zoningVerifiedAt' => $loc['zoningVerifiedAt'],
-        'lotSize' => $loc['lotSize']
+        'lotSize' => $loc['lotSize'],
+        'streetFrontages' => array_map(
+            static function (array $frontage): array {
+                return [
+                    'frontageId' => (int)$frontage['frontageId'],
+                    'streetName' => $frontage['streetName'],
+                    'frontageLengthFeet' => $frontage['frontageLengthFeet'] !== null
+                        ? (float)$frontage['frontageLengthFeet']
+                        : null,
+                    'frontageMethod' => $frontage['frontageMethod'],
+                    'streetClassCode' => $frontage['streetClassCode'],
+                    'streetClassification' => $frontage['streetClassification'],
+                    'roadwayTier' => $frontage['roadwayTier'],
+                    'verificationStatus' => $frontage['verificationStatus'],
+                    'confidence' => $frontage['confidence'] !== null
+                        ? (float)$frontage['confidence']
+                        : null,
+                    'requiresManualReview' => (bool)$frontage['requiresManualReview'],
+                    'parcelSource' => $frontage['parcelSource'],
+                    'streetGeometrySource' => $frontage['streetGeometrySource'],
+                    'verifiedAt' => $frontage['verifiedAt']
+                ];
+            },
+            $streetFrontages
+        ),
+        'streetFrontageNotice' => 'Parcel frontage is not tenant, suite, storefront, or building-elevation width.'
     ], JSON_PRETTY_PRINT);
 
     $projectSignDataJson = json_encode([
@@ -327,7 +386,7 @@ function getOrRunSignCodeAnalysis(PDO $db, array $loc, bool $forceRefresh = fals
 $signCodeAnalysis = [];
 $analysisError = null;
 try {
-    $signCodeAnalysis = getOrRunSignCodeAnalysis($db, $loc, $forceRefresh);
+    $signCodeAnalysis = getOrRunSignCodeAnalysis($db, $loc, $streetFrontages, $forceRefresh);
 } catch (Throwable $e) {
     error_log(
         '[locationZoningReport] Sign-code analysis failed | ' .
@@ -707,7 +766,24 @@ ob_start();
         </tr>
         <tr>
             <th>Street frontage</th>
-            <td>Measurement required</td>
+            <td>
+                <?php if (!empty($streetFrontages)): ?>
+                    <?php foreach ($streetFrontages as $frontage): ?>
+                        <div>
+                            <strong><?= displayValue($frontage['streetName'] ?? null) ?>:</strong>
+                            <?= displayValue($frontage['frontageLengthFeet'] ?? null) ?> ft.
+                            <?php if (!empty($frontage['streetClassification'])): ?>
+                                — <?= displayValue($frontage['streetClassification']) ?>
+                            <?php endif; ?>
+                            <?php if (!empty($frontage['requiresManualReview'])): ?>
+                                <span class="unverified">(manual review required)</span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <span class="unverified">No defensible parcel frontage resolved</span>
+                <?php endif; ?>
+            </td>
         </tr>
         <tr>
             <th>Street classification</th>
