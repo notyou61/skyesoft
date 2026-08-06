@@ -95,12 +95,12 @@ try {
             frontageMethod,
             streetClassCode,
             streetClassification,
-            roadwayTier,
+            roadTier AS roadwayTier,
             verificationStatus,
             confidence,
             requiresManualReview,
             parcelSource,
-            streetGeometrySource,
+            streetSource AS streetGeometrySource,
             verifiedAt
         FROM tblLocationFrontages
         WHERE parcelDetailsId = :parcelDetailsId
