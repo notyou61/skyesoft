@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+// =============================================
+// Skyesoft — locationZoningReport.php
+// Dynamic Location Zoning & Sign Code Report
+// Version: 3.0.0 (Street Frontage, Complete JSON Review & Print Layout)
+// =============================================
+
 // Force PHP error logging to local folder (skyesoft/reports/php-error.log)
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
@@ -534,7 +540,7 @@ if (!empty($loc['lotSize'])) {
 
 $logoPath = __DIR__ . '/../assets/images/christyLogo.png';
 $logoHtml = file_exists($logoPath)
-    ? '<img src="' . htmlspecialchars($logoPath, ENT_QUOTES, 'UTF-8') . '" style="max-height: 48px; width: auto;" alt="Christy Signs" />'
+    ? '<img src="' . htmlspecialchars($logoPath, ENT_QUOTES, 'UTF-8') . '" class="header-logo" alt="Christy Signs" />'
     : '<div style="font-size: 16px; font-weight: bold; color: #14377c;">Christy Signs</div>';
 
 // Extract dynamic analysis structures
@@ -684,11 +690,13 @@ if ($jsonReviewMode) {
 $css = '
     body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #222222; line-height: 1.35; }
     
-    .header-table { width: 100%; border-bottom: 2px solid #14377c; padding-bottom: 8px; margin-bottom: 12px; }
-    .header-title { font-size: 13pt; font-weight: bold; color: #14377c; text-align: right; }
-    .header-subtitle-main { font-size: 9.5pt; font-weight: bold; color: #333; text-align: right; margin-top: 2px; }
-    .header-subtitle-sub { font-size: 8.5pt; color: #555; text-align: right; }
-    .header-report-date { font-size: 7.5pt; color: #666; text-align: right; margin-top: 2px; }
+    .header-table { width: 100%; border-collapse: collapse; border-bottom: 2px solid #14377c; margin: 0; }
+    .header-table td { padding: 0 0 2px 0; }
+    .header-logo { display: block; height: 50px; width: auto; }
+    .header-title { font-size: 13pt; line-height: 1.05; font-weight: bold; color: #14377c; text-align: right; }
+    .header-subtitle-main { font-size: 9.5pt; line-height: 1.05; font-weight: bold; color: #333; text-align: right; margin-top: 1px; }
+    .header-subtitle-sub { font-size: 8.5pt; line-height: 1.05; color: #555; text-align: right; margin-top: 1px; }
+    .header-report-date { font-size: 7.5pt; line-height: 1.05; color: #666; text-align: right; margin-top: 1px; }
     
     .footer-table { width: 100%; border-top: 1px solid #ccc; padding-top: 4px; font-size: 7.5pt; color: #666; }
 
@@ -725,11 +733,11 @@ $css = '
 $headerHtml = '
 <table class="header-table">
     <tr>
-        <td style="width: 45%; vertical-align: bottom;">' . $logoHtml . '</td>
-        <td style="width: 55%; text-align: right; vertical-align: bottom;">
+        <td style="width: 45%; vertical-align: top;">' . $logoHtml . '</td>
+        <td style="width: 55%; text-align: right; vertical-align: top;">
             <div class="header-title">Location Zoning &amp; Sign Code Report</div>
-            <div class="header-subtitle-main">' . displayValue($loc['locationName']) . '</div>
-            <div class="header-subtitle-sub">' . displayValue($fullAddress) . '</div>
+            <div class="header-subtitle-main">Christy Signs</div>
+            <div class="header-subtitle-sub">3145 N 33rd Ave, Phoenix, AZ 85017</div>
             <div class="header-report-date">Report Date: ' . date('F j, Y') . '</div>
         </td>
     </tr>
