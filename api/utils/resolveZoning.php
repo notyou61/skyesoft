@@ -235,7 +235,7 @@ function loadJurisdictionZoningConfig(
     } else {
         $root = rtrim((string)(
             $options['jurisdictionsPath']
-            ?? __DIR__ . '/../../data/authoritative/jurisdictions'
+            ?? __DIR__ . '/../data/authoritative/jurisdictions'
         ), '/\\');
         $configPath = !empty($options['configPath'])
             ? trim((string)$options['configPath'])
