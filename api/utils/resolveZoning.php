@@ -200,7 +200,24 @@ function resolveZoning(
     };
 
     // Top-level scalar string mapping for locationZoningReport.php
-    $overlayPlan           = $formatDesignationString($specialDesignations['zoningOverlays'] ?? $specialDesignations['overlayPlan'] ?? null, 'None');
+    $overlayPlan = $formatDesignationString(
+        $specialDesignations['zoningOverlays'] ?? $specialDesignations['overlayPlan'] ?? null,
+        'None'
+    );
+
+    // Fallback: Check if base zoning code or attributes contain a Regulating Plan (e.g. DTC) or Ordinance Stipulation
+    if ($overlayPlan === 'None') {
+        $code = $primaryFeature['zoningCode'] ?? '';
+        $rawAttrs = $primaryFeature['rawAttributes'] ?? [];
+
+        if (str_starts_with($code, 'DTC-')) {
+            $characterArea = trim(str_replace(['DTC-', '*'], '', $code));
+            $overlayPlan = "Downtown Code - {$characterArea} Regulating Plan";
+        } elseif (!empty($rawAttrs['ORD_NUM'])) {
+            $overlayPlan = "Special Stipulation Overlay (Ord #{$rawAttrs['ORD_NUM']})";
+        }
+    }
+
     $historicDesignation   = $formatDesignationString($specialDesignations['historicDesignation'] ?? null, 'None');
     $comprehensiveSignPlan = $formatDesignationString($specialDesignations['comprehensiveSignPlan'] ?? null, 'None On Record');
 
