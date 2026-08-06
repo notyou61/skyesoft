@@ -1086,7 +1086,7 @@ ob_start();
         <tr>
             <th>Overlay / Regulatory Plan</th>
             <td>
-                <?= displayValue(describeZoningOverlays($zoningOverlays)) ?>
+                <?= displayValue($loc['overlayPlan'] ?? describeZoningOverlays($zoningOverlays)) ?>
                 <?php if (!empty($zoningOverlays['source'])): ?>
                     <div class="citation-subtext">Source: <?= displayValue($zoningOverlays['source']) ?></div>
                 <?php endif; ?>
@@ -1098,7 +1098,7 @@ ob_start();
         <tr>
             <th>Historic Designation</th>
             <td>
-                <?= displayValue(describeHistoricDesignation($historicDesignation)) ?>
+                <?= displayValue($loc['historicDesignation'] ?? describeHistoricDesignation($historicDesignation)) ?>
                 <?php if (!empty($historicDesignation['source'])): ?>
                     <div class="citation-subtext">Source: <?= displayValue($historicDesignation['source']) ?></div>
                 <?php endif; ?>
@@ -1110,7 +1110,7 @@ ob_start();
         <tr>
             <th>Comprehensive Sign Plan</th>
             <td>
-                <?= displayValue(describeComprehensiveSignPlan($comprehensiveSignPlan)) ?>
+                <?= displayValue($loc['comprehensiveSignPlan'] ?? describeComprehensiveSignPlan($comprehensiveSignPlan)) ?>
                 <?php if (!empty($comprehensiveSignPlan['source'])): ?>
                     <div class="citation-subtext">Source: <?= displayValue($comprehensiveSignPlan['source']) ?></div>
                 <?php endif; ?>
