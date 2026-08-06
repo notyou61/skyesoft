@@ -1,10 +1,9 @@
 <?php
 declare(strict_types=1);
-
 // =============================================
 // Skyesoft — locationZoningReport.php
 // Dynamic Location Zoning & Sign Code Report
-// Version: 3.0.0 (Street Frontage, Complete JSON Review & Print Layout)
+// Version: 3.0.1 (Balanced Header Logo & Body Spacing)
 // =============================================
 
 // Force PHP error logging to local folder (skyesoft/reports/php-error.log)
@@ -692,7 +691,7 @@ $css = '
     
     .header-table { width: 100%; border-collapse: collapse; border-bottom: 2px solid #14377c; margin: 0; }
     .header-table td { padding: 0 0 2px 0; }
-    .header-logo { display: block; height: 50px; width: auto; }
+    .header-logo { display: block; height: 58px; width: auto; }
     .header-title { font-size: 13pt; line-height: 1.05; font-weight: bold; color: #14377c; text-align: right; }
     .header-subtitle-main { font-size: 9.5pt; line-height: 1.05; font-weight: bold; color: #333; text-align: right; margin-top: 1px; }
     .header-subtitle-sub { font-size: 8.5pt; line-height: 1.05; color: #555; text-align: right; margin-top: 1px; }
@@ -1113,7 +1112,7 @@ try {
         'format'        => 'Letter',
         'margin_left'   => 10,
         'margin_right'  => 10,
-        'margin_top'    => 30,
+        'margin_top'    => 27,
         'margin_bottom' => 18,
         'margin_header' => 6,
         'margin_footer' => 7
