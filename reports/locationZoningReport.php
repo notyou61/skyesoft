@@ -415,35 +415,6 @@ try {
     $analysisError = $e->getMessage();
 }
 
-// Return the exact report input and analysis objects for authenticated review
-if ($jsonReviewMode) {
-    $reviewPayload = [
-        'locationData' => buildLocationDataObject($loc, $streetFrontages),
-        'analysis' => $signCodeAnalysis
-    ];
-
-    if ($analysisError !== null) {
-        $reviewPayload['analysisError'] = $analysisError;
-    }
-
-    $reviewJson = json_encode(
-        $reviewPayload,
-        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
-    );
-
-    if ($reviewJson === false) {
-        http_response_code(500);
-        header('Content-Type: application/json; charset=utf-8');
-        echo "{\"error\":\"Unable to encode the report review JSON.\"}";
-        exit;
-    }
-
-    header('Content-Type: application/json; charset=utf-8');
-    header('Content-Disposition: inline; filename="location-zoning-report-' . $locationId . '.json"');
-    echo $reviewJson;
-    exit;
-}
-
 // -------------------------------------------------------------------------
 // 4. Data Formatting & Visual Helpers
 // -------------------------------------------------------------------------
@@ -590,6 +561,122 @@ $groundSpacing = $groundStandard['minimumSpacingFeet'] ?? null;
 $ordinanceTitle = $signCodeAnalysis['ordinance']['title'] ?? 'Phoenix Zoning Ordinance - Signs';
 $ordinanceRef = $signCodeAnalysis['ordinance']['codeReference'] ?? 'ZO Section 705';
 $fullOrdinanceStr = $ordinanceTitle . ' (' . $ordinanceRef . ')';
+
+// Return the complete report object for authenticated top-down review
+if ($jsonReviewMode) {
+    $reviewPayload = [
+        'report' => [
+            'reportType' => 'Location Zoning & Sign Code Report',
+            'schemaVersion' => '1.0.0',
+            'locationId' => (int)$locationId,
+            'generatedAt' => date(DATE_ATOM),
+            'forceRefreshRequested' => $forceRefresh,
+            'preparedBy' => [
+                'name' => 'Steve Skye',
+                'company' => 'Christy Signs'
+            ],
+            'title' => [
+                'locationName' => $loc['locationName'],
+                'fullAddress' => $fullAddress
+            ]
+        ],
+        'sourceRecord' => $loc,
+        'locationData' => buildLocationDataObject($loc, $streetFrontages),
+        'reportSections' => [
+            '1_propertyOverview' => [
+                'location' => $loc['locationName'],
+                'address' => $fullAddress,
+                'apn' => $parcelNumber,
+                'jurisdiction' => $loc['locationJurisdiction'],
+                'county' => $loc['locationCounty'],
+                'owner' => $loc['ownerName'],
+                'entity' => [
+                    'entityId' => isset($loc['entityId']) ? (int)$loc['entityId'] : null,
+                    'entityName' => $loc['entityName'],
+                    'entityType' => $loc['entityType'],
+                    'entityStatus' => $loc['entityStatus']
+                ],
+                'parcel' => [
+                    'parcelDetailsId' => isset($loc['parcelDetailsId']) ? (int)$loc['parcelDetailsId'] : null,
+                    'subdivision' => $loc['subdivision'],
+                    'lotSize' => $loc['lotSize'],
+                    'lotSizeFormatted' => $formattedLotSize,
+                    'yearBuilt' => $loc['yearBuilt'],
+                    'source' => $loc['source'],
+                    'confidence' => $loc['confidence'] !== null ? (float)$loc['confidence'] : null
+                ]
+            ],
+            '2_zoningSummary' => [
+                'zoningCode' => $loc['zoningCode'],
+                'zoningDescription' => $loc['zoningDescription'],
+                'zoningSource' => $loc['zoningSource'],
+                'zoningVerifiedAt' => $loc['zoningVerifiedAt'],
+                'zoningVerifiedAtFormatted' => $verifiedAtFormatted,
+                'ordinance' => $signCodeAnalysis['ordinance'] ?? []
+            ],
+            '3_attachedSignAllowance' => $attached,
+            '4_detachedSignAllowance' => [
+                'analysis' => $detached,
+                'streetFrontages' => buildLocationDataObject($loc, $streetFrontages)['streetFrontages'],
+                'streetFrontageNotice' => 'Parcel frontage is not tenant, suite, storefront, or building-elevation width.'
+            ],
+            '5_additionalRequirements' => [
+                'analysis' => $signCodeAnalysis['additionalRequirements'] ?? [],
+                'citywideRules' => $citywideRules,
+                'groundSignRules' => $groundRules
+            ],
+            '6_permitDrawingAndFieldVerificationRequirements' => [
+                'analysis' => $signCodeAnalysis['permitRequirements'] ?? [],
+                'permitPreparationRequirements' => $permitPreparation,
+                'administrativeFees' => $administrativeFees
+            ],
+            '7_requiredFieldInformationAndNextSteps' => [
+                'findings' => $signCodeAnalysis['findings'] ?? [],
+                'recommendedNextSteps' => $signCodeAnalysis['recommendedNextSteps'] ?? []
+            ],
+            '8_reportBasisAndQualifications' => [
+                'analysisStatus' => $analysisError !== null
+                    ? 'analysis_error'
+                    : ($signCodeAnalysis['analysisStatus'] ?? 'partial'),
+                'ordinanceTitle' => $ordinanceTitle,
+                'ordinanceReference' => $ordinanceRef,
+                'fullOrdinanceReference' => $fullOrdinanceStr,
+                'parcelSource' => $loc['source'],
+                'zoningSource' => $loc['zoningSource'],
+                'frontageDisclaimer' => 'GIS-verified measurements are not a boundary survey and are not certified by a registered land surveyor.',
+                'reportQualification' => 'Final sign eligibility remains subject to jurisdiction review, field verification, and approved permit drawings.'
+            ]
+        ],
+        'authoritativeSignCode' => $signCodeData,
+        'analysis' => $signCodeAnalysis,
+        'diagnostics' => [
+            'analysisError' => $analysisError,
+            'analysisCacheVersion' => $signCodeAnalysis['_cacheVersion'] ?? null,
+            'streetFrontageRecordCount' => count($streetFrontages),
+            'streetFrontagesRequiringManualReview' => count(array_filter(
+                $streetFrontages,
+                static fn(array $frontage): bool => (bool)$frontage['requiresManualReview']
+            ))
+        ]
+    ];
+
+    $reviewJson = json_encode(
+        $reviewPayload,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+    );
+
+    if ($reviewJson === false) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        echo "{\"error\":\"Unable to encode the complete report review JSON.\"}";
+        exit;
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: inline; filename="location-zoning-report-' . $locationId . '.json"');
+    echo $reviewJson;
+    exit;
+}
 
 // -------------------------------------------------------------------------
 // 5. CSS & HTML Layout
