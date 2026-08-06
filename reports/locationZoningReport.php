@@ -30,6 +30,7 @@ if (!$locationId) {
 }
 
 $forceRefresh = filter_input(INPUT_GET, 'refresh', FILTER_VALIDATE_BOOLEAN) ?? false;
+$jsonReviewMode = filter_input(INPUT_GET, 'json', FILTER_VALIDATE_BOOLEAN) ?? false;
 
 // -------------------------------------------------------------------------
 // 2. Database Retrieval (Skyesoft Schema)
@@ -233,6 +234,54 @@ function isUsableSignCodeAnalysis(array $analysis): bool
 }
 
 /**
+ * Build the exact location-data object supplied to the sign-code analyst.
+ */
+function buildLocationDataObject(array $loc, array $streetFrontages): array
+{
+    return [
+        'locationId' => (int)$loc['locationId'],
+        'locationName' => $loc['locationName'],
+        'address' => $loc['locationAddress'],
+        'city' => $loc['locationCity'],
+        'state' => $loc['locationState'],
+        'zip' => $loc['locationZip'],
+        'jurisdiction' => $loc['locationJurisdiction'],
+        'county' => $loc['locationCounty'],
+        'parcelNumber' => $loc['locationParcelNumberRaw'] ?: $loc['locationParcelNumber'],
+        'zoningCode' => $loc['zoningCode'],
+        'zoningDescription' => $loc['zoningDescription'],
+        'zoningSource' => $loc['zoningSource'],
+        'zoningVerifiedAt' => $loc['zoningVerifiedAt'],
+        'lotSize' => $loc['lotSize'],
+        'streetFrontages' => array_map(
+            static function (array $frontage): array {
+                return [
+                    'frontageId' => (int)$frontage['frontageId'],
+                    'streetName' => $frontage['streetName'],
+                    'frontageLengthFeet' => $frontage['frontageLengthFeet'] !== null
+                        ? (float)$frontage['frontageLengthFeet']
+                        : null,
+                    'frontageMethod' => $frontage['frontageMethod'],
+                    'streetClassCode' => $frontage['streetClassCode'],
+                    'streetClassification' => $frontage['streetClassification'],
+                    'roadwayTier' => $frontage['roadwayTier'],
+                    'verificationStatus' => $frontage['verificationStatus'],
+                    'confidence' => $frontage['confidence'] !== null
+                        ? (float)$frontage['confidence']
+                        : null,
+                    'requiresManualReview' => (bool)$frontage['requiresManualReview'],
+                    'parcelSource' => $frontage['parcelSource'],
+                    'streetGeometrySource' => $frontage['streetGeometrySource'],
+                    'verifiedAt' => $frontage['verifiedAt']
+                ];
+            },
+            $streetFrontages
+        ),
+        'streetFrontageNotice' => 'Parcel frontage is not tenant, suite, storefront, or building-elevation width.'
+    ];
+}
+
+/**
  * Perform sign code analysis using jurisdiction local filesystem assets and cached database entries.
  */
 function getOrRunSignCodeAnalysis(
@@ -302,47 +351,14 @@ function getOrRunSignCodeAnalysis(
         }
     }
 
-    $locationDataJson = json_encode([
-        'locationId' => $loc['locationId'],
-        'locationName' => $loc['locationName'],
-        'address' => $loc['locationAddress'],
-        'city' => $loc['locationCity'],
-        'state' => $loc['locationState'],
-        'zip' => $loc['locationZip'],
-        'jurisdiction' => $loc['locationJurisdiction'],
-        'county' => $loc['locationCounty'],
-        'parcelNumber' => $loc['locationParcelNumberRaw'] ?: $loc['locationParcelNumber'],
-        'zoningCode' => $loc['zoningCode'],
-        'zoningDescription' => $loc['zoningDescription'],
-        'zoningSource' => $loc['zoningSource'],
-        'zoningVerifiedAt' => $loc['zoningVerifiedAt'],
-        'lotSize' => $loc['lotSize'],
-        'streetFrontages' => array_map(
-            static function (array $frontage): array {
-                return [
-                    'frontageId' => (int)$frontage['frontageId'],
-                    'streetName' => $frontage['streetName'],
-                    'frontageLengthFeet' => $frontage['frontageLengthFeet'] !== null
-                        ? (float)$frontage['frontageLengthFeet']
-                        : null,
-                    'frontageMethod' => $frontage['frontageMethod'],
-                    'streetClassCode' => $frontage['streetClassCode'],
-                    'streetClassification' => $frontage['streetClassification'],
-                    'roadwayTier' => $frontage['roadwayTier'],
-                    'verificationStatus' => $frontage['verificationStatus'],
-                    'confidence' => $frontage['confidence'] !== null
-                        ? (float)$frontage['confidence']
-                        : null,
-                    'requiresManualReview' => (bool)$frontage['requiresManualReview'],
-                    'parcelSource' => $frontage['parcelSource'],
-                    'streetGeometrySource' => $frontage['streetGeometrySource'],
-                    'verifiedAt' => $frontage['verifiedAt']
-                ];
-            },
-            $streetFrontages
-        ),
-        'streetFrontageNotice' => 'Parcel frontage is not tenant, suite, storefront, or building-elevation width.'
-    ], JSON_PRETTY_PRINT);
+    $locationDataJson = json_encode(
+        buildLocationDataObject($loc, $streetFrontages),
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+    );
+
+    if ($locationDataJson === false) {
+        throw new RuntimeException('Unable to encode the location data JSON.');
+    }
 
     $projectSignDataJson = json_encode([
         'existingSigns' => [],
@@ -397,6 +413,35 @@ try {
     );
 
     $analysisError = $e->getMessage();
+}
+
+// Return the exact report input and analysis objects for authenticated review
+if ($jsonReviewMode) {
+    $reviewPayload = [
+        'locationData' => buildLocationDataObject($loc, $streetFrontages),
+        'analysis' => $signCodeAnalysis
+    ];
+
+    if ($analysisError !== null) {
+        $reviewPayload['analysisError'] = $analysisError;
+    }
+
+    $reviewJson = json_encode(
+        $reviewPayload,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+    );
+
+    if ($reviewJson === false) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        echo "{\"error\":\"Unable to encode the report review JSON.\"}";
+        exit;
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: inline; filename="location-zoning-report-' . $locationId . '.json"');
+    echo $reviewJson;
+    exit;
 }
 
 // -------------------------------------------------------------------------
