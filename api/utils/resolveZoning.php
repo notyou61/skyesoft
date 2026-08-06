@@ -180,18 +180,29 @@ function resolveZoning(
         }
     }
 
-    // Explicit report field extraction with fallbacks
-    $overlayPlan = $specialDesignations['overlayPlan'] 
-        ?? $specialDesignations['overlay'] 
-        ?? 'None';
+    // Helper to flatten designation arrays or raw strings into report-ready scalar values
+    $formatDesignationString = static function (mixed $data, string $defaultNone): string {
+        if (is_string($data) && $data !== '') {
+            return $data;
+        }
+        if (is_array($data)) {
+            if (!empty($data['matches'][0]['name'])) {
+                return (string)$data['matches'][0]['name'];
+            }
+            if (!empty($data['caseNumber'])) {
+                return 'CSP #' . $data['caseNumber'];
+            }
+            if (($data['determination'] ?? '') === 'no' || ($data['status'] ?? '') === 'noneIdentified') {
+                return $defaultNone;
+            }
+        }
+        return $defaultNone;
+    };
 
-    $historicDesignation = $specialDesignations['historicDesignation'] 
-        ?? $specialDesignations['historic'] 
-        ?? 'None';
-
-    $comprehensiveSignPlan = $specialDesignations['comprehensiveSignPlan'] 
-        ?? $specialDesignations['csp'] 
-        ?? 'None On Record';
+    // Top-level scalar string mapping for locationZoningReport.php
+    $overlayPlan           = $formatDesignationString($specialDesignations['zoningOverlays'] ?? $specialDesignations['overlayPlan'] ?? null, 'None');
+    $historicDesignation   = $formatDesignationString($specialDesignations['historicDesignation'] ?? null, 'None');
+    $comprehensiveSignPlan = $formatDesignationString($specialDesignations['comprehensiveSignPlan'] ?? null, 'None On Record');
 
     // Evaluate overall review requirements
     $designationsComplete = $specialDesignations === null || ($specialDesignations['isComplete'] ?? false);
@@ -219,7 +230,7 @@ function resolveZoning(
         'zoningDescription'       => $primaryFeature['zoningDescription'],
         'zoningVerifiedAt'        => time(),
         
-        // Report Summary Top-Level Keys
+        // Report Summary Top-Level Keys (Guaranteed Strings)
         'overlayPlan'             => $overlayPlan,
         'historicDesignation'     => $historicDesignation,
         'comprehensiveSignPlan'   => $comprehensiveSignPlan,
