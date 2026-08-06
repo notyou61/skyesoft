@@ -251,7 +251,7 @@ function buildLocationDataObject(array $loc, array $streetFrontages): array
         'zoningCode' => $loc['zoningCode'],
         'zoningDescription' => $loc['zoningDescription'],
         'zoningSource' => $loc['zoningSource'],
-        'zoningVerifiedAt' => toUnixTimestamp($loc['zoningVerifiedAt'] ?? null),
+        'zoningVerifiedAt' => $loc['zoningVerifiedAt'],
         'lotSize' => $loc['lotSize'],
         'streetFrontages' => array_map(
             static function (array $frontage): array {
@@ -272,52 +272,13 @@ function buildLocationDataObject(array $loc, array $streetFrontages): array
                     'requiresManualReview' => (bool)$frontage['requiresManualReview'],
                     'parcelSource' => $frontage['parcelSource'],
                     'streetGeometrySource' => $frontage['streetGeometrySource'],
-                    'verifiedAt' => toUnixTimestamp($frontage['verifiedAt'] ?? null)
+                    'verifiedAt' => $frontage['verifiedAt']
                 ];
             },
             $streetFrontages
         ),
         'streetFrontageNotice' => 'Parcel frontage is not tenant, suite, storefront, or building-elevation width.'
     ];
-}
-
-/**
- * Convert a stored timestamp to Unix seconds while preserving unknown values.
- */
-function toUnixTimestamp(mixed $value): ?int
-{
-    if ($value === null || $value === '') {
-        return null;
-    }
-
-    if (is_int($value) || (is_string($value) && ctype_digit($value))) {
-        return (int)$value;
-    }
-
-    $timestamp = strtotime((string)$value);
-
-    return $timestamp !== false ? $timestamp : null;
-}
-
-/**
- * Normalize every timestamp field in a report payload to Unix seconds.
- */
-function normalizeReportTimestamps(mixed $value, ?string $key = null): mixed
-{
-    if (is_array($value)) {
-        foreach ($value as $childKey => $childValue) {
-            $value[$childKey] = normalizeReportTimestamps($childValue, (string)$childKey);
-        }
-
-        return $value;
-    }
-
-    $isTimestampField = $key !== null && (
-        preg_match('/(?:At|Timestamp)$/i', $key) === 1
-        || in_array(strtolower($key), ['timestamp', 'created', 'updated', 'verified'], true)
-    );
-
-    return $isTimestampField ? toUnixTimestamp($value) : $value;
 }
 
 /**
@@ -608,7 +569,7 @@ if ($jsonReviewMode) {
             'reportType' => 'Location Zoning & Sign Code Report',
             'schemaVersion' => '1.0.0',
             'locationId' => (int)$locationId,
-            'generatedAt' => time(),
+            'generatedAt' => date(DATE_ATOM),
             'forceRefreshRequested' => $forceRefresh,
             'preparedBy' => [
                 'name' => 'Steve Skye',
@@ -623,32 +584,34 @@ if ($jsonReviewMode) {
         'locationData' => buildLocationDataObject($loc, $streetFrontages),
         'reportSections' => [
             '1_propertyOverview' => [
-                'locationName' => $loc['locationName'],
-                'locationPlaceId' => $loc['locationPlaceId'],
-                'locationAddress' => $loc['locationAddress'],
-                'locationAddressSuite' => $loc['locationAddressSuite'] ?? '',
-                'locationCity' => $loc['locationCity'],
-                'locationState' => $loc['locationState'],
-                'locationZip' => $loc['locationZip'],
-                'locationParcelNumber' => $loc['locationParcelNumber'],
-                'locationJurisdiction' => $loc['locationJurisdiction'],
-                'locationCounty' => $loc['locationCounty'],
-                'ownerName' => $loc['ownerName'],
-                'subdivision' => $loc['subdivision'],
-                'lotSize' => $loc['lotSize'],
-                'yearBuilt' => $loc['yearBuilt'] !== null ? (int)$loc['yearBuilt'] : null,
-                'zoningCode' => $loc['zoningCode'],
-                'zoningDescription' => $loc['zoningDescription'],
-                'zoningSource' => $loc['zoningSource'],
-                'zoningVerifiedAt' => toUnixTimestamp($loc['zoningVerifiedAt'] ?? null),
-                'source' => $loc['source'],
-                'entityName' => $loc['entityName']
+                'location' => $loc['locationName'],
+                'address' => $fullAddress,
+                'apn' => $parcelNumber,
+                'jurisdiction' => $loc['locationJurisdiction'],
+                'county' => $loc['locationCounty'],
+                'owner' => $loc['ownerName'],
+                'entity' => [
+                    'entityId' => isset($loc['entityId']) ? (int)$loc['entityId'] : null,
+                    'entityName' => $loc['entityName'],
+                    'entityType' => $loc['entityType'],
+                    'entityStatus' => $loc['entityStatus']
+                ],
+                'parcel' => [
+                    'parcelDetailsId' => isset($loc['parcelDetailsId']) ? (int)$loc['parcelDetailsId'] : null,
+                    'subdivision' => $loc['subdivision'],
+                    'lotSize' => $loc['lotSize'],
+                    'lotSizeFormatted' => $formattedLotSize,
+                    'yearBuilt' => $loc['yearBuilt'],
+                    'source' => $loc['source'],
+                    'confidence' => $loc['confidence'] !== null ? (float)$loc['confidence'] : null
+                ]
             ],
             '2_zoningSummary' => [
                 'zoningCode' => $loc['zoningCode'],
                 'zoningDescription' => $loc['zoningDescription'],
                 'zoningSource' => $loc['zoningSource'],
-                'zoningVerifiedAt' => toUnixTimestamp($loc['zoningVerifiedAt'] ?? null),
+                'zoningVerifiedAt' => $loc['zoningVerifiedAt'],
+                'zoningVerifiedAtFormatted' => $verifiedAtFormatted,
                 'ordinance' => $signCodeAnalysis['ordinance'] ?? []
             ],
             '3_attachedSignAllowance' => $attached,
@@ -697,8 +660,6 @@ if ($jsonReviewMode) {
         ]
     ];
 
-    $reviewPayload = normalizeReportTimestamps($reviewPayload);
-
     $reviewJson = json_encode(
         $reviewPayload,
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
@@ -727,6 +688,7 @@ $css = '
     .header-title { font-size: 13pt; font-weight: bold; color: #14377c; text-align: right; }
     .header-subtitle-main { font-size: 9.5pt; font-weight: bold; color: #333; text-align: right; margin-top: 2px; }
     .header-subtitle-sub { font-size: 8.5pt; color: #555; text-align: right; }
+    .header-report-date { font-size: 7.5pt; color: #666; text-align: right; margin-top: 2px; }
     
     .footer-table { width: 100%; border-top: 1px solid #ccc; padding-top: 4px; font-size: 7.5pt; color: #666; }
 
@@ -768,6 +730,7 @@ $headerHtml = '
             <div class="header-title">Location Zoning &amp; Sign Code Report</div>
             <div class="header-subtitle-main">' . displayValue($loc['locationName']) . '</div>
             <div class="header-subtitle-sub">' . displayValue($fullAddress) . '</div>
+            <div class="header-report-date">Report Date: ' . date('F j, Y') . '</div>
         </td>
     </tr>
 </table>';
@@ -814,10 +777,6 @@ ob_start();
         <tr>
             <th>Property Owner</th>
             <td><?= displayValue($loc['ownerName']) ?></td>
-        </tr>
-        <tr>
-            <th>Report Date</th>
-            <td><?= date('F j, Y') ?></td>
         </tr>
     </table>
 </div>
@@ -1146,10 +1105,10 @@ try {
         'format'        => 'Letter',
         'margin_left'   => 10,
         'margin_right'  => 10,
-        'margin_top'    => 28,
-        'margin_bottom' => 12,
+        'margin_top'    => 36,
+        'margin_bottom' => 18,
         'margin_header' => 6,
-        'margin_footer' => 6
+        'margin_footer' => 7
     ]);
 
     $mpdf->SetTitle('Location Zoning & Sign Code Report - ' . ($loc['locationName'] ?? 'Location #' . $locationId));
