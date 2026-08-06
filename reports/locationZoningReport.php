@@ -3,7 +3,7 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — locationZoningReport.php
 // Dynamic Location Zoning & Sign Code Report
-// Version: 3.1.0 (Semantic Section Icons & JSON Structure)
+// Version: 3.2.0 (Phoenix Special Designations & Auditable Zoning Summary)
 // =============================================
 
 // Force PHP error logging to local folder (skyesoft/reports/php-error.log)
@@ -59,17 +59,8 @@ try {
             l.locationIsBilling,
             l.locationIsNotValid,
 
-            p.ownerName,
-            p.parcelDetailsId,
-            p.subdivision,
-            p.lotSize,
-            p.yearBuilt,
-            p.zoningCode,
-            p.zoningDescription,
-            p.zoningSource,
-            p.zoningVerifiedAt,
-            p.source,
-            p.confidence,
+            p.*,
+            l.locationId AS locationId,
 
             e.entityId,
             e.entityName,
@@ -239,10 +230,83 @@ function isUsableSignCodeAnalysis(array $analysis): bool
 }
 
 /**
+ * Find specialDesignations inside the parcel-details row or a stored JSON payload.
+ */
+function extractSpecialDesignations(array $parcelRecord): array
+{
+    $findPayload = static function (mixed $value) use (&$findPayload): ?array {
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed === '' || ($trimmed[0] !== '{' && $trimmed[0] !== '[')) {
+                return null;
+            }
+
+            $decoded = json_decode($trimmed, true);
+            if (!is_array($decoded)) {
+                return null;
+            }
+
+            $value = $decoded;
+        }
+
+        if (!is_array($value)) {
+            return null;
+        }
+
+        if (isset($value['specialDesignations']) && is_array($value['specialDesignations'])) {
+            return $value['specialDesignations'];
+        }
+
+        foreach ($value as $child) {
+            $found = $findPayload($child);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
+    };
+
+    return $findPayload($parcelRecord) ?? [];
+}
+
+/**
+ * Supply stable report states when special-designation research is not stored yet.
+ */
+function normalizeSpecialDesignations(array $specialDesignations): array
+{
+    $overlays = is_array($specialDesignations['zoningOverlays'] ?? null)
+        ? $specialDesignations['zoningOverlays']
+        : [];
+    $csp = is_array($specialDesignations['comprehensiveSignPlan'] ?? null)
+        ? $specialDesignations['comprehensiveSignPlan']
+        : [];
+
+    return [
+        'zoningOverlays' => array_replace([
+            'status' => 'notDetermined',
+            'matches' => [],
+            'source' => null,
+            'checkedAt' => null
+        ], $overlays),
+        'comprehensiveSignPlan' => array_replace([
+            'status' => 'notDetermined',
+            'appliesToParcel' => null,
+            'cases' => [],
+            'source' => null,
+            'checkedAt' => null,
+            'manualReviewRequired' => true
+        ], $csp)
+    ];
+}
+
+/**
  * Build the exact location-data object supplied to the sign-code analyst.
  */
 function buildLocationDataObject(array $loc, array $streetFrontages): array
 {
+    $specialDesignations = normalizeSpecialDesignations(extractSpecialDesignations($loc));
+
     return [
         'locationId' => (int)$loc['locationId'],
         'locationName' => $loc['locationName'],
@@ -258,6 +322,7 @@ function buildLocationDataObject(array $loc, array $streetFrontages): array
         'zoningSource' => $loc['zoningSource'],
         'zoningVerifiedAt' => $loc['zoningVerifiedAt'],
         'lotSize' => $loc['lotSize'],
+        'specialDesignations' => $specialDesignations,
         'streetFrontages' => array_map(
             static function (array $frontage): array {
                 return [
@@ -536,6 +601,91 @@ function formatDimension(mixed $value, string $unit): string
     );
 }
 
+/**
+ * Format a Unix or database timestamp for client-facing source metadata.
+ */
+function formatCheckedAt(mixed $value): ?string
+{
+    $timestamp = toUnixTimestamp($value);
+
+    return $timestamp !== null && $timestamp > 0
+        ? date('F j, Y g:i A', $timestamp)
+        : null;
+}
+
+/**
+ * Build the visible Phoenix overlay determination without overstating the GIS result.
+ */
+function describeZoningOverlays(array $overlays): string
+{
+    $status = (string)($overlays['status'] ?? 'notDetermined');
+    $matches = is_array($overlays['matches'] ?? null) ? $overlays['matches'] : [];
+
+    if ($status === 'found' && $matches !== []) {
+        $names = [];
+        foreach ($matches as $match) {
+            $name = trim((string)($match['name'] ?? ''));
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+
+        return $names !== []
+            ? implode('; ', array_values(array_unique($names)))
+            : 'Phoenix zoning overlay or special district identified';
+    }
+
+    if ($status === 'noneIdentified') {
+        return 'No zoning overlay or special district identified in Phoenix GIS';
+    }
+
+    return 'Unable to determine—manual research required';
+}
+
+/**
+ * Map the CSP review state to the approved report language.
+ */
+function describeComprehensiveSignPlan(array $csp): string
+{
+    $status = (string)($csp['status'] ?? 'notDetermined');
+    $cases = is_array($csp['cases'] ?? null) ? $csp['cases'] : [];
+
+    if ($status === 'confirmed') {
+        $caseNumbers = [];
+        $verifiedCaseNumber = trim((string)($csp['caseNumber'] ?? ''));
+        if ($verifiedCaseNumber !== '') {
+            $caseNumbers[] = $verifiedCaseNumber;
+        }
+        foreach ($cases as $case) {
+            $caseNumber = trim((string)($case['caseNumber'] ?? ''));
+            if ($caseNumber !== '') {
+                $caseNumbers[] = $caseNumber;
+            }
+        }
+
+        return 'CSP confirmed' . ($caseNumbers !== [] ? '—' . implode(', ', array_unique($caseNumbers)) : '');
+    }
+
+    if ($status === 'noneIdentified') {
+        return 'No CSP candidate identified in Phoenix GIS';
+    }
+
+    if ($status === 'manualReviewRequired') {
+        $caseNumbers = [];
+        foreach ($cases as $case) {
+            $caseNumber = trim((string)($case['caseNumber'] ?? ''));
+            if ($caseNumber !== '') {
+                $caseNumbers[] = $caseNumber;
+            }
+        }
+
+        $candidateText = $caseNumbers !== [] ? ' (' . implode(', ', array_unique($caseNumbers)) . ')' : '';
+        return 'Potential related zoning case(s)' . $candidateText . '—manual CSP review required';
+    }
+
+    return 'Unable to determine—manual research required';
+}
+
 // APN Fallback logic
 $parcelNumber = $loc['locationParcelNumberRaw']
     ?: $loc['locationParcelNumber']
@@ -594,6 +744,9 @@ $logoHtml = file_exists($logoPath)
 $attached = $signCodeAnalysis['attachedSigns'] ?? [];
 $detached = $signCodeAnalysis['detachedSigns'] ?? [];
 $signCodeData = loadReportSignCode($loc);
+$specialDesignations = normalizeSpecialDesignations(extractSpecialDesignations($loc));
+$zoningOverlays = $specialDesignations['zoningOverlays'];
+$comprehensiveSignPlan = $specialDesignations['comprehensiveSignPlan'];
 
 $commercialIndustrial = $signCodeData['identificationSignStandards']['commercialIndustrial'] ?? [];
 $wallStandard = $commercialIndustrial['wall'] ?? [];
@@ -670,6 +823,7 @@ if ($jsonReviewMode) {
                     'zoningDescription' => $loc['zoningDescription'],
                     'zoningSource' => $loc['zoningSource'],
                     'zoningVerifiedAt' => toUnixTimestamp($loc['zoningVerifiedAt'] ?? null),
+                    'specialDesignations' => $specialDesignations,
                     'ordinance' => $signCodeAnalysis['ordinance'] ?? []
                 ]
             ],
@@ -734,6 +888,11 @@ if ($jsonReviewMode) {
         'analysis' => $signCodeAnalysis,
         'diagnostics' => [
             'analysisError' => $analysisError,
+            'parcelConfidence' => isset($loc['confidence']) && $loc['confidence'] !== ''
+                ? (float)$loc['confidence']
+                : null,
+            'specialDesignationReviewRequired' => (bool)($comprehensiveSignPlan['manualReviewRequired'] ?? false),
+            'specialDesignationCandidateCases' => $comprehensiveSignPlan['cases'] ?? [],
             'analysisCacheVersion' => $signCodeAnalysis['_cacheVersion'] ?? null,
             'streetFrontageRecordCount' => count($streetFrontages),
             'streetFrontagesRequiringManualReview' => count(array_filter(
@@ -891,12 +1050,28 @@ ob_start();
             <td><?= displayValue($verifiedAtFormatted) ?></td>
         </tr>
         <tr>
-            <th>Confidence</th>
-            <td><?= displayValue(isset($loc['confidence']) && $loc['confidence'] !== '' ? $loc['confidence'] . '%' : null) ?></td>
+            <th>Overlay / Special District</th>
+            <td>
+                <?= displayValue(describeZoningOverlays($zoningOverlays)) ?>
+                <?php if (!empty($zoningOverlays['source'])): ?>
+                    <div class="citation-subtext">Source: <?= displayValue($zoningOverlays['source']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($zoningOverlays['checkedAt'])): ?>
+                    <div class="citation-subtext">Checked: <?= displayValue(formatCheckedAt($zoningOverlays['checkedAt'])) ?></div>
+                <?php endif; ?>
+            </td>
         </tr>
         <tr>
-            <th>Overlay / Special District</th>
-            <td><?= displayValue(null, 'Verification required') ?></td>
+            <th>Comprehensive Sign Plan</th>
+            <td>
+                <?= displayValue(describeComprehensiveSignPlan($comprehensiveSignPlan)) ?>
+                <?php if (!empty($comprehensiveSignPlan['source'])): ?>
+                    <div class="citation-subtext">Source: <?= displayValue($comprehensiveSignPlan['source']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($comprehensiveSignPlan['checkedAt'])): ?>
+                    <div class="citation-subtext">Checked: <?= displayValue(formatCheckedAt($comprehensiveSignPlan['checkedAt'])) ?></div>
+                <?php endif; ?>
+            </td>
         </tr>
     </table>
 </div>
