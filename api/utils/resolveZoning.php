@@ -15,6 +15,8 @@ declare(strict_types=1);
 
 #region SECTION 00 — Public Resolver
 
+require_once __DIR__ . '/resolvePhoenixSpecialDesignations.php';
+
 /**
  * Resolve base zoning for one parcel/location.
  *
