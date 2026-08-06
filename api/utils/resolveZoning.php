@@ -1,16 +1,17 @@
 <?php
+
 declare(strict_types=1);
 
 /**
  * Skyesoft — Jurisdictional Zoning Resolution Utility
  *
- * File Version:     1.3.2
- * Schema Version:   2.2.0
- * Last Updated:     2026-07-18
+ * File Version:     1.4.0
+ * Schema Version:   3.3.0
+ * Last Updated:     2026-08-06
  *
  * Resolves base zoning through each jurisdiction's verified zoning.json.
  * Public ArcGIS FeatureServer and MapServer query layers are supported.
- * Enhanced with configurable HTTP client options for temperamental servers.
+ * Enhanced with Phoenix Special Designations spatial overlay resolution.
  */
 
 #region SECTION 00 — Public Resolver
@@ -152,29 +153,58 @@ function resolveZoning(
     }
 
     $primaryFeature = $normalizedFeatures[0];
-    $requiresReview = count($normalizedFeatures) > 1;
+    $baseRequiresReview = count($normalizedFeatures) > 1;
+
+    // Execute Phoenix Special Designations GIS lookups if applicable
+    $specialDesignations = null;
+    $specialDesignationsJson = null;
+
+    if ($latitude !== null && $longitude !== null && strtolower($result['jurisdictionName']) === 'phoenix') {
+        $specialDesignations = resolvePhoenixSpecialDesignations((float)$latitude, (float)$longitude);
+        $specialDesignationsJson = json_encode(
+            $specialDesignations, 
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES
+        );
+    }
+
+    // Evaluate overall review requirement based on base zoning and special designations gate
+    $designationsComplete = $specialDesignations === null || ($specialDesignations['isComplete'] ?? false);
+    $requiresReview = $baseRequiresReview || !$designationsComplete;
+
+    $status = 'resolved';
+    $reason = null;
+
+    if ($baseRequiresReview) {
+        $status = 'review_required';
+        $reason = 'multiple_zoning_features';
+    } elseif (!$designationsComplete) {
+        $status = 'review_required';
+        $reason = 'special_designations_review_required';
+    }
 
     return finalizeZoningResult($result, $startedAt, [
-        'success'           => !$requiresReview,
-        'status'            => $requiresReview ? 'review_required' : 'resolved',
-        'reason'            => $requiresReview ? 'multiple_zoning_features' : null,
-        'message'           => $requiresReview
-            ? 'Multiple zoning features intersect the submitted location.'
-            : 'Base zoning resolved from the official jurisdiction source.',
-        'zoningCode'        => $primaryFeature['zoningCode'],
-        'zoningDescription' => $primaryFeature['zoningDescription'],
-        'zoningVerifiedAt'  => time(),
-        'confidence'        => $requiresReview
+        'success'                 => !$requiresReview,
+        'status'                  => $status,
+        'reason'                  => $reason,
+        'message'                 => $requiresReview
+            ? 'Zoning resolved, but human review is required.'
+            : 'Base zoning and special designations resolved successfully.',
+        'zoningCode'              => $primaryFeature['zoningCode'],
+        'zoningDescription'       => $primaryFeature['zoningDescription'],
+        'zoningVerifiedAt'        => time(),
+        'specialDesignations'     => $specialDesignations,
+        'specialDesignationsJson' => $specialDesignationsJson,
+        'confidence'              => $requiresReview
             ? 70
             : (int)($source['successfulResultConfidence'] ?? 95),
-        'requiresReview'    => $requiresReview,
-        'candidateCount'    => count($normalizedFeatures),
-        'candidates'        => $normalizedFeatures,
-        'raw'               => [
+        'requiresReview'          => $requiresReview,
+        'candidateCount'          => count($normalizedFeatures),
+        'candidates'              => $normalizedFeatures,
+        'raw'                     => [
             'attributes' => $primaryFeature['rawAttributes']
         ],
-        'responseTime'      => $queryResult['responseTimeMs'],
-        'attempts'          => $queryResult['attempts'] ?? 1
+        'responseTime'            => $queryResult['responseTimeMs'],
+        'attempts'                => $queryResult['attempts'] ?? 1
     ]);
 }
 
@@ -315,7 +345,7 @@ function loadJurisdictionZoningConfig(
         'successfulResultConfidence' => (int)($validation['successfulResultConfidence'] ?? 95),
         // HTTP transport configuration
         'httpMethod'                  => strtoupper(trim((string)($http['method'] ?? 'GET'))),
-        'userAgent'                   => trim((string)($http['userAgent'] ?? 'Skyesoft-ZoningResolver/1.3 (+https://skyesoft.com)')),
+        'userAgent'                   => trim((string)($http['userAgent'] ?? 'Skyesoft-ZoningResolver/1.4 (+https://skyesoft.com)')),
         'referer'                     => trim((string)($http['referer'] ?? '')),
         'connectTimeout'              => (int)(
             $http['connectTimeout']
@@ -373,10 +403,10 @@ function queryArcGisZoningSource(
     $fieldNames = collectZoningOutFields($source);
 
     $params = [
-        'where'          => (string)($source['where'] ?? '1=1'),
-        'outFields'      => implode(',', $fieldNames),
-        'returnGeometry' => !empty($source['returnGeometry']) ? 'true' : 'false',
-        'f'              => 'json',
+        'where'             => (string)($source['where'] ?? '1=1'),
+        'outFields'         => implode(',', $fieldNames),
+        'returnGeometry'    => !empty($source['returnGeometry']) ? 'true' : 'false',
+        'f'                 => 'json',
         'resultRecordCount' => (int)($source['resultRecordCount'] ?? 10)
     ];
 
@@ -461,7 +491,7 @@ function queryArcGisZoningSource(
                 $options['requestTimeout'] ?? $source['requestTimeout'] ?? 5
             ))),
             CURLOPT_HTTPHEADER     => $headers,
-            CURLOPT_USERAGENT      => $source['userAgent'] ?? 'Skyesoft-ZoningResolver/1.3',
+            CURLOPT_USERAGENT      => $source['userAgent'] ?? 'Skyesoft-ZoningResolver/1.4',
         ]);
 
         if ($source['referer'] ?? '') {
@@ -640,7 +670,7 @@ function collectZoningOutFields(array $source): array {
 #endregion
 
 #region SECTION 03 — Feature Normalization
-// (unchanged from prior version)
+
 function normalizeZoningFeature(array $attributes, array $source): array {
     $codeFields = normalizeZoningFieldList($source['codeFields'] ?? []);
     $descriptionFields = normalizeZoningFieldList(
@@ -767,30 +797,32 @@ function findZoningAttribute(array $attributes, array $possibleFields): ?string 
 #endregion
 
 #region SECTION 04 — Result + Value Helpers
-// (unchanged)
+
 function buildZoningResult(array $overrides = []): array {
     return array_merge([
-        'success'           => false,
-        'status'            => 'pending',
-        'reason'            => null,
-        'message'           => null,
-        'jurisdictionName'  => null,
-        'apnRaw'            => null,
-        'zoningCode'        => null,
-        'zoningDescription' => null,
-        'zoningSource'      => null,
-        'zoningVerifiedAt'  => null,
-        'provider'           => null,
-        'queryMethod'        => null,
-        'sourceUrl'          => null,
-        'confidence'         => 0,
-        'requiresReview'     => true,
-        'candidateCount'     => 0,
-        'candidates'         => [],
-        'raw'                => [],
-        'httpCode'           => null,
-        'responseTimeMs'     => null,
-        'elapsedMs'          => null
+        'success'                 => false,
+        'status'                  => 'pending',
+        'reason'                  => null,
+        'message'                 => null,
+        'jurisdictionName'        => null,
+        'apnRaw'                  => null,
+        'zoningCode'              => null,
+        'zoningDescription'       => null,
+        'zoningSource'            => null,
+        'zoningVerifiedAt'        => null,
+        'specialDesignations'     => null,
+        'specialDesignationsJson' => null,
+        'provider'                => null,
+        'queryMethod'             => null,
+        'sourceUrl'               => null,
+        'confidence'              => 0,
+        'requiresReview'          => true,
+        'candidateCount'          => 0,
+        'candidates'              => [],
+        'raw'                     => [],
+        'httpCode'                => null,
+        'responseTimeMs'          => null,
+        'elapsedMs'               => null
     ], $overrides);
 }
 
@@ -811,6 +843,7 @@ function finalizeZoningResult(
         ' | APN=' . ($result['apnRaw'] ?? 'NULL') .
         ' | Status=' . ($result['status'] ?? 'unknown') .
         ' | Code=' . ($result['zoningCode'] ?? 'NULL') .
+        ' | RequiresReview=' . ($result['requiresReview'] ? 'YES' : 'NO') .
         ' | ElapsedMs=' . $result['elapsedMs']
     );
 
