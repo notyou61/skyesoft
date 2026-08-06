@@ -3,7 +3,7 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — locationZoningReport.php
 // Dynamic Location Zoning & Sign Code Report
-// Version: 3.2.2 (Separated Phoenix Special-Designation Scope)
+// Version: 3.3.0 (Three-Part Phoenix Special-Designation Determinations)
 // =============================================
 
 // Force PHP error logging to local folder (skyesoft/reports/php-error.log)
@@ -271,14 +271,17 @@ function extractSpecialDesignations(array $parcelRecord): array
 }
 
 /**
- * Supply stable report states for the 3-part Phoenix special-designation determination model.
+ * Supply stable report states when special-designation research is not stored yet.
  */
 function normalizeSpecialDesignations(array $specialDesignations): array
 {
-    $hasOverlays = isset($specialDesignations['zoningOverlays']) && is_array($specialDesignations['zoningOverlays']);
-    $hasHistoric = isset($specialDesignations['historicDesignation']) && is_array($specialDesignations['historicDesignation']);
-    $hasCsp = isset($specialDesignations['comprehensiveSignPlan']) && is_array($specialDesignations['comprehensiveSignPlan']);
-
+    // Normalize each lookup independently (parent existence does not prove execution).
+    $hasOverlays = isset($specialDesignations['zoningOverlays'])
+        && is_array($specialDesignations['zoningOverlays']);
+    $hasHistoric = isset($specialDesignations['historicDesignation'])
+        && is_array($specialDesignations['historicDesignation']);
+    $hasCsp = isset($specialDesignations['comprehensiveSignPlan'])
+        && is_array($specialDesignations['comprehensiveSignPlan']);
     $overlays = $hasOverlays ? $specialDesignations['zoningOverlays'] : [];
     $historic = $hasHistoric ? $specialDesignations['historicDesignation'] : [];
     $csp = $hasCsp ? $specialDesignations['comprehensiveSignPlan'] : [];
@@ -621,7 +624,7 @@ function formatCheckedAt(mixed $value): ?string
 }
 
 /**
- * Build the visible Phoenix overlay determination without overstating the GIS result scope.
+ * Build the visible Phoenix overlay determination as a simple Yes or No.
  */
 function describeZoningOverlays(array $overlays): string
 {
@@ -629,32 +632,23 @@ function describeZoningOverlays(array $overlays): string
     $matches = is_array($overlays['matches'] ?? null) ? $overlays['matches'] : [];
 
     if ($status === 'found' && $matches !== []) {
-        $names = [];
-        foreach ($matches as $match) {
-            $name = trim((string)($match['name'] ?? ''));
-            if ($name !== '') {
-                $names[] = $name;
-            }
-        }
-
-        return $names !== []
-            ? implode('; ', array_values(array_unique($names)))
-            : 'Phoenix zoning overlay or special district identified';
+        $names = array_filter(array_map(fn($m) => trim((string)($m['name'] ?? '')), $matches));
+        return 'Yes' . ($names !== [] ? ' (' . implode('; ', array_unique($names)) . ')' : '');
     }
 
     if ($status === 'noneIdentified') {
-        return 'No zoning overlay or regulatory-plan area identified in the Phoenix Zoning Overlays GIS layer';
+        return 'No';
     }
 
     if ($status === 'error' || $status === 'notDetermined') {
-        return 'Unable to determine—GIS lookup failed; manual research required';
+        return 'Unable to determine (lookup failed)';
     }
 
     return 'Not yet researched';
 }
 
 /**
- * Map the Phoenix Historic Designation lookup to approved status language.
+ * Map the Phoenix Historic Property Register lookup to simple Yes or No.
  */
 function describeHistoricDesignation(array $historic): string
 {
@@ -662,32 +656,28 @@ function describeHistoricDesignation(array $historic): string
     $matches = is_array($historic['matches'] ?? null) ? $historic['matches'] : [];
 
     if ($status === 'found' && $matches !== []) {
-        $names = [];
-        foreach ($matches as $match) {
-            $name = trim((string)($match['name'] ?? ''));
-            if ($name !== '') {
-                $names[] = $name;
-            }
-        }
+        $names = array_filter(array_map(function($m) {
+            $name = trim((string)($m['name'] ?? ''));
+            $type = trim((string)($m['type'] ?? ''));
+            return $name !== '' ? $name . ($type !== '' ? ' - ' . $type : '') : '';
+        }, $matches));
 
-        return $names !== []
-            ? implode('; ', array_values(array_unique($names)))
-            : 'Phoenix historic designation identified';
+        return 'Yes' . ($names !== [] ? ' (' . implode('; ', array_unique($names)) . ')' : '');
     }
 
     if ($status === 'noneIdentified') {
-        return 'No historic district or historic landmark designation identified in Phoenix Historic GIS';
+        return 'No';
     }
 
     if ($status === 'error' || $status === 'notDetermined') {
-        return 'Unable to determine—Historic GIS lookup failed; manual research required';
+        return 'Unable to determine (lookup failed)';
     }
 
-    return 'Not yet researched (Requires Historic Preservation lookup)';
+    return 'Not yet researched';
 }
 
 /**
- * Map the CSP review state to approved report language.
+ * Map the CSP review state to simple Yes or No.
  */
 function describeComprehensiveSignPlan(array $csp): string
 {
@@ -707,28 +697,21 @@ function describeComprehensiveSignPlan(array $csp): string
             }
         }
 
-        return 'CSP confirmed' . ($caseNumbers !== [] ? '—' . implode(', ', array_unique($caseNumbers)) : '');
+        return 'Yes' . ($caseNumbers !== [] ? ' (Case #' . implode(', ', array_unique($caseNumbers)) . ')' : '');
     }
 
     if ($status === 'noneIdentified') {
-        return 'No CSP candidate identified in Phoenix GIS';
+        return 'No';
     }
 
     if ($status === 'manualReviewRequired') {
-        $caseNumbers = [];
-        foreach ($cases as $case) {
-            $caseNumber = trim((string)($case['caseNumber'] ?? ''));
-            if ($caseNumber !== '') {
-                $caseNumbers[] = $caseNumber;
-            }
-        }
-
-        $candidateText = $caseNumbers !== [] ? ' (' . implode(', ', array_unique($caseNumbers)) . ')' : '';
-        return 'Potential related zoning case(s)' . $candidateText . '—manual CSP review required';
+        $caseNumbers = array_filter(array_map(fn($c) => trim((string)($c['caseNumber'] ?? '')), $cases));
+        $candidateText = $caseNumbers !== [] ? ' (Case #' . implode(', ', array_unique($caseNumbers)) . ')' : '';
+        return 'Manual Review Required' . $candidateText;
     }
 
     if ($status === 'error' || $status === 'notDetermined') {
-        return 'Unable to determine—GIS lookup failed; manual research required';
+        return 'Unable to determine (lookup failed)';
     }
 
     return 'Not yet researched';
@@ -942,6 +925,8 @@ if ($jsonReviewMode) {
                 : null,
             'specialDesignationReviewRequired' => (bool)($comprehensiveSignPlan['manualReviewRequired'] ?? false),
             'specialDesignationCandidateCases' => $comprehensiveSignPlan['cases'] ?? [],
+            'historicDesignationStatus' => $historicDesignation['status'] ?? 'unresearched',
+            'historicDesignationMatches' => $historicDesignation['matches'] ?? [],
             'analysisCacheVersion' => $signCodeAnalysis['_cacheVersion'] ?? null,
             'streetFrontageRecordCount' => count($streetFrontages),
             'streetFrontagesRequiringManualReview' => count(array_filter(
@@ -1380,7 +1365,7 @@ ob_start();
         <li>Existing detached-sign inventory</li>
         <li>Single-use or multiple-use parcel classification</li>
         <li>Proposed sign dimensions, height, and illumination</li>
-        <li>Applicable overlay, historic designation, CSP, or approved sign program</li>
+        <li>Applicable overlay, CSP, or approved sign program</li>
     </ul>
 
     <div class="callout-box">
@@ -1393,7 +1378,7 @@ ob_start();
             <?php else: ?>
                 <li style="margin-bottom: 2px;">Verify the linear frontage of the building or suite to calculate the maximum allowable area for attached signs.</li>
                 <li style="margin-bottom: 2px;">Confirm the street frontage feet to determine the maximum number and area of detached signs.</li>
-                <li>Perform an on-site inventory of all existing signage and check for site-specific CSP guidelines or historic preservation restrictions.</li>
+                <li>Perform an on-site inventory of all existing signage and check for site-specific CSP guidelines.</li>
             <?php endif; ?>
         </ol>
     </div>
@@ -1414,7 +1399,7 @@ ob_start();
     </table>
 
     <p style="font-size: 7.5pt; color: #666666; line-height: 1.25; margin-top: 6px;">
-        <strong>Sources &amp; Review Qualifications:</strong> Information shown is derived from structured ordinance data and local parcel records. Regulatory citations identify the underlying ordinance; procedural references do not override current ordinance requirements. Base zoning may be modified by approved plans, stipulations, overlays, historic preservation districts, a Comprehensive Sign Plan, or nonconforming conditions. Verify all site measurements, existing signs, citations, and final requirements with the governing jurisdiction before design completion, fabrication, or permit filing.
+        <strong>Sources &amp; Review Qualifications:</strong> Information shown is derived from structured ordinance data and local parcel records. Regulatory citations identify the underlying ordinance; procedural references do not override current ordinance requirements. Base zoning may be modified by approved plans, stipulations, overlays, special districts, a Comprehensive Sign Plan, or nonconforming conditions. Verify all site measurements, existing signs, citations, and final requirements with the governing jurisdiction before design completion, fabrication, or permit filing.
     </p>
 </div>
 
