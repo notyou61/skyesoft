@@ -180,6 +180,19 @@ function resolveZoning(
         }
     }
 
+    // Explicit report field extraction with fallbacks
+    $overlayPlan = $specialDesignations['overlayPlan'] 
+        ?? $specialDesignations['overlay'] 
+        ?? 'None';
+
+    $historicDesignation = $specialDesignations['historicDesignation'] 
+        ?? $specialDesignations['historic'] 
+        ?? 'None';
+
+    $comprehensiveSignPlan = $specialDesignations['comprehensiveSignPlan'] 
+        ?? $specialDesignations['csp'] 
+        ?? 'None On Record';
+
     // Evaluate overall review requirements
     $designationsComplete = $specialDesignations === null || ($specialDesignations['isComplete'] ?? false);
     $requiresReview = $baseRequiresReview || !$designationsComplete;
@@ -205,6 +218,12 @@ function resolveZoning(
         'zoningCode'              => $primaryFeature['zoningCode'],
         'zoningDescription'       => $primaryFeature['zoningDescription'],
         'zoningVerifiedAt'        => time(),
+        
+        // Report Summary Top-Level Keys
+        'overlayPlan'             => $overlayPlan,
+        'historicDesignation'     => $historicDesignation,
+        'comprehensiveSignPlan'   => $comprehensiveSignPlan,
+
         'specialDesignations'     => $specialDesignations,
         'specialDesignationsJson' => $specialDesignationsJson,
         'confidence'              => $requiresReview
