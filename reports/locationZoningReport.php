@@ -3,7 +3,7 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — locationZoningReport.php
 // Dynamic Location Zoning & Sign Code Report
-// Version: 3.0.1 (Balanced Header Logo & Body Spacing)
+// Version: 3.1.0 (Semantic Section Icons & JSON Structure)
 // =============================================
 
 // Force PHP error logging to local folder (skyesoft/reports/php-error.log)
@@ -287,6 +287,45 @@ function buildLocationDataObject(array $loc, array $streetFrontages): array
 }
 
 /**
+ * Convert a stored timestamp to Unix seconds while preserving unknown values.
+ */
+function toUnixTimestamp(mixed $value): ?int
+{
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    if (is_int($value) || (is_string($value) && ctype_digit($value))) {
+        return (int)$value;
+    }
+
+    $timestamp = strtotime((string)$value);
+
+    return $timestamp !== false ? $timestamp : null;
+}
+
+/**
+ * Normalize timestamp-shaped fields in the complete review payload.
+ */
+function normalizeReportTimestamps(mixed $value, ?string $key = null): mixed
+{
+    if (is_array($value)) {
+        foreach ($value as $childKey => $childValue) {
+            $value[$childKey] = normalizeReportTimestamps($childValue, (string)$childKey);
+        }
+
+        return $value;
+    }
+
+    $isTimestampField = $key !== null && (
+        preg_match('/(?:At|Timestamp)$/i', $key) === 1
+        || in_array(strtolower($key), ['timestamp', 'created', 'updated', 'verified'], true)
+    );
+
+    return $isTimestampField ? toUnixTimestamp($value) : $value;
+}
+
+/**
  * Perform sign code analysis using jurisdiction local filesystem assets and cached database entries.
  */
 function getOrRunSignCodeAnalysis(
@@ -441,9 +480,18 @@ function renderCitation(?string $citationText): string
     return '<div class="citation-subtext">Authority: ' . htmlspecialchars($citationText, ENT_QUOTES, 'UTF-8') . '</div>';
 }
 
-function buildReportSectionHeading(string $title): string 
+function buildReportSectionHeading(string $title, string $iconFile): string
 {
-    return '<div class="section-heading">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</div>';
+    $iconPath = __DIR__ . '/../assets/images/icons/' . basename($iconFile);
+    $iconHtml = file_exists($iconPath)
+        ? '<img src="' . htmlspecialchars($iconPath, ENT_QUOTES, 'UTF-8') . '" class="section-icon" alt="" />'
+        : '';
+
+    return '<div class="section-heading">'
+        . $iconHtml
+        . '<span class="section-heading-title">'
+        . htmlspecialchars($title, ENT_QUOTES, 'UTF-8')
+        . '</span></div>';
 }
 
 /**
@@ -574,7 +622,7 @@ if ($jsonReviewMode) {
             'reportType' => 'Location Zoning & Sign Code Report',
             'schemaVersion' => '1.0.0',
             'locationId' => (int)$locationId,
-            'generatedAt' => date(DATE_ATOM),
+            'generatedAt' => time(),
             'forceRefreshRequested' => $forceRefresh,
             'preparedBy' => [
                 'name' => 'Steve Skye',
@@ -588,58 +636,87 @@ if ($jsonReviewMode) {
         'sourceRecord' => $loc,
         'locationData' => buildLocationDataObject($loc, $streetFrontages),
         'reportSections' => [
-            '1_propertyOverview' => [
-                'location' => $loc['locationName'],
-                'address' => $fullAddress,
-                'apn' => $parcelNumber,
-                'jurisdiction' => $loc['locationJurisdiction'],
-                'county' => $loc['locationCounty'],
-                'owner' => $loc['ownerName'],
-                'entity' => [
-                    'entityId' => isset($loc['entityId']) ? (int)$loc['entityId'] : null,
-                    'entityName' => $loc['entityName'],
-                    'entityType' => $loc['entityType'],
-                    'entityStatus' => $loc['entityStatus']
-                ],
-                'parcel' => [
-                    'parcelDetailsId' => isset($loc['parcelDetailsId']) ? (int)$loc['parcelDetailsId'] : null,
+            'propertyOverview' => [
+                'icon' => 'property.png',
+                'title' => 'Property Overview',
+                'content' => [
+                    'locationName' => $loc['locationName'],
+                    'locationPlaceId' => $loc['locationPlaceId'],
+                    'locationAddress' => $loc['locationAddress'],
+                    'locationAddressSuite' => $loc['locationAddressSuite'] ?? '',
+                    'locationCity' => $loc['locationCity'],
+                    'locationState' => $loc['locationState'],
+                    'locationZip' => $loc['locationZip'],
+                    'locationParcelNumber' => $loc['locationParcelNumber'],
+                    'locationJurisdiction' => $loc['locationJurisdiction'],
+                    'locationCounty' => $loc['locationCounty'],
+                    'ownerName' => $loc['ownerName'],
                     'subdivision' => $loc['subdivision'],
                     'lotSize' => $loc['lotSize'],
-                    'lotSizeFormatted' => $formattedLotSize,
-                    'yearBuilt' => $loc['yearBuilt'],
+                    'yearBuilt' => $loc['yearBuilt'] !== null ? (int)$loc['yearBuilt'] : null,
+                    'zoningCode' => $loc['zoningCode'],
+                    'zoningDescription' => $loc['zoningDescription'],
+                    'zoningSource' => $loc['zoningSource'],
+                    'zoningVerifiedAt' => toUnixTimestamp($loc['zoningVerifiedAt'] ?? null),
                     'source' => $loc['source'],
-                    'confidence' => $loc['confidence'] !== null ? (float)$loc['confidence'] : null
+                    'entityName' => $loc['entityName']
                 ]
             ],
-            '2_zoningSummary' => [
-                'zoningCode' => $loc['zoningCode'],
-                'zoningDescription' => $loc['zoningDescription'],
-                'zoningSource' => $loc['zoningSource'],
-                'zoningVerifiedAt' => $loc['zoningVerifiedAt'],
-                'zoningVerifiedAtFormatted' => $verifiedAtFormatted,
-                'ordinance' => $signCodeAnalysis['ordinance'] ?? []
+            'zoningSummary' => [
+                'icon' => 'temple.png',
+                'title' => 'Zoning Summary',
+                'content' => [
+                    'zoningCode' => $loc['zoningCode'],
+                    'zoningDescription' => $loc['zoningDescription'],
+                    'zoningSource' => $loc['zoningSource'],
+                    'zoningVerifiedAt' => toUnixTimestamp($loc['zoningVerifiedAt'] ?? null),
+                    'ordinance' => $signCodeAnalysis['ordinance'] ?? []
+                ]
             ],
-            '3_attachedSignAllowance' => $attached,
-            '4_detachedSignAllowance' => [
+            'attachedSignAllowance' => [
+                'icon' => 'bricks.png',
+                'title' => 'Attached Sign Allowance',
+                'content' => $attached
+            ],
+            'detachedSignAllowance' => [
+                'icon' => 'ruler.png',
+                'title' => 'Detached Sign Allowance',
+                'content' => [
                 'analysis' => $detached,
                 'streetFrontages' => buildLocationDataObject($loc, $streetFrontages)['streetFrontages'],
                 'streetFrontageNotice' => 'Parcel frontage is not tenant, suite, storefront, or building-elevation width.'
+                ]
             ],
-            '5_additionalRequirements' => [
+            'additionalRequirements' => [
+                'icon' => 'clipboard.png',
+                'title' => 'Additional Requirements',
+                'content' => [
                 'analysis' => $signCodeAnalysis['additionalRequirements'] ?? [],
                 'citywideRules' => $citywideRules,
                 'groundSignRules' => $groundRules
+                ]
             ],
-            '6_permitDrawingAndFieldVerificationRequirements' => [
+            'permitDrawingAndFieldVerificationRequirements' => [
+                'icon' => 'pencil.png',
+                'title' => 'Permit Drawing & Field Verification Requirements',
+                'content' => [
                 'analysis' => $signCodeAnalysis['permitRequirements'] ?? [],
                 'permitPreparationRequirements' => $permitPreparation,
                 'administrativeFees' => $administrativeFees
+                ]
             ],
-            '7_requiredFieldInformationAndNextSteps' => [
+            'requiredFieldInformationAndNextSteps' => [
+                'icon' => 'workman.png',
+                'title' => 'Required Field Information & Next Steps',
+                'content' => [
                 'findings' => $signCodeAnalysis['findings'] ?? [],
                 'recommendedNextSteps' => $signCodeAnalysis['recommendedNextSteps'] ?? []
+                ]
             ],
-            '8_reportBasisAndQualifications' => [
+            'reportBasisAndQualifications' => [
+                'icon' => 'scroll.png',
+                'title' => 'Report Basis & Qualifications',
+                'content' => [
                 'analysisStatus' => $analysisError !== null
                     ? 'analysis_error'
                     : ($signCodeAnalysis['analysisStatus'] ?? 'partial'),
@@ -650,6 +727,7 @@ if ($jsonReviewMode) {
                 'zoningSource' => $loc['zoningSource'],
                 'frontageDisclaimer' => 'GIS-verified measurements are not a boundary survey and are not certified by a registered land surveyor.',
                 'reportQualification' => 'Final sign eligibility remains subject to jurisdiction review, field verification, and approved permit drawings.'
+                ]
             ]
         ],
         'authoritativeSignCode' => $signCodeData,
@@ -664,6 +742,8 @@ if ($jsonReviewMode) {
             ))
         ]
     ];
+
+    $reviewPayload = normalizeReportTimestamps($reviewPayload);
 
     $reviewJson = json_encode(
         $reviewPayload,
@@ -701,6 +781,8 @@ $css = '
 
     .section-block { margin-bottom: 12px; page-break-inside: avoid; }
     .section-heading { font-size: 9.5pt; font-weight: bold; color: #14377c; border-bottom: 1.5px solid #14377c; padding-bottom: 2px; margin-bottom: 5px; }
+    .section-icon { display: inline-block; width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; }
+    .section-heading-title { display: inline-block; vertical-align: middle; }
 
     .data-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
     .data-table th, .data-table td { border: 1px solid #ccc; padding: 4px 6px; font-size: 8pt; vertical-align: top; }
@@ -753,9 +835,9 @@ $footerHtml = '
 ob_start();
 ?>
 
-<!-- 1. Property Overview -->
+<!-- Property Overview -->
 <div class="section-block">
-    <?= buildReportSectionHeading('1. Property Overview') ?>
+    <?= buildReportSectionHeading('Property Overview', 'property.png') ?>
     <table class="data-table">
         <tr>
             <th>Location</th>
@@ -788,9 +870,9 @@ ob_start();
     </table>
 </div>
 
-<!-- 2. Zoning Summary -->
+<!-- Zoning Summary -->
 <div class="section-block">
-    <?= buildReportSectionHeading('2. Zoning Summary') ?>
+    <?= buildReportSectionHeading('Zoning Summary', 'temple.png') ?>
     <table class="data-table">
         <tr>
             <th>Zoning District</th>
@@ -819,9 +901,9 @@ ob_start();
     </table>
 </div>
 
-<!-- 3. Attached Sign Allowance -->
+<!-- Attached Sign Allowance -->
 <div class="section-block">
-    <?= buildReportSectionHeading('3. Attached Sign Allowance') ?>
+    <?= buildReportSectionHeading('Attached Sign Allowance', 'bricks.png') ?>
     <table class="data-table">
         <tr>
             <th>Controlling measurement</th>
@@ -857,9 +939,9 @@ ob_start();
     <?= renderCitation('Phoenix Zoning Ordinance §705.D.1, Table D-1; §705.D.3.i') ?>
 </div>
 
-<!-- 4. Detached Sign Allowance -->
+<!-- Detached Sign Allowance -->
 <div class="section-block">
-    <?= buildReportSectionHeading('4. Detached Sign Allowance') ?>
+    <?= buildReportSectionHeading('Detached Sign Allowance', 'ruler.png') ?>
     <table class="matrix-table">
         <tr>
             <th rowspan="2" style="width: 30%;">Sign / Street Class</th>
@@ -974,9 +1056,9 @@ ob_start();
     </div>
 </div>
 
-<!-- 5. Additional Requirements -->
+<!-- Additional Requirements -->
 <div class="section-block">
-    <?= buildReportSectionHeading('5. Additional Requirements') ?>
+    <?= buildReportSectionHeading('Additional Requirements', 'clipboard.png') ?>
     <table class="data-table">
         <tr>
             <th>Sign permit</th>
@@ -1026,9 +1108,9 @@ ob_start();
     </table>
 </div>
 
-<!-- 6. Permit Drawing & Field Verification Requirements -->
+<!-- Permit Drawing & Field Verification Requirements -->
 <div class="section-block">
-    <?= buildReportSectionHeading('6. Permit Drawing & Field Verification Requirements') ?>
+    <?= buildReportSectionHeading('Permit Drawing & Field Verification Requirements', 'pencil.png') ?>
     <table class="two-column-table">
         <tr>
             <td>
@@ -1052,9 +1134,9 @@ ob_start();
     <div class="citation-subtext">Procedural reference: City of Phoenix Sign Permit Submittal Checklist. Confirm current submittal requirements before filing.</div>
 </div>
 
-<!-- 7. Required Field Information & Next Steps -->
+<!-- Required Field Information & Next Steps -->
 <div class="section-block">
-    <?= buildReportSectionHeading('7. Required Field Information') ?>
+    <?= buildReportSectionHeading('Required Field Information & Next Steps', 'workman.png') ?>
     <ul style="margin: 3px 0 6px 0; padding-left: 18px; font-size: 8pt; color: #222;">
         <li>Applicable building or tenant elevation width</li>
         <li>Existing attached-sign count and total area</li>
@@ -1081,9 +1163,9 @@ ob_start();
     </div>
 </div>
 
-<!-- 8. Report Basis & Disclaimers -->
+<!-- Report Basis & Qualifications -->
 <div class="section-block" style="margin-top: 10px;">
-    <?= buildReportSectionHeading('8. Report Basis & Qualifications') ?>
+    <?= buildReportSectionHeading('Report Basis & Qualifications', 'scroll.png') ?>
     <table class="basis-table">
         <tr>
             <td><strong>Analysis Status:</strong> <?= displayValue($analysisError ? 'Analysis Error' : ucwords(str_replace('_', ' ', (string)($signCodeAnalysis['analysisStatus'] ?? 'Partial')))) ?></td>
