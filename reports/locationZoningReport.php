@@ -3,7 +3,7 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — locationZoningReport.php
 // Dynamic Location Zoning & Sign Code Report
-// Version: 3.2.0 (Phoenix Special Designations & Auditable Zoning Summary)
+// Version: 3.2.1 (Explicit Special-Designation Research States)
 // =============================================
 
 // Force PHP error logging to local folder (skyesoft/reports/php-error.log)
@@ -275,27 +275,28 @@ function extractSpecialDesignations(array $parcelRecord): array
  */
 function normalizeSpecialDesignations(array $specialDesignations): array
 {
-    $overlays = is_array($specialDesignations['zoningOverlays'] ?? null)
-        ? $specialDesignations['zoningOverlays']
-        : [];
-    $csp = is_array($specialDesignations['comprehensiveSignPlan'] ?? null)
-        ? $specialDesignations['comprehensiveSignPlan']
-        : [];
+    // Normalize each lookup independently (parent existence does not prove execution).
+    $hasOverlays = isset($specialDesignations['zoningOverlays'])
+        && is_array($specialDesignations['zoningOverlays']);
+    $hasCsp = isset($specialDesignations['comprehensiveSignPlan'])
+        && is_array($specialDesignations['comprehensiveSignPlan']);
+    $overlays = $hasOverlays ? $specialDesignations['zoningOverlays'] : [];
+    $csp = $hasCsp ? $specialDesignations['comprehensiveSignPlan'] : [];
 
     return [
         'zoningOverlays' => array_replace([
-            'status' => 'notDetermined',
+            'status' => 'unresearched',
             'matches' => [],
             'source' => null,
             'checkedAt' => null
         ], $overlays),
         'comprehensiveSignPlan' => array_replace([
-            'status' => 'notDetermined',
+            'status' => 'unresearched',
             'appliesToParcel' => null,
             'cases' => [],
             'source' => null,
             'checkedAt' => null,
-            'manualReviewRequired' => true
+            'manualReviewRequired' => false
         ], $csp)
     ];
 }
@@ -618,7 +619,7 @@ function formatCheckedAt(mixed $value): ?string
  */
 function describeZoningOverlays(array $overlays): string
 {
-    $status = (string)($overlays['status'] ?? 'notDetermined');
+    $status = (string)($overlays['status'] ?? 'unresearched');
     $matches = is_array($overlays['matches'] ?? null) ? $overlays['matches'] : [];
 
     if ($status === 'found' && $matches !== []) {
@@ -639,7 +640,11 @@ function describeZoningOverlays(array $overlays): string
         return 'No zoning overlay or special district identified in Phoenix GIS';
     }
 
-    return 'Unable to determine—manual research required';
+    if ($status === 'error' || $status === 'notDetermined') {
+        return 'Unable to determine—GIS lookup failed; manual research required';
+    }
+
+    return 'Not yet researched';
 }
 
 /**
@@ -647,7 +652,7 @@ function describeZoningOverlays(array $overlays): string
  */
 function describeComprehensiveSignPlan(array $csp): string
 {
-    $status = (string)($csp['status'] ?? 'notDetermined');
+    $status = (string)($csp['status'] ?? 'unresearched');
     $cases = is_array($csp['cases'] ?? null) ? $csp['cases'] : [];
 
     if ($status === 'confirmed') {
@@ -683,7 +688,11 @@ function describeComprehensiveSignPlan(array $csp): string
         return 'Potential related zoning case(s)' . $candidateText . '—manual CSP review required';
     }
 
-    return 'Unable to determine—manual research required';
+    if ($status === 'error' || $status === 'notDetermined') {
+        return 'Unable to determine—GIS lookup failed; manual research required';
+    }
+
+    return 'Not yet researched';
 }
 
 // APN Fallback logic
