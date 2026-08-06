@@ -3,7 +3,7 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — locationZoningReport.php
 // Dynamic Location Zoning & Sign Code Report
-// Version: 3.2.1 (Explicit Special-Designation Research States)
+// Version: 3.2.2 (Separated Phoenix Special-Designation Scope)
 // =============================================
 
 // Force PHP error logging to local folder (skyesoft/reports/php-error.log)
@@ -271,16 +271,16 @@ function extractSpecialDesignations(array $parcelRecord): array
 }
 
 /**
- * Supply stable report states when special-designation research is not stored yet.
+ * Supply stable report states for the 3-part Phoenix special-designation determination model.
  */
 function normalizeSpecialDesignations(array $specialDesignations): array
 {
-    // Normalize each lookup independently (parent existence does not prove execution).
-    $hasOverlays = isset($specialDesignations['zoningOverlays'])
-        && is_array($specialDesignations['zoningOverlays']);
-    $hasCsp = isset($specialDesignations['comprehensiveSignPlan'])
-        && is_array($specialDesignations['comprehensiveSignPlan']);
+    $hasOverlays = isset($specialDesignations['zoningOverlays']) && is_array($specialDesignations['zoningOverlays']);
+    $hasHistoric = isset($specialDesignations['historicDesignation']) && is_array($specialDesignations['historicDesignation']);
+    $hasCsp = isset($specialDesignations['comprehensiveSignPlan']) && is_array($specialDesignations['comprehensiveSignPlan']);
+
     $overlays = $hasOverlays ? $specialDesignations['zoningOverlays'] : [];
+    $historic = $hasHistoric ? $specialDesignations['historicDesignation'] : [];
     $csp = $hasCsp ? $specialDesignations['comprehensiveSignPlan'] : [];
 
     return [
@@ -290,6 +290,12 @@ function normalizeSpecialDesignations(array $specialDesignations): array
             'source' => null,
             'checkedAt' => null
         ], $overlays),
+        'historicDesignation' => array_replace([
+            'status' => 'unresearched',
+            'matches' => [],
+            'source' => null,
+            'checkedAt' => null
+        ], $historic),
         'comprehensiveSignPlan' => array_replace([
             'status' => 'unresearched',
             'appliesToParcel' => null,
@@ -615,7 +621,7 @@ function formatCheckedAt(mixed $value): ?string
 }
 
 /**
- * Build the visible Phoenix overlay determination without overstating the GIS result.
+ * Build the visible Phoenix overlay determination without overstating the GIS result scope.
  */
 function describeZoningOverlays(array $overlays): string
 {
@@ -637,7 +643,7 @@ function describeZoningOverlays(array $overlays): string
     }
 
     if ($status === 'noneIdentified') {
-        return 'No zoning overlay or special district identified in Phoenix GIS';
+        return 'No zoning overlay or regulatory-plan area identified in the Phoenix Zoning Overlays GIS layer';
     }
 
     if ($status === 'error' || $status === 'notDetermined') {
@@ -648,7 +654,40 @@ function describeZoningOverlays(array $overlays): string
 }
 
 /**
- * Map the CSP review state to the approved report language.
+ * Map the Phoenix Historic Designation lookup to approved status language.
+ */
+function describeHistoricDesignation(array $historic): string
+{
+    $status = (string)($historic['status'] ?? 'unresearched');
+    $matches = is_array($historic['matches'] ?? null) ? $historic['matches'] : [];
+
+    if ($status === 'found' && $matches !== []) {
+        $names = [];
+        foreach ($matches as $match) {
+            $name = trim((string)($match['name'] ?? ''));
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+
+        return $names !== []
+            ? implode('; ', array_values(array_unique($names)))
+            : 'Phoenix historic designation identified';
+    }
+
+    if ($status === 'noneIdentified') {
+        return 'No historic district or historic landmark designation identified in Phoenix Historic GIS';
+    }
+
+    if ($status === 'error' || $status === 'notDetermined') {
+        return 'Unable to determine—Historic GIS lookup failed; manual research required';
+    }
+
+    return 'Not yet researched (Requires Historic Preservation lookup)';
+}
+
+/**
+ * Map the CSP review state to approved report language.
  */
 function describeComprehensiveSignPlan(array $csp): string
 {
@@ -755,6 +794,7 @@ $detached = $signCodeAnalysis['detachedSigns'] ?? [];
 $signCodeData = loadReportSignCode($loc);
 $specialDesignations = normalizeSpecialDesignations(extractSpecialDesignations($loc));
 $zoningOverlays = $specialDesignations['zoningOverlays'];
+$historicDesignation = $specialDesignations['historicDesignation'];
 $comprehensiveSignPlan = $specialDesignations['comprehensiveSignPlan'];
 
 $commercialIndustrial = $signCodeData['identificationSignStandards']['commercialIndustrial'] ?? [];
@@ -1059,7 +1099,7 @@ ob_start();
             <td><?= displayValue($verifiedAtFormatted) ?></td>
         </tr>
         <tr>
-            <th>Overlay / Special District</th>
+            <th>Overlay / Regulatory Plan</th>
             <td>
                 <?= displayValue(describeZoningOverlays($zoningOverlays)) ?>
                 <?php if (!empty($zoningOverlays['source'])): ?>
@@ -1067,6 +1107,18 @@ ob_start();
                 <?php endif; ?>
                 <?php if (!empty($zoningOverlays['checkedAt'])): ?>
                     <div class="citation-subtext">Checked: <?= displayValue(formatCheckedAt($zoningOverlays['checkedAt'])) ?></div>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <tr>
+            <th>Historic Designation</th>
+            <td>
+                <?= displayValue(describeHistoricDesignation($historicDesignation)) ?>
+                <?php if (!empty($historicDesignation['source'])): ?>
+                    <div class="citation-subtext">Source: <?= displayValue($historicDesignation['source']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($historicDesignation['checkedAt'])): ?>
+                    <div class="citation-subtext">Checked: <?= displayValue(formatCheckedAt($historicDesignation['checkedAt'])) ?></div>
                 <?php endif; ?>
             </td>
         </tr>
@@ -1328,7 +1380,7 @@ ob_start();
         <li>Existing detached-sign inventory</li>
         <li>Single-use or multiple-use parcel classification</li>
         <li>Proposed sign dimensions, height, and illumination</li>
-        <li>Applicable overlay, CSP, or approved sign program</li>
+        <li>Applicable overlay, historic designation, CSP, or approved sign program</li>
     </ul>
 
     <div class="callout-box">
@@ -1341,7 +1393,7 @@ ob_start();
             <?php else: ?>
                 <li style="margin-bottom: 2px;">Verify the linear frontage of the building or suite to calculate the maximum allowable area for attached signs.</li>
                 <li style="margin-bottom: 2px;">Confirm the street frontage feet to determine the maximum number and area of detached signs.</li>
-                <li>Perform an on-site inventory of all existing signage and check for site-specific CSP guidelines.</li>
+                <li>Perform an on-site inventory of all existing signage and check for site-specific CSP guidelines or historic preservation restrictions.</li>
             <?php endif; ?>
         </ol>
     </div>
@@ -1362,7 +1414,7 @@ ob_start();
     </table>
 
     <p style="font-size: 7.5pt; color: #666666; line-height: 1.25; margin-top: 6px;">
-        <strong>Sources &amp; Review Qualifications:</strong> Information shown is derived from structured ordinance data and local parcel records. Regulatory citations identify the underlying ordinance; procedural references do not override current ordinance requirements. Base zoning may be modified by approved plans, stipulations, overlays, special districts, a Comprehensive Sign Plan, or nonconforming conditions. Verify all site measurements, existing signs, citations, and final requirements with the governing jurisdiction before design completion, fabrication, or permit filing.
+        <strong>Sources &amp; Review Qualifications:</strong> Information shown is derived from structured ordinance data and local parcel records. Regulatory citations identify the underlying ordinance; procedural references do not override current ordinance requirements. Base zoning may be modified by approved plans, stipulations, overlays, historic preservation districts, a Comprehensive Sign Plan, or nonconforming conditions. Verify all site measurements, existing signs, citations, and final requirements with the governing jurisdiction before design completion, fabrication, or permit filing.
     </p>
 </div>
 
