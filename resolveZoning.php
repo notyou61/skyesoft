@@ -3,9 +3,9 @@ header('Content-Type: application/json');
 
 // 1. Read incoming JSON payload from Skyesoft
 $rawInput = file_get_contents('php://input');
-$input = json_decode($rawInput, true);
+$input = json_decode($rawInput, true) ?? [];
 
-// Extract from nested Skyesoft location structure or top-level properties
+// Extract location structure
 $location = $input['location'] ?? $input;
 $parcel = $location['parcel'] ?? [];
 
@@ -18,52 +18,148 @@ $activitySessionId = $input['activitySessionId'] ?? null;
 
 $fullAddress = trim("$address, $city, $state $zip", " ,");
 
-// 2. SHORT-CIRCUIT: If Skyesoft already has parcel zoning data attached, surface it directly
+// 2. Load jurisdiction-specific zoning definitions (zoning.json)
+$zoningRegistryFile = __DIR__ . '/zoning.json';
+$zoningRegistry = file_exists($zoningRegistryFile) 
+    ? json_decode(file_get_contents($zoningRegistryFile), true) 
+    : [];
+
+// Track governance issues for location validation
+$issues = [];
+$locationValidated = true;
+
+// 3. SHORT-CIRCUIT: Direct Parcel Lookup (Pre-verified in Skyesoft)
 if (!empty($parcel['zoningCode'])) {
     echo json_encode([
-        'address' => $fullAddress,
-        'apn' => $location['locationParcelNumberRaw'] ?? $location['locationParcelNumber'] ?? 'N/A',
-        'jurisdiction' => $jurisdiction ?: 'City of Phoenix',
-        'zoningCode' => $parcel['zoningCode'], // Resolves to A-2
-        'zoningDescription' => $parcel['zoningDescription'] ?? 'Industrial',
-        'sourceLayer' => $parcel['zoningSource'] ?? 'Skyesoft Parcel Record / City of Phoenix',
-        'filter' => 'DIRECT_PARCEL_LOOKUP',
-        'verificationDate' => !empty($parcel['zoningVerifiedAt']) 
-            ? date('Y-m-d H:i:s', (int)$parcel['zoningVerifiedAt']) 
-            : date('Y-m-d H:i:s'),
-        'candidateCount' => 1,
-        'confidence' => ($parcel['confidence'] ?? '95') . '%',
-        'reviewRequired' => false,
-        'rawAttributes' => $parcel,
-        'activitySessionId' => $activitySessionId
+        'status' => 'success',
+        'locationValidated' => true,
+        'uiState' => [
+            'proposalStatus' => 'valid',
+            'canCommit' => true
+        ],
+        'data' => [
+            'address' => $fullAddress,
+            'apn' => $location['locationParcelNumberRaw'] ?? $location['locationParcelNumber'] ?? 'N/A',
+            'jurisdiction' => $jurisdiction ?: 'City of Phoenix',
+            'zoningCode' => $parcel['zoningCode'],
+            'zoningDescription' => $parcel['zoningDescription'] ?? 'N/A',
+            'sourceLayer' => $parcel['zoningSource'] ?? 'Skyesoft Parcel Record',
+            'filter' => 'DIRECT_PARCEL_LOOKUP',
+            'verificationDate' => !empty($parcel['zoningVerifiedAt']) 
+                ? date('Y-m-d H:i:s', (int)$parcel['zoningVerifiedAt']) 
+                : date('Y-m-d H:i:s'),
+            'confidence' => ($parcel['confidence'] ?? '95') . '%',
+            'reviewRequired' => false,
+            'issues' => [],
+            'activitySessionId' => $activitySessionId
+        ]
     ], JSON_PRETTY_PRINT);
     exit;
 }
 
-// 3. FALLBACK: Geocode address for ESRI ArcGIS Spatial Query
-$geocodeUrl = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?' . http_build_query([
-    'f' => 'json',
-    'singleLine' => $fullAddress,
-    'outFields' => 'Match_addr',
-    'maxLocations' => 1
-]);
+// 4. Validate Address & Geocode via ESRI ArcGIS Server
+if (empty($fullAddress) || strlen($fullAddress) < 5) {
+    $locationValidated = false;
+    $issues[] = [
+        'code' => 'RS-8',
+        'severity' => 'blocking',
+        'message' => 'Invalid or incomplete address provided.'
+    ];
+}
 
-$geocodeData = json_decode(@file_get_contents($geocodeUrl), true);
-
-if (empty($geocodeData['candidates'])) {
-    echo json_encode([
-        'error' => 'Geocoding failed for provided address.',
-        'address' => $fullAddress,
-        'activitySessionId' => $activitySessionId
+$candidate = null;
+if ($locationValidated) {
+    $geocodeUrl = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?' . http_build_query([
+        'f' => 'json',
+        'singleLine' => $fullAddress,
+        'outFields' => 'Match_addr,Addr_type,StAddr',
+        'maxLocations' => 1
     ]);
+
+    $geocodeData = json_decode(@file_get_contents($geocodeUrl), true);
+    $candidate = $geocodeData['candidates'][0] ?? null;
+
+    // Fail validation if geocoder found no candidate or couldn't resolve a street address
+    if (!$candidate || ($candidate['score'] ?? 0) < 70) {
+        $locationValidated = false;
+        $issues[] = [
+            'code' => 'RS-8',
+            'severity' => 'blocking',
+            'message' => 'Invalid Location: Unable to geocode address to a known physical structure.'
+        ];
+    }
+}
+
+// Handle INVALID ADDRESS Return Path
+if (!$locationValidated) {
+    echo json_encode([
+        'status' => 'location_invalid',
+        'locationValidated' => false,
+        'uiState' => [
+            'proposalStatus' => 'invalid_location',
+            'canCommit' => false
+        ],
+        'data' => [
+            'address' => $fullAddress,
+            'jurisdiction' => $jurisdiction ?: 'Unknown',
+            'zoningCode' => 'N/A',
+            'zoningDescription' => 'Address validation failed. Human review required.',
+            'confidence' => '0%',
+            'reviewRequired' => true,
+            'issues' => $issues,
+            'activitySessionId' => $activitySessionId
+        ]
+    ], JSON_PRETTY_PRINT);
     exit;
 }
 
-$candidate = $geocodeData['candidates'][0];
+// 5. Query Spatial Layers if Geocode Succeeded
 $lng = $candidate['location']['x'];
 $lat = $candidate['location']['y'];
 
-// 4. Query Maricopa County PlanNet Zoning (Layer 11) for Unincorporated County Land
+// Check Jurisdiction Mapping in zoning.json or fall back to County PlanNet Layer 11
+$jurisKey = strtolower(trim($jurisdiction));
+$matchedRule = $zoningRegistry[$jurisKey] ?? null;
+
+if ($matchedRule && isset($matchedRule['endpoint'])) {
+    // Custom Endpoint Query from zoning.json
+    $spatialUrl = $matchedRule['endpoint'] . '?' . http_build_query([
+        'f' => 'json',
+        'geometry' => "$lng,$lat",
+        'geometryType' => 'esriGeometryPoint',
+        'inSR' => '4326',
+        'spatialRel' => 'esriSpatialRelWithin',
+        'outFields' => '*',
+        'returnGeometry' => 'false'
+    ]);
+    $zoningData = json_decode(@file_get_contents($spatialUrl), true);
+    $features = $zoningData['features'] ?? [];
+    
+    if (!empty($features)) {
+        $attrs = $features[0]['attributes'];
+        echo json_encode([
+            'status' => 'success',
+            'locationValidated' => true,
+            'uiState' => ['proposalStatus' => 'valid', 'canCommit' => true],
+            'data' => [
+                'address' => $fullAddress,
+                'coordinates' => ['lat' => $lat, 'lng' => $lng],
+                'apn' => $attrs[$matchedRule['apnField'] ?? 'APN'] ?? 'N/A',
+                'jurisdiction' => $jurisdiction,
+                'zoningCode' => $attrs[$matchedRule['codeField'] ?? 'ZONING'] ?? 'UNKNOWN',
+                'zoningDescription' => $attrs[$matchedRule['descField'] ?? 'ZONING_DESC'] ?? 'N/A',
+                'sourceLayer' => $matchedRule['layerName'] ?? 'Jurisdiction Layer',
+                'confidence' => '100%',
+                'reviewRequired' => false,
+                'issues' => [],
+                'activitySessionId' => $activitySessionId
+            ]
+        ], JSON_PRETTY_PRINT);
+        exit;
+    }
+}
+
+// 6. Regional Fallback: Maricopa County PlanNet (Layer 11)
 $layer11Url = 'https://gis.maricopa.gov/arcgis/rest/services/PlanNet/Zoning/MapServer/11/query?' . http_build_query([
     'f' => 'json',
     'geometry' => "$lng,$lat",
@@ -78,40 +174,52 @@ $layer11Url = 'https://gis.maricopa.gov/arcgis/rest/services/PlanNet/Zoning/MapS
 $zoningData = json_decode(@file_get_contents($layer11Url), true);
 $features = $zoningData['features'] ?? [];
 
-if (count($features) > 0) {
+if (!empty($features)) {
     $attrs = $features[0]['attributes'];
     echo json_encode([
-        'address' => $fullAddress,
-        'coordinates' => ['lat' => $lat, 'lng' => $lng],
-        'apn' => $attrs['APN'] ?? $attrs['PARCEL'] ?? 'N/A',
-        'jurisdiction' => $attrs['JURIS'] ?? 'Maricopa County',
-        'zoningCode' => $attrs['ZONING'] ?? $attrs['ZONE'] ?? 'UNKNOWN',
-        'zoningDescription' => $attrs['ZONING_DESC'] ?? 'N/A',
-        'sourceLayer' => 'Maricopa County PlanNet Zoning Layer 11',
-        'filter' => "JURIS = 'COUNTY'",
-        'verificationDate' => date('Y-m-d H:i:s'),
-        'candidateCount' => count($features),
-        'confidence' => '100%',
-        'reviewRequired' => false,
-        'rawAttributes' => $attrs,
-        'activitySessionId' => $activitySessionId
+        'status' => 'success',
+        'locationValidated' => true,
+        'uiState' => ['proposalStatus' => 'valid', 'canCommit' => true],
+        'data' => [
+            'address' => $fullAddress,
+            'coordinates' => ['lat' => $lat, 'lng' => $lng],
+            'apn' => $attrs['APN'] ?? $attrs['PARCEL'] ?? 'N/A',
+            'jurisdiction' => $attrs['JURIS'] ?? 'Maricopa County',
+            'zoningCode' => $attrs['ZONING'] ?? $attrs['ZONE'] ?? 'UNKNOWN',
+            'zoningDescription' => $attrs['ZONING_DESC'] ?? 'N/A',
+            'sourceLayer' => 'Maricopa County PlanNet Zoning Layer 11',
+            'confidence' => '100%',
+            'reviewRequired' => false,
+            'issues' => [],
+            'activitySessionId' => $activitySessionId
+        ]
     ], JSON_PRETTY_PRINT);
     exit;
 }
 
-// 5. Final fallback if outside county layer and no parcel match
+// 7. Spatial Zoning Not Found (Valid Address, Unmapped Spatial Boundary)
 echo json_encode([
-    'address' => $fullAddress,
-    'coordinates' => ['lat' => $lat, 'lng' => $lng],
-    'jurisdiction' => $jurisdiction ? "Incorporated ($jurisdiction)" : 'Outside County Jurisdiction',
-    'zoningCode' => 'N/A',
-    'zoningDescription' => 'No match in Layer 11 (Unincorporated Maricopa County)',
-    'sourceLayer' => 'Maricopa County PlanNet Zoning Layer 11',
-    'filter' => "JURIS = 'COUNTY'",
-    'verificationDate' => date('Y-m-d H:i:s'),
-    'candidateCount' => 0,
-    'confidence' => '0%',
-    'reviewRequired' => true,
-    'rawAttributes' => null,
-    'activitySessionId' => $activitySessionId
+    'status' => 'zoning_unmapped',
+    'locationValidated' => true,
+    'uiState' => [
+        'proposalStatus' => 'review_required',
+        'canCommit' => false
+    ],
+    'data' => [
+        'address' => $fullAddress,
+        'coordinates' => ['lat' => $lat, 'lng' => $lng],
+        'jurisdiction' => $jurisdiction ? "Incorporated ($jurisdiction)" : 'Outside Unincorporated Layer',
+        'zoningCode' => 'N/A',
+        'zoningDescription' => 'Address is valid, but spatial zoning boundary was not found.',
+        'confidence' => '50%',
+        'reviewRequired' => true,
+        'issues' => [
+            [
+                'code' => 'RS-8_WARNING',
+                'severity' => 'warning',
+                'message' => 'Location validated, but local jurisdiction zoning layer needs manual selection.'
+            ]
+        ],
+        'activitySessionId' => $activitySessionId
+    ]
 ], JSON_PRETTY_PRINT);
