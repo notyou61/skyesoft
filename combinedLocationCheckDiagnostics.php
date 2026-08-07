@@ -9,34 +9,64 @@ declare(strict_types=1);
 
 #region SECTION 0 — Environment Bootstrap, Diagnostic Headers & Config
 
-// Force JSON response header
 header('Content-Type: application/json');
-
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
 $executionTime = time();
 $isoTimestamp  = date('c', $executionTime);
 
-// Load local environment via Skyesoft envLoader
-if (file_exists(__DIR__ . '/utils/envLoader.php')) {
-    require_once __DIR__ . '/utils/envLoader.php';
-    if (function_exists('skyesoftLoadEnv')) {
-        skyesoftLoadEnv();
+// Resolve envLoader.php across relative paths
+$envLoaderPaths = [
+    __DIR__ . '/utils/envLoader.php',
+    __DIR__ . '/../utils/envLoader.php',
+    __DIR__ . '/../../utils/envLoader.php',
+    dirname(__DIR__) . '/utils/envLoader.php'
+];
+
+foreach ($envLoaderPaths as $path) {
+    if (file_exists($path)) {
+        require_once $path;
+        if (function_exists('skyesoftLoadEnv')) {
+            skyesoftLoadEnv();
+        }
+        break;
     }
 }
 
-// Key resolution matching Google Diagnostics Tool v3 logic
+// Fallback manual .env parser if skyesoftLoadEnv isn't populated
+if (empty($_ENV['GOOGLE_MAPS_BACKEND_API_KEY']) && empty($_ENV['GOOGLE_MAPS_API_KEY'])) {
+    $envFiles = [__DIR__ . '/.env', __DIR__ . '/../.env', __DIR__ . '/../../.env'];
+    foreach ($envFiles as $envFile) {
+        if (file_exists($envFile)) {
+            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                if (strpos(trim($line), '#') === 0) continue;
+                list($name, $value) = explode('=', $line, 2) + [NULL, NULL];
+                if ($name && $value) {
+                    $name  = trim($name);
+                    $value = trim($value, " \t\n\r\0\x0B\"'");
+                    $_ENV[$name] = $value;
+                    putenv("{$name}={$value}");
+                }
+            }
+            break;
+        }
+    }
+}
+
+// Key resolution logic
 $googleMapsApiKey = '';
 if (function_exists('skyesoftGetEnv')) {
     $googleMapsApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') ?: skyesoftGetEnv('GOOGLE_MAPS_API_KEY');
 }
 if (empty($googleMapsApiKey)) {
-    $googleMapsApiKey = getenv('GOOGLE_MAPS_BACKEND_API_KEY') 
-        ?: getenv('GOOGLE_MAPS_API_KEY') 
-        ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY') 
-        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
-        ?: ($_SERVER['GOOGLE_MAPS_API_KEY'] ?? $_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
+    $googleMapsApiKey = $_ENV['GOOGLE_MAPS_BACKEND_API_KEY'] 
+        ?? $_ENV['GOOGLE_MAPS_API_KEY'] 
+        ?? getenv('GOOGLE_MAPS_BACKEND_API_KEY') 
+        ?? getenv('GOOGLE_MAPS_API_KEY') 
+        ?? $_SERVER['GOOGLE_MAPS_API_KEY'] 
+        ?? '';
 }
 
 #endregion
