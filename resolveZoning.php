@@ -30,16 +30,19 @@ $zoningConfig = file_exists($zoningRegistryFile)
     ? json_decode(file_get_contents($zoningRegistryFile), true) 
     : [];
 
-// Determine if zoning.json is single jurisdiction schema or multi-jurisdiction dictionary
 $jurisKey = strtolower(trim($locationJurisdiction));
 $matchedConfig = null;
 
+// Robust Jurisdiction Resolution (Handles Single-Jurisdiction or Multi-Jurisdiction Dictionary)
 if (isset($zoningConfig['jurisdiction']['slug'])) {
     if (strtolower($zoningConfig['jurisdiction']['slug']) === $jurisKey) {
         $matchedConfig = $zoningConfig;
     }
-} else {
-    $matchedConfig = $zoningConfig[$jurisKey] ?? null;
+} elseif (isset($zoningConfig[$jurisKey])) {
+    $matchedConfig = $zoningConfig[$jurisKey];
+} elseif (isset($zoningConfig['service'])) {
+    // Fallback: If config is single jurisdiction file without jurisdiction block
+    $matchedConfig = $zoningConfig;
 }
 
 $issues = [];
@@ -90,12 +93,11 @@ if (!empty($parcel['zoningCode']) && $parcel['zoningCode'] !== 'UNKNOWN') {
     exit;
 }
 
-// 4. RESOLVE COORDINATES: Priority to Google Place ID -> Fallback to ESRI Geocoder
+// 4. RESOLVE COORDINATES: Priority to Input Payload -> Google Place ID -> Fallback to ESRI Geocoder
 $lat = $location['locationLatitude'] ?? $input['data']['locationLatitude'] ?? $input['data']['coordinates']['lat'] ?? null;
 $lng = $location['locationLongitude'] ?? $input['data']['locationLongitude'] ?? $input['data']['coordinates']['lng'] ?? null;
-$coordinateSource = 'input_payload';
+$coordinateSource = ($lat && $lng) ? 'input_payload' : 'geocoder';
 
-// Step 4a: Fetch precise coordinates using Google Place Details API if Place ID is available
 if ((!$lat || !$lng) && $locationPlaceId && $googleMapsApiKey) {
     $placeDetailsUrl = 'https://maps.googleapis.com/maps/api/place/details/json?' . http_build_query([
         'place_id' => $locationPlaceId,
@@ -113,7 +115,6 @@ if ((!$lat || !$lng) && $locationPlaceId && $googleMapsApiKey) {
     }
 }
 
-// Step 4b: Fallback to ESRI ArcGIS Geocoding if coordinates missing
 if (!$lat || !$lng) {
     $geocodeUrl = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?' . http_build_query([
         'f' => 'json',
@@ -190,23 +191,21 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
 
     $endpoint = rtrim($svc['serviceUrl'], '/') . '/' . ($svc['layerId'] ?? 0) . '/query';
 
-    // Construct a tight envelope bounding box around the point to guarantee intersection
-    $buffer = 0.0001; // ~10 meters buffer
-    $geometryJson = json_encode([
-        'xmin' => (float)$lng - $buffer,
-        'ymin' => (float)$lat - $buffer,
-        'xmax' => (float)$lng + $buffer,
-        'ymax' => (float)$lat + $buffer,
+    // Formulate Point Geometry + Distance Buffer (Handles Native Coordinate Conversion at ArcServer Level)
+    $geometryPoint = json_encode([
+        'x' => (float)$lng,
+        'y' => (float)$lat,
         'spatialReference' => ['wkid' => 4326]
     ]);
 
     $queryParams = [
         'f' => $qry['responseFormat'] ?? 'json',
-        'geometry' => $geometryJson,
-        'geometryType' => 'esriGeometryEnvelope',
+        'geometry' => $geometryPoint,
+        'geometryType' => 'esriGeometryPoint',
         'inSR' => '4326',
-        'outSR' => '4326',
         'spatialRel' => 'esriSpatialRelIntersects',
+        'distance' => '5',
+        'units' => 'esriSRUnit_Meter',
         'where' => $qry['where'] ?? '1=1',
         'outFields' => implode(',', $qry['outFields'] ?? ['*']),
         'returnGeometry' => 'false'
@@ -214,40 +213,41 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
 
     $spatialUrl = $endpoint . '?' . http_build_query($queryParams);
 
-    // Context options to ensure clean HTTP request with user-agent
     $opts = [
         'http' => [
             'method' => 'GET',
             'header' => "User-Agent: Skyesoft/1.0\r\nAccept: application/json\r\n",
-            'timeout' => $qry['timeoutSeconds'] ?? 8
+            'timeout' => $qry['timeoutSeconds'] ?? 8,
+            'ignore_errors' => true
+        ],
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false
         ]
     ];
-    $context = stream_context_create($opts);
 
-    $spatialResponse = @file_get_contents($spatialUrl, false, $context);
+    $spatialResponse = @file_get_contents($spatialUrl, false, stream_context_create($opts));
     $zoningData = $spatialResponse ? json_decode($spatialResponse, true) : null;
     $features = $zoningData['features'] ?? [];
 
     if (!empty($features)) {
         $attrs = $features[0]['attributes'];
-        $sourceLayer = $svc['provider'] . ' (' . ($svc['layerName'] ?? 'Zoning') . ')';
+        $sourceLayer = ($svc['provider'] ?? 'City GIS') . ' (' . ($svc['layerName'] ?? 'Zoning Layer') . ')';
 
-        // Extract normalized zoning code using field mapping rules (LABEL1 -> ZONING)
-        $zoningCodeRaw = resolveMappedField($attrs, $fm['zoningCode'] ?? ['LABEL1', 'ZONING'], $norm);
+        $zoningCodeRaw = resolveMappedField($attrs, $fm['zoningCode'] ?? ['ZONING', 'LABEL1', 'ZONE'], $norm);
         if ($zoningCodeRaw !== null) {
             $zoningCode = $zoningCodeRaw;
         }
 
-        // Extract normalized zoning description (GEN_ZONE)
-        $zoningDescRaw = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE'], $norm);
+        $zoningDescRaw = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE', 'ZONING_DESC', 'DESCRIPTION'], $norm);
         if ($zoningDescRaw !== null) {
             $zoningDesc = $zoningDescRaw;
         }
 
-        $extractedMetaData['caseNumber'] = resolveMappedField($attrs, $fm['caseNumber'] ?? ['REDEFINE1'], $norm);
+        $extractedMetaData['caseNumber'] = resolveMappedField($attrs, $fm['caseNumber'] ?? ['REDEFINE1', 'CASE_NUM'], $norm);
         $extractedMetaData['ordinanceNumber'] = resolveMappedField($attrs, $fm['ordinanceNumber'] ?? ['ORD_NUM'], $norm);
 
-        // Historic Preservation Overlay
+        // Historic Preservation Overlay Verification
         $historicVal = resolveMappedField($attrs, $fm['historic'] ?? ['HISTORIC'], $norm);
         if (!empty($historicVal) && !in_array(strtoupper($historicVal), ['N', 'NO', 'NONE', 'FALSE'])) {
             $overlays['historicDesignation'] = [
@@ -256,7 +256,7 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
             ];
         }
 
-        // Transit Oriented Development Overlay
+        // Transit Oriented Development Overlay Verification
         $todVal = resolveMappedField($attrs, $fm['transitOrientedDevelopment'] ?? ['TOD'], $norm);
         if (!empty($todVal) && !in_array(strtoupper($todVal), ['N', 'NO', 'NONE', 'FALSE'])) {
             $overlays['regulatoryPlan'] = [
@@ -267,39 +267,49 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
     }
 }
 
-// 6. Regional Fallback: Maricopa County PlanNet (Layer 11) using Envelope
+// 6. Regional Fallback: Maricopa County PlanNet MapServer (Layer 11 / Layer 0 Query)
 if ($zoningCode === 'UNKNOWN') {
-    $buffer = 0.0001;
-    $geometryJson = json_encode([
-        'xmin' => (float)$lng - $buffer,
-        'ymin' => (float)$lat - $buffer,
-        'xmax' => (float)$lng + $buffer,
-        'ymax' => (float)$lat + $buffer,
+    $fallbackPoint = json_encode([
+        'x' => (float)$lng,
+        'y' => (float)$lat,
         'spatialReference' => ['wkid' => 4326]
     ]);
 
+    // Query Maricopa County PlanNet Zoning Service Layer
     $layer11Url = 'https://gis.maricopa.gov/arcgis/rest/services/PlanNet/Zoning/MapServer/11/query?' . http_build_query([
         'f' => 'json',
-        'geometry' => $geometryJson,
-        'geometryType' => 'esriGeometryEnvelope',
+        'geometry' => $fallbackPoint,
+        'geometryType' => 'esriGeometryPoint',
         'inSR' => '4326',
-        'outSR' => '4326',
         'spatialRel' => 'esriSpatialRelIntersects',
+        'distance' => '5',
+        'units' => 'esriSRUnit_Meter',
         'where' => '1=1',
         'outFields' => '*',
         'returnGeometry' => 'false'
     ]);
 
-    $layer11Response = @file_get_contents($layer11Url, false, stream_context_create([
-        'http' => ['header' => "User-Agent: Skyesoft/1.0\r\n"]
-    ]));
+    $fallbackOpts = [
+        'http' => [
+            'method' => 'GET',
+            'header' => "User-Agent: Skyesoft/1.0\r\nAccept: application/json\r\n",
+            'timeout' => 8,
+            'ignore_errors' => true
+        ],
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false
+        ]
+    ];
+
+    $layer11Response = @file_get_contents($layer11Url, false, stream_context_create($fallbackOpts));
     $zoningData = $layer11Response ? json_decode($layer11Response, true) : null;
     $features = $zoningData['features'] ?? [];
 
     if (!empty($features)) {
         $attrs = $features[0]['attributes'];
-        $zoningCode = $attrs['LABEL1'] ?? $attrs['ZONING'] ?? $attrs['ZONE'] ?? 'UNKNOWN';
-        $zoningDesc = $attrs['GEN_ZONE'] ?? $attrs['ZONING_DESC'] ?? 'N/A';
+        $zoningCode = $attrs['LABEL1'] ?? $attrs['ZONING'] ?? $attrs['ZONE'] ?? $attrs['ZONING_CODE'] ?? 'UNKNOWN';
+        $zoningDesc = $attrs['GEN_ZONE'] ?? $attrs['ZONING_DESC'] ?? $attrs['DESCRIPTION'] ?? 'N/A';
         $sourceLayer = 'Maricopa County PlanNet Zoning Layer 11';
     }
 }
@@ -357,7 +367,6 @@ echo json_encode([
  * Case-insensitive field resolver with normalization token stripping
  */
 function resolveMappedField(array $attributes, array $fieldCandidates, array $norm = []) {
-    // Convert attribute keys to uppercase for case-insensitive lookup
     $normalizedAttrs = [];
     foreach ($attributes as $key => $val) {
         $normalizedAttrs[strtoupper($key)] = $val;
