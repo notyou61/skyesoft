@@ -9,12 +9,13 @@ $input = json_decode($rawInput, true) ?? [];
 $location = $input['location'] ?? $input;
 $parcel = $location['parcel'] ?? [];
 
-$address = $location['locationAddress'] ?? $input['address'] ?? '';
-$city = $location['locationCity'] ?? '';
+// Hardcoded default address for testing: 3145 N 33rd Ave, Phoenix, AZ 85017
+$address = $location['locationAddress'] ?? $input['address'] ?? '3145 N 33rd Ave';
+$city = $location['locationCity'] ?? 'Phoenix';
 $state = $location['locationState'] ?? 'AZ';
-$zip = $location['locationZip'] ?? '';
-$jurisdiction = $location['locationJurisdiction'] ?? '';
-$activitySessionId = $input['activitySessionId'] ?? null;
+$zip = $location['locationZip'] ?? '85017';
+$jurisdiction = $location['locationJurisdiction'] ?? 'City of Phoenix';
+$activitySessionId = $input['activitySessionId'] ?? 'test-session-33rd-ave';
 
 $fullAddress = trim("$address, $city, $state $zip", " ,");
 
