@@ -147,20 +147,16 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
 
 #region SECTION 3 — Google Place ID & Spatial Geocoding Resolution
 
-// Dynamic address cleaning utility using PHP Intl NumberFormatter (No hardcoded arrays)
 if (!function_exists('cleanAddressForPlaces')) {
     function cleanAddressForPlaces(string $rawAddress): string
     {
-        // 1. Remove suite / unit / apartment designators dynamically
         $clean = preg_replace('/\b(suite|ste|unit|apt|apartment|#)\s*[\w\-]+/i', '', $rawAddress);
 
-        // 2. Convert ordinal numbers to words dynamically (e.g. 33rd -> Thirty-Third, 1st -> First)
         if (class_exists('NumberFormatter')) {
             $formatter = new NumberFormatter('en', NumberFormatter::SPELLOUT);
             $clean = preg_replace_callback('/\b([0-9]+)(st|nd|rd|th)\b/i', static function ($matches) use ($formatter) {
                 $num = (int)$matches[1];
                 $spelled = $formatter->format($num);
-                // Convert hyphens and capitalize each word (e.g., "thirty-third" -> "Thirty-Third")
                 return ucwords(str_replace('-', ' ', $spelled));
             }, $clean);
         }
@@ -195,7 +191,7 @@ if ($locationPlaceId && $googleMapsApiKey) {
     }
 }
 
-// Option B: Multi-Stage Google Resolution Pipeline
+// Option B: Resolve Place ID via Address Query (Runs even if Lat/Lng pre-exists)
 if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
 
     // Stage 1: Geocoding API
@@ -208,16 +204,15 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
     if (($geoRes['status'] ?? '') === 'OK' && !empty($geoRes['results'][0])) {
         $firstResult             = $geoRes['results'][0];
         $locationPlaceId         = $firstResult['place_id'] ?? null;
-        $lat                     = isset($firstResult['geometry']['location']['lat']) ? (float)$firstResult['geometry']['location']['lat'] : $lat;
-        $lng                     = isset($firstResult['geometry']['location']['lng']) ? (float)$firstResult['geometry']['location']['lng'] : $lng;
+        $lat                     = $lat ?? (float)($firstResult['geometry']['location']['lat'] ?? null);
+        $lng                     = $lng ?? (float)($firstResult['geometry']['location']['lng'] ?? null);
         $locationResolvedAddress = $firstResult['formatted_address'] ?? $fullAddress;
     }
 
-    // Dynamic clean query string for Places API fallbacks
-    $placesQueryAddress = cleanAddressForPlaces($fullCleanAddress);
-
-    // Stage 2: Fallback to Find Place From Text API
+    // Stage 2: Fallback to Places Text Search / Find Place if Geocoding returned no Place ID
     if (!$locationPlaceId) {
+        $placesQueryAddress = cleanAddressForPlaces($fullCleanAddress);
+
         $findPlaceUrl = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json?' . http_build_query([
             'input'     => $placesQueryAddress,
             'inputtype' => 'textquery',
@@ -229,31 +224,14 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
         if (($findRes['status'] ?? '') === 'OK' && !empty($findRes['candidates'][0])) {
             $candidate               = $findRes['candidates'][0];
             $locationPlaceId         = $candidate['place_id'] ?? null;
-            $lat                     = isset($candidate['geometry']['location']['lat']) ? (float)$candidate['geometry']['location']['lat'] : $lat;
-            $lng                     = isset($candidate['geometry']['location']['lng']) ? (float)$candidate['geometry']['location']['lng'] : $lng;
+            $lat                     = $lat ?? (float)($candidate['geometry']['location']['lat'] ?? null);
+            $lng                     = $lng ?? (float)($candidate['geometry']['location']['lng'] ?? null);
             $locationResolvedAddress = $candidate['formatted_address'] ?? $locationResolvedAddress;
-        }
-    }
-
-    // Stage 3: Fallback to Places Text Search API
-    if (!$locationPlaceId) {
-        $textSearchUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json?' . http_build_query([
-            'query' => $placesQueryAddress,
-            'key'   => $googleMapsApiKey
-        ]);
-
-        $textRes = httpGetJson($textSearchUrl);
-        if (($textRes['status'] ?? '') === 'OK' && !empty($textRes['results'][0])) {
-            $textCandidate           = $textRes['results'][0];
-            $locationPlaceId         = $textCandidate['place_id'] ?? null;
-            $lat                     = isset($textCandidate['geometry']['location']['lat']) ? (float)$textCandidate['geometry']['location']['lat'] : $lat;
-            $lng                     = isset($textCandidate['geometry']['location']['lng']) ? (float)$textCandidate['geometry']['location']['lng'] : $lng;
-            $locationResolvedAddress = $textCandidate['formatted_address'] ?? $locationResolvedAddress;
         }
     }
 }
 
-// Option C: Reverse Geocode via Lat/Lng if Place ID is missing but coordinates exist
+// Option C: Reverse Geocode via Lat/Lng if Place ID is still missing
 if (!$locationPlaceId && $lat !== null && $lng !== null && $googleMapsApiKey) {
     $googleReverseGeocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?' . http_build_query([
         'latlng' => $lat . ',' . $lng,
@@ -264,22 +242,6 @@ if (!$locationPlaceId && $lat !== null && $lng !== null && $googleMapsApiKey) {
     if (($revRes['status'] ?? '') === 'OK' && !empty($revRes['results'][0])) {
         $locationPlaceId         = $revRes['results'][0]['place_id'] ?? null;
         $locationResolvedAddress = $revRes['results'][0]['formatted_address'] ?? $locationResolvedAddress;
-    }
-}
-
-// Hydrate coordinates via Place Details if Place ID was resolved without lat/lng
-if ($locationPlaceId && $googleMapsApiKey && ($lat === null || $lng === null)) {
-    $detailsUrl = 'https://maps.googleapis.com/maps/api/place/details/json?' . http_build_query([
-        'place_id' => $locationPlaceId,
-        'fields'   => 'geometry,formatted_address',
-        'key'      => $googleMapsApiKey
-    ]);
-
-    $detailsRes = httpGetJson($detailsUrl);
-    if (($detailsRes['status'] ?? '') === 'OK' && isset($detailsRes['result']['geometry']['location'])) {
-        $lat                     = (float)$detailsRes['result']['geometry']['location']['lat'];
-        $lng                     = (float)$detailsRes['result']['geometry']['location']['lng'];
-        $locationResolvedAddress = $detailsRes['result']['formatted_address'] ?? $locationResolvedAddress;
     }
 }
 
