@@ -6,16 +6,24 @@ ini_set('display_errors', '1');
 require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
-$address = trim($_POST['address'] ?? '');
+$address = trim($_POST['address'] ?? $_GET['address'] ?? '');
 
-$googleApiKey =
-    getenv('GOOGLE_MAPS_API_KEY')
-    ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
-    ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
-    ?: '';
+// Match SECTION 08 key resolution order exactly
+$googleApiKey = '';
+if (function_exists('skyesoftGetEnv')) {
+    $googleApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') ?: skyesoftGetEnv('GOOGLE_MAPS_API_KEY');
+}
+if (empty($googleApiKey)) {
+    $googleApiKey = getenv('GOOGLE_MAPS_BACKEND_API_KEY')
+        ?: getenv('GOOGLE_MAPS_API_KEY')
+        ?: getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
+        ?: getenv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?: '';
+}
 
 $geocodeResult        = [];
 $findPlaceResult      = [];
+$textSearchResult      = [];
 $placeDetailsResult   = [];
 $reverseGeocodeResult = [];
 $curlErrors           = [];
@@ -29,8 +37,8 @@ function curlGetJson(string $url, array &$errorList): ?array
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT        => 15,
-        CURLOPT_SSL_VERIFYPEER => false, // Prevents local cURL SSL cert failures
-        CURLOPT_USERAGENT      => 'Skyesoft Google Diagnostics Tool/2.0'
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_USERAGENT      => 'Skyesoft Google Diagnostics Tool/3.0'
     ]);
 
     $response = curl_exec($ch);
@@ -51,10 +59,17 @@ function curlGetJson(string $url, array &$errorList): ?array
     return json_decode((string)$response, true);
 }
 
+// Utility to clean suite/unit numbers prior to Places API search
+function cleanAddressForPlaces(string $rawAddress): string
+{
+    $clean = preg_replace('/\b(suite|ste|unit|apt|apartment|#)\s*[\w\-]+/i', '', $rawAddress);
+    return trim(preg_replace('/\s+/', ' ', $clean));
+}
+
 if ($address !== '') {
 
     if ($googleApiKey === '') {
-        $curlErrors[] = "CRITICAL: No API key resolved from environment (GOOGLE_MAPS_API_KEY).";
+        $curlErrors[] = "CRITICAL: No API key resolved from environment (GOOGLE_MAPS_BACKEND_API_KEY / GOOGLE_MAPS_API_KEY).";
     } else {
 
         // =====================================================
@@ -82,11 +97,14 @@ if ($address !== '') {
             $reverseGeocodeResult = curlGetJson($reverseUrl, $curlErrors);
         }
 
+        // Clean unit string for Places API calls
+        $placesQueryAddress = cleanAddressForPlaces($address);
+
         // =====================================================
         // 3. FIND PLACE FROM TEXT
         // =====================================================
         $findPlaceUrl = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json?' . http_build_query([
-            'input'     => $address,
+            'input'     => $placesQueryAddress,
             'inputtype' => 'textquery',
             'fields'    => 'place_id,name,formatted_address,geometry',
             'key'       => $googleApiKey
@@ -95,10 +113,21 @@ if ($address !== '') {
         $findPlaceResult = curlGetJson($findPlaceUrl, $curlErrors);
 
         // =====================================================
-        // 4. PLACE DETAILS
+        // 4. PLACES TEXT SEARCH (FALLBACK / SUPPLEMENTAL)
+        // =====================================================
+        $textSearchUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json?' . http_build_query([
+            'query' => $placesQueryAddress,
+            'key'   => $googleApiKey
+        ]);
+
+        $textSearchResult = curlGetJson($textSearchUrl, $curlErrors);
+
+        // =====================================================
+        // 5. PLACE DETAILS
         // =====================================================
         $placeId = $geocodeResult['results'][0]['place_id'] 
             ?? $findPlaceResult['candidates'][0]['place_id'] 
+            ?? $textSearchResult['results'][0]['place_id']
             ?? '';
 
         if ($placeId !== '') {
@@ -110,7 +139,8 @@ if ($address !== '') {
                     'formatted_address',
                     'geometry',
                     'business_status',
-                    'types'
+                    'types',
+                    'address_components'
                 ]),
                 'key'      => $googleApiKey
             ]);
@@ -124,19 +154,21 @@ if ($address !== '') {
 <html>
 <head>
 <meta charset="utf-8">
-<title>Google Maps API Diagnostics Tool</title>
+<title>Google Maps API Diagnostics Tool v3.0</title>
 <style>
-body { font-family: Arial, Helvetica, sans-serif; margin: 40px; background: #f4f6f8; color: #333; }
-input[type=text] { width: 600px; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
-button { padding: 10px 20px; font-size: 15px; cursor: pointer; background: #0066cc; color: #fff; border: none; border-radius: 4px; }
-.section { margin-top: 25px; border: 1px solid #dcdcdc; background: #fff; padding: 20px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-.error-box { background: #fde8e8; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 6px; margin-top: 20px; }
-pre { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 4px; overflow: auto; max-height: 400px; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 30px; background: #f4f6f8; color: #2d3748; }
+input[type=text] { width: 620px; padding: 12px; font-size: 15px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
+button { padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer; background: #2b6cb0; color: #fff; border: none; border-radius: 6px; }
+button:hover { background: #2c5282; }
+.section { margin-top: 25px; border: 1px solid #e2e8f0; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.error-box { background: #fed7d7; border: 1px solid #f5c6cb; color: #9b2c2c; padding: 15px; border-radius: 6px; margin-top: 20px; }
+pre { background: #1a202c; color: #e2e8f0; padding: 15px; border-radius: 6px; overflow: auto; max-height: 400px; font-size: 13px; }
 table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-th { background: #f0f4f8; }
-.badge { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 12px; font-weight: bold; }
-.badge-key { background: #e2e8f0; color: #1a202c; }
+th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+th { background: #edf2f7; color: #4a5568; font-size: 14px; }
+.badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+.badge-key { background: #c6f6d5; color: #22543d; }
+.badge-missing { background: #fed7d7; color: #9b2c2c; }
 </style>
 </head>
 <body>
@@ -168,28 +200,15 @@ th { background: #f0f4f8; }
 
 <div class="section">
     <h3>1. Execution Environment</h3>
-    <p><strong>Resolved Key Source:</strong> <span class="badge badge-key"><?php echo $googleApiKey ? 'Key Present (' . substr($googleApiKey, 0, 8) . '...)' : 'MISSING'; ?></span></p>
-    <p><strong>Input Target:</strong> <?php echo htmlspecialchars($address); ?></p>
-</div>
-
-<div class="section">
-    <h3>2. Geocode Result</h3>
-    <pre><?php echo htmlspecialchars(json_encode($geocodeResult, JSON_PRETTY_PRINT)); ?></pre>
-</div>
-
-<div class="section">
-    <h3>3. Find Place Result</h3>
-    <pre><?php echo htmlspecialchars(json_encode($findPlaceResult, JSON_PRETTY_PRINT)); ?></pre>
-</div>
-
-<div class="section">
-    <h3>4. Place Details Result</h3>
-    <pre><?php echo htmlspecialchars(json_encode($placeDetailsResult, JSON_PRETTY_PRINT)); ?></pre>
-</div>
-
-<div class="section">
-    <h3>5. Reverse Geocode Result</h3>
-    <pre><?php echo htmlspecialchars(json_encode($reverseGeocodeResult, JSON_PRETTY_PRINT)); ?></pre>
+    <p><strong>Resolved Key Status:</strong> 
+        <?php if ($googleApiKey !== ''): ?>
+            <span class="badge badge-key">Key Present (<?php echo htmlspecialchars(substr($googleApiKey, 0, 8)); ?>...)</span>
+        <?php else: ?>
+            <span class="badge badge-missing">MISSING</span>
+        <?php endif; ?>
+    </p>
+    <p><strong>Input Target Address:</strong> <?php echo htmlspecialchars($address); ?></p>
+    <p><strong>Places Sanitized Query:</strong> <?php echo htmlspecialchars(cleanAddressForPlaces($address)); ?></p>
 </div>
 
 <?php
@@ -200,6 +219,12 @@ $geoLng          = $geocodeResult['results'][0]['geometry']['location']['lng'] ?
 $geoLocationType = $geocodeResult['results'][0]['geometry']['location_type'] ?? 'N/A';
 $geoTypes        = $geocodeResult['results'][0]['types'] ?? [];
 
+$findPlaceId      = $findPlaceResult['candidates'][0]['place_id'] ?? 'N/A';
+$findPlaceAddress = $findPlaceResult['candidates'][0]['formatted_address'] ?? 'N/A';
+
+$textPlaceId      = $textSearchResult['results'][0]['place_id'] ?? 'N/A';
+$textPlaceAddress = $textSearchResult['results'][0]['formatted_address'] ?? 'N/A';
+
 $placeAddress   = $placeDetailsResult['result']['formatted_address'] ?? 'N/A';
 $placePlaceId   = $placeDetailsResult['result']['place_id'] ?? 'N/A';
 $placeLat       = $placeDetailsResult['result']['geometry']['location']['lat'] ?? 'N/A';
@@ -207,49 +232,76 @@ $placeLng       = $placeDetailsResult['result']['geometry']['location']['lng'] ?
 ?>
 
 <div class="section">
-    <h3>6. Comparison Summary</h3>
+    <h3>2. Resolution & Endpoint Comparison</h3>
     <table>
         <tr>
-            <th>Field</th>
+            <th>Metric / Endpoint</th>
             <th>Geocode API</th>
-            <th>Places API (Details)</th>
+            <th>Find Place API</th>
+            <th>Text Search API</th>
+            <th>Place Details API</th>
         </tr>
         <tr>
-            <td>Address</td>
+            <td><strong>Place ID</strong></td>
+            <td><code><?php echo htmlspecialchars($geoPlaceId); ?></code></td>
+            <td><code><?php echo htmlspecialchars($findPlaceId); ?></code></td>
+            <td><code><?php echo htmlspecialchars($textPlaceId); ?></code></td>
+            <td><code><?php echo htmlspecialchars($placePlaceId); ?></code></td>
+        </tr>
+        <tr>
+            <td><strong>Formatted Address</strong></td>
             <td><?php echo htmlspecialchars($geoAddress); ?></td>
+            <td><?php echo htmlspecialchars($findPlaceAddress); ?></td>
+            <td><?php echo htmlspecialchars($textPlaceAddress); ?></td>
             <td><?php echo htmlspecialchars($placeAddress); ?></td>
         </tr>
         <tr>
-            <td>Place ID</td>
-            <td><?php echo htmlspecialchars($geoPlaceId); ?></td>
-            <td><?php echo htmlspecialchars($placePlaceId); ?></td>
-        </tr>
-        <tr>
-            <td>Latitude</td>
+            <td><strong>Latitude</strong></td>
             <td><?php echo htmlspecialchars((string)$geoLat); ?></td>
+            <td><?php echo htmlspecialchars((string)($findPlaceResult['candidates'][0]['geometry']['location']['lat'] ?? 'N/A')); ?></td>
+            <td><?php echo htmlspecialchars((string)($textSearchResult['results'][0]['geometry']['location']['lat'] ?? 'N/A')); ?></td>
             <td><?php echo htmlspecialchars((string)$placeLat); ?></td>
         </tr>
         <tr>
-            <td>Longitude</td>
+            <td><strong>Longitude</strong></td>
             <td><?php echo htmlspecialchars((string)$geoLng); ?></td>
+            <td><?php echo htmlspecialchars((string)($findPlaceResult['candidates'][0]['geometry']['location']['lng'] ?? 'N/A')); ?></td>
+            <td><?php echo htmlspecialchars((string)($textSearchResult['results'][0]['geometry']['location']['lng'] ?? 'N/A')); ?></td>
             <td><?php echo htmlspecialchars((string)$placeLng); ?></td>
         </tr>
         <tr>
-            <td>Location Type</td>
+            <td><strong>Location Type / Status</strong></td>
             <td><?php echo htmlspecialchars($geoLocationType); ?></td>
             <td>—</td>
-        </tr>
-        <tr>
-            <td>Types</td>
-            <td><?php echo htmlspecialchars(implode(', ', $geoTypes)); ?></td>
-            <td><?php echo htmlspecialchars(implode(', ', $placeDetailsResult['result']['types'] ?? [])); ?></td>
+            <td>—</td>
+            <td><?php echo htmlspecialchars($placeDetailsResult['result']['business_status'] ?? 'N/A'); ?></td>
         </tr>
     </table>
 </div>
 
 <div class="section">
-    <h3>7. Geocode Address Components</h3>
-    <pre><?php echo htmlspecialchars(json_encode($geocodeResult['results'][0]['address_components'] ?? [], JSON_PRETTY_PRINT)); ?></pre>
+    <h3>3. Raw Geocode Result Payload</h3>
+    <pre><?php echo htmlspecialchars(json_encode($geocodeResult, JSON_PRETTY_PRINT)); ?></pre>
+</div>
+
+<div class="section">
+    <h3>4. Raw Find Place Result Payload</h3>
+    <pre><?php echo htmlspecialchars(json_encode($findPlaceResult, JSON_PRETTY_PRINT)); ?></pre>
+</div>
+
+<div class="section">
+    <h3>5. Raw Text Search Result Payload</h3>
+    <pre><?php echo htmlspecialchars(json_encode($textSearchResult, JSON_PRETTY_PRINT)); ?></pre>
+</div>
+
+<div class="section">
+    <h3>6. Raw Place Details Result Payload</h3>
+    <pre><?php echo htmlspecialchars(json_encode($placeDetailsResult, JSON_PRETTY_PRINT)); ?></pre>
+</div>
+
+<div class="section">
+    <h3>7. Raw Reverse Geocode Result Payload</h3>
+    <pre><?php echo htmlspecialchars(json_encode($reverseGeocodeResult, JSON_PRETTY_PRINT)); ?></pre>
 </div>
 
 <?php endif; ?>
