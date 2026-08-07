@@ -3,44 +3,8 @@
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-// Locate envLoader.php dynamically
-$envLoaderPaths = [
-    __DIR__ . '/utils/envLoader.php',
-    __DIR__ . '/../utils/envLoader.php',
-    __DIR__ . '/envLoader.php',
-    dirname(__DIR__) . '/utils/envLoader.php'
-];
-
-foreach ($envLoaderPaths as $path) {
-    if (file_exists($path)) {
-        require_once $path;
-        if (function_exists('skyesoftLoadEnv')) {
-            skyesoftLoadEnv();
-        }
-        break;
-    }
-}
-
-// Fallback .env file loader if envLoader.php is missing or didn't populate $_ENV
-if (empty($_ENV['GOOGLE_MAPS_BACKEND_API_KEY']) && empty($_ENV['GOOGLE_MAPS_API_KEY'])) {
-    $envPaths = [__DIR__ . '/.env', __DIR__ . '/../.env', dirname(__DIR__) . '/.env'];
-    foreach ($envPaths as $envPath) {
-        if (file_exists($envPath)) {
-            $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach ($lines as $line) {
-                if (strpos(trim($line), '#') === 0) continue;
-                list($name, $value) = explode('=', $line, 2) + [null, null];
-                if ($name && $value) {
-                    $name = trim($name);
-                    $value = trim($value, " \t\n\r\0\x0B\"'");
-                    $_ENV[$name] = $value;
-                    putenv("{$name}={$value}");
-                }
-            }
-            break;
-        }
-    }
-}
+require_once __DIR__ . '/api/utils/envLoader.php';
+skyesoftLoadEnv();
 
 $address = '738 S Perry Ln, Tempe, AZ 85288, USA';
 
@@ -55,6 +19,7 @@ if (empty($googleApiKey)) {
         ?? getenv('GOOGLE_MAPS_API_KEY')
         ?? getenv('GOOGLE_MAPS_PLACE_ID_API_KEY')
         ?? getenv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?? $_SERVER['GOOGLE_MAPS_API_KEY']
         ?? '';
 }
 
