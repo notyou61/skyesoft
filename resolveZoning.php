@@ -190,24 +190,41 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
 
     $endpoint = rtrim($svc['serviceUrl'], '/') . '/' . ($svc['layerId'] ?? 0) . '/query';
 
+    // Construct a tight envelope bounding box around the point to guarantee intersection
+    $buffer = 0.0001; // ~10 meters buffer
     $geometryJson = json_encode([
-        'x' => (float)$lng,
-        'y' => (float)$lat,
-        'spatialReference' => ['wkid' => $qry['inputSpatialReference'] ?? 4326]
+        'xmin' => (float)$lng - $buffer,
+        'ymin' => (float)$lat - $buffer,
+        'xmax' => (float)$lng + $buffer,
+        'ymax' => (float)$lat + $buffer,
+        'spatialReference' => ['wkid' => 4326]
     ]);
 
-    $spatialUrl = $endpoint . '?' . http_build_query([
+    $queryParams = [
         'f' => $qry['responseFormat'] ?? 'json',
         'geometry' => $geometryJson,
-        'geometryType' => $qry['geometryType'] ?? 'esriGeometryPoint',
-        'inSR' => $qry['inputSpatialReference'] ?? 4326,
-        'spatialRel' => $qry['spatialRelationship'] ?? 'esriSpatialRelIntersects',
+        'geometryType' => 'esriGeometryEnvelope',
+        'inSR' => '4326',
+        'outSR' => '4326',
+        'spatialRel' => 'esriSpatialRelIntersects',
         'where' => $qry['where'] ?? '1=1',
         'outFields' => implode(',', $qry['outFields'] ?? ['*']),
-        'returnGeometry' => !empty($qry['returnGeometry']) ? 'true' : 'false'
-    ]);
+        'returnGeometry' => 'false'
+    ];
 
-    $spatialResponse = @file_get_contents($spatialUrl);
+    $spatialUrl = $endpoint . '?' . http_build_query($queryParams);
+
+    // Context options to ensure clean HTTP request with user-agent
+    $opts = [
+        'http' => [
+            'method' => 'GET',
+            'header' => "User-Agent: Skyesoft/1.0\r\nAccept: application/json\r\n",
+            'timeout' => $qry['timeoutSeconds'] ?? 8
+        ]
+    ];
+    $context = stream_context_create($opts);
+
+    $spatialResponse = @file_get_contents($spatialUrl, false, $context);
     $zoningData = $spatialResponse ? json_decode($spatialResponse, true) : null;
     $features = $zoningData['features'] ?? [];
 
@@ -215,13 +232,13 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
         $attrs = $features[0]['attributes'];
         $sourceLayer = $svc['provider'] . ' (' . ($svc['layerName'] ?? 'Zoning') . ')';
 
-        // Extract normalized zoning code using field mapping rules
+        // Extract normalized zoning code using field mapping rules (LABEL1 -> ZONING)
         $zoningCodeRaw = resolveMappedField($attrs, $fm['zoningCode'] ?? ['LABEL1', 'ZONING'], $norm);
         if ($zoningCodeRaw !== null) {
             $zoningCode = $zoningCodeRaw;
         }
 
-        // Extract normalized zoning description
+        // Extract normalized zoning description (GEN_ZONE)
         $zoningDescRaw = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE'], $norm);
         if ($zoningDescRaw !== null) {
             $zoningDesc = $zoningDescRaw;
@@ -250,26 +267,32 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
     }
 }
 
-// 6. Regional Fallback: Maricopa County PlanNet (Layer 11)
+// 6. Regional Fallback: Maricopa County PlanNet (Layer 11) using Envelope
 if ($zoningCode === 'UNKNOWN') {
+    $buffer = 0.0001;
     $geometryJson = json_encode([
-        'x' => (float)$lng,
-        'y' => (float)$lat,
+        'xmin' => (float)$lng - $buffer,
+        'ymin' => (float)$lat - $buffer,
+        'xmax' => (float)$lng + $buffer,
+        'ymax' => (float)$lat + $buffer,
         'spatialReference' => ['wkid' => 4326]
     ]);
 
     $layer11Url = 'https://gis.maricopa.gov/arcgis/rest/services/PlanNet/Zoning/MapServer/11/query?' . http_build_query([
         'f' => 'json',
         'geometry' => $geometryJson,
-        'geometryType' => 'esriGeometryPoint',
-        'inSR' => 4326,
+        'geometryType' => 'esriGeometryEnvelope',
+        'inSR' => '4326',
+        'outSR' => '4326',
         'spatialRel' => 'esriSpatialRelIntersects',
         'where' => '1=1',
         'outFields' => '*',
         'returnGeometry' => 'false'
     ]);
 
-    $layer11Response = @file_get_contents($layer11Url);
+    $layer11Response = @file_get_contents($layer11Url, false, stream_context_create([
+        'http' => ['header' => "User-Agent: Skyesoft/1.0\r\n"]
+    ]));
     $zoningData = $layer11Response ? json_decode($layer11Response, true) : null;
     $features = $zoningData['features'] ?? [];
 
