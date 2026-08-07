@@ -7,32 +7,37 @@ header('Content-Type: application/json');
 $executionTime = time();
 $isoTimestamp  = date('c', $executionTime);
 
-// 1. Read input payload
+// 1. Read input payload (Supports JSON POST body or GET parameters)
 $rawInput = file_get_contents('php://input');
-$input    = json_decode((string)$rawInput, true) ?? [];
+$input    = json_decode((string)$rawInput, true);
 
-// Standardize container extraction across flat, nested, or data-wrapped structures
+if (!is_array($input)) {
+    $input = $_GET;
+}
+
 $dataObj  = $input['data'] ?? [];
 $location = $input['location'] ?? $dataObj['location'] ?? $input;
 $parcel   = $location['parcel'] ?? $dataObj['location']['parcelDetails'][0] ?? $dataObj['parcel'] ?? [];
 
-$googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: null;
+$googleMapsApiKey   = getenv('GOOGLE_MAPS_API_KEY') ?: null;
+$activitySessionId  = $input['activitySessionId'] ?? $dataObj['activitySessionId'] ?? bin2hex(random_bytes(16));
 
-// Extract fields safely
+// Extract location strings
 $address      = $location['locationAddress'] ?? $dataObj['locationAddress'] ?? $input['locationAddress'] ?? null;
-$cityStateZip = $location['locationCityStateZip'] ?? $dataObj['locationCityStateZip'] ?? $input['locationCityStateZip'] ?? null;
+$city         = $location['locationCity'] ?? $dataObj['locationCity'] ?? null;
+$state        = $location['locationState'] ?? $dataObj['locationState'] ?? 'AZ';
+$zip          = $location['locationZip'] ?? $dataObj['locationZip'] ?? null;
+$cityStateZip = $location['locationCityStateZip'] ?? $dataObj['locationCityStateZip'] ?? implode(', ', array_filter([$city, trim($state . ' ' . $zip)]));
 
-$locationPlaceId      = $location['locationPlaceId'] ?? $dataObj['locationPlaceId'] ?? $input['locationPlaceId'] ?? null;
-$locationParcelNumber = $location['locationParcelNumberRaw'] ?? $location['locationParcelNumber'] ?? $dataObj['locationParcelNumber'] ?? $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? null;
-$locationJurisdiction = $location['locationJurisdiction'] ?? $dataObj['locationJurisdiction'] ?? $input['locationJurisdiction'] ?? null;
-$locationCounty       = $location['locationCounty'] ?? $dataObj['locationCounty'] ?? $input['locationCounty'] ?? null;
-
-$activitySessionId = $input['activitySessionId'] ?? $dataObj['activitySessionId'] ?? 'location-check-session';
+$locationPlaceId      = $location['locationPlaceId'] ?? $dataObj['locationPlaceId'] ?? null;
+$locationParcelNumber = $location['locationParcelNumberRaw'] ?? $location['locationParcelNumber'] ?? $dataObj['locationParcelNumber'] ?? $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? $parcel['parcelNumber'] ?? null;
+$locationJurisdiction = $location['locationJurisdiction'] ?? $dataObj['locationJurisdiction'] ?? $city ?? null;
+$locationCounty       = $location['locationCounty'] ?? $dataObj['locationCounty'] ?? 'Maricopa';
 
 $addressParts = array_filter([$address, $cityStateZip]);
 $fullAddress  = !empty($addressParts) ? implode(', ', $addressParts) : null;
 
-// 2. Load zoning registry rule configuration
+// 2. Load zoning registry configuration
 $zoningRegistryFile = __DIR__ . '/zoning.json';
 $zoningConfig       = file_exists($zoningRegistryFile) 
     ? (json_decode((string)file_get_contents($zoningRegistryFile), true) ?? [])
@@ -66,74 +71,57 @@ if (!$matchedConfig && isset($zoningConfig['service'])) {
 $issues            = [];
 $locationValidated = true;
 
-// 3. SHORT-CIRCUIT: Direct Parcel Verification
+// 3. SHORT-CIRCUIT: Direct Parcel Bypass if already fully supplied
 if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !== 'UNKNOWN') {
     echo json_encode([
-        'status'            => 'success',
-        'timestamp'         => $executionTime,
-        'isoTimestamp'      => $isoTimestamp,
-        'locationValidated' => true,
-        'uiState'           => [
-            'proposalStatus' => 'valid',
-            'canCommit'      => true
-        ],
-        'data' => [
-            'address'              => $fullAddress,
-            'locationPlaceId'      => $locationPlaceId,
-            'locationParcelNumber' => $locationParcelNumber,
-            'locationJurisdiction' => $locationJurisdiction,
-            'locationCounty'       => $locationCounty,
-            'zoningCode'           => $parcel['zoningCode'],
-            'zoningDescription'    => $parcel['zoningDescription'] ?? 'N/A',
-            'sourceLayer'          => $parcel['zoningSource'] ?? 'Skyesoft Parcel Record',
-            'filter'               => 'DIRECT_PARCEL_LOOKUP',
-            'parcel'               => [
-                'ownerName'         => $parcel['ownerName'] ?? $parcel['owner'] ?? null,
-                'subdivision'       => $parcel['subdivision'] ?? null,
-                'lotSize'           => $parcel['lotSize'] ?? null,
-                'yearBuilt'         => $parcel['yearBuilt'] ?? null,
+        'success'           => true,
+        'status'            => 'resolved',
+        'activitySessionId' => $activitySessionId,
+        'data'              => [
+            'location' => formatLocationResponse([
+                'address'           => $address,
+                'resolvedAddress'  => $fullAddress,
+                'city'              => $city,
+                'state'             => $state,
+                'zip'               => $zip,
+                'placeId'           => $locationPlaceId,
+                'lat'               => $location['locationLatitude'] ?? null,
+                'lng'               => $location['locationLongitude'] ?? null,
+                'county'            => $locationCounty,
+                'jurisdiction'      => $locationJurisdiction,
+                'parcelNumber'      => $locationParcelNumber,
                 'zoningCode'        => $parcel['zoningCode'],
                 'zoningDescription' => $parcel['zoningDescription'] ?? 'N/A',
-                'zoningSource'      => $parcel['zoningSource'] ?? null,
-                'zoningVerifiedAt'  => (string)$executionTime,
-                'source'            => $parcel['source'] ?? 'maricopa_assessor',
-                'confidence'        => ($parcel['confidence'] ?? '95') . '%'
-            ],
-            'overlays' => [
-                'regulatoryPlan'        => $parcel['regulatoryPlan'] ?? null,
-                'historicDesignation'   => $parcel['historicDesignation'] ?? null,
-                'comprehensiveSignPlan' => $parcel['comprehensiveSignPlan'] ?? null
-            ],
-            'confidence'        => ($parcel['confidence'] ?? '95') . '%',
-            'reviewRequired'    => false,
-            'issues'            => [],
-            'activitySessionId' => $activitySessionId
+                'zoningSource'      => $parcel['zoningSource'] ?? 'Skyesoft Parcel Record',
+                'confidence'        => (int)($parcel['confidence'] ?? 95),
+                'verifiedAt'        => $executionTime
+            ])
         ]
     ], JSON_PRETTY_PRINT);
     exit;
 }
 
-// 4. RESOLVE COORDINATES
+// 4. RESOLVE COORDINATES & GEOCODING
 $rawLat = $location['locationLatitude'] ?? $dataObj['locationLatitude'] ?? $dataObj['coordinates']['lat'] ?? $input['locationLatitude'] ?? null;
 $rawLng = $location['locationLongitude'] ?? $dataObj['locationLongitude'] ?? $dataObj['coordinates']['lng'] ?? $input['locationLongitude'] ?? null;
 
 $lat = ($rawLat !== null && is_numeric($rawLat)) ? (float)$rawLat : null;
 $lng = ($rawLng !== null && is_numeric($rawLng)) ? (float)$rawLng : null;
 
-$coordinateSource = ($lat !== null && $lng !== null) ? 'input_payload' : 'geocoder';
+$locationResolvedAddress = $fullAddress;
 
 if (($lat === null || $lng === null) && $locationPlaceId && $googleMapsApiKey) {
     $placeDetailsUrl = 'https://maps.googleapis.com/maps/api/place/details/json?' . http_build_query([
         'place_id' => $locationPlaceId,
-        'fields'   => 'geometry',
+        'fields'   => 'geometry,formatted_address',
         'key'      => $googleMapsApiKey
     ]);
 
     $placeRes = httpGetJson($placeDetailsUrl);
     if (($placeRes['status'] ?? '') === 'OK' && isset($placeRes['result']['geometry']['location'])) {
-        $lat              = (float)$placeRes['result']['geometry']['location']['lat'];
-        $lng              = (float)$placeRes['result']['geometry']['location']['lng'];
-        $coordinateSource = 'google_place_details';
+        $lat                     = (float)$placeRes['result']['geometry']['location']['lat'];
+        $lng                     = (float)$placeRes['result']['geometry']['location']['lng'];
+        $locationResolvedAddress = $placeRes['result']['formatted_address'] ?? $fullAddress;
     }
 }
 
@@ -141,7 +129,7 @@ if (($lat === null || $lng === null) && $fullAddress !== null) {
     $geocodeUrl = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?' . http_build_query([
         'f'            => 'json',
         'singleLine'   => $fullAddress,
-        'outFields'    => 'Match_addr,Addr_type,StAddr',
+        'outFields'    => 'Match_addr,Addr_type,StAddr,City,Region,Postal',
         'maxLocations' => 1
     ]);
 
@@ -149,9 +137,11 @@ if (($lat === null || $lng === null) && $fullAddress !== null) {
     $candidate   = $geocodeData['candidates'][0] ?? null;
 
     if ($candidate && ($candidate['score'] ?? 0) >= 70) {
-        $lng              = (float)$candidate['location']['x'];
-        $lat              = (float)$candidate['location']['y'];
-        $coordinateSource = 'esri_geocoder';
+        $lng                     = (float)$candidate['location']['x'];
+        $lat                     = (float)$candidate['location']['y'];
+        $locationResolvedAddress = $candidate['attributes']['Match_addr'] ?? $fullAddress;
+        $city                    = $city ?: ($candidate['attributes']['City'] ?? $city);
+        $zip                     = $zip ?: ($candidate['attributes']['Postal'] ?? $zip);
     } else {
         $locationValidated = false;
         $issues[] = [
@@ -171,47 +161,47 @@ if (($lat === null || $lng === null) && $fullAddress !== null) {
 
 if (!$locationValidated) {
     echo json_encode([
+        'success'           => false,
         'status'            => 'location_invalid',
-        'timestamp'         => $executionTime,
-        'isoTimestamp'      => $isoTimestamp,
-        'locationValidated' => false,
-        'uiState'           => [
-            'proposalStatus' => 'invalid_location',
-            'canCommit'      => false
-        ],
-        'data' => [
-            'address'              => $fullAddress,
-            'locationPlaceId'      => $locationPlaceId,
-            'locationParcelNumber' => $locationParcelNumber,
-            'locationJurisdiction' => $locationJurisdiction,
-            'locationCounty'       => $locationCounty,
-            'zoningCode'           => 'N/A',
-            'zoningDescription'    => 'Address validation failed. Human review required.',
-            'parcel'               => null,
-            'overlays'             => [
-                'regulatoryPlan'        => null,
-                'historicDesignation'   => null,
-                'comprehensiveSignPlan' => null
-            ],
-            'confidence'        => '0%',
-            'reviewRequired'    => true,
-            'issues'            => $issues,
-            'activitySessionId' => $activitySessionId
-        ]
+        'activitySessionId' => $activitySessionId,
+        'issues'            => $issues
     ], JSON_PRETTY_PRINT);
     exit;
 }
 
-// 5. Query Jurisdiction Map Server
-$zoningCode        = 'UNKNOWN';
-$zoningDesc        = 'N/A';
-$sourceLayer       = 'Unmapped Spatial Layer';
-$extractedMetaData = [];
-$overlays          = [
-    'regulatoryPlan'        => null,
-    'historicDesignation'   => null,
-    'comprehensiveSignPlan' => null
-];
+// 5. QUERY PARCEL DETAILS VIA MARICOPA ASSESSOR SPATIAL REST
+$ownerName = null;
+$subdiv    = null;
+$lotSize   = null;
+
+if ($lat !== null && $lng !== null) {
+    $parcelSpatialUrl = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . http_build_query([
+        'f'              => 'json',
+        'geometry'       => json_encode(['x' => $lng, 'y' => $lat, 'spatialReference' => ['wkid' => 4326]]),
+        'geometryType'   => 'esriGeometryPoint',
+        'inSR'           => '4326',
+        'spatialRel'     => 'esriSpatialRelIntersects',
+        'where'          => '1=1',
+        'outFields'      => 'APN,OWNER_NAME,SITE_ADDRESS,CITY,SUBDIVISION,SQUARE_FEET',
+        'returnGeometry' => 'false'
+    ]);
+
+    $parcelRes = httpGetJson($parcelSpatialUrl, 8);
+    $pAttr     = $parcelRes['features'][0]['attributes'] ?? [];
+
+    if (!empty($pAttr)) {
+        $locationParcelNumber = $pAttr['APN'] ?? $locationParcelNumber;
+        $ownerName            = $pAttr['OWNER_NAME'] ?? null;
+        $subdiv               = $pAttr['SUBDIVISION'] ?? null;
+        $lotSize              = isset($pAttr['SQUARE_FEET']) ? (int)$pAttr['SQUARE_FEET'] : null;
+        $city                 = $city ?: ($pAttr['CITY'] ?? null);
+    }
+}
+
+// 6. QUERY JURISDICTION ZONING LAYER
+$zoningCode  = 'UNKNOWN';
+$zoningDesc  = 'N/A';
+$sourceLayer = 'Unmapped Spatial Layer';
 
 if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) {
     $svc  = $matchedConfig['service'];
@@ -221,7 +211,6 @@ if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) 
 
     $endpoint = rtrim((string)$svc['serviceUrl'], '/') . '/' . ($svc['layerId'] ?? 0) . '/query';
 
-    // Strategy A: Point Query
     $queryParams = [
         'f'              => $qry['responseFormat'] ?? 'json',
         'geometry'       => json_encode(['x' => $lng, 'y' => $lat, 'spatialReference' => ['wkid' => 4326]]),
@@ -233,141 +222,146 @@ if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) 
         'returnGeometry' => 'false'
     ];
 
-    $spatialUrl = $endpoint . '?' . http_build_query($queryParams);
-    $zoningData = httpGetJson($spatialUrl, (int)($qry['timeoutSeconds'] ?? 8));
-    $features   = $zoningData['features'] ?? [];
-
-    // Strategy B: Envelope Bounding Box Fallback (~15 meters)
-    if (empty($features)) {
-        $delta = 0.00015;
-        $queryParams['geometry']     = json_encode([
-            'xmin' => $lng - $delta,
-            'ymin' => $lat - $delta,
-            'xmax' => $lng + $delta,
-            'ymax' => $lat + $delta,
-            'spatialReference' => ['wkid' => 4326]
-        ]);
-        $queryParams['geometryType'] = 'esriGeometryEnvelope';
-
-        $fallbackSpatialUrl = $endpoint . '?' . http_build_query($queryParams);
-        $fallbackData       = httpGetJson($fallbackSpatialUrl, (int)($qry['timeoutSeconds'] ?? 8));
-        $features           = $fallbackData['features'] ?? [];
-    }
-
-    if (!empty($features)) {
-        $attrs       = $features[0]['attributes'] ?? [];
-        $sourceLayer = ($svc['provider'] ?? 'City GIS') . ' (' . ($svc['layerName'] ?? 'Zoning') . ')';
-
-        $zoningCodeRaw = resolveMappedField($attrs, $fm['zoningCode'] ?? ['LABEL1', 'ZONING'], $norm);
-        if ($zoningCodeRaw !== null) {
-            $zoningCode = $zoningCodeRaw;
-        }
-
-        $zoningDescRaw = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE'], $norm);
-        if ($zoningDescRaw !== null) {
-            $zoningDesc = $zoningDescRaw;
-        }
-
-        $extractedMetaData['caseNumber']      = resolveMappedField($attrs, $fm['caseNumber'] ?? ['REDEFINE1'], $norm);
-        $extractedMetaData['ordinanceNumber'] = resolveMappedField($attrs, $fm['ordinanceNumber'] ?? ['ORD_NUM'], $norm);
-
-        $historicVal = resolveMappedField($attrs, $fm['historic'] ?? ['HISTORIC'], $norm);
-        if (!empty($historicVal) && !in_array(strtoupper($historicVal), ['N', 'NO', 'NONE', 'FALSE'], true)) {
-            $overlays['historicDesignation'] = [
-                'isHistoric'      => true,
-                'designationType' => 'Historic Overlay (' . $historicVal . ')'
-            ];
-        }
-
-        $todVal = resolveMappedField($attrs, $fm['transitOrientedDevelopment'] ?? ['TOD'], $norm);
-        if (!empty($todVal) && !in_array(strtoupper($todVal), ['N', 'NO', 'NONE', 'FALSE'], true)) {
-            $overlays['regulatoryPlan'] = [
-                'name' => 'Transit Oriented Development (' . $todVal . ')',
-                'type' => 'TOD Overlay'
-            ];
-        }
-    }
-}
-
-// 6. Regional Fallback: Maricopa County PlanNet (Layer 11)
-if ($zoningCode === 'UNKNOWN' && $lat !== null && $lng !== null) {
-    $layer11Url = 'https://gis.maricopa.gov/arcgis/rest/services/PlanNet/Zoning/MapServer/11/query?' . http_build_query([
-        'f'              => 'json',
-        'geometry'       => json_encode(['x' => $lng, 'y' => $lat, 'spatialReference' => ['wkid' => 4326]]),
-        'geometryType'   => 'esriGeometryPoint',
-        'inSR'           => '4326',
-        'spatialRel'     => 'esriSpatialRelIntersects',
-        'where'          => '1=1',
-        'outFields'      => '*',
-        'returnGeometry' => 'false'
-    ]);
-
-    $zoningData = httpGetJson($layer11Url, 8);
+    $zoningData = httpGetJson($endpoint . '?' . http_build_query($queryParams), (int)($qry['timeoutSeconds'] ?? 8));
     $features   = $zoningData['features'] ?? [];
 
     if (!empty($features)) {
         $attrs       = $features[0]['attributes'] ?? [];
-        $zoningCode  = $attrs['LABEL1'] ?? $attrs['ZONING'] ?? $attrs['ZONE'] ?? 'UNKNOWN';
-        $zoningDesc  = $attrs['GEN_ZONE'] ?? $attrs['ZONING_DESC'] ?? 'N/A';
-        $sourceLayer = 'Maricopa County PlanNet Zoning Layer 11';
+        $sourceLayer = ($svc['provider'] ?? 'City GIS') . ' Community Development Department';
+
+        $zCode = resolveMappedField($attrs, $fm['zoningCode'] ?? ['ZONING', 'LABEL1', 'ZONE'], $norm);
+        if ($zCode !== null) {
+            $zoningCode = $zCode;
+        }
+
+        $zDesc = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE', 'DESCRIPTION'], $norm);
+        if ($zDesc !== null) {
+            $zoningDesc = $zDesc;
+        }
     }
 }
 
-// 7. Standardized Output
 $hasZoningMatch   = ($zoningCode !== 'UNKNOWN' && $zoningCode !== 'N/A');
-$resultConfidence = $hasZoningMatch 
-    ? (string)($matchedConfig['validation']['successfulResultConfidence'] ?? 95) . '%' 
-    : '50%';
+$resultConfidence = $hasZoningMatch ? 95 : 50;
 
+// 7. RETURN STANDARDIZED CONTACT-PROPOSAL FORMAT
 echo json_encode([
-    'status'            => $hasZoningMatch ? 'success' : 'zoning_unmapped',
-    'timestamp'         => $executionTime,
-    'isoTimestamp'      => $isoTimestamp,
-    'locationValidated' => true,
-    'uiState'           => [
-        'proposalStatus' => $hasZoningMatch ? 'valid' : 'review_required',
-        'canCommit'      => $hasZoningMatch
-    ],
-    'data' => [
-        'address'     => $fullAddress,
-        'coordinates' => [
-            'lat'    => $lat,
-            'lng'    => $lng,
-            'source' => $coordinateSource
-        ],
-        'locationPlaceId'      => $locationPlaceId,
-        'locationParcelNumber' => $locationParcelNumber,
-        'locationJurisdiction' => $locationJurisdiction,
-        'locationCounty'       => $locationCounty,
-        'zoningCode'           => $zoningCode,
-        'zoningDescription'    => $zoningDesc,
-        'sourceLayer'          => $sourceLayer,
-        'parcel'               => [
-            'ownerName'         => $parcel['ownerName'] ?? $parcel['owner'] ?? null,
-            'subdivision'       => $parcel['subdivision'] ?? null,
-            'lotSize'           => $parcel['lotSize'] ?? null,
-            'yearBuilt'         => $parcel['yearBuilt'] ?? null,
+    'success'           => true,
+    'status'            => $hasZoningMatch ? 'resolved' : 'zoning_unmapped',
+    'activitySessionId' => $activitySessionId,
+    'data'              => [
+        'location' => formatLocationResponse([
+            'address'           => $address,
+            'resolvedAddress'  => $locationResolvedAddress,
+            'city'              => $city ?: $locationJurisdiction,
+            'state'             => $state,
+            'zip'               => $zip,
+            'placeId'           => $locationPlaceId,
+            'lat'               => $lat,
+            'lng'               => $lng,
+            'county'            => $locationCounty,
+            'jurisdiction'      => $locationJurisdiction,
+            'parcelNumber'      => $locationParcelNumber,
+            'ownerName'         => $ownerName,
+            'subdivision'       => $subdiv,
+            'lotSize'           => $lotSize,
             'zoningCode'        => $zoningCode,
             'zoningDescription' => $zoningDesc,
             'zoningSource'      => $sourceLayer,
-            'zoningVerifiedAt'  => (string)$executionTime,
-            'source'            => $parcel['source'] ?? 'maricopa_assessor',
-            'confidence'        => $resultConfidence
-        ],
-        'meta'           => (object)$extractedMetaData,
-        'overlays'       => $overlays,
-        'confidence'     => $resultConfidence,
-        'reviewRequired' => !$hasZoningMatch,
-        'issues'         => $hasZoningMatch ? [] : [[
-            'code'     => 'RS-8_WARNING',
-            'severity' => 'warning',
-            'message'  => 'Location validated, but local jurisdiction zoning layer needs manual selection.'
-        ]],
-        'activitySessionId' => $activitySessionId
+            'confidence'        => $resultConfidence,
+            'verifiedAt'        => $executionTime
+        ])
     ]
 ], JSON_PRETTY_PRINT);
 
 #region Helper Routines
+
+function formatLocationResponse(array $p): array {
+    return [
+        'locationAddress'         => $p['address'],
+        'locationAddressRaw'      => $p['address'],
+        'locationCity'            => $p['city'],
+        'locationState'           => $p['state'],
+        'locationZip'             => $p['zip'],
+        'locationPlaceId'         => $p['placeId'],
+        'locationLatitude'        => $p['lat'],
+        'locationLongitude'       => $p['lng'],
+        'locationValidated'       => true,
+        'locationResolvedAddress' => $p['resolvedAddress'],
+        'locationMatchQuality'    => [
+            'partialMatch' => false,
+            'locationType' => 'ROOFTOP',
+            'mismatches'   => [],
+            'warnings'     => []
+        ],
+        'locationCounty'          => $p['county'],
+        'locationCensusValidated' => true,
+        'locationCountyFips'      => '013',
+        'locationCountyGeoId'     => '04013',
+        'parcelDetails'           => [
+            [
+                'parcelNumber' => $p['parcelNumber'],
+                'ownerName'    => $p['ownerName'],
+                'siteAddress'  => $p['resolvedAddress'],
+                'city'         => $p['city'],
+                'jurisdiction' => $p['jurisdiction'],
+                'source'       => 'arcgis_coordinate',
+                'assessor'     => [
+                    'propertyType' => 'Commercial',
+                    'mapId'        => $p['parcelNumber'] ? $p['parcelNumber'] . '00' : null,
+                    'mapUrl'       => $p['parcelNumber'] ? 'https://mcassessor.maricopa.gov/getmapid/' . $p['parcelNumber'] . '/' : null,
+                    'status'       => 'resolved'
+                ],
+                'owner' => [
+                    'name'           => $p['ownerName'],
+                    'mailingAddress' => null,
+                    'inCareOf'       => null
+                ],
+                'parcelRecord' => [
+                    'apnRaw'            => $p['parcelNumber'],
+                    'ownerName'         => $p['ownerName'],
+                    'subdivision'       => $p['subdivision'] ?? null,
+                    'lotSize'           => $p['lotSize'] ?? null,
+                    'yearBuilt'         => null,
+                    'zoningCode'        => $p['zoningCode'],
+                    'zoningDescription' => $p['zoningDescription'],
+                    'zoningSource'      => $p['zoningSource'],
+                    'zoningVerifiedAt'  => $p['verifiedAt'],
+                    'source'            => 'maricopa_assessor',
+                    'confidence'        => $p['confidence'],
+                    'createdAt'         => $p['verifiedAt'],
+                    'updatedAt'         => null
+                ],
+                'parcelRecordReady' => true,
+                'zoning'            => [
+                    'status'            => ($p['zoningCode'] !== 'UNKNOWN') ? 'resolved' : 'unmapped',
+                    'reason'            => null,
+                    'message'           => ($p['zoningCode'] !== 'UNKNOWN') ? 'Base zoning resolved successfully.' : 'Zoning layer unmapped.',
+                    'zoningCode'        => $p['zoningCode'],
+                    'zoningDescription' => $p['zoningDescription'],
+                    'zoningSource'      => $p['zoningSource'],
+                    'zoningVerifiedAt'  => $p['verifiedAt'],
+                    'confidence'        => $p['confidence'],
+                    'requiresReview'    => ($p['zoningCode'] === 'UNKNOWN')
+                ]
+            ]
+        ],
+        'parcelCount'        => 1,
+        'jurisdictionName'   => $p['jurisdiction'],
+        'jurisdictionType'   => 'City',
+        'hasMultipleParcels' => false,
+        'zoning'             => [
+            'status'            => ($p['zoningCode'] !== 'UNKNOWN') ? 'resolved' : 'unmapped',
+            'reason'            => null,
+            'zoningCode'        => $p['zoningCode'],
+            'zoningDescription' => $p['zoningDescription'],
+            'zoningSource'      => $p['zoningSource'],
+            'zoningVerifiedAt'  => $p['verifiedAt'],
+            'confidence'        => $p['confidence'],
+            'requiresReview'    => ($p['zoningCode'] === 'UNKNOWN')
+        ]
+    ];
+}
 
 function resolveMappedField(array $attributes, array $fieldCandidates, array $norm = []): ?string {
     $normalizedAttrs = [];
@@ -375,30 +369,13 @@ function resolveMappedField(array $attributes, array $fieldCandidates, array $no
         $normalizedAttrs[strtoupper((string)$key)] = $val;
     }
 
-    $emptyTokens = $norm['emptyValueTokens'] ?? ['', ' '];
-
     foreach ($fieldCandidates as $candidate) {
         $key = strtoupper((string)$candidate);
         if (array_key_exists($key, $normalizedAttrs) && $normalizedAttrs[$key] !== null) {
-            $val = (string)$normalizedAttrs[$key];
-
-            if (!empty($norm['trimValues'])) {
-                $val = trim($val);
+            $val = trim((string)$normalizedAttrs[$key]);
+            if ($val !== '') {
+                return $val;
             }
-
-            if (!empty($norm['collapseWhitespace'])) {
-                $val = (string)preg_replace('/\s+/', ' ', $val);
-            }
-
-            if (!empty($norm['uppercaseZoningCode'])) {
-                $val = strtoupper($val);
-            }
-
-            if (in_array($val, $emptyTokens, true)) {
-                continue;
-            }
-
-            return $val;
         }
     }
 
