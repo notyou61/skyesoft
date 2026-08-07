@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php
-//  Version: 2.1.3
+//  Version: 2.1.4
 //  Last Updated: 2026-08-07
 //  Codex Tier: 2 — Infrastructure / GIS & Location Pipeline
 // ======================================================================
@@ -61,6 +61,7 @@ $location = $input['location'] ?? $dataObj['location'] ?? $input;
 $parcel   = $location['parcel'] ?? $dataObj['location']['parcelDetails'][0] ?? $dataObj['parcel'] ?? [];
 
 $activitySessionId = $input['activitySessionId'] ?? $dataObj['activitySessionId'] ?? bin2hex(random_bytes(16));
+$debugEnabled      = filter_var($input['debug'] ?? $_GET['debug'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
 // Extract normalized location attributes
 $address      = $location['locationAddress'] ?? $dataObj['locationAddress'] ?? $input['locationAddress'] ?? null;
@@ -152,8 +153,12 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
     if (($geoRes['status'] ?? '') === 'OK' && !empty($geoRes['results'][0])) {
         $firstResult             = $geoRes['results'][0];
         $locationPlaceId         = $firstResult['place_id'] ?? null;
-        $lat                     = $lat ?? (float)($firstResult['geometry']['location']['lat'] ?? null);
-        $lng                     = $lng ?? (float)($firstResult['geometry']['location']['lng'] ?? null);
+        if ($lat === null && isset($firstResult['geometry']['location']['lat']) && is_numeric($firstResult['geometry']['location']['lat'])) {
+            $lat = (float)$firstResult['geometry']['location']['lat'];
+        }
+        if ($lng === null && isset($firstResult['geometry']['location']['lng']) && is_numeric($firstResult['geometry']['location']['lng'])) {
+            $lng = (float)$firstResult['geometry']['location']['lng'];
+        }
         $locationResolvedAddress = $firstResult['formatted_address'] ?? $fullAddress;
     }
 
@@ -172,8 +177,12 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
         if (($findRes['status'] ?? '') === 'OK' && !empty($findRes['candidates'][0])) {
             $candidate               = $findRes['candidates'][0];
             $locationPlaceId         = $candidate['place_id'] ?? null;
-            $lat                     = $lat ?? (float)($candidate['geometry']['location']['lat'] ?? null);
-            $lng                     = $lng ?? (float)($candidate['geometry']['location']['lng'] ?? null);
+            if ($lat === null && isset($candidate['geometry']['location']['lat']) && is_numeric($candidate['geometry']['location']['lat'])) {
+                $lat = (float)$candidate['geometry']['location']['lat'];
+            }
+            if ($lng === null && isset($candidate['geometry']['location']['lng']) && is_numeric($candidate['geometry']['location']['lng'])) {
+                $lng = (float)$candidate['geometry']['location']['lng'];
+            }
             $locationResolvedAddress = $candidate['formatted_address'] ?? $locationResolvedAddress;
         }
     }
@@ -242,25 +251,42 @@ if (!$locationValidated) {
 
 #region SECTION 3 — Registry Configuration & Short-Circuit Check
 
-// Corrected path to check for zoning (1).json or zoning.json
-$zoningRegistryFile = __DIR__ . '/zoning (1).json';
-if (!file_exists($zoningRegistryFile)) {
-    $zoningRegistryFile = __DIR__ . '/zoning.json';
-}
-if (!file_exists($zoningRegistryFile)) {
-    $zoningRegistryFile = __DIR__ . '/api/zoning (1).json';
+$jurisKey = strtolower(trim((string)$locationJurisdiction));
+$jurisSlug = preg_replace('/[^a-z0-9]+/', '-', $jurisKey);
+$jurisSlug = trim((string)$jurisSlug, '-');
+
+// Resolve the authoritative jurisdiction file first (generic files are test fallbacks).
+$zoningRegistryCandidates = [
+    __DIR__ . '/data/authoritative/jurisdictions/' . $jurisSlug . '/zoning.json',
+    dirname(__DIR__) . '/data/authoritative/jurisdictions/' . $jurisSlug . '/zoning.json',
+    __DIR__ . '/api/data/authoritative/jurisdictions/' . $jurisSlug . '/zoning.json',
+    __DIR__ . '/zoning.json',
+    __DIR__ . '/zoning (1).json',
+    __DIR__ . '/api/zoning.json',
+    __DIR__ . '/api/zoning (1).json'
+];
+
+$zoningRegistryFile = null;
+foreach ($zoningRegistryCandidates as $candidateFile) {
+    if (is_file($candidateFile)) {
+        $zoningRegistryFile = $candidateFile;
+        break;
+    }
 }
 
-$zoningConfig = file_exists($zoningRegistryFile) 
-    ? (json_decode((string)file_get_contents($zoningRegistryFile), true) ?? [])
-    : [];
+$zoningConfig = [];
+if ($zoningRegistryFile !== null) {
+    $zoningConfig = json_decode((string)file_get_contents($zoningRegistryFile), true);
+    if (!is_array($zoningConfig)) {
+        $zoningConfig = [];
+    }
+}
 
-$jurisKey      = strtolower(trim((string)$locationJurisdiction));
 $matchedConfig = null;
 
 // Handle single-jurisdiction configuration schema (like your zoning (1).json file)
 $configSlug = strtolower((string)($zoningConfig['jurisdiction']['slug'] ?? $zoningConfig['jurisdiction']['label'] ?? ''));
-if ($configSlug === $jurisKey || isset($zoningConfig['service'])) {
+if ($configSlug !== '' && ($configSlug === $jurisKey || $configSlug === $jurisSlug)) {
     $matchedConfig = $zoningConfig;
 } elseif ($jurisKey !== '') {
     if (isset($zoningConfig[$jurisKey])) {
@@ -297,6 +323,9 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
                 'zoningCode'        => $parcel['zoningCode'],
                 'zoningDescription' => $parcel['zoningDescription'] ?? 'N/A',
                 'zoningSource'      => $parcel['zoningSource'] ?? 'Skyesoft Parcel Record',
+                'ownerName'         => $parcel['ownerName'] ?? null,
+                'subdivision'       => $parcel['subdivision'] ?? null,
+                'lotSize'           => $parcel['lotSize'] ?? null,
                 'confidence'        => (int)($parcel['confidence'] ?? 95),
                 'verifiedAt'        => $executionTime
             ])
@@ -359,6 +388,7 @@ if ($lat !== null && $lng !== null) {
 $zoningCode  = 'UNKNOWN';
 $zoningDesc  = 'N/A';
 $sourceLayer = 'Unmapped Spatial Layer';
+$zoningDiagnostics = [];
 
 if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) {
     $svc  = $matchedConfig['service'];
@@ -366,7 +396,9 @@ if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) 
     $fm   = $matchedConfig['fieldMapping'] ?? [];
     $norm = $matchedConfig['normalization'] ?? [];
 
-    $endpoint = rtrim((string)$svc['serviceUrl'], '/') . '/' . ($svc['layerId'] ?? 0) . '/query';
+    $layerId = filter_var($svc['layerId'] ?? null, FILTER_VALIDATE_INT);
+    $layerId = ($layerId === false) ? 0 : $layerId;
+    $endpoint = rtrim((string)$svc['serviceUrl'], '/') . '/' . $layerId . '/query';
 
     $executeZoningQuery = function(string $geomJson, string $geomType) use ($endpoint, $qry) {
         $queryParams = [
@@ -379,13 +411,14 @@ if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) 
             'outFields'      => is_array($qry['outFields'] ?? null) ? implode(',', $qry['outFields']) : ($qry['outFields'] ?? '*'),
             'returnGeometry' => 'false'
         ];
-        return httpGetJson($endpoint . '?' . http_build_query($queryParams), (int)($qry['timeoutSeconds'] ?? 8));
+        return httpGetJsonDetailed($endpoint . '?' . http_build_query($queryParams), (int)($qry['timeoutSeconds'] ?? 8));
     };
 
     // Primary Point lookup
     $pointGeom  = json_encode(['x' => $lng, 'y' => $lat, 'spatialReference' => ['wkid' => 4326]]);
-    $zoningData = $executeZoningQuery($pointGeom, 'esriGeometryPoint');
-    $features   = $zoningData['features'] ?? [];
+    $zoningResult = $executeZoningQuery($pointGeom, 'esriGeometryPoint');
+    $zoningData   = $zoningResult['data'] ?? [];
+    $features     = $zoningData['features'] ?? [];
 
     // Fallback spatial envelope
     if (empty($features)) {
@@ -397,13 +430,23 @@ if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) 
             'ymax' => $lat + $delta,
             'spatialReference' => ['wkid' => 4326]
         ]);
-        $zoningData = $executeZoningQuery($envGeom, 'esriGeometryEnvelope');
-        $features   = $zoningData['features'] ?? [];
+        $zoningResult = $executeZoningQuery($envGeom, 'esriGeometryEnvelope');
+        $zoningData   = $zoningResult['data'] ?? [];
+        $features     = $zoningData['features'] ?? [];
     }
+
+    $zoningDiagnostics = [
+        'configFile'  => $zoningRegistryFile,
+        'endpoint'    => $endpoint,
+        'httpCode'    => $zoningResult['httpCode'] ?? null,
+        'curlError'   => $zoningResult['curlError'] ?? null,
+        'arcGisError' => $zoningData['error'] ?? null,
+        'featureCount'=> count($features)
+    ];
 
     if (!empty($features)) {
         $attrs       = $features[0]['attributes'] ?? [];
-        $sourceLayer = ($svc['provider'] ?? 'City GIS') . ' Community Development Department';
+        $sourceLayer = (string)($svc['provider'] ?? 'City GIS');
 
         $codeCandidates = array_merge(
             $fm['zoningCode'] ?? [], 
@@ -417,7 +460,7 @@ if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) 
 
         $zCode = resolveMappedField($attrs, $codeCandidates, $norm);
         if ($zCode !== null) {
-            $zoningCode = $zCode;
+            $zoningCode = !empty($norm['uppercaseZoningCode']) ? strtoupper($zCode) : $zCode;
         }
 
         $zDesc = resolveMappedField($attrs, $descCandidates, $norm);
@@ -434,7 +477,7 @@ $resultConfidence = $hasZoningMatch ? 95 : 50;
 
 #region SECTION 6 — Payload Output & Execution Termination
 
-echo json_encode([
+$output = [
     'success'           => true,
     'status'            => $hasZoningMatch ? 'resolved' : 'zoning_unmapped',
     'activitySessionId' => $activitySessionId,
@@ -461,7 +504,18 @@ echo json_encode([
             'verifiedAt'        => $executionTime
         ])
     ]
-], JSON_PRETTY_PRINT);
+];
+
+if ($debugEnabled) {
+    $output['debug'] = [
+        'jurisdictionKey' => $jurisKey,
+        'jurisdictionSlug'=> $jurisSlug,
+        'configMatched'   => is_array($matchedConfig),
+        'zoningQuery'     => $zoningDiagnostics
+    ];
+}
+
+echo json_encode($output, JSON_PRETTY_PRINT);
 
 #endregion
 
@@ -573,6 +627,9 @@ function resolveMappedField(array $attributes, array $fieldCandidates, array $no
         if (array_key_exists($key, $normalizedAttrs) && $normalizedAttrs[$key] !== null) {
             $val = trim((string)$normalizedAttrs[$key]);
             if ($val !== '') {
+                if (!empty($norm['collapseWhitespace'])) {
+                    $val = preg_replace('/\s+/', ' ', $val);
+                }
                 return $val;
             }
         }
@@ -585,6 +642,14 @@ function resolveMappedField(array $attributes, array $fieldCandidates, array $no
  * Executes cURL GET requests with timeout controls.
  */
 function httpGetJson(string $url, int $timeoutSeconds = 5): ?array {
+    $result = httpGetJsonDetailed($url, $timeoutSeconds);
+    return $result['data'];
+}
+
+/**
+ * Executes a JSON GET request while retaining HTTP and ArcGIS diagnostics.
+ */
+function httpGetJsonDetailed(string $url, int $timeoutSeconds = 5): array {
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL            => $url,
@@ -595,15 +660,25 @@ function httpGetJson(string $url, int $timeoutSeconds = 5): ?array {
         CURLOPT_HTTPHEADER     => ['Accept: application/json']
     ]);
 
-    $response = curl_exec($ch);
+    $response  = curl_exec($ch);
+    $curlError = curl_error($ch);
+    $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
     if ($response === false) {
-        return null;
+        return [
+            'data'      => null,
+            'httpCode'  => $httpCode,
+            'curlError' => $curlError
+        ];
     }
 
     $decoded = json_decode((string)$response, true);
-    return is_array($decoded) ? $decoded : null;
+    return [
+        'data'      => is_array($decoded) ? $decoded : null,
+        'httpCode'  => $httpCode,
+        'curlError' => $curlError
+    ];
 }
 
 #endregion
