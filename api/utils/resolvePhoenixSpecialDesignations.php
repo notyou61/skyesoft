@@ -3,279 +3,272 @@
 declare(strict_types=1);
 
 /**
- * Skyesoft — Phoenix Special Designations GIS Resolver
- * 
- * File Path: api/utils/resolvePhoenixSpecialDesignations.php
- * File Version: 1.0.0
- * Schema Version: 3.3.0
- * 
- * Executes spatial queries against official Phoenix ArcGIS endpoints 
- * for Zoning Overlays, Historic Properties, and Comprehensive Sign Plans.
- */
-
-/**
- * Master spatial resolver for Phoenix Special Designations.
+ * Skyesoft — Phoenix Special Designations & CSP Resolver
  *
- * @param float $latitude WGS84 Latitude
- * @param float $longitude WGS84 Longitude
- * @return array Normalized structure following Skyesoft v3.3.0 report contract
+ * File Path:        api/utils/resolvePhoenixSpecialDesignations.php
+ * File Version:     1.2.4
+ * Schema Version:   3.4.0
+ * Last Updated:     2026-08-07
+ * PHP Version:      8.0+
  */
-function resolvePhoenixSpecialDesignations(float $latitude, float $longitude): array
-{
-    $now = time();
 
-    $overlays = queryPhoenixZoningOverlays($latitude, $longitude, $now);
-    $historic = queryPhoenixHistoricDesignations($latitude, $longitude, $now);
-    $csp      = queryPhoenixComprehensiveSignPlan($latitude, $longitude, $now);
+function resolvePhoenixSpecialDesignations(
+    float $latitude,
+    float $longitude,
+    array $options = []
+): array {
+    $startedAt = microtime(true);
 
-    $payload = [
-        'zoningOverlays'        => $overlays,
-        'historicDesignation'   => $historic,
-        'comprehensiveSignPlan' => $csp,
+    $endpoints = [
+        'overlays' => [
+            'url'       => 'https://maps.phoenix.gov/pub/rest/services/Public/ZoningOverlays/MapServer/0',
+            'outFields' => 'NAME,CASE_YR,REGULATORY',
+            'source'    => 'City of Phoenix Zoning Overlays GIS'
+        ],
+        'historic' => [
+            'url'       => 'https://maps.phoenix.gov/pub/rest/services/Public/HistoricProperties/MapServer/0',
+            'outFields' => 'NAME,TYPE,STATUS,LANDMARK',
+            'source'    => 'City of Phoenix Historic Preservation GIS'
+        ]
     ];
 
-    $payload['isComplete'] = specialDesignationsAreComplete($payload);
+    $overlayResult  = queryPhoenixArcGisLayer($endpoints['overlays'], $latitude, $longitude, $options);
+    $historicResult = queryPhoenixArcGisLayer($endpoints['historic'], $latitude, $longitude, $options);
 
-    return $payload;
-}
+    $overlayPayload  = parsePhoenixOverlayFeatures($overlayResult, $endpoints['overlays']['source']);
+    $historicPayload = parsePhoenixHistoricFeatures($historicResult, $endpoints['historic']['source']);
 
-/**
- * 1. Confirmed Phoenix Zoning Overlays GIS (Layer 0)
- * Endpoint: https://maps.phoenix.gov/pub/rest/services/Public/ZoningOverlays/MapServer/0
- */
-function queryPhoenixZoningOverlays(float $lat, float $lng, int $timestamp): array
-{
-    $url = 'https://maps.phoenix.gov/pub/rest/services/Public/ZoningOverlays/MapServer/0/query';
-    $params = [
-        'geometry'     => "{$lng},{$lat}",
-        'geometryType' => 'esriGeometryPoint',
-        'spatialRel'   => 'esriSpatialRelIntersects',
-        'inSR'         => 4326,
-        'outFields'    => 'NAME,CASE_YR,REGULATORY',
-        'f'            => 'json',
-    ];
-
-    $response = executePhoenixGisCurlRequest($url, $params);
-
-    if (!$response['success']) {
-        return [
-            'determination' => null,
-            'status'        => 'error',
-            'matches'       => [],
-            'source'        => 'City of Phoenix Zoning Overlays GIS (Layer 0)',
-            'checkedAt'     => $timestamp,
-            'errorMessage'  => $response['error'],
-        ];
-    }
-
-    $features = $response['data']['features'] ?? [];
-
-    if ($features === []) {
-        return [
-            'determination' => 'no',
-            'status'        => 'noneIdentified',
-            'matches'       => [],
-            'source'        => 'City of Phoenix Zoning Overlays GIS (Layer 0)',
-            'checkedAt'     => $timestamp,
-        ];
-    }
-
-    $matches = [];
-    foreach ($features as $f) {
-        $attrs = $f['attributes'] ?? [];
-        $name = trim((string)($attrs['NAME'] ?? ''));
-        if ($name !== '') {
-            $matches[] = [
-                'name'       => $name,
-                'caseYear'   => $attrs['CASE_YR'] ?? null,
-                'regulatory' => $attrs['REGULATORY'] ?? null,
-            ];
-        }
-    }
-
-    return [
-        'determination' => 'yes',
-        'status'        => 'found',
-        'matches'       => $matches,
-        'source'        => 'City of Phoenix Zoning Overlays GIS (Layer 0)',
-        'checkedAt'     => $timestamp,
-    ];
-}
-
-/**
- * 2. Confirmed Phoenix Historic Properties MapServer (Layer 0)
- * Endpoint: https://maps.phoenix.gov/pub/rest/services/Public/HistoricProperties/MapServer/0
- */
-function queryPhoenixHistoricDesignations(float $lat, float $lng, int $timestamp): array
-{
-    $url = 'https://maps.phoenix.gov/pub/rest/services/Public/HistoricProperties/MapServer/0/query';
-    $params = [
-        'geometry'     => "{$lng},{$lat}",
-        'geometryType' => 'esriGeometryPoint',
-        'spatialRel'   => 'esriSpatialRelIntersects',
-        'inSR'         => 4326,
-        'outFields'    => 'NAME,TYPE,STATUS,LANDMARK',
-        'f'            => 'json',
-    ];
-
-    $response = executePhoenixGisCurlRequest($url, $params);
-
-    if (!$response['success']) {
-        return [
-            'determination' => null,
-            'status'        => 'error',
-            'matches'       => [],
-            'source'        => 'City of Phoenix Historic Properties GIS (Layer 0)',
-            'checkedAt'     => $timestamp,
-            'errorMessage'  => $response['error'],
-        ];
-    }
-
-    $features = $response['data']['features'] ?? [];
-
-    if ($features === []) {
-        return [
-            'determination' => 'no',
-            'status'        => 'noneIdentified',
-            'matches'       => [],
-            'source'        => 'City of Phoenix Historic Properties GIS (Layer 0)',
-            'checkedAt'     => $timestamp,
-        ];
-    }
-
-    $matches = [];
-    foreach ($features as $f) {
-        $attrs = $f['attributes'] ?? [];
-        $name = trim((string)($attrs['NAME'] ?? ''));
-        if ($name !== '') {
-            $matches[] = [
-                'name'     => $name,
-                'type'     => $attrs['TYPE'] ?? null,
-                'status'   => $attrs['STATUS'] ?? null,
-                'landmark' => $attrs['LANDMARK'] ?? null,
-            ];
-        }
-    }
-
-    return [
-        'determination' => 'yes',
-        'status'        => 'found',
-        'matches'       => $matches,
-        'source'        => 'City of Phoenix Historic Properties GIS (Layer 0)',
-        'checkedAt'     => $timestamp,
-    ];
-}
-
-/**
- * 3. Confirmed Phoenix Planning & Permit ZA Cases (Layer 4)
- * Candidate discovery for Comprehensive Sign Plan (CSP)
- * Endpoint: https://maps.phoenix.gov/pub/rest/services/Public/Planning_Permit/MapServer/4
- */
-function queryPhoenixComprehensiveSignPlan(float $lat, float $lng, int $timestamp): array
-{
-    $url = 'https://maps.phoenix.gov/pub/rest/services/Public/Planning_Permit/MapServer/4/query';
-    $params = [
-        'geometry'     => "{$lng},{$lat}",
-        'geometryType' => 'esriGeometryPoint',
-        'spatialRel'   => 'esriSpatialRelIntersects',
-        'inSR'         => 4326,
-        'outFields'    => '*', // Retrieves full metadata attributes for inspection
-        'f'            => 'json',
-    ];
-
-    $response = executePhoenixGisCurlRequest($url, $params);
-
-    if (!$response['success']) {
-        return [
-            'determination' => null,
-            'status'        => 'error',
-            'caseNumber'    => null,
-            'cases'         => [],
-            'source'        => 'City of Phoenix Planning and Permit GIS (Layer 4)',
-            'checkedAt'     => $timestamp,
-            'errorMessage'  => $response['error'],
-        ];
-    }
-
-    $features = $response['data']['features'] ?? [];
-
-    // Zero candidates discovered = Authoritative No
-    if ($features === []) {
-        return [
-            'determination' => 'no',
-            'status'        => 'noneIdentified',
-            'caseNumber'    => null,
-            'cases'         => [],
-            'source'        => 'City of Phoenix Planning and Permit GIS (Layer 4)',
-            'checkedAt'     => $timestamp,
-        ];
-    }
-
-    $candidateCases = array_map(
-        static fn(array $f): array => ['rawAttributes' => $f['attributes'] ?? []],
-        $features
-    );
-
-    // Candidate cases exist: blocks automatic yes/no until verified
-    return [
+    // Directly construct interim CSP payload without unnecessary Layer 4 network query
+    $cspPayload = [
         'determination' => null,
-        'status'        => 'manualReviewRequired',
+        'status'        => 'requiresResearch',
         'caseNumber'    => null,
-        'cases'         => $candidateCases,
-        'source'        => 'City of Phoenix Planning and Permit GIS (Layer 4)',
-        'checkedAt'     => $timestamp,
+        'cases'         => [],
+        'source'        => 'City of Phoenix Planning & Permit Cases GIS',
+        'checkedAt'     => time(),
+        'errorMessage'  => 'No verified Comprehensive Sign Plan classification rule is configured.'
+    ];
+
+    // Evaluates directly from active query statuses and interim CSP state
+    $isComplete = ($historicResult['success'] && $overlayResult['success'] && $cspPayload['status'] !== 'requiresResearch');
+
+    return [
+        'isComplete'            => $isComplete,
+        'historicDesignation'   => $historicPayload,
+        'zoningOverlays'        => $overlayPayload,
+        'comprehensiveSignPlan' => $cspPayload,
+        'responseTimeMs'        => (int)round((microtime(true) - $startedAt) * 1000)
     ];
 }
 
-/**
- * Shared cURL Request Engine for Phoenix GIS REST API.
- */
-function executePhoenixGisCurlRequest(string $baseUrl, array $params): array
-{
-    $queryString = http_build_query($params);
-    $ch = curl_init();
+function queryPhoenixArcGisLayer(
+    array $layerConfig,
+    float $latitude,
+    float $longitude,
+    array $options = []
+): array {
+    $startedAt   = microtime(true);
+    $serviceUrl  = rtrim($layerConfig['url'], '/');
+    $maxAttempts = (int)($options['maxAttempts'] ?? 3);
+    $baseDelayMs = (int)($options['retryDelayMs'] ?? 400);
 
-    curl_setopt_array($ch, [
-        CURLOPT_URL            => "{$baseUrl}?{$queryString}",
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 8,
-        CURLOPT_CONNECTTIMEOUT => 4,
-        CURLOPT_USERAGENT      => 'Skyesoft-ZoningResolver/1.3',
-    ]);
+    $params = [
+        'where'          => '1=1',
+        'geometry'       => "{$longitude},{$latitude}",
+        'geometryType'   => 'esriGeometryPoint',
+        'spatialRel'     => 'esriSpatialRelIntersects',
+        'inSR'           => 4326,
+        'outSR'          => 4326, // Adds spatial reference output projection
+        'outFields'      => $layerConfig['outFields'] ?? '*',
+        'returnGeometry' => 'false',
+        'f'              => 'json'
+    ];
 
-    $body = curl_exec($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
+    $queryUrl = $serviceUrl . '/query?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 
-    if ($body === false || $curlError !== '' || $httpCode !== 200) {
-        return ['success' => false, 'error' => "HTTP {$httpCode} / Error: {$curlError}"];
+    $lastAttempt = null;
+    $attemptLogs = [];
+
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        $attemptStarted = microtime(true);
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $queryUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => (int)($options['connectTimeout'] ?? 4),
+            CURLOPT_TIMEOUT        => (int)($options['requestTimeout'] ?? 5),
+            CURLOPT_HTTPHEADER     => ['Accept: application/json', 'Cache-Control: no-cache'],
+            CURLOPT_USERAGENT      => 'Skyesoft-PhoenixDesignationResolver/1.2'
+        ]);
+
+        $response  = curl_exec($ch);
+        $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        $attemptTimeMs = (int)round((microtime(true) - $attemptStarted) * 1000);
+
+        $decoded = null;
+        $jsonError = null;
+        $arcGisError = null;
+
+        if ($response !== false && $curlError === '') {
+            $decoded = json_decode((string)$response, true);
+            if (!is_array($decoded)) {
+                $jsonError = json_last_error_msg();
+            } elseif (!empty($decoded['error'])) {
+                $arcGisError = $decoded['error']['message'] ?? 'ArcGIS Error Response';
+            }
+        }
+
+        // Defensive verification that $decoded is an array containing a valid features array
+        $hasFeaturesArray = is_array($decoded) && array_key_exists('features', $decoded) && is_array($decoded['features']);
+
+        $isValidSuccess = (
+            $response !== false &&
+            $curlError === '' &&
+            $httpCode >= 200 &&
+            $httpCode < 300 &&
+            $hasFeaturesArray &&
+            $arcGisError === null
+        );
+
+        $attemptLogs[] = "Attempt {$attempt}/{$maxAttempts}: HTTP {$httpCode}, JSONErr: " . ($jsonError ?? 'none') . ", ArcGISErr: " . ($arcGisError ?? 'none') . " ({$attemptTimeMs}ms)";
+
+        $lastAttempt = [
+            'success'     => $isValidSuccess,
+            'httpCode'    => $httpCode,
+            'curlError'   => $curlError,
+            'jsonError'   => $jsonError,
+            'arcGisError' => $arcGisError,
+            'features'    => $hasFeaturesArray ? $decoded['features'] : [],
+            'attempt'     => $attempt
+        ];
+
+        if ($isValidSuccess || $attempt === $maxAttempts) {
+            break;
+        }
+
+        usleep(min($baseDelayMs * (2 ** ($attempt - 1)), 4000) * 1000);
     }
 
-    /** @var array|null $json */
-    $json = json_decode((string)$body, true);
+    $elapsedMs = (int)round((microtime(true) - $startedAt) * 1000);
 
-    if (!is_array($json) || isset($json['error'])) {
-        return ['success' => false, 'error' => 'Invalid JSON or GIS service error response'];
+    if (!$lastAttempt['success']) {
+        $errorMessage = $lastAttempt['arcGisError'] ?? $lastAttempt['jsonError'] ?? $lastAttempt['curlError'] ?? 'HTTP ' . $lastAttempt['httpCode'];
+        error_log("[PHOENIX-DESIGNATIONS-ERROR] Query failed for {$serviceUrl} | " . implode(' | ', $attemptLogs));
+
+        return [
+            'success'        => false,
+            'httpCode'       => $lastAttempt['httpCode'],
+            'features'       => [],
+            'errorMessage'   => $errorMessage,
+            'responseTimeMs' => $elapsedMs
+        ];
     }
 
-    return ['success' => true, 'data' => $json];
+    return [
+        'success'        => true,
+        'httpCode'       => $lastAttempt['httpCode'],
+        'features'       => $lastAttempt['features'],
+        'errorMessage'   => null,
+        'responseTimeMs' => $elapsedMs
+    ];
 }
 
-/**
- * Completion Gate Contract
- * Validates that all three determinations have reached terminal 'yes' or 'no' states.
- */
-function specialDesignationsAreComplete(array $specialDesignations): bool
-{
-    $requiredKeys = ['zoningOverlays', 'historicDesignation', 'comprehensiveSignPlan'];
+function parsePhoenixOverlayFeatures(array $queryResult, string $sourceName): array {
+    if (!$queryResult['success']) {
+        return [
+            'determination' => null,
+            'status'        => 'error',
+            'errorMessage'  => $queryResult['errorMessage'] ?? 'Service Query Failed',
+            'matches'       => [],
+            'source'        => $sourceName,
+            'checkedAt'     => time()
+        ];
+    }
 
-    foreach ($requiredKeys as $key) {
-        $determination = $specialDesignations[$key]['determination'] ?? null;
-        if ($determination !== 'yes' && $determination !== 'no') {
-            return false;
+    if (empty($queryResult['features'])) {
+        return [
+            'determination' => 'no',
+            'status'        => 'noneIdentified',
+            'errorMessage'  => null,
+            'matches'       => [],
+            'source'        => $sourceName,
+            'checkedAt'     => time()
+        ];
+    }
+
+    $matches = [];
+    foreach ($queryResult['features'] as $f) {
+        $attrs = $f['attributes'] ?? [];
+        $name = trim((string)($attrs['NAME'] ?? 'Special Overlay District'));
+        if ($name !== '') {
+            $matches[] = [
+                'name'            => $name,
+                'caseYear'        => $attrs['CASE_YR'] ?? null,
+                'regulatoryInfo'  => $attrs['REGULATORY'] ?? null,
+                'rawAttributes'   => $attrs
+            ];
         }
     }
 
-    return true;
+    return [
+        'determination' => !empty($matches) ? 'yes' : 'no',
+        'status'        => !empty($matches) ? 'identified' : 'noneIdentified',
+        'errorMessage'  => null,
+        'matches'       => $matches,
+        'source'        => $sourceName,
+        'checkedAt'     => time()
+    ];
+}
+
+function parsePhoenixHistoricFeatures(array $queryResult, string $sourceName): array {
+    if (!$queryResult['success']) {
+        return [
+            'determination' => null,
+            'status'        => 'error',
+            'errorMessage'  => $queryResult['errorMessage'] ?? 'Service Query Failed',
+            'matches'       => [],
+            'source'        => $sourceName,
+            'checkedAt'     => time()
+        ];
+    }
+
+    if (empty($queryResult['features'])) {
+        return [
+            'determination' => 'no',
+            'status'        => 'noneIdentified',
+            'errorMessage'  => null,
+            'matches'       => [],
+            'source'        => $sourceName,
+            'checkedAt'     => time()
+        ];
+    }
+
+    $matches = [];
+    foreach ($queryResult['features'] as $f) {
+        $attrs = $f['attributes'] ?? [];
+        $name = trim((string)($attrs['NAME'] ?? 'Historic District'));
+        if ($name !== '') {
+            $matches[] = [
+                'name'          => $name,
+                'type'          => $attrs['TYPE'] ?? 'Historic District',
+                'status'        => $attrs['STATUS'] ?? null,
+                'landmark'      => $attrs['LANDMARK'] ?? null,
+                'rawAttributes' => $attrs
+            ];
+        }
+    }
+
+    return [
+        'determination' => !empty($matches) ? 'yes' : 'no',
+        'status'        => !empty($matches) ? 'identified' : 'noneIdentified',
+        'errorMessage'  => null,
+        'matches'       => $matches,
+        'source'        => $sourceName,
+        'checkedAt'     => time()
+    ];
 }
