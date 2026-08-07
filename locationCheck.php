@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php
-//  Version: 2.1.0
+//  Version: 2.1.1
 //  Last Updated: 2026-08-07
 //  Codex Tier: 2 — Infrastructure / GIS & Location Pipeline
 //
@@ -28,8 +28,10 @@ header('Content-Type: application/json');
 $executionTime = time();
 $isoTimestamp  = date('c', $executionTime);
 
-// Load environment variables if bootstrap hasn't defined them
-$googleMapsApiKey  = getenv('GOOGLE_MAPS_API_KEY') ?: null;
+// Robust API Key Resolution
+$googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') 
+    ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
+    ?: ($googleApiKey ?? null);
 
 #endregion
 
@@ -59,7 +61,15 @@ $cityStateZip = $location['locationCityStateZip'] ?? $dataObj['locationCityState
 $cleanAddress = preg_replace('/\b(suite|ste|unit|apt|#)\s*[\w-]+/i', '', (string)$address);
 $cleanAddress = trim(preg_replace('/\s+/', ' ', (string)$cleanAddress), " ,");
 
-$locationPlaceId      = $location['locationPlaceId'] ?? $dataObj['locationPlaceId'] ?? null;
+$locationPlaceId = $location['locationPlaceId'] 
+    ?? $location['placeId'] 
+    ?? $location['place_id'] 
+    ?? $dataObj['locationPlaceId'] 
+    ?? $dataObj['placeId'] 
+    ?? $dataObj['place_id'] 
+    ?? $input['locationPlaceId'] 
+    ?? null;
+
 $locationParcelNumber = $location['locationParcelNumberRaw'] ?? $location['locationParcelNumber'] ?? $dataObj['locationParcelNumber'] ?? $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? $parcel['parcelNumber'] ?? null;
 $locationJurisdiction = $location['locationJurisdiction'] ?? $dataObj['locationJurisdiction'] ?? $city ?? null;
 $locationCounty       = $location['locationCounty'] ?? $dataObj['locationCounty'] ?? 'Maricopa';
@@ -112,7 +122,7 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
         'data'              => [
             'location' => formatLocationResponse([
                 'address'           => $address,
-                'resolvedAddress'  => $fullAddress,
+                'resolvedAddress'   => $fullAddress,
                 'city'              => $city,
                 'state'             => $state,
                 'zip'               => $zip,
@@ -142,16 +152,6 @@ $rawLng = $location['locationLongitude'] ?? $dataObj['locationLongitude'] ?? $da
 
 $lat = ($rawLat !== null && is_numeric($rawLat)) ? (float)$rawLat : null;
 $lng = ($rawLng !== null && is_numeric($rawLng)) ? (float)$rawLng : null;
-
-// Normalize incoming Place ID variations
-$locationPlaceId = $location['locationPlaceId'] 
-    ?? $location['placeId'] 
-    ?? $location['place_id'] 
-    ?? $dataObj['locationPlaceId'] 
-    ?? $dataObj['placeId'] 
-    ?? $dataObj['place_id'] 
-    ?? $input['locationPlaceId'] 
-    ?? null;
 
 $locationResolvedAddress = $fullAddress;
 $issues                  = [];
@@ -190,7 +190,21 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
     }
 }
 
-// Option C: Fallback to ArcGIS World Geocoding Server
+// Option C: Reverse Geocode via Lat/Lng if Place ID is missing but coordinates exist
+if (!$locationPlaceId && $lat !== null && $lng !== null && $googleMapsApiKey) {
+    $googleReverseGeocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?' . http_build_query([
+        'latlng' => $lat . ',' . $lng,
+        'key'    => $googleMapsApiKey
+    ]);
+
+    $revRes = httpGetJson($googleReverseGeocodeUrl);
+    if (($revRes['status'] ?? '') === 'OK' && !empty($revRes['results'][0])) {
+        $locationPlaceId         = $revRes['results'][0]['place_id'] ?? null;
+        $locationResolvedAddress = $revRes['results'][0]['formatted_address'] ?? $locationResolvedAddress;
+    }
+}
+
+// Option D: Fallback to ArcGIS World Geocoding Server if coordinates remain unresolved
 if (($lat === null || $lng === null) && $fullCleanAddress !== null) {
     $arcgisGeocodeUrl = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?' . http_build_query([
         'f'            => 'json',
@@ -335,12 +349,22 @@ if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) 
         $attrs       = $features[0]['attributes'] ?? [];
         $sourceLayer = ($svc['provider'] ?? 'City GIS') . ' Community Development Department';
 
-        $zCode = resolveMappedField($attrs, $fm['zoningCode'] ?? ['ZONING', 'LABEL1', 'ZONE', 'ZONING_CODE'], $norm);
+        $codeCandidates = array_merge(
+            $fm['zoningCode'] ?? [], 
+            ['ZONING', 'ZONING_CODE', 'LABEL', 'LABEL1', 'ZONE', 'ZONE_CODE', 'DISTRICT', 'ZONING_DISTRICT']
+        );
+        
+        $descCandidates = array_merge(
+            $fm['zoningDescription'] ?? [], 
+            ['GEN_ZONE', 'DESCRIPTION', 'ZONING_DESC', 'ZONE_DESC', 'SHORT_DESC', 'FULL_ZONING']
+        );
+
+        $zCode = resolveMappedField($attrs, $codeCandidates, $norm);
         if ($zCode !== null) {
             $zoningCode = $zCode;
         }
 
-        $zDesc = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE', 'DESCRIPTION', 'ZONING_DESC'], $norm);
+        $zDesc = resolveMappedField($attrs, $descCandidates, $norm);
         if ($zDesc !== null) {
             $zoningDesc = $zDesc;
         }
@@ -361,7 +385,7 @@ echo json_encode([
     'data'              => [
         'location' => formatLocationResponse([
             'address'           => $address,
-            'resolvedAddress'  => $locationResolvedAddress,
+            'resolvedAddress'   => $locationResolvedAddress,
             'city'              => $city ?: ucfirst((string)$locationJurisdiction),
             'state'             => $state,
             'zip'               => $zip,
