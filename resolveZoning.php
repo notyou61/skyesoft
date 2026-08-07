@@ -1,18 +1,20 @@
 <?php
 header('Content-Type: application/json');
 
+// Execution timestamp tracking
+$executionTime = time();
+$isoTimestamp = date('c', $executionTime);
+
 // 1. Read input payload
 $rawInput = file_get_contents('php://input');
 $input = json_decode($rawInput, true) ?? [];
 
-// Extract location structure (handles direct or nested payload)
+// Extract location structure
 $location = $input['location'] ?? $input['data']['location'] ?? $input;
 $parcel = $location['parcel'] ?? $input['data']['location']['parcelDetails'][0] ?? [];
 
-// Load Google Maps API Key from environment or config
 $googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: null;
 
-// Standardized Core Address & Location Identifier Extraction
 $address = $location['locationAddress'] ?? $input['data']['locationAddress'] ?? '3145 N 33rd Ave';
 $cityStateZip = $location['locationCityStateZip'] ?? $input['data']['locationCityStateZip'] ?? 'Phoenix, AZ 85017';
 
@@ -33,7 +35,6 @@ $zoningConfig = file_exists($zoningRegistryFile)
 $jurisKey = strtolower(trim($locationJurisdiction));
 $matchedConfig = null;
 
-// Robust matching for Single Jurisdiction, Multi-Jurisdiction Dictionary, or Array Lists
 if (isset($zoningConfig['jurisdiction'])) {
     $configSlug = strtolower($zoningConfig['jurisdiction']['slug'] ?? $zoningConfig['jurisdiction']['label'] ?? '');
     if ($configSlug === $jurisKey || empty($configSlug)) {
@@ -42,7 +43,6 @@ if (isset($zoningConfig['jurisdiction'])) {
 } elseif (isset($zoningConfig[$jurisKey])) {
     $matchedConfig = $zoningConfig[$jurisKey];
 } else {
-    // Fallback search if array of configs
     foreach ($zoningConfig as $cfg) {
         if (is_array($cfg) && strtolower($cfg['jurisdiction']['slug'] ?? $cfg['jurisdiction']['label'] ?? '') === $jurisKey) {
             $matchedConfig = $cfg;
@@ -51,7 +51,6 @@ if (isset($zoningConfig['jurisdiction'])) {
     }
 }
 
-// Fallback: Default to $zoningConfig if top-level contains 'service'
 if (!$matchedConfig && isset($zoningConfig['service'])) {
     $matchedConfig = $zoningConfig;
 }
@@ -63,6 +62,8 @@ $locationValidated = true;
 if (!empty($parcel['zoningCode']) && $parcel['zoningCode'] !== 'UNKNOWN') {
     echo json_encode([
         'status' => 'success',
+        'timestamp' => $executionTime,
+        'isoTimestamp' => $isoTimestamp,
         'locationValidated' => true,
         'uiState' => [
             'proposalStatus' => 'valid',
@@ -86,7 +87,7 @@ if (!empty($parcel['zoningCode']) && $parcel['zoningCode'] !== 'UNKNOWN') {
                 'zoningCode' => $parcel['zoningCode'],
                 'zoningDescription' => $parcel['zoningDescription'] ?? 'N/A',
                 'zoningSource' => $parcel['zoningSource'] ?? null,
-                'zoningVerifiedAt' => $parcel['zoningVerifiedAt'] ?? (string)time(),
+                'zoningVerifiedAt' => (string)$executionTime,
                 'source' => $parcel['source'] ?? 'maricopa_assessor',
                 'confidence' => ($parcel['confidence'] ?? '95') . '%'
             ],
@@ -104,7 +105,7 @@ if (!empty($parcel['zoningCode']) && $parcel['zoningCode'] !== 'UNKNOWN') {
     exit;
 }
 
-// 4. RESOLVE COORDINATES: Priority to Payload -> Google Place ID -> ESRI Geocoder
+// 4. RESOLVE COORDINATES
 $lat = $location['locationLatitude'] ?? $input['data']['locationLatitude'] ?? $input['data']['coordinates']['lat'] ?? null;
 $lng = $location['locationLongitude'] ?? $input['data']['locationLongitude'] ?? $input['data']['coordinates']['lng'] ?? null;
 $coordinateSource = ($lat && $lng) ? 'input_payload' : 'geocoder';
@@ -155,6 +156,8 @@ if (!$lat || !$lng) {
 if (!$locationValidated) {
     echo json_encode([
         'status' => 'location_invalid',
+        'timestamp' => $executionTime,
+        'isoTimestamp' => $isoTimestamp,
         'locationValidated' => false,
         'uiState' => [
             'proposalStatus' => 'invalid_location',
@@ -202,22 +205,22 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
 
     $endpoint = rtrim($svc['serviceUrl'], '/') . '/' . ($svc['layerId'] ?? 0) . '/query';
 
-    // Format point geometry payload explicitly according to JSON spec
-    $geometryJson = json_encode([
+    // Strategy A: Point Query
+    $geometryPoint = json_encode([
         'x' => (float)$lng,
         'y' => (float)$lat,
-        'spatialReference' => ['wkid' => (int)($qry['inputSpatialReference'] ?? 4326)]
+        'spatialReference' => ['wkid' => 4326]
     ]);
 
     $queryParams = [
         'f' => $qry['responseFormat'] ?? 'json',
-        'geometry' => $geometryJson,
-        'geometryType' => $qry['geometryType'] ?? 'esriGeometryPoint',
-        'inSR' => (string)($qry['inputSpatialReference'] ?? '4326'),
+        'geometry' => $geometryPoint,
+        'geometryType' => 'esriGeometryPoint',
+        'inSR' => '4326',
         'spatialRel' => $qry['spatialRelationship'] ?? 'esriSpatialRelIntersects',
         'where' => $qry['where'] ?? '1=1',
         'outFields' => is_array($qry['outFields'] ?? null) ? implode(',', $qry['outFields']) : ($qry['outFields'] ?? '*'),
-        'returnGeometry' => ($qry['returnGeometry'] ?? false) ? 'true' : 'false'
+        'returnGeometry' => 'false'
     ];
 
     $spatialUrl = $endpoint . '?' . http_build_query($queryParams);
@@ -239,17 +242,35 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
     $zoningData = $spatialResponse ? json_decode($spatialResponse, true) : null;
     $features = $zoningData['features'] ?? [];
 
+    // Strategy B: Envelope Bounding Box Fallback (~15 meters) if exact point misses
+    if (empty($features)) {
+        $delta = 0.00015;
+        $envelope = json_encode([
+            'xmin' => (float)$lng - $delta,
+            'ymin' => (float)$lat - $delta,
+            'xmax' => (float)$lng + $delta,
+            'ymax' => (float)$lat + $delta,
+            'spatialReference' => ['wkid' => 4326]
+        ]);
+
+        $queryParams['geometry'] = $envelope;
+        $queryParams['geometryType'] = 'esriGeometryEnvelope';
+
+        $fallbackSpatialUrl = $endpoint . '?' . http_build_query($queryParams);
+        $fallbackResponse = @file_get_contents($fallbackSpatialUrl, false, stream_context_create($opts));
+        $fallbackData = $fallbackResponse ? json_decode($fallbackResponse, true) : null;
+        $features = $fallbackData['features'] ?? [];
+    }
+
     if (!empty($features)) {
         $attrs = $features[0]['attributes'];
         $sourceLayer = ($svc['provider'] ?? 'City GIS') . ' (' . ($svc['layerName'] ?? 'Zoning') . ')';
 
-        // Match using configured field mapping priority: ["LABEL1", "ZONING"]
         $zoningCodeRaw = resolveMappedField($attrs, $fm['zoningCode'] ?? ['LABEL1', 'ZONING'], $norm);
         if ($zoningCodeRaw !== null) {
             $zoningCode = $zoningCodeRaw;
         }
 
-        // Match description using configured field mapping: ["GEN_ZONE"]
         $zoningDescRaw = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE'], $norm);
         if ($zoningDescRaw !== null) {
             $zoningDesc = $zoningDescRaw;
@@ -258,7 +279,6 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
         $extractedMetaData['caseNumber'] = resolveMappedField($attrs, $fm['caseNumber'] ?? ['REDEFINE1'], $norm);
         $extractedMetaData['ordinanceNumber'] = resolveMappedField($attrs, $fm['ordinanceNumber'] ?? ['ORD_NUM'], $norm);
 
-        // Historic Preservation Overlay
         $historicVal = resolveMappedField($attrs, $fm['historic'] ?? ['HISTORIC'], $norm);
         if (!empty($historicVal) && !in_array(strtoupper($historicVal), ['N', 'NO', 'NONE', 'FALSE'])) {
             $overlays['historicDesignation'] = [
@@ -267,7 +287,6 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
             ];
         }
 
-        // Transit Oriented Development Overlay
         $todVal = resolveMappedField($attrs, $fm['transitOrientedDevelopment'] ?? ['TOD'], $norm);
         if (!empty($todVal) && !in_array(strtoupper($todVal), ['N', 'NO', 'NONE', 'FALSE'])) {
             $overlays['regulatoryPlan'] = [
@@ -327,6 +346,8 @@ $hasZoningMatch = ($zoningCode !== 'UNKNOWN' && $zoningCode !== 'N/A');
 
 echo json_encode([
     'status' => $hasZoningMatch ? 'success' : 'zoning_unmapped',
+    'timestamp' => $executionTime,
+    'isoTimestamp' => $isoTimestamp,
     'locationValidated' => true,
     'uiState' => [
         'proposalStatus' => $hasZoningMatch ? 'valid' : 'review_required',
@@ -354,7 +375,7 @@ echo json_encode([
             'zoningCode' => $zoningCode,
             'zoningDescription' => $zoningDesc,
             'zoningSource' => $sourceLayer,
-            'zoningVerifiedAt' => (string)time(),
+            'zoningVerifiedAt' => (string)$executionTime,
             'source' => $parcel['source'] ?? 'maricopa_assessor',
             'confidence' => $hasZoningMatch ? ($matchedConfig['validation']['successfulResultConfidence'] ?? 95) . '%' : '50%'
         ],
@@ -371,9 +392,6 @@ echo json_encode([
     ]
 ], JSON_PRETTY_PRINT);
 
-/**
- * Case-insensitive field resolver with normalization token stripping
- */
 function resolveMappedField(array $attributes, array $fieldCandidates, array $norm = []) {
     $normalizedAttrs = [];
     foreach ($attributes as $key => $val) {
