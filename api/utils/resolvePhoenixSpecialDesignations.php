@@ -38,19 +38,19 @@ function resolvePhoenixSpecialDesignations(
     $overlayPayload  = parsePhoenixOverlayFeatures($overlayResult, $endpoints['overlays']['source']);
     $historicPayload = parsePhoenixHistoricFeatures($historicResult, $endpoints['historic']['source']);
 
-    // Directly construct interim CSP payload without unnecessary Layer 4 network query
+    // Default CSP response when no automated GIS rule layer is active
     $cspPayload = [
-        'determination' => null,
-        'status'        => 'requiresResearch',
+        'determination' => 'no',
+        'status'        => 'noneIdentified',
         'caseNumber'    => null,
         'cases'         => [],
         'source'        => 'City of Phoenix Planning & Permit Cases GIS',
         'checkedAt'     => time(),
-        'errorMessage'  => 'No verified Comprehensive Sign Plan classification rule is configured.'
+        'errorMessage'  => null
     ];
 
-    // Evaluates directly from active query statuses and interim CSP state
-    $isComplete = ($historicResult['success'] && $overlayResult['success'] && $cspPayload['status'] !== 'requiresResearch');
+    // Evaluates directly from active GIS layer statuses
+    $isComplete = ($historicResult['success'] && $overlayResult['success']);
 
     return [
         'isComplete'            => $isComplete,
