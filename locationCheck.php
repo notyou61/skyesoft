@@ -143,11 +143,21 @@ $rawLng = $location['locationLongitude'] ?? $dataObj['locationLongitude'] ?? $da
 $lat = ($rawLat !== null && is_numeric($rawLat)) ? (float)$rawLat : null;
 $lng = ($rawLng !== null && is_numeric($rawLng)) ? (float)$rawLng : null;
 
+// Normalize incoming Place ID variations
+$locationPlaceId = $location['locationPlaceId'] 
+    ?? $location['placeId'] 
+    ?? $location['place_id'] 
+    ?? $dataObj['locationPlaceId'] 
+    ?? $dataObj['placeId'] 
+    ?? $dataObj['place_id'] 
+    ?? $input['locationPlaceId'] 
+    ?? null;
+
 $locationResolvedAddress = $fullAddress;
 $issues                  = [];
 $locationValidated       = true;
 
-// Option A: Pre-existing Google Place ID lookup
+// Option A: Pre-existing Google Place ID lookup (Backfills Lat/Lng & Formatted Address)
 if ($locationPlaceId && $googleMapsApiKey) {
     $placeDetailsUrl = 'https://maps.googleapis.com/maps/api/place/details/json?' . http_build_query([
         'place_id' => $locationPlaceId,
@@ -163,7 +173,7 @@ if ($locationPlaceId && $googleMapsApiKey) {
     }
 }
 
-// Option B: Query Google Geocoding API using cleaned street address
+// Option B: Query Google Geocoding API using cleaned street address (Resolves Place ID + Lat/Lng)
 if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
     $googleGeocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?' . http_build_query([
         'address' => $fullCleanAddress,
