@@ -3,22 +3,9 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php
-//  Version: 2.1.1
+//  Version: 2.1.2
 //  Last Updated: 2026-08-07
 //  Codex Tier: 2 — Infrastructure / GIS & Location Pipeline
-//
-//  Role:
-//  Location Verification & Regional Zoning Resolution Engine.
-//  Executes:
-//   • Top-down Google Place ID and address geocoding resolution
-//   • Unit/suite stripping for accurate spatial polygon matching
-//   • Maricopa County Assessor parcel and property data lookup
-//   • Dynamic Arizona municipal zoning lookup via zoning.json registry
-//
-//  Forbidden:
-//  • Direct database writes outside of central logging wrappers
-//  • Unverified coordinate overwrites when session parcel data is present
-//  • Bypassing unit stripping prior to spatial REST queries
 // ======================================================================
 
 #region SECTION 0 — Environment Bootstrap & Headers
@@ -28,10 +15,10 @@ header('Content-Type: application/json');
 $executionTime = time();
 $isoTimestamp  = date('c', $executionTime);
 
-// Robust API Key Resolution
+// Robust API Key Resolution (Checked across environment, global server vars, and fallback defaults)
 $googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') 
     ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
-    ?: ($googleApiKey ?? null);
+    ?: ($_SERVER['GOOGLE_MAPS_API_KEY'] ?? $_ENV['GOOGLE_MAPS_API_KEY'] ?? $googleApiKey ?? null);
 
 #endregion
 
@@ -81,71 +68,7 @@ $fullCleanAddress  = !empty($cleanAddressParts) ? implode(', ', $cleanAddressPar
 
 #endregion
 
-#region SECTION 2 — Registry Configuration & Short-Circuit Check
-
-$zoningRegistryFile = __DIR__ . '/zoning.json';
-$zoningConfig       = file_exists($zoningRegistryFile) 
-    ? (json_decode((string)file_get_contents($zoningRegistryFile), true) ?? [])
-    : [];
-
-$jurisKey      = strtolower(trim((string)$locationJurisdiction));
-$matchedConfig = null;
-
-if ($jurisKey !== '') {
-    if (isset($zoningConfig['jurisdiction'])) {
-        $configSlug = strtolower((string)($zoningConfig['jurisdiction']['slug'] ?? $zoningConfig['jurisdiction']['label'] ?? ''));
-        if ($configSlug === $jurisKey) {
-            $matchedConfig = $zoningConfig;
-        }
-    } elseif (isset($zoningConfig[$jurisKey])) {
-        $matchedConfig = $zoningConfig[$jurisKey];
-    } else {
-        foreach ($zoningConfig as $cfg) {
-            if (is_array($cfg) && strtolower((string)($cfg['jurisdiction']['slug'] ?? $cfg['jurisdiction']['label'] ?? '')) === $jurisKey) {
-                $matchedConfig = $cfg;
-                break;
-            }
-        }
-    }
-}
-
-if (!$matchedConfig && isset($zoningConfig['service'])) {
-    $matchedConfig = $zoningConfig;
-}
-
-// SHORT-CIRCUIT: Direct Parcel Bypass if zoning is already fully resolved
-if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !== 'UNKNOWN') {
-    echo json_encode([
-        'success'           => true,
-        'status'            => 'resolved',
-        'activitySessionId' => $activitySessionId,
-        'data'              => [
-            'location' => formatLocationResponse([
-                'address'           => $address,
-                'resolvedAddress'   => $fullAddress,
-                'city'              => $city,
-                'state'             => $state,
-                'zip'               => $zip,
-                'placeId'           => $locationPlaceId,
-                'lat'               => $location['locationLatitude'] ?? null,
-                'lng'               => $location['locationLongitude'] ?? null,
-                'county'            => $locationCounty,
-                'jurisdiction'      => ucfirst((string)$locationJurisdiction),
-                'parcelNumber'      => $locationParcelNumber,
-                'zoningCode'        => $parcel['zoningCode'],
-                'zoningDescription' => $parcel['zoningDescription'] ?? 'N/A',
-                'zoningSource'      => $parcel['zoningSource'] ?? 'Skyesoft Parcel Record',
-                'confidence'        => (int)($parcel['confidence'] ?? 95),
-                'verifiedAt'        => $executionTime
-            ])
-        ]
-    ], JSON_PRETTY_PRINT);
-    exit;
-}
-
-#endregion
-
-#region SECTION 3 — Google Place ID & Spatial Geocoding Resolution
+#region SECTION 2 — Google Place ID & Spatial Geocoding Resolution
 
 if (!function_exists('cleanAddressForPlaces')) {
     function cleanAddressForPlaces(string $rawAddress): string
@@ -191,7 +114,7 @@ if ($locationPlaceId && $googleMapsApiKey) {
     }
 }
 
-// Option B: Resolve Place ID via Address Query (Runs even if Lat/Lng pre-exists)
+// Option B: Query Google Geocoding API using cleaned street address
 if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
 
     // Stage 1: Geocoding API
@@ -209,7 +132,7 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
         $locationResolvedAddress = $firstResult['formatted_address'] ?? $fullAddress;
     }
 
-    // Stage 2: Fallback to Places Text Search / Find Place if Geocoding returned no Place ID
+    // Stage 2: Fallback to Places Find Place From Text if Geocoding API yields no place_id
     if (!$locationPlaceId) {
         $placesQueryAddress = cleanAddressForPlaces($fullCleanAddress);
 
@@ -231,7 +154,7 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
     }
 }
 
-// Option C: Reverse Geocode via Lat/Lng if Place ID is still missing
+// Option C: Reverse Geocode via Lat/Lng if Place ID remains missing but coordinates exist
 if (!$locationPlaceId && $lat !== null && $lng !== null && $googleMapsApiKey) {
     $googleReverseGeocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?' . http_build_query([
         'latlng' => $lat . ',' . $lng,
@@ -292,6 +215,70 @@ if (!$locationValidated) {
 
 #endregion
 
+#region SECTION 3 — Registry Configuration & Short-Circuit Check
+
+$zoningRegistryFile = __DIR__ . '/zoning.json';
+$zoningConfig       = file_exists($zoningRegistryFile) 
+    ? (json_decode((string)file_get_contents($zoningRegistryFile), true) ?? [])
+    : [];
+
+$jurisKey      = strtolower(trim((string)$locationJurisdiction));
+$matchedConfig = null;
+
+if ($jurisKey !== '') {
+    if (isset($zoningConfig['jurisdiction'])) {
+        $configSlug = strtolower((string)($zoningConfig['jurisdiction']['slug'] ?? $zoningConfig['jurisdiction']['label'] ?? ''));
+        if ($configSlug === $jurisKey) {
+            $matchedConfig = $zoningConfig;
+        }
+    } elseif (isset($zoningConfig[$jurisKey])) {
+        $matchedConfig = $zoningConfig[$jurisKey];
+    } else {
+        foreach ($zoningConfig as $cfg) {
+            if (is_array($cfg) && strtolower((string)($cfg['jurisdiction']['slug'] ?? $cfg['jurisdiction']['label'] ?? '')) === $jurisKey) {
+                $matchedConfig = $cfg;
+                break;
+            }
+        }
+    }
+}
+
+if (!$matchedConfig && isset($zoningConfig['service'])) {
+    $matchedConfig = $zoningConfig;
+}
+
+// SHORT-CIRCUIT: Direct Parcel Bypass (Now safely occurs AFTER Google Place ID Resolution)
+if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !== 'UNKNOWN') {
+    echo json_encode([
+        'success'           => true,
+        'status'            => 'resolved',
+        'activitySessionId' => $activitySessionId,
+        'data'              => [
+            'location' => formatLocationResponse([
+                'address'           => $address,
+                'resolvedAddress'   => $locationResolvedAddress,
+                'city'              => $city,
+                'state'             => $state,
+                'zip'               => $zip,
+                'placeId'           => $locationPlaceId,
+                'lat'               => $lat,
+                'lng'               => $lng,
+                'county'            => $locationCounty,
+                'jurisdiction'      => ucfirst((string)$locationJurisdiction),
+                'parcelNumber'      => $locationParcelNumber,
+                'zoningCode'        => $parcel['zoningCode'],
+                'zoningDescription' => $parcel['zoningDescription'] ?? 'N/A',
+                'zoningSource'      => $parcel['zoningSource'] ?? 'Skyesoft Parcel Record',
+                'confidence'        => (int)($parcel['confidence'] ?? 95),
+                'verifiedAt'        => $executionTime
+            ])
+        ]
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
+#endregion
+
 #region SECTION 4 — Maricopa County Spatial Assessor Query
 
 $ownerName = null;
@@ -301,20 +288,20 @@ $lotSize   = null;
 if ($lat !== null && $lng !== null) {
     $queryEnvelope = function(float $x, float $y, float $delta) {
         return 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query?' . http_build_query([
-            'f'              => 'json',
-            'geometry'       => json_encode([
+            'f'                => 'json',
+            'geometry'         => json_encode([
                 'xmin' => $x - $delta,
                 'ymin' => $y - $delta,
                 'xmax' => $x + $delta,
                 'ymax' => $y + $delta,
                 'spatialReference' => ['wkid' => 4326]
             ]),
-            'geometryType'   => 'esriGeometryEnvelope',
-            'inSR'           => '4326',
-            'spatialRel'     => 'esriSpatialRelIntersects',
-            'where'          => '1=1',
-            'outFields'      => '*',
-            'returnGeometry' => 'false'
+            'geometryType'     => 'esriGeometryEnvelope',
+            'inSR'             => '4326',
+            'spatialRel'       => 'esriSpatialRelIntersects',
+            'where'            => '1=1',
+            'outFields'        => '*',
+            'returnGeometry'   => 'false'
         ]);
     };
 
