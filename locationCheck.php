@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php
-//  Version: 2.1.2
+//  Version: 2.1.3
 //  Last Updated: 2026-08-07
 //  Codex Tier: 2 — Infrastructure / GIS & Location Pipeline
 // ======================================================================
@@ -12,13 +12,38 @@ declare(strict_types=1);
 
 header('Content-Type: application/json');
 
+// Bootstrap Environment Loader
+$envLoaderPath = __DIR__ . '/api/utils/envLoader.php';
+if (!file_exists($envLoaderPath)) {
+    // Fallback if locationCheck.php itself lives inside /api or another subdirectory
+    $envLoaderPath = __DIR__ . '/utils/envLoader.php';
+}
+
+if (file_exists($envLoaderPath)) {
+    require_once $envLoaderPath;
+    if (function_exists('skyesoftLoadEnv')) {
+        skyesoftLoadEnv();
+    }
+}
+
 $executionTime = time();
 $isoTimestamp  = date('c', $executionTime);
 
-// Robust API Key Resolution (Checked across environment, global server vars, and fallback defaults)
-$googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') 
-    ?: getenv('GOOGLE_MAPS_STATIC_API_KEY') 
-    ?: ($_SERVER['GOOGLE_MAPS_API_KEY'] ?? $_ENV['GOOGLE_MAPS_API_KEY'] ?? $googleApiKey ?? null);
+// Robust API Key Resolution
+$googleMapsApiKey = '';
+if (function_exists('skyesoftGetEnv')) {
+    $googleMapsApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') ?: skyesoftGetEnv('GOOGLE_MAPS_API_KEY');
+}
+
+if (empty($googleMapsApiKey)) {
+    $googleMapsApiKey = $_ENV['GOOGLE_MAPS_BACKEND_API_KEY']
+        ?? $_ENV['GOOGLE_MAPS_API_KEY']
+        ?? getenv('GOOGLE_MAPS_BACKEND_API_KEY')
+        ?? getenv('GOOGLE_MAPS_API_KEY')
+        ?? getenv('GOOGLE_MAPS_STATIC_API_KEY')
+        ?? $_SERVER['GOOGLE_MAPS_API_KEY']
+        ?? '';
+}
 
 #endregion
 
@@ -218,7 +243,11 @@ if (!$locationValidated) {
 #region SECTION 3 — Registry Configuration & Short-Circuit Check
 
 $zoningRegistryFile = __DIR__ . '/zoning.json';
-$zoningConfig       = file_exists($zoningRegistryFile) 
+if (!file_exists($zoningRegistryFile)) {
+    $zoningRegistryFile = __DIR__ . '/api/zoning.json';
+}
+
+$zoningConfig = file_exists($zoningRegistryFile) 
     ? (json_decode((string)file_get_contents($zoningRegistryFile), true) ?? [])
     : [];
 
@@ -247,7 +276,7 @@ if (!$matchedConfig && isset($zoningConfig['service'])) {
     $matchedConfig = $zoningConfig;
 }
 
-// SHORT-CIRCUIT: Direct Parcel Bypass (Now safely occurs AFTER Google Place ID Resolution)
+// SHORT-CIRCUIT: Direct Parcel Bypass
 if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !== 'UNKNOWN') {
     echo json_encode([
         'success'           => true,
@@ -568,10 +597,9 @@ function httpGetJson(string $url, int $timeoutSeconds = 5): ?array {
     ]);
 
     $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($response === false || $httpCode < 200 || $httpCode >= 300) {
+    if ($response === false) {
         return null;
     }
 
