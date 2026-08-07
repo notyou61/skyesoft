@@ -20,11 +20,23 @@ $activitySessionId = $input['activitySessionId'] ?? 'location-check-session';
 
 $fullAddress = trim("$address, $city, $state $zip", " ,");
 
-// 2. Load zoning registry definitions (zoning.json containing your schema configs)
+// 2. Load zoning registry definitions
 $zoningRegistryFile = __DIR__ . '/zoning.json';
-$zoningRegistry = file_exists($zoningRegistryFile) 
+$zoningRaw = file_exists($zoningRegistryFile) 
     ? json_decode(file_get_contents($zoningRegistryFile), true) 
     : [];
+
+// Handle both single-jurisdiction schema files and keyed dictionary files
+$jurisKey = strtolower(trim($jurisdiction));
+$matchedConfig = null;
+
+if (isset($zoningRaw['jurisdiction']['slug'])) {
+    if (strtolower($zoningRaw['jurisdiction']['slug']) === $jurisKey) {
+        $matchedConfig = $zoningRaw;
+    }
+} else {
+    $matchedConfig = $zoningRaw[$jurisKey] ?? null;
+}
 
 $issues = [];
 $locationValidated = true;
@@ -124,9 +136,6 @@ if (!$locationValidated) {
 $lng = $candidate['location']['x'];
 $lat = $candidate['location']['y'];
 
-$jurisKey = strtolower(trim($jurisdiction));
-$matchedConfig = $zoningRegistry[$jurisKey] ?? null;
-
 $zoningCode = 'UNKNOWN';
 $zoningDesc = 'N/A';
 $sourceLayer = 'Unmapped Spatial Layer';
@@ -144,15 +153,22 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
 
     $endpoint = rtrim($svc['serviceUrl'], '/') . '/' . ($svc['layerId'] ?? 0) . '/query';
 
+    // Format Point Geometry as JSON object for strict ArcGIS endpoints
+    $geometryJson = json_encode([
+        'x' => $lng,
+        'y' => $lat,
+        'spatialReference' => ['wkid' => $qry['inputSpatialReference'] ?? 4326]
+    ]);
+
     $spatialUrl = $endpoint . '?' . http_build_query([
         'f' => $qry['responseFormat'] ?? 'json',
-        'geometry' => "$lng,$lat",
+        'geometry' => $geometryJson,
         'geometryType' => $qry['geometryType'] ?? 'esriGeometryPoint',
         'inSR' => $qry['inputSpatialReference'] ?? 4326,
         'spatialRel' => $qry['spatialRelationship'] ?? 'esriSpatialRelIntersects',
         'where' => $qry['where'] ?? '1=1',
         'outFields' => implode(',', $qry['outFields'] ?? ['*']),
-        'returnGeometry' => $qry['returnGeometry'] ? 'true' : 'false'
+        'returnGeometry' => !empty($qry['returnGeometry']) ? 'true' : 'false'
     ]);
 
     $spatialResponse = @file_get_contents($spatialUrl);
@@ -163,29 +179,29 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
         $attrs = $features[0]['attributes'];
         $sourceLayer = $svc['provider'] . ' (' . ($svc['layerName'] ?? 'Zoning') . ')';
 
-        // Dynamic field Mapping Resolution using priority array
-        $zoningCode = resolveMappedField($attrs, $fm['zoningCode'] ?? ['ZONING']);
+        // Mapped dynamic fields
+        $zoningCode = resolveMappedField($attrs, $fm['zoningCode'] ?? ['LABEL1', 'ZONING']);
         $zoningDesc = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE']);
 
-        // Extra metadata captured directly from feature attributes
+        // Extended Metadata
         $extractedMetaData['caseNumber'] = resolveMappedField($attrs, $fm['caseNumber'] ?? ['REDEFINE1']);
         $extractedMetaData['ordinanceNumber'] = resolveMappedField($attrs, $fm['ordinanceNumber'] ?? ['ORD_NUM']);
 
-        // Native Historic Flag
+        // Historic Overlay Flag
         $historicVal = resolveMappedField($attrs, $fm['historic'] ?? ['HISTORIC']);
-        if (!empty($historicVal) && strtoupper($historicVal) !== 'N' && strtoupper($historicVal) !== 'NO') {
+        if (!empty($historicVal) && !in_array(strtoupper($historicVal), ['N', 'NO', 'NONE', 'FALSE'])) {
             $overlays['historicDesignation'] = [
                 'isHistoric' => true,
-                'designationType' => 'City Historic Overlay (' . $historicVal . ')'
+                'designationType' => 'Historic District (' . $historicVal . ')'
             ];
         }
 
-        // Native Transit Oriented Development (TOD) Flag
+        // TOD Overlay Flag
         $todVal = resolveMappedField($attrs, $fm['transitOrientedDevelopment'] ?? ['TOD']);
-        if (!empty($todVal) && strtoupper($todVal) !== 'N' && strtoupper($todVal) !== 'NO') {
+        if (!empty($todVal) && !in_array(strtoupper($todVal), ['N', 'NO', 'NONE', 'FALSE'])) {
             $overlays['regulatoryPlan'] = [
-                'name' => 'Transit Oriented Development District (' . $todVal . ')',
-                'type' => 'TOD Overlay'
+                'name' => 'Transit Oriented Development (' . $todVal . ')',
+                'type' => 'TOD District'
             ];
         }
     }
@@ -193,12 +209,18 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
 
 // 6. Regional Fallback: Maricopa County PlanNet (Layer 11)
 if ($zoningCode === 'UNKNOWN') {
+    $geometryJson = json_encode([
+        'x' => $lng,
+        'y' => $lat,
+        'spatialReference' => ['wkid' => 4326]
+    ]);
+
     $layer11Url = 'https://gis.maricopa.gov/arcgis/rest/services/PlanNet/Zoning/MapServer/11/query?' . http_build_query([
         'f' => 'json',
-        'geometry' => "$lng,$lat",
+        'geometry' => $geometryJson,
         'geometryType' => 'esriGeometryPoint',
-        'inSR' => '4326',
-        'spatialRel' => 'esriSpatialRelWithin',
+        'inSR' => 4326,
+        'spatialRel' => 'esriSpatialRelIntersects',
         'where' => '1=1',
         'outFields' => '*',
         'returnGeometry' => 'false'
@@ -210,13 +232,13 @@ if ($zoningCode === 'UNKNOWN') {
 
     if (!empty($features)) {
         $attrs = $features[0]['attributes'];
-        $zoningCode = $attrs['ZONING'] ?? $attrs['ZONE'] ?? 'UNKNOWN';
-        $zoningDesc = $attrs['ZONING_DESC'] ?? 'N/A';
+        $zoningCode = $attrs['ZONING'] ?? $attrs['ZONE'] ?? $attrs['LABEL1'] ?? 'UNKNOWN';
+        $zoningDesc = $attrs['ZONING_DESC'] ?? $attrs['GEN_ZONE'] ?? 'N/A';
         $sourceLayer = 'Maricopa County PlanNet Zoning Layer 11';
     }
 }
 
-// 7. Output Result
+// 7. Output Final Result
 $hasZoningMatch = ($zoningCode !== 'UNKNOWN' && $zoningCode !== 'N/A');
 
 echo json_encode([
@@ -234,7 +256,7 @@ echo json_encode([
         'zoningCode' => $zoningCode,
         'zoningDescription' => $zoningDesc,
         'sourceLayer' => $sourceLayer,
-        'meta' => $extractedMetaData,
+        'meta' => (object)$extractedMetaData,
         'overlays' => $overlays,
         'confidence' => $hasZoningMatch ? ($matchedConfig['validation']['successfulResultConfidence'] ?? 95) . '%' : '50%',
         'reviewRequired' => !$hasZoningMatch,
@@ -252,8 +274,11 @@ echo json_encode([
  */
 function resolveMappedField(array $attributes, array $fieldCandidates) {
     foreach ($fieldCandidates as $field) {
-        if (!empty($attributes[$field])) {
-            return trim((string)$attributes[$field]);
+        if (array_key_exists($field, $attributes) && $attributes[$field] !== null) {
+            $val = trim((string)$attributes[$field]);
+            if ($val !== '') {
+                return $val;
+            }
         }
     }
     return null;
