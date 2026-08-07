@@ -242,9 +242,13 @@ if (!$locationValidated) {
 
 #region SECTION 3 — Registry Configuration & Short-Circuit Check
 
-$zoningRegistryFile = __DIR__ . '/zoning.json';
+// Corrected path to check for zoning (1).json or zoning.json
+$zoningRegistryFile = __DIR__ . '/zoning (1).json';
 if (!file_exists($zoningRegistryFile)) {
-    $zoningRegistryFile = __DIR__ . '/api/zoning.json';
+    $zoningRegistryFile = __DIR__ . '/zoning.json';
+}
+if (!file_exists($zoningRegistryFile)) {
+    $zoningRegistryFile = __DIR__ . '/api/zoning (1).json';
 }
 
 $zoningConfig = file_exists($zoningRegistryFile) 
@@ -254,13 +258,12 @@ $zoningConfig = file_exists($zoningRegistryFile)
 $jurisKey      = strtolower(trim((string)$locationJurisdiction));
 $matchedConfig = null;
 
-if ($jurisKey !== '') {
-    if (isset($zoningConfig['jurisdiction'])) {
-        $configSlug = strtolower((string)($zoningConfig['jurisdiction']['slug'] ?? $zoningConfig['jurisdiction']['label'] ?? ''));
-        if ($configSlug === $jurisKey) {
-            $matchedConfig = $zoningConfig;
-        }
-    } elseif (isset($zoningConfig[$jurisKey])) {
+// Handle single-jurisdiction configuration schema (like your zoning (1).json file)
+$configSlug = strtolower((string)($zoningConfig['jurisdiction']['slug'] ?? $zoningConfig['jurisdiction']['label'] ?? ''));
+if ($configSlug === $jurisKey || isset($zoningConfig['service'])) {
+    $matchedConfig = $zoningConfig;
+} elseif ($jurisKey !== '') {
+    if (isset($zoningConfig[$jurisKey])) {
         $matchedConfig = $zoningConfig[$jurisKey];
     } else {
         foreach ($zoningConfig as $cfg) {
@@ -270,10 +273,6 @@ if ($jurisKey !== '') {
             }
         }
     }
-}
-
-if (!$matchedConfig && isset($zoningConfig['service'])) {
-    $matchedConfig = $zoningConfig;
 }
 
 // SHORT-CIRCUIT: Direct Parcel Bypass
