@@ -9,7 +9,7 @@ $isoTimestamp  = date('c', $executionTime);
 
 // 1. Read input payload
 $rawInput = file_get_contents('php://input');
-$input    = json_decode($rawInput, true) ?? [];
+$input    = json_decode((string)$rawInput, true) ?? [];
 
 // Standardize container extraction across flat, nested, or data-wrapped structures
 $dataObj  = $input['data'] ?? [];
@@ -35,7 +35,7 @@ $fullAddress  = !empty($addressParts) ? implode(', ', $addressParts) : null;
 // 2. Load zoning registry rule configuration
 $zoningRegistryFile = __DIR__ . '/zoning.json';
 $zoningConfig       = file_exists($zoningRegistryFile) 
-    ? json_decode((string)file_get_contents($zoningRegistryFile), true) 
+    ? (json_decode((string)file_get_contents($zoningRegistryFile), true) ?? [])
     : [];
 
 $jurisKey      = strtolower(trim((string)$locationJurisdiction));
@@ -213,7 +213,7 @@ $overlays          = [
     'comprehensiveSignPlan' => null
 ];
 
-if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
+if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) {
     $svc  = $matchedConfig['service'];
     $qry  = $matchedConfig['query'] ?? [];
     $fm   = $matchedConfig['fieldMapping'] ?? [];
@@ -314,7 +314,10 @@ if ($zoningCode === 'UNKNOWN' && $lat !== null && $lng !== null) {
 }
 
 // 7. Standardized Output
-$hasZoningMatch = ($zoningCode !== 'UNKNOWN' && $zoningCode !== 'N/A');
+$hasZoningMatch   = ($zoningCode !== 'UNKNOWN' && $zoningCode !== 'N/A');
+$resultConfidence = $hasZoningMatch 
+    ? (string)($matchedConfig['validation']['successfulResultConfidence'] ?? 95) . '%' 
+    : '50%';
 
 echo json_encode([
     'status'            => $hasZoningMatch ? 'success' : 'zoning_unmapped',
@@ -349,11 +352,11 @@ echo json_encode([
             'zoningSource'      => $sourceLayer,
             'zoningVerifiedAt'  => (string)$executionTime,
             'source'            => $parcel['source'] ?? 'maricopa_assessor',
-            'confidence'        => $hasZoningMatch ? ($matchedConfig['validation']['successfulResultConfidence'] ?? 95) . '%' : '50%'
+            'confidence'        => $resultConfidence
         ],
         'meta'           => (object)$extractedMetaData,
         'overlays'       => $overlays,
-        'confidence'     => $hasZoningMatch ? ($matchedConfig['validation']['successfulResultConfidence'] ?? 95) . '%' : '50%',
+        'confidence'     => $resultConfidence,
         'reviewRequired' => !$hasZoningMatch,
         'issues'         => $hasZoningMatch ? [] : [[
             'code'     => 'RS-8_WARNING',
