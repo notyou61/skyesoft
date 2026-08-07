@@ -705,6 +705,12 @@ window.SkyIndex = {
             display: "Location Proposal",
             icon: "📍",
             processing: "Processing Location..."
+        },
+        // 🚀 New Address Check Registry Entry
+        address_check: {
+            display: "Address Check",
+            icon: "📍",
+            processing: "Checking Address..."
         }
     },
 
@@ -712,7 +718,8 @@ window.SkyIndex = {
         "street view": "street_view",
         "location review": "location_review",
         "property review": "location_review",
-        "parcel review": "location_review"
+        "parcel review": "location_review",
+        "address check": "address_check"
     },
 
     // #endregion
@@ -837,6 +844,47 @@ window.SkyIndex = {
                 console.error(err);
                 SkyIndex.appendSystemLine(`❌ Unexpected review failed: ${err.message}`);
             }
+        },
+
+        // 📍 Address Check Operation
+        address_check: async (args = "") => {
+            const cleanAddress = typeof args === 'string' ? args.trim() : '';
+
+            if (!cleanAddress) {
+                SkyIndex.appendSystemLine('⚠️ Please provide an address. Example: address check 1234 E Main St, Phoenix, AZ 85008');
+                return;
+            }
+
+            SkyIndex.appendSystemLine(`Resolving Location for: ${cleanAddress}...`);
+
+            try {
+                const res = await fetch('/skyesoft/scripts/locationCheck.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address: cleanAddress })
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`HTTP ${res.status} — ${text.slice(0, 200)}`);
+                }
+
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                const text = await res.text();
+
+                if (!contentType.includes('application/json')) {
+                    throw new Error(`Non-JSON response — ${text.slice(0, 200)}`);
+                }
+
+                const data = JSON.parse(text);
+
+                SkyIndex.appendSystemLine('✅ Address Check Result:');
+                SkyIndex.appendSystemLine(JSON.stringify(data, null, 2));
+
+            } catch (err) {
+                console.error(err);
+                SkyIndex.appendSystemLine(`❌ Address check failed: ${err.message}`);
+            }
         }
 
         // Future UI commands only need to be added here
@@ -884,6 +932,7 @@ window.SkyIndex = {
                                         <li><a href="#" onclick="SkyIndex.showHelp('search'); return false;" style="color:#1a73e8; text-decoration:none;">• Search</a></li>
                                         <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
                                         <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('addresscheck'); return false;" style="color:#1a73e8; text-decoration:none;">• Address Check</a></li>
                                     </ul>
                                 </div>
 
@@ -1444,6 +1493,43 @@ window.SkyIndex = {
                             </div>
                         `
                     };
+                },
+
+                addresscheck() {
+                        return {
+                            title: 'Address Check',
+                            body: `
+                                <div style="font-family:system-ui,-apple-system,sans-serif; line-height:1.55;">
+                                    <div style="margin-bottom:18px;">
+                                        <a href="#" onclick="SkyIndex.showHelp(''); return false;"
+                                        style="color:#1a73e8; text-decoration:none; font-size:0.9em;">← Back to Help</a>
+                                        <span style="color:#999; margin:0 6px;">|</span>
+                                        <span style="color:#666; font-size:0.9em;">Help › Search › Address Check</span>
+                                    </div>
+
+                                    <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Purpose</h3>
+                                    <p style="margin:0 0 18px;">
+                                        Query <code>locationCheck.php</code> to validate an address and return its complete JSON response containing parcel, zoning, and spatial metadata.
+                                    </p>
+
+                                    <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Examples</h3>
+                                    <pre style="background:#f6f8fa; padding:12px; border-radius:6px; font-size:0.85em; overflow:auto; margin:0 0 18px;">
+                    address check 1234 E Main St, Phoenix, AZ 85008</pre>
+
+                                    <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Notes</h3>
+                                    <ul style="margin:0 0 18px 18px; padding:0; line-height:1.6;">
+                                        <li>The command cleanly formats and outputs the returned JSON directly onto the command surface.</li>
+                                    </ul>
+
+                                    <h3 style="margin:0 0 10px; font-size:1.05em; color:#222;">Related Topics</h3>
+                                    <ul style="margin:0 0 0 4px; padding:0; list-style:none; line-height:1.7;">
+                                        <li><a href="#" onclick="SkyIndex.showHelp('streetview'); return false;" style="color:#1a73e8; text-decoration:none;">• Street View</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('parcel'); return false;" style="color:#1a73e8; text-decoration:none;">• Parcel Search</a></li>
+                                        <li><a href="#" onclick="SkyIndex.showHelp('locations'); return false;" style="color:#1a73e8; text-decoration:none;">• Locations</a></li>
+                                    </ul>
+                                </div>
+                            `
+                        };
                 },
 
                 contactproposals() {
