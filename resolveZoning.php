@@ -16,11 +16,6 @@ $googleMapsApiKey = getenv('GOOGLE_MAPS_API_KEY') ?: null;
 $address = $location['locationAddress'] ?? $input['data']['locationAddress'] ?? '3145 N 33rd Ave';
 $cityStateZip = $location['locationCityStateZip'] ?? $input['data']['locationCityStateZip'] ?? 'Phoenix, AZ 85017';
 
-// Extract city, state, zip split if available
-$city = $location['locationCity'] ?? 'Phoenix';
-$state = $location['locationState'] ?? 'AZ';
-$zip = $location['locationZip'] ?? '85017';
-
 $locationPlaceId = $location['locationPlaceId'] ?? $input['data']['locationPlaceId'] ?? 'ChIJeTvhT3ATK4cRpfapSIlCjFw';
 $locationParcelNumber = $location['locationParcelNumberRaw'] ?? $location['locationParcelNumber'] ?? $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? '108-03-009E';
 $locationJurisdiction = $location['locationJurisdiction'] ?? 'Phoenix';
@@ -31,27 +26,27 @@ $fullAddress = !empty($address) ? "$address, $cityStateZip" : '3145 N 33rd Ave, 
 
 // 2. Load zoning registry rule configuration
 $zoningRegistryFile = __DIR__ . '/zoning.json';
-$zoningRaw = file_exists($zoningRegistryFile) 
+$zoningConfig = file_exists($zoningRegistryFile) 
     ? json_decode(file_get_contents($zoningRegistryFile), true) 
     : [];
 
-// Match jurisdiction against single-schema or keyed dictionary formats
+// Determine if zoning.json is single jurisdiction schema or multi-jurisdiction dictionary
 $jurisKey = strtolower(trim($locationJurisdiction));
 $matchedConfig = null;
 
-if (isset($zoningRaw['jurisdiction']['slug'])) {
-    if (strtolower($zoningRaw['jurisdiction']['slug']) === $jurisKey) {
-        $matchedConfig = $zoningRaw;
+if (isset($zoningConfig['jurisdiction']['slug'])) {
+    if (strtolower($zoningConfig['jurisdiction']['slug']) === $jurisKey) {
+        $matchedConfig = $zoningConfig;
     }
 } else {
-    $matchedConfig = $zoningRaw[$jurisKey] ?? null;
+    $matchedConfig = $zoningConfig[$jurisKey] ?? null;
 }
 
 $issues = [];
 $locationValidated = true;
 
 // 3. SHORT-CIRCUIT: Direct Parcel Verification (Pre-verified Parcel Data)
-if (!empty($parcel['zoningCode'])) {
+if (!empty($parcel['zoningCode']) && $parcel['zoningCode'] !== 'UNKNOWN') {
     echo json_encode([
         'status' => 'success',
         'locationValidated' => true,
@@ -96,8 +91,8 @@ if (!empty($parcel['zoningCode'])) {
 }
 
 // 4. RESOLVE COORDINATES: Priority to Google Place ID -> Fallback to ESRI Geocoder
-$lat = $location['locationLatitude'] ?? $input['data']['locationLatitude'] ?? null;
-$lng = $location['locationLongitude'] ?? $input['data']['locationLongitude'] ?? null;
+$lat = $location['locationLatitude'] ?? $input['data']['locationLatitude'] ?? $input['data']['coordinates']['lat'] ?? null;
+$lng = $location['locationLongitude'] ?? $input['data']['locationLongitude'] ?? $input['data']['coordinates']['lng'] ?? null;
 $coordinateSource = 'input_payload';
 
 // Step 4a: Fetch precise coordinates using Google Place Details API if Place ID is available
@@ -118,7 +113,7 @@ if ((!$lat || !$lng) && $locationPlaceId && $googleMapsApiKey) {
     }
 }
 
-// Step 4b: Fallback to ESRI ArcGIS Geocoding if Place ID resolution didn't yield coordinates
+// Step 4b: Fallback to ESRI ArcGIS Geocoding if coordinates missing
 if (!$lat || !$lng) {
     $geocodeUrl = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?' . http_build_query([
         'f' => 'json',
@@ -176,7 +171,7 @@ if (!$locationValidated) {
     exit;
 }
 
-// 5. Query Configured Spatial Zoning Layer
+// 5. Query Jurisdiction Map Server
 $zoningCode = 'UNKNOWN';
 $zoningDesc = 'N/A';
 $sourceLayer = 'Unmapped Spatial Layer';
@@ -191,6 +186,7 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
     $svc = $matchedConfig['service'];
     $qry = $matchedConfig['query'];
     $fm = $matchedConfig['fieldMapping'] ?? [];
+    $norm = $matchedConfig['normalization'] ?? [];
 
     $endpoint = rtrim($svc['serviceUrl'], '/') . '/' . ($svc['layerId'] ?? 0) . '/query';
 
@@ -219,14 +215,23 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
         $attrs = $features[0]['attributes'];
         $sourceLayer = $svc['provider'] . ' (' . ($svc['layerName'] ?? 'Zoning') . ')';
 
-        $zoningCode = resolveMappedField($attrs, $fm['zoningCode'] ?? ['LABEL1', 'ZONING']);
-        $zoningDesc = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE']);
+        // Extract normalized zoning code using field mapping rules
+        $zoningCodeRaw = resolveMappedField($attrs, $fm['zoningCode'] ?? ['LABEL1', 'ZONING'], $norm);
+        if ($zoningCodeRaw !== null) {
+            $zoningCode = $zoningCodeRaw;
+        }
 
-        $extractedMetaData['caseNumber'] = resolveMappedField($attrs, $fm['caseNumber'] ?? ['REDEFINE1']);
-        $extractedMetaData['ordinanceNumber'] = resolveMappedField($attrs, $fm['ordinanceNumber'] ?? ['ORD_NUM']);
+        // Extract normalized zoning description
+        $zoningDescRaw = resolveMappedField($attrs, $fm['zoningDescription'] ?? ['GEN_ZONE'], $norm);
+        if ($zoningDescRaw !== null) {
+            $zoningDesc = $zoningDescRaw;
+        }
+
+        $extractedMetaData['caseNumber'] = resolveMappedField($attrs, $fm['caseNumber'] ?? ['REDEFINE1'], $norm);
+        $extractedMetaData['ordinanceNumber'] = resolveMappedField($attrs, $fm['ordinanceNumber'] ?? ['ORD_NUM'], $norm);
 
         // Historic Preservation Overlay
-        $historicVal = resolveMappedField($attrs, $fm['historic'] ?? ['HISTORIC']);
+        $historicVal = resolveMappedField($attrs, $fm['historic'] ?? ['HISTORIC'], $norm);
         if (!empty($historicVal) && !in_array(strtoupper($historicVal), ['N', 'NO', 'NONE', 'FALSE'])) {
             $overlays['historicDesignation'] = [
                 'isHistoric' => true,
@@ -234,8 +239,8 @@ if ($matchedConfig && isset($matchedConfig['service']['serviceUrl'])) {
             ];
         }
 
-        // Transit Oriented Development (TOD)
-        $todVal = resolveMappedField($attrs, $fm['transitOrientedDevelopment'] ?? ['TOD']);
+        // Transit Oriented Development Overlay
+        $todVal = resolveMappedField($attrs, $fm['transitOrientedDevelopment'] ?? ['TOD'], $norm);
         if (!empty($todVal) && !in_array(strtoupper($todVal), ['N', 'NO', 'NONE', 'FALSE'])) {
             $overlays['regulatoryPlan'] = [
                 'name' => 'Transit Oriented Development (' . $todVal . ')',
@@ -270,8 +275,8 @@ if ($zoningCode === 'UNKNOWN') {
 
     if (!empty($features)) {
         $attrs = $features[0]['attributes'];
-        $zoningCode = $attrs['ZONING'] ?? $attrs['ZONE'] ?? $attrs['LABEL1'] ?? 'UNKNOWN';
-        $zoningDesc = $attrs['ZONING_DESC'] ?? $attrs['GEN_ZONE'] ?? 'N/A';
+        $zoningCode = $attrs['LABEL1'] ?? $attrs['ZONING'] ?? $attrs['ZONE'] ?? 'UNKNOWN';
+        $zoningDesc = $attrs['GEN_ZONE'] ?? $attrs['ZONING_DESC'] ?? 'N/A';
         $sourceLayer = 'Maricopa County PlanNet Zoning Layer 11';
     }
 }
@@ -326,16 +331,41 @@ echo json_encode([
 ], JSON_PRETTY_PRINT);
 
 /**
- * Resolves priority field arrays against feature attributes
+ * Case-insensitive field resolver with normalization token stripping
  */
-function resolveMappedField(array $attributes, array $fieldCandidates) {
-    foreach ($fieldCandidates as $field) {
-        if (array_key_exists($field, $attributes) && $attributes[$field] !== null) {
-            $val = trim((string)$attributes[$field]);
-            if ($val !== '') {
-                return $val;
+function resolveMappedField(array $attributes, array $fieldCandidates, array $norm = []) {
+    // Convert attribute keys to uppercase for case-insensitive lookup
+    $normalizedAttrs = [];
+    foreach ($attributes as $key => $val) {
+        $normalizedAttrs[strtoupper($key)] = $val;
+    }
+
+    $emptyTokens = $norm['emptyValueTokens'] ?? ['', ' '];
+
+    foreach ($fieldCandidates as $candidate) {
+        $key = strtoupper($candidate);
+        if (array_key_exists($key, $normalizedAttrs) && $normalizedAttrs[$key] !== null) {
+            $val = (string)$normalizedAttrs[$key];
+
+            if (!empty($norm['trimValues'])) {
+                $val = trim($val);
             }
+
+            if (!empty($norm['collapseWhitespace'])) {
+                $val = preg_replace('/\s+/', ' ', $val);
+            }
+
+            if (!empty($norm['uppercaseZoningCode'])) {
+                $val = strtoupper($val);
+            }
+
+            if (in_array($val, $emptyTokens, true)) {
+                continue;
+            }
+
+            return $val;
         }
     }
+
     return null;
 }
