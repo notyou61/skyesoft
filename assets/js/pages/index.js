@@ -923,7 +923,7 @@ window.SkyIndex = {
     // #endregion
 
     // #region ❓ Help System
-        showHelp(topic = "") {
+    showHelp(topic = "") {
             console.log('[Help] topic requested:', topic || '(general)');
 
             // Close any existing help modal first
