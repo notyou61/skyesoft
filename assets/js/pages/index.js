@@ -849,7 +849,7 @@ window.SkyIndex = {
         // 📍 Address Check Operation
         address_check: async (args = "") => {
             // Strip out the command prefix if it was captured in args
-            let cleanAddress = typeof args === 'string' ? args.replace(/^address\s+check\s*/i, '').trim() : '';
+            let cleanAddress = typeof args === 'string' ? args.replace(/^(address\s+check|check\s+address)\s*/i, '').trim() : '';
 
             if (!cleanAddress) {
                 SkyIndex.appendSystemLine('⚠️ Please provide an address. Example: address check 3145 N 33rd Ave, Phoenix, AZ 85017');
@@ -881,24 +881,29 @@ window.SkyIndex = {
 
                 SkyIndex.appendSystemLine('✅ Address Check Result:');
                 
-                // Render the visual Property Review Card on the surface
-                const loc = data?.data?.location;
-                const parcel = loc?.parcelDetails?.[0];
-                const zoning = loc?.zoning;
+                // Render the visual Property Review Card matching the new JSON schema
+                const censusAddr = data?.census?.normalized?.address || cleanAddress;
+                const parcel = data?.parcel?.primaryParcel;
+                const jurisdiction = data?.jurisdiction?.governingJurisdiction;
+                const jurType = data?.jurisdiction?.jurisdictionType;
+                const county = data?.census?.county;
+                const fips = data?.census?.countyFips;
+                const rsCode = data?.governance?.rsCode;
+                const parcelStatus = data?.governance?.parcelStatus;
 
-                if (data.success && loc) {
+                if (data.success) {
                     const cardHtml = `
                         <div class="sky-card property-card" style="border:1px solid #ddd; padding:15px; border-radius:6px; background:#fff; margin-bottom:10px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <div style="font-weight:600; font-size:1.1em;">🏠 Property Review: ${loc.locationResolvedAddress || cleanAddress}</div>
+                                <div style="font-weight:600; font-size:1.1em;">🏠 Property Review: ${censusAddr}</div>
                                 <button class="sky-btn-sm" style="background:#fff; border:1px solid #00796b; color:#00796b; padding:4px 10px; border-radius:4px; cursor:pointer; font-weight:500;">Billing</button>
                             </div>
                             <div style="font-size:0.9em; color:#444; line-height:1.6; margin-bottom:12px;">
                                 <div><strong>Parcel Number (APN):</strong> ${parcel?.parcelNumber || 'N/A'}</div>
                                 <div><strong>Owner:</strong> ${parcel?.ownerName || 'N/A'}</div>
-                                <div><strong>Zoning:</strong> ${zoning?.zoningCode || 'UNKNOWN'} — ${zoning?.zoningDescription || 'N/A'}</div>
-                                <div><strong>Jurisdiction:</strong> ${loc.jurisdictionName || 'N/A'} (${loc.jurisdictionType || ''})</div>
-                                <div><strong>County:</strong> ${loc.locationCounty || 'N/A'} (FIPS: ${loc.locationCountyFips || ''})</div>
+                                <div><strong>Jurisdiction:</strong> ${jurisdiction || 'N/A'} (${jurType || ''})</div>
+                                <div><strong>County:</strong> ${county || 'N/A'} (FIPS: ${fips || ''})</div>
+                                <div><strong>Governance State:</strong> <span style="background:#e6f4ea; color:#137333; padding:2px 6px; border-radius:4px; font-weight:500;">${rsCode || 'N/A'} — ${parcelStatus || ''}</span></div>
                             </div>
                             <div style="border-top:1px solid #eee; padding-top:12px; display:flex; gap:8px;">
                                 <button class="sky-btn" style="background:#00796b; color:#fff; border:none; padding:6px 14px; border-radius:4px; cursor:pointer; font-weight:500;">Open Profile</button>

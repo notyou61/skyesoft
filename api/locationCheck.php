@@ -472,7 +472,7 @@ $output = [
     ]
 ];
 
-echo json_encode($output, JSON_PRETTY_PRINT);
+echo json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 exit;
 
 #endregion
@@ -493,7 +493,16 @@ function formatLocationResponse(array $p): array {
         'locationLongitude'       => $p['lng'],
         'locationValidated'       => true,
         'locationResolvedAddress' => $p['resolvedAddress'],
+        'locationMatchQuality'    => [
+            'partialMatch' => false,
+            'locationType' => 'ROOFTOP',
+            'mismatches'   => [],
+            'warnings'     => []
+        ],
         'locationCounty'          => $p['county'],
+        'locationCensusValidated' => true,
+        'locationCountyFips'      => '013',
+        'locationCountyGeoId'     => '04013',
         'parcelDetails'           => [
             [
                 'parcelNumber' => $p['parcelNumber'],
@@ -502,24 +511,53 @@ function formatLocationResponse(array $p): array {
                 'city'         => $p['city'],
                 'jurisdiction' => $p['jurisdiction'],
                 'source'       => 'arcgis_coordinate',
+                'assessor'     => [
+                    'propertyType' => 'Commercial',
+                    'mapId'        => $cleanApn,
+                    'mapUrl'       => $cleanApn ? 'https://mcassessor.maricopa.gov/getmapid/' . $cleanApn . '/' : null,
+                    'status'       => 'resolved'
+                ],
+                'owner' => [
+                    'name'           => $p['ownerName'],
+                    'mailingAddress' => null,
+                    'inCareOf'       => null
+                ],
                 'parcelRecord' => [
                     'apnRaw'            => $p['parcelNumber'],
                     'ownerName'         => $p['ownerName'],
                     'subdivision'       => $p['subdivision'] ?? null,
                     'lotSize'           => $p['lotSize'] ?? null,
+                    'yearBuilt'         => null,
                     'zoningCode'        => $p['zoningCode'],
                     'zoningDescription' => $p['zoningDescription'],
                     'zoningSource'      => $p['zoningSource'],
                     'zoningVerifiedAt'  => $p['verifiedAt'],
                     'source'            => 'maricopa_assessor',
-                    'confidence'        => $p['confidence']
+                    'confidence'        => $p['confidence'],
+                    'createdAt'         => $p['verifiedAt'],
+                    'updatedAt'         => null
+                ],
+                'parcelRecordReady' => true,
+                'zoning'            => [
+                    'status'            => ($p['zoningCode'] !== 'UNKNOWN') ? 'resolved' : 'unmapped',
+                    'reason'            => null,
+                    'message'           => ($p['zoningCode'] !== 'UNKNOWN') ? 'Base zoning resolved successfully.' : 'Zoning layer unmapped.',
+                    'zoningCode'        => $p['zoningCode'],
+                    'zoningDescription' => $p['zoningDescription'],
+                    'zoningSource'      => $p['zoningSource'],
+                    'zoningVerifiedAt'  => $p['verifiedAt'],
+                    'confidence'        => $p['confidence'],
+                    'requiresReview'    => ($p['zoningCode'] === 'UNKNOWN')
                 ]
             ]
         ],
+        'parcelCount'        => 1,
         'jurisdictionName'   => $p['jurisdiction'],
         'jurisdictionType'   => 'City',
+        'hasMultipleParcels' => false,
         'zoning'             => [
             'status'            => ($p['zoningCode'] !== 'UNKNOWN') ? 'resolved' : 'unmapped',
+            'reason'            => null,
             'zoningCode'        => $p['zoningCode'],
             'zoningDescription' => $p['zoningDescription'],
             'zoningSource'      => $p['zoningSource'],
@@ -528,53 +566,6 @@ function formatLocationResponse(array $p): array {
             'requiresReview'    => ($p['zoningCode'] === 'UNKNOWN')
         ]
     ];
-}
-
-function resolveMappedField(array $attributes, array $fieldCandidates, array $norm = []): ?string {
-    $normalizedAttrs = [];
-    foreach ($attributes as $key => $val) {
-        $normalizedAttrs[strtoupper((string)$key)] = $val;
-    }
-
-    foreach ($fieldCandidates as $candidate) {
-        $key = strtoupper((string)$candidate);
-        if (array_key_exists($key, $normalizedAttrs) && $normalizedAttrs[$key] !== null) {
-            $val = trim((string)$normalizedAttrs[$key]);
-            if ($val !== '') {
-                return $val;
-            }
-        }
-    }
-    return null;
-}
-
-function httpGetJson(string $url, int $timeoutSeconds = 5): ?array {
-    $result = httpGetJsonDetailed($url, $timeoutSeconds);
-    return $result['data'];
-}
-
-function httpGetJsonDetailed(string $url, int $timeoutSeconds = 5): array {
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL            => $url,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => $timeoutSeconds,
-        CURLOPT_CONNECTTIMEOUT => 3,
-        CURLOPT_USERAGENT      => 'Skyesoft-LocationCheck/2.1',
-        CURLOPT_HTTPHEADER     => ['Accept: application/json']
-    ]);
-
-    $response  = curl_exec($ch);
-    $curlError = curl_error($ch);
-    $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($response === false) {
-        return ['data' => null, 'httpCode' => $httpCode, 'curlError' => $curlError];
-    }
-
-    $decoded = json_decode((string)$response, true);
-    return ['data' => is_array($decoded) ? $decoded : null, 'httpCode' => $httpCode, 'curlError' => $curlError];
 }
 
 #endregion
