@@ -231,6 +231,7 @@ window.SkyIndex = {
             const isAllowedHtml =
                 safeHtml.includes('result-card') ||
                 safeHtml.includes('property-review-card') ||
+                safeHtml.includes('property-card') ||          // Added: matches class="sky-card property-card"
                 safeHtml.includes('streetview-card') ||
                 safeHtml.includes('contact-card') ||
                 safeHtml.includes('parcel-review-card') ||
@@ -239,9 +240,11 @@ window.SkyIndex = {
                 safeHtml.includes('gov-panel') ||
                 safeHtml.includes('Primary Parcel') ||
                 safeHtml.includes('Parcel Review') ||
+                safeHtml.includes('Property Review') ||        // Added: matches 🏠 Property Review title
                 safeHtml.includes('📸 Location Imagery') ||
                 // Entity cards
                 safeHtml.includes('skyCard') ||
+                safeHtml.includes('sky-card') ||               // Added: matches kebab-case sky-card class
                 safeHtml.includes('entityCard');
 
             if (!isAllowedHtml) {
