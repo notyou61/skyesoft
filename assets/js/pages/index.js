@@ -666,6 +666,7 @@ window.SkyIndex = {
 
     // #region 🧩 UI Action Registry + Aliases + Command Registries (Authoritative)
 
+    // UI Aliases (for user-friendly command surface)
     uiAliases: {
         cls: "clear_screen",
         clear: "clear_screen",
@@ -678,6 +679,7 @@ window.SkyIndex = {
         help: "help"
     },
 
+    // Command Registry (Authoritative)
     commandRegistry: {
         street_view: {
             display: "Google Street View",
@@ -717,12 +719,14 @@ window.SkyIndex = {
         }
     },
 
+    // In workflowRegistry
     workflowRegistry: {
         "street view": "street_view",
         "location review": "location_review",
         "property review": "location_review",
         "parcel review": "location_review",
-        "address check": "address_check"
+        "address check": "address_check",
+        "check address": "address_check"  // Added inverted phrase matching
     },
 
     // #endregion
