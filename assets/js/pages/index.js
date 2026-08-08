@@ -5880,49 +5880,88 @@ window.SkyIndex = {
         this.appendEntityCard(data.entity);
     },
 
-
+    // --------------------------------------------------
+    // 🏠 PROPERTY / PARCEL CARD RENDERER
+    // --------------------------------------------------
     renderPropertyReviewCard(data) {
         const parcel = data?.parcel?.primaryParcel || {};
         const census = data?.census || {};
 
         const parcelNum = parcel.parcelNumber || '';
         const owner = parcel.ownerName || 'N/A';
-        const siteAddr = parcel.siteAddress || data?.inputAddress || 'N/A';
+        const siteAddr = parcel.siteAddress || data?.inputAddress || data?.census?.normalized?.address || 'N/A';
         const city = parcel.city || 'PHOENIX';
-        const jurisdiction = parcel.jurisdiction || 'N/A';
+        const jurisdiction = parcel.jurisdiction || 'PHOENIX';
         const county = census.county || 'Maricopa';
         const fips = census.countyFips || '013';
 
-        // Escaped parcel identifier for onclick handler
+        // ID for action button
+        const locationId = Number(data?.locationId || data?.id || 0);
         const safeParcelNum = String(parcelNum).replace(/'/g, "\\'");
 
-        const cardHtml = `
-            <div class="sky-card property-card">
-                <div class="sky-card-header" style="display:flex; justify-space-between; align-items:center;">
-                    <h3>🏠 Property Review</h3>
-                    <span class="sky-badge success">Validated</span>
+        // Determine target report parameter: prefer locationId if available, else parcel string
+        const reportParam = locationId > 0 ? locationId : `'${safeParcelNum}'`;
+
+        const html = `
+        <div class="result-card property-card" style="border-left:5px solid #0d9488; background:#fff; width:100%; max-width:100%; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05); overflow:hidden; margin:8px 0;">
+
+            <!-- Header -->
+            <div class="result-header" style="display:flex; justify-space-between; align-items:center; gap:10px; padding:12px 14px 8px;">
+                <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                    <span style="font-size:1.2rem; line-height:1;">🏠</span>
+                    <strong style="color:#111; font-size:1.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        Property Review
+                    </strong>
                 </div>
-                <div class="sky-card-body">
-                    <div class="sky-grid-2">
-                        <div><strong>Parcel #:</strong> ${parcelNum || 'N/A'}</div>
-                        <div><strong>Owner:</strong> ${owner}</div>
-                        <div><strong>Site Address:</strong> ${siteAddr}, ${city}</div>
-                        <div><strong>Jurisdiction:</strong> ${jurisdiction}</div>
-                        <div><strong>County:</strong> ${county} (FIPS: ${fips})</div>
-                    </div>
-                </div>
-                <div class="sky-card-footer" style="margin-top:12px; padding-top:10px; border-top:1px solid #e5e7eb; display:flex; gap:8px;">
-                    <button type="button" 
-                            onclick="SkyIndex.openLocationZoningReport('${safeParcelNum}')" 
-                            title="Open the Location Zoning &amp; Sign Code Report" 
-                            style="padding:5px 11px; border-radius:5px; border:1px solid #0d9488; background:#fff; color:#0f766e; font-size:0.78rem; font-weight:550; cursor:pointer;">
-                        Zoning Report
-                    </button>
+                <div style="display:flex; flex-wrap:wrap; gap:5px; justify-content:flex-end; flex-shrink:0;">
+                    <span style="background:rgba(13,148,136,0.12); color:#0f766e; border:1px solid rgba(13,148,136,0.25); padding:2px 8px; border-radius:4px; font-size:0.75em; font-weight:600;">
+                        Validated
+                    </span>
                 </div>
             </div>
+
+            <!-- Body -->
+            <div class="result-body" style="padding:0 14px 12px;">
+
+                <!-- Details -->
+                <div style="padding:4px 0 10px; border-bottom:1px solid #f0f0f0; font-size:0.88rem; line-height:1.45; color:#374151;">
+                    <div><strong>Site Address:</strong> ${this.escapeHtml(siteAddr)}, ${this.escapeHtml(city)}</div>
+                    <div style="margin-top:2px;"><strong>Owner:</strong> ${this.escapeHtml(owner)}</div>
+                    
+                    ${parcelNum ? `
+                        <div style="margin-top:4px; font-size:0.84em; color:#666;">
+                            📐 <strong>Parcel:</strong> ${this.escapeHtml(parcelNum)}
+                        </div>
+                    ` : ''}
+
+                    <div style="margin-top:2px; font-size:0.84em; color:#666;">
+                        🏛️ <strong>Jurisdiction:</strong> ${this.escapeHtml(jurisdiction)} &bull; <strong>County:</strong> ${this.escapeHtml(county)} (FIPS: ${this.escapeHtml(fips)})
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; padding-top:4px;">
+                    <button type="button"
+                            onclick="SkyIndex.openLocationZoningReport(${reportParam})"
+                            title="Open the Location Zoning &amp; Sign Code Report"
+                            style="padding:6px 12px; border-radius:5px; border:1px solid #0d9488; background:#fff; color:#0f766e; font-size:0.78rem; font-weight:600; cursor:pointer;">
+                        Zoning Report
+                    </button>
+
+                    ${locationId > 0 ? `
+                        <button type="button"
+                                onclick="SkyIndex.showLocationModal(${locationId})"
+                                style="padding:6px 12px; border-radius:5px; border:1px solid #0d9488; background:#0d9488; color:#fff; font-size:0.78rem; font-weight:600; cursor:pointer;">
+                            Open Profile
+                        </button>
+                    ` : ''}
+                </div>
+
+            </div>
+        </div>
         `;
 
-        this.appendSystemHtml(cardHtml);
+        this.appendSystemHtml(html);
     },
 
     /**
