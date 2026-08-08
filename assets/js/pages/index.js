@@ -856,7 +856,6 @@ window.SkyIndex = {
 
         // 📍 Address Check Operation
         async address_check(args = '') {
-            // Normalize command input
             const cleanAddress = String(args || '')
                 .replace(/^(?:address\s+check|check\s+address)\s*/i, '')
                 .trim();
@@ -8749,6 +8748,14 @@ window.SkyIndex = {
             );
 
             if (addressCheckMatch) {
+                console.log('[ADDRESS CHECK] Command matched:', addressCheckMatch[1]);
+
+                if (typeof this.address_check !== 'function') {
+                    throw new Error(
+                        'address_check() is not defined on the active SkyIndex instance.'
+                    );
+                }
+
                 await this.address_check(addressCheckMatch[1].trim());
                 return;
             }
@@ -8997,8 +9004,11 @@ window.SkyIndex = {
             this.appendSystemLine('⚠ No response from AI.');
 
         } catch (err) {
-            console.error('[SkyIndex] AI error:', err);
-            this.appendSystemLine('❌ AI request failed.');
+            console.error('[SkyIndex] AI command error:', err);
+
+            this.appendSystemLine(
+                `❌ Command failed: ${err?.message || 'Unknown error'}`
+            );
         } finally {
             this.setThinking(false);
         }
