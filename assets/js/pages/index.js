@@ -8633,6 +8633,23 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
+            // Normalize command
+            const trimmed = String(prompt || '').trim();
+            const firstWord = trimmed.split(/\s+/)[0]?.toLowerCase();
+
+            // =====================================================
+            // 🏠 Address Check Command
+            // Prevents address queries from falling through to askOpenAI.php
+            // =====================================================
+            const addressCheckMatch = trimmed.match(
+                /^(?:address\s+check|check\s+address)\s+(.+)$/i
+            );
+
+            if (addressCheckMatch) {
+                await this.address_check(addressCheckMatch[1].trim());
+                return;
+            }
+
             // =====================================================
             // 📦 Object Keyword Dispatcher (Entity / Location / …)
             // Only short-circuit when the identifier is a pure numeric ID.
@@ -8646,9 +8663,6 @@ window.SkyIndex = {
                 // order:   (id) => this.renderOrderCard?.(id),
                 // application: (id) => this.renderApplicationCard?.(id),
             };
-
-            const trimmed = String(prompt || '').trim();
-            const firstWord = trimmed.split(/\s+/)[0]?.toLowerCase();
 
             if (firstWord && objectCommands[firstWord]) {
                 const identifier = trimmed.substring(firstWord.length).trim();
@@ -8758,7 +8772,6 @@ window.SkyIndex = {
                 );
                 return;
             }
-
 
             // --------------------------------------------------
             // 🏢 ENTITY DETAIL CARD
