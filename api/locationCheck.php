@@ -3,9 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php (API Endpoint)
-//  Version: 2.1.6
-//  Last Updated: 2026-08-08
-//  Codex Tier: 2 — Infrastructure / GIS & Location Pipeline
+//  Version: 2.1.7
 // ======================================================================
 
 #region SECTION 0 — Environment Bootstrap & Headers
@@ -42,6 +40,45 @@ if (empty($googleMapsApiKey)) {
         ?? getenv('GOOGLE_MAPS_STATIC_API_KEY')
         ?? $_SERVER['GOOGLE_MAPS_API_KEY']
         ?? '';
+}
+
+#endregion
+
+#region SECTION 0.5 — Core HTTP Helpers (Declared before any API calls)
+
+if (!function_exists('httpGetJsonDetailed')) {
+    function httpGetJsonDetailed(string $url, int $timeout = 10): array {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_HTTPHEADER     => ['Accept: application/json', 'User-Agent: Skyesoft-GIS/2.1'],
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+
+        $response  = curl_exec($ch);
+        $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        $decoded = ($response !== false) ? json_decode($response, true) : null;
+
+        return [
+            'success'   => ($httpCode >= 200 && $httpCode < 300 && is_array($decoded)),
+            'httpCode'  => $httpCode,
+            'curlError' => $curlError,
+            'data'      => $decoded
+        ];
+    }
+}
+
+if (!function_exists('httpGetJson')) {
+    function httpGetJson(string $url, int $timeout = 10): array {
+        $res = httpGetJsonDetailed($url, $timeout);
+        return is_array($res['data']) ? $res['data'] : [];
+    }
 }
 
 #endregion
