@@ -8643,19 +8643,6 @@ window.SkyIndex = {
             const firstWord = trimmed.split(/\s+/)[0]?.toLowerCase();
 
             // =====================================================
-            // 🏠 Address Check Command
-            // Prevents address queries from falling through to askOpenAI.php
-            // =====================================================
-            const addressCheckMatch = trimmed.match(
-                /^(?:address\s+check|check\s+address)\s+(.+)$/i
-            );
-
-            if (addressCheckMatch) {
-                await this.address_check(addressCheckMatch[1].trim());
-                return;
-            }
-
-            // =====================================================
             // 📦 Object Keyword Dispatcher (Entity / Location / …)
             // Only short-circuit when the identifier is a pure numeric ID.
             // Natural-language forms ("Entity Christy Signs") fall through
