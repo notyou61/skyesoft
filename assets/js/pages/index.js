@@ -219,33 +219,32 @@ window.SkyIndex = {
 
         // Appends system HTML (with safety checks)
         appendSystemHtml(html) {
-
             const output = this.getOutputHost();
             if (!output) return;
 
-            const safeHtml = (html === null || html === undefined)
-                ? ''
-                : String(html);
+            const safeHtml = (html === null || html === undefined) ? '' : String(html);
 
             // Universal allowed patterns
-            const isAllowedHtml =
-                safeHtml.includes('result-card') ||
-                safeHtml.includes('property-review-card') ||
-                safeHtml.includes('property-card') ||          // Added: matches class="sky-card property-card"
-                safeHtml.includes('streetview-card') ||
-                safeHtml.includes('contact-card') ||
-                safeHtml.includes('parcel-review-card') ||
-                safeHtml.includes('gov-box') ||
-                safeHtml.includes('gov-action') ||
-                safeHtml.includes('gov-panel') ||
-                safeHtml.includes('Primary Parcel') ||
-                safeHtml.includes('Parcel Review') ||
-                safeHtml.includes('Property Review') ||        // Added: matches 🏠 Property Review title
-                safeHtml.includes('📸 Location Imagery') ||
-                // Entity cards
-                safeHtml.includes('skyCard') ||
-                safeHtml.includes('sky-card') ||               // Added: matches kebab-case sky-card class
-                safeHtml.includes('entityCard');
+            const allowedTokens = [
+                'result-card',
+                'property-review-card',
+                'property-card',
+                'streetview-card',
+                'contact-card',
+                'parcel-review-card',
+                'gov-box',
+                'gov-action',
+                'gov-panel',
+                'Primary Parcel',
+                'Parcel Review',
+                'Property Review',
+                '📸 Location Imagery',
+                'skyCard',
+                'sky-card',
+                'entityCard'
+            ];
+
+            const isAllowedHtml = allowedTokens.some(token => safeHtml.includes(token));
 
             if (!isAllowedHtml) {
                 this.appendSystemLine('[Unsupported HTML content]');
@@ -254,7 +253,9 @@ window.SkyIndex = {
 
             const wrap = document.createElement('div');
             wrap.className = 'commandLine system html';
-            wrap.innerHTML = safeHtml;
+            
+            // Use DOMPurify if available, otherwise raw safeHtml
+            wrap.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(safeHtml) : safeHtml;
 
             output.appendChild(wrap);
             this.scrollOutputToBottom(output);
