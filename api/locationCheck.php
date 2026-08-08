@@ -3,14 +3,13 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php (API Endpoint)
-//  Version: 2.1.7
+//  Version: 2.1.8
 // ======================================================================
 
-#region SECTION 0 — Environment Bootstrap & Headers
+#region SECTION 0 — Headers & Environment
 
 header('Content-Type: application/json');
 
-// Bootstrap Environment Loader from within /api directory
 $envLoaderPath = __DIR__ . '/utils/envLoader.php';
 if (!file_exists($envLoaderPath)) {
     $envLoaderPath = __DIR__ . '/../utils/envLoader.php';
@@ -26,7 +25,6 @@ if (file_exists($envLoaderPath)) {
 $executionTime = time();
 $isoTimestamp  = date('c', $executionTime);
 
-// Robust API Key Resolution
 $googleMapsApiKey = '';
 if (function_exists('skyesoftGetEnv')) {
     $googleMapsApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') ?: skyesoftGetEnv('GOOGLE_MAPS_API_KEY');
@@ -40,45 +38,6 @@ if (empty($googleMapsApiKey)) {
         ?? getenv('GOOGLE_MAPS_STATIC_API_KEY')
         ?? $_SERVER['GOOGLE_MAPS_API_KEY']
         ?? '';
-}
-
-#endregion
-
-#region SECTION 0.5 — Core HTTP Helpers (Declared before any API calls)
-
-if (!function_exists('httpGetJsonDetailed')) {
-    function httpGetJsonDetailed(string $url, int $timeout = 10): array {
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => $timeout,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_HTTPHEADER     => ['Accept: application/json', 'User-Agent: Skyesoft-GIS/2.1'],
-            CURLOPT_SSL_VERIFYPEER => true
-        ]);
-
-        $response  = curl_exec($ch);
-        $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        $decoded = ($response !== false) ? json_decode($response, true) : null;
-
-        return [
-            'success'   => ($httpCode >= 200 && $httpCode < 300 && is_array($decoded)),
-            'httpCode'  => $httpCode,
-            'curlError' => $curlError,
-            'data'      => $decoded
-        ];
-    }
-}
-
-if (!function_exists('httpGetJson')) {
-    function httpGetJson(string $url, int $timeout = 10): array {
-        $res = httpGetJsonDetailed($url, $timeout);
-        return is_array($res['data']) ? $res['data'] : [];
-    }
 }
 
 #endregion
@@ -99,14 +58,12 @@ $parcel   = $location['parcel'] ?? $dataObj['location']['parcelDetails'][0] ?? $
 $activitySessionId = $input['activitySessionId'] ?? $dataObj['activitySessionId'] ?? bin2hex(random_bytes(16));
 $debugEnabled      = filter_var($input['debug'] ?? $_GET['debug'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-// Extract normalized location attributes
 $address      = $location['locationAddress'] ?? $dataObj['locationAddress'] ?? $input['locationAddress'] ?? null;
 $city         = $location['locationCity'] ?? $dataObj['locationCity'] ?? null;
 $state        = $location['locationState'] ?? $dataObj['locationState'] ?? 'AZ';
 $zip          = $location['locationZip'] ?? $dataObj['locationZip'] ?? null;
 $cityStateZip = $location['locationCityStateZip'] ?? $dataObj['locationCityStateZip'] ?? implode(', ', array_filter([$city, trim($state . ' ' . $zip)]));
 
-// Regional Unit Cleansing: Strip suite/unit designators
 $cleanAddress = preg_replace('/\b(suite|ste|unit|apt|#)\s*[\w-]+/i', '', (string)$address);
 $cleanAddress = trim(preg_replace('/\s+/', ' ', (string)$cleanAddress), " ,");
 
@@ -130,25 +87,7 @@ $fullCleanAddress  = !empty($cleanAddressParts) ? implode(', ', $cleanAddressPar
 
 #endregion
 
-#region SECTION 2 — Google Place ID & Spatial Geocoding Resolution
-
-if (!function_exists('cleanAddressForPlaces')) {
-    function cleanAddressForPlaces(string $rawAddress): string
-    {
-        $clean = preg_replace('/\b(suite|ste|unit|apt|apartment|#)\s*[\w\-]+/i', '', $rawAddress);
-
-        if (class_exists('NumberFormatter')) {
-            $formatter = new NumberFormatter('en', NumberFormatter::SPELLOUT);
-            $clean = preg_replace_callback('/\b([0-9]+)(st|nd|rd|th)\b/i', static function ($matches) use ($formatter) {
-                $num = (int)$matches[1];
-                $spelled = $formatter->format($num);
-                return ucwords(str_replace('-', ' ', $spelled));
-            }, $clean);
-        }
-
-        return trim(preg_replace('/\s+/', ' ', $clean));
-    }
-}
+#region SECTION 2 — Geocoding & Spatial Resolution
 
 $rawLat = $location['locationLatitude'] ?? $dataObj['locationLatitude'] ?? $dataObj['coordinates']['lat'] ?? $input['locationLatitude'] ?? null;
 $rawLng = $location['locationLongitude'] ?? $dataObj['locationLongitude'] ?? $dataObj['coordinates']['lng'] ?? $input['locationLongitude'] ?? null;
@@ -160,7 +99,7 @@ $locationResolvedAddress = $fullAddress;
 $issues                  = [];
 $locationValidated       = true;
 
-// Option A: Pre-existing Google Place ID lookup
+// Option A: Place ID lookup
 if ($locationPlaceId && $googleMapsApiKey) {
     $placeDetailsUrl = 'https://maps.googleapis.com/maps/api/place/details/json?' . http_build_query([
         'place_id' => $locationPlaceId,
@@ -176,7 +115,7 @@ if ($locationPlaceId && $googleMapsApiKey) {
     }
 }
 
-// Option B: Query Google Geocoding API using cleaned street address
+// Option B: Query Google Geocoding API
 if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
     $googleGeocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?' . http_build_query([
         'address' => $fullCleanAddress,
@@ -196,7 +135,6 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
         $locationResolvedAddress = $firstResult['formatted_address'] ?? $fullAddress;
     }
 
-    // Fallback to Places Find Place From Text
     if (!$locationPlaceId) {
         $placesQueryAddress = cleanAddressForPlaces($fullCleanAddress);
 
@@ -222,7 +160,7 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
     }
 }
 
-// Option C: Reverse Geocode via Lat/Lng if Place ID is missing
+// Option C: Reverse Geocode via Lat/Lng
 if (!$locationPlaceId && $lat !== null && $lng !== null && $googleMapsApiKey) {
     $googleReverseGeocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json?' . http_build_query([
         'latlng' => $lat . ',' . $lng,
@@ -283,7 +221,7 @@ if (!$locationValidated) {
 
 #endregion
 
-#region SECTION 3 — Registry Configuration & Short-Circuit Check
+#region SECTION 3 — Registry & Short-Circuit
 
 $jurisKey  = strtolower(trim((string)$locationJurisdiction));
 $jurisSlug = trim(preg_replace('/[^a-z0-9]+/', '-', $jurisKey), '-');
@@ -330,7 +268,7 @@ if ($configSlug !== '' && ($configSlug === $jurisKey || $configSlug === $jurisSl
     }
 }
 
-// SHORT-CIRCUIT: Direct Parcel Bypass
+// Direct Parcel Bypass Short-Circuit
 if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !== 'UNKNOWN') {
     echo json_encode([
         'success'           => true,
@@ -365,7 +303,7 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
 
 #endregion
 
-#region SECTION 4 — Maricopa County Spatial Assessor Query
+#region SECTION 4 — Maricopa Assessor GIS Query
 
 $ownerName = null;
 $subdiv    = null;
@@ -512,7 +450,6 @@ $output = [
     ]
 ];
 
-// Append debug block if debug is requested or matched
 if ($debugEnabled || isset($zoningResult)) {
     $output['debug'] = [
         'jurisdictionKey'  => $jurisKey,
@@ -534,58 +471,67 @@ exit;
 
 #endregion
 
-#region SECTION 7 — Helper Routines
+#region SECTION 7 — Global Function Definitions (Unconditional)
 
-if (!function_exists('httpGetJson')) {
-    function httpGetJson(string $url, int $timeout = 10): array {
-        $res = httpGetJsonDetailed($url, $timeout);
-        return is_array($res['data']) ? $res['data'] : [];
-    }
+function httpGetJsonDetailed(string $url, int $timeout = 10): array {
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_HTTPHEADER     => ['Accept: application/json', 'User-Agent: Skyesoft-GIS/2.1'],
+        CURLOPT_SSL_VERIFYPEER => true
+    ]);
+
+    $response  = curl_exec($ch);
+    $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    $decoded = ($response !== false) ? json_decode($response, true) : null;
+
+    return [
+        'success'   => ($httpCode >= 200 && $httpCode < 300 && is_array($decoded)),
+        'httpCode'  => $httpCode,
+        'curlError' => $curlError,
+        'data'      => $decoded
+    ];
 }
 
-if (!function_exists('httpGetJsonDetailed')) {
-    function httpGetJsonDetailed(string $url, int $timeout = 10): array {
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => $timeout,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_HTTPHEADER     => ['Accept: application/json', 'User-Agent: Skyesoft-GIS/2.1'],
-            CURLOPT_SSL_VERIFYPEER => true
-        ]);
-
-        $response  = curl_exec($ch);
-        $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        $decoded = ($response !== false) ? json_decode($response, true) : null;
-
-        return [
-            'success'   => ($httpCode >= 200 && $httpCode < 300 && is_array($decoded)),
-            'httpCode'  => $httpCode,
-            'curlError' => $curlError,
-            'data'      => $decoded
-        ];
-    }
+function httpGetJson(string $url, int $timeout = 10): array {
+    $res = httpGetJsonDetailed($url, $timeout);
+    return is_array($res['data']) ? $res['data'] : [];
 }
 
-if (!function_exists('resolveMappedField')) {
-    function resolveMappedField(array $attributes, array $candidates, array $normalization = []): ?string {
-        foreach ($candidates as $candidate) {
-            foreach ($attributes as $key => $val) {
-                if (strcasecmp((string)$key, (string)$candidate) === 0 && $val !== null && trim((string)$val) !== '') {
-                    $strVal = trim((string)$val);
-                    if (!empty($normalization['stripSpecialChars'])) {
-                        $strVal = preg_replace('/[^\w\s-]/', '', $strVal);
-                    }
-                    return $strVal;
+function cleanAddressForPlaces(string $rawAddress): string {
+    $clean = preg_replace('/\b(suite|ste|unit|apt|apartment|#)\s*[\w\-]+/i', '', $rawAddress);
+
+    if (class_exists('NumberFormatter')) {
+        $formatter = new NumberFormatter('en', NumberFormatter::SPELLOUT);
+        $clean = preg_replace_callback('/\b([0-9]+)(st|nd|rd|th)\b/i', static function ($matches) use ($formatter) {
+            $num = (int)$matches[1];
+            $spelled = $formatter->format($num);
+            return ucwords(str_replace('-', ' ', $spelled));
+        }, $clean);
+    }
+
+    return trim(preg_replace('/\s+/', ' ', $clean));
+}
+
+function resolveMappedField(array $attributes, array $candidates, array $normalization = []): ?string {
+    foreach ($candidates as $candidate) {
+        foreach ($attributes as $key => $val) {
+            if (strcasecmp((string)$key, (string)$candidate) === 0 && $val !== null && trim((string)$val) !== '') {
+                $strVal = trim((string)$val);
+                if (!empty($normalization['stripSpecialChars'])) {
+                    $strVal = preg_replace('/[^\w\s-]/', '', $strVal);
                 }
+                return $strVal;
             }
         }
-        return null;
     }
+    return null;
 }
 
 function formatLocationResponse(array $p): array {
