@@ -847,23 +847,23 @@ window.SkyIndex = {
         },
 
         // 📍 Address Check Operation
-        address_check: async (args = '') => {
+        async address_check(args = '') {
             // Normalize command input
             const cleanAddress = String(args || '')
                 .replace(/^(?:address\s+check|check\s+address)\s*/i, '')
                 .trim();
 
             if (!cleanAddress) {
-                SkyIndex.appendSystemLine(
+                this.appendSystemLine(
                     '⚠️ Please provide an address. Example: address check 3145 N 33rd Ave, Phoenix, AZ 85017'
                 );
                 return;
             }
 
-            SkyIndex.appendSystemLine(`Resolving location for: ${cleanAddress}...`);
+            this.appendSystemLine(`Resolving location for: ${cleanAddress}...`);
 
             try {
-                const res = await fetch('/api/locationCheck.php', {
+                const res = await fetch('/skyesoft/api/locationCheck.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1007,7 +1007,7 @@ window.SkyIndex = {
                                 type="button"
                                 class="sky-btn sky-btn--outline"
                                 onclick="window.open(
-                                    '/api/locationReport.php?apn=' +
+                                    '/skyesoft/api/locationReport.php?apn=' +
                                     encodeURIComponent('${escapeHtml(parcelNumber)}'),
                                     '_blank'
                                 )"
@@ -1018,15 +1018,20 @@ window.SkyIndex = {
                     </div>
                 `;
 
-                SkyIndex.appendSystemLine('✅ Address successfully resolved.');
-                SkyIndex.appendSurfaceContent(cardHtml);
+                this.appendSystemLine('✅ Address successfully resolved.');
+                
+                // Dynamic fallback to safely append the HTML payload
+                if (typeof this.appendSurfaceContent === 'function') {
+                    this.appendSurfaceContent(cardHtml);
+                } else if (typeof this.appendSystemHtml === 'function') {
+                    this.appendSystemHtml(cardHtml);
+                }
 
-                // Optional development output
                 console.log('Address check result:', data);
             } catch (err) {
                 console.error('Address check failed:', err);
 
-                SkyIndex.appendSystemLine(
+                this.appendSystemLine(
                     `❌ Address check failed: ${err.message}`
                 );
             }
