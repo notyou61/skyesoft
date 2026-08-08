@@ -8844,18 +8844,16 @@ window.SkyIndex = {
         );
 
         try {
-            // Encode payload for standard PHP $_POST processing
-            const requestBody = new URLSearchParams();
-            requestBody.set('address', cleanAddress);
-
-            // Run location-resolution pipeline
+            // Run location-resolution pipeline with JSON payload
             const res = await fetch('/skyesoft/api/locationCheck.php', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    'Content-Type': 'application/json'
                 },
-                body: requestBody.toString()
+                body: JSON.stringify({
+                    locationAddress: cleanAddress
+                })
             });
 
             const responseText = await res.text();
@@ -8884,20 +8882,29 @@ window.SkyIndex = {
                 );
             }
 
-            // Validate that the backend actually received and resolved the address
+            // Extract normalized location payload
+            const location = data.data?.location;
+
+            if (!location) {
+                throw new Error(
+                    'The endpoint returned no location data.'
+                );
+            }
+
+            // Validate resolved address
             const resolvedAddress = String(
-                data.locationResolvedAddress ||
-                data.census?.normalized?.address ||
+                location.locationResolvedAddress ||
+                location.locationAddressRaw ||
                 ''
             ).trim();
 
             if (
-                !data.locationAddressRaw ||
+                !location.locationAddressRaw ||
                 !resolvedAddress ||
                 resolvedAddress.toLowerCase() === 'arizona, usa'
             ) {
                 throw new Error(
-                    'The endpoint responded, but it did not receive or resolve the submitted address.'
+                    'The submitted address could not be fully resolved.'
                 );
             }
 
@@ -8909,53 +8916,51 @@ window.SkyIndex = {
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
 
-            // Map response values against flat response schema
-            const parcel = Array.isArray(data.parcelDetails)
-                ? data.parcelDetails[0] || {}
+            // Map location response
+            const parcel = Array.isArray(location.parcelDetails)
+                ? location.parcelDetails[0] || {}
                 : {};
 
             const address =
-                data.locationResolvedAddress ||
-                data.locationAddressRaw ||
+                location.locationResolvedAddress ||
+                location.locationAddressRaw ||
                 cleanAddress;
 
             const parcelNumber =
                 parcel.parcelNumber ||
-                data.locationParcelNumber ||
+                location.locationParcelNumber ||
                 '';
 
             const ownerName =
                 parcel.ownerName ||
-                data.locationOwnerName ||
+                parcel.owner?.name ||
                 'N/A';
 
             const jurisdiction =
-                data.locationJurisdiction ||
+                location.locationJurisdiction ||
                 parcel.jurisdiction ||
                 'N/A';
 
             const jurisdictionType =
-                data.jurisdiction?.jurisdictionType ||
-                data.locationJurisdictionType ||
+                location.jurisdiction?.jurisdictionType ||
+                location.locationJurisdictionType ||
                 '';
 
             const county =
-                data.locationCounty ||
-                parcel.county ||
+                location.locationCounty ||
                 'N/A';
 
             const countyFips =
-                data.census?.countyFips ||
-                data.census?.countyGeoId ||
+                location.locationCountyFips ||
                 '';
 
             const rsCode =
-                data.governance?.rsCode ||
+                location.governance?.rsCode ||
                 data.workflowState ||
                 'property_valid';
 
             const parcelStatus =
-                data.governance?.parcelStatus ||
+                location.governance?.parcelStatus ||
                 data.summary ||
                 'Property validated';
 
