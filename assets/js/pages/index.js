@@ -5880,6 +5880,40 @@ window.SkyIndex = {
         this.appendEntityCard(data.entity);
     },
 
+    renderPropertyReviewCard(data) {
+        const parcel = data?.parcel?.primaryParcel || {};
+        const census = data?.census || {};
+        const google = data?.google || {};
+
+        const parcelNum = parcel.parcelNumber || 'N/A';
+        const owner = parcel.ownerName || 'N/A';
+        const siteAddr = parcel.siteAddress || data?.inputAddress || 'N/A';
+        const city = parcel.city || 'PHOENIX';
+        const jurisdiction = parcel.jurisdiction || 'N/A';
+        const county = census.county || 'Maricopa';
+        const fips = census.countyFips || '013';
+
+        const cardHtml = `
+            <div class="sky-card property-card">
+                <div class="sky-card-header">
+                    <h3>🏠 Property Review</h3>
+                    <span class="sky-badge success">Validated</span>
+                </div>
+                <div class="sky-card-body">
+                    <div class="sky-grid-2">
+                        <div><strong>Parcel #:</strong> ${parcelNum}</div>
+                        <div><strong>Owner:</strong> ${owner}</div>
+                        <div><strong>Site Address:</strong> ${siteAddr}, ${city}</div>
+                        <div><strong>Jurisdiction:</strong> ${jurisdiction}</div>
+                        <div><strong>County:</strong> ${county} (FIPS: ${fips})</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.appendSystemHtml(cardHtml);
+    },
+
     /**
      * Renders a canonical billing / primary address block.
      * Reusable across Entity, Contact, Location, Order, Proposal, and PDF cards.
@@ -8835,6 +8869,22 @@ window.SkyIndex = {
                     await this.showContactModal(id);   // must go through Workspace
                     return;
                 }
+            }
+
+            // --------------------------------------------------
+            // 🏠 PROPERTY / PARCEL VALIDATION RESPONSE
+            // --------------------------------------------------
+            if (
+                data?.workflowState === 'property_valid' ||
+                data?.type === 'property_review' ||
+                (data?.success && data?.parcel)
+            ) {
+                // Render your property review card/HTML generator method here
+                this.renderPropertyReviewCard(data); 
+                // OR if you construct HTML directly:
+                // const cardHtml = this.generatePropertyCardHtml(data);
+                // this.appendSystemHtml(cardHtml);
+                return;
             }
 
             // --------------------------------------------------
