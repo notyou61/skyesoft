@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php (API Endpoint)
-//  Version: 2.1.5
+//  Version: 2.1.6
 //  Last Updated: 2026-08-08
 //  Codex Tier: 2 — Infrastructure / GIS & Location Pipeline
 // ======================================================================
@@ -251,7 +251,6 @@ if (!$locationValidated) {
 $jurisKey  = strtolower(trim((string)$locationJurisdiction));
 $jurisSlug = trim(preg_replace('/[^a-z0-9]+/', '-', $jurisKey), '-');
 
-// Updated to reflect execution from within /api directory while falling back to project root
 $zoningRegistryCandidates = [
     __DIR__ . '/data/authoritative/jurisdictions/' . $jurisSlug . '/zoning.json',
     __DIR__ . '/../data/authoritative/jurisdictions/' . $jurisSlug . '/zoning.json',
@@ -374,9 +373,9 @@ if ($lat !== null && $lng !== null) {
 
 #region SECTION 5 — Municipal Zoning Resolution
 
-$zoningCode  = 'UNKNOWN';
-$zoningDesc  = 'N/A';
-$sourceLayer = 'Unmapped Spatial Layer';
+$zoningCode        = 'UNKNOWN';
+$zoningDesc        = 'N/A';
+$sourceLayer       = 'Unmapped Spatial Layer';
 $zoningDiagnostics = [];
 
 if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) {
@@ -499,6 +498,58 @@ exit;
 #endregion
 
 #region SECTION 7 — Helper Routines
+
+if (!function_exists('httpGetJson')) {
+    function httpGetJson(string $url, int $timeout = 10): array {
+        $res = httpGetJsonDetailed($url, $timeout);
+        return is_array($res['data']) ? $res['data'] : [];
+    }
+}
+
+if (!function_exists('httpGetJsonDetailed')) {
+    function httpGetJsonDetailed(string $url, int $timeout = 10): array {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_HTTPHEADER     => ['Accept: application/json', 'User-Agent: Skyesoft-GIS/2.1'],
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+
+        $response  = curl_exec($ch);
+        $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        $decoded = ($response !== false) ? json_decode($response, true) : null;
+
+        return [
+            'success'   => ($httpCode >= 200 && $httpCode < 300 && is_array($decoded)),
+            'httpCode'  => $httpCode,
+            'curlError' => $curlError,
+            'data'      => $decoded
+        ];
+    }
+}
+
+if (!function_exists('resolveMappedField')) {
+    function resolveMappedField(array $attributes, array $candidates, array $normalization = []): ?string {
+        foreach ($candidates as $candidate) {
+            foreach ($attributes as $key => $val) {
+                if (strcasecmp((string)$key, (string)$candidate) === 0 && $val !== null && trim((string)$val) !== '') {
+                    $strVal = trim((string)$val);
+                    if (!empty($normalization['stripSpecialChars'])) {
+                        $strVal = preg_replace('/[^\w\s-]/', '', $strVal);
+                    }
+                    return $strVal;
+                }
+            }
+        }
+        return null;
+    }
+}
 
 function formatLocationResponse(array $p): array {
     $cleanApn = $p['parcelNumber'] ? preg_replace('/\D/', '', (string)$p['parcelNumber']) : null;
