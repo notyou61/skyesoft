@@ -5880,12 +5880,12 @@ window.SkyIndex = {
         this.appendEntityCard(data.entity);
     },
 
+
     renderPropertyReviewCard(data) {
         const parcel = data?.parcel?.primaryParcel || {};
         const census = data?.census || {};
-        const google = data?.google || {};
 
-        const parcelNum = parcel.parcelNumber || 'N/A';
+        const parcelNum = parcel.parcelNumber || '';
         const owner = parcel.ownerName || 'N/A';
         const siteAddr = parcel.siteAddress || data?.inputAddress || 'N/A';
         const city = parcel.city || 'PHOENIX';
@@ -5893,20 +5893,31 @@ window.SkyIndex = {
         const county = census.county || 'Maricopa';
         const fips = census.countyFips || '013';
 
+        // Escaped parcel identifier for onclick handler
+        const safeParcelNum = String(parcelNum).replace(/'/g, "\\'");
+
         const cardHtml = `
             <div class="sky-card property-card">
-                <div class="sky-card-header">
+                <div class="sky-card-header" style="display:flex; justify-space-between; align-items:center;">
                     <h3>🏠 Property Review</h3>
                     <span class="sky-badge success">Validated</span>
                 </div>
                 <div class="sky-card-body">
                     <div class="sky-grid-2">
-                        <div><strong>Parcel #:</strong> ${parcelNum}</div>
+                        <div><strong>Parcel #:</strong> ${parcelNum || 'N/A'}</div>
                         <div><strong>Owner:</strong> ${owner}</div>
                         <div><strong>Site Address:</strong> ${siteAddr}, ${city}</div>
                         <div><strong>Jurisdiction:</strong> ${jurisdiction}</div>
                         <div><strong>County:</strong> ${county} (FIPS: ${fips})</div>
                     </div>
+                </div>
+                <div class="sky-card-footer" style="margin-top:12px; padding-top:10px; border-top:1px solid #e5e7eb; display:flex; gap:8px;">
+                    <button type="button" 
+                            onclick="SkyIndex.openLocationZoningReport('${safeParcelNum}')" 
+                            title="Open the Location Zoning &amp; Sign Code Report" 
+                            style="padding:5px 11px; border-radius:5px; border:1px solid #0d9488; background:#fff; color:#0f766e; font-size:0.78rem; font-weight:550; cursor:pointer;">
+                        Zoning Report
+                    </button>
                 </div>
             </div>
         `;
