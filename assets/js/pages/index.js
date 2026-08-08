@@ -847,79 +847,188 @@ window.SkyIndex = {
         },
 
         // 📍 Address Check Operation
-        address_check: async (args = "") => {
-            // Strip out the command prefix if it was captured in args
-            let cleanAddress = typeof args === 'string' ? args.replace(/^(address\s+check|check\s+address)\s*/i, '').trim() : '';
+        address_check: async (args = '') => {
+            // Normalize command input
+            const cleanAddress = String(args || '')
+                .replace(/^(?:address\s+check|check\s+address)\s*/i, '')
+                .trim();
 
             if (!cleanAddress) {
-                SkyIndex.appendSystemLine('⚠️ Please provide an address. Example: address check 3145 N 33rd Ave, Phoenix, AZ 85017');
+                SkyIndex.appendSystemLine(
+                    '⚠️ Please provide an address. Example: address check 3145 N 33rd Ave, Phoenix, AZ 85017'
+                );
                 return;
             }
 
-            SkyIndex.appendSystemLine(`Resolving Location for: ${cleanAddress}...`);
+            SkyIndex.appendSystemLine(`Resolving location for: ${cleanAddress}...`);
 
             try {
                 const res = await fetch('/api/locationCheck.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ address: cleanAddress })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        address: cleanAddress
+                    })
                 });
 
+                const responseText = await res.text();
+
                 if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(`HTTP ${res.status} — ${text.slice(0, 200)}`);
+                    throw new Error(
+                        `HTTP ${res.status} — ${responseText.slice(0, 200)}`
+                    );
                 }
 
-                const contentType = (res.headers.get('content-type') || '').toLowerCase();
-                const text = await res.text();
+                let data;
 
-                if (!contentType.includes('application/json')) {
-                    throw new Error(`Non-JSON response — ${text.slice(0, 200)}`);
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    throw new Error(
+                        `Invalid JSON response — ${responseText.slice(0, 200)}`
+                    );
                 }
 
-                const data = JSON.parse(text);
+                if (!data.success) {
+                    throw new Error(
+                        data.message || data.summary || 'Address could not be resolved.'
+                    );
+                }
 
-                SkyIndex.appendSystemLine('✅ Address Check Result:');
-                
-                // Render the visual Property Review Card matching the new JSON schema
-                const censusAddr = data?.census?.normalized?.address || cleanAddress;
-                const parcel = data?.parcel?.primaryParcel;
-                const jurisdiction = data?.jurisdiction?.governingJurisdiction;
-                const jurType = data?.jurisdiction?.jurisdictionType;
-                const county = data?.census?.county;
-                const fips = data?.census?.countyFips;
-                const rsCode = data?.governance?.rsCode;
-                const parcelStatus = data?.governance?.parcelStatus;
+                // Resolve response values
+                const censusAddress =
+                    data.census?.normalized?.address ||
+                    data.parcel?.primaryParcel?.siteAddress ||
+                    cleanAddress;
 
-                if (data.success) {
-                    const cardHtml = `
-                        <div class="sky-card property-card" style="border:1px solid #ddd; padding:15px; border-radius:6px; background:#fff; margin-bottom:10px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <div style="font-weight:600; font-size:1.1em;">🏠 Property Review: ${censusAddr}</div>
-                                <button class="sky-btn-sm" style="background:#fff; border:1px solid #00796b; color:#00796b; padding:4px 10px; border-radius:4px; cursor:pointer; font-weight:500;">Billing</button>
+                const parcel = data.parcel?.primaryParcel || {};
+                const jurisdiction =
+                    data.jurisdiction?.governingJurisdiction ||
+                    parcel.jurisdiction ||
+                    'N/A';
+
+                const jurisdictionType =
+                    data.jurisdiction?.jurisdictionType || '';
+
+                const county =
+                    data.census?.county ||
+                    parcel.county ||
+                    'N/A';
+
+                const countyFips =
+                    data.census?.countyFips ||
+                    data.census?.countyGeoId ||
+                    '';
+
+                const rsCode =
+                    data.governance?.rsCode ||
+                    data.workflowState ||
+                    'property_valid';
+
+                const parcelStatus =
+                    data.governance?.parcelStatus ||
+                    data.summary ||
+                    'Property validated';
+
+                // Escape values rendered into HTML
+                const escapeHtml = (value) => String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+
+                const parcelNumber = parcel.parcelNumber || '';
+
+                // Render success card
+                const cardHtml = `
+                    <div class="sky-card property-card">
+                        <div class="property-card__header">
+                            <div class="property-card__title">
+                                🏠 Property Review
                             </div>
-                            <div style="font-size:0.9em; color:#444; line-height:1.6; margin-bottom:12px;">
-                                <div><strong>Parcel Number (APN):</strong> ${parcel?.parcelNumber || 'N/A'}</div>
-                                <div><strong>Owner:</strong> ${parcel?.ownerName || 'N/A'}</div>
-                                <div><strong>Jurisdiction:</strong> ${jurisdiction || 'N/A'} (${jurType || ''})</div>
-                                <div><strong>County:</strong> ${county || 'N/A'} (FIPS: ${fips || ''})</div>
-                                <div><strong>Governance State:</strong> <span style="background:#e6f4ea; color:#137333; padding:2px 6px; border-radius:4px; font-weight:500;">${rsCode || 'N/A'} — ${parcelStatus || ''}</span></div>
+                            <span class="property-card__status">
+                                Resolved
+                            </span>
+                        </div>
+
+                        <div class="property-card__address">
+                            ${escapeHtml(censusAddress)}
+                        </div>
+
+                        <div class="property-card__details">
+                            <div>
+                                <strong>Parcel Number (APN):</strong>
+                                ${escapeHtml(parcelNumber || 'N/A')}
                             </div>
-                            <div style="border-top:1px solid #eee; padding-top:12px; display:flex; gap:8px;">
-                                <button class="sky-btn" style="background:#00796b; color:#fff; border:none; padding:6px 14px; border-radius:4px; cursor:pointer; font-weight:500;">Open Profile</button>
-                                <button class="sky-btn" style="background:#fff; border:1px solid #00796b; color:#00796b; padding:6px 14px; border-radius:4px; cursor:pointer; font-weight:500;" onclick="window.open('/api/locationReport.php?apn=${parcel?.parcelNumber || ''}', '_blank')">Location Report</button>
+
+                            <div>
+                                <strong>Owner:</strong>
+                                ${escapeHtml(parcel.ownerName || 'N/A')}
+                            </div>
+
+                            <div>
+                                <strong>Jurisdiction:</strong>
+                                ${escapeHtml(jurisdiction)}
+                                ${jurisdictionType
+                                    ? ` (${escapeHtml(jurisdictionType)})`
+                                    : ''}
+                            </div>
+
+                            <div>
+                                <strong>County:</strong>
+                                ${escapeHtml(county)}
+                                ${countyFips
+                                    ? ` (FIPS: ${escapeHtml(countyFips)})`
+                                    : ''}
+                            </div>
+
+                            <div>
+                                <strong>Governance State:</strong>
+                                <span class="property-card__governance">
+                                    ${escapeHtml(rsCode)} — ${escapeHtml(parcelStatus)}
+                                </span>
                             </div>
                         </div>
-                    `;
-                    SkyIndex.appendSurfaceContent(cardHtml);
-                }
 
-                // Also output the clean JSON object for verification
-                SkyIndex.appendSystemLine(JSON.stringify(data, null, 2));
+                        <div class="property-card__actions">
+                            <button
+                                type="button"
+                                class="sky-btn"
+                                data-action="open-property-profile"
+                                data-apn="${escapeHtml(parcelNumber)}"
+                            >
+                                Open Profile
+                            </button>
 
+                            <button
+                                type="button"
+                                class="sky-btn sky-btn--outline"
+                                onclick="window.open(
+                                    '/api/locationReport.php?apn=' +
+                                    encodeURIComponent('${escapeHtml(parcelNumber)}'),
+                                    '_blank'
+                                )"
+                            >
+                                Location Report
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                SkyIndex.appendSystemLine('✅ Address successfully resolved.');
+                SkyIndex.appendSurfaceContent(cardHtml);
+
+                // Optional development output
+                console.log('Address check result:', data);
             } catch (err) {
-                console.error(err);
-                SkyIndex.appendSystemLine(`❌ Address check failed: ${err.message}`);
+                console.error('Address check failed:', err);
+
+                SkyIndex.appendSystemLine(
+                    `❌ Address check failed: ${err.message}`
+                );
             }
         }
 
