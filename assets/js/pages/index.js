@@ -5889,24 +5889,30 @@ window.SkyIndex = {
 
         const parcelNum = parcel.parcelNumber || '';
         const owner = parcel.ownerName || 'N/A';
-        const siteAddr = parcel.siteAddress || data?.inputAddress || data?.census?.normalized?.address || 'N/A';
+        const rawSiteAddr = parcel.siteAddress || data?.inputAddress || data?.census?.normalized?.address || 'N/A';
         const city = parcel.city || 'PHOENIX';
         const jurisdiction = parcel.jurisdiction || 'PHOENIX';
         const county = census.county || 'Maricopa';
         const fips = census.countyFips || '013';
 
+        // Prevent "PHOENIX 85008, PHOENIX" duplication
+        let displayAddress = rawSiteAddr;
+        if (city && rawSiteAddr !== 'N/A' && !rawSiteAddr.toLowerCase().includes(city.toLowerCase())) {
+            displayAddress = `${rawSiteAddr}, ${city}`;
+        }
+
         // ID for action button
         const locationId = Number(data?.locationId || data?.id || 0);
         const safeParcelNum = String(parcelNum).replace(/'/g, "\\'");
 
-        // Determine target report parameter: prefer locationId if available, else parcel string
+        // Determine target report parameter
         const reportParam = locationId > 0 ? locationId : `'${safeParcelNum}'`;
 
         const html = `
         <div class="result-card property-card" style="border-left:5px solid #0d9488; background:#fff; width:100%; max-width:100%; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05); overflow:hidden; margin:8px 0;">
 
             <!-- Header -->
-            <div class="result-header" style="display:flex; justify-space-between; align-items:center; gap:10px; padding:12px 14px 8px;">
+            <div class="result-header" style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 14px 8px;">
                 <div style="display:flex; align-items:center; gap:8px; min-width:0;">
                     <span style="font-size:1.2rem; line-height:1;">🏠</span>
                     <strong style="color:#111; font-size:1.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -5925,7 +5931,7 @@ window.SkyIndex = {
 
                 <!-- Details -->
                 <div style="padding:4px 0 10px; border-bottom:1px solid #f0f0f0; font-size:0.88rem; line-height:1.45; color:#374151;">
-                    <div><strong>Site Address:</strong> ${this.escapeHtml(siteAddr)}, ${this.escapeHtml(city)}</div>
+                    <div><strong>Site Address:</strong> ${this.escapeHtml(displayAddress)}</div>
                     <div style="margin-top:2px;"><strong>Owner:</strong> ${this.escapeHtml(owner)}</div>
                     
                     ${parcelNum ? `
