@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php (API Endpoint)
-//  Version: 2.1.8
+//  Version: 2.1.9
 // ======================================================================
 
 #region SECTION 0 — Headers & Environment
@@ -133,6 +133,41 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
             $lng = (float)$firstResult['geometry']['location']['lng'];
         }
         $locationResolvedAddress = $firstResult['formatted_address'] ?? $fullAddress;
+
+        // Resolve address components from Google response
+        foreach (($firstResult['address_components'] ?? []) as $component) {
+            $componentTypes = $component['types'] ?? [];
+
+            // Resolve municipality
+            if (
+                in_array('locality', $componentTypes, true) ||
+                (
+                    empty($city) &&
+                    in_array('postal_town', $componentTypes, true)
+                )
+            ) {
+                $city = $component['long_name'] ?? $city;
+            }
+
+            // Resolve state
+            if (in_array('administrative_area_level_1', $componentTypes, true)) {
+                $state = $component['short_name'] ?? $state;
+            }
+
+            // Resolve ZIP
+            if (in_array('postal_code', $componentTypes, true)) {
+                $zip = $component['long_name'] ?? $zip;
+            }
+
+            // Resolve county
+            if (in_array('administrative_area_level_2', $componentTypes, true)) {
+                $locationCounty = preg_replace(
+                    '/\s+County$/i',
+                    '',
+                    (string)($component['long_name'] ?? $locationCounty)
+                );
+            }
+        }
     }
 
     if (!$locationPlaceId) {
@@ -217,6 +252,14 @@ if (!$locationValidated) {
         'issues'            => $issues
     ], JSON_PRETTY_PRINT);
     exit;
+}
+
+// Finalize jurisdiction after geocoding
+if (
+    empty($locationJurisdiction) ||
+    strtolower((string)$locationJurisdiction) === 'unknown'
+) {
+    $locationJurisdiction = $city ?: null;
 }
 
 #endregion
