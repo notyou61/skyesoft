@@ -8844,15 +8844,18 @@ window.SkyIndex = {
         );
 
         try {
+            // Encode payload for standard PHP $_POST processing
+            const requestBody = new URLSearchParams();
+            requestBody.set('address', cleanAddress);
+
             // Run location-resolution pipeline
             const res = await fetch('/skyesoft/api/locationCheck.php', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
                 },
-                body: JSON.stringify({
-                    address: cleanAddress
-                })
+                body: requestBody.toString()
             });
 
             const responseText = await res.text();
@@ -8881,6 +8884,23 @@ window.SkyIndex = {
                 );
             }
 
+            // Validate that the backend actually received and resolved the address
+            const resolvedAddress = String(
+                data.locationResolvedAddress ||
+                data.census?.normalized?.address ||
+                ''
+            ).trim();
+
+            if (
+                !data.locationAddressRaw ||
+                !resolvedAddress ||
+                resolvedAddress.toLowerCase() === 'arizona, usa'
+            ) {
+                throw new Error(
+                    'The endpoint responded, but it did not receive or resolve the submitted address.'
+                );
+            }
+
             // Escape displayed values
             const escapeHtml = (value) => String(value ?? '')
                 .replace(/&/g, '&amp;')
@@ -8889,35 +8909,38 @@ window.SkyIndex = {
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
 
-            // Resolve response values
-            const parcel = data.parcel?.primaryParcel || {};
+            // Map response values against flat response schema
+            const parcel = Array.isArray(data.parcelDetails)
+                ? data.parcelDetails[0] || {}
+                : {};
 
             const address =
-                data.census?.normalized?.address ||
-                parcel.siteAddress ||
+                data.locationResolvedAddress ||
+                data.locationAddressRaw ||
                 cleanAddress;
 
             const parcelNumber =
                 parcel.parcelNumber ||
-                data.parcelNumber ||
+                data.locationParcelNumber ||
                 '';
 
             const ownerName =
                 parcel.ownerName ||
-                data.ownerName ||
+                data.locationOwnerName ||
                 'N/A';
 
             const jurisdiction =
-                data.jurisdiction?.governingJurisdiction ||
+                data.locationJurisdiction ||
                 parcel.jurisdiction ||
                 'N/A';
 
             const jurisdictionType =
                 data.jurisdiction?.jurisdictionType ||
+                data.locationJurisdictionType ||
                 '';
 
             const county =
-                data.census?.county ||
+                data.locationCounty ||
                 parcel.county ||
                 'N/A';
 
