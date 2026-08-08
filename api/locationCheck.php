@@ -472,6 +472,23 @@ $output = [
     ]
 ];
 
+// Append debug block if debug is requested or matched
+if ($debugEnabled || isset($zoningResult)) {
+    $output['debug'] = [
+        'jurisdictionKey'  => $jurisKey,
+        'jurisdictionSlug' => $jurisSlug,
+        'configMatched'    => ($matchedConfig !== null),
+        'zoningQuery'      => [
+            'configFile'   => $zoningRegistryFile,
+            'endpoint'     => $endpoint ?? null,
+            'httpCode'     => $zoningResult['httpCode'] ?? 200,
+            'curlError'    => $zoningResult['curlError'] ?? '',
+            'arcGisError'  => $zoningResult['data']['error'] ?? null,
+            'featureCount' => count($features ?? [])
+        ]
+    ];
+}
+
 echo json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 exit;
 
@@ -481,6 +498,7 @@ exit;
 
 function formatLocationResponse(array $p): array {
     $cleanApn = $p['parcelNumber'] ? preg_replace('/\D/', '', (string)$p['parcelNumber']) : null;
+    $isResolved = ($p['zoningCode'] !== 'UNKNOWN' && $p['zoningCode'] !== 'N/A');
 
     return [
         'locationAddress'         => $p['address'],
@@ -539,15 +557,15 @@ function formatLocationResponse(array $p): array {
                 ],
                 'parcelRecordReady' => true,
                 'zoning'            => [
-                    'status'            => ($p['zoningCode'] !== 'UNKNOWN') ? 'resolved' : 'unmapped',
+                    'status'            => $isResolved ? 'resolved' : 'unmapped',
                     'reason'            => null,
-                    'message'           => ($p['zoningCode'] !== 'UNKNOWN') ? 'Base zoning resolved successfully.' : 'Zoning layer unmapped.',
+                    'message'           => $isResolved ? 'Base zoning resolved successfully.' : 'Zoning layer unmapped.',
                     'zoningCode'        => $p['zoningCode'],
                     'zoningDescription' => $p['zoningDescription'],
                     'zoningSource'      => $p['zoningSource'],
                     'zoningVerifiedAt'  => $p['verifiedAt'],
                     'confidence'        => $p['confidence'],
-                    'requiresReview'    => ($p['zoningCode'] === 'UNKNOWN')
+                    'requiresReview'    => !$isResolved
                 ]
             ]
         ],
@@ -556,14 +574,14 @@ function formatLocationResponse(array $p): array {
         'jurisdictionType'   => 'City',
         'hasMultipleParcels' => false,
         'zoning'             => [
-            'status'            => ($p['zoningCode'] !== 'UNKNOWN') ? 'resolved' : 'unmapped',
+            'status'            => $isResolved ? 'resolved' : 'unmapped',
             'reason'            => null,
             'zoningCode'        => $p['zoningCode'],
             'zoningDescription' => $p['zoningDescription'],
             'zoningSource'      => $p['zoningSource'],
             'zoningVerifiedAt'  => $p['verifiedAt'],
             'confidence'        => $p['confidence'],
-            'requiresReview'    => ($p['zoningCode'] === 'UNKNOWN')
+            'requiresReview'    => !$isResolved
         ]
     ];
 }
