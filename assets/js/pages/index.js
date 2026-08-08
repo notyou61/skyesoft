@@ -8916,20 +8916,33 @@ window.SkyIndex = {
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
 
+            // Normalize Maricopa APN format for display (e.g., 12626058A -> 126-26-058A)
+            const formatMaricopaApn = (apn) => {
+                const raw = String(apn || '').trim();
+                if (/^\d{8}[A-Za-z0-9]?$/.test(raw)) {
+                    return `${raw.slice(0, 3)}-${raw.slice(3, 5)}-${raw.slice(5)}`;
+                }
+                return raw;
+            };
+
             // Map location response
             const parcel = Array.isArray(location.parcelDetails)
                 ? location.parcelDetails[0] || {}
                 : {};
+
+            const zoning = location.zoning || parcel.zoning || {};
 
             const address =
                 location.locationResolvedAddress ||
                 location.locationAddressRaw ||
                 cleanAddress;
 
-            const parcelNumber =
+            const rawParcelNumber =
                 parcel.parcelNumber ||
                 location.locationParcelNumber ||
                 '';
+
+            const displayParcelNumber = formatMaricopaApn(rawParcelNumber);
 
             const ownerName =
                 parcel.ownerName ||
@@ -8937,13 +8950,25 @@ window.SkyIndex = {
                 'N/A';
 
             const jurisdiction =
+                location.jurisdictionName ||
                 location.locationJurisdiction ||
                 parcel.jurisdiction ||
                 'N/A';
 
             const jurisdictionType =
+                location.jurisdictionType ||
                 location.jurisdiction?.jurisdictionType ||
                 location.locationJurisdictionType ||
+                '';
+
+            const zoningCode =
+                zoning.zoningCode ||
+                parcel.zoningCode ||
+                'N/A';
+
+            const zoningDescription =
+                zoning.zoningDescription ||
+                parcel.zoningDescription ||
                 '';
 
             const county =
@@ -8984,7 +9009,7 @@ window.SkyIndex = {
                     <div class="property-card__details">
                         <div>
                             <strong>Parcel Number (APN):</strong>
-                            ${escapeHtml(parcelNumber || 'N/A')}
+                            ${escapeHtml(displayParcelNumber || 'N/A')}
                         </div>
 
                         <div>
@@ -8997,6 +9022,14 @@ window.SkyIndex = {
                             ${escapeHtml(jurisdiction)}
                             ${jurisdictionType
                                 ? ` (${escapeHtml(jurisdictionType)})`
+                                : ''}
+                        </div>
+
+                        <div>
+                            <strong>Zoning:</strong>
+                            ${escapeHtml(zoningCode)}
+                            ${zoningDescription
+                                ? ` — ${escapeHtml(zoningDescription)}`
                                 : ''}
                         </div>
 
@@ -9023,7 +9056,7 @@ window.SkyIndex = {
                             type="button"
                             class="sky-btn"
                             data-action="open-property-profile"
-                            data-apn="${escapeHtml(parcelNumber)}"
+                            data-apn="${escapeHtml(rawParcelNumber)}"
                         >
                             Open Profile
                         </button>
@@ -9032,7 +9065,7 @@ window.SkyIndex = {
                             type="button"
                             class="sky-btn sky-btn--outline"
                             data-action="open-location-report"
-                            data-apn="${escapeHtml(parcelNumber)}"
+                            data-apn="${escapeHtml(rawParcelNumber)}"
                         >
                             Location Report
                         </button>
