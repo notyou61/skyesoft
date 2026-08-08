@@ -854,196 +854,6 @@ window.SkyIndex = {
             }
         },
 
-        // 📍 Address Check Operation
-        async address_check(args = '') {
-            const cleanAddress = String(args || '')
-                .replace(/^(?:address\s+check|check\s+address)\s*/i, '')
-                .trim();
-
-            if (!cleanAddress) {
-                this.appendSystemLine(
-                    '⚠️ Please provide an address. Example: address check 3145 N 33rd Ave, Phoenix, AZ 85017'
-                );
-                return;
-            }
-
-            this.appendSystemLine(`Resolving location for: ${cleanAddress}...`);
-
-            try {
-                const res = await fetch('/skyesoft/api/locationCheck.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        address: cleanAddress
-                    })
-                });
-
-                const responseText = await res.text();
-
-                if (!res.ok) {
-                    throw new Error(
-                        `HTTP ${res.status} — ${responseText.slice(0, 200)}`
-                    );
-                }
-
-                let data;
-
-                try {
-                    data = JSON.parse(responseText);
-                } catch (parseError) {
-                    throw new Error(
-                        `Invalid JSON response — ${responseText.slice(0, 200)}`
-                    );
-                }
-
-                if (!data.success) {
-                    throw new Error(
-                        data.message || data.summary || 'Address could not be resolved.'
-                    );
-                }
-
-                // Resolve response values
-                const censusAddress =
-                    data.census?.normalized?.address ||
-                    data.parcel?.primaryParcel?.siteAddress ||
-                    cleanAddress;
-
-                const parcel = data.parcel?.primaryParcel || {};
-                const jurisdiction =
-                    data.jurisdiction?.governingJurisdiction ||
-                    parcel.jurisdiction ||
-                    'N/A';
-
-                const jurisdictionType =
-                    data.jurisdiction?.jurisdictionType || '';
-
-                const county =
-                    data.census?.county ||
-                    parcel.county ||
-                    'N/A';
-
-                const countyFips =
-                    data.census?.countyFips ||
-                    data.census?.countyGeoId ||
-                    '';
-
-                const rsCode =
-                    data.governance?.rsCode ||
-                    data.workflowState ||
-                    'property_valid';
-
-                const parcelStatus =
-                    data.governance?.parcelStatus ||
-                    data.summary ||
-                    'Property validated';
-
-                // Escape values rendered into HTML
-                const escapeHtml = (value) => String(value ?? '')
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#039;');
-
-                const parcelNumber = parcel.parcelNumber || '';
-
-                // Render success card
-                const cardHtml = `
-                    <div class="sky-card property-card">
-                        <div class="property-card__header">
-                            <div class="property-card__title">
-                                🏠 Property Review
-                            </div>
-                            <span class="property-card__status">
-                                Resolved
-                            </span>
-                        </div>
-
-                        <div class="property-card__address">
-                            ${escapeHtml(censusAddress)}
-                        </div>
-
-                        <div class="property-card__details">
-                            <div>
-                                <strong>Parcel Number (APN):</strong>
-                                ${escapeHtml(parcelNumber || 'N/A')}
-                            </div>
-
-                            <div>
-                                <strong>Owner:</strong>
-                                ${escapeHtml(parcel.ownerName || 'N/A')}
-                            </div>
-
-                            <div>
-                                <strong>Jurisdiction:</strong>
-                                ${escapeHtml(jurisdiction)}
-                                ${jurisdictionType
-                                    ? ` (${escapeHtml(jurisdictionType)})`
-                                    : ''}
-                            </div>
-
-                            <div>
-                                <strong>County:</strong>
-                                ${escapeHtml(county)}
-                                ${countyFips
-                                    ? ` (FIPS: ${escapeHtml(countyFips)})`
-                                    : ''}
-                            </div>
-
-                            <div>
-                                <strong>Governance State:</strong>
-                                <span class="property-card__governance">
-                                    ${escapeHtml(rsCode)} — ${escapeHtml(parcelStatus)}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="property-card__actions">
-                            <button
-                                type="button"
-                                class="sky-btn"
-                                data-action="open-property-profile"
-                                data-apn="${escapeHtml(parcelNumber)}"
-                            >
-                                Open Profile
-                            </button>
-
-                            <button
-                                type="button"
-                                class="sky-btn sky-btn--outline"
-                                onclick="window.open(
-                                    '/skyesoft/api/locationReport.php?apn=' +
-                                    encodeURIComponent('${escapeHtml(parcelNumber)}'),
-                                    '_blank'
-                                )"
-                            >
-                                Location Report
-                            </button>
-                        </div>
-                    </div>
-                `;
-
-                this.appendSystemLine('✅ Address successfully resolved.');
-                
-                // Dynamic fallback to safely append the HTML payload
-                if (typeof this.appendSurfaceContent === 'function') {
-                    this.appendSurfaceContent(cardHtml);
-                } else if (typeof this.appendSystemHtml === 'function') {
-                    this.appendSystemHtml(cardHtml);
-                }
-
-                console.log('Address check result:', data);
-            } catch (err) {
-                console.error('Address check failed:', err);
-
-                this.appendSystemLine(
-                    `❌ Address check failed: ${err.message}`
-                );
-            }
-        }
-
         // Future UI commands only need to be added here
     },
     // #endregion
@@ -9011,6 +8821,216 @@ window.SkyIndex = {
             );
         } finally {
             this.setThinking(false);
+        }
+    },
+    // #endregion
+
+    // #region 📍 Address Check Operation
+    async address_check(args = '') {
+        // Normalize address
+        const cleanAddress = String(args || '')
+            .replace(/^(?:address\s+check|check\s+address)\s*/i, '')
+            .trim();
+
+        if (!cleanAddress) {
+            this.appendSystemLine(
+                '⚠️ Please provide an address. Example: check address 3145 N 33rd Ave, Phoenix, AZ 85017'
+            );
+            return;
+        }
+
+        this.appendSystemLine(
+            `Resolving location for: ${cleanAddress}...`
+        );
+
+        try {
+            // Run location-resolution pipeline
+            const res = await fetch('/skyesoft/api/locationCheck.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    address: cleanAddress
+                })
+            });
+
+            const responseText = await res.text();
+
+            if (!res.ok) {
+                throw new Error(
+                    `HTTP ${res.status} — ${responseText.slice(0, 200)}`
+                );
+            }
+
+            let data;
+
+            try {
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                throw new Error(
+                    `Invalid JSON response — ${responseText.slice(0, 200)}`
+                );
+            }
+
+            if (!data.success) {
+                throw new Error(
+                    data.message ||
+                    data.summary ||
+                    'Address could not be resolved.'
+                );
+            }
+
+            // Escape displayed values
+            const escapeHtml = (value) => String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+
+            // Resolve response values
+            const parcel = data.parcel?.primaryParcel || {};
+
+            const address =
+                data.census?.normalized?.address ||
+                parcel.siteAddress ||
+                cleanAddress;
+
+            const parcelNumber =
+                parcel.parcelNumber ||
+                data.parcelNumber ||
+                '';
+
+            const ownerName =
+                parcel.ownerName ||
+                data.ownerName ||
+                'N/A';
+
+            const jurisdiction =
+                data.jurisdiction?.governingJurisdiction ||
+                parcel.jurisdiction ||
+                'N/A';
+
+            const jurisdictionType =
+                data.jurisdiction?.jurisdictionType ||
+                '';
+
+            const county =
+                data.census?.county ||
+                parcel.county ||
+                'N/A';
+
+            const countyFips =
+                data.census?.countyFips ||
+                data.census?.countyGeoId ||
+                '';
+
+            const rsCode =
+                data.governance?.rsCode ||
+                data.workflowState ||
+                'property_valid';
+
+            const parcelStatus =
+                data.governance?.parcelStatus ||
+                data.summary ||
+                'Property validated';
+
+            // Build result card
+            const cardHtml = `
+                <div class="sky-card property-card">
+                    <div class="property-card__header">
+                        <div class="property-card__title">
+                            🏠 Property Review
+                        </div>
+
+                        <span class="property-card__status">
+                            Resolved
+                        </span>
+                    </div>
+
+                    <div class="property-card__address">
+                        ${escapeHtml(address)}
+                    </div>
+
+                    <div class="property-card__details">
+                        <div>
+                            <strong>Parcel Number (APN):</strong>
+                            ${escapeHtml(parcelNumber || 'N/A')}
+                        </div>
+
+                        <div>
+                            <strong>Owner:</strong>
+                            ${escapeHtml(ownerName)}
+                        </div>
+
+                        <div>
+                            <strong>Jurisdiction:</strong>
+                            ${escapeHtml(jurisdiction)}
+                            ${jurisdictionType
+                                ? ` (${escapeHtml(jurisdictionType)})`
+                                : ''}
+                        </div>
+
+                        <div>
+                            <strong>County:</strong>
+                            ${escapeHtml(county)}
+                            ${countyFips
+                                ? ` (FIPS: ${escapeHtml(countyFips)})`
+                                : ''}
+                        </div>
+
+                        <div>
+                            <strong>Governance State:</strong>
+
+                            <span class="property-card__governance">
+                                ${escapeHtml(rsCode)} —
+                                ${escapeHtml(parcelStatus)}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="property-card__actions">
+                        <button
+                            type="button"
+                            class="sky-btn"
+                            data-action="open-property-profile"
+                            data-apn="${escapeHtml(parcelNumber)}"
+                        >
+                            Open Profile
+                        </button>
+
+                        <button
+                            type="button"
+                            class="sky-btn sky-btn--outline"
+                            data-action="open-location-report"
+                            data-apn="${escapeHtml(parcelNumber)}"
+                        >
+                            Location Report
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            this.appendSystemLine('✅ Address successfully resolved.');
+
+            if (typeof this.appendSurfaceContent === 'function') {
+                this.appendSurfaceContent(cardHtml);
+            } else if (typeof this.appendSystemHtml === 'function') {
+                this.appendSystemHtml(cardHtml);
+            } else {
+                throw new Error(
+                    'No HTML rendering method is available on SkyIndex.'
+                );
+            }
+
+            console.log('[ADDRESS CHECK] Result:', data);
+        } catch (err) {
+            console.error('[ADDRESS CHECK] Failed:', err);
+
+            this.appendSystemLine(
+                `❌ Address check failed: ${err?.message || 'Unknown error'}`
+            );
         }
     },
     // #endregion
