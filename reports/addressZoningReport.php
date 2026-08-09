@@ -75,21 +75,39 @@ function buildAddressSectionHeading(string $title, string $iconFile): string
         . '<span class="section-heading-title">' . escapeReportValue($title) . '</span></div>';
 }
 
-/** Format Unix or database timestamps consistently. */
+/** Format Unix or database timestamps in Phoenix local time. */
 function formatReportTimestamp(mixed $value, bool $includeTime = false): ?string
 {
     if ($value === null || $value === '') {
         return null;
     }
 
-    $timestamp = is_numeric($value) ? (int)$value : strtotime((string)$value);
+    try {
+        $phoenixTimeZone = new DateTimeZone('America/Phoenix');
 
-    if ($timestamp === false || $timestamp <= 0) {
+        if (is_numeric($value)) {
+            $dateTime = new DateTimeImmutable('@' . (int)$value);
+            $dateTime = $dateTime->setTimezone($phoenixTimeZone);
+        } else {
+            $dateTime = new DateTimeImmutable((string)$value, $phoenixTimeZone);
+        }
+
+        return $dateTime->format(
+            $includeTime
+                ? 'F j, Y g:i A'
+                : 'F j, Y'
+        );
+    } catch (Throwable $e) {
         return null;
     }
-
-    return date($includeTime ? 'F j, Y g:i A' : 'F j, Y', $timestamp);
 }
+
+$phoenixNow = new DateTimeImmutable(
+    'now',
+    new DateTimeZone('America/Phoenix')
+);
+
+$reportDateFormatted = $phoenixNow->format('F j, Y');
 
 /** Format a compact validation result. */
 function validationResult(bool $valid): string
@@ -327,7 +345,7 @@ $headerHtml = '
                     ' . escapeReportValue($fullAddress) . '
                 </div>
                 <div class="header-report-date">
-                    Report Date: ' . date('F j, Y') . '
+                    Report Date: ' . $reportDateFormatted . '
                 </div>
             </div>
         </td>
