@@ -1062,16 +1062,22 @@ body[data-page="index"] .authText {
     text-transform: uppercase;
 }
 
-.location-preview-card__actions {
+/* Location-preview footer */
+.location-preview-card__footer {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     gap: 7px;
     margin: 0 16px;
     padding: 10px 0 12px;
     border-top: 1px solid #e8e8e8;
 }
 
-.location-preview-card__actions .sky-btn {
+/* Remove duplicate divider below header */
+.location-preview-card__detail--first {
+    border-top: 0;
+}
+
+.location-preview-card__footer .sky-btn {
     min-height: 28px;
     padding: 5px 12px;
     border: 1px solid #008f86;
@@ -1080,12 +1086,7 @@ body[data-page="index"] .authText {
     font-weight: 600;
 }
 
-.location-preview-card__actions .sky-btn--primary {
-    background: #009b91;
-    color: #fff;
-}
-
-.location-preview-card__actions .sky-btn--outline {
+.location-preview-card__footer .sky-btn--outline {
     background: #fff;
     color: #007f76;
 }

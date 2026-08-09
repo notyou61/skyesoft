@@ -9017,7 +9017,7 @@ window.SkyIndex = {
                     </div>
 
                     <div class="location-preview-card__body">
-                        <div class="location-preview-card__detail">
+                        <div class="location-preview-card__detail location-preview-card__detail--first">
                             <span class="location-preview-card__icon">📐</span>
 
                             <div>
@@ -9084,7 +9084,7 @@ window.SkyIndex = {
                         </div>
                     </div>
 
-                    <div class="location-preview-card__actions">
+                    <div class="location-preview-card__footer">
                         <button
                             type="button"
                             class="sky-btn sky-btn--outline"
