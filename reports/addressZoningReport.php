@@ -188,35 +188,63 @@ $logoHtml = file_exists($logoPath)
 
 $css = '
     body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #222; line-height: 1.35; }
+
+    /* Report header */
     .header-table { width: 100%; border-collapse: collapse; border-bottom: 2px solid #14377c; }
-    .header-table td { padding: 0 0 3px; }
+    .header-table td { padding: 0 0 3px; vertical-align: top; }
+    .header-table td:last-child { text-align: right; }
     .header-logo { display: block; height: 58px; width: auto; }
     .logo-fallback { font-size: 16px; font-weight: bold; color: #14377c; }
-    .header-title { font-size: 13pt; line-height: 1.05; font-weight: bold; color: #14377c; text-align: right; }
-    .header-subtitle-main { font-size: 9.5pt; font-weight: bold; color: #333; text-align: right; margin-top: 2px; }
-    .header-subtitle-sub { font-size: 8.5pt; color: #555; text-align: right; margin-top: 1px; }
-    .header-report-date { font-size: 7.5pt; color: #666; text-align: right; margin-top: 1px; }
+
+    /* Right-align complete report-title block */
+    .header-title,
+    .header-subtitle-main,
+    .header-subtitle-sub,
+    .header-report-date {
+        display: block;
+        width: 100%;
+        margin-left: auto;
+        text-align: right;
+    }
+
+    .header-title { margin-top: 0; font-size: 13pt; line-height: 1.05; font-weight: bold; color: #14377c; }
+    .header-subtitle-main { margin-top: 2px; font-size: 9.5pt; font-weight: bold; color: #333; }
+    .header-subtitle-sub { margin-top: 1px; font-size: 8.5pt; color: #555; }
+    .header-report-date { margin-top: 1px; font-size: 7.5pt; color: #666; }
+
+    /* Report footer */
     .footer-table { width: 100%; border-top: 1px solid #ccc; padding-top: 4px; font-size: 7.5pt; color: #666; }
+
+    /* Report sections */
     .section-block { margin-bottom: 11px; page-break-inside: avoid; }
     .section-heading { font-size: 9.5pt; font-weight: bold; color: #14377c; border-bottom: 1.5px solid #14377c; padding-bottom: 2px; margin-bottom: 5px; }
     .section-icon { display: inline-block; width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; }
     .section-heading-title { display: inline-block; vertical-align: middle; }
+
+    /* Data tables */
     .data-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
-    .data-table th, .data-table td { border: 1px solid #ccc; padding: 4px 6px; font-size: 8pt; vertical-align: top; }
+    .data-table th,
+    .data-table td { border: 1px solid #ccc; padding: 4px 6px; font-size: 8pt; vertical-align: top; }
     .data-table th { width: 32%; text-align: left; background: #f8f9fa; color: #333; }
     .data-table td { width: 68%; background: #fff; color: #111; }
     .two-column-table { width: 100%; border-collapse: separate; border-spacing: 5px 0; margin-left: -5px; margin-right: -5px; }
     .two-column-table > tbody > tr > td { width: 50%; vertical-align: top; }
+
+    /* Status indicators */
     .status { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 7.5pt; font-weight: bold; }
     .status--resolved { color: #176638; background: #eaf7ef; border: 1px solid #9fd0ae; }
     .status--review { color: #8a5a00; background: #fff5dc; border: 1px solid #e8c46e; }
+
+    /* Report notes */
     .callout-box { background: #f0f4f9; border: 1px solid #b8cbe5; border-left: 4px solid #14377c; padding: 6px 9px; margin: 5px 0; }
     .callout-title { font-size: 8.5pt; font-weight: bold; color: #14377c; margin-bottom: 3px; }
     .callout-body { font-size: 7.8pt; line-height: 1.3; }
-    .compact-list { margin: 2px 0 2px; padding-left: 17px; font-size: 7.8pt; }
+    .compact-list { margin: 2px 0; padding-left: 17px; font-size: 7.8pt; }
     .compact-list li { margin-bottom: 2px; }
-    .citation-subtext { font-size: 7pt; color: #4a607a; margin-top: 2px; font-style: italic; }
+    .citation-subtext { margin-top: 2px; color: #4a607a; font-size: 7pt; font-style: italic; }
     .unverified { color: #777; font-style: italic; }
+
+    /* Research basis */
     .basis-table { width: 100%; border-collapse: collapse; }
     .basis-table td { width: 50%; border: 1px solid #d5d5d5; padding: 4px 6px; font-size: 7.6pt; }
 ';
