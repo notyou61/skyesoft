@@ -8991,7 +8991,7 @@ window.SkyIndex = {
 
             // Build location-preview card
             const cardHtml = `
-                <div class="location-preview-card">
+                <div class="result-card location-preview-card">
                     <div class="location-preview-card__header">
                         <div class="location-preview-card__title">
                             <span class="location-preview-card__pin">📍</span>
@@ -9131,15 +9131,8 @@ window.SkyIndex = {
 
             this.appendSystemLine('✅ Address successfully resolved.');
 
-            if (typeof this.appendSurfaceContent === 'function') {
-                this.appendSurfaceContent(cardHtml);
-            } else if (typeof this.appendSystemHtml === 'function') {
-                this.appendSystemHtml(cardHtml);
-            } else {
-                throw new Error(
-                    'No HTML rendering method is available on SkyIndex.'
-                );
-            }
+            // Render location-preview card
+            this.appendSystemHtml(cardHtml);
 
             console.log('[ADDRESS CHECK] Result:', data);
         } catch (err) {
