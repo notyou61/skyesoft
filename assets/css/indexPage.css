@@ -968,8 +968,7 @@ body[data-page="index"] .authText {
 }
 
 /* #endregion */
-
-/* #region Location check preview */
+/* #region Location Check Preview */
 
 .location-preview-card {
     width: min(100%, 820px);
@@ -988,8 +987,9 @@ body[data-page="index"] .authText {
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: 13px 16px 11px;
-    border-bottom: 0;
+    margin: 0 16px;                   /* inset so the border matches footer width */
+    padding: 13px 0 11px;             /* side padding removed; margin now provides the inset */
+    border-bottom: 1px solid #e8e8e8; /* line between header and Parcel — same as footer */
 }
 
 .location-preview-card__title {
@@ -1040,10 +1040,14 @@ body[data-page="index"] .authText {
     font-size: 13px;
 }
 
-/* Add inset dividers only between body rows */
-.location-preview-card__detail +
-.location-preview-card__detail {
+/* Short, inset dividers between body rows (border only on the content column) */
+.location-preview-card__detail + .location-preview-card__detail {
+    padding-top: 0;
+}
+
+.location-preview-card__detail + .location-preview-card__detail > div {
     border-top: 1px solid #ededed;
+    padding-top: 7px;
 }
 
 .location-preview-card__icon {
@@ -1073,7 +1077,7 @@ body[data-page="index"] .authText {
     gap: 7px;
     margin: 0 16px;
     padding: 10px 0 12px;
-    border-top: 1px solid #e8e8e8;
+    border-top: 1px solid #e8e8e8;    /* existing line above the button */
 }
 
 .location-preview-card__footer .sky-btn {
