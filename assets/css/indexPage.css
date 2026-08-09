@@ -982,6 +982,7 @@ body[data-page="index"] .authText {
     color: #222;
 }
 
+/* Card header */
 .location-preview-card__header {
     display: flex;
     align-items: flex-start;
@@ -1024,19 +1025,9 @@ body[data-page="index"] .authText {
     font-size: 11px;
 }
 
+/* Card body */
 .location-preview-card__body {
     padding: 10px 16px 4px;
-}
-
-.location-preview-card__address {
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-.location-preview-card__region {
-    margin: 2px 0 10px;
-    color: #666;
-    font-size: 11px;
 }
 
 .location-preview-card__detail {
@@ -1045,8 +1036,14 @@ body[data-page="index"] .authText {
     gap: 6px;
     align-items: start;
     padding: 7px 0;
-    border-top: 1px solid #ededed;
+    border-top: 0;
     font-size: 13px;
+}
+
+/* Add inset dividers only between body rows */
+.location-preview-card__detail +
+.location-preview-card__detail {
+    border-top: 1px solid #ededed;
 }
 
 .location-preview-card__icon {
@@ -1062,7 +1059,14 @@ body[data-page="index"] .authText {
     text-transform: uppercase;
 }
 
-/* Location-preview footer */
+.location-preview-card__secondary {
+    margin-top: 2px;
+    color: #666;
+    font-size: 11px;
+    font-weight: 400;
+}
+
+/* Card footer */
 .location-preview-card__footer {
     display: flex;
     align-items: center;
@@ -1070,11 +1074,6 @@ body[data-page="index"] .authText {
     margin: 0 16px;
     padding: 10px 0 12px;
     border-top: 1px solid #e8e8e8;
-}
-
-/* Remove duplicate divider below header */
-.location-preview-card__detail--first {
-    border-top: 0;
 }
 
 .location-preview-card__footer .sky-btn {
@@ -1089,13 +1088,6 @@ body[data-page="index"] .authText {
 .location-preview-card__footer .sky-btn--outline {
     background: #fff;
     color: #007f76;
-}
-
-.location-preview-card__secondary {
-    margin-top: 2px;
-    color: #666;
-    font-size: 11px;
-    font-weight: 400;
 }
 
 /* #endregion */
