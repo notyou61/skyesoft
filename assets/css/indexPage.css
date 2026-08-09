@@ -988,7 +988,7 @@ body[data-page="index"] .authText {
     justify-content: space-between;
     gap: 16px;
     padding: 13px 16px 11px;
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 0;
 }
 
 .location-preview-card__title {
