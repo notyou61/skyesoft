@@ -215,6 +215,16 @@ $css = '
 
     /* Right-side report details */
     .header-report-details {
+        display: block;
+        width: 100%;
+        text-align: right;
+    }
+
+    .header-title,
+    .header-subtitle-main,
+    .header-subtitle-sub,
+    .header-report-date {
+        display: block;
         width: 100%;
         text-align: right;
     }
@@ -225,35 +235,29 @@ $css = '
         font-size: 13pt;
         font-weight: bold;
         line-height: 1.05;
-        text-align: right;
     }
 
     .header-subtitle-main {
-        margin-top: 2px;
+        margin: 2px 0 0;
         color: #333;
         font-size: 9.5pt;
         font-weight: bold;
-        text-align: right;
+        line-height: 1.15;
     }
 
     .header-subtitle-sub {
-        margin-top: 1px;
+        margin: 1px 0 0;
         color: #555;
         font-size: 8.5pt;
-        text-align: right;
+        line-height: 1.15;
     }
 
     .header-report-date {
-        margin-top: 1px;
+        margin: 1px 0 0;
         color: #666;
         font-size: 7.5pt;
-        text-align: right;
+        line-height: 1.15;
     }
-
-    .header-title { margin-top: 0; font-size: 13pt; line-height: 1.05; font-weight: bold; color: #14377c; }
-    .header-subtitle-main { margin-top: 2px; font-size: 9.5pt; font-weight: bold; color: #333; }
-    .header-subtitle-sub { margin-top: 1px; font-size: 8.5pt; color: #555; }
-    .header-report-date { margin-top: 1px; font-size: 7.5pt; color: #666; }
 
     /* Report footer */
     .footer-table { width: 100%; border-top: 1px solid #ccc; padding-top: 4px; font-size: 7.5pt; color: #666; }
