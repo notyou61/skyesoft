@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php (API Endpoint)
-//  Version: 2.1.9
+//  Version: 2.2.0
 // ======================================================================
 
 #region SECTION 0 — Headers & Environment
@@ -313,6 +313,12 @@ if ($configSlug !== '' && ($configSlug === $jurisKey || $configSlug === $jurisSl
 
 // Direct Parcel Bypass Short-Circuit
 if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !== 'UNKNOWN') {
+    $frontageResult = resolveLocationFrontages(
+        (string)$locationParcelNumber,
+        (string)$locationJurisdiction,
+        $executionTime
+    );
+
     echo json_encode([
         'success'           => true,
         'status'            => 'resolved',
@@ -337,7 +343,8 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
                 'subdivision'       => $parcel['subdivision'] ?? null,
                 'lotSize'           => $parcel['lotSize'] ?? null,
                 'confidence'        => (int)($parcel['confidence'] ?? 95),
-                'verifiedAt'        => $executionTime
+                'verifiedAt'        => $executionTime,
+                'frontages'         => $frontageResult['frontages']
             ])
         ]
     ], JSON_PRETTY_PRINT);
@@ -460,6 +467,13 @@ if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) 
 $hasZoningMatch   = ($zoningCode !== 'UNKNOWN' && $zoningCode !== 'N/A');
 $resultConfidence = $hasZoningMatch ? 95 : 50;
 
+// Resolve parcel frontages in memory (no database access)
+$frontageResult = resolveLocationFrontages(
+    (string)$locationParcelNumber,
+    (string)$locationJurisdiction,
+    $executionTime
+);
+
 #endregion
 
 #region SECTION 6 — Payload Output & Execution Termination
@@ -488,7 +502,8 @@ $output = [
             'zoningDescription' => $zoningDesc,
             'zoningSource'      => $sourceLayer,
             'confidence'        => $resultConfidence,
-            'verifiedAt'        => $executionTime
+            'verifiedAt'        => $executionTime,
+            'frontages'         => $frontageResult['frontages']
         ])
     ]
 ];
@@ -505,7 +520,8 @@ if ($debugEnabled || isset($zoningResult)) {
             'curlError'    => $zoningResult['curlError'] ?? '',
             'arcGisError'  => $zoningResult['data']['error'] ?? null,
             'featureCount' => count($features ?? [])
-        ]
+        ],
+        'frontageQuery'    => $frontageResult['diagnostics']
     ];
 }
 
@@ -637,6 +653,9 @@ function formatLocationResponse(array $p): array {
                     'updatedAt'         => null
                 ],
                 'parcelRecordReady' => true,
+                'frontages'          => is_array($p['frontages'] ?? null)
+                    ? $p['frontages']
+                    : [],
                 'zoning'            => [
                     'status'            => $isResolved ? 'resolved' : 'unmapped',
                     'reason'            => null,
@@ -665,6 +684,326 @@ function formatLocationResponse(array $p): array {
             'requiresReview'    => !$isResolved
         ]
     ];
+}
+
+/**
+ * Resolve parcel frontage and Phoenix roadway classifications without persistence.
+ */
+function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, int $verifiedAt): array {
+    $result = [
+        'frontages'  => [],
+        'diagnostics' => [
+            'status'       => 'not_attempted',
+            'parcelQuery'  => null,
+            'streetQuery'  => null,
+            'phoenixQuery' => null,
+            'message'      => null
+        ]
+    ];
+
+    $apn = preg_replace('/[^A-Za-z0-9]/', '', $parcelNumber);
+    if ($apn === '') {
+        $result['diagnostics']['status'] = 'parcel_number_missing';
+        $result['diagnostics']['message'] = 'Frontage resolution requires a parcel number.';
+        return $result;
+    }
+
+    // Retrieve parcel polygon in Arizona Central State Plane feet
+    $parcelEndpoint = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/'
+        . 'MaricopaDynamicQueryService/MapServer/3/query';
+    $parcelWhere = "APN='" . str_replace("'", "''", $apn) . "'";
+    $parcelUrl = $parcelEndpoint . '?' . http_build_query([
+        'f'              => 'json',
+        'where'          => $parcelWhere,
+        'outFields'      => '*',
+        'returnGeometry' => 'true',
+        'outSR'          => '2223'
+    ]);
+    $parcelResponse = httpGetJsonDetailed($parcelUrl, 12);
+    $parcelFeatures = $parcelResponse['data']['features'] ?? [];
+    $result['diagnostics']['parcelQuery'] = [
+        'httpCode'     => $parcelResponse['httpCode'],
+        'curlError'    => $parcelResponse['curlError'],
+        'arcGisError'  => $parcelResponse['data']['error'] ?? null,
+        'featureCount' => count($parcelFeatures)
+    ];
+
+    if ($parcelFeatures === []) {
+        $result['diagnostics']['status'] = 'parcel_geometry_unresolved';
+        $result['diagnostics']['message'] = 'The parcel polygon could not be resolved.';
+        return $result;
+    }
+
+    $rings = $parcelFeatures[0]['geometry']['rings'] ?? [];
+    $extent = calculateGeometryExtent($rings);
+    if ($rings === [] || $extent === null) {
+        $result['diagnostics']['status'] = 'parcel_geometry_invalid';
+        $result['diagnostics']['message'] = 'The parcel response did not contain measurable rings.';
+        return $result;
+    }
+
+    // Retrieve nearby built, public Maricopa County street centerlines
+    $streetEndpoint = 'https://services.arcgis.com/ykpntM6e3tHvzKRJ/arcgis/rest/services/'
+        . 'Maricopa_County_Streets/FeatureServer/0/query';
+    $streetEnvelope = [
+        'xmin' => $extent['xmin'] - 125,
+        'ymin' => $extent['ymin'] - 125,
+        'xmax' => $extent['xmax'] + 125,
+        'ymax' => $extent['ymax'] + 125,
+        'spatialReference' => ['wkid' => 2223]
+    ];
+    $streetUrl = $streetEndpoint . '?' . http_build_query([
+        'f'                => 'json',
+        'where'            => 'IsBuilt=1 AND IsPublic=1',
+        'geometry'         => json_encode($streetEnvelope),
+        'geometryType'     => 'esriGeometryEnvelope',
+        'inSR'             => '2223',
+        'outSR'            => '2223',
+        'spatialRel'       => 'esriSpatialRelIntersects',
+        'outFields'        => '*',
+        'returnGeometry'   => 'true'
+    ]);
+    $streetResponse = httpGetJsonDetailed($streetUrl, 12);
+    $streetFeatures = $streetResponse['data']['features'] ?? [];
+    $result['diagnostics']['streetQuery'] = [
+        'httpCode'     => $streetResponse['httpCode'],
+        'curlError'    => $streetResponse['curlError'],
+        'arcGisError'  => $streetResponse['data']['error'] ?? null,
+        'featureCount' => count($streetFeatures)
+    ];
+
+    $frontages = calculateParcelFrontages($rings, $streetFeatures, $verifiedAt);
+    if ($frontages === []) {
+        $result['diagnostics']['status'] = 'no_frontage_identified';
+        $result['diagnostics']['message'] = 'No qualifying public-street frontage was identified.';
+        return $result;
+    }
+
+    // Add Phoenix roadway classifications for Phoenix parcels
+    if (strtolower(trim($jurisdiction)) === 'phoenix') {
+        $phoenixResult = enrichPhoenixFrontages($frontages, $streetEnvelope);
+        $frontages = $phoenixResult['frontages'];
+        $result['diagnostics']['phoenixQuery'] = $phoenixResult['diagnostics'];
+    }
+
+    $result['frontages'] = array_values($frontages);
+    $result['diagnostics']['status'] = 'resolved';
+    return $result;
+}
+
+/** Calculate the combined extent of ArcGIS polygon rings. */
+function calculateGeometryExtent(array $rings): ?array {
+    $xs = [];
+    $ys = [];
+    foreach ($rings as $ring) {
+        foreach ($ring as $point) {
+            if (isset($point[0], $point[1]) && is_numeric($point[0]) && is_numeric($point[1])) {
+                $xs[] = (float)$point[0];
+                $ys[] = (float)$point[1];
+            }
+        }
+    }
+    if ($xs === [] || $ys === []) {
+        return null;
+    }
+    return ['xmin' => min($xs), 'ymin' => min($ys), 'xmax' => max($xs), 'ymax' => max($ys)];
+}
+
+/** Match parcel edges to nearby, substantially parallel street centerlines. */
+function calculateParcelFrontages(array $rings, array $streetFeatures, int $verifiedAt): array {
+    $groups = [];
+    foreach ($rings as $ring) {
+        $pointCount = count($ring);
+        for ($index = 1; $index < $pointCount; $index++) {
+            $start = $ring[$index - 1];
+            $end = $ring[$index];
+            $edgeLength = pointDistance($start, $end);
+            if ($edgeLength < 1) {
+                continue;
+            }
+
+            $best = null;
+            foreach ($streetFeatures as $feature) {
+                $attributes = is_array($feature['attributes'] ?? null) ? $feature['attributes'] : [];
+                $streetName = resolveStreetName($attributes);
+                if ($streetName === '') {
+                    continue;
+                }
+                foreach (($feature['geometry']['paths'] ?? []) as $path) {
+                    for ($pathIndex = 1, $pathCount = count($path); $pathIndex < $pathCount; $pathIndex++) {
+                        $lineStart = $path[$pathIndex - 1];
+                        $lineEnd = $path[$pathIndex];
+                        $alignment = segmentAlignment($start, $end, $lineStart, $lineEnd);
+                        if ($alignment < 0.75) {
+                            continue;
+                        }
+                        $midpoint = [($start[0] + $end[0]) / 2, ($start[1] + $end[1]) / 2];
+                        $distance = pointToSegmentDistance($midpoint, $lineStart, $lineEnd);
+                        if ($distance > 100 || ($best !== null && $distance >= $best['distance'])) {
+                            continue;
+                        }
+                        $best = [
+                            'distance'   => $distance,
+                            'streetName' => $streetName,
+                            'attributes' => $attributes
+                        ];
+                    }
+                }
+            }
+
+            if ($best === null) {
+                continue;
+            }
+            $key = normalizeStreetName($best['streetName']);
+            if (!isset($groups[$key])) {
+                $groups[$key] = [
+                    'streetName' => $best['streetName'],
+                    'length'     => 0.0,
+                    'attributes' => $best['attributes'],
+                    'distance'   => $best['distance']
+                ];
+            }
+            $groups[$key]['length'] += $edgeLength;
+            $groups[$key]['distance'] = min($groups[$key]['distance'], $best['distance']);
+        }
+    }
+
+    $frontages = [];
+    foreach ($groups as $group) {
+        if ($group['length'] < 8) {
+            continue;
+        }
+        $classCode = resolveAttribute($group['attributes'], ['STREETCLASS', 'ST_CLASS', 'CLASS', 'FCC', 'ROADCLASS']);
+        $manualReview = $group['distance'] > 75;
+        $frontages[] = [
+            'streetName'           => $group['streetName'],
+            'frontageLengthFeet'   => round($group['length'], 2),
+            'frontageMethod'       => 'countyParcelBoundaryToCountyStreetCenterline',
+            'streetClassCode'      => $classCode,
+            'streetClassification' => null,
+            'roadTier'             => null,
+            'parcelSource'         => 'Maricopa County Assessor Parcel GIS',
+            'streetSource'         => 'Maricopa County Street Centerlines',
+            'verificationStatus'   => $manualReview ? 'review_required' : 'gis_calculated',
+            'requiresManualReview' => $manualReview,
+            'verifiedAt'           => $verifiedAt
+        ];
+    }
+    return $frontages;
+}
+
+/** Enrich normalized frontage records from the Phoenix street-centerline layer. */
+function enrichPhoenixFrontages(array $frontages, array $envelope): array {
+    $endpoint = 'https://maps.phoenix.gov/pub/rest/services/Public/'
+        . 'STR_StreetCenterline/MapServer/0/query';
+    $url = $endpoint . '?' . http_build_query([
+        'f'              => 'json',
+        'where'          => '1=1',
+        'geometry'       => json_encode($envelope),
+        'geometryType'   => 'esriGeometryEnvelope',
+        'inSR'           => '2223',
+        'spatialRel'     => 'esriSpatialRelIntersects',
+        'outFields'      => '*',
+        'returnGeometry' => 'false'
+    ]);
+    $response = httpGetJsonDetailed($url, 12);
+    $features = $response['data']['features'] ?? [];
+    $classMap = [
+        'FR' => ['Freeway', 'freeway'],
+        'EX' => ['Expressway', 'freeway'],
+        'MA' => ['Major Arterial', 'highVolume'],
+        'AR' => ['Arterial', 'highVolume'],
+        'AT' => ['Arterial', 'highVolume'],
+        'CO' => ['Collector', 'highVolume'],
+        'MC' => ['Minor Collector', 'lowVolume'],
+        'LO' => ['Local', 'lowVolume']
+    ];
+
+    foreach ($frontages as $index => $frontage) {
+        $targetName = normalizeStreetName((string)$frontage['streetName']);
+        foreach ($features as $feature) {
+            $attributes = is_array($feature['attributes'] ?? null) ? $feature['attributes'] : [];
+            if (normalizeStreetName(resolveStreetName($attributes)) !== $targetName) {
+                continue;
+            }
+            $code = strtoupper(resolveAttribute($attributes, [
+                'STREETCLASS', 'ST_CLASS', 'CLASS_CODE', 'CLASS', 'ROAD_CLASS', 'STR_CLASS'
+            ]));
+            if (!isset($classMap[$code])) {
+                continue;
+            }
+            $frontages[$index]['streetClassCode'] = $code;
+            $frontages[$index]['streetClassification'] = $classMap[$code][0];
+            $frontages[$index]['roadTier'] = $classMap[$code][1];
+            $frontages[$index]['streetSource'] = 'City of Phoenix Street Centerline GIS';
+            break;
+        }
+    }
+
+    return [
+        'frontages' => $frontages,
+        'diagnostics' => [
+            'httpCode'     => $response['httpCode'],
+            'curlError'    => $response['curlError'],
+            'arcGisError'  => $response['data']['error'] ?? null,
+            'featureCount' => count($features)
+        ]
+    ];
+}
+
+/** Resolve a street name from jurisdiction-varying ArcGIS attributes. */
+function resolveStreetName(array $attributes): string {
+    return resolveAttribute($attributes, [
+        'FULLNAME', 'FULL_NAME', 'STREETNAME', 'STREET_NAME', 'STR_NAME', 'NAME', 'ROADNAME'
+    ]);
+}
+
+/** Resolve the first non-empty case-insensitive attribute candidate. */
+function resolveAttribute(array $attributes, array $candidates): string {
+    foreach ($candidates as $candidate) {
+        foreach ($attributes as $key => $value) {
+            if (strcasecmp((string)$key, (string)$candidate) === 0 && trim((string)$value) !== '') {
+                return trim((string)$value);
+            }
+        }
+    }
+    return '';
+}
+
+/** Normalize street names for cross-source matching. */
+function normalizeStreetName(string $streetName): string {
+    $normalized = strtoupper(trim($streetName));
+    $normalized = preg_replace('/[^A-Z0-9]+/', ' ', $normalized);
+    return trim(preg_replace('/\s+/', ' ', $normalized));
+}
+
+/** Calculate straight-line distance between two projected points. */
+function pointDistance(array $first, array $second): float {
+    return hypot((float)$second[0] - (float)$first[0], (float)$second[1] - (float)$first[1]);
+}
+
+/** Calculate absolute directional alignment between two segments. */
+function segmentAlignment(array $a1, array $a2, array $b1, array $b2): float {
+    $ax = (float)$a2[0] - (float)$a1[0];
+    $ay = (float)$a2[1] - (float)$a1[1];
+    $bx = (float)$b2[0] - (float)$b1[0];
+    $by = (float)$b2[1] - (float)$b1[1];
+    $denominator = hypot($ax, $ay) * hypot($bx, $by);
+    return $denominator > 0 ? abs(($ax * $bx + $ay * $by) / $denominator) : 0.0;
+}
+
+/** Calculate the shortest distance from a point to a segment. */
+function pointToSegmentDistance(array $point, array $start, array $end): float {
+    $dx = (float)$end[0] - (float)$start[0];
+    $dy = (float)$end[1] - (float)$start[1];
+    if ($dx === 0.0 && $dy === 0.0) {
+        return pointDistance($point, $start);
+    }
+    $ratio = (((float)$point[0] - (float)$start[0]) * $dx
+        + ((float)$point[1] - (float)$start[1]) * $dy) / ($dx * $dx + $dy * $dy);
+    $ratio = max(0.0, min(1.0, $ratio));
+    $projection = [(float)$start[0] + $ratio * $dx, (float)$start[1] + $ratio * $dy];
+    return pointDistance($point, $projection);
 }
 
 #endregion
