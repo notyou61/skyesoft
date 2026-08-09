@@ -190,20 +190,63 @@ $css = '
     body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #222; line-height: 1.35; }
 
     /* Report header */
-    .header-table { width: 100%; border-collapse: collapse; border-bottom: 2px solid #14377c; }
-    .header-table td { padding: 0 0 3px; vertical-align: top; }
-    .header-table td:last-child { text-align: right; }
-    .header-logo { display: block; height: 58px; width: auto; }
-    .logo-fallback { font-size: 16px; font-weight: bold; color: #14377c; }
-
-    /* Right-align complete report-title block */
-    .header-title,
-    .header-subtitle-main,
-    .header-subtitle-sub,
-    .header-report-date {
-        display: block;
+    .header-table {
         width: 100%;
-        margin-left: auto;
+        border-collapse: collapse;
+        border-bottom: 2px solid #14377c;
+    }
+
+    .header-table td {
+        padding: 0 0 3px;
+        vertical-align: bottom;
+    }
+
+    .header-logo {
+        display: block;
+        width: auto;
+        height: 58px;
+    }
+
+    .logo-fallback {
+        color: #14377c;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    /* Right-side report details */
+    .header-report-details {
+        width: 100%;
+        text-align: right;
+    }
+
+    .header-title {
+        margin: 0;
+        color: #14377c;
+        font-size: 13pt;
+        font-weight: bold;
+        line-height: 1.05;
+        text-align: right;
+    }
+
+    .header-subtitle-main {
+        margin-top: 2px;
+        color: #333;
+        font-size: 9.5pt;
+        font-weight: bold;
+        text-align: right;
+    }
+
+    .header-subtitle-sub {
+        margin-top: 1px;
+        color: #555;
+        font-size: 8.5pt;
+        text-align: right;
+    }
+
+    .header-report-date {
+        margin-top: 1px;
+        color: #666;
+        font-size: 7.5pt;
         text-align: right;
     }
 
@@ -252,12 +295,28 @@ $css = '
 $headerHtml = '
 <table class="header-table">
     <tr>
-        <td style="width: 32%;">' . $logoHtml . '</td>
-        <td style="width: 68%; vertical-align: bottom;">
-            <div class="header-title">Address Zoning Report</div>
-            <div class="header-subtitle-main">Address Check</div>
-            <div class="header-subtitle-sub">' . escapeReportValue($fullAddress) . '</div>
-            <div class="header-report-date">Report Date: ' . date('F j, Y') . '</div>
+        <td
+            width="32%"
+            style="width: 32%; vertical-align: bottom;"
+        >
+            ' . $logoHtml . '
+        </td>
+
+        <td
+            width="68%"
+            align="right"
+            style="width: 68%; vertical-align: bottom; text-align: right;"
+        >
+            <div class="header-report-details">
+                <div class="header-title">Address Zoning Report</div>
+                <div class="header-subtitle-main">Address Check</div>
+                <div class="header-subtitle-sub">
+                    ' . escapeReportValue($fullAddress) . '
+                </div>
+                <div class="header-report-date">
+                    Report Date: ' . date('F j, Y') . '
+                </div>
+            </div>
         </td>
     </tr>
 </table>';
