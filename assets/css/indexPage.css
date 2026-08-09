@@ -1095,4 +1095,9 @@ body[data-page="index"] .authText {
     color: #007f76;
 }
 
+/* Address-zoning report form */
+.location-preview-card__report-form {
+    margin: 0;
+}
+
 /* #endregion */

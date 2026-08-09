@@ -9085,14 +9085,24 @@ window.SkyIndex = {
                     </div>
 
                     <div class="location-preview-card__footer">
-                        <button
-                            type="button"
-                            class="sky-btn sky-btn--outline"
-                            data-action="open-location-report"
-                            data-apn="${escapeHtml(rawParcelNumber)}"
+                        <form
+                            method="POST"
+                            action="/skyesoft/reports/addressZoningReport.php"
+                            target="_blank"
+                            class="location-preview-card__report-form"
                         >
-                            Zoning Report
-                        </button>
+                            <textarea
+                                name="payload"
+                                hidden
+                            >${escapeHtml(JSON.stringify(data))}</textarea>
+
+                            <button
+                                type="submit"
+                                class="sky-btn sky-btn--outline"
+                            >
+                                Zoning Report
+                            </button>
+                        </form>
                     </div>
                 </div>
             `;
