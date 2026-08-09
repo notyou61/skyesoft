@@ -117,85 +117,215 @@ function validationResult(bool $valid): string
         : '<span class="status status--review">Review required</span>';
 }
 
+
+// Read address-check payload
 try {
     $payload = readAddressCheckPayload();
 } catch (Throwable $e) {
     http_response_code(400);
-    echo 'Unable to generate address zoning report: ' . escapeReportValue($e->getMessage());
+
+    echo 'Unable to generate address zoning report: '
+        . escapeReportValue($e->getMessage());
+
     exit;
 }
 
+
+// Get resolved location
 $location = $payload['data']['location'] ?? null;
+
 if (!is_array($location)) {
     http_response_code(422);
     die('The address-check response does not contain data.location.');
 }
 
-$parcels = is_array($location['parcelDetails'] ?? null) ? $location['parcelDetails'] : [];
-$parcel = is_array($parcels[0] ?? null) ? $parcels[0] : [];
-$parcelRecord = is_array($parcel['parcelRecord'] ?? null) ? $parcel['parcelRecord'] : [];
-$assessor = is_array($parcel['assessor'] ?? null) ? $parcel['assessor'] : [];
-$zoning = is_array($parcel['zoning'] ?? null)
-    ? $parcel['zoning']
-    : (is_array($location['zoning'] ?? null) ? $location['zoning'] : []);
-$matchQuality = is_array($location['locationMatchQuality'] ?? null)
-    ? $location['locationMatchQuality']
+
+// Get primary parcel records
+$parcels = is_array($location['parcelDetails'] ?? null)
+    ? $location['parcelDetails']
     : [];
 
+$parcel = is_array($parcels[0] ?? null)
+    ? $parcels[0]
+    : [];
+
+$parcelRecord = is_array($parcel['parcelRecord'] ?? null)
+    ? $parcel['parcelRecord']
+    : [];
+
+$assessor = is_array($parcel['assessor'] ?? null)
+    ? $parcel['assessor']
+    : [];
+
+$zoning = is_array($parcel['zoning'] ?? null)
+    ? $parcel['zoning']
+    : (
+        is_array($location['zoning'] ?? null)
+            ? $location['zoning']
+            : []
+    );
+
+
+// Confirm report eligibility
 $success = (bool)($payload['success'] ?? false);
+
 $resolved = $success
     && ($payload['status'] ?? '') === 'resolved'
     && ($zoning['status'] ?? '') === 'resolved';
 
 if (!$resolved) {
     http_response_code(422);
-    die('The address-check response is not fully resolved and cannot support this report.');
+    die(
+        'The address-check response is not fully resolved '
+        . 'and cannot support this report.'
+    );
 }
 
-$fullAddress = trim((string)($location['locationAddress'] ?? $location['locationResolvedAddress'] ?? ''));
-$parcelNumber = trim((string)($parcel['parcelNumber'] ?? $parcelRecord['apnRaw'] ?? ''));
-$ownerName = trim((string)($parcel['ownerName'] ?? $parcelRecord['ownerName'] ?? ''));
-$jurisdiction = trim((string)($location['jurisdictionName'] ?? $parcel['jurisdiction'] ?? ''));
-$jurisdictionType = trim((string)($location['jurisdictionType'] ?? ''));
-$county = trim((string)($location['locationCounty'] ?? ''));
-$zoningCode = trim((string)($zoning['zoningCode'] ?? $parcelRecord['zoningCode'] ?? ''));
-$zoningDescription = trim((string)($zoning['zoningDescription'] ?? $parcelRecord['zoningDescription'] ?? ''));
-$zoningSource = trim((string)($zoning['zoningSource'] ?? $parcelRecord['zoningSource'] ?? ''));
-$zoningVerifiedAt = $zoning['zoningVerifiedAt'] ?? $parcelRecord['zoningVerifiedAt'] ?? null;
-$zoningVerifiedFormatted = formatReportTimestamp($zoningVerifiedAt, true);
-$confidence = $zoning['confidence'] ?? $parcelRecord['confidence'] ?? null;
-$mapUrl = trim((string)($assessor['mapUrl'] ?? ''));
-$propertyType = trim((string)($assessor['propertyType'] ?? ''));
+
+// Prepare report values
+$fullAddress = trim((string)(
+    $location['locationAddress']
+    ?? $location['locationResolvedAddress']
+    ?? ''
+));
+
+$parcelNumber = trim((string)(
+    $parcel['parcelNumber']
+    ?? $parcelRecord['apnRaw']
+    ?? ''
+));
+
+$ownerName = trim((string)(
+    $parcel['ownerName']
+    ?? $parcelRecord['ownerName']
+    ?? ''
+));
+
+$jurisdiction = trim((string)(
+    $location['jurisdictionName']
+    ?? $parcel['jurisdiction']
+    ?? ''
+));
+
+$jurisdictionType = trim((string)(
+    $location['jurisdictionType']
+    ?? ''
+));
+
+$county = trim((string)(
+    $location['locationCounty']
+    ?? ''
+));
+
+$propertyType = trim((string)(
+    $assessor['propertyType']
+    ?? ''
+));
+
+$zoningCode = trim((string)(
+    $zoning['zoningCode']
+    ?? $parcelRecord['zoningCode']
+    ?? ''
+));
+
+$zoningDescription = trim((string)(
+    $zoning['zoningDescription']
+    ?? $parcelRecord['zoningDescription']
+    ?? ''
+));
+
+$zoningSource = trim((string)(
+    $zoning['zoningSource']
+    ?? $parcelRecord['zoningSource']
+    ?? ''
+));
+
+$zoningVerifiedAt = $zoning['zoningVerifiedAt']
+    ?? $parcelRecord['zoningVerifiedAt']
+    ?? null;
+
+$zoningVerifiedFormatted = formatReportTimestamp(
+    $zoningVerifiedAt,
+    true
+);
+
+$requiresReview = (bool)(
+    $zoning['requiresReview']
+    ?? false
+);
+
 $latitude = $location['locationLatitude'] ?? null;
 $longitude = $location['locationLongitude'] ?? null;
-$placeId = trim((string)($location['locationPlaceId'] ?? ''));
-$activitySessionId = trim((string)($payload['activitySessionId'] ?? ''));
-$requiresReview = (bool)($zoning['requiresReview'] ?? false);
-$partialMatch = (bool)($matchQuality['partialMatch'] ?? false);
-$mismatches = is_array($matchQuality['mismatches'] ?? null) ? $matchQuality['mismatches'] : [];
-$warnings = is_array($matchQuality['warnings'] ?? null) ? $matchQuality['warnings'] : [];
 
-$safeFileToken = preg_replace('/[^A-Za-z0-9_-]+/', '-', $parcelNumber ?: 'address-check');
-$jsonReviewMode = filter_input(INPUT_GET, 'json', FILTER_VALIDATE_BOOLEAN) ?? false;
+$placeId = trim((string)(
+    $location['locationPlaceId']
+    ?? ''
+));
 
+$activitySessionId = trim((string)(
+    $payload['activitySessionId']
+    ?? ''
+));
+
+
+// Prepare output options
+$safeFileToken = preg_replace(
+    '/[^A-Za-z0-9_-]+/',
+    '-',
+    $parcelNumber !== ''
+        ? $parcelNumber
+        : 'address-check'
+);
+
+$jsonReviewMode = filter_input(
+    INPUT_GET,
+    'json',
+    FILTER_VALIDATE_BOOLEAN
+) ?? false;
+
+
+// Return report audit JSON
 if ($jsonReviewMode) {
     header('Content-Type: application/json; charset=utf-8');
-    header('Content-Disposition: inline; filename="address-zoning-report-' . $safeFileToken . '.json"');
+    header(
+        'Content-Disposition: inline; '
+        . 'filename="address-zoning-report-'
+        . $safeFileToken
+        . '.json"'
+    );
+
     echo json_encode([
         'reportType' => 'Address Zoning Report',
         'schemaVersion' => '1.0.0',
         'generatedAt' => time(),
         'addressCheck' => $payload,
         'determinations' => [
-            'addressValidated' => (bool)($location['locationValidated'] ?? false),
-            'countyValidated' => (bool)($location['locationCensusValidated'] ?? false),
-            'parcelResolved' => $parcelNumber !== '',
-            'baseZoningResolved' => $zoningCode !== '',
-            'specialDesignationsEvaluated' => false,
-            'streetFrontageEvaluated' => false,
-            'signAllowanceCalculated' => false
+            'addressValidated' =>
+                (bool)($location['locationValidated'] ?? false),
+
+            'countyValidated' =>
+                (bool)($location['locationCensusValidated'] ?? false),
+
+            'parcelResolved' =>
+                $parcelNumber !== '',
+
+            'baseZoningResolved' =>
+                $zoningCode !== '' && !$requiresReview,
+
+            'specialDesignationsEvaluated' =>
+                false,
+
+            'streetFrontageEvaluated' =>
+                false,
+
+            'signAllowanceCalculated' =>
+                false
         ]
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    ], JSON_PRETTY_PRINT
+        | JSON_UNESCAPED_SLASHES
+        | JSON_INVALID_UTF8_SUBSTITUTE
+    );
+
     exit;
 }
 
@@ -401,25 +531,6 @@ ob_start();
                 : 'validated the base-zoning determination without requiring manual review.' ?>
         </div>
     </div>
-</div>
-
-<div class="section-block">
-    <?= buildAddressSectionHeading('Address & Source Validation', 'clipboard.png') ?>
-    <table class="two-column-table"><tr><td>
-        <table class="data-table">
-            <tr><th>Address</th><td><?= validationResult((bool)($location['locationValidated'] ?? false)) ?></td></tr>
-            <tr><th>County</th><td><?= validationResult((bool)($location['locationCensusValidated'] ?? false)) ?></td></tr>
-            <tr><th>Parcel</th><td><?= validationResult($parcelNumber !== '') ?></td></tr>
-            <tr><th>Base Zoning</th><td><?= validationResult($zoningCode !== '') ?></td></tr>
-        </table>
-    </td><td>
-        <table class="data-table">
-            <tr><th>Match Type</th><td><?= displayReportValue($matchQuality['locationType'] ?? null) ?></td></tr>
-            <tr><th>Partial Match</th><td><?= $partialMatch ? 'Yes — review required' : 'No' ?></td></tr>
-            <tr><th>Mismatches</th><td><?= $mismatches === [] ? 'None' : displayReportValue(implode('; ', array_map('strval', $mismatches))) ?></td></tr>
-            <tr><th>Warnings</th><td><?= $warnings === [] ? 'None' : displayReportValue(implode('; ', array_map('strval', $warnings))) ?></td></tr>
-        </table>
-    </td></tr></table>
 </div>
 
 <div class="section-block">
