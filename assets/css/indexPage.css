@@ -1090,4 +1090,11 @@ body[data-page="index"] .authText {
     color: #007f76;
 }
 
+.location-preview-card__secondary {
+    margin-top: 2px;
+    color: #666;
+    font-size: 11px;
+    font-weight: 400;
+}
+
 /* #endregion */

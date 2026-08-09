@@ -9006,7 +9006,7 @@ window.SkyIndex = {
                                 <strong>Location Check</strong>
 
                                 <div class="location-preview-card__subtitle">
-                                    Property details
+                                    ${escapeHtml(address)}
                                 </div>
                             </div>
                         </div>
@@ -9017,40 +9017,6 @@ window.SkyIndex = {
                     </div>
 
                     <div class="location-preview-card__body">
-                        <div class="location-preview-card__location">
-                            <div class="location-preview-card__street">
-                                ${escapeHtml(streetAddress)}
-                            </div>
-
-                            <div class="location-preview-card__region">
-                                ${escapeHtml(location.locationCity || '')},
-                                ${escapeHtml(location.locationState || '')}
-                                ${escapeHtml(location.locationZip || '')}
-                            </div>
-
-                            <div class="location-preview-card__county">
-                                ${escapeHtml(jurisdiction)}
-                                ${jurisdictionType
-                                    ? ` (${escapeHtml(jurisdictionType)})`
-                                    : ''}
-                                · ${escapeHtml(county)} County
-                            </div>
-                        </div>
-
-                        <div class="location-preview-card__detail">
-                            <span class="location-preview-card__icon">🏢</span>
-
-                            <div>
-                                <span class="location-preview-card__label">
-                                    Property Owner
-                                </span>
-
-                                <strong>
-                                    ${escapeHtml(ownerName)}
-                                </strong>
-                            </div>
-                        </div>
-
                         <div class="location-preview-card__detail">
                             <span class="location-preview-card__icon">📐</span>
 
@@ -9062,6 +9028,10 @@ window.SkyIndex = {
                                 <strong>
                                     ${escapeHtml(displayParcelNumber || 'N/A')}
                                 </strong>
+
+                                <div class="location-preview-card__secondary">
+                                    ${escapeHtml(county)} County
+                                </div>
                             </div>
                         </div>
 
@@ -9078,6 +9048,20 @@ window.SkyIndex = {
                                     ${jurisdictionType
                                         ? ` (${escapeHtml(jurisdictionType)})`
                                         : ''}
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div class="location-preview-card__detail">
+                            <span class="location-preview-card__icon">🏢</span>
+
+                            <div>
+                                <span class="location-preview-card__label">
+                                    Property Owner
+                                </span>
+
+                                <strong>
+                                    ${escapeHtml(ownerName)}
                                 </strong>
                             </div>
                         </div>
@@ -9103,16 +9087,12 @@ window.SkyIndex = {
                     <div class="location-preview-card__actions">
                         <button
                             type="button"
-                            class="sky-btn sky-btn--primary"
-                            data-action="create-location"
-                            data-place-id="${escapeHtml(
-                                location.locationPlaceId || ''
-                            )}"
+                            class="sky-btn sky-btn--outline"
+                            data-action="open-location-report"
                             data-apn="${escapeHtml(rawParcelNumber)}"
                         >
-                            Create Location
+                            Zoning Report
                         </button>
-
                     </div>
                 </div>
             `;
