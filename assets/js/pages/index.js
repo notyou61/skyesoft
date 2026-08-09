@@ -9113,14 +9113,6 @@ window.SkyIndex = {
                             Create Location
                         </button>
 
-                        <button
-                            type="button"
-                            class="sky-btn sky-btn--outline"
-                            data-action="open-location-report"
-                            data-apn="${escapeHtml(rawParcelNumber)}"
-                        >
-                            Zoning Report
-                        </button>
                     </div>
                 </div>
             `;
