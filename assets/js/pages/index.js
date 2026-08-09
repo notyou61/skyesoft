@@ -8988,6 +8988,12 @@ window.SkyIndex = {
                 location.governance?.parcelStatus ||
                 data.summary ||
                 'Property validated';
+            // Resolve street address
+            const streetAddress = String(
+                location.locationAddressRaw ||
+                location.locationAddress ||
+                cleanAddress
+            ).split(',')[0].trim();
 
             // Build location-preview card
             const cardHtml = `
@@ -8997,10 +9003,10 @@ window.SkyIndex = {
                             <span class="location-preview-card__pin">📍</span>
 
                             <div>
-                                <strong>${escapeHtml(address)}</strong>
+                                <strong>Location Check</strong>
 
                                 <div class="location-preview-card__subtitle">
-                                    Address Check
+                                    Property details
                                 </div>
                             </div>
                         </div>
@@ -9011,21 +9017,24 @@ window.SkyIndex = {
                     </div>
 
                     <div class="location-preview-card__body">
-                        <div class="location-preview-card__address">
-                            ${escapeHtml(
-                                location.locationAddress ||
-                                location.locationAddressRaw ||
-                                address
-                            )}
-                        </div>
+                        <div class="location-preview-card__location">
+                            <div class="location-preview-card__street">
+                                ${escapeHtml(streetAddress)}
+                            </div>
 
-                        <div class="location-preview-card__region">
-                            ${escapeHtml(jurisdiction)}
-                            ${jurisdictionType
-                                ? ` (${escapeHtml(jurisdictionType)})`
-                                : ''}
-                            ·
-                            ${escapeHtml(county)} County
+                            <div class="location-preview-card__region">
+                                ${escapeHtml(location.locationCity || '')},
+                                ${escapeHtml(location.locationState || '')}
+                                ${escapeHtml(location.locationZip || '')}
+                            </div>
+
+                            <div class="location-preview-card__county">
+                                ${escapeHtml(jurisdiction)}
+                                ${jurisdictionType
+                                    ? ` (${escapeHtml(jurisdictionType)})`
+                                    : ''}
+                                · ${escapeHtml(county)} County
+                            </div>
                         </div>
 
                         <div class="location-preview-card__detail">
@@ -9089,21 +9098,6 @@ window.SkyIndex = {
                                 </strong>
                             </div>
                         </div>
-
-                        <div class="location-preview-card__detail">
-                            <span class="location-preview-card__icon">📌</span>
-
-                            <div>
-                                <span class="location-preview-card__label">
-                                    Coordinates
-                                </span>
-
-                                <strong>
-                                    ${escapeHtml(location.locationLatitude || 'N/A')},
-                                    ${escapeHtml(location.locationLongitude || 'N/A')}
-                                </strong>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="location-preview-card__actions">
@@ -9111,7 +9105,9 @@ window.SkyIndex = {
                             type="button"
                             class="sky-btn sky-btn--primary"
                             data-action="create-location"
-                            data-place-id="${escapeHtml(location.locationPlaceId || '')}"
+                            data-place-id="${escapeHtml(
+                                location.locationPlaceId || ''
+                            )}"
                             data-apn="${escapeHtml(rawParcelNumber)}"
                         >
                             Create Location
@@ -9128,8 +9124,6 @@ window.SkyIndex = {
                     </div>
                 </div>
             `;
-
-            this.appendSystemLine('✅ Address successfully resolved.');
 
             // Render location-preview card
             this.appendSystemHtml(cardHtml);
