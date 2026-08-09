@@ -294,6 +294,15 @@ $css = '
     /* Research basis */
     .basis-table { width: 100%; border-collapse: collapse; }
     .basis-table td { width: 50%; border: 1px solid #d5d5d5; padding: 4px 6px; font-size: 7.6pt; }
+    /* Zoning verification details */
+    .verification-details {
+        display: inline-block;
+        margin-left: 8px;
+        color: #444;
+        font-size: 7.8pt;
+        line-height: 1.3;
+        vertical-align: middle;
+    }
 ';
 
 $headerHtml = '
@@ -344,7 +353,6 @@ ob_start();
         <tr><th>Property Type</th><td><?= displayReportValue($propertyType) ?></td></tr>
         <tr><th>Jurisdiction</th><td><?= displayReportValue($jurisdiction) ?><?= $jurisdictionType !== '' ? ' (' . escapeReportValue($jurisdictionType) . ')' : '' ?></td></tr>
         <tr><th>County</th><td><?= displayReportValue($county) ?></td></tr>
-        <tr><th>Parcel Map</th><td><?= $mapUrl !== '' ? '<a href="' . escapeReportValue($mapUrl) . '">Maricopa County Assessor Map</a>' : displayReportValue(null) ?></td></tr>
     </table>
 </div>
 
@@ -353,18 +361,26 @@ ob_start();
     <table class="data-table">
         <tr><th>Base Zoning District</th><td><strong><?= displayReportValue($zoningCode) ?></strong></td></tr>
         <tr><th>Description</th><td><?= displayReportValue($zoningDescription) ?></td></tr>
-        <tr><th>Status</th><td><?= validationResult(!$requiresReview) ?></td></tr>
-        <tr><th>Confidence</th><td><?= $confidence !== null ? escapeReportValue($confidence) . '%' : displayReportValue(null) ?></td></tr>
-        <tr><th>Zoning Source</th><td><?= displayReportValue($zoningSource) ?></td></tr>
-        <tr><th>Verified</th><td><?= displayReportValue($zoningVerifiedFormatted) ?></td></tr>
+        <tr>
+            <th>Verification</th>
+            <td>
+                <?= validationResult(!$requiresReview) ?>
+                <div class="verification-details">
+                    <strong>Source:</strong> <?= displayReportValue($zoningSource) ?><br>
+                    <strong>Verified:</strong> <?= displayReportValue($zoningVerifiedFormatted) ?>
+                </div>
+            </td>
+        </tr>
     </table>
     <div class="callout-box">
         <div class="callout-title">Resolved Result</div>
         <div class="callout-body">
             The address check positively resolved the parcel to <strong><?= escapeReportValue($zoningCode) ?></strong>
             <?= $zoningDescription !== '' ? '(' . escapeReportValue($zoningDescription) . ')' : '' ?>.
-            The zoning engine returned <?= escapeReportValue((string)($confidence ?? 'an unspecified')) ?>% confidence
-            and <?= $requiresReview ? 'flagged the base-zoning result for review.' : 'did not flag the base-zoning result for manual review.' ?>
+            The zoning engine
+            <?= $requiresReview
+                ? 'flagged the base-zoning determination for manual review.'
+                : 'validated the base-zoning determination without requiring manual review.' ?>
         </div>
     </div>
 </div>
