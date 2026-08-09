@@ -8989,76 +8989,132 @@ window.SkyIndex = {
                 data.summary ||
                 'Property validated';
 
-            // Build result card
+            // Build location-preview card
             const cardHtml = `
-                <div class="sky-card property-card">
-                    <div class="property-card__header">
-                        <div class="property-card__title">
-                            🏠 Property Review
+                <div class="location-preview-card">
+                    <div class="location-preview-card__header">
+                        <div class="location-preview-card__title">
+                            <span class="location-preview-card__pin">📍</span>
+
+                            <div>
+                                <strong>${escapeHtml(address)}</strong>
+
+                                <div class="location-preview-card__subtitle">
+                                    Address Check
+                                </div>
+                            </div>
                         </div>
 
-                        <span class="property-card__status">
-                            Resolved
+                        <span class="location-preview-card__badge">
+                            Validated
                         </span>
                     </div>
 
-                    <div class="property-card__address">
-                        ${escapeHtml(address)}
-                    </div>
-
-                    <div class="property-card__details">
-                        <div>
-                            <strong>Parcel Number (APN):</strong>
-                            ${escapeHtml(displayParcelNumber || 'N/A')}
+                    <div class="location-preview-card__body">
+                        <div class="location-preview-card__address">
+                            ${escapeHtml(
+                                location.locationAddress ||
+                                location.locationAddressRaw ||
+                                address
+                            )}
                         </div>
 
-                        <div>
-                            <strong>Owner:</strong>
-                            ${escapeHtml(ownerName)}
-                        </div>
-
-                        <div>
-                            <strong>Jurisdiction:</strong>
+                        <div class="location-preview-card__region">
                             ${escapeHtml(jurisdiction)}
                             ${jurisdictionType
                                 ? ` (${escapeHtml(jurisdictionType)})`
                                 : ''}
+                            ·
+                            ${escapeHtml(county)} County
                         </div>
 
-                        <div>
-                            <strong>Zoning:</strong>
-                            ${escapeHtml(zoningCode)}
-                            ${zoningDescription
-                                ? ` — ${escapeHtml(zoningDescription)}`
-                                : ''}
+                        <div class="location-preview-card__detail">
+                            <span class="location-preview-card__icon">🏢</span>
+
+                            <div>
+                                <span class="location-preview-card__label">
+                                    Property Owner
+                                </span>
+
+                                <strong>
+                                    ${escapeHtml(ownerName)}
+                                </strong>
+                            </div>
                         </div>
 
-                        <div>
-                            <strong>County:</strong>
-                            ${escapeHtml(county)}
-                            ${countyFips
-                                ? ` (FIPS: ${escapeHtml(countyFips)})`
-                                : ''}
+                        <div class="location-preview-card__detail">
+                            <span class="location-preview-card__icon">📐</span>
+
+                            <div>
+                                <span class="location-preview-card__label">
+                                    Parcel
+                                </span>
+
+                                <strong>
+                                    ${escapeHtml(displayParcelNumber || 'N/A')}
+                                </strong>
+                            </div>
                         </div>
 
-                        <div>
-                            <strong>Governance State:</strong>
+                        <div class="location-preview-card__detail">
+                            <span class="location-preview-card__icon">🏛️</span>
 
-                            <span class="property-card__governance">
-                                ${escapeHtml(rsCode)} —
-                                ${escapeHtml(parcelStatus)}
-                            </span>
+                            <div>
+                                <span class="location-preview-card__label">
+                                    Jurisdiction
+                                </span>
+
+                                <strong>
+                                    ${escapeHtml(jurisdiction)}
+                                    ${jurisdictionType
+                                        ? ` (${escapeHtml(jurisdictionType)})`
+                                        : ''}
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div class="location-preview-card__detail">
+                            <span class="location-preview-card__icon">🗺️</span>
+
+                            <div>
+                                <span class="location-preview-card__label">
+                                    Zoning
+                                </span>
+
+                                <strong>
+                                    ${escapeHtml(zoningCode)}
+                                    ${zoningDescription
+                                        ? ` — ${escapeHtml(zoningDescription)}`
+                                        : ''}
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div class="location-preview-card__detail">
+                            <span class="location-preview-card__icon">📌</span>
+
+                            <div>
+                                <span class="location-preview-card__label">
+                                    Coordinates
+                                </span>
+
+                                <strong>
+                                    ${escapeHtml(location.locationLatitude || 'N/A')},
+                                    ${escapeHtml(location.locationLongitude || 'N/A')}
+                                </strong>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="property-card__actions">
+                    <div class="location-preview-card__actions">
                         <button
                             type="button"
-                            class="sky-btn"
-                            data-action="open-property-profile"
+                            class="sky-btn sky-btn--primary"
+                            data-action="create-location"
+                            data-place-id="${escapeHtml(location.locationPlaceId || '')}"
                             data-apn="${escapeHtml(rawParcelNumber)}"
                         >
-                            Open Profile
+                            Create Location
                         </button>
 
                         <button
@@ -9067,7 +9123,7 @@ window.SkyIndex = {
                             data-action="open-location-report"
                             data-apn="${escapeHtml(rawParcelNumber)}"
                         >
-                            Location Report
+                            Zoning Report
                         </button>
                     </div>
                 </div>
