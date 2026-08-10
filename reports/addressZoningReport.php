@@ -170,6 +170,20 @@ $frontages = is_array($parcel['frontages'] ?? null)
     ? $parcel['frontages']
     : [];
 
+$parcelGeometry = is_array($parcel['parcelGeometry'] ?? null)
+    ? $parcel['parcelGeometry']
+    : [];
+
+$parcelMetrics = calculateParcelMetrics(
+    $parcelGeometry,
+    $frontages
+);
+
+$parcelMapSvg = buildParcelSvg(
+    $parcelGeometry,
+    $frontages
+);
+
 
 // Confirm report eligibility
 $success = (bool)($payload['success'] ?? false);
@@ -334,35 +348,8 @@ if ($jsonReviewMode) {
     exit;
 }
 
-// Build Frontage HTML display
-$frontageHtml = '';
-if (!empty($frontages)) {
-    $frontageItems = [];
-    foreach ($frontages as $f) {
-        $street = escapeReportValue($f['streetName'] ?? 'Unknown');
-        
-        // Check frontageLengthFeet first, fallback to frontageFeet or frontage
-        $rawFeet = $f['frontageLengthFeet'] ?? $f['frontageFeet'] ?? $f['frontage'] ?? 0;
-        $feet = escapeReportValue(is_numeric($rawFeet) ? (string)round((float)$rawFeet, 1) : (string)$rawFeet);
-        
-        // Check roadClass first, fallback to streetClassification
-        $class = escapeReportValue($f['roadClass'] ?? $f['streetClassification'] ?? '');
-        
-        // Check trafficVolume first, fallback to roadTier
-        $tier = escapeReportValue($f['trafficVolume'] ?? $f['roadTier'] ?? '');
-        
-        $meta = [];
-        if ($class !== '') $meta[] = $class;
-        if ($tier !== '') $meta[] = $tier;
-        $metaStr = count($meta) > 0 ? ' &mdash; ' . implode(', ', $meta) : '';
-        
-        $frontageItems[] = "<strong>{$street}</strong>: {$feet} ft{$metaStr}";
-    }
-    $frontageHtml = implode('<br>', $frontageItems);
-}
-
 $detachedSignAllowanceDisplay = !empty($frontages)
-    ? $frontageHtml . '<br><span style="font-size: 7pt; color: #666; font-style: italic;">* Parcel-use classification and existing-sign inventory still required to finalize allowance.</span>'
+    ? '<span class="unverified">Pending calculation - frontage and roadway classifications resolved; parcel-use classification and existing detached-sign inventory still required</span>'
     : '<span class="unverified">Requires frontage, street classification, parcel-use classification, and existing-sign inventory</span>';
 
 
@@ -479,6 +466,21 @@ $css = '
     /* Research basis */
     .basis-table { width: 100%; border-collapse: collapse; }
     .basis-table td { width: 50%; border: 1px solid #d5d5d5; padding: 4px 6px; font-size: 7.6pt; }
+
+    /* Address site details */
+    .site-details-block { page-break-before: always; }
+    .parcel-map-frame { border: 1px solid #c4ceda; background: #f7f9fc; padding: 4px; text-align: center; }
+    .parcel-map-frame svg { display: block; width: 100%; height: 225px; }
+    .parcel-map-unavailable { height: 95px; padding-top: 70px; color: #777; font-style: italic; text-align: center; }
+    .parcel-summary-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+    .parcel-summary-table td { width: 20%; border: 1px solid #d2d8df; padding: 5px 4px; text-align: center; }
+    .parcel-summary-label { display: block; color: #596675; font-size: 6.8pt; text-transform: uppercase; }
+    .parcel-summary-value { display: block; margin-top: 2px; color: #172b45; font-size: 8.5pt; font-weight: bold; }
+    .frontage-table th { width: auto; background: #eef2f7; color: #26384d; }
+    .frontage-table td { width: auto; }
+    .frontage-high { color: #a82f26; font-weight: bold; }
+    .frontage-low { color: #17698d; font-weight: bold; }
+    .map-legend { margin-top: 3px; color: #5a6571; font-size: 6.8pt; text-align: right; }
     /* Zoning verification details */
     .verification-details {
         display: inline-block;
@@ -570,6 +572,127 @@ ob_start();
     </div>
 </div>
 
+<div class="section-block site-details-block">
+    <?= buildAddressSectionHeading('Address Site Details', 'map.png') ?>
+
+    <div class="parcel-map-frame">
+        <?= $parcelMapSvg ?>
+    </div>
+    <div class="map-legend">
+        Red = high-volume roadway frontage | Blue = low-volume roadway frontage
+    </div>
+
+    <table class="parcel-summary-table">
+        <tr>
+            <td>
+                <span class="parcel-summary-label">Maximum Width</span>
+                <span class="parcel-summary-value">
+                    <?= $parcelMetrics['widthFeet'] !== null
+                        ? number_format((float)$parcelMetrics['widthFeet'], 1) . ' ft'
+                        : 'Unavailable' ?>
+                </span>
+            </td>
+            <td>
+                <span class="parcel-summary-label">Maximum Depth</span>
+                <span class="parcel-summary-value">
+                    <?= $parcelMetrics['depthFeet'] !== null
+                        ? number_format((float)$parcelMetrics['depthFeet'], 1) . ' ft'
+                        : 'Unavailable' ?>
+                </span>
+            </td>
+            <td>
+                <span class="parcel-summary-label">Calculated Area</span>
+                <span class="parcel-summary-value">
+                    <?= $parcelMetrics['areaSquareFeet'] !== null
+                        ? number_format((float)$parcelMetrics['areaSquareFeet'], 0) . ' sq ft'
+                        : 'Unavailable' ?>
+                </span>
+            </td>
+            <td>
+                <span class="parcel-summary-label">Calculated Acres</span>
+                <span class="parcel-summary-value">
+                    <?= $parcelMetrics['areaAcres'] !== null
+                        ? number_format((float)$parcelMetrics['areaAcres'], 2) . ' ac'
+                        : 'Unavailable' ?>
+                </span>
+            </td>
+            <td>
+                <span class="parcel-summary-label">Configuration</span>
+                <span class="parcel-summary-value">
+                    <?= escapeReportValue($parcelMetrics['configuration']) ?><br>
+                    <?= (int)$parcelMetrics['frontageCount'] ?> frontage<?= (int)$parcelMetrics['frontageCount'] === 1 ? '' : 's' ?>
+                </span>
+            </td>
+        </tr>
+    </table>
+
+    <table class="data-table frontage-table" style="margin-top: 5px;">
+        <thead>
+            <tr>
+                <th>Street</th>
+                <th>Frontage</th>
+                <th>Classification</th>
+                <th>Roadway Category</th>
+                <th>Verification</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if ($frontages !== []): ?>
+                <?php foreach ($frontages as $frontage): ?>
+                    <?php
+                    $rawFeet = $frontage['frontageLengthFeet']
+                        ?? $frontage['frontageFeet']
+                        ?? $frontage['frontage']
+                        ?? null;
+                    $roadClass = trim((string)(
+                        $frontage['roadClass']
+                        ?? $frontage['streetClassification']
+                        ?? ''
+                    ));
+                    $roadClassCode = trim((string)(
+                        $frontage['streetClassCode']
+                        ?? $frontage['roadClassCode']
+                        ?? ''
+                    ));
+                    $roadTier = trim((string)(
+                        $frontage['trafficVolume']
+                        ?? $frontage['roadTier']
+                        ?? ''
+                    ));
+                    $roadTierKey = strtolower($roadTier);
+                    $roadTierDisplay = match ($roadTierKey) {
+                        'highvolume' => 'High volume',
+                        'lowvolume' => 'Low volume',
+                        default => $roadTier !== '' ? $roadTier : 'Not classified'
+                    };
+                    $verification = trim((string)(
+                        $frontage['verificationStatus']
+                        ?? 'GIS calculated'
+                    ));
+                    $verificationDisplay = ucwords(str_replace('_', ' ', $verification));
+                    ?>
+                    <tr>
+                        <td><strong><?= displayReportValue($frontage['streetName'] ?? null, 'Unknown street') ?></strong></td>
+                        <td><?= is_numeric($rawFeet) ? number_format((float)$rawFeet, 1) . ' ft' : displayReportValue($rawFeet, 'Unavailable') ?></td>
+                        <td>
+                            <?= displayReportValue($roadClass, 'Not classified') ?>
+                            <?= $roadClassCode !== '' ? ' (' . escapeReportValue($roadClassCode) . ')' : '' ?>
+                        </td>
+                        <td class="<?= $roadTierKey === 'highvolume' ? 'frontage-high' : 'frontage-low' ?>">
+                            <?= escapeReportValue($roadTierDisplay) ?>
+                        </td>
+                        <td><?= escapeReportValue($verificationDisplay) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr>
+                    <td colspan="5"><span class="unverified">No parcel frontage details were returned.</span></td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+
 <div class="section-block">
     <?= buildAddressSectionHeading('Sign-Code Research Status', 'ruler.png') ?>
     <table class="data-table">
@@ -589,7 +712,7 @@ ob_start();
         <li>Confirm the applicable sign-code standards for the resolved zoning district and parcel use.</li>
         <li>Measure the building or tenant elevation and document all existing attached signs.</li>
         <?php if (!empty($frontages)): ?>
-            <li>Verify calculated parcel frontage and street classifications; inventory all existing detached signs.</li>
+            <li>Inventory all existing detached signs and calculate the remaining allowance for each eligible frontage.</li>
         <?php else: ?>
             <li>Resolve parcel frontage and street classification; inventory all existing detached signs.</li>
         <?php endif; ?>
@@ -633,4 +756,211 @@ try {
 } catch (\Mpdf\MpdfException $e) {
     http_response_code(500);
     echo 'Error generating PDF report: ' . escapeReportValue($e->getMessage());
+}
+
+/** Normalize a two-coordinate GIS point. */
+function normalizeParcelPoint(mixed $point): ?array
+{
+    if (!is_array($point) || !isset($point[0], $point[1])
+        || !is_numeric($point[0]) || !is_numeric($point[1])) {
+        return null;
+    }
+
+    return [(float)$point[0], (float)$point[1]];
+}
+
+/** Return valid parcel polygon rings from the address-check payload. */
+function normalizeParcelRings(array $geometry): array
+{
+    $rings = is_array($geometry['rings'] ?? null)
+        ? $geometry['rings']
+        : [];
+    $normalized = [];
+
+    foreach ($rings as $ring) {
+        if (!is_array($ring)) {
+            continue;
+        }
+
+        $points = [];
+        foreach ($ring as $point) {
+            $normalizedPoint = normalizeParcelPoint($point);
+            if ($normalizedPoint !== null) {
+                $points[] = $normalizedPoint;
+            }
+        }
+
+        if (count($points) >= 3) {
+            $normalized[] = $points;
+        }
+    }
+
+    return $normalized;
+}
+
+/** Calculate polygon metrics in the WKID 2223 coordinate system (feet). */
+function calculateParcelMetrics(array $geometry, array $frontages): array
+{
+    $rings = normalizeParcelRings($geometry);
+    $xs = [];
+    $ys = [];
+    $signedAreas = [];
+
+    foreach ($rings as $ring) {
+        $twiceArea = 0.0;
+        $pointCount = count($ring);
+
+        foreach ($ring as $index => $point) {
+            $nextPoint = $ring[($index + 1) % $pointCount];
+            $xs[] = $point[0];
+            $ys[] = $point[1];
+            $twiceArea += ($point[0] * $nextPoint[1])
+                - ($nextPoint[0] * $point[1]);
+        }
+
+        $signedAreas[] = $twiceArea / 2;
+    }
+
+    $areaSquareFeet = 0.0;
+    if ($signedAreas !== []) {
+        $largestArea = max(array_map('abs', $signedAreas));
+        $areaSquareFeet = $largestArea;
+
+        foreach ($signedAreas as $signedArea) {
+            if (abs($signedArea) !== $largestArea) {
+                $areaSquareFeet -= abs($signedArea);
+            }
+        }
+    }
+
+    $frontageCount = count($frontages);
+    $configuration = match (true) {
+        $frontageCount <= 0 => 'Not determined',
+        $frontageCount === 1 => 'Interior parcel',
+        $frontageCount === 2 => 'Two-frontage parcel',
+        default => 'Multi-frontage parcel'
+    };
+
+    return [
+        'rings' => $rings,
+        'widthFeet' => $xs !== [] ? max($xs) - min($xs) : null,
+        'depthFeet' => $ys !== [] ? max($ys) - min($ys) : null,
+        'areaSquareFeet' => $areaSquareFeet > 0 ? $areaSquareFeet : null,
+        'areaAcres' => $areaSquareFeet > 0 ? $areaSquareFeet / 43560 : null,
+        'frontageCount' => $frontageCount,
+        'configuration' => $configuration
+    ];
+}
+
+/** Build an mPDF-compatible parcel SVG from GIS rings and matched frontage segments. */
+function buildParcelSvg(array $geometry, array $frontages): string
+{
+    $rings = normalizeParcelRings($geometry);
+    if ($rings === []) {
+        return '<div class="parcel-map-unavailable">Parcel geometry was not included in the address-check response.</div>';
+    }
+
+    $xs = [];
+    $ys = [];
+    foreach ($rings as $ring) {
+        foreach ($ring as $point) {
+            $xs[] = $point[0];
+            $ys[] = $point[1];
+        }
+    }
+
+    $xmin = min($xs);
+    $xmax = max($xs);
+    $ymin = min($ys);
+    $ymax = max($ys);
+    $mapWidth = 720.0;
+    $mapHeight = 285.0;
+    $padding = 30.0;
+    $coordinateWidth = max(1.0, $xmax - $xmin);
+    $coordinateHeight = max(1.0, $ymax - $ymin);
+    $scale = min(
+        ($mapWidth - ($padding * 2)) / $coordinateWidth,
+        ($mapHeight - ($padding * 2)) / $coordinateHeight
+    );
+    $offsetX = ($mapWidth - ($coordinateWidth * $scale)) / 2;
+    $offsetY = ($mapHeight - ($coordinateHeight * $scale)) / 2;
+
+    $projectPoint = static function (array $point) use (
+        $xmin,
+        $ymax,
+        $scale,
+        $offsetX,
+        $offsetY
+    ): array {
+        return [
+            $offsetX + (($point[0] - $xmin) * $scale),
+            $offsetY + (($ymax - $point[1]) * $scale)
+        ];
+    };
+
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="285" viewBox="0 0 720 285">'
+        . '<rect x="0" y="0" width="720" height="285" fill="#f7f9fc" />';
+
+    foreach ($rings as $ring) {
+        $path = [];
+        foreach ($ring as $point) {
+            [$x, $y] = $projectPoint($point);
+            $path[] = round($x, 2) . ',' . round($y, 2);
+        }
+        $svg .= '<polygon points="' . implode(' ', $path)
+            . '" fill="#e9eef6" fill-opacity="0.9" stroke="#334b68" stroke-width="2" />';
+    }
+
+    foreach ($frontages as $frontage) {
+        $segments = is_array($frontage['parcelSegments'] ?? null)
+            ? $frontage['parcelSegments']
+            : [];
+        $tier = strtolower(trim((string)(
+            $frontage['trafficVolume']
+            ?? $frontage['roadTier']
+            ?? ''
+        )));
+        $color = $tier === 'highvolume' ? '#c63f32' : '#1976a3';
+
+        foreach ($segments as $segment) {
+            $start = normalizeParcelPoint($segment['start'] ?? null);
+            $end = normalizeParcelPoint($segment['end'] ?? null);
+            if ($start === null || $end === null) {
+                continue;
+            }
+
+            [$x1, $y1] = $projectPoint($start);
+            [$x2, $y2] = $projectPoint($end);
+            $svg .= '<line x1="' . round($x1, 2) . '" y1="' . round($y1, 2)
+                . '" x2="' . round($x2, 2) . '" y2="' . round($y2, 2)
+                . '" stroke="' . $color . '" stroke-width="5" stroke-linecap="round" />';
+        }
+    }
+
+    $svg .= '<g font-family="Arial, sans-serif" font-size="11" fill="#26384d">';
+    $legendY = 18;
+    foreach ($frontages as $frontage) {
+        $streetName = escapeReportValue($frontage['streetName'] ?? 'Unknown street');
+        $rawFeet = $frontage['frontageLengthFeet']
+            ?? $frontage['frontageFeet']
+            ?? $frontage['frontage']
+            ?? null;
+        $feet = is_numeric($rawFeet)
+            ? number_format((float)$rawFeet, 1) . ' ft'
+            : 'Length unavailable';
+        $tier = strtolower(trim((string)(
+            $frontage['trafficVolume']
+            ?? $frontage['roadTier']
+            ?? ''
+        )));
+        $color = $tier === 'highvolume' ? '#c63f32' : '#1976a3';
+        $svg .= '<line x1="12" y1="' . ($legendY - 4) . '" x2="30" y2="'
+            . ($legendY - 4) . '" stroke="' . $color . '" stroke-width="4" />'
+            . '<text x="36" y="' . $legendY . '">' . $streetName . ' - '
+            . escapeReportValue($feet) . '</text>';
+        $legendY += 16;
+    }
+    $svg .= '</g></svg>';
+
+    return $svg;
 }
