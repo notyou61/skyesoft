@@ -932,6 +932,13 @@ function buildParcelSvg(
         : [($xmin + $xmax) / 2, ($ymin + $ymax) / 2];
     $parcelCenter = $projectPoint($visualCenter);
 
+    // Suppress minor property-line dimensions that would clutter the parcel drawing.
+    $maximumParcelDimensionFeet = max($coordinateWidth, $coordinateHeight);
+    $minimumDimensionFeet = max(
+        10.0,
+        min(30.0, $maximumParcelDimensionFeet * 0.03)
+    );
+
     // Build dimensions now, then draw them after frontage highlights (top annotation layer).
     $dimensionSvg = '';
     foreach ($rings as $ring) {
@@ -957,7 +964,8 @@ function buildParcelSvg(
             $angle = normalizeSvgLabelAngle(rad2deg(atan2($y2 - $y1, $x2 - $x1)));
             $lengthFeet = hypot($end[0] - $start[0], $end[1] - $start[1]);
 
-            if ($lengthFeet < 0.1) {
+            // Keep the property line visible, but omit its dimension and leader when below the threshold.
+            if ($lengthFeet < $minimumDimensionFeet) {
                 continue;
             }
 
