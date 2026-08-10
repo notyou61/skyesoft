@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php (API Endpoint)
-//  Version: 2.2.0
+//  Version: 2.3.0 (Regionalized GIS Resolution Engine)
 // ======================================================================
 
 #region SECTION 0 — Headers & Environment
@@ -138,7 +138,6 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
         foreach (($firstResult['address_components'] ?? []) as $component) {
             $componentTypes = $component['types'] ?? [];
 
-            // Resolve municipality
             if (
                 in_array('locality', $componentTypes, true) ||
                 (
@@ -149,17 +148,14 @@ if (!$locationPlaceId && $fullCleanAddress && $googleMapsApiKey) {
                 $city = $component['long_name'] ?? $city;
             }
 
-            // Resolve state
             if (in_array('administrative_area_level_1', $componentTypes, true)) {
                 $state = $component['short_name'] ?? $state;
             }
 
-            // Resolve ZIP
             if (in_array('postal_code', $componentTypes, true)) {
                 $zip = $component['long_name'] ?? $zip;
             }
 
-            // Resolve county
             if (in_array('administrative_area_level_2', $componentTypes, true)) {
                 $locationCounty = preg_replace(
                     '/\s+County$/i',
@@ -264,12 +260,17 @@ if (
 
 #endregion
 
-#region SECTION 3 — Registry & Short-Circuit
+#region SECTION 3 — Regionalized Registry & Short-Circuit
 
-$jurisKey  = strtolower(trim((string)$locationJurisdiction));
-$jurisSlug = trim(preg_replace('/[^a-z0-9]+/', '-', $jurisKey), '-');
+$jurisKey   = strtolower(trim((string)$locationJurisdiction));
+$jurisSlug  = trim(preg_replace('/[^a-z0-9]+/', '-', $jurisKey), '-');
+$stateSlug  = strtolower(trim((string)$state));
+$countySlug = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower(trim((string)$locationCounty))), '-');
 
+// Regionalized Registry Cascade: State/County/Jurisdiction -> Authoritative -> Local Fallbacks
 $zoningRegistryCandidates = [
+    __DIR__ . "/data/authoritative/{$stateSlug}/{$countySlug}/jurisdictions/{$jurisSlug}/zoning.json",
+    __DIR__ . "/../data/authoritative/{$stateSlug}/{$countySlug}/jurisdictions/{$jurisSlug}/zoning.json",
     __DIR__ . '/data/authoritative/jurisdictions/' . $jurisSlug . '/zoning.json',
     __DIR__ . '/../data/authoritative/jurisdictions/' . $jurisSlug . '/zoning.json',
     __DIR__ . '/zoning.json',
@@ -468,7 +469,7 @@ if (is_array($matchedConfig) && isset($matchedConfig['service']['serviceUrl'])) 
 $hasZoningMatch   = ($zoningCode !== 'UNKNOWN' && $zoningCode !== 'N/A');
 $resultConfidence = $hasZoningMatch ? 95 : 50;
 
-// Resolve parcel frontages in memory (no database access)
+// Resolve parcel frontages in memory
 $frontageResult = resolveLocationFrontages(
     (string)$locationParcelNumber,
     (string)$locationJurisdiction,
@@ -514,6 +515,7 @@ if ($debugEnabled || isset($zoningResult)) {
     $output['debug'] = [
         'jurisdictionKey'  => $jurisKey,
         'jurisdictionSlug' => $jurisSlug,
+        'regionalPath'     => "data/authoritative/{$stateSlug}/{$countySlug}/jurisdictions/{$jurisSlug}/zoning.json",
         'configMatched'    => ($matchedConfig !== null),
         'zoningQuery'      => [
             'configFile'   => $zoningRegistryFile,
@@ -691,9 +693,6 @@ function formatLocationResponse(array $p): array {
     ];
 }
 
-/**
- * Resolve parcel frontage and Phoenix roadway classifications without persistence.
- */
 function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, int $verifiedAt): array {
     $result = [
         'frontages'       => [],
@@ -714,7 +713,6 @@ function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, in
         return $result;
     }
 
-    // Retrieve parcel polygon in Arizona Central State Plane feet
     $parcelEndpoint = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/'
         . 'MaricopaDynamicQueryService/MapServer/3/query';
     $parcelWhere = "APN='" . str_replace("'", "''", $apn) . "'";
@@ -748,7 +746,6 @@ function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, in
         return $result;
     }
 
-    // Preserve the measured parcel polygon for database-free report drawing
     $result['parcelGeometry'] = [
         'geometryType' => 'polygon',
         'spatialReference' => [
@@ -759,7 +756,6 @@ function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, in
         'bounds' => normalizeGeometryBounds($extent)
     ];
 
-    // Retrieve nearby built, public Maricopa County street centerlines
     $streetEndpoint = 'https://services.arcgis.com/ykpntM6e3tHvzKRJ/arcgis/rest/services/'
         . 'Maricopa_County_Streets/FeatureServer/0/query';
     $streetEnvelope = [
@@ -796,7 +792,6 @@ function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, in
         return $result;
     }
 
-    // Add Phoenix roadway classifications for Phoenix parcels
     if (strtolower(trim($jurisdiction)) === 'phoenix') {
         $phoenixResult = enrichPhoenixFrontages($frontages, $streetEnvelope);
         $frontages = $phoenixResult['frontages'];
@@ -808,7 +803,6 @@ function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, in
     return $result;
 }
 
-/** Calculate the combined extent of ArcGIS polygon rings. */
 function calculateGeometryExtent(array $rings): ?array {
     $xs = [];
     $ys = [];
@@ -826,7 +820,6 @@ function calculateGeometryExtent(array $rings): ?array {
     return ['xmin' => min($xs), 'ymin' => min($ys), 'xmax' => max($xs), 'ymax' => max($ys)];
 }
 
-/** Normalize polygon coordinates for stable, compact JSON output. */
 function normalizeGeometryRings(array $rings): array {
     $normalizedRings = [];
     foreach ($rings as $ring) {
@@ -844,7 +837,6 @@ function normalizeGeometryRings(array $rings): array {
     return $normalizedRings;
 }
 
-/** Normalize a calculated geometry extent for JSON output. */
 function normalizeGeometryBounds(array $extent): array {
     return [
         'xmin' => round((float)$extent['xmin'], 3),
@@ -854,7 +846,6 @@ function normalizeGeometryBounds(array $extent): array {
     ];
 }
 
-/** Match parcel edges to nearby, substantially parallel street centerlines. */
 function calculateParcelFrontages(array $rings, array $streetFeatures, int $verifiedAt): array {
     $groups = [];
     foreach ($rings as $ringIndex => $ring) {
@@ -946,7 +937,6 @@ function calculateParcelFrontages(array $rings, array $streetFeatures, int $veri
     return $frontages;
 }
 
-/** Enrich normalized frontage records from the Phoenix street-centerline layer. */
 function enrichPhoenixFrontages(array $frontages, array $envelope): array {
     $endpoint = 'https://maps.phoenix.gov/pub/rest/services/Public/'
         . 'STR_StreetCenterline/MapServer/0/query';
@@ -1005,9 +995,7 @@ function enrichPhoenixFrontages(array $frontages, array $envelope): array {
     ];
 }
 
-/** Resolve a street name from jurisdiction-varying ArcGIS attributes. */
 function resolveStreetName(array $attributes): string {
-    // Use a complete street-name field when the source provides one
     $streetName = resolveAttribute($attributes, [
         'ANNAME', 'FULLNAME', 'FULL_NAME', 'STREETNAME', 'STREET_NAME',
         'STR_NAME', 'NAME', 'ROADNAME'
@@ -1017,7 +1005,6 @@ function resolveStreetName(array $attributes): string {
         return $streetName;
     }
 
-    // Build the Maricopa County street name from its component fields
     $streetParts = [
         resolveAttribute($attributes, ['StDir']),
         resolveAttribute($attributes, ['StName']),
@@ -1035,7 +1022,6 @@ function resolveStreetName(array $attributes): string {
     return implode(' ', $streetParts);
 }
 
-/** Resolve the first non-empty case-insensitive attribute candidate. */
 function resolveAttribute(array $attributes, array $candidates): string {
     foreach ($candidates as $candidate) {
         foreach ($attributes as $key => $value) {
@@ -1047,19 +1033,16 @@ function resolveAttribute(array $attributes, array $candidates): string {
     return '';
 }
 
-/** Normalize street names for cross-source matching. */
 function normalizeStreetName(string $streetName): string {
     $normalized = strtoupper(trim($streetName));
     $normalized = preg_replace('/[^A-Z0-9]+/', ' ', $normalized);
     return trim(preg_replace('/\s+/', ' ', $normalized));
 }
 
-/** Calculate straight-line distance between two projected points. */
 function pointDistance(array $first, array $second): float {
     return hypot((float)$second[0] - (float)$first[0], (float)$second[1] - (float)$first[1]);
 }
 
-/** Calculate absolute directional alignment between two segments. */
 function segmentAlignment(array $a1, array $a2, array $b1, array $b2): float {
     $ax = (float)$a2[0] - (float)$a1[0];
     $ay = (float)$a2[1] - (float)$a1[1];
@@ -1069,7 +1052,6 @@ function segmentAlignment(array $a1, array $a2, array $b1, array $b2): float {
     return $denominator > 0 ? abs(($ax * $bx + $ay * $by) / $denominator) : 0.0;
 }
 
-/** Calculate the shortest distance from a point to a segment. */
 function pointToSegmentDistance(array $point, array $start, array $end): float {
     $dx = (float)$end[0] - (float)$start[0];
     $dy = (float)$end[1] - (float)$start[1];
