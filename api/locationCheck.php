@@ -325,7 +325,8 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
         $countySlug,
         $jurisSlug,
         (string)$locationJurisdiction,
-        (string)$parcel['zoningCode']
+        (string)$parcel['zoningCode'],
+        $frontageResult['frontages']
     );
 
     echo json_encode([
@@ -490,7 +491,8 @@ $signCodeResult = resolveApplicableSignCode(
     $countySlug,
     $jurisSlug,
     (string)$locationJurisdiction,
-    $zoningCode
+    $zoningCode,
+    $frontageResult['frontages']
 );
 
 #endregion
@@ -622,7 +624,8 @@ function resolveApplicableSignCode(
     string $countySlug,
     string $jurisdictionSlug,
     string $jurisdictionName,
-    string $zoningCode
+    string $zoningCode,
+    array $frontages = []
 ): array {
     // Resolve the jurisdiction artifact (regional path first).
     $signCodeCandidates = [
@@ -710,14 +713,42 @@ function resolveApplicableSignCode(
     $standards     = $signCodeConfig['identificationSignStandards'][$landUseClassification] ?? [];
     $attachedSigns = is_array($standards['wall'] ?? null) ? $standards['wall'] : null;
     $detachedSigns = is_array($standards['ground'] ?? null) ? $standards['ground'] : null;
+
+    // Reconcile each resolved street frontage with its Table D-1 ground-sign tier.
+    if ($detachedSigns !== null && is_array($detachedSigns['streetClassStandards'] ?? null)) {
+        $detachedSigns['resolvedFrontageStandards'] = resolveFrontageSignStandards(
+            $frontages,
+            $detachedSigns['streetClassStandards'],
+            (float)($detachedSigns['minimumSpacingFeet'] ?? 0),
+            (string)($signCodeConfig['identificationSignStandards']['designReviewNotation'] ?? '')
+        );
+    }
     $requiredInputs = array_values(array_unique(array_merge(
         is_array($attachedSigns['requiredInputs'] ?? null) ? $attachedSigns['requiredInputs'] : [],
         is_array($detachedSigns['requiredInputs'] ?? null) ? $detachedSigns['requiredInputs'] : []
     )));
 
-    $status = ($attachedSigns !== null && $detachedSigns !== null && $requiredInputs === [])
-        ? 'resolved'
-        : 'research_required';
+    $frontageStandardsResolved = true;
+    if (is_array($detachedSigns['streetClassStandards'] ?? null)) {
+        $resolvedFrontageStandards = is_array($detachedSigns['resolvedFrontageStandards'] ?? null)
+            ? $detachedSigns['resolvedFrontageStandards']
+            : [];
+        $frontageStandardsResolved = $resolvedFrontageStandards !== [];
+
+        foreach ($resolvedFrontageStandards as $resolvedFrontageStandard) {
+            if (($resolvedFrontageStandard['status'] ?? 'research_required') !== 'resolved') {
+                $frontageStandardsResolved = false;
+                break;
+            }
+        }
+    }
+
+    $status = (
+        $attachedSigns !== null
+        && $detachedSigns !== null
+        && $requiredInputs === []
+        && $frontageStandardsResolved
+    ) ? 'resolved' : 'research_required';
 
     return [
         'signCode' => [
@@ -743,6 +774,62 @@ function resolveApplicableSignCode(
             'landUseClassification'=> $landUseClassification
         ]
     ];
+}
+
+/**
+ * Match resolved roadway classifications and frontage lengths to Table D-1.
+ * Local (LO) is supplied by the frontage resolver as the lowVolume road tier.
+ */
+function resolveFrontageSignStandards(
+    array $frontages,
+    array $streetClassStandards,
+    float $minimumSpacingFeet,
+    string $designReviewNotation
+): array {
+    $resolvedStandards = [];
+
+    foreach ($frontages as $frontage) {
+        if (!is_array($frontage)) {
+            continue;
+        }
+
+        $streetName           = trim((string)($frontage['streetName'] ?? ''));
+        $streetClassCode      = strtoupper(trim((string)($frontage['streetClassCode'] ?? '')));
+        $streetClassification = trim((string)($frontage['streetClassification'] ?? ''));
+        $roadTier             = trim((string)($frontage['roadTier'] ?? ''));
+        $frontageLengthFeet   = is_numeric($frontage['frontageLengthFeet'] ?? null)
+            ? (float)$frontage['frontageLengthFeet']
+            : null;
+
+        // Table D-1 uses primary/secondary tiers; frontage length reconciles the tier.
+        $signClassification = $frontageLengthFeet !== null && $frontageLengthFeet <= 100
+            ? 'secondary'
+            : ($frontageLengthFeet !== null ? 'primary' : null);
+        $standardKey = $roadTier !== '' && $signClassification !== null
+            ? $roadTier . ucfirst($signClassification)
+            : null;
+        $matchedStandard = $standardKey !== null && is_array($streetClassStandards[$standardKey] ?? null)
+            ? $streetClassStandards[$standardKey]
+            : null;
+
+        $resolvedStandards[] = [
+            'streetName'             => $streetName !== '' ? $streetName : null,
+            'frontageLengthFeet'     => $frontageLengthFeet,
+            'streetClassCode'        => $streetClassCode !== '' ? $streetClassCode : null,
+            'streetClassification'   => $streetClassification !== '' ? $streetClassification : null,
+            'roadTier'               => $roadTier !== '' ? $roadTier : null,
+            'signClassification'     => $signClassification,
+            'tableStandardKey'       => $standardKey,
+            'asOfRight'              => $matchedStandard['asOfRight'] ?? null,
+            'designReviewMaximum'    => $matchedStandard['designReviewMaximum'] ?? null,
+            'minimumSpacingFeet'     => $minimumSpacingFeet > 0 ? $minimumSpacingFeet : null,
+            'designReviewNotation'   => $designReviewNotation !== '' ? $designReviewNotation : null,
+            'citation'               => '705.D.1, Table D-1',
+            'status'                 => $matchedStandard !== null ? 'resolved' : 'research_required'
+        ];
+    }
+
+    return $resolvedStandards;
 }
 
 function buildSignCodeSource(array $signCodeConfig): array {
