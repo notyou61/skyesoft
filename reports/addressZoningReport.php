@@ -1058,31 +1058,88 @@ function buildParcelSvg(
             . escapeReportValue($frontage['streetName'] ?? 'Unknown street') . '</text>';
     }
 
-    // Stack the parcel number above the address at the parcel's visual center.
+    // Stack parcel and address on two unwrapped lines using one parcel-fit font size.
     $centerLines = [];
     if ($parcelNumber !== '') {
-        $centerLines[] = 'Parcel: ' . escapeReportValue($parcelNumber);
+        $centerLines[] = 'Parcel: ' . $parcelNumber;
     }
     if ($address !== '') {
-        $addressLines = ['Address: ' . escapeReportValue($address)];
-        if (strlen($address) > 48) {
-            $breakAt = strrpos(substr($address, 0, 49), ' ');
-            if ($breakAt !== false && $breakAt > 0) {
-                $addressLines = [
-                    'Address: ' . escapeReportValue(substr($address, 0, $breakAt)),
-                    escapeReportValue(substr($address, $breakAt + 1))
-                ];
-            }
-        }
-        $centerLines = array_merge($centerLines, $addressLines);
+        $centerLines[] = 'Address: ' . $address;
     }
     if ($centerLines !== []) {
-        $startY = $parcelCenter[1] - ((count($centerLines) - 1) * 6.5);
+        $projectedPrimaryRing = [];
+        foreach ($primaryRing as $point) {
+            $projectedPrimaryRing[] = $projectPoint($point);
+        }
+
+        // Find the parcel's horizontal interior span at a requested SVG Y coordinate.
+        $getInteriorSpan = static function (float $targetY) use ($projectedPrimaryRing, $parcelCenter): float {
+            $intersections = [];
+            $pointCount = count($projectedPrimaryRing);
+            $edgeCount = $pointCount;
+            if ($pointCount > 1 && $projectedPrimaryRing[0] === $projectedPrimaryRing[$pointCount - 1]) {
+                $edgeCount--;
+            }
+
+            for ($index = 0; $index < $edgeCount; $index++) {
+                $nextIndex = ($index + 1) % $edgeCount;
+                [$x1, $y1] = $projectedPrimaryRing[$index];
+                [$x2, $y2] = $projectedPrimaryRing[$nextIndex];
+
+                if (($y1 > $targetY) === ($y2 > $targetY) || abs($y2 - $y1) < 0.000001) {
+                    continue;
+                }
+
+                $intersections[] = $x1 + (($targetY - $y1) * ($x2 - $x1) / ($y2 - $y1));
+            }
+
+            sort($intersections, SORT_NUMERIC);
+            $bestSpan = 0.0;
+            for ($index = 0; $index + 1 < count($intersections); $index += 2) {
+                $left = $intersections[$index];
+                $right = $intersections[$index + 1];
+                if ($parcelCenter[0] >= $left && $parcelCenter[0] <= $right) {
+                    return max(0.0, $right - $left);
+                }
+                $bestSpan = max($bestSpan, $right - $left);
+            }
+
+            return $bestSpan;
+        };
+
+        $fontSize = 11.0;
+        $lineGap = $fontSize * 1.3;
+        while ($fontSize > 2.0) {
+            $lineGap = $fontSize * 1.3;
+            $firstLineY = $parcelCenter[1] - ($lineGap / 2);
+            $secondLineY = $parcelCenter[1] + ($lineGap / 2);
+            $availableWidth = min(
+                $getInteriorSpan($firstLineY),
+                $getInteriorSpan($secondLineY)
+            ) * 0.9;
+            $longestTextWidth = 0.0;
+            foreach ($centerLines as $centerLine) {
+                $longestTextWidth = max(
+                    $longestTextWidth,
+                    strlen($centerLine) * $fontSize * 0.58
+                );
+            }
+
+            if ($longestTextWidth <= $availableWidth) {
+                break;
+            }
+            $fontSize -= 0.25;
+        }
+
+        $lineGap = $fontSize * 1.3;
+        $startY = $parcelCenter[1] - ((count($centerLines) - 1) * $lineGap / 2);
         $svg .= '<text x="' . round($parcelCenter[0], 2) . '" y="' . round($startY, 2)
-            . '" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#000000" stroke="none">';
+            . '" text-anchor="middle" font-family="Arial, sans-serif" font-size="' . round($fontSize, 2)
+            . '" font-weight="bold" fill="#000000" stroke="none">';
         foreach ($centerLines as $lineIndex => $centerLine) {
             $svg .= '<tspan x="' . round($parcelCenter[0], 2) . '" dy="'
-                . ($lineIndex === 0 ? '0' : '13') . '">' . $centerLine . '</tspan>';
+                . ($lineIndex === 0 ? '0' : round($lineGap, 2)) . '">'
+                . escapeReportValue($centerLine) . '</tspan>';
         }
         $svg .= '</text>';
     }
