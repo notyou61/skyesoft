@@ -344,7 +344,8 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
                 'lotSize'           => $parcel['lotSize'] ?? null,
                 'confidence'        => (int)($parcel['confidence'] ?? 95),
                 'verifiedAt'        => $executionTime,
-                'frontages'         => $frontageResult['frontages']
+                'frontages'         => $frontageResult['frontages'],
+                'parcelGeometry'    => $frontageResult['parcelGeometry']
             ])
         ]
     ], JSON_PRETTY_PRINT);
@@ -503,7 +504,8 @@ $output = [
             'zoningSource'      => $sourceLayer,
             'confidence'        => $resultConfidence,
             'verifiedAt'        => $executionTime,
-            'frontages'         => $frontageResult['frontages']
+            'frontages'         => $frontageResult['frontages'],
+            'parcelGeometry'    => $frontageResult['parcelGeometry']
         ])
     ]
 ];
@@ -653,6 +655,9 @@ function formatLocationResponse(array $p): array {
                     'updatedAt'         => null
                 ],
                 'parcelRecordReady' => true,
+                'parcelGeometry'     => is_array($p['parcelGeometry'] ?? null)
+                    ? $p['parcelGeometry']
+                    : null,
                 'frontages'          => is_array($p['frontages'] ?? null)
                     ? $p['frontages']
                     : [],
@@ -691,7 +696,8 @@ function formatLocationResponse(array $p): array {
  */
 function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, int $verifiedAt): array {
     $result = [
-        'frontages'  => [],
+        'frontages'       => [],
+        'parcelGeometry'  => null,
         'diagnostics' => [
             'status'       => 'not_attempted',
             'parcelQuery'  => null,
@@ -741,6 +747,17 @@ function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, in
         $result['diagnostics']['message'] = 'The parcel response did not contain measurable rings.';
         return $result;
     }
+
+    // Preserve the measured parcel polygon for database-free report drawing
+    $result['parcelGeometry'] = [
+        'geometryType' => 'polygon',
+        'spatialReference' => [
+            'wkid'  => 2223,
+            'units' => 'feet'
+        ],
+        'rings'  => normalizeGeometryRings($rings),
+        'bounds' => normalizeGeometryBounds($extent)
+    ];
 
     // Retrieve nearby built, public Maricopa County street centerlines
     $streetEndpoint = 'https://services.arcgis.com/ykpntM6e3tHvzKRJ/arcgis/rest/services/'
@@ -809,10 +826,38 @@ function calculateGeometryExtent(array $rings): ?array {
     return ['xmin' => min($xs), 'ymin' => min($ys), 'xmax' => max($xs), 'ymax' => max($ys)];
 }
 
+/** Normalize polygon coordinates for stable, compact JSON output. */
+function normalizeGeometryRings(array $rings): array {
+    $normalizedRings = [];
+    foreach ($rings as $ring) {
+        $normalizedRing = [];
+        foreach ($ring as $point) {
+            if (!isset($point[0], $point[1]) || !is_numeric($point[0]) || !is_numeric($point[1])) {
+                continue;
+            }
+            $normalizedRing[] = [round((float)$point[0], 3), round((float)$point[1], 3)];
+        }
+        if ($normalizedRing !== []) {
+            $normalizedRings[] = $normalizedRing;
+        }
+    }
+    return $normalizedRings;
+}
+
+/** Normalize a calculated geometry extent for JSON output. */
+function normalizeGeometryBounds(array $extent): array {
+    return [
+        'xmin' => round((float)$extent['xmin'], 3),
+        'ymin' => round((float)$extent['ymin'], 3),
+        'xmax' => round((float)$extent['xmax'], 3),
+        'ymax' => round((float)$extent['ymax'], 3)
+    ];
+}
+
 /** Match parcel edges to nearby, substantially parallel street centerlines. */
 function calculateParcelFrontages(array $rings, array $streetFeatures, int $verifiedAt): array {
     $groups = [];
-    foreach ($rings as $ring) {
+    foreach ($rings as $ringIndex => $ring) {
         $pointCount = count($ring);
         for ($index = 1; $index < $pointCount; $index++) {
             $start = $ring[$index - 1];
@@ -859,11 +904,19 @@ function calculateParcelFrontages(array $rings, array $streetFeatures, int $veri
                 $groups[$key] = [
                     'streetName' => $best['streetName'],
                     'length'     => 0.0,
+                    'segments'   => [],
                     'attributes' => $best['attributes'],
                     'distance'   => $best['distance']
                 ];
             }
             $groups[$key]['length'] += $edgeLength;
+            $groups[$key]['segments'][] = [
+                'ringIndex'    => $ringIndex,
+                'segmentIndex' => $index - 1,
+                'start'        => [round((float)$start[0], 3), round((float)$start[1], 3)],
+                'end'          => [round((float)$end[0], 3), round((float)$end[1], 3)],
+                'lengthFeet'   => round($edgeLength, 2)
+            ];
             $groups[$key]['distance'] = min($groups[$key]['distance'], $best['distance']);
         }
     }
@@ -878,6 +931,7 @@ function calculateParcelFrontages(array $rings, array $streetFeatures, int $veri
         $frontages[] = [
             'streetName'           => $group['streetName'],
             'frontageLengthFeet'   => round($group['length'], 2),
+            'parcelSegments'       => $group['segments'],
             'frontageMethod'       => 'countyParcelBoundaryToCountyStreetCenterline',
             'streetClassCode'      => $classCode,
             'streetClassification' => null,
