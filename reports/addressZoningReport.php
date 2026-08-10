@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — addressZoningReport.php
 // Address Check Zoning Report (no saved location required)
-// Version: 1.0.1
+// Version: 1.0.2
 // =============================================
 
 ini_set('display_errors', '0');
@@ -340,9 +340,16 @@ if (!empty($frontages)) {
     $frontageItems = [];
     foreach ($frontages as $f) {
         $street = escapeReportValue($f['streetName'] ?? 'Unknown');
-        $feet = escapeReportValue($f['frontageFeet'] ?? $f['frontage'] ?? '0');
-        $class = escapeReportValue($f['streetClassification'] ?? '');
-        $tier = escapeReportValue($f['roadTier'] ?? '');
+        
+        // Check frontageLengthFeet first, fallback to frontageFeet or frontage
+        $rawFeet = $f['frontageLengthFeet'] ?? $f['frontageFeet'] ?? $f['frontage'] ?? 0;
+        $feet = escapeReportValue(is_numeric($rawFeet) ? (string)round((float)$rawFeet, 1) : (string)$rawFeet);
+        
+        // Check roadClass first, fallback to streetClassification
+        $class = escapeReportValue($f['roadClass'] ?? $f['streetClassification'] ?? '');
+        
+        // Check trafficVolume first, fallback to roadTier
+        $tier = escapeReportValue($f['trafficVolume'] ?? $f['roadTier'] ?? '');
         
         $meta = [];
         if ($class !== '') $meta[] = $class;
