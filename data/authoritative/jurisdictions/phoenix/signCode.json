@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "artifactType": "jurisdictionalSignCode",
   "jurisdiction": {
     "id": "phoenix-az",
@@ -121,6 +121,8 @@
     "occupiedElevationWidthFeet",
     "existingAttachedSignAreaSquareFeet",
     "existingDetachedSignCountByFrontage",
+    "drivewayCountByStreetFrontage",
+    "confirmedLandUse",
     "distanceToRooflineFeet",
     "distanceToNearestDrivewayFeet",
     "distanceToPropertyLineFeet",
@@ -287,6 +289,52 @@
   "identificationSignStandards": {
     "tableReference": "Table D-1",
     "designReviewNotation": "Values in designReviewMaximum represent the parenthetical allowances in Table D-1.",
+    "multipleFamilyResidential": {
+      "wall": {
+        "areaFormula": {
+          "squareFeetPerLinearFootOfOccupiedBuildingOrSuiteFrontage": 0.25,
+          "minimumSquareFeet": 24,
+          "maximumSquareFeet": 120
+        },
+        "maximumHeightFeet": 15,
+        "requiredInputs": [
+          "buildingOrSuiteFrontageFeet",
+          "existingAttachedSignAreaSquareFeet",
+          "confirmedLandUse"
+        ],
+        "citation": {
+          "section": "705.D.1, Table D-1",
+          "pdfPage": null
+        }
+      },
+      "ground": {
+        "quantityRule": {
+          "maximumSignsPerDrivewayPerStreetFrontage": 1
+        },
+        "minimumSpacingFeet": 150,
+        "asOfRight": {
+          "maximumHeightFeet": 5,
+          "maximumAreaSquareFeet": 16
+        },
+        "designReviewMaximum": {
+          "maximumHeightFeet": 5,
+          "maximumAreaSquareFeet": 32
+        },
+        "subdivisionIdentificationDesignReviewMaximum": {
+          "maximumHeightFeet": 8,
+          "maximumAreaSquareFeet": 32
+        },
+        "requiredInputs": [
+          "drivewayCountByStreetFrontage",
+          "existingDetachedSignCountByFrontage",
+          "confirmedLandUse"
+        ],
+        "citation": {
+          "section": "705.D.1, Table D-1",
+          "pdfPage": null
+        }
+      }
+    },
     "commercialIndustrial": {
       "wall": {
         "standardPlacementHeightFeet": 25,
