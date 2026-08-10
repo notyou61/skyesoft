@@ -953,9 +953,32 @@ function enrichPhoenixFrontages(array $frontages, array $envelope): array {
 
 /** Resolve a street name from jurisdiction-varying ArcGIS attributes. */
 function resolveStreetName(array $attributes): string {
-    return resolveAttribute($attributes, [
-        'FULLNAME', 'FULL_NAME', 'STREETNAME', 'STREET_NAME', 'STR_NAME', 'NAME', 'ROADNAME'
+    // Use a complete street-name field when the source provides one
+    $streetName = resolveAttribute($attributes, [
+        'ANNAME', 'FULLNAME', 'FULL_NAME', 'STREETNAME', 'STREET_NAME',
+        'STR_NAME', 'NAME', 'ROADNAME'
     ]);
+
+    if ($streetName !== '') {
+        return $streetName;
+    }
+
+    // Build the Maricopa County street name from its component fields
+    $streetParts = [
+        resolveAttribute($attributes, ['StDir']),
+        resolveAttribute($attributes, ['StName']),
+        resolveAttribute($attributes, ['StType']),
+        resolveAttribute($attributes, ['StSufx'])
+    ];
+
+    $streetParts = array_values(array_filter(
+        array_map('trim', $streetParts),
+        static function (string $streetPart): bool {
+            return $streetPart !== '';
+        }
+    ));
+
+    return implode(' ', $streetParts);
 }
 
 /** Resolve the first non-empty case-insensitive attribute candidate. */
