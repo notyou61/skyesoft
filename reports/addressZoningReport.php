@@ -468,7 +468,11 @@ $css = '
     .basis-table td { width: 50%; border: 1px solid #d5d5d5; padding: 4px 6px; font-size: 7.6pt; }
 
     /* Address site details */
-    .site-details-block { page-break-before: always; }
+    /* Start the parcel section on page 2, but allow its contents to flow. */
+    .site-details-block {
+        page-break-before: always;
+        page-break-inside: auto;
+    }
     .parcel-map-frame { border: 1px solid #c4ceda; background: #f7f9fc; padding: 4px; text-align: center; }
     .parcel-map-frame svg { display: block; width: 100%; height: 225px; }
     .parcel-map-unavailable { height: 95px; padding-top: 70px; color: #777; font-style: italic; text-align: center; }
