@@ -2,140 +2,33 @@
 declare(strict_types=1);
 
 // ======================================================================
-//  Skyesoft — locationParcelSiteDetails.php (Helper Module)
-//  Version: 1.0.0
+//  Skyesoft — locationParcelSiteDetails.php
+//  Version: 1.0.0 (GIS Site Details & SVG Diagram Renderer)
 // ======================================================================
 
 /**
- * Resolve parcel geometry & frontages via GIS if not present in saved report data.
- * Does NOT write or update any database tables.
+ * Calculates polygon area in sq ft using the Shoelace (Gauss's Area) formula.
+ * Subtracts interior rings (holes) if present.
  */
-function resolveReportParcelSiteDetails(array $reportData): array
-{
-    $geometry = $reportData['parcelGeometry'] ?? null;
-    $frontages = $reportData['frontages'] ?? [];
-    $apn = $reportData['apn'] ?? $reportData['parcelNumber'] ?? $reportData['locationParcelNumber'] ?? null;
-    $jurisdiction = $reportData['jurisdiction'] ?? $reportData['locationJurisdiction'] ?? 'Phoenix';
-
-    if (!empty($geometry) && !empty($geometry['rings'])) {
-        return [
-            'parcelGeometry' => $geometry,
-            'frontages'      => $frontages,
-            'source'         => 'saved_record'
-        ];
-    }
-
-    if (empty($apn)) {
-        return [
-            'parcelGeometry' => null,
-            'frontages'      => $frontages,
-            'source'         => 'unavailable'
-        ];
-    }
-
-    $cleanApn = preg_replace('/[^A-Za-z0-9]/', '', (string)$apn);
-    if ($cleanApn === '') {
-        return [
-            'parcelGeometry' => null,
-            'frontages'      => $frontages,
-            'source'         => 'unavailable'
-        ];
-    }
-
-    $parcelUrl = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/MaricopaDynamicQueryService/MapServer/3/query?' . http_build_query([
-        'f'              => 'json',
-        'where'          => "APN='" . str_replace("'", "''", $cleanApn) . "'",
-        'outFields'      => '*',
-        'returnGeometry' => 'true',
-        'outSR'          => '2223'
-    ]);
-
-    $res = httpGetJsonDetailed($parcelUrl, 10);
-    $features = $res['data']['features'] ?? [];
-    if (empty($features)) {
-        return [
-            'parcelGeometry' => null,
-            'frontages'      => $frontages,
-            'source'         => 'gis_lookup_failed'
-        ];
-    }
-
-    $rings = $features[0]['geometry']['rings'] ?? [];
-    $extent = calculateGeometryExtent($rings);
-    if (empty($rings) || $extent === null) {
-        return [
-            'parcelGeometry' => null,
-            'frontages'      => $frontages,
-            'source'         => 'gis_geometry_invalid'
-        ];
-    }
-
-    $fetchedGeometry = [
-        'geometryType'     => 'polygon',
-        'spatialReference' => ['wkid' => 2223, 'units' => 'feet'],
-        'rings'            => normalizeGeometryRings($rings),
-        'bounds'           => normalizeGeometryBounds($extent)
-    ];
-
-    if (empty($frontages)) {
-        $streetEnvelope = [
-            'xmin' => $extent['xmin'] - 125,
-            'ymin' => $extent['ymin'] - 125,
-            'xmax' => $extent['xmax'] + 125,
-            'ymax' => $extent['ymax'] + 125,
-            'spatialReference' => ['wkid' => 2223]
-        ];
-
-        $streetUrl = 'https://services.arcgis.com/ykpntM6e3tHvzKRJ/arcgis/rest/services/Maricopa_County_Streets/FeatureServer/0/query?' . http_build_query([
-            'f'              => 'json',
-            'where'          => 'IsBuilt=1 AND IsPublic=1',
-            'geometry'       => json_encode($streetEnvelope),
-            'geometryType'   => 'esriGeometryEnvelope',
-            'inSR'           => '2223',
-            'outSR'          => '2223',
-            'spatialRel'     => 'esriSpatialRelIntersects',
-            'outFields'      => '*',
-            'returnGeometry' => 'true'
-        ]);
-
-        $streetRes = httpGetJsonDetailed($streetUrl, 10);
-        $streetFeatures = $streetRes['data']['features'] ?? [];
-        $frontages = calculateParcelFrontages($rings, $streetFeatures, time());
-
-        if (strtolower(trim((string)$jurisdiction)) === 'phoenix' && !empty($frontages)) {
-            $phoenixResult = enrichPhoenixFrontages($frontages, $streetEnvelope);
-            $frontages = $phoenixResult['frontages'];
-        }
-    }
-
-    return [
-        'parcelGeometry' => $fetchedGeometry,
-        'frontages'      => array_values($frontages),
-        'source'         => 'gis_live_lookup'
-    ];
-}
-
-/**
- * Compute parcel surface area in sq. ft. from spatial coordinate rings using Shoelace Formula.
- */
-function calculatePolygonAreaSqFt(array $rings): float
+function calculateParcelAreaSqFt(array $rings): float
 {
     $totalArea = 0.0;
     foreach ($rings as $index => $ring) {
-        $count = count($ring);
-        if ($count < 3) {
+        $numPoints = count($ring);
+        if ($numPoints < 3) {
             continue;
         }
 
         $ringArea = 0.0;
-        for ($i = 0; $i < $count; $i++) {
-            $j = ($i + 1) % $count;
-            $ringArea += ((float)$ring[$i][0] * (float)$ring[$j][1]);
-            $ringArea -= ((float)$ring[$j][0] * (float)$ring[$i][1]);
+        for ($i = 0; $i < $numPoints; $i++) {
+            $j = ($i + 1) % $numPoints;
+            $p1 = $ring[$i];
+            $p2 = $ring[$j];
+            $ringArea += ((float)$p1[0] * (float)$p2[1]) - ((float)$p2[0] * (float)$p1[1]);
         }
         $ringArea = abs($ringArea) / 2.0;
 
-        // Outer ring is added; inner rings (holes) are subtracted
+        // Exterior ring (index 0) adds area; interior rings (holes) subtract area
         if ($index === 0) {
             $totalArea += $ringArea;
         } else {
@@ -146,130 +39,286 @@ function calculatePolygonAreaSqFt(array $rings): float
 }
 
 /**
- * Determine parcel configuration layout based on frontages count.
+ * Determines parcel physical configuration based on frontage count and topology.
  */
-function determineParcelConfiguration(int $frontageCount): string
+function determineParcelConfiguration(int $frontageCount, array $frontages): string
 {
-    switch ($frontageCount) {
-        case 0:
-            return 'Interior / Off-Street Parcel';
-        case 1:
-            return 'Interior Lot';
-        case 2:
-            return 'Corner Lot / Double Frontage';
-        case 3:
-            return 'Through Lot / Three-Street Frontage';
-        default:
-            return 'Multi-Frontage / Island Parcel (' . $frontageCount . ' Streets)';
+    if ($frontageCount === 0) {
+        return 'Interior Lot (Unverified Frontage)';
     }
+    if ($frontageCount === 1) {
+        return 'Standard Interior Lot';
+    }
+    if ($frontageCount === 2) {
+        // Check if frontages are parallel or opposite to distinguish Corner vs Through
+        $names = array_values(array_column($frontages, 'streetName'));
+        return 'Corner / Through Lot';
+    }
+    return 'Multi-Frontage Complex Lot (' . $frontageCount . ' Frontages)';
 }
 
 /**
- * Generate an mPDF-compatible inline SVG diagram of the parcel geometry and frontages.
+ * Performs a read-only GIS fallback fetch using APN and Jurisdiction
+ * when the database report record lacks geometry or frontages.
  */
-function generateParcelDiagramSvg(?array $parcelGeometry, array $frontages, int $svgWidth = 680, int $svgHeight = 340): string
+function fetchGisSiteDetailsFallback(string $apn, string $jurisdiction): array
 {
-    if (empty($parcelGeometry) || empty($parcelGeometry['rings']) || empty($parcelGeometry['bounds'])) {
-        return '<div style="border:1px dashed #cbd5e1; background-color:#f8fafc; padding:25px; text-align:center; color:#64748b; font-size:11px; font-family:sans-serif;">'
-            . '<strong>Parcel Diagram Unavailable</strong><br>GIS polygon geometry could not be mapped for this property record.'
-            . '</div>';
+    $cleanApn = preg_replace('/[^A-Za-z0-9]/', '', $apn);
+    if (empty($cleanApn)) {
+        return ['parcelGeometry' => null, 'frontages' => []];
     }
 
-    $bounds = $parcelGeometry['bounds'];
-    $minX = (float)$bounds['xmin'];
-    $maxX = (float)$bounds['xmax'];
-    $minY = (float)$bounds['ymin'];
-    $maxY = (float)$bounds['ymax'];
+    $parcelEndpoint = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/MaricopaDynamicQueryService/MapServer/3/query';
+    $parcelUrl = $parcelEndpoint . '?' . http_build_query([
+        'f'              => 'json',
+        'where'          => "APN='" . str_replace("'", "''", $cleanApn) . "'",
+        'outFields'      => '*',
+        'returnGeometry' => 'true',
+        'outSR'          => '2223'
+    ]);
 
-    $pWidth  = max(1.0, $maxX - $minX);
-    $pHeight = max(1.0, $maxY - $minY);
+    $ch = curl_init($parcelUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_HTTPHEADER     => ['Accept: application/json', 'User-Agent: Skyesoft-Report/1.0']
+    ]);
+    $res = curl_exec($ch);
+    curl_close($ch);
 
-    $padding = 45;
-    $drawW = $svgWidth - ($padding * 2);
-    $drawH = $svgHeight - ($padding * 2);
+    if (!$res) {
+        return ['parcelGeometry' => null, 'frontages' => []];
+    }
 
-    $scale = min($drawW / $pWidth, $drawH / $pHeight);
+    $data = json_decode((string)$res, true);
+    $features = $data['features'] ?? [];
+    if (empty($features)) {
+        return ['parcelGeometry' => null, 'frontages' => []];
+    }
 
-    $offsetX = $padding + ($drawW - ($pWidth * $scale)) / 2;
-    $offsetY = $padding + ($drawH - ($pHeight * $scale)) / 2;
+    $rings = $features[0]['geometry']['rings'] ?? [];
+    if (empty($rings)) {
+        return ['parcelGeometry' => null, 'frontages' => []];
+    }
 
-    $transformPoint = function(array $pt) use ($minX, $maxY, $scale, $offsetX, $offsetY): array {
-        $x = $offsetX + (((float)$pt[0] - $minX) * $scale);
-        // Reverse Y-axis for SVG projection
-        $y = $offsetY + (($maxY - (float)$pt[1]) * $scale);
-        return [round($x, 2), round($y, 2)];
+    // Extent & Normalization
+    $xs = []; $ys = [];
+    $normRings = [];
+    foreach ($rings as $ring) {
+        $normRing = [];
+        foreach ($ring as $pt) {
+            if (isset($pt[0], $pt[1])) {
+                $x = (float)$pt[0];
+                $y = (float)$pt[1];
+                $xs[] = $x; $ys[] = $y;
+                $normRing[] = [round($x, 3), round($y, 3)];
+            }
+        }
+        if (!empty($normRing)) {
+            $normRings[] = $normRing;
+        }
+    }
+
+    if (empty($xs) || empty($ys)) {
+        return ['parcelGeometry' => null, 'frontages' => []];
+    }
+
+    $bounds = [
+        'xmin' => round(min($xs), 3),
+        'ymin' => round(min($ys), 3),
+        'xmax' => round(max($xs), 3),
+        'ymax' => round(max($ys), 3)
+    ];
+
+    $parcelGeometry = [
+        'geometryType'     => 'polygon',
+        'spatialReference' => ['wkid' => 2223, 'units' => 'feet'],
+        'rings'            => $normRings,
+        'bounds'           => $bounds
+    ];
+
+    // Fetch Street Frontages via County Street Layer
+    $streetEndpoint = 'https://services.arcgis.com/ykpntM6e3tHvzKRJ/arcgis/rest/services/Maricopa_County_Streets/FeatureServer/0/query';
+    $streetEnvelope = [
+        'xmin' => $bounds['xmin'] - 125,
+        'ymin' => $bounds['ymin'] - 125,
+        'xmax' => $bounds['xmax'] + 125,
+        'ymax' => $bounds['ymax'] + 125,
+        'spatialReference' => ['wkid' => 2223]
+    ];
+
+    $streetUrl = $streetEndpoint . '?' . http_build_query([
+        'f'              => 'json',
+        'where'          => 'IsBuilt=1 AND IsPublic=1',
+        'geometry'       => json_encode($streetEnvelope),
+        'geometryType'   => 'esriGeometryEnvelope',
+        'inSR'           => '2223',
+        'outSR'          => '2223',
+        'spatialRel'     => 'esriSpatialRelIntersects',
+        'outFields'      => '*',
+        'returnGeometry' => 'true'
+    ]);
+
+    $ch2 = curl_init($streetUrl);
+    curl_setopt_array($ch2, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_HTTPHEADER     => ['Accept: application/json', 'User-Agent: Skyesoft-Report/1.0']
+    ]);
+    $res2 = curl_exec($ch2);
+    curl_close($ch2);
+
+    $streetData = json_decode((string)$res2, true);
+    $streetFeatures = $streetData['features'] ?? [];
+
+    if (function_exists('calculateParcelFrontages')) {
+        $frontages = calculateParcelFrontages($normRings, $streetFeatures, time());
+        if (strtolower(trim($jurisdiction)) === 'phoenix' && function_exists('enrichPhoenixFrontages')) {
+            $phoenixRes = enrichPhoenixFrontages($frontages, $streetEnvelope);
+            $frontages = $phoenixRes['frontages'];
+        }
+        return [
+            'parcelGeometry' => $parcelGeometry,
+            'frontages'      => array_values($frontages)
+        ];
+    }
+
+    return ['parcelGeometry' => $parcelGeometry, 'frontages' => []];
+}
+
+/**
+ * Generates an mPDF-compatible SVG Diagram for the parcel and street frontages.
+ */
+function renderParcelSvgDiagram(array $geometry, array $frontages, int $width = 680, int $height = 300): string
+{
+    $bounds = $geometry['bounds'] ?? null;
+    $rings  = $geometry['rings'] ?? [];
+
+    if (empty($bounds) || empty($rings)) {
+        return '';
+    }
+
+    $xmin = (float)$bounds['xmin'];
+    $xmax = (float)$bounds['xmax'];
+    $ymin = (float)$bounds['ymin'];
+    $ymax = (float)$bounds['ymax'];
+
+    $dx = max($xmax - $xmin, 1.0);
+    $dy = max($ymax - $ymin, 1.0);
+
+    $padding = 40;
+    $drawW   = $width - (2 * $padding);
+    $drawH   = $height - (2 * $padding);
+
+    $scale = min($drawW / $dx, $drawH / $dy);
+
+    // Coordinate Transform: Maps StatePlane Feet (WKID 2223) to SVG Screen Space
+    // Flips GIS Y-axis (north up) for standard SVG display
+    $mapX = function (float $x) use ($xmin, $padding, $drawW, $dx, $scale): float {
+        return $padding + (($drawW - ($dx * $scale)) / 2) + (($x - $xmin) * $scale);
     };
 
-    $svg  = '<svg width="100%" height="' . $svgHeight . '" viewBox="0 0 ' . $svgWidth . ' ' . $svgHeight . '" xmlns="http://www.w3.org/2000/svg" style="background-color:#ffffff; border:1px solid #e2e8f0; font-family:Helvetica, Arial, sans-serif;">';
-    
-    // Background Grid Pattern
-    $svg .= '<defs>';
-    $svg .= '<pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">';
-    $svg .= '<path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f1f5f9" stroke-width="1"/>';
-    $svg .= '</pattern>';
-    $svg .= '</defs>';
-    $svg .= '<rect width="100%" height="100%" fill="url(#grid)"/>';
+    $mapY = function (float $y) use ($ymax, $padding, $drawH, $dy, $scale): float {
+        return $padding + (($drawH - ($dy * $scale)) / 2) + (($ymax - $y) * $scale);
+    };
 
-    // Draw Base Polygon Rings
-    foreach ($parcelGeometry['rings'] as $ringIndex => $ring) {
-        $pointsAttr = [];
-        foreach ($ring as $pt) {
-            $t = $transformPoint($pt);
-            $pointsAttr[] = $t[0] . ',' . $t[1];
+    // Build Polygon Path Data
+    $pathSvg = '';
+    foreach ($rings as $ring) {
+        if (count($ring) < 3) continue;
+        $d = [];
+        foreach ($ring as $i => $pt) {
+            $sx = round($mapX((float)$pt[0]), 2);
+            $sy = round($mapY((float)$pt[1]), 2);
+            $d[] = ($i === 0 ? 'M' : 'L') . " {$sx} {$sy}";
         }
-        $fillColor = ($ringIndex === 0) ? '#f8fafc' : '#ffffff';
-        $strokeColor = '#94a3b8';
-        $svg .= '<polygon points="' . implode(' ', $pointsAttr) . '" fill="' . $fillColor . '" stroke="' . $strokeColor . '" stroke-width="2" stroke-dasharray="3,3"/>';
+        $d[] = 'Z';
+        $pathSvg .= implode(' ', $d) . ' ';
     }
 
-    // Highlight Frontage Segments
-    $labelsToDraw = [];
+    // Build Frontage Overlays & Labels
+    $frontageSvg = '';
+    $labelsSvg   = '';
+
     foreach ($frontages as $frontage) {
-        $tier = $frontage['roadTier'] ?? 'lowVolume';
-        $color = ($tier === 'highVolume' || $tier === 'freeway') ? '#ef4444' : '#2563eb';
-        $streetName = $frontage['streetName'] ?? 'Public Street';
-        $lengthFt = number_format((float)($frontage['frontageLengthFeet'] ?? 0), 1) . "'";
+        $roadTier = $frontage['roadTier'] ?? 'lowVolume';
+        $color    = ($roadTier === 'highVolume') ? '#d9534f' : '#0275d8'; // Red for High-Vol, Blue for Low-Vol
+        $stName   = htmlspecialchars($frontage['streetName'] ?? 'Street', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $lengthFt = number_format((float)($frontage['frontageLengthFeet'] ?? 0), 1);
 
-        foreach (($frontage['parcelSegments'] ?? []) as $segment) {
-            if (!isset($segment['start'], $segment['end'])) {
-                continue;
-            }
-            $p1 = $transformPoint($segment['start']);
-            $p2 = $transformPoint($segment['end']);
+        $segments = $frontage['parcelSegments'] ?? [];
+        $midpoints = [];
 
-            $svg .= '<line x1="' . $p1[0] . '" y1="' . $p1[1] . '" x2="' . $p2[0] . '" y2="' . $p2[1] . '" stroke="' . $color . '" stroke-width="5" stroke-linecap="round"/>';
+        foreach ($segments as $seg) {
+            $x1 = $mapX((float)$seg['start'][0]);
+            $y1 = $mapY((float)$seg['start'][1]);
+            $x2 = $mapX((float)$seg['end'][0]);
+            $y2 = $mapY((float)$seg['end'][1]);
 
-            $midX = ($p1[0] + $p2[0]) / 2;
-            $midY = ($p1[1] + $p2[1]) / 2;
-            $labelsToDraw[] = [
-                'x'          => $midX,
-                'y'          => $midY,
-                'label'      => $streetName . ' (' . $lengthFt . ')',
-                'color'      => $color
-            ];
+            $frontageSvg .= sprintf(
+                '<line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" stroke="%s" stroke-width="4.5" stroke-linecap="round" />',
+                $x1, $y1, $x2, $y2, $color
+            ) . "\n";
+
+            $midpoints[] = [($x1 + $x2) / 2.0, ($y1 + $y2) / 2.0];
+        }
+
+        // Center label on longest or primary segment
+        if (!empty($midpoints)) {
+            $avgX = array_sum(array_column($midpoints, 0)) / count($midpoints);
+            $avgY = array_sum(array_column($midpoints, 1)) / count($midpoints);
+
+            $labelText = "{$stName} ({$lengthFt}')";
+            $labelsSvg .= sprintf(
+                '<g transform="translate(%.2f, %.2f)">
+                    <rect x="-65" y="-11" width="130" height="18" rx="3" fill="#ffffff" fill-opacity="0.9" stroke="%s" stroke-width="1" />
+                    <text x="0" y="2" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="9" font-weight="bold" fill="#333333">%s</text>
+                </g>',
+                $avgX, $avgY, $color, htmlspecialchars($labelText, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            ) . "\n";
         }
     }
 
-    // Draw Labels with Callout Boxes
-    foreach ($labelsToDraw as $lbl) {
-        $text = htmlspecialchars($lbl['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $boxW = strlen($text) * 6 + 12;
-        $boxH = 18;
-        $bx = $lbl['x'] - ($boxW / 2);
-        $by = $lbl['y'] - ($boxH / 2);
+    // Assemble SVG
+    $svg = sprintf(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" style="background-color: #fcfcfc; border: 1px solid #e0e0e0; border-radius: 4px;">
+            <!-- Grid / Background Overlay -->
+            <rect width="100%%" height="100%%" fill="#fafafa" />
+            
+            <!-- Base Parcel Polygon -->
+            <path d="%s" fill="#e8f4f8" stroke="#555555" stroke-width="1.5" stroke-linejoin="round" />
+            
+            <!-- Frontage Segments -->
+            %s
+            
+            <!-- Street Labels -->
+            %s
+            
+            <!-- Compass / Orientation Indicator -->
+            <g transform="translate(%d, 25)">
+                <circle cx="0" cy="0" r="10" fill="#ffffff" stroke="#aaaaaa" stroke-width="1"/>
+                <text x="0" y="-12" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="8" font-weight="bold" fill="#666666">N</text>
+                <path d="M 0 6 L 0 -6 M -4 -2 L 0 -8 L 4 -2" fill="none" stroke="#d9534f" stroke-width="1.5"/>
+            </g>
+            
+            <!-- Legend -->
+            <g transform="translate(15, %d)">
+                <rect x="0" y="0" width="220" height="22" fill="#ffffff" fill-opacity="0.85" rx="3" stroke="#dddddd" stroke-width="0.5"/>
+                <line x1="10" y1="11" x2="25" y2="11" stroke="#d9534f" stroke-width="3"/>
+                <text x="30" y="14" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#333333">High-Volume Frontage</text>
+                <line x1="115" y1="11" x2="130" y2="11" stroke="#0275d8" stroke-width="3"/>
+                <text x="135" y="14" font-family="Helvetica, Arial, sans-serif" font-size="8" fill="#333333">Low-Volume Frontage</text>
+            </g>
+        </svg>',
+        $width, $height, $width, $height,
+        trim($pathSvg),
+        $frontageSvg,
+        $labelsSvg,
+        $width - 25,
+        $height - 30
+    );
 
-        $svg .= '<rect x="' . $bx . '" y="' . $by . '" width="' . $boxW . '" height="' . $boxH . '" rx="3" fill="#ffffff" stroke="' . $lbl['color'] . '" stroke-width="1.5"/>';
-        $svg .= '<text x="' . $lbl['x'] . '" y="' . ($lbl['y'] + 4) . '" font-size="9" font-weight="bold" fill="#1e293b" text-anchor="middle">' . $text . '</text>';
-    }
-
-    // Legend
-    $svg .= '<g transform="translate(15, ' . ($svgHeight - 25) . ')">';
-    $svg .= '<rect x="0" y="0" width="12" height="12" fill="#ef4444" rx="2"/>';
-    $svg .= '<text x="18" y="10" font-size="9" fill="#475569" font-weight="bold">High-Volume Roadway</text>';
-    $svg .= '<rect x="140" y="0" width="12" height="12" fill="#2563eb" rx="2"/>';
-    $svg .= '<text x="158" y="10" font-size="9" fill="#475569" font-weight="bold">Low-Volume Roadway</text>';
-    $svg .= '</g>';
-
-    $svg .= '</svg>';
     return $svg;
 }
