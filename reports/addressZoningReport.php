@@ -180,10 +180,17 @@ $parcelMapAddress = trim((string)(
     ?? ''
 ));
 
+$parcelMapNumber = trim((string)(
+    $parcel['parcelNumber']
+    ?? $parcelRecord['apnRaw']
+    ?? ''
+));
+
 $parcelMapSvg = buildParcelSvg(
     $parcelGeometry,
     $frontages,
-    $parcelMapAddress
+    $parcelMapAddress,
+    $parcelMapNumber
 );
 
 
@@ -824,7 +831,12 @@ function normalizeSvgLabelAngle(float $angle): float
 }
 
 /** Build an mPDF-compatible parcel SVG from GIS rings and matched frontage segments. */
-function buildParcelSvg(array $geometry, array $frontages, string $address): string
+function buildParcelSvg(
+    array $geometry,
+    array $frontages,
+    string $address,
+    string $parcelNumber
+): string
 {
     $rings = normalizeParcelRings($geometry);
     if ($rings === []) {
@@ -882,11 +894,43 @@ function buildParcelSvg(array $geometry, array $frontages, string $address): str
             . '" fill="#e9eef6" fill-opacity="0.9" stroke="#334b68" stroke-width="2" />';
     }
 
-    // Use the projected parcel center to place dimensions toward the interior.
-    $parcelCenter = $projectPoint([
-        ($xmin + $xmax) / 2,
-        ($ymin + $ymax) / 2
-    ]);
+    // Use the centroid of the primary polygon as the parcel's visual center.
+    $primaryRing = $rings[0];
+    $largestRingArea = 0.0;
+    foreach ($rings as $ring) {
+        $ringTwiceArea = 0.0;
+        $ringPointCount = count($ring);
+        for ($index = 0; $index < $ringPointCount; $index++) {
+            $nextPoint = $ring[($index + 1) % $ringPointCount];
+            $ringTwiceArea += ($ring[$index][0] * $nextPoint[1])
+                - ($nextPoint[0] * $ring[$index][1]);
+        }
+        if (abs($ringTwiceArea) > $largestRingArea) {
+            $largestRingArea = abs($ringTwiceArea);
+            $primaryRing = $ring;
+        }
+    }
+
+    $centroidX = 0.0;
+    $centroidY = 0.0;
+    $centroidFactorTotal = 0.0;
+    $primaryPointCount = count($primaryRing);
+    for ($index = 0; $index < $primaryPointCount; $index++) {
+        $nextPoint = $primaryRing[($index + 1) % $primaryPointCount];
+        $factor = ($primaryRing[$index][0] * $nextPoint[1])
+            - ($nextPoint[0] * $primaryRing[$index][1]);
+        $centroidFactorTotal += $factor;
+        $centroidX += ($primaryRing[$index][0] + $nextPoint[0]) * $factor;
+        $centroidY += ($primaryRing[$index][1] + $nextPoint[1]) * $factor;
+    }
+
+    $visualCenter = abs($centroidFactorTotal) > 0.000001
+        ? [
+            $centroidX / (3.0 * $centroidFactorTotal),
+            $centroidY / (3.0 * $centroidFactorTotal)
+        ]
+        : [($xmin + $xmax) / 2, ($ymin + $ymax) / 2];
+    $parcelCenter = $projectPoint($visualCenter);
 
     // Build dimensions now, then draw them after frontage highlights (top annotation layer).
     $dimensionSvg = '';
@@ -1014,35 +1058,40 @@ function buildParcelSvg(array $geometry, array $frontages, string $address): str
             . escapeReportValue($frontage['streetName'] ?? 'Unknown street') . '</text>';
     }
 
-    // Center the resolved address inside the parcel, wrapping only when needed.
-    $addressText = escapeReportValue($address);
-    if ($addressText !== '') {
-        $addressLines = [$addressText];
+    // Stack the parcel number above the address at the parcel's visual center.
+    $centerLines = [];
+    if ($parcelNumber !== '') {
+        $centerLines[] = 'Parcel: ' . escapeReportValue($parcelNumber);
+    }
+    if ($address !== '') {
+        $addressLines = ['Address: ' . escapeReportValue($address)];
         if (strlen($address) > 48) {
             $breakAt = strrpos(substr($address, 0, 49), ' ');
             if ($breakAt !== false && $breakAt > 0) {
                 $addressLines = [
-                    escapeReportValue(substr($address, 0, $breakAt)),
+                    'Address: ' . escapeReportValue(substr($address, 0, $breakAt)),
                     escapeReportValue(substr($address, $breakAt + 1))
                 ];
             }
         }
-        $startY = $parcelCenter[1] - ((count($addressLines) - 1) * 6);
+        $centerLines = array_merge($centerLines, $addressLines);
+    }
+    if ($centerLines !== []) {
+        $startY = $parcelCenter[1] - ((count($centerLines) - 1) * 6.5);
         $svg .= '<text x="' . round($parcelCenter[0], 2) . '" y="' . round($startY, 2)
-            . '" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#17283d"'
-            . ' stroke="#e9eef6" stroke-width="3" paint-order="stroke">';
-        foreach ($addressLines as $lineIndex => $addressLine) {
+            . '" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#000000" stroke="none">';
+        foreach ($centerLines as $lineIndex => $centerLine) {
             $svg .= '<tspan x="' . round($parcelCenter[0], 2) . '" dy="'
-                . ($lineIndex === 0 ? '0' : '13') . '">' . $addressLine . '</tspan>';
+                . ($lineIndex === 0 ? '0' : '13') . '">' . $centerLine . '</tspan>';
         }
         $svg .= '</text>';
     }
 
     // North arrow is always directed upward on the page.
     $svg .= '<g transform="translate(690 34)" font-family="Arial, sans-serif" fill="#17283d">'
-        . '<text x="0" y="-13" text-anchor="middle" font-size="11" font-weight="bold">N</text>'
         . '<line x1="0" y1="13" x2="0" y2="-8" stroke="#17283d" stroke-width="2" />'
         . '<polygon points="0,-12 -5,-3 5,-3" fill="#17283d" />'
+        . '<text x="0" y="27" text-anchor="middle" font-size="11" font-weight="bold">N</text>'
         . '</g></svg>';
 
     return $svg;
