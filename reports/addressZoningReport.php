@@ -550,6 +550,7 @@ ob_start();
         <tr><th>Jurisdiction</th><td><?= displayReportValue($jurisdiction) ?><?= $jurisdictionType !== '' ? ' (' . escapeReportValue($jurisdictionType) . ')' : '' ?></td></tr>
         <tr><th>County</th><td><?= displayReportValue($county) ?></td></tr>
     </table>
+
 </div>
 
 <div class="section-block">
@@ -656,6 +657,13 @@ ob_start();
             <?php endif; ?>
         </tbody>
     </table>
+
+    <div class="callout-box">
+        <div class="callout-title">Measurement Note</div>
+        <div class="callout-body">
+            Map dimensions represent individual parcel-boundary segments. Table values represent aggregated GIS-calculated street frontage and may differ due to segmented or irregular frontage geometry.
+        </div>
+    </div>
 </div>
 
 <div class="section-block">
