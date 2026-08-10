@@ -290,6 +290,65 @@ $placeId = trim((string)(
     ?? ''
 ));
 
+// Load authoritative jurisdiction artifacts
+$jurisdictionSlug = buildJurisdictionSlug($jurisdiction);
+$jurisdictionFolder = __DIR__
+    . '/../data/authoritative/jurisdictions/'
+    . $jurisdictionSlug;
+
+$jurisdictionSource = $jurisdictionSlug !== ''
+    ? loadJurisdictionArtifact($jurisdictionFolder, 'source.json')
+    : [];
+
+$jurisdictionZoning = $jurisdictionSlug !== ''
+    ? loadJurisdictionArtifact($jurisdictionFolder, 'zoning.json')
+    : [];
+
+$jurisdictionSignCode = $jurisdictionSlug !== ''
+    ? loadJurisdictionArtifact($jurisdictionFolder, 'signCode.json')
+    : [];
+
+$specialDesignations = extractAddressSpecialDesignations(
+    $location,
+    $parcel,
+    $zoning
+);
+
+$overlayStatusDisplay = buildDesignationStatus(
+    is_array($specialDesignations['zoningOverlays'] ?? null)
+        ? $specialDesignations['zoningOverlays']
+        : []
+);
+
+$historicStatusDisplay = buildDesignationStatus(
+    is_array($specialDesignations['historicDesignation'] ?? null)
+        ? $specialDesignations['historicDesignation']
+        : []
+);
+
+$cspStatusDisplay = buildDesignationStatus(
+    is_array($specialDesignations['comprehensiveSignPlan'] ?? null)
+        ? $specialDesignations['comprehensiveSignPlan']
+        : [],
+    'cases'
+);
+
+$landUseCategory = resolveLandUseCategory(
+    $jurisdictionSignCode,
+    $zoningCode
+);
+
+$attachedSignAllowanceDisplay = buildAttachedAllowanceStatus(
+    $jurisdictionSignCode,
+    $landUseCategory
+);
+
+$detachedSignAllowanceDisplay = buildDetachedAllowanceStatus(
+    $jurisdictionSignCode,
+    $landUseCategory,
+    $frontages
+);
+
 $activitySessionId = trim((string)(
     $payload['activitySessionId']
     ?? ''
@@ -341,13 +400,21 @@ if ($jsonReviewMode) {
                 $zoningCode !== '' && !$requiresReview,
 
             'specialDesignationsEvaluated' =>
-                false,
+                $specialDesignations !== [],
 
             'streetFrontageEvaluated' =>
                 !empty($frontages), // Updated to reflect frontage evaluation
 
             'signAllowanceCalculated' =>
-                false
+                false,
+
+            'jurisdictionArtifactsLoaded' => [
+                'source' => $jurisdictionSource !== [],
+                'zoning' => $jurisdictionZoning !== [],
+                'signCode' => $jurisdictionSignCode !== []
+            ],
+
+            'landUseCategory' => $landUseCategory
         ]
     ], JSON_PRETTY_PRINT
         | JSON_UNESCAPED_SLASHES
@@ -356,11 +423,6 @@ if ($jsonReviewMode) {
 
     exit;
 }
-
-$detachedSignAllowanceDisplay = !empty($frontages)
-    ? '<span class="unverified">Pending calculation - frontage and roadway classifications resolved; parcel-use classification and existing detached-sign inventory still required</span>'
-    : '<span class="unverified">Requires frontage, street classification, parcel-use classification, and existing-sign inventory</span>';
-
 
 $logoPath = __DIR__ . '/../assets/images/christyLogo.png';
 $logoHtml = file_exists($logoPath)
@@ -669,13 +731,26 @@ ob_start();
 <div class="section-block">
     <?= buildAddressSectionHeading('Sign-Code Research Status', 'ruler.png') ?>
     <table class="data-table">
-        <tr><th>Base zoning</th><td><strong>Resolved</strong> — <?= displayReportValue($zoningCode) ?></td></tr>
-        <tr><th>Overlay / Regulatory Plan</th><td><span class="unverified">Not included in the address-check response</span></td></tr>
-        <tr><th>Historic Designation</th><td><span class="unverified">Not included in the address-check response</span></td></tr>
-        <tr><th>Comprehensive Sign Plan</th><td><span class="unverified">Not included in the address-check response</span></td></tr>
-        <tr><th>Attached-sign allowance</th><td><span class="unverified">Requires building or tenant elevation width and existing-sign inventory</span></td></tr>
+        <tr><th>Base zoning</th><td><?= $zoningCode !== '' && !$requiresReview
+            ? renderResearchStatus('resolved', $zoningCode)
+            : renderResearchStatus('research_required', 'Base zoning was not conclusively resolved.') ?></td></tr>
+        <tr><th>Overlay / Regulatory Plan</th><td><?= $overlayStatusDisplay ?></td></tr>
+        <tr><th>Historic Designation</th><td><?= $historicStatusDisplay ?></td></tr>
+        <tr><th>Comprehensive Sign Plan</th><td><?= $cspStatusDisplay ?></td></tr>
+        <tr><th>Attached-sign allowance</th><td><?= $attachedSignAllowanceDisplay ?></td></tr>
         <tr><th>Detached-sign allowance</th><td><?= $detachedSignAllowanceDisplay ?></td></tr>
     </table>
+    <div class="citation-subtext">
+        Jurisdiction data: <?= displayReportValue(
+            $jurisdictionSignCode['jurisdiction']['label']
+                ?? $jurisdictionSource['jurisdiction']['label']
+                ?? null,
+            'Research required — authoritative jurisdiction artifacts were not loaded'
+        ) ?>
+        <?= $landUseCategory !== null
+            ? ' | Classified use standard: ' . escapeReportValue($landUseCategory)
+            : '' ?>
+    </div>
 </div>
 
 <div class="section-block">
@@ -1167,4 +1242,201 @@ function buildParcelSvg(
         . '</g></svg>';
 
     return $svg;
+}
+
+/** Convert a resolved jurisdiction name to its authoritative-data folder slug. */
+function buildJurisdictionSlug(string $jurisdiction): string
+{
+    $slug = strtolower(trim($jurisdiction));
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $slug) ?? '';
+
+    return trim($slug, '-');
+}
+
+/** Load one structured jurisdiction artifact without inferring missing data. */
+function loadJurisdictionArtifact(string $folder, string $fileName): array
+{
+    $path = $folder . DIRECTORY_SEPARATOR . $fileName;
+
+    if (!is_file($path) || !is_readable($path)) {
+        return [];
+    }
+
+    try {
+        $decoded = json_decode(
+            (string)file_get_contents($path),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        return is_array($decoded) ? $decoded : [];
+    } catch (Throwable $e) {
+        error_log('Unable to read jurisdiction artifact ' . $path . ': ' . $e->getMessage());
+
+        return [];
+    }
+}
+
+/** Render an explicit research status for a standard sign-code row. */
+function renderResearchStatus(string $status, string $detail): string
+{
+    $label = match ($status) {
+        'resolved' => 'Resolved',
+        'identified' => 'Standard identified',
+        default => 'Research required'
+    };
+
+    $labelClass = in_array($status, ['resolved', 'identified'], true)
+        ? ''
+        : ' class="unverified"';
+
+    return '<strong' . $labelClass . '>' . escapeReportValue($label) . '</strong>'
+        . ($detail !== '' ? ' — ' . escapeReportValue($detail) : '');
+}
+
+/** Find the structured special-designation result in an address-check payload. */
+function extractAddressSpecialDesignations(array $location, array $parcel, array $zoning): array
+{
+    $candidates = [
+        $parcel['specialDesignations'] ?? null,
+        $zoning['specialDesignations'] ?? null,
+        $location['specialDesignations'] ?? null
+    ];
+
+    foreach ($candidates as $candidate) {
+        if (is_array($candidate)) {
+            return $candidate;
+        }
+    }
+
+    return [];
+}
+
+/** Describe one designation only when its structured resolver returned a result. */
+function buildDesignationStatus(array $designation, string $matchKey = 'matches'): string
+{
+    if ($designation === []) {
+        return renderResearchStatus('research_required', 'No structured determination was returned by the address check.');
+    }
+
+    $status = strtolower(trim((string)($designation['status'] ?? '')));
+    $matches = is_array($designation[$matchKey] ?? null)
+        ? $designation[$matchKey]
+        : [];
+
+    if (in_array($status, ['noneidentified', 'none_identified', 'none', 'resolved_none'], true)) {
+        return renderResearchStatus('resolved', 'No designation identified.');
+    }
+
+    if ($matches !== [] || in_array($status, ['identified', 'matched', 'resolved'], true)) {
+        $names = [];
+
+        foreach ($matches as $match) {
+            if (!is_array($match)) {
+                continue;
+            }
+
+            $name = trim((string)($match['name'] ?? $match['title'] ?? $match['caseNumber'] ?? ''));
+
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+
+        $detail = $names !== []
+            ? 'Yes: ' . implode(', ', array_unique($names))
+            : 'A designation was identified; review the structured result.';
+
+        return renderResearchStatus('resolved', $detail);
+    }
+
+    return renderResearchStatus('research_required', 'The structured determination is incomplete or requires review.');
+}
+
+/** Match the resolved zoning district to a jurisdiction-defined land-use category. */
+function resolveLandUseCategory(array $signCode, string $zoningCode): ?string
+{
+    $categories = $signCode['classifications']['landUseCategories'] ?? null;
+
+    if (!is_array($categories) || $zoningCode === '') {
+        return null;
+    }
+
+    $normalizedCode = strtoupper(rtrim(trim($zoningCode), "* \t\n\r\0\x0B"));
+
+    foreach ($categories as $category => $definition) {
+        $districts = is_array($definition['zoningDistricts'] ?? null)
+            ? $definition['zoningDistricts']
+            : [];
+
+        foreach ($districts as $district) {
+            if ($normalizedCode === strtoupper(trim((string)$district))) {
+                return (string)$category;
+            }
+        }
+    }
+
+    return null;
+}
+
+/** Build the attached-sign research result from the jurisdiction's structured standard. */
+function buildAttachedAllowanceStatus(array $signCode, ?string $landUseCategory): string
+{
+    if ($signCode === []) {
+        return renderResearchStatus('research_required', 'The jurisdiction signCode.json file is unavailable or invalid.');
+    }
+
+    if ($landUseCategory === null) {
+        return renderResearchStatus('research_required', 'The resolved zoning district is not mapped to a land-use category.');
+    }
+
+    $wall = $signCode['identificationSignStandards'][$landUseCategory]['wall'] ?? null;
+
+    if (!is_array($wall)) {
+        return renderResearchStatus('research_required', 'No attached-sign standard is defined for the resolved land-use category.');
+    }
+
+    $formula = is_array($wall['areaFormula'] ?? null) ? $wall['areaFormula'] : [];
+    $rate = $formula['squareFeetPerLinearFootOfElevation'] ?? null;
+    $minimum = $formula['minimumSquareFeet'] ?? null;
+    $maximum = $formula['maximumSquareFeet'] ?? null;
+
+    if (!is_numeric($rate)) {
+        return renderResearchStatus('research_required', 'The attached-sign formula is incomplete in signCode.json.');
+    }
+
+    $detail = number_format((float)$rate, 2) . ' sq. ft. per linear foot of occupied elevation';
+    $detail .= is_numeric($minimum) ? '; ' . number_format((float)$minimum, 0) . ' sq. ft. minimum' : '';
+    $detail .= is_numeric($maximum) ? '; ' . number_format((float)$maximum, 0) . ' sq. ft. maximum' : '';
+    $detail .= '. Building frontage and existing attached-sign inventory are required for the remaining allowance.';
+
+    return renderResearchStatus('identified', $detail);
+}
+
+/** Build the detached-sign research result from the jurisdiction's structured standard. */
+function buildDetachedAllowanceStatus(array $signCode, ?string $landUseCategory, array $frontages): string
+{
+    if ($signCode === []) {
+        return renderResearchStatus('research_required', 'The jurisdiction signCode.json file is unavailable or invalid.');
+    }
+
+    if ($landUseCategory === null) {
+        return renderResearchStatus('research_required', 'The resolved zoning district is not mapped to a land-use category.');
+    }
+
+    $ground = $signCode['identificationSignStandards'][$landUseCategory]['ground'] ?? null;
+
+    if (!is_array($ground)) {
+        return renderResearchStatus('research_required', 'No detached-sign standard is defined for the resolved land-use category.');
+    }
+
+    if ($frontages === []) {
+        return renderResearchStatus('research_required', 'Street frontage and roadway classification were not resolved.');
+    }
+
+    $detail = 'The applicable detached-sign standard is identified.';
+    $detail .= ' Parcel-use classification and existing detached-sign inventory are required for the remaining allowance.';
+
+    return renderResearchStatus('identified', $detail);
 }
