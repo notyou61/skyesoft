@@ -1108,9 +1108,9 @@ function buildParcelSvg(
         };
 
         $fontSize = 11.0;
-        $lineGap = $fontSize * 1.3;
+        $lineGap = $fontSize * 1.05;
         while ($fontSize > 2.0) {
-            $lineGap = $fontSize * 1.3;
+            $lineGap = $fontSize * 1.05;
             $firstLineY = $parcelCenter[1] - ($lineGap / 2);
             $secondLineY = $parcelCenter[1] + ($lineGap / 2);
             $availableWidth = min(
@@ -1131,17 +1131,16 @@ function buildParcelSvg(
             $fontSize -= 0.25;
         }
 
-        $lineGap = $fontSize * 1.3;
+        $lineGap = $fontSize * 1.05;
         $startY = $parcelCenter[1] - ((count($centerLines) - 1) * $lineGap / 2);
-        $svg .= '<text x="' . round($parcelCenter[0], 2) . '" y="' . round($startY, 2)
-            . '" text-anchor="middle" font-family="Arial, sans-serif" font-size="' . round($fontSize, 2)
-            . '" font-weight="bold" fill="#000000" stroke="none">';
         foreach ($centerLines as $lineIndex => $centerLine) {
-            $svg .= '<tspan x="' . round($parcelCenter[0], 2) . '" dy="'
-                . ($lineIndex === 0 ? '0' : round($lineGap, 2)) . '">'
-                . escapeReportValue($centerLine) . '</tspan>';
+            $lineY = $startY + ($lineIndex * $lineGap);
+            $svg .= '<text x="' . round($parcelCenter[0], 2) . '" y="' . round($lineY, 2)
+                . '" text-anchor="middle" dominant-baseline="middle"'
+                . ' font-family="Arial, sans-serif" font-size="' . round($fontSize, 2)
+                . '" font-weight="bold" fill="#000000" stroke="none">'
+                . escapeReportValue($centerLine) . '</text>';
         }
-        $svg .= '</text>';
     }
 
     // North arrow is always directed upward on the page.
