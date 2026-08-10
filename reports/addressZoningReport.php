@@ -174,11 +174,6 @@ $parcelGeometry = is_array($parcel['parcelGeometry'] ?? null)
     ? $parcel['parcelGeometry']
     : [];
 
-$parcelMetrics = calculateParcelMetrics(
-    $parcelGeometry,
-    $frontages
-);
-
 $parcelMapSvg = buildParcelSvg(
     $parcelGeometry,
     $frontages
@@ -468,18 +463,14 @@ $css = '
     .basis-table td { width: 50%; border: 1px solid #d5d5d5; padding: 4px 6px; font-size: 7.6pt; }
 
     /* Address site details */
-    /* Start the parcel section on page 2, but allow its contents to flow. */
+    /* Keep the complete parcel section together wherever it fits. */
     .site-details-block {
-        page-break-before: always;
-        page-break-inside: auto;
+        page-break-before: auto;
+        page-break-inside: avoid;
     }
     .parcel-map-frame { border: 1px solid #c4ceda; background: #f7f9fc; padding: 4px; text-align: center; }
     .parcel-map-frame svg { display: block; width: 100%; height: 225px; }
     .parcel-map-unavailable { height: 95px; padding-top: 70px; color: #777; font-style: italic; text-align: center; }
-    .parcel-summary-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-    .parcel-summary-table td { width: 20%; border: 1px solid #d2d8df; padding: 5px 4px; text-align: center; }
-    .parcel-summary-label { display: block; color: #596675; font-size: 6.8pt; text-transform: uppercase; }
-    .parcel-summary-value { display: block; margin-top: 2px; color: #172b45; font-size: 8.5pt; font-weight: bold; }
     .frontage-table th { width: auto; background: #eef2f7; color: #26384d; }
     .frontage-table td { width: auto; }
     .frontage-high { color: #a82f26; font-weight: bold; }
@@ -585,50 +576,6 @@ ob_start();
     <div class="map-legend">
         Red = high-volume roadway frontage | Blue = low-volume roadway frontage
     </div>
-
-    <table class="parcel-summary-table">
-        <tr>
-            <td>
-                <span class="parcel-summary-label">Maximum Width</span>
-                <span class="parcel-summary-value">
-                    <?= $parcelMetrics['widthFeet'] !== null
-                        ? number_format((float)$parcelMetrics['widthFeet'], 1) . ' ft'
-                        : 'Unavailable' ?>
-                </span>
-            </td>
-            <td>
-                <span class="parcel-summary-label">Maximum Depth</span>
-                <span class="parcel-summary-value">
-                    <?= $parcelMetrics['depthFeet'] !== null
-                        ? number_format((float)$parcelMetrics['depthFeet'], 1) . ' ft'
-                        : 'Unavailable' ?>
-                </span>
-            </td>
-            <td>
-                <span class="parcel-summary-label">Calculated Area</span>
-                <span class="parcel-summary-value">
-                    <?= $parcelMetrics['areaSquareFeet'] !== null
-                        ? number_format((float)$parcelMetrics['areaSquareFeet'], 0) . ' sq ft'
-                        : 'Unavailable' ?>
-                </span>
-            </td>
-            <td>
-                <span class="parcel-summary-label">Calculated Acres</span>
-                <span class="parcel-summary-value">
-                    <?= $parcelMetrics['areaAcres'] !== null
-                        ? number_format((float)$parcelMetrics['areaAcres'], 2) . ' ac'
-                        : 'Unavailable' ?>
-                </span>
-            </td>
-            <td>
-                <span class="parcel-summary-label">Configuration</span>
-                <span class="parcel-summary-value">
-                    <?= escapeReportValue($parcelMetrics['configuration']) ?><br>
-                    <?= (int)$parcelMetrics['frontageCount'] ?> frontage<?= (int)$parcelMetrics['frontageCount'] === 1 ? '' : 's' ?>
-                </span>
-            </td>
-        </tr>
-    </table>
 
     <table class="data-table frontage-table" style="margin-top: 5px;">
         <thead>
