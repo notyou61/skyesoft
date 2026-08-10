@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — addressZoningReport.php
 // Address Check Zoning Report (no saved location required)
-// Version: 1.0.0
+// Version: 1.0.1
 // =============================================
 
 ini_set('display_errors', '0');
@@ -165,6 +165,11 @@ $zoning = is_array($parcel['zoning'] ?? null)
             : []
     );
 
+// Extract frontages
+$frontages = is_array($parcel['frontages'] ?? null)
+    ? $parcel['frontages']
+    : [];
+
 
 // Confirm report eligibility
 $success = (bool)($payload['success'] ?? false);
@@ -316,7 +321,7 @@ if ($jsonReviewMode) {
                 false,
 
             'streetFrontageEvaluated' =>
-                false,
+                !empty($frontages), // Updated to reflect frontage evaluation
 
             'signAllowanceCalculated' =>
                 false
@@ -328,6 +333,31 @@ if ($jsonReviewMode) {
 
     exit;
 }
+
+// Build Frontage HTML display
+$frontageHtml = '';
+if (!empty($frontages)) {
+    $frontageItems = [];
+    foreach ($frontages as $f) {
+        $street = escapeReportValue($f['streetName'] ?? 'Unknown');
+        $feet = escapeReportValue($f['frontageFeet'] ?? $f['frontage'] ?? '0');
+        $class = escapeReportValue($f['streetClassification'] ?? '');
+        $tier = escapeReportValue($f['roadTier'] ?? '');
+        
+        $meta = [];
+        if ($class !== '') $meta[] = $class;
+        if ($tier !== '') $meta[] = $tier;
+        $metaStr = count($meta) > 0 ? ' &mdash; ' . implode(', ', $meta) : '';
+        
+        $frontageItems[] = "<strong>{$street}</strong>: {$feet} ft{$metaStr}";
+    }
+    $frontageHtml = implode('<br>', $frontageItems);
+}
+
+$detachedSignAllowanceDisplay = !empty($frontages)
+    ? $frontageHtml . '<br><span style="font-size: 7pt; color: #666; font-style: italic;">* Parcel-use classification and existing-sign inventory still required to finalize allowance.</span>'
+    : '<span class="unverified">Requires frontage, street classification, parcel-use classification, and existing-sign inventory</span>';
+
 
 $logoPath = __DIR__ . '/../assets/images/christyLogo.png';
 $logoHtml = file_exists($logoPath)
@@ -541,7 +571,7 @@ ob_start();
         <tr><th>Historic Designation</th><td><span class="unverified">Not included in the address-check response</span></td></tr>
         <tr><th>Comprehensive Sign Plan</th><td><span class="unverified">Not included in the address-check response</span></td></tr>
         <tr><th>Attached-sign allowance</th><td><span class="unverified">Requires building or tenant elevation width and existing-sign inventory</span></td></tr>
-        <tr><th>Detached-sign allowance</th><td><span class="unverified">Requires frontage, street classification, parcel-use classification, and existing-sign inventory</span></td></tr>
+        <tr><th>Detached-sign allowance</th><td><?= $detachedSignAllowanceDisplay ?></td></tr>
     </table>
 </div>
 
@@ -551,7 +581,11 @@ ob_start();
         <li>Resolve overlay, historic-property, and Comprehensive Sign Plan determinations for the parcel.</li>
         <li>Confirm the applicable sign-code standards for the resolved zoning district and parcel use.</li>
         <li>Measure the building or tenant elevation and document all existing attached signs.</li>
-        <li>Resolve parcel frontage and street classification; inventory all existing detached signs.</li>
+        <?php if (!empty($frontages)): ?>
+            <li>Verify calculated parcel frontage and street classifications; inventory all existing detached signs.</li>
+        <?php else: ?>
+            <li>Resolve parcel frontage and street classification; inventory all existing detached signs.</li>
+        <?php endif; ?>
         <li>Confirm proposed sign dimensions, height, placement, construction, and illumination before permit preparation.</li>
     </ol>
 </div>
