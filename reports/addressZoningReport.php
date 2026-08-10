@@ -939,8 +939,7 @@ function buildParcelSvg(array $geometry, array $frontages, string $address): str
             $dimensionSvg .= '<text x="' . round($labelX, 2) . '" y="' . round($labelY, 2)
                 . '" text-anchor="middle" dominant-baseline="middle"'
                 . ' transform="rotate(' . round($angle, 2) . ' ' . round($labelX, 2) . ' ' . round($labelY, 2) . ')"'
-                . ' font-family="Arial, sans-serif" font-size="' . round($fontSize, 2) . '" font-weight="bold" fill="#000000"'
-                . ' stroke="#ffffff" stroke-width="1.5" paint-order="stroke">'
+                . ' font-family="Arial, sans-serif" font-size="' . round($fontSize, 2) . '" font-weight="bold" fill="#000000" stroke="none">'
                 . escapeReportValue($dimensionText) . '</text>';
         }
     }
