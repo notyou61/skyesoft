@@ -888,7 +888,8 @@ function buildParcelSvg(array $geometry, array $frontages, string $address): str
         ($ymin + $ymax) / 2
     ]);
 
-    // Dimension every individual property-line segment inside the parcel.
+    // Build dimensions now, then draw them after frontage highlights (top annotation layer).
+    $dimensionSvg = '';
     foreach ($rings as $ring) {
         $pointCount = count($ring);
         $edgeCount = $pointCount;
@@ -907,8 +908,8 @@ function buildParcelSvg(array $geometry, array $frontages, string $address): str
             $towardCenterX = $parcelCenter[0] - $midX;
             $towardCenterY = $parcelCenter[1] - $midY;
             $centerDistance = max(1.0, hypot($towardCenterX, $towardCenterY));
-            $labelX = $midX + (($towardCenterX / $centerDistance) * 9);
-            $labelY = $midY + (($towardCenterY / $centerDistance) * 9);
+            $insideUnitX = $towardCenterX / $centerDistance;
+            $insideUnitY = $towardCenterY / $centerDistance;
             $angle = normalizeSvgLabelAngle(rad2deg(atan2($y2 - $y1, $x2 - $x1)));
             $lengthFeet = hypot($end[0] - $start[0], $end[1] - $start[1]);
 
@@ -916,12 +917,31 @@ function buildParcelSvg(array $geometry, array $frontages, string $address): str
                 continue;
             }
 
-            $svg .= '<text x="' . round($labelX, 2) . '" y="' . round($labelY, 2)
+            $dimensionText = number_format($lengthFeet, 2) . ' ft';
+            $projectedLength = hypot($x2 - $x1, $y2 - $y1);
+            $fontSize = min(7.0, max(4.0, ($projectedLength - 4.0) / max(1.0, strlen($dimensionText) * 0.56)));
+            $estimatedTextWidth = strlen($dimensionText) * $fontSize * 0.56;
+            $useLeader = $projectedLength < ($estimatedTextWidth + 4.0);
+            $insideOffset = $useLeader ? 20.0 : 9.0;
+            $labelX = $midX + ($insideUnitX * $insideOffset);
+            $labelY = $midY + ($insideUnitY * $insideOffset);
+
+            if ($useLeader) {
+                $leaderStartX = $midX + ($insideUnitX * 3.0);
+                $leaderStartY = $midY + ($insideUnitY * 3.0);
+                $leaderEndX = $labelX - ($insideUnitX * 3.0);
+                $leaderEndY = $labelY - ($insideUnitY * 3.0);
+                $dimensionSvg .= '<line x1="' . round($leaderStartX, 2) . '" y1="' . round($leaderStartY, 2)
+                    . '" x2="' . round($leaderEndX, 2) . '" y2="' . round($leaderEndY, 2)
+                    . '" stroke="#000000" stroke-width="0.65" />';
+            }
+
+            $dimensionSvg .= '<text x="' . round($labelX, 2) . '" y="' . round($labelY, 2)
                 . '" text-anchor="middle" dominant-baseline="middle"'
                 . ' transform="rotate(' . round($angle, 2) . ' ' . round($labelX, 2) . ' ' . round($labelY, 2) . ')"'
-                . ' font-family="Arial, sans-serif" font-size="8.5" font-weight="bold" fill="#26384d"'
-                . ' stroke="#e9eef6" stroke-width="2.5" paint-order="stroke">'
-                . escapeReportValue(number_format($lengthFeet, 1) . ' ft') . '</text>';
+                . ' font-family="Arial, sans-serif" font-size="' . round($fontSize, 2) . '" font-weight="bold" fill="#000000"'
+                . ' stroke="#ffffff" stroke-width="1.5" paint-order="stroke">'
+                . escapeReportValue($dimensionText) . '</text>';
         }
     }
 
@@ -950,6 +970,9 @@ function buildParcelSvg(array $geometry, array $frontages, string $address): str
                 . '" stroke="' . $color . '" stroke-width="5" stroke-linecap="round" />';
         }
     }
+
+    // Keep black property-line dimensions visible above the colored frontage strokes.
+    $svg .= $dimensionSvg;
 
     // Place each street name outside and parallel to its longest frontage segment.
     foreach ($frontages as $frontage) {
