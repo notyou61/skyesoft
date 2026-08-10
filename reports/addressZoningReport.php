@@ -174,9 +174,16 @@ $parcelGeometry = is_array($parcel['parcelGeometry'] ?? null)
     ? $parcel['parcelGeometry']
     : [];
 
+$parcelMapAddress = trim((string)(
+    $location['locationAddress']
+    ?? $location['locationResolvedAddress']
+    ?? ''
+));
+
 $parcelMapSvg = buildParcelSvg(
     $parcelGeometry,
-    $frontages
+    $frontages,
+    $parcelMapAddress
 );
 
 
@@ -803,8 +810,21 @@ function calculateParcelMetrics(array $geometry, array $frontages): array
     ];
 }
 
+/** Keep rotated SVG labels upright and readable. */
+function normalizeSvgLabelAngle(float $angle): float
+{
+    while ($angle > 90) {
+        $angle -= 180;
+    }
+    while ($angle < -90) {
+        $angle += 180;
+    }
+
+    return $angle;
+}
+
 /** Build an mPDF-compatible parcel SVG from GIS rings and matched frontage segments. */
-function buildParcelSvg(array $geometry, array $frontages): string
+function buildParcelSvg(array $geometry, array $frontages, string $address): string
 {
     $rings = normalizeParcelRings($geometry);
     if ($rings === []) {
@@ -826,7 +846,7 @@ function buildParcelSvg(array $geometry, array $frontages): string
     $ymax = max($ys);
     $mapWidth = 720.0;
     $mapHeight = 285.0;
-    $padding = 30.0;
+    $padding = 48.0;
     $coordinateWidth = max(1.0, $xmax - $xmin);
     $coordinateHeight = max(1.0, $ymax - $ymin);
     $scale = min(
@@ -862,6 +882,49 @@ function buildParcelSvg(array $geometry, array $frontages): string
             . '" fill="#e9eef6" fill-opacity="0.9" stroke="#334b68" stroke-width="2" />';
     }
 
+    // Use the projected parcel center to place dimensions toward the interior.
+    $parcelCenter = $projectPoint([
+        ($xmin + $xmax) / 2,
+        ($ymin + $ymax) / 2
+    ]);
+
+    // Dimension every individual property-line segment inside the parcel.
+    foreach ($rings as $ring) {
+        $pointCount = count($ring);
+        $edgeCount = $pointCount;
+        if ($pointCount > 1 && $ring[0] === $ring[$pointCount - 1]) {
+            $edgeCount--;
+        }
+
+        for ($index = 0; $index < $edgeCount; $index++) {
+            $nextIndex = ($index + 1) % $edgeCount;
+            $start = $ring[$index];
+            $end = $ring[$nextIndex];
+            [$x1, $y1] = $projectPoint($start);
+            [$x2, $y2] = $projectPoint($end);
+            $midX = ($x1 + $x2) / 2;
+            $midY = ($y1 + $y2) / 2;
+            $towardCenterX = $parcelCenter[0] - $midX;
+            $towardCenterY = $parcelCenter[1] - $midY;
+            $centerDistance = max(1.0, hypot($towardCenterX, $towardCenterY));
+            $labelX = $midX + (($towardCenterX / $centerDistance) * 9);
+            $labelY = $midY + (($towardCenterY / $centerDistance) * 9);
+            $angle = normalizeSvgLabelAngle(rad2deg(atan2($y2 - $y1, $x2 - $x1)));
+            $lengthFeet = hypot($end[0] - $start[0], $end[1] - $start[1]);
+
+            if ($lengthFeet < 0.1) {
+                continue;
+            }
+
+            $svg .= '<text x="' . round($labelX, 2) . '" y="' . round($labelY, 2)
+                . '" text-anchor="middle" dominant-baseline="middle"'
+                . ' transform="rotate(' . round($angle, 2) . ' ' . round($labelX, 2) . ' ' . round($labelY, 2) . ')"'
+                . ' font-family="Arial, sans-serif" font-size="8.5" font-weight="bold" fill="#26384d"'
+                . ' stroke="#e9eef6" stroke-width="2.5" paint-order="stroke">'
+                . escapeReportValue(number_format($lengthFeet, 1) . ' ft') . '</text>';
+        }
+    }
+
     foreach ($frontages as $frontage) {
         $segments = is_array($frontage['parcelSegments'] ?? null)
             ? $frontage['parcelSegments']
@@ -888,30 +951,77 @@ function buildParcelSvg(array $geometry, array $frontages): string
         }
     }
 
-    $svg .= '<g font-family="Arial, sans-serif" font-size="11" fill="#26384d">';
-    $legendY = 18;
+    // Place each street name outside and parallel to its longest frontage segment.
     foreach ($frontages as $frontage) {
-        $streetName = escapeReportValue($frontage['streetName'] ?? 'Unknown street');
-        $rawFeet = $frontage['frontageLengthFeet']
-            ?? $frontage['frontageFeet']
-            ?? $frontage['frontage']
-            ?? null;
-        $feet = is_numeric($rawFeet)
-            ? number_format((float)$rawFeet, 1) . ' ft'
-            : 'Length unavailable';
-        $tier = strtolower(trim((string)(
-            $frontage['trafficVolume']
-            ?? $frontage['roadTier']
-            ?? ''
-        )));
-        $color = $tier === 'highvolume' ? '#c63f32' : '#1976a3';
-        $svg .= '<line x1="12" y1="' . ($legendY - 4) . '" x2="30" y2="'
-            . ($legendY - 4) . '" stroke="' . $color . '" stroke-width="4" />'
-            . '<text x="36" y="' . $legendY . '">' . $streetName . ' - '
-            . escapeReportValue($feet) . '</text>';
-        $legendY += 16;
+        $segments = is_array($frontage['parcelSegments'] ?? null)
+            ? $frontage['parcelSegments']
+            : [];
+        $longest = null;
+        $longestLength = -1.0;
+        foreach ($segments as $segment) {
+            $start = normalizeParcelPoint($segment['start'] ?? null);
+            $end = normalizeParcelPoint($segment['end'] ?? null);
+            if ($start === null || $end === null) {
+                continue;
+            }
+            $segmentLength = hypot($end[0] - $start[0], $end[1] - $start[1]);
+            if ($segmentLength > $longestLength) {
+                $longestLength = $segmentLength;
+                $longest = [$start, $end];
+            }
+        }
+        if ($longest === null) {
+            continue;
+        }
+
+        [$x1, $y1] = $projectPoint($longest[0]);
+        [$x2, $y2] = $projectPoint($longest[1]);
+        $midX = ($x1 + $x2) / 2;
+        $midY = ($y1 + $y2) / 2;
+        $awayX = $midX - $parcelCenter[0];
+        $awayY = $midY - $parcelCenter[1];
+        $awayDistance = max(1.0, hypot($awayX, $awayY));
+        $labelX = $midX + (($awayX / $awayDistance) * 16);
+        $labelY = $midY + (($awayY / $awayDistance) * 16);
+        $angle = normalizeSvgLabelAngle(rad2deg(atan2($y2 - $y1, $x2 - $x1)));
+
+        $svg .= '<text x="' . round($labelX, 2) . '" y="' . round($labelY, 2)
+            . '" text-anchor="middle" dominant-baseline="middle"'
+            . ' transform="rotate(' . round($angle, 2) . ' ' . round($labelX, 2) . ' ' . round($labelY, 2) . ')"'
+            . ' font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#17283d">'
+            . escapeReportValue($frontage['streetName'] ?? 'Unknown street') . '</text>';
     }
-    $svg .= '</g></svg>';
+
+    // Center the resolved address inside the parcel, wrapping only when needed.
+    $addressText = escapeReportValue($address);
+    if ($addressText !== '') {
+        $addressLines = [$addressText];
+        if (strlen($address) > 48) {
+            $breakAt = strrpos(substr($address, 0, 49), ' ');
+            if ($breakAt !== false && $breakAt > 0) {
+                $addressLines = [
+                    escapeReportValue(substr($address, 0, $breakAt)),
+                    escapeReportValue(substr($address, $breakAt + 1))
+                ];
+            }
+        }
+        $startY = $parcelCenter[1] - ((count($addressLines) - 1) * 6);
+        $svg .= '<text x="' . round($parcelCenter[0], 2) . '" y="' . round($startY, 2)
+            . '" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#17283d"'
+            . ' stroke="#e9eef6" stroke-width="3" paint-order="stroke">';
+        foreach ($addressLines as $lineIndex => $addressLine) {
+            $svg .= '<tspan x="' . round($parcelCenter[0], 2) . '" dy="'
+                . ($lineIndex === 0 ? '0' : '13') . '">' . $addressLine . '</tspan>';
+        }
+        $svg .= '</text>';
+    }
+
+    // North arrow is always directed upward on the page.
+    $svg .= '<g transform="translate(690 34)" font-family="Arial, sans-serif" fill="#17283d">'
+        . '<text x="0" y="-13" text-anchor="middle" font-size="11" font-weight="bold">N</text>'
+        . '<line x1="0" y1="13" x2="0" y2="-8" stroke="#17283d" stroke-width="2" />'
+        . '<polygon points="0,-12 -5,-3 5,-3" fill="#17283d" />'
+        . '</g></svg>';
 
     return $svg;
 }
