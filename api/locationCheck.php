@@ -319,6 +319,14 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
         (string)$locationJurisdiction,
         $executionTime
     );
+    $signCodeResult = resolveApplicableSignCode(
+        __DIR__,
+        $stateSlug,
+        $countySlug,
+        $jurisSlug,
+        (string)$locationJurisdiction,
+        (string)$parcel['zoningCode']
+    );
 
     echo json_encode([
         'success'           => true,
@@ -346,7 +354,8 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
                 'confidence'        => (int)($parcel['confidence'] ?? 95),
                 'verifiedAt'        => $executionTime,
                 'frontages'         => $frontageResult['frontages'],
-                'parcelGeometry'    => $frontageResult['parcelGeometry']
+                'parcelGeometry'    => $frontageResult['parcelGeometry'],
+                'signCode'          => $signCodeResult['signCode']
             ])
         ]
     ], JSON_PRETTY_PRINT);
@@ -475,6 +484,14 @@ $frontageResult = resolveLocationFrontages(
     (string)$locationJurisdiction,
     $executionTime
 );
+$signCodeResult = resolveApplicableSignCode(
+    __DIR__,
+    $stateSlug,
+    $countySlug,
+    $jurisSlug,
+    (string)$locationJurisdiction,
+    $zoningCode
+);
 
 #endregion
 
@@ -506,7 +523,8 @@ $output = [
             'confidence'        => $resultConfidence,
             'verifiedAt'        => $executionTime,
             'frontages'         => $frontageResult['frontages'],
-            'parcelGeometry'    => $frontageResult['parcelGeometry']
+            'parcelGeometry'    => $frontageResult['parcelGeometry'],
+            'signCode'          => $signCodeResult['signCode']
         ])
     ]
 ];
@@ -525,7 +543,8 @@ if ($debugEnabled || isset($zoningResult)) {
             'arcGisError'  => $zoningResult['data']['error'] ?? null,
             'featureCount' => count($features ?? [])
         ],
-        'frontageQuery'    => $frontageResult['diagnostics']
+        'frontageQuery'    => $frontageResult['diagnostics'],
+        'signCodeQuery'    => $signCodeResult['diagnostics']
     ];
 }
 
@@ -595,6 +614,146 @@ function resolveMappedField(array $attributes, array $candidates, array $normali
         }
     }
     return null;
+}
+
+function resolveApplicableSignCode(
+    string $baseDirectory,
+    string $stateSlug,
+    string $countySlug,
+    string $jurisdictionSlug,
+    string $jurisdictionName,
+    string $zoningCode
+): array {
+    // Resolve the jurisdiction artifact (regional path first).
+    $signCodeCandidates = [
+        $baseDirectory . "/data/authoritative/{$stateSlug}/{$countySlug}/jurisdictions/{$jurisdictionSlug}/signCode.json",
+        $baseDirectory . "/../data/authoritative/{$stateSlug}/{$countySlug}/jurisdictions/{$jurisdictionSlug}/signCode.json",
+        $baseDirectory . '/data/authoritative/jurisdictions/' . $jurisdictionSlug . '/signCode.json',
+        $baseDirectory . '/../data/authoritative/jurisdictions/' . $jurisdictionSlug . '/signCode.json'
+    ];
+
+    $signCodeFile = null;
+    foreach ($signCodeCandidates as $candidateFile) {
+        if (is_file($candidateFile)) {
+            $signCodeFile = $candidateFile;
+            break;
+        }
+    }
+
+    $normalizedZoningCode = strtoupper(trim(preg_replace('/[\s*]+$/', '', $zoningCode)));
+    $defaultResult = [
+        'jurisdiction'          => $jurisdictionName,
+        'zoningCode'           => $normalizedZoningCode !== '' ? $normalizedZoningCode : $zoningCode,
+        'landUseClassification'=> null,
+        'attachedSigns'        => null,
+        'detachedSigns'        => null,
+        'requiredInputs'       => [],
+        'source'               => null,
+        'citation'             => null,
+        'status'               => 'research_required'
+    ];
+
+    if ($signCodeFile === null) {
+        return [
+            'signCode'    => $defaultResult,
+            'diagnostics' => [
+                'status'     => 'file_missing',
+                'configFile' => null
+            ]
+        ];
+    }
+
+    $signCodeConfig = json_decode((string)file_get_contents($signCodeFile), true);
+    if (!is_array($signCodeConfig)) {
+        return [
+            'signCode'    => $defaultResult,
+            'diagnostics' => [
+                'status'     => 'invalid_json',
+                'configFile' => $signCodeFile
+            ]
+        ];
+    }
+
+    // Match normalized zoning to the jurisdiction-defined land-use category.
+    $landUseClassification = null;
+    $landUseCitation       = null;
+    $landUseCategories     = $signCodeConfig['classifications']['landUseCategories'] ?? [];
+
+    foreach ($landUseCategories as $classification => $classificationConfig) {
+        $districts = is_array($classificationConfig['zoningDistricts'] ?? null)
+            ? $classificationConfig['zoningDistricts']
+            : [];
+
+        foreach ($districts as $district) {
+            $normalizedDistrict = strtoupper(trim(preg_replace('/[\s*]+$/', '', (string)$district)));
+            if ($normalizedDistrict === $normalizedZoningCode) {
+                $landUseClassification = (string)$classification;
+                $landUseCitation       = $classificationConfig['citation'] ?? null;
+                break 2;
+            }
+        }
+    }
+
+    if ($landUseClassification === null) {
+        $defaultResult['source'] = buildSignCodeSource($signCodeConfig);
+
+        return [
+            'signCode'    => $defaultResult,
+            'diagnostics' => [
+                'status'                => 'classification_missing',
+                'configFile'            => $signCodeFile,
+                'normalizedZoningCode'  => $normalizedZoningCode
+            ]
+        ];
+    }
+
+    $standards     = $signCodeConfig['identificationSignStandards'][$landUseClassification] ?? [];
+    $attachedSigns = is_array($standards['wall'] ?? null) ? $standards['wall'] : null;
+    $detachedSigns = is_array($standards['ground'] ?? null) ? $standards['ground'] : null;
+    $requiredInputs = array_values(array_unique(array_merge(
+        is_array($attachedSigns['requiredInputs'] ?? null) ? $attachedSigns['requiredInputs'] : [],
+        is_array($detachedSigns['requiredInputs'] ?? null) ? $detachedSigns['requiredInputs'] : []
+    )));
+
+    $status = ($attachedSigns !== null && $detachedSigns !== null && $requiredInputs === [])
+        ? 'resolved'
+        : 'research_required';
+
+    return [
+        'signCode' => [
+            'jurisdiction'           => $signCodeConfig['jurisdiction']['label'] ?? $jurisdictionName,
+            'zoningCode'            => $normalizedZoningCode,
+            'landUseClassification' => $landUseClassification,
+            'attachedSigns'         => $attachedSigns,
+            'detachedSigns'         => $detachedSigns,
+            'requiredInputs'        => $requiredInputs,
+            'source'                => buildSignCodeSource($signCodeConfig),
+            'citation'              => [
+                'classification' => $landUseCitation,
+                'attachedSigns'  => $attachedSigns['citation'] ?? null,
+                'detachedSigns'  => $detachedSigns['citation'] ?? null
+            ],
+            'status'                => $status
+        ],
+        'diagnostics' => [
+            'status'                => $status,
+            'configFile'            => $signCodeFile,
+            'schemaVersion'         => $signCodeConfig['schemaVersion'] ?? null,
+            'normalizedZoningCode'  => $normalizedZoningCode,
+            'landUseClassification'=> $landUseClassification
+        ]
+    ];
+}
+
+function buildSignCodeSource(array $signCodeConfig): array {
+    return [
+        'title'              => $signCodeConfig['ordinance']['title'] ?? null,
+        'authority'          => $signCodeConfig['ordinance']['authority'] ?? null,
+        'codeReference'      => $signCodeConfig['ordinance']['codeReference'] ?? null,
+        'officialSourceUrl'  => $signCodeConfig['ordinance']['officialSourceUrl'] ?? null,
+        'currentThroughDate' => $signCodeConfig['ordinance']['currentThroughDate'] ?? null,
+        'schemaVersion'      => $signCodeConfig['schemaVersion'] ?? null
+    ];
 }
 
 function formatLocationResponse(array $p): array {
@@ -680,6 +839,9 @@ function formatLocationResponse(array $p): array {
         'jurisdictionName'   => $p['jurisdiction'],
         'jurisdictionType'   => 'City',
         'hasMultipleParcels' => false,
+        'signCode'           => is_array($p['signCode'] ?? null)
+            ? $p['signCode']
+            : null,
         'zoning'             => [
             'status'            => $isResolved ? 'resolved' : 'unmapped',
             'reason'            => null,
