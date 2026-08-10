@@ -304,10 +304,6 @@ $jurisdictionZoning = $jurisdictionSlug !== ''
     ? loadJurisdictionArtifact($jurisdictionFolder, 'zoning.json')
     : [];
 
-$jurisdictionSignCode = $jurisdictionSlug !== ''
-    ? loadJurisdictionArtifact($jurisdictionFolder, 'signCode.json')
-    : [];
-
 $specialDesignations = extractAddressSpecialDesignations(
     $location,
     $parcel,
@@ -333,20 +329,21 @@ $cspStatusDisplay = buildDesignationStatus(
     'cases'
 );
 
-$landUseCategory = resolveLandUseCategory(
-    $jurisdictionSignCode,
-    $zoningCode
-);
+$resolvedSignCode = is_array($location['signCode'] ?? null)
+    ? $location['signCode']
+    : [];
+
+$landUseCategory = trim((string)(
+    $resolvedSignCode['landUseClassification']
+    ?? ''
+));
 
 $attachedSignAllowanceDisplay = buildAttachedAllowanceStatus(
-    $jurisdictionSignCode,
-    $landUseCategory
+    $resolvedSignCode
 );
 
 $detachedSignAllowanceDisplay = buildDetachedAllowanceStatus(
-    $jurisdictionSignCode,
-    $landUseCategory,
-    $frontages
+    $resolvedSignCode
 );
 
 $activitySessionId = trim((string)(
@@ -411,10 +408,15 @@ if ($jsonReviewMode) {
             'jurisdictionArtifactsLoaded' => [
                 'source' => $jurisdictionSource !== [],
                 'zoning' => $jurisdictionZoning !== [],
-                'signCode' => $jurisdictionSignCode !== []
+                'signCodePayload' => $resolvedSignCode !== []
             ],
 
-            'landUseCategory' => $landUseCategory
+            'landUseCategory' => $landUseCategory !== ''
+                ? $landUseCategory
+                : null,
+
+            'signCodeStatus' => $resolvedSignCode['status']
+                ?? 'research_required'
         ]
     ], JSON_PRETTY_PRINT
         | JSON_UNESCAPED_SLASHES
@@ -742,12 +744,12 @@ ob_start();
     </table>
     <div class="citation-subtext">
         Jurisdiction data: <?= displayReportValue(
-            $jurisdictionSignCode['jurisdiction']['label']
+            $resolvedSignCode['jurisdiction']
                 ?? $jurisdictionSource['jurisdiction']['label']
                 ?? null,
-            'Research required — authoritative jurisdiction artifacts were not loaded'
+            'Research required — no applicable sign-code result was returned'
         ) ?>
-        <?= $landUseCategory !== null
+        <?= $landUseCategory !== ''
             ? ' | Classified use standard: ' . escapeReportValue($landUseCategory)
             : '' ?>
     </div>
@@ -1354,89 +1356,161 @@ function buildDesignationStatus(array $designation, string $matchKey = 'matches'
     return renderResearchStatus('research_required', 'The structured determination is incomplete or requires review.');
 }
 
-/** Match the resolved zoning district to a jurisdiction-defined land-use category. */
-function resolveLandUseCategory(array $signCode, string $zoningCode): ?string
+/** Convert a payload field name into a compact report label. */
+function formatSignCodeField(string $field): string
 {
-    $categories = $signCode['classifications']['landUseCategories'] ?? null;
+    $label = preg_replace('/(?<!^)([A-Z])/', ' $1', $field) ?? $field;
+    $label = str_replace(['Square Feet', 'Feet'], ['sq. ft.', 'ft.'], $label);
 
-    if (!is_array($categories) || $zoningCode === '') {
-        return null;
-    }
+    return strtolower(trim($label));
+}
 
-    $normalizedCode = strtoupper(rtrim(trim($zoningCode), "* \t\n\r\0\x0B"));
+/** Format the site facts still required by the endpoint's applicable rule. */
+function formatSignCodeInputs(array $inputs): string
+{
+    $labels = [];
 
-    foreach ($categories as $category => $definition) {
-        $districts = is_array($definition['zoningDistricts'] ?? null)
-            ? $definition['zoningDistricts']
-            : [];
+    foreach ($inputs as $input) {
+        $label = formatSignCodeField(trim((string)$input));
 
-        foreach ($districts as $district) {
-            if ($normalizedCode === strtoupper(trim((string)$district))) {
-                return (string)$category;
-            }
+        if ($label !== '') {
+            $labels[] = $label;
         }
     }
 
-    return null;
+    return implode(', ', array_values(array_unique($labels)));
 }
 
-/** Build the attached-sign research result from the jurisdiction's structured standard. */
-function buildAttachedAllowanceStatus(array $signCode, ?string $landUseCategory): string
+/** Preserve the endpoint status while displaying its applicable attached-sign rule. */
+function buildAttachedAllowanceStatus(array $signCode): string
 {
-    if ($signCode === []) {
-        return renderResearchStatus('research_required', 'The jurisdiction signCode.json file is unavailable or invalid.');
+    $status = strtolower(trim((string)($signCode['status'] ?? 'research_required')));
+    $attached = $signCode['attachedSigns'] ?? null;
+
+    if (!is_array($attached)) {
+        return renderResearchStatus(
+            'research_required',
+            'No applicable attached-sign standard was returned by the address check.'
+        );
     }
 
-    if ($landUseCategory === null) {
-        return renderResearchStatus('research_required', 'The resolved zoning district is not mapped to a land-use category.');
+    $details = [];
+    $formula = is_array($attached['areaFormula'] ?? null)
+        ? $attached['areaFormula']
+        : [];
+
+    foreach ($formula as $field => $value) {
+        if (!is_numeric($value) || !str_starts_with((string)$field, 'squareFeetPerLinearFoot')) {
+            continue;
+        }
+
+        $basis = substr((string)$field, strlen('squareFeetPerLinearFoot'));
+        $details[] = number_format((float)$value, 2)
+            . ' sq. ft. per linear foot'
+            . ($basis !== '' ? ' of ' . formatSignCodeField($basis) : '');
+        break;
     }
 
-    $wall = $signCode['identificationSignStandards'][$landUseCategory]['wall'] ?? null;
-
-    if (!is_array($wall)) {
-        return renderResearchStatus('research_required', 'No attached-sign standard is defined for the resolved land-use category.');
+    if (is_numeric($formula['minimumSquareFeet'] ?? null)) {
+        $details[] = number_format((float)$formula['minimumSquareFeet'], 0) . ' sq. ft. minimum';
     }
 
-    $formula = is_array($wall['areaFormula'] ?? null) ? $wall['areaFormula'] : [];
-    $rate = $formula['squareFeetPerLinearFootOfElevation'] ?? null;
-    $minimum = $formula['minimumSquareFeet'] ?? null;
-    $maximum = $formula['maximumSquareFeet'] ?? null;
-
-    if (!is_numeric($rate)) {
-        return renderResearchStatus('research_required', 'The attached-sign formula is incomplete in signCode.json.');
+    if (is_numeric($formula['maximumSquareFeet'] ?? null)) {
+        $details[] = number_format((float)$formula['maximumSquareFeet'], 0) . ' sq. ft. maximum';
     }
 
-    $detail = number_format((float)$rate, 2) . ' sq. ft. per linear foot of occupied elevation';
-    $detail .= is_numeric($minimum) ? '; ' . number_format((float)$minimum, 0) . ' sq. ft. minimum' : '';
-    $detail .= is_numeric($maximum) ? '; ' . number_format((float)$maximum, 0) . ' sq. ft. maximum' : '';
-    $detail .= '. Building frontage and existing attached-sign inventory are required for the remaining allowance.';
+    if (is_numeric($attached['maximumHeightFeet'] ?? null)) {
+        $details[] = number_format((float)$attached['maximumHeightFeet'], 0) . ' ft. maximum height';
+    }
 
-    return renderResearchStatus('identified', $detail);
+    $requiredInputs = is_array($attached['requiredInputs'] ?? null)
+        ? $attached['requiredInputs']
+        : [];
+
+    if ($requiredInputs !== []) {
+        $details[] = 'Required inputs: ' . formatSignCodeInputs($requiredInputs);
+    }
+
+    $citation = trim((string)($signCode['citation']['attachedSigns']['section']
+        ?? $attached['citation']['section']
+        ?? ''));
+
+    if ($citation !== '') {
+        $details[] = 'Citation: ' . $citation;
+    }
+
+    return renderResearchStatus(
+        $status === 'resolved' ? 'resolved' : 'research_required',
+        $details !== []
+            ? implode('; ', $details) . '.'
+            : 'The applicable attached-sign standard was returned; review its structured details.'
+    );
 }
 
-/** Build the detached-sign research result from the jurisdiction's structured standard. */
-function buildDetachedAllowanceStatus(array $signCode, ?string $landUseCategory, array $frontages): string
+/** Preserve the endpoint status while displaying its applicable detached-sign rule. */
+function buildDetachedAllowanceStatus(array $signCode): string
 {
-    if ($signCode === []) {
-        return renderResearchStatus('research_required', 'The jurisdiction signCode.json file is unavailable or invalid.');
+    $status = strtolower(trim((string)($signCode['status'] ?? 'research_required')));
+    $detached = $signCode['detachedSigns'] ?? null;
+
+    if (!is_array($detached)) {
+        return renderResearchStatus(
+            'research_required',
+            'No applicable detached-sign standard was returned by the address check.'
+        );
     }
 
-    if ($landUseCategory === null) {
-        return renderResearchStatus('research_required', 'The resolved zoning district is not mapped to a land-use category.');
+    $details = [];
+    $quantityRule = is_array($detached['quantityRule'] ?? null)
+        ? $detached['quantityRule']
+        : [];
+
+    foreach ($quantityRule as $field => $value) {
+        if (is_numeric($value)) {
+            $details[] = number_format((float)$value, 0) . ' ' . formatSignCodeField((string)$field);
+        }
     }
 
-    $ground = $signCode['identificationSignStandards'][$landUseCategory]['ground'] ?? null;
-
-    if (!is_array($ground)) {
-        return renderResearchStatus('research_required', 'No detached-sign standard is defined for the resolved land-use category.');
+    if (is_numeric($detached['minimumSpacingFeet'] ?? null)) {
+        $details[] = number_format((float)$detached['minimumSpacingFeet'], 0) . ' ft. minimum spacing';
     }
 
-    if ($frontages === []) {
-        return renderResearchStatus('research_required', 'Street frontage and roadway classification were not resolved.');
+    $asOfRight = is_array($detached['asOfRight'] ?? null)
+        ? $detached['asOfRight']
+        : [];
+
+    if (is_numeric($asOfRight['maximumAreaSquareFeet'] ?? null)) {
+        $details[] = number_format((float)$asOfRight['maximumAreaSquareFeet'], 0) . ' sq. ft. as of right';
     }
 
-    $detail = 'The applicable detached-sign standard is identified.';
-    $detail .= ' Parcel-use classification and existing detached-sign inventory are required for the remaining allowance.';
+    if (is_numeric($asOfRight['maximumHeightFeet'] ?? null)) {
+        $details[] = number_format((float)$asOfRight['maximumHeightFeet'], 0) . ' ft. maximum height as of right';
+    }
 
-    return renderResearchStatus('identified', $detail);
+    if (is_array($detached['streetClassStandards'] ?? null)) {
+        $details[] = 'Roadway-class standards returned; applicable class requires verification';
+    }
+
+    $requiredInputs = is_array($detached['requiredInputs'] ?? null)
+        ? $detached['requiredInputs']
+        : [];
+
+    if ($requiredInputs !== []) {
+        $details[] = 'Required inputs: ' . formatSignCodeInputs($requiredInputs);
+    }
+
+    $citation = trim((string)($signCode['citation']['detachedSigns']['section']
+        ?? $detached['citation']['section']
+        ?? ''));
+
+    if ($citation !== '') {
+        $details[] = 'Citation: ' . $citation;
+    }
+
+    return renderResearchStatus(
+        $status === 'resolved' ? 'resolved' : 'research_required',
+        $details !== []
+            ? implode('; ', $details) . '.'
+            : 'The applicable detached-sign standard was returned; review its structured details.'
+    );
 }
