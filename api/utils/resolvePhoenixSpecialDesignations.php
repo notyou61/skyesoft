@@ -6,9 +6,9 @@ declare(strict_types=1);
  * Skyesoft — Phoenix Special Designations & CSP Resolver
  *
  * File Path:        api/utils/resolvePhoenixSpecialDesignations.php
- * File Version:     1.2.4
+ * File Version:     1.2.5
  * Schema Version:   3.4.0
- * Last Updated:     2026-08-07
+ * Last Updated:     2026-08-11
  * PHP Version:      8.0+
  */
 
@@ -29,28 +29,25 @@ function resolvePhoenixSpecialDesignations(
             'url'       => 'https://maps.phoenix.gov/pub/rest/services/Public/HistoricProperties/MapServer/0',
             'outFields' => 'NAME,TYPE,STATUS,LANDMARK',
             'source'    => 'City of Phoenix Historic Preservation GIS'
+        ],
+        'csp' => [
+            'url'       => 'https://maps.phoenix.gov/pub/rest/services/Public/Planning_Permit/MapServer/4',
+            'outFields' => '*',
+            'source'    => 'City of Phoenix Planning & Permit Cases GIS'
         ]
     ];
 
     $overlayResult  = queryPhoenixArcGisLayer($endpoints['overlays'], $latitude, $longitude, $options);
     $historicResult = queryPhoenixArcGisLayer($endpoints['historic'], $latitude, $longitude, $options);
+    $cspResult      = queryPhoenixArcGisLayer($endpoints['csp'], $latitude, $longitude, $options);
 
     $overlayPayload  = parsePhoenixOverlayFeatures($overlayResult, $endpoints['overlays']['source']);
     $historicPayload = parsePhoenixHistoricFeatures($historicResult, $endpoints['historic']['source']);
+    $cspPayload      = parsePhoenixCspDiagnosticFeatures($cspResult, $endpoints['csp']['source']);
 
-    // Default CSP response when no automated GIS rule layer is active
-    $cspPayload = [
-        'determination' => 'no',
-        'status'        => 'noneIdentified',
-        'caseNumber'    => null,
-        'cases'         => [],
-        'source'        => 'City of Phoenix Planning & Permit Cases GIS',
-        'checkedAt'     => time(),
-        'errorMessage'  => null
-    ];
-
-    // Evaluates directly from active GIS layer statuses
-    $isComplete = ($historicResult['success'] && $overlayResult['success']);
+    // CSP is diagnostic until the returned Phoenix fields are verified.
+    // Do not infer Yes/No from an unverified Planning & Permit layer schema.
+    $isComplete = ($historicResult['success'] && $overlayResult['success'] && $cspResult['success']);
 
     return [
         'isComplete'            => $isComplete,
@@ -270,5 +267,55 @@ function parsePhoenixHistoricFeatures(array $queryResult, string $sourceName): a
         'matches'       => $matches,
         'source'        => $sourceName,
         'checkedAt'     => time()
+    ];
+}
+
+/**
+ * Diagnostic parser for the Phoenix Planning & Permit layer.
+ *
+ * This intentionally does NOT classify a returned feature as a CSP.
+ * A known-positive CSP location should be used to inspect rawAttributes
+ * and identify the authoritative Phoenix field/value combination first.
+ */
+function parsePhoenixCspDiagnosticFeatures(array $queryResult, string $sourceName): array {
+    if (!$queryResult['success']) {
+        return [
+            'determination' => null,
+            'status'        => 'notAvailable',
+            'caseNumber'    => null,
+            'cases'         => [],
+            'source'        => $sourceName,
+            'checkedAt'     => time(),
+            'errorMessage'  => $queryResult['errorMessage'] ?? 'Service Query Failed'
+        ];
+    }
+
+    $cases = [];
+    foreach ($queryResult['features'] as $feature) {
+        $attrs = $feature['attributes'] ?? [];
+
+        if (!is_array($attrs)) {
+            continue;
+        }
+
+        $cases[] = [
+            'rawAttributes' => $attrs
+        ];
+    }
+
+    // Log raw records server-side as an additional diagnostic trail.
+    error_log(
+        '[PHOENIX-CSP-DIAGNOSTIC] Feature count: ' . count($cases) .
+        ' | Attributes: ' . json_encode($cases, JSON_UNESCAPED_SLASHES)
+    );
+
+    return [
+        'determination' => null,
+        'status'        => 'diagnostic',
+        'caseNumber'    => null,
+        'cases'         => $cases,
+        'source'        => $sourceName,
+        'checkedAt'     => time(),
+        'errorMessage'  => null
     ];
 }
