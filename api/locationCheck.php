@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php (API Endpoint)
-//  Version: 2.3.0 (Regionalized GIS Resolution Engine)
+//  Version: 2.3.1 (Phoenix Special Designations Diagnostic Integration)
 // ======================================================================
 
 #region SECTION 0 — Headers & Environment
@@ -38,6 +38,12 @@ if (empty($googleMapsApiKey)) {
         ?? getenv('GOOGLE_MAPS_STATIC_API_KEY')
         ?? $_SERVER['GOOGLE_MAPS_API_KEY']
         ?? '';
+}
+
+// Load Phoenix special-designation resolver when available.
+$phoenixDesignationResolverPath = __DIR__ . '/utils/resolvePhoenixSpecialDesignations.php';
+if (is_file($phoenixDesignationResolverPath)) {
+    require_once $phoenixDesignationResolverPath;
 }
 
 #endregion
@@ -328,6 +334,11 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
         (string)$parcel['zoningCode'],
         $frontageResult['frontages']
     );
+    $specialDesignations = resolveLocationSpecialDesignations(
+        (string)$locationJurisdiction,
+        $lat,
+        $lng
+    );
 
     echo json_encode([
         'success'           => true,
@@ -356,7 +367,8 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
                 'verifiedAt'        => $executionTime,
                 'frontages'         => $frontageResult['frontages'],
                 'parcelGeometry'    => $frontageResult['parcelGeometry'],
-                'signCode'          => $signCodeResult['signCode']
+                'signCode'          => $signCodeResult['signCode'],
+                'specialDesignations' => $specialDesignations
             ])
         ]
     ], JSON_PRETTY_PRINT);
@@ -494,6 +506,11 @@ $signCodeResult = resolveApplicableSignCode(
     $zoningCode,
     $frontageResult['frontages']
 );
+$specialDesignations = resolveLocationSpecialDesignations(
+    (string)$locationJurisdiction,
+    $lat,
+    $lng
+);
 
 #endregion
 
@@ -526,7 +543,8 @@ $output = [
             'verifiedAt'        => $executionTime,
             'frontages'         => $frontageResult['frontages'],
             'parcelGeometry'    => $frontageResult['parcelGeometry'],
-            'signCode'          => $signCodeResult['signCode']
+            'signCode'          => $signCodeResult['signCode'],
+            'specialDesignations' => $specialDesignations
         ])
     ]
 ];
@@ -933,6 +951,9 @@ function formatLocationResponse(array $p): array {
         'signCode'           => is_array($p['signCode'] ?? null)
             ? $p['signCode']
             : null,
+        'specialDesignations' => is_array($p['specialDesignations'] ?? null)
+            ? $p['specialDesignations']
+            : null,
         'zoning'             => [
             'status'            => $isResolved ? 'resolved' : 'unmapped',
             'reason'            => null,
@@ -944,6 +965,38 @@ function formatLocationResponse(array $p): array {
             'requiresReview'    => !$isResolved
         ]
     ];
+}
+
+function resolveLocationSpecialDesignations(
+    string $jurisdiction,
+    ?float $latitude,
+    ?float $longitude
+): ?array {
+    if (strtolower(trim($jurisdiction)) !== 'phoenix') {
+        return null;
+    }
+
+    if ($latitude === null || $longitude === null) {
+        return [
+            'isComplete'            => false,
+            'zoningOverlays'        => null,
+            'historicDesignation'   => null,
+            'comprehensiveSignPlan' => null,
+            'errorMessage'          => 'Phoenix special-designation lookup requires coordinates.'
+        ];
+    }
+
+    if (!function_exists('resolvePhoenixSpecialDesignations')) {
+        return [
+            'isComplete'            => false,
+            'zoningOverlays'        => null,
+            'historicDesignation'   => null,
+            'comprehensiveSignPlan' => null,
+            'errorMessage'          => 'Phoenix special-designation resolver is unavailable.'
+        ];
+    }
+
+    return resolvePhoenixSpecialDesignations($latitude, $longitude);
 }
 
 function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, int $verifiedAt): array {
