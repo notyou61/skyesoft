@@ -80,7 +80,7 @@ Do not choose a file, construct a directory name, or search for another jurisdic
 
 Analysis Priorities
 
-1. Zoning Applicability
+Zoning Applicability
 
 Confirm whether the supplied zoning district is verified and supported by the structured sign code. Identify overlays, special districts, master sign plans, comprehensive sign plans, prior approvals, or nonconforming conditions that may modify the base allowance.
 
@@ -88,7 +88,9 @@ Do not assume that the base zoning district is the only controlling condition.
 
 Return the complete applicability path used to select a rule. For example, a rule may depend on zoning category, development type, gross floor area band, scenic-corridor status, and an approved sign program. Never collapse these into a Phoenix-style zoning lookup when the supplied code uses a different decision model.
 
-2. Attached Signs
+Attached Signs
+
+An attached sign is mounted to a structure, including a wall sign or building sign.
 
 Determine the provisions governing wall signs, channel letters, cabinet signs, raceway signs, canopy signs, projecting signs, and other signs attached to a building.
 
@@ -120,7 +122,9 @@ Sum-total sign budget and whether multiple sign types share it
 
 Alternative sign types that consume, replace, or do not count toward that budget
 
-When every required input is available, calculate:
+Once the applicable attached-sign standard is identified, always report the maximum sign area and maximum height that may be proposed under that standard. Do not suppress a dimensional maximum because the current sign inventory is unavailable. When the allowance uses a formula, report the formula, minimum, maximum cap, and every known dimensional limit even when the site measurement needed for a final calculation is missing.
+
+When every required calculation input is available, calculate:
 
 maximumAreaSquareFeet
 
@@ -130,7 +134,9 @@ remainingAreaSquareFeet
 
 Show the formula, each supplied measurement, units, arithmetic, unrounded result, and displayed result.
 
-3. Detached Signs
+Detached Signs
+
+A detached sign is freestanding, including a pole, pylon, or monument sign.
 
 Determine the provisions governing monument, pole, pylon, freestanding, and other detached signs.
 
@@ -162,9 +168,11 @@ Whether one freestanding sign type substitutes for another
 
 Scenic-corridor, special-area, or sign-program modifications
 
-When every required input is available, calculate the applicable maximum area, height, count, spacing, setback, and remaining allowance.
+Once the applicable detached-sign classification is identified, always report the maximum height and sign area that may be proposed under that standard, including any increased maximum available through Design Review. Do not suppress these dimensional standards because the current sign inventory is unavailable. Calculate remaining allowance only when the inputs needed for that calculation are available.
 
-4. Other Applicable Issues
+When every required calculation input is available, calculate the applicable count, spacing, setback, and remaining allowance.
+
+Other Applicable Issues
 
 Evaluate only provisions that apply generally, are activated by the verified zoning, are activated by a known sign type or condition, or require a missing fact to determine applicability.
 
@@ -286,17 +294,7 @@ If a conclusion lacks a usable ordinance citation, do not mark it verified or ca
 
 Use this standard rule-reference object everywhere applicableRules appears:
 
-{
-  "ruleId": "",
-  "ordinanceTitle": "",
-  "codeSection": "",
-  "title": "",
-  "citationText": "",
-  "pdfPage": null,
-  "sourceFile": "",
-  "sourceStatus": "",
-  "ordinanceVersion": ""
-}
+{"ruleId": "","ordinanceTitle": "","codeSection": "","title": "","citationText": "","pdfPage": null,"sourceFile": "","sourceStatus": "","ordinanceVersion": ""}
 
 Status Rules
 
@@ -322,242 +320,7 @@ Return valid JSON only. Do not return Markdown, HTML, code fences, commentary, o
 
 Use exactly this structure:
 
-{
-  "analysisStatus": "complete|partial|verification_required|human_review_required",
-  "jurisdiction": "",
-  "ordinance": {
-    "title": "",
-    "codeReference": "",
-    "version": "",
-    "sourceStatus": ""
-  },
-  "packageValidation": {
-    "locationJurisdiction": "",
-    "packageJurisdiction": "",
-    "jurisdictionMatch": false,
-    "packageStatus": "valid|missing|required_artifact_missing|jurisdiction_mismatch|unsupported_zoning|human_review_required",
-    "message": ""
-  },
-  "zoning": {
-    "district": "",
-    "description": "",
-    "verificationStatus": "",
-    "applicabilityPath": [
-      {
-        "dimension": "zoningDistrict|zoningCategory|landUse|developmentType|grossFloorAreaBand|streetType|scenicCorridor|overlay|signProgram|other",
-        "suppliedValue": "",
-        "resolvedValue": "",
-        "status": "verified|conditional|input_required|human_review_required",
-        "citationText": "",
-        "applicableRules": []
-      }
-    ],
-    "applicabilityNotes": [
-      {
-        "note": "",
-        "status": "verified|conditional|verification_required|human_review_required",
-        "citationText": "",
-        "applicableRules": []
-      }
-    ]
-  },
-  "reportSummary": "",
-  "attachedSigns": {
-    "status": "calculated|partially_determined|input_required|not_applicable",
-    "allowanceBasis": "",
-    "allowanceScope": "per_sign|per_tenant|per_business|per_elevation|per_building|per_lot|per_development_project|sum_total_budget|other|undetermined",
-    "measurementBasis": "",
-    "sharedBudget": {
-      "applies": false,
-      "budgetName": "",
-      "maximumAreaSquareFeet": null,
-      "includedSignTypes": [],
-      "excludedSignTypes": [],
-      "substitutionRules": [],
-      "citationText": "",
-      "applicableRules": []
-    },
-    "maximumAreaSquareFeet": null,
-    "existingAreaSquareFeet": null,
-    "remainingAreaSquareFeet": null,
-    "calculation": {
-      "formula": "",
-      "inputs": [],
-      "workShown": "",
-      "unroundedResult": null,
-      "displayedResult": ""
-    },
-    "heightLimitFeet": null,
-    "projectionLimitInches": null,
-    "signCountLimit": null,
-    "placementRequirements": [
-      {
-        "requirement": "",
-        "status": "verified|conditional|input_required|human_review_required",
-        "citationText": "",
-        "applicableRules": []
-      }
-    ],
-    "dimensionalStandards": [
-      {
-        "subject": "",
-        "value": null,
-        "unit": "",
-        "scope": "",
-        "status": "verified|conditional|input_required|human_review_required",
-        "citationText": "",
-        "applicableRules": []
-      }
-    ],
-    "applicableRules": []
-  },
-  "detachedSigns": {
-    "status": "calculated|partially_determined|input_required|not_applicable",
-    "permittedTypes": [],
-    "allowanceBasis": "",
-    "allowanceScope": "per_sign|per_frontage|per_lot|per_development_project|sum_total_budget|other|undetermined",
-    "streetFrontages": [
-      {
-        "frontageId": null,
-        "streetName": "",
-        "frontageLengthFeet": null,
-        "streetClassCode": "",
-        "streetClassification": "",
-        "roadwayTier": "",
-        "verificationStatus": "",
-        "confidence": null,
-        "requiresManualReview": false,
-        "status": "verified|input_required|human_review_required",
-        "affects": "",
-        "sourceSummary": ""
-      }
-    ],
-    "classificationInputs": [
-      {
-        "dimension": "",
-        "value": "",
-        "status": "verified|conditional|input_required|human_review_required",
-        "affects": "",
-        "citationText": "",
-        "applicableRules": []
-      }
-    ],
-    "allowanceOptions": [
-      {
-        "optionId": "",
-        "signType": "",
-        "condition": "",
-        "maximumAreaSquareFeet": null,
-        "maximumHeightFeet": null,
-        "signCountLimit": null,
-        "setbackFeet": null,
-        "spacingFeet": null,
-        "status": "verified|conditional|input_required|human_review_required|not_applicable",
-        "citationText": "",
-        "applicableRules": []
-      }
-    ],
-    "maximumAreaSquareFeet": null,
-    "maximumHeightFeet": null,
-    "existingAreaSquareFeet": null,
-    "remainingAreaSquareFeet": null,
-    "signCountLimit": null,
-    "setbackFeet": null,
-    "spacingFeet": null,
-    "calculation": {
-      "formula": "",
-      "inputs": [],
-      "workShown": "",
-      "unroundedResult": null,
-      "displayedResult": ""
-    },
-    "placementRequirements": [
-      {
-        "requirement": "",
-        "status": "verified|conditional|input_required|human_review_required",
-        "citationText": "",
-        "applicableRules": []
-      }
-    ],
-    "substitutionRules": [
-      {
-        "rule": "",
-        "status": "verified|conditional|input_required|human_review_required",
-        "citationText": "",
-        "applicableRules": []
-      }
-    ],
-    "applicableRules": []
-  },
-  "generalRequirements": [
-    {
-      "requirement": "",
-      "status": "verified|conditional|input_required|human_review_required",
-      "citationText": "",
-      "applicableRules": []
-    }
-  ],
-  "conditionalRequirements": [
-    {
-      "condition": "",
-      "requirement": "",
-      "status": "conditional|input_required|human_review_required",
-      "citationText": "",
-      "applicableRules": []
-    }
-  ],
-  "prohibitedOrRestrictedSigns": [
-    {
-      "signType": "",
-      "restriction": "",
-      "status": "verified|conditional|human_review_required",
-      "citationText": "",
-      "applicableRules": []
-    }
-  ],
-  "siteSpecificReviews": [
-    {
-      "issue": "",
-      "status": "confirmed|not_found|verification_required|human_review_required",
-      "explanation": "",
-      "citationText": "",
-      "applicableRules": []
-    }
-  ],
-  "missingInputs": [
-    {
-      "input": "",
-      "reasonNeeded": "",
-      "affectsDetermination": "",
-      "recommendedSource": "",
-      "citationText": "",
-      "applicableRules": []
-    }
-  ],
-  "findings": [
-    {
-      "category": "attached_sign|detached_sign|illumination|permit|engineering|overlay|other",
-      "finding": "",
-      "status": "verified|conditional|calculated|input_required|verification_required|human_review_required|not_applicable",
-      "citationText": "",
-      "applicableRules": [
-        {
-          "ruleId": "",
-          "ordinanceTitle": "",
-          "codeSection": "",
-          "title": "",
-          "citationText": "",
-          "pdfPage": null,
-          "sourceFile": "",
-          "sourceStatus": "",
-          "ordinanceVersion": ""
-        }
-      ]
-    }
-  ],
-  "recommendedNextSteps": [],
-  "warnings": []
-}
+{"analysisStatus": "complete|partial|verification_required|human_review_required","jurisdiction": "","ordinance": {"title": "","codeReference": "","version": "","sourceStatus": ""},"packageValidation": {"locationJurisdiction": "","packageJurisdiction": "","jurisdictionMatch": false,"packageStatus": "valid|missing|required_artifact_missing|jurisdiction_mismatch|unsupported_zoning|human_review_required","message": ""},"zoning": {"district": "","description": "","verificationStatus": "","applicabilityPath": [{"dimension": "zoningDistrict|zoningCategory|landUse|developmentType|grossFloorAreaBand|streetType|scenicCorridor|overlay|signProgram|other","suppliedValue": "","resolvedValue": "","status": "verified|conditional|input_required|human_review_required","citationText": "","applicableRules": []}],"applicabilityNotes": [{"note": "","status": "verified|conditional|verification_required|human_review_required","citationText": "","applicableRules": []}]},"reportSummary": "","signAllowanceDisclaimer": "Attached signs are mounted to a structure, such as wall or building signs. Detached signs are freestanding signs, such as pole, pylon, or monument signs. Any existing or remaining signs must be included when determining the total sign area available for the property.","attachedSigns": {"status": "calculated|partially_determined|input_required|not_applicable","allowanceBasis": "","allowanceScope": "per_sign|per_tenant|per_business|per_elevation|per_building|per_lot|per_development_project|sum_total_budget|other|undetermined","measurementBasis": "","sharedBudget": {"applies": false,"budgetName": "","maximumAreaSquareFeet": null,"includedSignTypes": [],"excludedSignTypes": [],"substitutionRules": [],"citationText": "","applicableRules": []},"maximumAreaSquareFeet": null,"existingAreaSquareFeet": null,"remainingAreaSquareFeet": null,"calculation": {"formula": "","inputs": [],"workShown": "","unroundedResult": null,"displayedResult": ""},"heightLimitFeet": null,"projectionLimitInches": null,"signCountLimit": null,"placementRequirements": [{"requirement": "","status": "verified|conditional|input_required|human_review_required","citationText": "","applicableRules": []}],"dimensionalStandards": [{"subject": "","value": null,"unit": "","scope": "","status": "verified|conditional|input_required|human_review_required","citationText": "","applicableRules": []}],"applicableRules": []},"detachedSigns": {"status": "calculated|partially_determined|input_required|not_applicable","permittedTypes": [],"allowanceBasis": "","allowanceScope": "per_sign|per_frontage|per_lot|per_development_project|sum_total_budget|other|undetermined","streetFrontages": [{"frontageId": null,"streetName": "","frontageLengthFeet": null,"streetClassCode": "","streetClassification": "","roadwayTier": "","verificationStatus": "","confidence": null,"requiresManualReview": false,"status": "verified|input_required|human_review_required","affects": "","sourceSummary": ""}],"classificationInputs": [{"dimension": "","value": "","status": "verified|conditional|input_required|human_review_required","affects": "","citationText": "","applicableRules": []}],"allowanceOptions": [{"optionId": "","signType": "","condition": "","maximumAreaSquareFeet": null,"maximumHeightFeet": null,"signCountLimit": null,"setbackFeet": null,"spacingFeet": null,"status": "verified|conditional|input_required|human_review_required|not_applicable","citationText": "","applicableRules": []}],"maximumAreaSquareFeet": null,"maximumHeightFeet": null,"existingAreaSquareFeet": null,"remainingAreaSquareFeet": null,"signCountLimit": null,"setbackFeet": null,"spacingFeet": null,"calculation": {"formula": "","inputs": [],"workShown": "","unroundedResult": null,"displayedResult": ""},"placementRequirements": [{"requirement": "","status": "verified|conditional|input_required|human_review_required","citationText": "","applicableRules": []}],"substitutionRules": [{"rule": "","status": "verified|conditional|input_required|human_review_required","citationText": "","applicableRules": []}],"applicableRules": []},"generalRequirements": [{"requirement": "","status": "verified|conditional|input_required|human_review_required","citationText": "","applicableRules": []}],"conditionalRequirements": [{"condition": "","requirement": "","status": "conditional|input_required|human_review_required","citationText": "","applicableRules": []}],"prohibitedOrRestrictedSigns": [{"signType": "","restriction": "","status": "verified|conditional|human_review_required","citationText": "","applicableRules": []}],"siteSpecificReviews": [{"issue": "","status": "confirmed|not_found|verification_required|human_review_required","explanation": "","citationText": "","applicableRules": []}],"missingInputs": [{"input": "","reasonNeeded": "","affectsDetermination": "","recommendedSource": "","citationText": "","applicableRules": []}],"findings": [{"category": "attached_sign|detached_sign|illumination|permit|engineering|overlay|other","finding": "","status": "verified|conditional|calculated|input_required|verification_required|human_review_required|not_applicable","citationText": "","applicableRules": [{"ruleId": "","ordinanceTitle": "","codeSection": "","title": "","citationText": "","pdfPage": null,"sourceFile": "","sourceStatus": "","ordinanceVersion": ""}]}],"recommendedNextSteps": [],"warnings": []}
 
 Final Validation
 
@@ -568,6 +331,10 @@ Confirm that every regulatory finding has at least one cited applicable rule.
 Confirm that every calculation uses verified inputs and an express formula.
 
 Confirm that attached-sign area and detached-sign height were analyzed or specifically identified as incomplete.
+
+Confirm that every identified sign classification reports its maximum height and sign area even when existing-sign inventory is unavailable.
+
+Confirm that signAllowanceDisclaimer is returned exactly as specified in the output structure.
 
 Confirm that missing information is described precisely.
 

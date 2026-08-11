@@ -346,6 +346,11 @@ $detachedSignAllowanceDisplay = buildDetachedAllowanceStatus(
     $resolvedSignCode
 );
 
+$signAllowanceDisclaimer = trim((string)(
+    $resolvedSignCode['signAllowanceDisclaimer']
+    ?? 'Attached signs are mounted to a structure, such as wall or building signs. Detached signs are freestanding signs, such as pole, pylon, or monument signs. Any existing or remaining signs must be included when determining the total sign area available for the property.'
+));
+
 $activitySessionId = trim((string)(
     $payload['activitySessionId']
     ?? ''
@@ -742,6 +747,10 @@ ob_start();
         <tr><th>Attached-sign allowance</th><td><?= $attachedSignAllowanceDisplay ?></td></tr>
         <tr><th>Detached-sign allowance</th><td><?= $detachedSignAllowanceDisplay ?></td></tr>
     </table>
+    <div class="callout-box">
+        <div class="callout-title">Sign Allowance Note</div>
+        <div class="callout-body"><?= escapeReportValue($signAllowanceDisclaimer) ?></div>
+    </div>
     <div class="citation-subtext">
         Jurisdiction data: <?= displayReportValue(
             $resolvedSignCode['jurisdiction']
@@ -1450,7 +1459,6 @@ function buildAttachedAllowanceStatus(array $signCode): string
 /** Preserve the endpoint status while displaying its applicable detached-sign rule. */
 function buildDetachedAllowanceStatus(array $signCode): string
 {
-    $status = strtolower(trim((string)($signCode['status'] ?? 'research_required')));
     $detached = $signCode['detachedSigns'] ?? null;
 
     if (!is_array($detached)) {
@@ -1460,6 +1468,76 @@ function buildDetachedAllowanceStatus(array $signCode): string
         );
     }
 
+    $details = [];
+    $resolvedStandards = is_array($detached['resolvedFrontageStandards'] ?? null)
+        ? $detached['resolvedFrontageStandards']
+        : [];
+
+    foreach ($resolvedStandards as $standard) {
+        if (!is_array($standard) || ($standard['status'] ?? '') !== 'resolved') {
+            continue;
+        }
+
+        $streetName = trim((string)($standard['streetName'] ?? ''));
+        $streetClassification = trim((string)($standard['streetClassification'] ?? ''));
+        $streetClassCode = trim((string)($standard['streetClassCode'] ?? ''));
+        $signClassification = trim((string)($standard['signClassification'] ?? ''));
+        $asOfRight = is_array($standard['asOfRight'] ?? null) ? $standard['asOfRight'] : [];
+        $designReview = is_array($standard['designReviewMaximum'] ?? null)
+            ? $standard['designReviewMaximum']
+            : [];
+
+        if (
+            !is_numeric($asOfRight['maximumHeightFeet'] ?? null)
+            || !is_numeric($asOfRight['maximumAreaSquareFeet'] ?? null)
+        ) {
+            continue;
+        }
+
+        $standardLabel = array_filter([
+            $streetName,
+            $streetClassification !== ''
+                ? $streetClassification . ($streetClassCode !== '' ? ' (' . $streetClassCode . ')' : '')
+                : null,
+            $signClassification !== '' ? ucfirst($signClassification) . ' sign' : null
+        ]);
+        $standardDetails = implode(' — ', $standardLabel)
+            . ': maximum '
+            . number_format((float)$asOfRight['maximumHeightFeet'], 0)
+            . ' ft. high and '
+            . number_format((float)$asOfRight['maximumAreaSquareFeet'], 0)
+            . ' sq. ft. as of right';
+
+        if (
+            is_numeric($designReview['maximumHeightFeet'] ?? null)
+            && is_numeric($designReview['maximumAreaSquareFeet'] ?? null)
+        ) {
+            $standardDetails .= '; up to '
+                . number_format((float)$designReview['maximumHeightFeet'], 0)
+                . ' ft. high and '
+                . number_format((float)$designReview['maximumAreaSquareFeet'], 0)
+                . ' sq. ft. through Design Review';
+        }
+
+        if (is_numeric($standard['minimumSpacingFeet'] ?? null)) {
+            $standardDetails .= '; '
+                . number_format((float)$standard['minimumSpacingFeet'], 0)
+                . ' ft. minimum spacing';
+        }
+
+        $standardCitation = trim((string)($standard['citation'] ?? ''));
+        if ($standardCitation !== '') {
+            $standardDetails .= '; Citation: ' . $standardCitation;
+        }
+
+        $details[] = $standardDetails;
+    }
+
+    if ($details !== []) {
+        return renderResearchStatus('resolved', implode('. ', $details) . '.');
+    }
+
+    $status = strtolower(trim((string)($signCode['status'] ?? 'research_required')));
     $details = [];
     $quantityRule = is_array($detached['quantityRule'] ?? null)
         ? $detached['quantityRule']
@@ -1488,7 +1566,7 @@ function buildDetachedAllowanceStatus(array $signCode): string
     }
 
     if (is_array($detached['streetClassStandards'] ?? null)) {
-        $details[] = 'Roadway-class standards returned; applicable class requires verification';
+        $details[] = 'The applicable roadway-class standard was not resolved';
     }
 
     $requiredInputs = is_array($detached['requiredInputs'] ?? null)

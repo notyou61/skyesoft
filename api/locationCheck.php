@@ -627,6 +627,8 @@ function resolveApplicableSignCode(
     string $zoningCode,
     array $frontages = []
 ): array {
+    $signAllowanceDisclaimer = 'Attached signs are mounted to a structure, such as wall or building signs. Detached signs are freestanding signs, such as pole, pylon, or monument signs. Any existing or remaining signs must be included when determining the total sign area available for the property.';
+
     // Resolve the jurisdiction artifact (regional path first).
     $signCodeCandidates = [
         $baseDirectory . "/data/authoritative/{$stateSlug}/{$countySlug}/jurisdictions/{$jurisdictionSlug}/signCode.json",
@@ -653,6 +655,7 @@ function resolveApplicableSignCode(
         'requiredInputs'       => [],
         'source'               => null,
         'citation'             => null,
+        'signAllowanceDisclaimer' => $signAllowanceDisclaimer,
         'status'               => 'research_required'
     ];
 
@@ -764,6 +767,7 @@ function resolveApplicableSignCode(
                 'attachedSigns'  => $attachedSigns['citation'] ?? null,
                 'detachedSigns'  => $detachedSigns['citation'] ?? null
             ],
+            'signAllowanceDisclaimer' => $signAllowanceDisclaimer,
             'status'                => $status
         ],
         'diagnostics' => [
