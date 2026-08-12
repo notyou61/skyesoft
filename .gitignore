@@ -43,6 +43,10 @@ reports/temp/
 # Composer dependencies (rebuildable)
 vendor/
 
+# Kalshi Composer package (required on GoDaddy)
+!kalshi-composer/vendor/
+!kalshi-composer/vendor/**
+
 # Optional Composer cache artifacts
 composer.phar
 
