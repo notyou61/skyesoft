@@ -40,10 +40,14 @@ artifacts/
 reports/generated/
 reports/temp/
 
-# Composer dependencies (rebuildable)
+# Composer dependencies (excluded by default)
+
 vendor/
 
-# Kalshi Composer package (required on GoDaddy)
+# Kalshi runtime dependencies
+# Version-controlled because GoDaddy does not rebuild Composer packages.
+# Deployed separately by tools/deploy-winscp.txt.
+
 !kalshi-composer/vendor/
 !kalshi-composer/vendor/**
 
