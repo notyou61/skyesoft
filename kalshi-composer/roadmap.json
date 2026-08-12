@@ -1,0 +1,237 @@
+{
+    "project": {
+        "name": "Skyesoft Kalshi BTC 15-Minute Paper Trading",
+        "version": "0.1.0",
+        "status": "paper_test_development",
+        "createdAt": "2026-08-12",
+        "objective": "Determine whether a repeatable and economically useful edge exists in Kalshi 15-minute Bitcoin price prediction markets before enabling live trading."
+    },
+    "currentState": {
+        "kalshiAuthentication": "verified",
+        "server": "GoDaddy",
+        "httpStatus": 200,
+        "rsaSigning": "RSA-PSS SHA-256",
+        "environmentLoader": "skyesoftLoadEnv",
+        "composerLibrary": "phpseclib/phpseclib",
+        "liveTradingEnabled": false,
+        "paperTradingEnabled": false,
+        "verifiedCapabilities": [
+            "Load Kalshi credentials from Skyesoft environment",
+            "Read private RSA key outside public web root",
+            "Generate Kalshi RSA-PSS signatures",
+            "Make authenticated HTTPS requests from GoDaddy",
+            "Retrieve authenticated portfolio balance"
+        ]
+    },
+    "principles": {
+        "paperFirst": true,
+        "noLiveOrdersDuringTesting": true,
+        "decisionRecordedBeforeOutcome": true,
+        "preserveRawMarketData": true,
+        "strategyVersionRequired": true,
+        "passIsValidDecision": true,
+        "evaluateNetOfFees": true,
+        "avoidLookAheadBias": true
+    },
+    "phases": [
+        {
+            "phase": 1,
+            "name": "Read-Only Kalshi API Layer",
+            "status": "next",
+            "objective": "Convert the successful authentication test into reusable read-only Skyesoft Kalshi API components.",
+            "tasks": [
+                "Create reusable Kalshi authentication/client component",
+                "Retrieve active markets",
+                "Identify BTC 15-minute markets",
+                "Retrieve individual market details",
+                "Retrieve YES and NO pricing",
+                "Retrieve order book data",
+                "Retrieve market open and close times",
+                "Retrieve settlement results",
+                "Preserve raw API responses for development"
+            ],
+            "liveOrderCapability": false
+        },
+        {
+            "phase": 2,
+            "name": "Opening Market Snapshot",
+            "status": "planned",
+            "objective": "Capture the market state at the beginning of each 15-minute BTC prediction cycle.",
+            "candidateFields": [
+                "marketTicker",
+                "openedAt",
+                "closesAt",
+                "btcStartPrice",
+                "targetPrice",
+                "yesBid",
+                "yesAsk",
+                "noBid",
+                "noAsk",
+                "spread",
+                "orderBookDepth",
+                "strategyVersion"
+            ],
+            "note": "Final schema will be based on actual Kalshi API payloads rather than assumed field names."
+        },
+        {
+            "phase": 3,
+            "name": "Intraperiod Observation Capture",
+            "status": "planned",
+            "objective": "Record how BTC and the prediction market evolve during each 15-minute cycle.",
+            "initialIntervalSeconds": 5,
+            "candidateFields": [
+                "observedAt",
+                "elapsedSeconds",
+                "btcPrice",
+                "distanceFromTarget",
+                "yesBid",
+                "yesAsk",
+                "noBid",
+                "noAsk",
+                "spread",
+                "orderBookDepth"
+            ],
+            "purpose": [
+                "Analyze whether entry at market open is optimal",
+                "Measure short-term momentum",
+                "Measure volatility",
+                "Measure prediction-market repricing",
+                "Identify potentially superior entry windows"
+            ]
+        },
+        {
+            "phase": 4,
+            "name": "Paper Decision Engine",
+            "status": "planned",
+            "objective": "Generate and permanently record the action that would have been taken using only information available at decision time.",
+            "allowedDecisions": [
+                "YES",
+                "NO",
+                "PASS"
+            ],
+            "candidateOutputs": [
+                "modelProbability",
+                "marketImpliedProbability",
+                "estimatedEdge",
+                "decision",
+                "entryPrice",
+                "paperQuantity",
+                "paperCost",
+                "decisionTimestamp",
+                "strategyVersion"
+            ],
+            "rule": "A recorded decision must not be altered based on subsequent market movement or settlement."
+        },
+        {
+            "phase": 5,
+            "name": "Paper Settlement and Performance",
+            "status": "planned",
+            "objective": "Settle each simulated position against the actual Kalshi result and calculate performance.",
+            "metrics": [
+                "grossProfitLoss",
+                "estimatedFees",
+                "netProfitLoss",
+                "capitalRisked",
+                "returnOnRisk",
+                "winLoss",
+                "settlementResult"
+            ]
+        },
+        {
+            "phase": 6,
+            "name": "Strategy Evaluation",
+            "status": "planned",
+            "objective": "Determine whether the strategy demonstrates a repeatable edge sufficient to justify further development.",
+            "minimumInitialSampleMarkets": 500,
+            "metrics": [
+                "marketsObserved",
+                "paperTrades",
+                "passes",
+                "winRate",
+                "averageEntryPrice",
+                "grossProfitLoss",
+                "netProfitLoss",
+                "maximumDrawdown",
+                "longestLosingStreak",
+                "returnPerDollarRisked",
+                "performanceByEdgeBand",
+                "performanceByConfidenceBand",
+                "performanceByTimeOfDay",
+                "probabilityCalibration"
+            ]
+        },
+        {
+            "phase": 7,
+            "name": "Strategy Refinement",
+            "status": "planned",
+            "objective": "Use accumulated observations to test whether alternative signals or entry timing improve out-of-sample results.",
+            "candidateSignals": [
+                "btcShortTermMomentum",
+                "distanceFromTarget",
+                "marketImpliedProbability",
+                "orderBookImbalance",
+                "recentVolatility",
+                "elapsedTime"
+            ],
+            "requirement": "Each material strategy change receives a new strategyVersion."
+        },
+        {
+            "phase": 8,
+            "name": "Live Trading Decision",
+            "status": "blocked",
+            "objective": "Consider controlled live execution only after paper results demonstrate a durable net-positive edge.",
+            "requirements": [
+                "Sufficient paper-test sample",
+                "Positive results after estimated fees",
+                "Acceptable drawdown",
+                "Out-of-sample validation",
+                "Defined position sizing",
+                "Defined maximum loss limits",
+                "Defined kill switch",
+                "Explicit approval to enable live order capability"
+            ]
+        }
+    ],
+    "proposedStorage": {
+        "primary": "MySQL",
+        "rawPayloads": "JSON",
+        "tables": [
+            {
+                "name": "tblKalshiMarkets",
+                "purpose": "One record per BTC 15-minute market."
+            },
+            {
+                "name": "tblKalshiObservations",
+                "purpose": "Time-series observations captured during each market."
+            },
+            {
+                "name": "tblKalshiPaperTrades",
+                "purpose": "Immutable simulated decisions and settlement results."
+            }
+        ],
+        "status": "schema_not_yet_created"
+    },
+    "initialStrategy": {
+        "version": "0.1.0",
+        "status": "not_implemented",
+        "purpose": "Establish a simple baseline strategy before introducing optimization.",
+        "decisionModel": "Compare estimated event probability with executable Kalshi market price and trade only when estimated edge exceeds the required threshold.",
+        "signals": [
+            "btcShortTermMomentum",
+            "distanceFromTarget",
+            "kalshiMarketPrice",
+            "orderBookImbalance",
+            "recentVolatility",
+            "timeIntoContract"
+        ],
+        "decisions": [
+            "YES",
+            "NO",
+            "PASS"
+        ]
+    },
+    "nextAction": {
+        "phase": 1,
+        "task": "Query the Kalshi API from GoDaddy to discover the active BTC 15-minute market and inspect the actual market payload before designing the database schema."
+    }
+}
