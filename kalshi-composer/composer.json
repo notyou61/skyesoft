@@ -1,0 +1,14 @@
+{
+    "name": "steveskye/kalshi-composer",
+    "description": "Kalshi API integration for Skyesoft",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Steve Skye",
+            "email": "notyou61@gmail.com"
+        }
+    ],
+    "require": {
+        "phpseclib/phpseclib": "^3.0"
+    }
+}
