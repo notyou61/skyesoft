@@ -34,6 +34,12 @@ cd /home/notyou64/public_html
 synchronize remote -delete -filemask="|artifacts/;*/vendor/;*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
 
 # =========================================================
+# 🔐 KALSHI COMPOSER DEPENDENCIES
+# =========================================================
+
+synchronize remote -delete kalshi-composer/vendor skyesoft/kalshi-composer/vendor
+
+# =========================================================
 # 🧪 PREVIEW MODE (DRY RUN)
 # =========================================================
 # synchronize remote -preview -delete -filemask="|artifacts/;*/vendor/;*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
