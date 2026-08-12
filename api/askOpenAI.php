@@ -2696,6 +2696,16 @@ function callOpenAI(
     $rawResponse = @file_get_contents($url, false, $context);
     $statusLine  = $http_response_header[0] ?? 'No HTTP response';
 
+    // Stream failure details
+    $streamError = error_get_last();
+
+    if ($rawResponse === false && is_array($streamError)) {
+        error_log(
+            '[callOpenAI] Stream error: ' .
+            ($streamError['message'] ?? 'Unknown stream error')
+        );
+    }
+
     // === FULL VISIBILITY LOGGING ===
     error_log("[callOpenAI] Model: {$model} | HTTP: {$statusLine}");
     if ($rawResponse) {
