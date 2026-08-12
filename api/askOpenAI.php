@@ -99,31 +99,46 @@ require_once __DIR__ . '/utils/actions.php';
 
 #region SECTION 1 — Codex Loaders (Standing Orders + Version)
 
-// Load Standing Orders from codex.json (injected into all prompts) — fallback to empty JSON object
-function loadStandingOrders(): string {
-
+/**
+ * Load standing orders from codex.json.
+ * Always returns a valid JSON string.
+ */
+function loadStandingOrders(): string
+{
     $root      = dirname(__DIR__);
-    $codexPath = "$root/codex/codex.json";
+    $codexPath = $root . '/codex/codex.json';
 
-    // Validate codex file existence
-    if (!file_exists($codexPath)) {
-        return "{}";
+    // Codex file check
+    if (!is_file($codexPath) || !is_readable($codexPath)) {
+        return '{}';
     }
 
-    $codex = json_decode(file_get_contents($codexPath), true);
+    $codexRaw = file_get_contents($codexPath);
 
-    // Validate codex structure
+    if ($codexRaw === false || $codexRaw === '') {
+        return '{}';
+    }
+
+    $codex = json_decode($codexRaw, true);
+
+    // Standing-orders structure check
     if (
         !is_array($codex) ||
-        !isset($codex["meta"]["standingOrders"])
+        !isset($codex['meta']['standingOrders']) ||
+        !is_array($codex['meta']['standingOrders'])
     ) {
-        return "{}";
+        return '{}';
     }
 
-    return json_encode(
-        $codex["meta"]["standingOrders"],
-        JSON_UNESCAPED_SLASHES
+    $standingOrders = json_encode(
+        $codex['meta']['standingOrders'],
+        JSON_UNESCAPED_SLASHES |
+        JSON_INVALID_UTF8_SUBSTITUTE
     );
+
+    return $standingOrders !== false
+        ? $standingOrders
+        : '{}';
 }
 
 // Loads semantic intent classification prompt markdown
@@ -264,9 +279,7 @@ Ms
 Do not include punctuation or any other words.
 PROMPT;
 
-    $fullPrompt = injectStandingOrders($basePrompt);
-
-    $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
+    $apiKey = skyesoftGetEnv('OPENAI_API_KEY');
 
     if ($apiKey === null) {
         error_log('[SALUTATION] Missing API key');
@@ -274,9 +287,17 @@ PROMPT;
     }
 
     try {
-        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4o');
+        $response = callOpenAI(
+            $basePrompt,
+            $apiKey,
+            'gpt-4o'
+        );
     } catch (Throwable $e) {
-        error_log('[SALUTATION AI ERROR] ' . $e->getMessage());
+        error_log(
+            '[SALUTATION AI ERROR] ' .
+            $e->getMessage()
+        );
+
         return null;
     }
 
@@ -308,7 +329,7 @@ Respond with ONLY the job title (e.g., "Project Manager", "Account Manager").
 If no clear title is present, respond with "Unknown".
 PROMPT;
 
-    $fullPrompt = injectStandingOrders($basePrompt);
+    $fullPrompt = $basePrompt;
     $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
 
     if ($apiKey === null) {
@@ -671,64 +692,110 @@ function loadRecentActions(int $limit = 30, bool $todayOnly = false): array {
 }
 
 // Build Authoritative System Context from SSE snapshot + activity
-function buildSystemContext(?array $sse, ?PDO $db = null, ?array $list = null): string
-{
-    if (!$sse) {
-        return json_encode([
-            "status"  => "no_data",
-            "message" => "No SSE snapshot available"
-        ]);
-    }
-
-    $exclude = [
-        "auth",
-        "idle",
-        "streamId",
-        "activitySessionId",
-        "forceLogout"
-    ];
-
-    $domains = array_values(array_filter(
-        array_keys($sse),
-        fn($key) => !in_array($key, $exclude, true)
-    ));
-
+function buildSystemContext(
+    ?array $sse,
+    ?PDO $db = null,
+    ?array $list = null,
+    bool $minimal = true
+): string {
+    // Priority information
     $priority = [
-        "time"    => $sse["timeDateArray"] ?? null,
-        "holiday" => $sse["holidayState"] ?? null
+        'time'    => $sse['timeDateArray'] ?? null,
+        'holiday' => $sse['holidayState'] ?? null
     ];
 
-    $activityData  = loadRecentActions(30);
-    $recentActions = $activityData["rows"] ?? [];
-    $activityMeta  = $activityData["meta"] ?? [];
+    // Clean operational counts (no list)
+    $boundedOperational = loadOperationalCounts($db);
 
-    $operational = loadOperationalCounts($db);
+    // Optional bounded list
+    $operational = $boundedOperational;
 
-    // Optional paginated list (contacts, etc.)
     if (is_array($list) && !empty($list)) {
         $operational['list'] = $list;
     }
 
+    // Base context
     $context = [
-        "priority" => $priority,
-        "domains"  => $sse,
-        "activity" => [
-            "recentActions" => $recentActions,
-            "meta"          => $activityMeta
-        ],
-        "operational" => $operational,
-        "meta" => [
-            "source"           => "SSE snapshot + live ELC counts",
-            "readOnly"         => true,
-            "schema"           => "dynamic",
-            "availableDomains" => $domains
+        'priority'    => $priority,
+        'operational' => $operational,
+        'meta' => [
+            'source' => $sse
+                ? 'SSE priority + live ELC counts'
+                : 'Live ELC counts; SSE unavailable',
+            'sseAvailable' => (bool)$sse,
+            'readOnly'     => true,
+            'schema'       => 'slim'
         ]
     ];
 
-    return json_encode(
-        $context,
-        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-    );
+    // Selective domain context
+    if (!$minimal && $sse) {
+        $safeDomains = [];
+        $allowedKeys = [
+            'kpi',
+            'timeDateArray',
+            'holidayState',
+            'weather',
+            'systemStatus'
+        ];
+
+        foreach ($allowedKeys as $key) {
+            if (isset($sse[$key])) {
+                $safeDomains[$key] = $sse[$key];
+            }
+        }
+
+        $context['domains']        = $safeDomains;
+        $context['meta']['schema'] = 'selective';
+    }
+
+    $json = encodeSystemContext($context);
+
+    // Context-size guard
+    $varMaxContextChars = 40000;
+
+    if (strlen($json) > $varMaxContextChars) {
+        error_log(
+            '[buildSystemContext] Oversized context: ' .
+            strlen($json) .
+            ' bytes; using absolute fallback'
+        );
+
+        // Remove lists and domains
+        $json = encodeSystemContext([
+            'priority'    => $priority,
+            'operational' => $boundedOperational,
+            'meta' => [
+                'source' => $sse
+                    ? 'SSE priority + live ELC counts (absolute fallback)'
+                    : 'Live ELC counts only (absolute fallback)',
+                'sseAvailable' => (bool)$sse,
+                'readOnly'     => true,
+                'schema'       => 'absolute'
+            ]
+        ]);
+    }
+
+    // Verify absolute fallback
+    if (strlen($json) > $varMaxContextChars) {
+        error_log(
+            '[buildSystemContext] Absolute fallback remains oversized: ' .
+            strlen($json) .
+            ' bytes; using emergency fallback'
+        );
+
+        // Counts only
+        $json = encodeSystemContext([
+            'operational' => $boundedOperational,
+            'meta' => [
+                'source'   => 'Live ELC counts only',
+                'readOnly' => true,
+                'schema'   => 'emergency'
+            ]
+        ]);
+    }
+
+    return $json;
 }
 /**
  * Live ELC counts for authoritative operational answers.
@@ -2614,6 +2681,30 @@ function resolveLocationByPhrase(?PDO $db, string $phrase, bool $force = false):
     }
 }
 
+/**
+ * Encode system context safely.
+ * Never returns false.
+ */
+function encodeSystemContext(array $context): string
+{
+    $json = json_encode(
+        $context,
+        JSON_UNESCAPED_SLASHES |
+        JSON_INVALID_UTF8_SUBSTITUTE
+    );
+
+    if ($json === false) {
+        error_log(
+            '[buildSystemContext] JSON encode failed: ' .
+            json_last_error_msg()
+        );
+
+        return '{"status":"encoding_error"}';
+    }
+
+    return $json;
+}
+
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
@@ -2635,116 +2726,227 @@ function injectSemanticIntentContext(string $basePrompt): string
 {
     $semanticPrompt = loadSemanticIntentPrompt();
 
-    if ($semanticPrompt === "") {
-        return injectStandingOrders($basePrompt);
+    if ($semanticPrompt === '') {
+        return $basePrompt;
     }
 
-    return injectStandingOrders(
-        $semanticPrompt . "\n\n" . $basePrompt
-    );
+    return $semanticPrompt . "\n\n" . $basePrompt;
 }
 #endregion
 
 #region SECTION 3 — OpenAI API Caller (Stream Context)
+/**
+ * Submit a Chat Completions request to OpenAI.
+ */
 function callOpenAI(
     string $prompt,
     ?string $apiKey,
-    string $model = "gpt-4o",           // ← Changed default
+    string $model = 'gpt-4o',
     ?array $responseFormat = null
 ): ?string {
-
+    // API-key check
     if (!$apiKey) {
-        error_log('[callOpenAI] ❌ Missing API key');
+        error_log('[callOpenAI] Missing API key');
         return null;
     }
 
-    $url = "https://api.openai.com/v1/chat/completions";
+    $url = 'https://api.openai.com/v1/chat/completions';
 
+    // Apply standing orders once
+    $systemMessage = injectStandingOrders(
+        'You are a precise, Codex-aligned assistant.'
+    );
+
+    // Calculate request sizes
+    $varSystemBytes   = strlen($systemMessage);
+    $varPromptBytes   = strlen($prompt);
+    $varTotalBytes    = $varSystemBytes + $varPromptBytes;
+    $varMaxInputBytes = 160000;
+    $varStandingBytes = strlen(loadStandingOrders());
+
+    // Log every attempted input
+    error_log(
+        '[callOpenAI] Input sizes (bytes) | ' .
+        'system=' . $varSystemBytes .
+        ' | user=' . $varPromptBytes .
+        ' | total=' . $varTotalBytes .
+        ' | limit=' . $varMaxInputBytes .
+        ' | standingOrdersRaw=' . $varStandingBytes
+    );
+
+    // Local input-size guard
+    if ($varTotalBytes > $varMaxInputBytes) {
+        error_log(
+            '[callOpenAI] Input rejected by local size guard'
+        );
+
+        return null;
+    }
+
+    // Build API payload
     $payload = [
-        "model" => $model,
-        "messages" => [
-            ["role" => "system", "content" => injectStandingOrders("You are a precise, Codex-aligned assistant.")],
-            ["role" => "user",   "content" => $prompt]
+        'model' => $model,
+        'messages' => [
+            [
+                'role'    => 'system',
+                'content' => $systemMessage
+            ],
+            [
+                'role'    => 'user',
+                'content' => $prompt
+            ]
         ],
-        "max_tokens"  => 600,
-        "temperature" => 0.1
+        'max_tokens'  => 600,
+        'temperature' => 0.1
     ];
 
+    // Optional structured response
     if (is_array($responseFormat)) {
-        $payload["response_format"] = $responseFormat;
+        $payload['response_format'] = $responseFormat;
     }
 
-    $encodedPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    $encodedPayload = json_encode(
+        $payload,
+        JSON_UNESCAPED_SLASHES |
+        JSON_INVALID_UTF8_SUBSTITUTE
+    );
+
     if ($encodedPayload === false) {
-        error_log('[callOpenAI] ❌ JSON encode failed');
+        error_log(
+            '[callOpenAI] JSON encode failed: ' .
+            json_last_error_msg()
+        );
+
         return null;
     }
 
+    // Create HTTP request
     $context = stream_context_create([
-        "http" => [
-            "method"        => "POST",
-            "header"        => [
-                "Content-Type: application/json",
-                "Authorization: Bearer {$apiKey}"
+        'http' => [
+            'method' => 'POST',
+            'header' => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey
             ],
-            "content"       => $encodedPayload,
-            "timeout"       => 45,
-            "ignore_errors" => true
+            'content'       => $encodedPayload,
+            'timeout'       => 45,
+            'ignore_errors' => true
         ]
     ]);
 
-    $rawResponse = @file_get_contents($url, false, $context);
-    $statusLine  = $http_response_header[0] ?? 'No HTTP response';
+    $rawResponse = @file_get_contents(
+        $url,
+        false,
+        $context
+    );
 
-    // Stream failure details
-    $streamError = error_get_last();
+    $statusLine = $http_response_header[0]
+        ?? 'No HTTP response';
 
-    if ($rawResponse === false && is_array($streamError)) {
+    // Request visibility
+    error_log(
+        '[callOpenAI] Model: ' .
+        $model .
+        ' | HTTP: ' .
+        $statusLine
+    );
+
+    if ($rawResponse !== false && $rawResponse !== '') {
         error_log(
-            '[callOpenAI] Stream error: ' .
-            ($streamError['message'] ?? 'Unknown stream error')
+            '[callOpenAI] Raw response length: ' .
+            strlen($rawResponse)
         );
-    }
-
-    // === FULL VISIBILITY LOGGING ===
-    error_log("[callOpenAI] Model: {$model} | HTTP: {$statusLine}");
-    if ($rawResponse) {
-        error_log("[callOpenAI] Raw response length: " . strlen($rawResponse));
     } else {
-        error_log("[callOpenAI] ❌ No body received");
+        error_log('[callOpenAI] No response body received');
+
+        $streamError = error_get_last();
+
+        if (is_array($streamError)) {
+            error_log(
+                '[callOpenAI] Stream error: ' .
+                ($streamError['message'] ?? 'Unknown stream error')
+            );
+        }
     }
 
-    $is200 = strpos($statusLine, " 200 ") !== false;
+    $is200 = strpos($statusLine, ' 200 ') !== false;
 
-    if (!$rawResponse || !$is200) {
-        error_log("[callOpenAI] ❌ Request failed - Status: {$statusLine}");
-        if ($rawResponse) {
-            error_log("[callOpenAI] Error body: " . $rawResponse);
-        }
+    // HTTP/API failure
+    if (
+        $rawResponse === false ||
+        $rawResponse === '' ||
+        !$is200
+    ) {
+        $errorBody = json_decode(
+            $rawResponse !== false ? $rawResponse : '',
+            true
+        );
+
+        $errorCode = is_array($errorBody)
+            ? ($errorBody['error']['code'] ?? 'unknown')
+            : 'unknown';
+
+        $errorMsg = is_array($errorBody)
+            ? ($errorBody['error']['message'] ?? $statusLine)
+            : $statusLine;
+
+        error_log(
+            '[callOpenAI] OpenAI error code=' .
+            $errorCode .
+            ' | msg=' .
+            substr((string)$errorMsg, 0, 400)
+        );
+
         return null;
     }
 
+    // Decode response
     $json = json_decode($rawResponse, true);
 
     if (!is_array($json)) {
-        error_log("[callOpenAI] ❌ Invalid JSON response");
+        error_log(
+            '[callOpenAI] Invalid JSON response: ' .
+            json_last_error_msg()
+        );
+
         return null;
     }
 
+    // API error in successful HTTP response
     if (isset($json['error'])) {
-        error_log("[callOpenAI] ❌ OpenAI API Error: " . json_encode($json['error'], JSON_UNESCAPED_SLASHES));
+        error_log(
+            '[callOpenAI] OpenAI API error: ' .
+            json_encode(
+                $json['error'],
+                JSON_UNESCAPED_SLASHES |
+                JSON_INVALID_UTF8_SUBSTITUTE
+            )
+        );
+
         return null;
     }
 
-    $content = $json["choices"][0]["message"]["content"] ?? '';
-    $content = trim($content);
+    // Extract response
+    $content = trim(
+        (string)($json['choices'][0]['message']['content'] ?? '')
+    );
 
     if ($content === '') {
-        error_log("[callOpenAI] ⚠️ Empty content returned. Full JSON: " . json_encode($json, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+        error_log(
+            '[callOpenAI] Empty content returned'
+        );
+
         return null;
     }
 
-    error_log("[callOpenAI] ✅ Success ({$model}) - " . strlen($content) . " chars");
+    error_log(
+        '[callOpenAI] Success (' .
+        $model .
+        ') - ' .
+        strlen($content) .
+        ' characters'
+    );
+
     return $content;
 }
 #endregion
@@ -4140,9 +4342,9 @@ User Input:
 PROMPT;
 
     $response = callOpenAI(
-        injectStandingOrders($parsePrompt),
+        $parsePrompt,
         $apiKey,
-        "gpt-4o-mini",
+        'gpt-4o-mini',
         [
             "type" => "json_schema",
             "json_schema" => [
@@ -4406,10 +4608,24 @@ Audit Facts (JSON):
 {$auditFactsJson}
 PROMPT;
     
-    $response = callOpenAI(injectStandingOrders($basePrompt), $apiKey);
-    if ($response) {
-        $report["narrative"] = trim($response);
-        file_put_contents($reportPath, json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    $response = callOpenAI(
+        $basePrompt,
+        $apiKey
+    );
+
+    if ($response !== null && trim($response) !== '') {
+        $report['narrative'] = trim($response);
+
+        file_put_contents(
+            $reportPath,
+            json_encode(
+                $report,
+                JSON_PRETTY_PRINT |
+                JSON_UNESCAPED_SLASHES |
+                JSON_INVALID_UTF8_SUBSTITUTE
+            )
+        );
+
         $narrativeGenerated = true;
     }
 }
@@ -4458,9 +4674,15 @@ Do NOT:
 Professional operational tone only.
 PROMPT;
     
-    $response = callOpenAI(injectStandingOrders($finalPrompt), $apiKey);
-    if (!$response || trim($response) === '') {
-        aiFail("AI narrative generation failed - empty response from OpenAI");
+    $response = callOpenAI(
+        $finalPrompt,
+        $apiKey
+    );
+
+    if ($response === null || trim($response) === '') {
+        aiFail(
+            'AI narrative generation failed — empty response from OpenAI'
+        );
     }
     $cleanNarrative = trim($response);
     
@@ -5366,8 +5588,54 @@ if ($type === "skyebot") {
     }
 
     // ─────────────────────────────────────────────
+    // Deterministic Time / Date Commands
+    // ─────────────────────────────────────────────
+    $isDateQuery = (bool)preg_match(
+        "/^\s*(?:" .
+            "what\s+is\s+the\s+(?:current\s+)?date" .
+            "|what(?:'s|\s+is)\s+today(?:'s\s+date)?" .
+            "|current\s+date" .
+        ")\s*[?.!]*\s*$/i",
+        $query
+    );
+
+    $isTimeQuery = (bool)preg_match(
+        '/^\s*(?:' .
+            'what\s+time\s+is\s+it' .
+            '|what\s+is\s+the\s+(?:current\s+)?time' .
+            '|current\s+time' .
+            '|time\s+now' .
+        ')\s*[?.!]*\s*$/i',
+        $query
+    );
+
+    // Local time/date response
+    if ($isTimeQuery || $isDateQuery) {
+        $varNow = new DateTimeImmutable(
+            'now',
+            new DateTimeZone('America/Phoenix')
+        );
+
+        if ($isDateQuery) {
+            $response = 'Today is ' .
+                $varNow->format('l, F j, Y') .
+                '.';
+        } else {
+            $response = 'The current time in Phoenix is ' .
+                $varNow->format('g:i A') .
+                '.';
+        }
+
+        $type = 'skyebot';
+        $role = 'askOpenAI';
+
+        goto SKY_OUTPUT;
+    }
+
+    // ─────────────────────────────────────────────
     // 3. Semantic Intent Classification
     // ─────────────────────────────────────────────
+    
     $intentPrompt = <<<PROMPT
 Analyze the following user input and return semantic intent metadata only.
 
@@ -5498,15 +5766,26 @@ PROMPT;
     }
 
     // ─────────────────────────────────────────────
-    // 6. Conversational Fallback – AI decides on Google
+    // 6. Conversational Fallback
     // ─────────────────────────────────────────────
-    error_log("[DEBUG] Entering conversational fallback. Query: " . substr($query, 0, 150));
+
+    error_log(
+        '[skyebot] Entering conversational fallback. Query: ' .
+        substr($query, 0, 150)
+    );
 
     $sseSnapshot    = loadSseSnapshot();
     $responsePrompt = loadResponseGenerationPrompt();
-    $systemContext  = buildSystemContext($sseSnapshot, $db, $operationalList ?? null);
 
-    // First pass: can the system context answer this?
+    // Build slim conversational context
+    $systemContext = buildSystemContext(
+        $sseSnapshot,
+        $db,
+        $operationalList ?? null,
+        true
+    );
+
+    // Determine whether current information is required
     $decisionPrompt = <<<PROMPT
     You are deciding whether the following SYSTEM DATA contains enough information to answer the user question.
 
@@ -5521,63 +5800,106 @@ PROMPT;
     {$query}
     PROMPT;
 
-    $decision = strtoupper(trim(callOpenAI(
-        //injectStandingOrders($decisionPrompt),
-        $decisionPrompt, // Do not inject standing orders for decision-making
-        $apiKey,
-        'gpt-4o-mini'
-    ) ?? ''));
+    // Log decision request size
+    error_log(
+        '[skyebot] Decision sizes (bytes) | ' .
+        'systemContext=' . strlen($systemContext) .
+        ' | decisionPrompt=' . strlen($decisionPrompt)
+    );
+
+    $decision = strtoupper(trim(
+        callOpenAI(
+            $decisionPrompt,
+            $apiKey,
+            'gpt-4o-mini'
+        ) ?? ''
+    ));
 
     $useGoogle = ($decision === 'SEARCH');
 
     $googleResults = [];
     $googleContext = '';
 
+    // Retrieve current external information
     if ($useGoogle) {
         $googleResults = googleCustomSearch($query, 5);
 
         if (!empty($googleResults)) {
-            $googleContext = "GOOGLE SEARCH RESULTS (use these as factual grounding):\n\n";
-            foreach ($googleResults as $i => $r) {
-                $googleContext .= ($i + 1) . ". " . ($r['title'] ?? '') . "\n";
-                $googleContext .= "   " . ($r['link'] ?? '') . "\n";
-                $googleContext .= "   " . ($r['snippet'] ?? '') . "\n\n";
+            $googleContext =
+                "GOOGLE SEARCH RESULTS (use these as factual grounding):\n\n";
+
+            foreach ($googleResults as $index => $result) {
+                $googleContext .=
+                    ($index + 1) .
+                    '. ' .
+                    ($result['title'] ?? '') .
+                    "\n";
+
+                $googleContext .=
+                    '   ' .
+                    ($result['link'] ?? '') .
+                    "\n";
+
+                $googleContext .=
+                    '   ' .
+                    ($result['snippet'] ?? '') .
+                    "\n\n";
             }
         }
     }
 
-    // Final answer generation
-    if ($responsePrompt === "") {
-        $basePrompt = "You are a helpful assistant.\n\n" .
-                    $googleContext .
-                    "User question: " . $query;
+    // Build answer prompt
+    if ($responsePrompt === '') {
+        $basePrompt =
+            "You are a helpful assistant.\n\n" .
+            $googleContext .
+            'User question: ' .
+            $query;
     } else {
-        $basePrompt = $responsePrompt .
-                    "\n\nSYSTEM DATA (JSON):\n" . $systemContext .
-                    "\n\n" . $googleContext .
-                    "\nUser Input:\n" . $query;
+        $basePrompt =
+            $responsePrompt .
+            "\n\nSYSTEM DATA (JSON):\n" .
+            $systemContext .
+            "\n\n" .
+            $googleContext .
+            "\nUser Input:\n" .
+            $query;
     }
 
-    $response = callOpenAI(
-        //injectStandingOrders($basePrompt),
-        $basePrompt, // Do not inject standing orders for answer generation
-        $apiKey,
-        "gpt-4o-mini"
+    // Log answer request size
+    error_log(
+        '[skyebot] Answer sizes (bytes) | ' .
+        'responsePrompt=' . strlen($responsePrompt) .
+        ' | systemContext=' . strlen($systemContext) .
+        ' | googleContext=' . strlen($googleContext) .
+        ' | basePrompt=' . strlen($basePrompt)
     );
 
-    if ($response === null || trim((string)$response) === '') {
-        $response = "I couldn't complete the OpenAI request because its context was too large or the API returned an error.";
+    // Generate answer
+    $response = callOpenAI(
+        $basePrompt,
+        $apiKey,
+        'gpt-4o-mini'
+    );
+
+    if (
+        $response === null ||
+        trim((string)$response) === ''
+    ) {
+        $response =
+            "I couldn't complete the OpenAI request because " .
+            'the request was too large or the API returned an error.';
     }
 
-    // Return structured ai_query only when Google was actually used
+    // Return sourced AI answer
     if (!empty($googleResults)) {
         echo json_encode([
-            'success'            => true,
-            'role'               => 'askOpenAI',
-            'type'               => 'ai_query',
-            'response'           => trim((string)$response),
+            'success' => true,
+            'role'    => 'askOpenAI',
+            'type'    => 'ai_query',
+            'response' => trim((string)$response),
             'actionResponseData' => [
-                'answer'  => trim((string)$response),
+                'answer' => trim((string)$response),
                 'sources' => [
                     'google' => [
                         'searched' => true,
@@ -5585,15 +5907,24 @@ PROMPT;
                     ]
                 ]
             ],
-            'activitySessionId'  => $_SESSION['activitySessionId'] ?? session_id()
+            'activitySessionId' =>
+                $_SESSION['activitySessionId'] ??
+                session_id()
         ], JSON_UNESCAPED_SLASHES);
+
         exit;
     }
 
-    $type = "skyebot";
+    $type = 'skyebot';
 
     SKY_OUTPUT:
-    error_log("[skyebot] Final response type: {$type} | Length: " . strlen($response ?? ''));
+
+    error_log(
+        '[skyebot] Final response type: ' .
+        $type .
+        ' | Length: ' .
+        strlen($response ?? '')
+    );
 }
 #endregion
 
