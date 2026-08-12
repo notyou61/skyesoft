@@ -5522,7 +5522,8 @@ PROMPT;
     PROMPT;
 
     $decision = strtoupper(trim(callOpenAI(
-        injectStandingOrders($decisionPrompt),
+        //injectStandingOrders($decisionPrompt),
+        $decisionPrompt, // Do not inject standing orders for decision-making
         $apiKey,
         'gpt-4o-mini'
     ) ?? ''));
@@ -5558,13 +5559,14 @@ PROMPT;
     }
 
     $response = callOpenAI(
-        injectStandingOrders($basePrompt),
+        //injectStandingOrders($basePrompt),
+        $basePrompt, // Do not inject standing orders for answer generation
         $apiKey,
         "gpt-4o-mini"
     );
 
-    if (!$response) {
-        $response = "I'm here, but OpenAI is currently out of credits on this account.";
+    if ($response === null || trim((string)$response) === '') {
+        $response = "I couldn't complete the OpenAI request because its context was too large or the API returned an error.";
     }
 
     // Return structured ai_query only when Google was actually used
