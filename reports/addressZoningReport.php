@@ -22,6 +22,25 @@ function escapeReportValue(mixed $value): string
     return htmlspecialchars(trim((string)($value ?? '')), ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Format machine-style source identifiers for report display.
+ * Example: maricopa_assessor -> Maricopa Assessor.
+ */
+function formatReportLabel(mixed $value): string
+{
+    $label = trim((string)($value ?? ''));
+
+    if ($label === '') {
+        return '';
+    }
+
+    if (preg_match('/^[a-z0-9]+(?:[_-][a-z0-9]+)+$/', $label) === 1) {
+        return ucwords(str_replace(['_', '-'], ' ', $label));
+    }
+
+    return $label;
+}
+
 /** Display a value without turning missing research into a false determination. */
 function displayReportValue(mixed $value, string $fallback = 'Not provided by address check'): string
 {
@@ -604,11 +623,11 @@ ob_start();
         <div class="callout-title">Property Overview</div>
         <div class="callout-body">
             Property information shown above is based on the address, parcel, assessor, and jurisdiction records returned by the address-check workflow.
-            <br><strong>Source:</strong> <?= displayReportValue(
+            <br><strong>Source:</strong> <?= displayReportValue(formatReportLabel(
                 $parcelRecord['source']
                     ?? $parcel['source']
                     ?? null
-            ) ?>
+            )) ?>
         </div>
     </div>
 </div>
@@ -635,7 +654,7 @@ ob_start();
 </div>
 
 <div class="section-block site-details-block">
-    <?= buildAddressSectionHeading('Address Site Details', 'map.png') ?>
+    <?= buildAddressSectionHeading('Address Site Details', 'compass.png') ?>
 
     <div class="parcel-map-frame">
         <?= $parcelMapSvg ?>
@@ -719,7 +738,7 @@ ob_start();
 </div>
 
 <div class="section-block">
-    <?= buildAddressSectionHeading('Special Designations', 'ruler.png') ?>
+    <?= buildAddressSectionHeading('Special Designations', 'shield.png') ?>
 
     <?php if ($specialDesignationRows !== []): ?>
         <table class="data-table">
@@ -820,7 +839,7 @@ ob_start();
     <table class="basis-table">
         <tr><td><strong>Report Type:</strong> Unsaved Address Check</td><td><strong>Result:</strong> Base zoning resolved</td></tr>
         <tr><td><strong>Place ID:</strong> <?= displayReportValue($placeId) ?></td><td><strong>Coordinates:</strong> <?= displayReportValue($latitude) ?>, <?= displayReportValue($longitude) ?></td></tr>
-        <tr><td><strong>Activity Session:</strong> <?= displayReportValue($activitySessionId) ?></td><td><strong>Parcel Source:</strong> <?= displayReportValue($parcelRecord['source'] ?? $parcel['source'] ?? null) ?></td></tr>
+        <tr><td><strong>Activity Session:</strong> <?= displayReportValue($activitySessionId) ?></td><td><strong>Parcel Source:</strong> <?= displayReportValue(formatReportLabel($parcelRecord['source'] ?? $parcel['source'] ?? null)) ?></td></tr>
     </table>
     <p style="font-size: 7.5pt; color: #666; line-height: 1.25; margin-top: 6px;">
         <strong>Qualification:</strong> This report records the positive address, parcel, jurisdiction, and base-zoning results returned by Skyesoft's address-check workflow. It does not represent a saved Skyesoft location or a complete sign-allowance analysis. Base zoning may be modified by overlays, stipulations, approved plans, special districts, a Comprehensive Sign Plan, or nonconforming conditions. Verify remaining site conditions and final requirements with the governing jurisdiction before design completion, fabrication, or permit filing.
