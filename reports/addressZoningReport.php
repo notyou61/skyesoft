@@ -603,7 +603,7 @@ ob_start();
     <div class="callout-box">
         <div class="callout-title">Property Overview</div>
         <div class="callout-body">
-            Property information shown above is based on the address, parcel, assessor, and jurisdiction records returned by the address-check workflow. Verify current ownership, parcel boundaries, property classification, and jurisdictional information with the applicable authoritative source when required for permit preparation or other final determinations.
+            Property information shown above is based on the address, parcel, assessor, and jurisdiction records returned by the address-check workflow.
             <br><strong>Source:</strong> <?= displayReportValue(
                 $parcelRecord['source']
                     ?? $parcel['source']
@@ -618,10 +618,6 @@ ob_start();
     <table class="data-table">
         <tr><th>Base Zoning District</th><td><strong><?= displayReportValue($zoningCode) ?></strong></td></tr>
         <tr><th>Description</th><td><?= displayReportValue($zoningDescription) ?></td></tr>
-        <tr>
-            <th>Verification</th>
-            <td><?= validationResult(!$requiresReview) ?></td>
-        </tr>
     </table>
     <div class="callout-box">
         <div class="callout-title">Resolved Result</div>
