@@ -4935,7 +4935,10 @@ if ($type === "skyebot") {
 
     // Individual contact-search commands
     $explicitContactSearch = preg_match(
-        '/^\s*(?:find|search(?:\s+for)?)\s+(?:a\s+)?contacts?(?:\s+named)?\s+(.+?)\s*$/i',
+        '/^\s*(?:' .
+            'contacts?' .
+            '|(?:find|search(?:\s+for)?)\s+(?:a\s+)?contacts?(?:\s+named)?' .
+        ')\s+(.+?)\s*$/i',
         $query,
         $explicitContactMatch
     );
@@ -4949,7 +4952,10 @@ if ($type === "skyebot") {
 
     // Detect incomplete explicit requests
     $incompleteContactSearch = preg_match(
-        '/^\s*(?:find|search(?:\s+for)?)\s+(?:a\s+)?contacts?(?:\s+named)?\s*$/i',
+        '/^\s*(?:' .
+            'contacts?' .
+            '|(?:find|search(?:\s+for)?)\s+(?:a\s+)?contacts?(?:\s+named)?' .
+        ')\s*$/i',
         $query
     );
 
