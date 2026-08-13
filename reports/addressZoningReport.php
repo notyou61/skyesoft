@@ -548,15 +548,6 @@ $css = '
     .frontage-high { color: #a82f26; font-weight: bold; }
     .frontage-low { color: #17698d; font-weight: bold; }
     .map-legend { margin-top: 3px; color: #5a6571; font-size: 6.8pt; text-align: right; }
-    /* Zoning verification details */
-    .verification-details {
-        display: inline-block;
-        margin-left: 8px;
-        color: #444;
-        font-size: 7.8pt;
-        line-height: 1.3;
-        vertical-align: middle;
-    }
 ';
 
 $headerHtml = '
@@ -618,13 +609,7 @@ ob_start();
         <tr><th>Description</th><td><?= displayReportValue($zoningDescription) ?></td></tr>
         <tr>
             <th>Verification</th>
-            <td>
-                <?= validationResult(!$requiresReview) ?>
-                <div class="verification-details">
-                    <strong>Source:</strong> <?= displayReportValue($zoningSource) ?><br>
-                    <strong>Verified:</strong> <?= displayReportValue($zoningVerifiedFormatted) ?>
-                </div>
-            </td>
+            <td><?= validationResult(!$requiresReview) ?></td>
         </tr>
     </table>
     <div class="callout-box">
@@ -636,6 +621,11 @@ ob_start();
             <?= $requiresReview
                 ? 'flagged the base-zoning determination for manual review.'
                 : 'validated the base-zoning determination without requiring manual review.' ?>
+            <br>
+            <strong>Source:</strong> <?= displayReportValue($zoningSource) ?>
+            <?php if ($zoningVerifiedFormatted !== null && $zoningVerifiedFormatted !== ''): ?>
+                <br><strong>Verified:</strong> <?= escapeReportValue($zoningVerifiedFormatted) ?>
+            <?php endif; ?>
         </div>
     </div>
 </div>
