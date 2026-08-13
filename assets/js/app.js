@@ -291,21 +291,78 @@ window.SkyeApp.handleLogin = function () {
 };
 
 /**
- * Central logout entry point.
- * reason examples: 'idle_timeout', 'sse', 'user', 'force'
- * NOTE: Does NOT stop the SSE stream — Skyesoft uses a persistent-stream architecture.
+ * Complete logout and render the unauthenticated interface.
+ *
+ * Idle and user logout require server-session destruction.
+ * An SSE synchronization event does not need to audit again.
  */
-window.SkyeApp.handleLogout = function (reason = 'unknown') {
+window.SkyeApp.handleLogout = async function (reason = 'unknown') {
     console.log('[SkyeApp] handleLogout →', reason);
 
     const page = this.pageHandlers?.[this.currentPage];
 
-    // Clear local authentication state
+    // Server-session logout required
+    const requiresServerLogout =
+        reason === 'idle_timeout' ||
+        reason === 'user' ||
+        reason === 'force';
+
+    if (requiresServerLogout) {
+        try {
+            const response = await fetch(
+                '/skyesoft/api/auth.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'logout',
+                        source: reason,
+                        actionOrigin: reason === 'idle_timeout'
+                            ? 'sse_idle'
+                            : 'ui_logout'
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result?.success !== true) {
+                throw new Error(
+                    result?.error ||
+                    'Server logout was not completed.'
+                );
+            }
+
+            console.log(
+                '[SkyeApp] Server session destroyed:',
+                reason
+            );
+        } catch (error) {
+            console.error(
+                '[SkyeApp] Server logout failed:',
+                error
+            );
+        }
+    }
+
+    // Clear global SSE authentication state
+    this.lastSSE = null;
+    this.hasReceivedFirstSSE = false;
+
+    // Clear page authentication state
     if (page) {
         page.authState = false;
-        page.authUser  = null;
-        page.authRole  = null;
+        page.authUser = null;
+        page.authRole = null;
         page.idleState = null;
+        page.lastSSE = {};
         page.commandSurfaceActive = false;
         page._logoutHandled = true;
     }
@@ -316,11 +373,14 @@ window.SkyeApp.handleLogout = function (reason = 'unknown') {
     window.SkyState = window.SkyState || {};
     window.SkyState.authenticated = false;
 
-    // Clear countdown immediately
+    // Clear countdown
     this.renderIdleCountdown(page);
 
     // Render logged-out interface
-    if (page && typeof page.renderLoginCard === 'function') {
+    if (
+        page &&
+        typeof page.renderLoginCard === 'function'
+    ) {
         page.renderLoginCard();
         page.renderFooterStatus?.call(page);
     } else {
@@ -346,7 +406,7 @@ window.SkyeApp.handleSSE = function (payload) {
 
         // Delegate to the single authoritative logout path
         // SSE stream stays alive (persistent-stream architecture)
-        this.handleLogout('idle_timeout');
+        await this.handleLogout('idle_timeout');
         return;
     }
 
@@ -421,7 +481,7 @@ window.SkyeApp.handleSSE = function (payload) {
                 this.handleLogin();
             } else {
                 // Logout path (SSE detected session end)
-                this.handleLogout('sse');
+                await this.handleLogout('sse');
             }
         }
     }
