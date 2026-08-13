@@ -571,7 +571,7 @@ window.SkyeApp.renderVersionFooter = function (payload = null) {
             ? siteMeta.siteVersion.trim()
             : '';
 
-    // Preserve the current display when metadata is incomplete
+    // Preserve a valid display when metadata is incomplete
     if (
         siteVersion === '' ||
         siteVersion === 'unknown'
@@ -579,13 +579,17 @@ window.SkyeApp.renderVersionFooter = function (payload = null) {
         return;
     }
 
-    if (typeof formatVersionFooter === 'function') {
+    // Use canonical version, timestamp and age formatter
+    if (typeof window.formatVersionFooter === 'function') {
         versionEl.innerHTML =
-            formatVersionFooter(siteMeta);
-    } else {
-        versionEl.textContent =
-            `v${siteVersion}`;
+            window.formatVersionFooter(siteMeta);
+
+        return;
     }
+
+    // Safe fallback
+    versionEl.textContent =
+        `v${siteVersion}`;
 };
 /* #endregion */
 

@@ -34,7 +34,7 @@ if (typeof adaptStreamedDomain !== 'function') {
 // #endregion
 
 // #region ⏱️ Format Version Footer (canonical, shared behavior)
-function formatVersionFooter(siteMeta) {
+window.formatVersionFooter = function (siteMeta) {
 
     const version = (siteMeta?.siteVersion && siteMeta.siteVersion !== 'unknown')
         ? siteMeta.siteVersion : '—';
