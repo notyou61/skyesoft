@@ -600,6 +600,12 @@ ob_start();
         <tr><th>County</th><td><?= displayReportValue($county) ?></td></tr>
     </table>
 
+    <div class="callout-box">
+        <div class="callout-title">Property Overview</div>
+        <div class="callout-body">
+            Property information shown above is based on the address, parcel, assessor, and jurisdiction records returned by the address-check workflow. Verify current ownership, parcel boundaries, property classification, and jurisdictional information with the applicable authoritative source when required for permit preparation or other final determinations.
+        </div>
+    </div>
 </div>
 
 <div class="section-block">
@@ -623,9 +629,6 @@ ob_start();
                 : 'validated the base-zoning determination without requiring manual review.' ?>
             <br>
             <strong>Source:</strong> <?= displayReportValue($zoningSource) ?>
-            <?php if ($zoningVerifiedFormatted !== null && $zoningVerifiedFormatted !== ''): ?>
-                <br><strong>Verified:</strong> <?= escapeReportValue($zoningVerifiedFormatted) ?>
-            <?php endif; ?>
         </div>
     </div>
 </div>
