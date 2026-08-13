@@ -352,40 +352,64 @@ window.SkyeApp.handleLogout = async function (reason = 'unknown') {
         }
     }
 
-    // Clear global SSE authentication state
-    this.lastSSE = null;
+    // Preserve valid public version metadata
+    const siteMeta =
+        this.lastSSE?.siteMeta &&
+        typeof this.lastSSE.siteMeta.siteVersion === 'string' &&
+        this.lastSSE.siteMeta.siteVersion.trim() !== '' &&
+        this.lastSSE.siteMeta.siteVersion !== 'unknown'
+            ? { ...this.lastSSE.siteMeta }
+            : null;
+
+    // Clear global authentication and idle SSE data
+    this.lastSSE = siteMeta
+        ? { siteMeta }
+        : null;
+
     this.hasReceivedFirstSSE = false;
 
-    // Clear page authentication state
+    // Clear page authentication and idle state
     if (page) {
         page.authState = false;
         page.authUser = null;
         page.authRole = null;
         page.idleState = null;
-        page.lastSSE = {};
+        page.lastSSE = siteMeta
+            ? { siteMeta }
+            : {};
         page.commandSurfaceActive = false;
         page._logoutHandled = true;
     }
 
     document.body.removeAttribute('data-auth');
 
-    // Mirror authentication state
+    // Mirror unauthenticated state
     window.SkyState = window.SkyState || {};
     window.SkyState.authenticated = false;
 
-    // Clear countdown
+    // Clear idle countdown
     this.renderIdleCountdown(page);
 
-    // Render logged-out interface
+    // Render unauthenticated interface
     if (
         page &&
         typeof page.renderLoginCard === 'function'
     ) {
         page.renderLoginCard();
         page.renderFooterStatus?.call(page);
-    } else {
-        window.location.reload();
+
+        // Restore version if the login render rebuilt the footer
+        if (siteMeta) {
+            this.renderVersionFooter?.({
+                siteMeta
+            });
+        }
+
+        return;
     }
+
+    // Reload only when the page has no login renderer
+    window.location.reload();
 };
 /* #endregion */
 
@@ -401,11 +425,20 @@ window.SkyeApp.handleSSE = async function (payload) {
     // 🔥 FORCE LOGOUT (Idle Timeout from Server)
     // ─────────────────────────────────────────
     if (payload?.forceLogout === true) {
+        // Preserve and render version metadata when supplied
+        if (payload.siteMeta) {
+            this.lastSSE = {
+                ...(this.lastSSE || {}),
+                siteMeta: payload.siteMeta
+            };
 
-        console.log('[SSE] forceLogout received → Applying logged-out state');
+            this.renderVersionFooter(payload);
+        }
 
-        // Delegate to the single authoritative logout path
-        // SSE stream stays alive (persistent-stream architecture)
+        console.log(
+            '[SSE] forceLogout received → Applying logged-out state'
+        );
+
         await this.handleLogout('idle_timeout');
         return;
     }
@@ -414,6 +447,9 @@ window.SkyeApp.handleSSE = async function (payload) {
 
     // Always commit the latest authoritative snapshot
     this.lastSSE = payload;
+
+    // Render version from authoritative SSE metadata
+    this.renderVersionFooter(payload);
 
     // ─────────────────────────────────────────
     // 🔄 ALWAYS UPDATE IDLE STATE + RENDER COUNTDOWN
@@ -514,6 +550,43 @@ document.addEventListener("DOMContentLoaded", function () {
     window.SkyeApp.initFooter();
 
 });
+/* #endregion */
+
+/* #region VERSION FOOTER */
+window.SkyeApp.renderVersionFooter = function (payload = null) {
+    const siteMeta =
+        payload?.siteMeta ||
+        this.lastSSE?.siteMeta ||
+        null;
+
+    const versionEl =
+        document.getElementById('versionFooter');
+
+    if (!versionEl || !siteMeta) {
+        return;
+    }
+
+    const siteVersion =
+        typeof siteMeta.siteVersion === 'string'
+            ? siteMeta.siteVersion.trim()
+            : '';
+
+    // Preserve the current display when metadata is incomplete
+    if (
+        siteVersion === '' ||
+        siteVersion === 'unknown'
+    ) {
+        return;
+    }
+
+    if (typeof formatVersionFooter === 'function') {
+        versionEl.innerHTML =
+            formatVersionFooter(siteMeta);
+    } else {
+        versionEl.textContent =
+            `v${siteVersion}`;
+    }
+};
 /* #endregion */
 
 // #region Propose Contact
