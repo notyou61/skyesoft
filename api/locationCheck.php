@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php (API Endpoint)
-//  Version: 2.3.1 (Phoenix Special Designations Diagnostic Integration)
+//  Version: 2.4.0 (Jurisdiction-Driven Special Designations)
 // ======================================================================
 
 #region SECTION 0 — Headers & Environment
@@ -38,12 +38,6 @@ if (empty($googleMapsApiKey)) {
         ?? getenv('GOOGLE_MAPS_STATIC_API_KEY')
         ?? $_SERVER['GOOGLE_MAPS_API_KEY']
         ?? '';
-}
-
-// Load Phoenix special-designation resolver when available.
-$phoenixDesignationResolverPath = __DIR__ . '/utils/resolvePhoenixSpecialDesignations.php';
-if (is_file($phoenixDesignationResolverPath)) {
-    require_once $phoenixDesignationResolverPath;
 }
 
 #endregion
@@ -335,6 +329,10 @@ if (!empty($parcel['zoningCode']) && strtoupper((string)$parcel['zoningCode']) !
         $frontageResult['frontages']
     );
     $specialDesignations = resolveLocationSpecialDesignations(
+        __DIR__,
+        $stateSlug,
+        $countySlug,
+        $jurisSlug,
         (string)$locationJurisdiction,
         $lat,
         $lng
@@ -507,10 +505,14 @@ $signCodeResult = resolveApplicableSignCode(
     $frontageResult['frontages']
 );
 $specialDesignations = resolveLocationSpecialDesignations(
-    (string)$locationJurisdiction,
-    $lat,
-    $lng
-);
+        __DIR__,
+        $stateSlug,
+        $countySlug,
+        $jurisSlug,
+        (string)$locationJurisdiction,
+        $lat,
+        $lng
+    );
 
 #endregion
 
@@ -968,35 +970,229 @@ function formatLocationResponse(array $p): array {
 }
 
 function resolveLocationSpecialDesignations(
-    string $jurisdiction,
+    string $baseDirectory,
+    string $stateSlug,
+    string $countySlug,
+    string $jurisdictionSlug,
+    string $jurisdictionName,
     ?float $latitude,
     ?float $longitude
 ): ?array {
-    if (strtolower(trim($jurisdiction)) !== 'phoenix') {
+    // Resolve jurisdiction artifact (regional path first)
+    $configCandidates = [
+        $baseDirectory . "/data/authoritative/{$stateSlug}/{$countySlug}/jurisdictions/{$jurisdictionSlug}/specialDesignations.json",
+        $baseDirectory . "/../data/authoritative/{$stateSlug}/{$countySlug}/jurisdictions/{$jurisdictionSlug}/specialDesignations.json",
+        $baseDirectory . '/data/authoritative/jurisdictions/' . $jurisdictionSlug . '/specialDesignations.json',
+        $baseDirectory . '/../data/authoritative/jurisdictions/' . $jurisdictionSlug . '/specialDesignations.json'
+    ];
+
+    $configFile = null;
+    foreach ($configCandidates as $candidateFile) {
+        if (is_file($candidateFile)) {
+            $configFile = $candidateFile;
+            break;
+        }
+    }
+
+    // No special-designation configuration for this jurisdiction
+    if ($configFile === null) {
         return null;
     }
 
+    $config = json_decode((string)file_get_contents($configFile), true);
+    if (!is_array($config)) {
+        return [
+            'isComplete'   => false,
+            'disclaimers'  => [],
+            'errorMessage' => 'The jurisdiction special-designation configuration is invalid JSON.'
+        ];
+    }
+
+    $configSlug = strtolower(trim((string)($config['jurisdiction']['slug'] ?? '')));
+    if ($configSlug !== '' && $configSlug !== strtolower(trim($jurisdictionSlug))) {
+        return [
+            'isComplete'   => false,
+            'disclaimers'  => is_array($config['disclaimers'] ?? null) ? array_values($config['disclaimers']) : [],
+            'errorMessage' => 'The special-designation configuration does not match the resolved jurisdiction.'
+        ];
+    }
+
+    $designationConfigs = is_array($config['specialDesignations'] ?? null)
+        ? $config['specialDesignations']
+        : [];
+    $disclaimers = is_array($config['disclaimers'] ?? null)
+        ? array_values($config['disclaimers'])
+        : [];
+
+    $result = [
+        'isComplete'   => true,
+        'disclaimers'  => $disclaimers,
+        'errorMessage' => null
+    ];
+
+    foreach ($designationConfigs as $designationKey => $designationConfig) {
+        if (!is_array($designationConfig)) {
+            $result[$designationKey] = [
+                'label'         => (string)$designationKey,
+                'determination' => 'notAvailable',
+                'status'        => 'notAvailable',
+                'errorMessage'  => 'The designation configuration is invalid.',
+                'matches'       => [],
+                'source'        => null,
+                'checkedAt'     => time()
+            ];
+            continue;
+        }
+
+        $result[$designationKey] = resolveConfiguredSpecialDesignation(
+            $designationConfig,
+            $latitude,
+            $longitude
+        );
+    }
+
+    // Complete means every configured designation has a definitive result
+    foreach ($designationConfigs as $designationKey => $_designationConfig) {
+        $determination = $result[$designationKey]['determination'] ?? null;
+        if (!in_array($determination, ['yes', 'no', 'notAvailable'], true)) {
+            $result['isComplete'] = false;
+            break;
+        }
+    }
+
+    return $result;
+}
+
+function resolveConfiguredSpecialDesignation(
+    array $designationConfig,
+    ?float $latitude,
+    ?float $longitude
+): array {
+    $checkedAt = time();
+    $label     = trim((string)($designationConfig['label'] ?? 'Special Designation'));
+    $service   = is_array($designationConfig['service'] ?? null) ? $designationConfig['service'] : [];
+    $query     = is_array($designationConfig['query'] ?? null) ? $designationConfig['query'] : [];
+    $mapping   = is_array($designationConfig['fieldMapping'] ?? null) ? $designationConfig['fieldMapping'] : [];
+
+    $serviceUrl = trim((string)($service['url'] ?? ''));
+    $sourceName = trim((string)($service['source'] ?? ''));
+
     if ($latitude === null || $longitude === null) {
-        return [
-            'isComplete'            => false,
-            'zoningOverlays'        => null,
-            'historicDesignation'   => null,
-            'comprehensiveSignPlan' => null,
-            'errorMessage'          => 'Phoenix special-designation lookup requires coordinates.'
-        ];
+        return buildUnavailableSpecialDesignation(
+            $label,
+            $sourceName,
+            'Special-designation lookup requires coordinates.',
+            $checkedAt
+        );
     }
 
-    if (!function_exists('resolvePhoenixSpecialDesignations')) {
-        return [
-            'isComplete'            => false,
-            'zoningOverlays'        => null,
-            'historicDesignation'   => null,
-            'comprehensiveSignPlan' => null,
-            'errorMessage'          => 'Phoenix special-designation resolver is unavailable.'
-        ];
+    if ($serviceUrl === '') {
+        return buildUnavailableSpecialDesignation(
+            $label,
+            $sourceName,
+            'No authoritative service URL is configured for this designation.',
+            $checkedAt
+        );
     }
 
-    return resolvePhoenixSpecialDesignations($latitude, $longitude);
+    $outFields = $query['outFields'] ?? ['*'];
+    if (is_array($outFields)) {
+        $outFields = implode(',', $outFields);
+    }
+
+    $params = [
+        'where'          => (string)($query['where'] ?? '1=1'),
+        'geometry'       => $longitude . ',' . $latitude,
+        'geometryType'   => (string)($query['geometryType'] ?? 'esriGeometryPoint'),
+        'spatialRel'     => (string)($query['spatialRel'] ?? 'esriSpatialRelIntersects'),
+        'inSR'           => (string)($query['inSR'] ?? 4326),
+        'outSR'          => (string)($query['outSR'] ?? 4326),
+        'outFields'      => (string)$outFields,
+        'returnGeometry' => !empty($query['returnGeometry']) ? 'true' : 'false',
+        'f'              => (string)($query['format'] ?? 'json')
+    ];
+
+    $queryUrl = rtrim($serviceUrl, '/') . '/query?'
+        . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+    $queryResult = httpGetJsonDetailed($queryUrl, (int)($query['timeoutSeconds'] ?? 8));
+    $queryData = is_array($queryResult['data'] ?? null) ? $queryResult['data'] : [];
+
+    $querySucceeded = (
+        !empty($queryResult['success'])
+        && empty($queryData['error'])
+        && isset($queryData['features'])
+        && is_array($queryData['features'])
+    );
+
+    if (!$querySucceeded) {
+        $arcGisMessage = is_array($queryData['error'] ?? null)
+            ? ($queryData['error']['message'] ?? null)
+            : null;
+        $curlError = trim((string)($queryResult['curlError'] ?? ''));
+        $errorMessage = $arcGisMessage
+            ?: ($curlError !== '' ? $curlError : 'HTTP ' . (string)($queryResult['httpCode'] ?? 0));
+
+        return buildUnavailableSpecialDesignation(
+            $label,
+            $sourceName,
+            $errorMessage,
+            $checkedAt
+        );
+    }
+
+    $matches = [];
+    foreach ($queryData['features'] as $feature) {
+        $attributes = is_array($feature['attributes'] ?? null) ? $feature['attributes'] : [];
+        if ($attributes === []) {
+            continue;
+        }
+
+        $match = [];
+        foreach ($mapping as $outputField => $sourceField) {
+            $match[(string)$outputField] = resolveSpecialDesignationAttribute(
+                $attributes,
+                (string)$sourceField
+            );
+        }
+        $match['rawAttributes'] = $attributes;
+        $matches[] = $match;
+    }
+
+    return [
+        'label'         => $label,
+        'determination' => $matches !== [] ? 'yes' : 'no',
+        'status'        => $matches !== [] ? 'identified' : 'noneIdentified',
+        'errorMessage'  => null,
+        'matches'       => $matches,
+        'source'        => $sourceName !== '' ? $sourceName : null,
+        'checkedAt'     => $checkedAt
+    ];
+}
+
+function buildUnavailableSpecialDesignation(
+    string $label,
+    string $sourceName,
+    string $errorMessage,
+    int $checkedAt
+): array {
+    return [
+        'label'         => $label,
+        'determination' => 'notAvailable',
+        'status'        => 'notAvailable',
+        'errorMessage'  => $errorMessage,
+        'matches'       => [],
+        'source'        => $sourceName !== '' ? $sourceName : null,
+        'checkedAt'     => $checkedAt
+    ];
+}
+
+function resolveSpecialDesignationAttribute(array $attributes, string $sourceField) {
+    foreach ($attributes as $key => $value) {
+        if (strcasecmp((string)$key, $sourceField) === 0) {
+            return $value;
+        }
+    }
+    return null;
 }
 
 function resolveLocationFrontages(string $parcelNumber, string $jurisdiction, int $verifiedAt): array {

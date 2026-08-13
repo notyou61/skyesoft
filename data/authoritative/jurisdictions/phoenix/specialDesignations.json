@@ -1,0 +1,70 @@
+{
+    "schemaVersion": "1.0.0",
+    "jurisdiction": {
+        "slug": "phoenix",
+        "label": "Phoenix"
+    },
+    "specialDesignations": {
+        "zoningOverlays": {
+            "label": "Overlay / Regulatory Plan",
+            "service": {
+                "url": "https://maps.phoenix.gov/pub/rest/services/Public/ZoningOverlays/MapServer/0",
+                "source": "City of Phoenix Zoning Overlays GIS"
+            },
+            "query": {
+                "where": "1=1",
+                "geometryType": "esriGeometryPoint",
+                "spatialRel": "esriSpatialRelIntersects",
+                "inSR": 4326,
+                "outSR": 4326,
+                "outFields": [
+                    "NAME",
+                    "CASE_YR",
+                    "REGULATORY"
+                ],
+                "returnGeometry": false,
+                "format": "json"
+            },
+            "fieldMapping": {
+                "name": "NAME",
+                "caseYear": "CASE_YR",
+                "regulatoryInfo": "REGULATORY"
+            }
+        },
+        "historicDesignation": {
+            "label": "Historic Designation",
+            "service": {
+                "url": "https://maps.phoenix.gov/pub/rest/services/Public/HistoricProperties/MapServer/0",
+                "source": "City of Phoenix Historic Preservation GIS"
+            },
+            "query": {
+                "where": "1=1",
+                "geometryType": "esriGeometryPoint",
+                "spatialRel": "esriSpatialRelIntersects",
+                "inSR": 4326,
+                "outSR": 4326,
+                "outFields": [
+                    "NAME",
+                    "TYPE",
+                    "STATUS",
+                    "LANDMARK"
+                ],
+                "returnGeometry": false,
+                "format": "json"
+            },
+            "fieldMapping": {
+                "name": "NAME",
+                "type": "TYPE",
+                "status": "STATUS",
+                "landmark": "LANDMARK"
+            }
+        }
+    },
+    "disclaimers": [
+        {
+            "key": "comprehensiveSignPlan",
+            "label": "Comprehensive Sign Plan",
+            "text": "Comprehensive Sign Plan information is not available programmatically. Manual verification is required."
+        }
+    ]
+}
