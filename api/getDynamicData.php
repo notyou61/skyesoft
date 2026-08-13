@@ -27,7 +27,7 @@ $isAuthenticated = $auth['authenticated'] ?? false;
 // (constant is already defined by the time this file is required)
 $idleTimeoutSeconds = defined('SKYESOFT_IDLE_TIMEOUT')
     ? SKYESOFT_IDLE_TIMEOUT
-    : 900;   // fallback only if somehow loaded outside SSE
+    : 10;   // fallback only if somehow loaded outside SSE
 
 $idle = [
     "state" => "anonymous",

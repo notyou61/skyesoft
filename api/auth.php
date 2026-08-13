@@ -177,34 +177,55 @@ if ($input['action'] === 'login') {
 
 if ($input['action'] === 'logout') {
 
-    $pdo = getPDO(); // Ensure DB connection exists
+    // Ensure database connection exists
+    $pdo = getPDO();
 
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
 
-    // 1. Preserve identity BEFORE clearing session
-    $contactId = isset($_SESSION['contactId']) ? (int)$_SESSION['contactId'] : 0;
-    $username  = $_SESSION['username'] ?? null;
+    // Preserve identity before clearing session
+    $contactId = isset($_SESSION['contactId'])
+        ? (int)$_SESSION['contactId']
+        : 0;
+
+    $username = $_SESSION['username'] ?? null;
     $activitySessionId = session_id();
 
-    $latitude  = $_SESSION['lastLatitude']  ?? null;
+    $latitude = $_SESSION['lastLatitude'] ?? null;
     $longitude = $_SESSION['lastLongitude'] ?? null;
 
-    // Optional: client may send source (e.g. idle_timeout follow-up from browser)
-    // Manual UI logout is always Codex origin 0. Browser forceLogout after SSE
-    // idle should still use origin 0 here only if it re-audits; preferred path is
-    // SSE already wrote origin 1 and getLastAuthAction blocks a duplicate.
-    $clientOriginHint = trim((string)($input['actionOrigin'] ?? $input['source'] ?? 'ui_logout'));
+    // Resolve client logout context
+    $clientSource = strtolower(trim(
+        (string)($input['source'] ?? '')
+    ));
 
-    // 2. Audit first via shared executeAuthLogout (origin 0 = user-initiated)
+    $clientActionOrigin = strtolower(trim(
+        (string)($input['actionOrigin'] ?? '')
+    ));
+
+    $clientOriginHint = $clientActionOrigin !== ''
+        ? $clientActionOrigin
+        : ($clientSource !== '' ? $clientSource : 'ui_logout');
+
+    // SSE already inserted auth.logout (browser destroys session only)
+    $isIdleCleanup =
+        $clientSource === 'idle_timeout' ||
+        $clientSource === 'sse_idle' ||
+        $clientActionOrigin === 'idle_timeout' ||
+        $clientActionOrigin === 'sse_idle';
+
+    // Track whether an audit was inserted or intentionally skipped
     $auditInserted = false;
+    $auditStatus = 'not_required';
 
-    if ($contactId > 0) {
+    // Manual user logout
+    if ($contactId > 0 && !$isIdleCleanup) {
+
         $auditInserted = executeAuthLogout(
             $pdo,
             $contactId,
-            0,   // Codex origin: user-initiated logout
+            0, // User-initiated logout
             [
                 'source'             => 'manual',
                 'latitude'           => $latitude,
@@ -227,29 +248,65 @@ if ($input['action'] === 'logout') {
             ]
         );
 
+        $auditStatus = $auditInserted
+            ? 'inserted'
+            : 'failed';
+
         error_log(
-            '[AUTH LOGOUT] executeAuthLogout result=' .
+            '[AUTH LOGOUT] Manual audit result=' .
             var_export($auditInserted, true) .
-            ' contactId=' . $contactId
+            ' contactId=' .
+            $contactId
         );
+
+    // Browser cleanup following authoritative SSE idle logout
+    } elseif ($isIdleCleanup) {
+
+        $auditStatus = 'already_recorded';
+
+        error_log(
+            '[AUTH LOGOUT] Idle cleanup — SSE audit already recorded; ' .
+            'destroying PHP session only. contactId=' .
+            $contactId .
+            ' activitySessionId=' .
+            $activitySessionId
+        );
+
+    // No authenticated identity is available
     } else {
-        error_log('[AUTH LOGOUT] Skipped audit — no contactId in session');
+
+        $auditStatus = 'no_contact';
+
+        error_log(
+            '[AUTH LOGOUT] Audit skipped — no contactId in session'
+        );
     }
 
-    // 3. ONLY THEN destroy session
+    // Always destroy the session (security boundary)
     $_SESSION = [];
-    if (ini_get("session.use_cookies")) {
+
+    if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"],
-            $params["secure"], $params["httponly"]
+
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params['path'],
+            $params['domain'],
+            $params['secure'],
+            $params['httponly']
         );
     }
+
     session_destroy();
 
     echo json_encode([
-        'success' => true
+        'success'       => true,
+        'auditStatus'   => $auditStatus,
+        'sessionClosed' => true,
     ]);
+
     exit;
 }
 
