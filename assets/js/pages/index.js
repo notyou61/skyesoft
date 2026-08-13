@@ -131,14 +131,14 @@ window.SkyVersion = {
 // #endregion
 
 // #region 🌍 Global State Init (SSE Safe)
-window.SkyIndex = window.SkyIndex || {};
-window.SkyIndex.lastSSE = {};
+// State is initialized in the primary SkyIndex object below.
 // #endregion
 
 // #region 🧩 SkyeApp Page Object
 window.SkyIndex = {
     
     // #region 🧠 Cached DOM State
+    lastSSE: {},
     dom: null,
     cardHost: null,
     // #endregion
@@ -570,16 +570,31 @@ window.SkyIndex = {
 
         // 0️⃣ Version
         try {
-            const meta = window.SkyeApp?.lastSSE?.siteMeta;
-            const versionEl = this.dom?.version || document.getElementById('versionFooter');
+            const siteMeta = this.lastSSE?.siteMeta;
+            const versionEl =
+                this.dom?.version ||
+                document.getElementById('versionFooter');
 
-            if (versionEl && meta) {
-                const newHTML = formatVersionFooter(meta);
-                if (versionEl.innerHTML !== newHTML) {
-                    versionEl.innerHTML = newHTML;
+            const hasValidVersion =
+                siteMeta &&
+                typeof siteMeta.siteVersion === 'string' &&
+                siteMeta.siteVersion.trim() !== '' &&
+                siteMeta.siteVersion !== 'unknown';
+
+            // Preserve the current version until valid metadata arrives
+            if (versionEl && hasValidVersion) {
+                const newHtml = formatVersionFooter(siteMeta);
+
+                if (versionEl.innerHTML !== newHtml) {
+                    versionEl.innerHTML = newHtml;
                 }
             }
-        } catch (err) {}
+        } catch (error) {
+            console.error(
+                '[FOOTER] Version rendering failed:',
+                error
+            );
+        }
 
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
