@@ -4,7 +4,7 @@ declare(strict_types=1);
 // =============================================
 // Skyesoft — addressZoningReport.php
 // Address Check Zoning Report (no saved location required)
-// Version: 1.0.2
+// Version: 1.1.0 (Jurisdiction-Driven Special Designations)
 // =============================================
 
 ini_set('display_errors', '0');
@@ -310,24 +310,13 @@ $specialDesignations = extractAddressSpecialDesignations(
     $zoning
 );
 
-$overlayStatusDisplay = buildDesignationStatus(
-    is_array($specialDesignations['zoningOverlays'] ?? null)
-        ? $specialDesignations['zoningOverlays']
-        : []
+$specialDesignationRows = extractSpecialDesignationRows(
+    $specialDesignations
 );
 
-$historicStatusDisplay = buildDesignationStatus(
-    is_array($specialDesignations['historicDesignation'] ?? null)
-        ? $specialDesignations['historicDesignation']
-        : []
-);
-
-$cspStatusDisplay = buildDesignationStatus(
-    is_array($specialDesignations['comprehensiveSignPlan'] ?? null)
-        ? $specialDesignations['comprehensiveSignPlan']
-        : [],
-    'cases'
-);
+$specialDesignationDisclaimers = is_array($specialDesignations['disclaimers'] ?? null)
+    ? array_values($specialDesignations['disclaimers'])
+    : [];
 
 $resolvedSignCode = is_array($location['signCode'] ?? null)
     ? $location['signCode']
@@ -736,14 +725,48 @@ ob_start();
 </div>
 
 <div class="section-block">
+    <?= buildAddressSectionHeading('Special Designations', 'ruler.png') ?>
+
+    <?php if ($specialDesignationRows !== []): ?>
+        <table class="data-table">
+            <?php foreach ($specialDesignationRows as $designationRow): ?>
+                <tr>
+                    <th><?= escapeReportValue($designationRow['label']) ?></th>
+                    <td><?= buildDesignationStatus($designationRow['designation']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    <?php else: ?>
+        <div class="callout-box">
+            <div class="callout-title">Special Designations</div>
+            <div class="callout-body">
+                No programmatic special-designation checks are configured for this jurisdiction.
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php foreach ($specialDesignationDisclaimers as $designationDisclaimer): ?>
+        <?php if (is_array($designationDisclaimer)): ?>
+            <?php
+            $disclaimerLabel = trim((string)($designationDisclaimer['label'] ?? 'Special Designation Disclaimer'));
+            $disclaimerText = trim((string)($designationDisclaimer['text'] ?? ''));
+            ?>
+            <?php if ($disclaimerText !== ''): ?>
+                <div class="callout-box">
+                    <div class="callout-title"><?= escapeReportValue($disclaimerLabel) ?></div>
+                    <div class="callout-body"><?= escapeReportValue($disclaimerText) ?></div>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
+    <?php endforeach; ?>
+</div>
+
+<div class="section-block">
     <?= buildAddressSectionHeading('Sign-Code Research Status', 'ruler.png') ?>
     <table class="data-table">
         <tr><th>Base zoning</th><td><?= $zoningCode !== '' && !$requiresReview
             ? renderResearchStatus('resolved', $zoningCode)
             : renderResearchStatus('research_required', 'Base zoning was not conclusively resolved.') ?></td></tr>
-        <tr><th>Overlay / Regulatory Plan</th><td><?= $overlayStatusDisplay ?></td></tr>
-        <tr><th>Historic Designation</th><td><?= $historicStatusDisplay ?></td></tr>
-        <tr><th>Comprehensive Sign Plan</th><td><?= $cspStatusDisplay ?></td></tr>
         <tr><th>Attached-sign allowance</th><td><?= $attachedSignAllowanceDisplay ?></td></tr>
         <tr><th>Detached-sign allowance</th><td><?= $detachedSignAllowanceDisplay ?></td></tr>
     </table>
@@ -1324,23 +1347,61 @@ function extractAddressSpecialDesignations(array $location, array $parcel, array
     return [];
 }
 
-/** Describe one designation only when its structured resolver returned a result. */
-function buildDesignationStatus(array $designation, string $matchKey = 'matches'): string
+/** Return configured designation rows while excluding report metadata. */
+function extractSpecialDesignationRows(array $specialDesignations): array
 {
-    if ($designation === []) {
-        return renderResearchStatus('research_required', 'No structured determination was returned by the address check.');
+    $metadataKeys = [
+        'isComplete',
+        'disclaimers',
+        'errorMessage'
+    ];
+    $rows = [];
+
+    foreach ($specialDesignations as $designationKey => $designation) {
+        if (in_array((string)$designationKey, $metadataKeys, true) || !is_array($designation)) {
+            continue;
+        }
+
+        $label = trim((string)($designation['label'] ?? ''));
+        if ($label === '') {
+            $label = ucwords(
+                trim(
+                    preg_replace(
+                        '/(?<!^)([A-Z])/',
+                        ' $1',
+                        (string)$designationKey
+                    ) ?? (string)$designationKey
+                )
+            );
+        }
+
+        $rows[] = [
+            'key' => (string)$designationKey,
+            'label' => $label,
+            'designation' => $designation
+        ];
     }
 
-    $status = strtolower(trim((string)($designation['status'] ?? '')));
-    $matches = is_array($designation[$matchKey] ?? null)
-        ? $designation[$matchKey]
+    return $rows;
+}
+
+/** Render one jurisdiction-provided special-designation determination. */
+function buildDesignationStatus(array $designation): string
+{
+    $determination = strtolower(trim((string)($designation['determination'] ?? '')));
+    $matches = is_array($designation['matches'] ?? null)
+        ? $designation['matches']
         : [];
 
-    if (in_array($status, ['noneidentified', 'none_identified', 'none', 'resolved_none'], true)) {
-        return renderResearchStatus('resolved', 'No designation identified.');
+    if ($determination === 'no') {
+        return '<strong>No</strong> — No designation identified.';
     }
 
-    if ($matches !== [] || in_array($status, ['identified', 'matched', 'resolved'], true)) {
+    if ($determination === 'notavailable') {
+        return '<strong class="unverified">Not Available</strong> — Manual verification required.';
+    }
+
+    if ($determination === 'yes') {
         $names = [];
 
         foreach ($matches as $match) {
@@ -1348,21 +1409,29 @@ function buildDesignationStatus(array $designation, string $matchKey = 'matches'
                 continue;
             }
 
-            $name = trim((string)($match['name'] ?? $match['title'] ?? $match['caseNumber'] ?? ''));
+            $name = trim((string)(
+                $match['name']
+                ?? $match['title']
+                ?? $match['caseNumber']
+                ?? ''
+            ));
 
             if ($name !== '') {
                 $names[] = $name;
             }
         }
 
-        $detail = $names !== []
-            ? 'Yes: ' . implode(', ', array_unique($names))
-            : 'A designation was identified; review the structured result.';
+        $names = array_values(array_unique($names));
 
-        return renderResearchStatus('resolved', $detail);
+        return '<strong>Yes</strong> — '
+            . (
+                $names !== []
+                    ? escapeReportValue(implode(', ', $names))
+                    : 'Designation identified.'
+            );
     }
 
-    return renderResearchStatus('research_required', 'The structured determination is incomplete or requires review.');
+    return '<strong class="unverified">Not Available</strong> — Manual verification required.';
 }
 
 /** Convert a payload field name into a compact report label. */
