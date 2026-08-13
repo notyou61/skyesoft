@@ -390,7 +390,7 @@ window.SkyeApp.handleLogout = async function (reason = 'unknown') {
 /* #endregion */
 
 /* #region GLOBAL SSE HANDLER - FIXED FOR IDLE COUNTDOWN */
-window.SkyeApp.handleSSE = function (payload) {
+window.SkyeApp.handleSSE = async function (payload) {
 
     if (!payload || typeof payload !== 'object') return;
 
