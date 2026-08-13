@@ -604,6 +604,11 @@ ob_start();
         <div class="callout-title">Property Overview</div>
         <div class="callout-body">
             Property information shown above is based on the address, parcel, assessor, and jurisdiction records returned by the address-check workflow. Verify current ownership, parcel boundaries, property classification, and jurisdictional information with the applicable authoritative source when required for permit preparation or other final determinations.
+            <br><strong>Source:</strong> <?= displayReportValue(
+                $parcelRecord['source']
+                    ?? $parcel['source']
+                    ?? null
+            ) ?>
         </div>
     </div>
 </div>
@@ -747,7 +752,15 @@ ob_start();
             <?php if ($disclaimerText !== ''): ?>
                 <div class="callout-box">
                     <div class="callout-title"><?= escapeReportValue($disclaimerLabel) ?></div>
-                    <div class="callout-body"><?= escapeReportValue($disclaimerText) ?></div>
+                    <div class="callout-body">
+                        <?= escapeReportValue($disclaimerText) ?>
+                        <?php
+                        $disclaimerSource = $designationDisclaimer['source'] ?? null;
+                        ?>
+                        <?php if ($disclaimerSource !== null && trim((string)$disclaimerSource) !== ''): ?>
+                            <br><strong>Source:</strong> <?= escapeReportValue((string)$disclaimerSource) ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endif; ?>
         <?php endif; ?>
@@ -765,7 +778,18 @@ ob_start();
     </table>
     <div class="callout-box">
         <div class="callout-title">Sign Allowance Note</div>
-        <div class="callout-body"><?= escapeReportValue($signAllowanceDisclaimer) ?></div>
+        <div class="callout-body">
+            <?= escapeReportValue($signAllowanceDisclaimer) ?>
+            <?php
+            $signAllowanceSource = $resolvedSignCode['source']
+                ?? $jurisdictionSource['source']['provider']
+                ?? $jurisdictionSource['provider']
+                ?? null;
+            ?>
+            <?php if ($signAllowanceSource !== null && trim((string)$signAllowanceSource) !== ''): ?>
+                <br><strong>Source:</strong> <?= escapeReportValue((string)$signAllowanceSource) ?>
+            <?php endif; ?>
+        </div>
     </div>
     <div class="citation-subtext">
         Jurisdiction data: <?= displayReportValue(
