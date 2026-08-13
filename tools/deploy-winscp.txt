@@ -36,8 +36,8 @@ synchronize remote -delete -filemask="|artifacts/;*/vendor/;*/.git/;*/node_modul
 # =========================================================
 # 🔐 KALSHI COMPOSER DEPENDENCIES
 # =========================================================
-
-synchronize remote -delete kalshi-composer/vendor skyesoft/kalshi-composer/vendor
+# Vendor dependencies are maintained separately on GoDaddy.
+# synchronize remote -delete kalshi-composer/vendor skyesoft/kalshi-composer/vendor
 
 # =========================================================
 # 🧪 PREVIEW MODE (DRY RUN)
