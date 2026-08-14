@@ -7,7 +7,7 @@ declare(strict_types=1);
 // Version: 1.1.0 (Jurisdiction-Driven Special Designations)
 // =============================================
 
-// #region Section 0 — Bootstrap & Core Report Helpers
+#region Section 0 — Bootstrap & Core Report Helpers
 
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
@@ -174,9 +174,9 @@ function validationResult(bool $valid): string
 }
 
 
-// #endregion
+#endregion
 
-// #region Section 1 — Address Check Payload & Eligibility
+#region Section 1 — Address Check Payload & Eligibility
 
 // Read address-check payload
 try {
@@ -270,9 +270,9 @@ if (!$resolved) {
 }
 
 
-// #endregion
+#endregion
 
-// #region Section 2 — Resolved Location & Jurisdiction Data
+#region Section 2 — Resolved Location & Jurisdiction Data
 
 // Prepare report values
 $fullAddress = trim((string)(
@@ -508,9 +508,9 @@ if ($jsonReviewMode) {
     exit;
 }
 
-// #endregion
+#endregion
 
-// #region Section 4 — PDF Branding, CSS, Header & Footer
+#region Section 4 — PDF Branding, CSS, Header & Footer
 
 $logoPath = __DIR__ . '/../assets/images/christyLogo.png';
 $logoHtml = file_exists($logoPath)
@@ -679,9 +679,9 @@ $footerHtml = '
     </tr>
 </table>';
 
-// #endregion
+#endregion
 
-// #region Section 5 — Report Body Sections
+#region Section 5 — Report Body Sections
 
 ob_start();
 ?>
@@ -875,17 +875,14 @@ ob_start();
 </div>
 
 <div class="section-block">
-    <?= buildAddressSectionHeading('Required Research & Next Steps', 'workman.png') ?>
+    <?= buildAddressSectionHeading('Pre-Design Research & Next Steps', 'workman.png') ?>
     <ol class="compact-list">
-        <li>Resolve overlay, historic-property, and Comprehensive Sign Plan determinations for the parcel.</li>
-        <li>Confirm the applicable sign-code standards for the resolved zoning district and parcel use.</li>
-        <li>Measure the building or tenant elevation and document all existing attached signs.</li>
-        <?php if (!empty($frontages)): ?>
-            <li>Inventory all existing detached signs and calculate the remaining allowance for each eligible frontage.</li>
-        <?php else: ?>
-            <li>Resolve parcel frontage and street classification; inventory all existing detached signs.</li>
-        <?php endif; ?>
-        <li>Confirm proposed sign dimensions, height, placement, construction, and illumination before permit preparation.</li>
+        <li><strong>Property Sign Criteria:</strong> Determine whether the property owner, landlord, property manager, or development has established sign criteria applicable to the property or tenant. Property sign criteria are separate from a jurisdictionally governed Comprehensive Sign Plan or other municipal sign requirements.</li>
+        <li><strong>Outstanding Special-Designation Research:</strong> Complete any manual research identified in the Special Designations section, including Comprehensive Sign Plan research when it cannot be determined programmatically.</li>
+        <li><strong>Site Survey & Photographs:</strong> Obtain current site, building, existing-sign, and relevant surrounding-condition photographs. This is typically completed during the initial site survey or on-site client meeting.</li>
+        <li><strong>Existing Sign Inventory:</strong> Document existing attached and detached signs that may affect the remaining sign allowance or proposed sign locations.</li>
+        <li><strong>Building / Tenant Measurements:</strong> Obtain applicable building, tenant-elevation, frontage, and other field measurements required to apply the sign-code standards identified in this report.</li>
+        <li><strong>Establish Design Parameters:</strong> Use the zoning determination, special-designation research, sign-code standards, property sign criteria, existing signage, photographs, and field measurements to establish the parameters for subsequent sign design.</li>
     </ol>
 </div>
 
@@ -903,9 +900,9 @@ ob_start();
 <?php
 $html = ob_get_clean();
 
-// #endregion
+#endregion
 
-// #region Section 6 — PDF Generation
+#region Section 6 — PDF Generation
 
 try {
     $mpdf = new \Mpdf\Mpdf([
@@ -931,9 +928,9 @@ try {
     echo 'Error generating PDF report: ' . escapeReportValue($e->getMessage());
 }
 
-// #endregion
+#endregion
 
-// #region Section 7 — Parcel Geometry & SVG Helpers
+#region Section 7 — Parcel Geometry & SVG Helpers
 
 /** Normalize a two-coordinate GIS point. */
 function normalizeParcelPoint(mixed $point): ?array
@@ -1373,9 +1370,9 @@ function buildParcelSvg(
     return $svg;
 }
 
-// #endregion
+#endregion
 
-// #region Section 8 — Jurisdiction Artifact & Special Designation Helpers
+#region Section 8 — Jurisdiction Artifact & Special Designation Helpers
 
 /** Convert a resolved jurisdiction name to its authoritative-data folder slug. */
 function buildJurisdictionSlug(string $jurisdiction): string
@@ -1533,9 +1530,9 @@ function buildDesignationStatus(array $designation): string
     return '<strong class="unverified">Not Available</strong> — Manual verification required.';
 }
 
-// #endregion
+#endregion
 
-// #region Section 9 — Sign-Code Research Helpers
+#region Section 9 — Sign-Code Research Helpers
 
 /** Convert a payload field name into a compact report label. */
 function formatSignCodeField(string $field): string
@@ -1765,4 +1762,4 @@ function buildDetachedAllowanceStatus(array $signCode): string
     );
 }
 
-// #endregion
+#endregion
