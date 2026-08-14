@@ -685,6 +685,11 @@ $footerHtml = '
 
 ob_start();
 ?>
+<?php
+// ============================================================================
+// Property Overview
+// ============================================================================
+?>
 <div class="section-block">
     <?= buildAddressSectionHeading('Property Overview', 'property.png') ?>
     <table class="data-table">
@@ -707,6 +712,11 @@ ob_start();
     <?php endif; ?>
 </div>
 
+<?php
+// ============================================================================
+// Zoning Determination
+// ============================================================================
+?>
 <div class="section-block">
     <?= buildAddressSectionHeading('Zoning Determination', 'temple.png') ?>
     <table class="data-table">
@@ -727,6 +737,11 @@ ob_start();
     </div>
 </div>
 
+<?php
+// ============================================================================
+// Address Site Details
+// ============================================================================
+?>
 <div class="section-block site-details-block">
     <?= buildAddressSectionHeading('Address Site Details', 'map.png') ?>
 
@@ -814,6 +829,11 @@ ob_start();
     <?php endif; ?>
 </div>
 
+<?php
+// ============================================================================
+// Special Designations
+// ============================================================================
+?>
 <div class="section-block">
     <?= buildAddressSectionHeading('Special Designations', 'ruler.png') ?>
 
@@ -854,6 +874,11 @@ ob_start();
     <?php endforeach; ?>
 </div>
 
+<?php
+// ============================================================================
+// Sign-Code Research Status
+// ============================================================================
+?>
 <div class="section-block">
     <?= buildAddressSectionHeading('Sign-Code Research Status', 'ruler.png') ?>
     <table class="data-table">
@@ -874,6 +899,11 @@ ob_start();
     <?php endif; ?>
 </div>
 
+<?php
+// ============================================================================
+// Pre-Design Research & Next Steps
+// ============================================================================
+?>
 <div class="section-block">
     <?= buildAddressSectionHeading('Pre-Design Research & Next Steps', 'workman.png') ?>
     <ol class="compact-list">
@@ -886,15 +916,20 @@ ob_start();
     </ol>
 </div>
 
+<?php
+// ============================================================================
+// Report Basis & Qualifications
+// ============================================================================
+?>
 <div class="section-block">
     <?= buildAddressSectionHeading('Report Basis & Qualifications', 'scroll.png') ?>
     <table class="basis-table">
-        <tr><td><strong>Report Type:</strong> Unsaved Address Check</td><td><strong>Result:</strong> Base zoning resolved</td></tr>
+        <tr><td><strong>Report Type:</strong> Pre-Design Address Zoning Research</td><td><strong>Result:</strong> Base zoning resolved</td></tr>
         <tr><td><strong>Place ID:</strong> <?= displayReportValue($placeId) ?></td><td><strong>Coordinates:</strong> <?= displayReportValue($latitude) ?>, <?= displayReportValue($longitude) ?></td></tr>
         <tr><td><strong>Activity Session:</strong> <?= displayReportValue($activitySessionId) ?></td><td><strong>Parcel Source:</strong> <?= displayReportValue($parcelRecord['source'] ?? $parcel['source'] ?? null) ?></td></tr>
     </table>
     <p style="font-size: 7.5pt; color: #666; line-height: 1.25; margin-top: 6px;">
-        <strong>Qualification:</strong> This report records the positive address, parcel, jurisdiction, and base-zoning results returned by Skyesoft's address-check workflow. It does not represent a saved Skyesoft location or a complete sign-allowance analysis. Base zoning may be modified by overlays, stipulations, approved plans, special districts, a Comprehensive Sign Plan, or nonconforming conditions. Verify remaining site conditions and final requirements with the governing jurisdiction before design completion, fabrication, or permit filing.
+        <strong>Qualification:</strong> This report is a pre-design research document based on the address, parcel, jurisdiction, zoning, roadway, special-designation, and sign-code information available through Skyesoft's address-check workflow. It is intended to identify applicable site conditions and preliminary sign-code parameters before sign design begins. Property sign criteria, Comprehensive Sign Plans or other requirements not available programmatically, existing signage, and required field measurements must be researched or verified separately. A Site Visual Survey should be completed to document current site conditions, existing signage, and relevant street-level conditions before final design parameters are established.
     </p>
 </div>
 <?php
