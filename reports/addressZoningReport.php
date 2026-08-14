@@ -24,6 +24,60 @@ function escapeReportValue(mixed $value): string
     return htmlspecialchars(trim((string)($value ?? '')), ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Return a normalized disclaimer object exactly from the address-check JSON.
+ */
+function getReportDisclaimer(array $disclaimers, string $key): array
+{
+    $disclaimer = $disclaimers[$key] ?? null;
+
+    return is_array($disclaimer) ? $disclaimer : [];
+}
+
+/**
+ * Render the JSON-provided source label without deriving or replacing its sources.
+ */
+function displayDisclaimerSource(array $disclaimer): string
+{
+    $sourceLabel = trim((string)($disclaimer['sourceLabel'] ?? ''));
+
+    if ($sourceLabel !== '') {
+        return escapeReportValue($sourceLabel);
+    }
+
+    $sources = is_array($disclaimer['sources'] ?? null)
+        ? $disclaimer['sources']
+        : [];
+
+    $labels = [];
+
+    foreach ($sources as $source) {
+        if (is_string($source)) {
+            $label = trim($source);
+        } elseif (is_array($source)) {
+            $label = trim((string)(
+                $source['label']
+                ?? $source['source']
+                ?? $source['provider']
+                ?? $source['title']
+                ?? ''
+            ));
+        } else {
+            $label = '';
+        }
+
+        if ($label !== '') {
+            $labels[] = $label;
+        }
+    }
+
+    $labels = array_values(array_unique($labels));
+
+    return $labels !== []
+        ? escapeReportValue(implode('; ', $labels))
+        : '<span class="unverified">Source not provided by address check</span>';
+}
+
 /** Display a value without turning missing research into a false determination. */
 function displayReportValue(mixed $value, string $fallback = 'Not provided by address check'): string
 {
@@ -324,8 +378,28 @@ $specialDesignationRows = extractSpecialDesignationRows(
     $specialDesignations
 );
 
-$specialDesignationDisclaimers = is_array($specialDesignations['disclaimers'] ?? null)
-    ? array_values($specialDesignations['disclaimers'])
+// Read report disclaimers directly from the address-check JSON (source of truth).
+$reportDisclaimers = is_array($location['disclaimers'] ?? null)
+    ? $location['disclaimers']
+    : [];
+
+$measurementDisclaimer = getReportDisclaimer(
+    $reportDisclaimers,
+    'measurement'
+);
+
+$signAllowanceReportDisclaimer = getReportDisclaimer(
+    $reportDisclaimers,
+    'signAllowance'
+);
+
+$specialDesignationDisclaimerGroup = getReportDisclaimer(
+    $reportDisclaimers,
+    'specialDesignations'
+);
+
+$specialDesignationDisclaimers = is_array($specialDesignationDisclaimerGroup['items'] ?? null)
+    ? array_values($specialDesignationDisclaimerGroup['items'])
     : [];
 
 $resolvedSignCode = is_array($location['signCode'] ?? null)
@@ -344,11 +418,6 @@ $attachedSignAllowanceDisplay = buildAttachedAllowanceStatus(
 $detachedSignAllowanceDisplay = buildDetachedAllowanceStatus(
     $resolvedSignCode
 );
-
-$signAllowanceDisclaimer = trim((string)(
-    $resolvedSignCode['signAllowanceDisclaimer']
-    ?? 'Attached signs are mounted to a structure, such as wall or building signs. Detached signs are freestanding signs, such as pole, pylon, or monument signs. Any existing or remaining signs must be included when determining the total sign area available for the property.'
-));
 
 $activitySessionId = trim((string)(
     $payload['activitySessionId']
@@ -738,12 +807,15 @@ ob_start();
         </tbody>
     </table>
 
-    <div class="callout-box">
-        <div class="callout-title">Measurement Note</div>
-        <div class="callout-body">
-            Map dimensions represent individual parcel-boundary segments. Table values represent aggregated GIS-calculated street frontage and may differ due to segmented or irregular frontage geometry.
+    <?php if ($measurementDisclaimer !== []): ?>
+        <div class="callout-box">
+            <div class="callout-title"><?= escapeReportValue($measurementDisclaimer['label'] ?? 'Measurement Note') ?></div>
+            <div class="callout-body">
+                <?= escapeReportValue($measurementDisclaimer['text'] ?? '') ?>
+                <br><strong>Source:</strong> <?= displayDisclaimerSource($measurementDisclaimer) ?>
+            </div>
         </div>
-    </div>
+    <?php endif; ?>
 </div>
 
 <div class="section-block">
@@ -776,7 +848,10 @@ ob_start();
             <?php if ($disclaimerText !== ''): ?>
                 <div class="callout-box">
                     <div class="callout-title"><?= escapeReportValue($disclaimerLabel) ?></div>
-                    <div class="callout-body"><?= escapeReportValue($disclaimerText) ?></div>
+                    <div class="callout-body">
+                        <?= escapeReportValue($disclaimerText) ?>
+                        <br><strong>Source:</strong> <?= displayDisclaimerSource($designationDisclaimer) ?>
+                    </div>
                 </div>
             <?php endif; ?>
         <?php endif; ?>
@@ -792,10 +867,15 @@ ob_start();
         <tr><th>Attached-sign allowance</th><td><?= $attachedSignAllowanceDisplay ?></td></tr>
         <tr><th>Detached-sign allowance</th><td><?= $detachedSignAllowanceDisplay ?></td></tr>
     </table>
-    <div class="callout-box">
-        <div class="callout-title">Sign Allowance Note</div>
-        <div class="callout-body"><?= escapeReportValue($signAllowanceDisclaimer) ?></div>
-    </div>
+    <?php if ($signAllowanceReportDisclaimer !== []): ?>
+        <div class="callout-box">
+            <div class="callout-title"><?= escapeReportValue($signAllowanceReportDisclaimer['label'] ?? 'Sign Allowance Note') ?></div>
+            <div class="callout-body">
+                <?= escapeReportValue($signAllowanceReportDisclaimer['text'] ?? '') ?>
+                <br><strong>Source:</strong> <?= displayDisclaimerSource($signAllowanceReportDisclaimer) ?>
+            </div>
+        </div>
+    <?php endif; ?>
     <div class="citation-subtext">
         Jurisdiction data: <?= displayReportValue(
             $resolvedSignCode['jurisdiction']
