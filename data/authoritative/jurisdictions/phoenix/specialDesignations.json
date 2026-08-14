@@ -62,9 +62,9 @@
     },
     "disclaimers": [
         {
-            "key": "comprehensiveSignPlan",
-            "label": "Comprehensive Sign Plan",
-            "text": "Comprehensive Sign Plan information is not available programmatically. Manual verification is required."
+            "key": "specialDesignationsResearch",
+            "label": "Special Designations Research",
+            "text": "The Special Designations results above reflect the City of Phoenix public GIS sources configured for this address check, including Zoning Overlays / Regulatory Plans and Historic Designations. Other property-specific requirements or approvals may exist that are not available through these programmatic sources. Comprehensive Sign Plan information is not available programmatically and requires manual verification."
         }
     ]
 }
