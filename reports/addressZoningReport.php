@@ -78,6 +78,61 @@ function displayDisclaimerSource(array $disclaimer): string
         : '<span class="unverified">Source not provided by address check</span>';
 }
 
+/**
+ * Collect unique source labels from report values and disclaimer objects.
+ */
+function collectReportSources(array $values): array
+{
+    $labels = [];
+
+    $appendLabel = static function (mixed $value) use (&$labels): void {
+        $label = trim((string)($value ?? ''));
+
+        if ($label !== '') {
+            $labels[] = $label;
+        }
+    };
+
+    foreach ($values as $value) {
+        if (is_string($value)) {
+            $appendLabel($value);
+            continue;
+        }
+
+        if (!is_array($value)) {
+            continue;
+        }
+
+        $appendLabel(
+            $value['sourceLabel']
+            ?? $value['source']
+            ?? $value['provider']
+            ?? $value['title']
+            ?? ''
+        );
+
+        $sources = is_array($value['sources'] ?? null)
+            ? $value['sources']
+            : [];
+
+        foreach ($sources as $source) {
+            if (is_string($source)) {
+                $appendLabel($source);
+            } elseif (is_array($source)) {
+                $appendLabel(
+                    $source['label']
+                    ?? $source['source']
+                    ?? $source['provider']
+                    ?? $source['title']
+                    ?? ''
+                );
+            }
+        }
+    }
+
+    return array_values(array_unique($labels));
+}
+
 /** Display a value without turning missing research into a false determination. */
 function displayReportValue(mixed $value, string $fallback = 'Not provided by address check'): string
 {
@@ -428,6 +483,64 @@ $activitySessionId = trim((string)(
     $payload['activitySessionId']
     ?? ''
 ));
+
+// Prepare DRY report-basis summary values from the same resolved report data.
+$specialDesignationSummary = [];
+
+foreach ($specialDesignationRows as $designationRow) {
+    $designation = is_array($designationRow['designation'] ?? null)
+        ? $designationRow['designation']
+        : [];
+
+    $determination = strtolower(trim((string)(
+        $designation['determination']
+        ?? ''
+    )));
+
+    $determinationLabel = match ($determination) {
+        'yes' => 'Yes',
+        'no' => 'No',
+        default => 'Not Available'
+    };
+
+    $specialDesignationSummary[] =
+        trim((string)($designationRow['label'] ?? 'Designation'))
+        . ': '
+        . $determinationLabel;
+}
+
+$specialDesignationSummaryLabel = $specialDesignationSummary !== []
+    ? implode(' · ', $specialDesignationSummary)
+    : 'Not Available';
+
+$signCodeSummaryLabel =
+    'Attached-sign allowance: '
+    . (is_array($resolvedSignCode['attachedSigns'] ?? null)
+        ? 'Resolved'
+        : 'Research Required')
+    . ' · Detached-sign allowance: '
+    . (is_array($resolvedSignCode['detachedSigns'] ?? null)
+        ? 'Resolved'
+        : 'Research Required');
+
+$reportSourceValues = [
+    $propertyOverviewDisclaimer,
+    $zoningSource,
+    $measurementDisclaimer,
+    $signAllowanceReportDisclaimer,
+    $specialDesignationDisclaimerGroup
+];
+
+foreach ($specialDesignationDisclaimers as $designationDisclaimer) {
+    if (is_array($designationDisclaimer)) {
+        $reportSourceValues[] = $designationDisclaimer;
+    }
+}
+
+$reportSources = collectReportSources($reportSourceValues);
+$reportSourceLabel = $reportSources !== []
+    ? implode('; ', $reportSources)
+    : '';
 
 
 // #endregion
@@ -923,11 +1036,49 @@ ob_start();
 ?>
 <div class="section-block">
     <?= buildAddressSectionHeading('Report Basis & Qualifications', 'scroll.png') ?>
+
     <table class="basis-table">
-        <tr><td><strong>Report Type:</strong> Pre-Design Address Zoning Research</td><td><strong>Result:</strong> Base zoning resolved</td></tr>
-        <tr><td><strong>Place ID:</strong> <?= displayReportValue($placeId) ?></td><td><strong>Coordinates:</strong> <?= displayReportValue($latitude) ?>, <?= displayReportValue($longitude) ?></td></tr>
-        <tr><td><strong>Activity Session:</strong> <?= displayReportValue($activitySessionId) ?></td><td><strong>Parcel Source:</strong> <?= displayReportValue($parcelRecord['source'] ?? $parcel['source'] ?? null) ?></td></tr>
+        <tr>
+            <td><strong>Report Type:</strong> Pre-Design Address Zoning Research</td>
+            <td>
+                <strong>Property:</strong>
+                <?= displayReportValue($fullAddress) ?>
+                <?= $parcelNumber !== '' ? ' · APN ' . escapeReportValue($parcelNumber) : '' ?>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <strong>Jurisdiction / Zoning:</strong>
+                <?= displayReportValue($jurisdiction) ?>
+                <?= $jurisdictionType !== '' ? ' (' . escapeReportValue($jurisdictionType) . ')' : '' ?>
+                <?= $zoningCode !== '' ? ' · ' . escapeReportValue($zoningCode) : '' ?>
+                <?= $zoningDescription !== '' ? ' — ' . escapeReportValue($zoningDescription) : '' ?>
+            </td>
+            <td>
+                <strong>Special Designations:</strong>
+                <?= displayReportValue($specialDesignationSummaryLabel, 'Not Available') ?>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <strong>Sign-Code Research:</strong>
+                <?= escapeReportValue($signCodeSummaryLabel) ?>
+            </td>
+            <td>
+                <strong>Additional Research:</strong>
+                See Pre-Design Research &amp; Next Steps
+            </td>
+        </tr>
     </table>
+
+    <div style="font-size: 7.5pt; color: #666; line-height: 1.25; margin-top: 6px;">
+        <strong>Research Sources:</strong>
+        <?= displayReportValue(
+            $reportSourceLabel,
+            'No research sources were provided by the address check'
+        ) ?>
+    </div>
+
     <p style="font-size: 7.5pt; color: #666; line-height: 1.25; margin-top: 6px;">
         <strong>Qualification:</strong> This report is a pre-design research document based on the address, parcel, jurisdiction, zoning, roadway, special-designation, and sign-code information available through Skyesoft's address-check workflow. It is intended to identify applicable site conditions and preliminary sign-code parameters before sign design begins. Property sign criteria, Comprehensive Sign Plans or other requirements not available programmatically, existing signage, and required field measurements must be researched or verified separately. A Site Visual Survey should be completed to document current site conditions, existing signage, and relevant street-level conditions before final design parameters are established.
     </p>
