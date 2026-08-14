@@ -1056,7 +1056,13 @@ ob_start();
             </td>
             <td>
                 <strong>Special Designations:</strong>
-                <?= displayReportValue($specialDesignationSummaryLabel, 'Not Available') ?>
+                <?php if ($specialDesignationSummary !== []): ?>
+                    <?php foreach ($specialDesignationSummary as $designationSummaryItem): ?>
+                        <br><?= escapeReportValue($designationSummaryItem) ?>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    Not Available
+                <?php endif; ?>
             </td>
         </tr>
         <tr>
@@ -1072,11 +1078,26 @@ ob_start();
     </table>
 
     <div style="font-size: 7.5pt; color: #666; line-height: 1.25; margin-top: 6px;">
-        <strong>Research Sources:</strong>
-        <?= displayReportValue(
-            $reportSourceLabel,
-            'No research sources were provided by the address check'
-        ) ?>
+        <strong>Sources Used:</strong>
+
+        <?php if ($reportSources !== []): ?>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 2px;">
+                <?php foreach (array_chunk($reportSources, 2) as $sourceRow): ?>
+                    <tr>
+                        <td style="width: 50%; border: 0; padding: 1px 8px 1px 0; vertical-align: top;">
+                            &bull; <?= escapeReportValue($sourceRow[0]) ?>
+                        </td>
+                        <td style="width: 50%; border: 0; padding: 1px 0; vertical-align: top;">
+                            <?= isset($sourceRow[1])
+                                ? '&bull; ' . escapeReportValue($sourceRow[1])
+                                : '' ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php else: ?>
+            No research sources were provided by the address check.
+        <?php endif; ?>
     </div>
 
     <p style="font-size: 7.5pt; color: #666; line-height: 1.25; margin-top: 6px;">
