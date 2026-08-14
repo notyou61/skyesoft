@@ -2247,10 +2247,23 @@ window.SkyIndex = {
         // 📸 WORKFLOW ROUTER
         // ==================================================
 
-        const workflow = this.workflowRegistry?.[firstLine];
+        // Match registered workflow command with optional arguments
+        const workflowCommand = Object.keys(this.workflowRegistry || {})
+            .sort((a, b) => b.length - a.length)
+            .find(key =>
+                firstLine === key ||
+                firstLine.startsWith(`${key} `)
+            );
 
-        if (workflow) {
-            await this.dispatchWorkflow(workflow, text, activitySessionId);
+        if (workflowCommand) {
+            const workflow = this.workflowRegistry[workflowCommand];
+
+            await this.dispatchWorkflow(
+                workflow,
+                text,
+                activitySessionId
+            );
+
             return;
         }
 
