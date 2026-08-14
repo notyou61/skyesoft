@@ -86,10 +86,21 @@ function collectReportSources(array $values): array
     $labels = [];
 
     $appendLabel = static function (mixed $value) use (&$labels): void {
-        $label = trim((string)($value ?? ''));
+        $rawLabel = trim((string)($value ?? ''));
 
-        if ($label !== '') {
-            $labels[] = $label;
+        if ($rawLabel === '') {
+            return;
+        }
+
+        // Split combined source labels so each authoritative source is indexed once.
+        $sourceLabels = preg_split('/\s*;\s*/', $rawLabel) ?: [];
+
+        foreach ($sourceLabels as $sourceLabel) {
+            $sourceLabel = trim($sourceLabel);
+
+            if ($sourceLabel !== '') {
+                $labels[] = $sourceLabel;
+            }
         }
     };
 
@@ -1077,32 +1088,36 @@ ob_start();
         </tr>
     </table>
 
-    <div style="font-size: 7.5pt; color: #666; line-height: 1.25; margin-top: 6px;">
-        <strong>Sources Used:</strong>
-
-        <?php if ($reportSources !== []): ?>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 2px;">
-                <?php foreach (array_chunk($reportSources, 2) as $sourceRow): ?>
-                    <tr>
-                        <td style="width: 50%; border: 0; padding: 1px 8px 1px 0; vertical-align: top;">
-                            &bull; <?= escapeReportValue($sourceRow[0]) ?>
-                        </td>
-                        <td style="width: 50%; border: 0; padding: 1px 0; vertical-align: top;">
-                            <?= isset($sourceRow[1])
-                                ? '&bull; ' . escapeReportValue($sourceRow[1])
-                                : '' ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </table>
-        <?php else: ?>
-            No research sources were provided by the address check.
-        <?php endif; ?>
+    <div class="callout-box">
+        <div class="callout-title">Sources Used</div>
+        <div class="callout-body">
+            <?php if ($reportSources !== []): ?>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <?php foreach (array_chunk($reportSources, 2) as $sourceRow): ?>
+                        <tr>
+                            <td style="width: 50%; border: 0; padding: 1px 8px 1px 0; vertical-align: top;">
+                                &bull; <?= escapeReportValue($sourceRow[0]) ?>
+                            </td>
+                            <td style="width: 50%; border: 0; padding: 1px 0; vertical-align: top;">
+                                <?= isset($sourceRow[1])
+                                    ? '&bull; ' . escapeReportValue($sourceRow[1])
+                                    : '' ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            <?php else: ?>
+                <span class="unverified">No research sources were provided by the address check.</span>
+            <?php endif; ?>
+        </div>
     </div>
 
-    <p style="font-size: 7.5pt; color: #666; line-height: 1.25; margin-top: 6px;">
-        <strong>Qualification:</strong> This report is a pre-design research document based on the address, parcel, jurisdiction, zoning, roadway, special-designation, and sign-code information available through Skyesoft's address-check workflow. It is intended to identify applicable site conditions and preliminary sign-code parameters before sign design begins. Property sign criteria, Comprehensive Sign Plans or other requirements not available programmatically, existing signage, and required field measurements must be researched or verified separately. A Site Visual Survey should be completed to document current site conditions, existing signage, and relevant street-level conditions before final design parameters are established.
-    </p>
+    <div class="callout-box">
+        <div class="callout-title">Qualification</div>
+        <div class="callout-body">
+            This report is a pre-design research document based on the address, parcel, jurisdiction, zoning, roadway, special-designation, and sign-code information available through Skyesoft's address-check workflow. It is intended to identify applicable site conditions and preliminary sign-code parameters before sign design begins. Property sign criteria, Comprehensive Sign Plans or other requirements not available programmatically, existing signage, and required field measurements must be researched or verified separately. A Site Visual Survey should be completed to document current site conditions, existing signage, and relevant street-level conditions before final design parameters are established.
+        </div>
+    </div>
 </div>
 <?php
 $html = ob_get_clean();
