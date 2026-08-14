@@ -872,17 +872,6 @@ ob_start();
             </div>
         </div>
     <?php endif; ?>
-    <div class="citation-subtext">
-        Jurisdiction data: <?= displayReportValue(
-            $resolvedSignCode['jurisdiction']
-                ?? $jurisdictionSource['jurisdiction']['label']
-                ?? null,
-            'Research required — no applicable sign-code result was returned'
-        ) ?>
-        <?= $landUseCategory !== ''
-            ? ' | Classified use standard: ' . escapeReportValue($landUseCategory)
-            : '' ?>
-    </div>
 </div>
 
 <div class="section-block">
