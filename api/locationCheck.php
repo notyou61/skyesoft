@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — locationCheck.php (API Endpoint)
-//  Version: 2.4.0 (Jurisdiction-Driven Special Designations)
+//  Version: 2.5.0 (Section Disclaimer Sources)
 // ======================================================================
 
 #region SECTION 0 — Headers & Environment
@@ -676,6 +676,8 @@ function resolveApplicableSignCode(
         'source'               => null,
         'citation'             => null,
         'signAllowanceDisclaimer' => $signAllowanceDisclaimer,
+        'signAllowanceDisclaimerSources' => [],
+        'signAllowanceDisclaimerSource'  => null,
         'status'               => 'research_required'
     ];
 
@@ -722,6 +724,10 @@ function resolveApplicableSignCode(
 
     if ($landUseClassification === null) {
         $defaultResult['source'] = buildSignCodeSource($signCodeConfig);
+        $defaultResult['signAllowanceDisclaimerSources'] = buildSignCodeDisclaimerSources($signCodeConfig);
+        $defaultResult['signAllowanceDisclaimerSource'] = formatDisclaimerSourceLabel(
+            $defaultResult['signAllowanceDisclaimerSources']
+        );
 
         return [
             'signCode'    => $defaultResult,
@@ -788,6 +794,10 @@ function resolveApplicableSignCode(
                 'detachedSigns'  => $detachedSigns['citation'] ?? null
             ],
             'signAllowanceDisclaimer' => $signAllowanceDisclaimer,
+            'signAllowanceDisclaimerSources' => buildSignCodeDisclaimerSources($signCodeConfig),
+            'signAllowanceDisclaimerSource'  => formatDisclaimerSourceLabel(
+                buildSignCodeDisclaimerSources($signCodeConfig)
+            ),
             'status'                => $status
         ],
         'diagnostics' => [
@@ -864,6 +874,176 @@ function buildSignCodeSource(array $signCodeConfig): array {
         'officialSourceUrl'  => $signCodeConfig['ordinance']['officialSourceUrl'] ?? null,
         'currentThroughDate' => $signCodeConfig['ordinance']['currentThroughDate'] ?? null,
         'schemaVersion'      => $signCodeConfig['schemaVersion'] ?? null
+    ];
+}
+
+function buildSignCodeDisclaimerSources(array $signCodeConfig): array {
+    $source = buildSignCodeSource($signCodeConfig);
+    $labelParts = array_values(array_filter([
+        trim((string)($source['authority'] ?? '')),
+        trim((string)($source['codeReference'] ?? ''))
+    ], static function (string $value): bool {
+        return $value !== '';
+    }));
+
+    $label = implode(' — ', $labelParts);
+    if ($label === '') {
+        $label = trim((string)($source['title'] ?? ''));
+    }
+
+    if ($label === '') {
+        return [];
+    }
+
+    return [[
+        'label' => $label,
+        'url'   => !empty($source['officialSourceUrl']) ? (string)$source['officialSourceUrl'] : null
+    ]];
+}
+
+function normalizeDisclaimerSources(array $sources): array {
+    $normalized = [];
+    $seen = [];
+
+    foreach ($sources as $source) {
+        if (is_string($source)) {
+            $label = trim($source);
+            $url = null;
+        } elseif (is_array($source)) {
+            $label = trim((string)($source['label'] ?? $source['source'] ?? $source['title'] ?? $source['name'] ?? ''));
+            $url = trim((string)($source['url'] ?? $source['officialSourceUrl'] ?? ''));
+            $url = $url !== '' ? $url : null;
+        } else {
+            continue;
+        }
+
+        if ($label === '') {
+            continue;
+        }
+
+        $key = strtolower($label . '|' . (string)$url);
+        if (isset($seen[$key])) {
+            continue;
+        }
+
+        $seen[$key] = true;
+        $normalized[] = [
+            'label' => $label,
+            'url'   => $url
+        ];
+    }
+
+    return $normalized;
+}
+
+function formatDisclaimerSourceLabel(array $sources): ?string {
+    $sources = normalizeDisclaimerSources($sources);
+    $labels = [];
+
+    foreach ($sources as $source) {
+        $label = trim((string)($source['label'] ?? ''));
+        if ($label !== '') {
+            $labels[] = $label;
+        }
+    }
+
+    return $labels !== [] ? implode('; ', $labels) : null;
+}
+
+function buildLocationDisclaimers(array $p): array {
+    $frontages = is_array($p['frontages'] ?? null) ? $p['frontages'] : [];
+    $measurementSources = [];
+
+    foreach ($frontages as $frontage) {
+        if (!is_array($frontage)) {
+            continue;
+        }
+
+        foreach (['parcelSource', 'streetSource'] as $sourceKey) {
+            $sourceName = trim((string)($frontage[$sourceKey] ?? ''));
+            if ($sourceName !== '') {
+                $measurementSources[] = ['label' => $sourceName, 'url' => null];
+            }
+        }
+    }
+
+    $measurementSources = normalizeDisclaimerSources($measurementSources);
+    $signCode = is_array($p['signCode'] ?? null) ? $p['signCode'] : [];
+    $signSources = normalizeDisclaimerSources(
+        is_array($signCode['signAllowanceDisclaimerSources'] ?? null)
+            ? $signCode['signAllowanceDisclaimerSources']
+            : []
+    );
+
+    $specialDesignations = is_array($p['specialDesignations'] ?? null)
+        ? $p['specialDesignations']
+        : [];
+    $specialSources = [];
+
+    foreach ($specialDesignations as $designationKey => $designation) {
+        if (in_array($designationKey, ['isComplete', 'disclaimers', 'errorMessage'], true) || !is_array($designation)) {
+            continue;
+        }
+
+        $sourceName = trim((string)($designation['source'] ?? ''));
+        if ($sourceName !== '') {
+            $specialSources[] = ['label' => $sourceName, 'url' => null];
+        }
+    }
+    $specialSources = normalizeDisclaimerSources($specialSources);
+
+    $configuredSpecialDisclaimers = is_array($specialDesignations['disclaimers'] ?? null)
+        ? $specialDesignations['disclaimers']
+        : [];
+    $normalizedSpecialDisclaimers = [];
+
+    foreach ($configuredSpecialDisclaimers as $disclaimer) {
+        if (is_string($disclaimer)) {
+            $normalizedSpecialDisclaimers[] = [
+                'text'        => $disclaimer,
+                'sources'     => $specialSources,
+                'sourceLabel' => formatDisclaimerSourceLabel($specialSources)
+            ];
+            continue;
+        }
+
+        if (!is_array($disclaimer)) {
+            continue;
+        }
+
+        $disclaimerSources = [];
+        if (isset($disclaimer['sources']) && is_array($disclaimer['sources'])) {
+            $disclaimerSources = normalizeDisclaimerSources($disclaimer['sources']);
+        } elseif (isset($disclaimer['source'])) {
+            $disclaimerSources = normalizeDisclaimerSources([$disclaimer['source']]);
+        }
+
+        if ($disclaimerSources === []) {
+            $disclaimerSources = $specialSources;
+        }
+
+        $normalizedDisclaimer = $disclaimer;
+        $normalizedDisclaimer['sources'] = $disclaimerSources;
+        $normalizedDisclaimer['sourceLabel'] = formatDisclaimerSourceLabel($disclaimerSources);
+        $normalizedSpecialDisclaimers[] = $normalizedDisclaimer;
+    }
+
+    return [
+        'measurement' => [
+            'text' => 'Frontage measurements and street classifications are GIS-derived and should be field-verified before final design, fabrication, or permit submittal.',
+            'sources' => $measurementSources,
+            'sourceLabel' => formatDisclaimerSourceLabel($measurementSources)
+        ],
+        'signAllowance' => [
+            'text' => $signCode['signAllowanceDisclaimer'] ?? null,
+            'sources' => $signSources,
+            'sourceLabel' => formatDisclaimerSourceLabel($signSources)
+        ],
+        'specialDesignations' => [
+            'items' => $normalizedSpecialDisclaimers,
+            'sources' => $specialSources,
+            'sourceLabel' => formatDisclaimerSourceLabel($specialSources)
+        ]
     ];
 }
 
@@ -956,6 +1136,7 @@ function formatLocationResponse(array $p): array {
         'specialDesignations' => is_array($p['specialDesignations'] ?? null)
             ? $p['specialDesignations']
             : null,
+        'disclaimers'        => buildLocationDisclaimers($p),
         'zoning'             => [
             'status'            => $isResolved ? 'resolved' : 'unmapped',
             'reason'            => null,
