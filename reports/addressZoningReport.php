@@ -383,6 +383,11 @@ $reportDisclaimers = is_array($location['disclaimers'] ?? null)
     ? $location['disclaimers']
     : [];
 
+$propertyOverviewDisclaimer = getReportDisclaimer(
+    $reportDisclaimers,
+    'propertyOverview'
+);
+
 $measurementDisclaimer = getReportDisclaimer(
     $reportDisclaimers,
     'measurement'
@@ -691,6 +696,15 @@ ob_start();
         <tr><th>County</th><td><?= displayReportValue($county) ?></td></tr>
     </table>
 
+    <?php if ($propertyOverviewDisclaimer !== []): ?>
+        <div class="callout-box">
+            <div class="callout-title"><?= escapeReportValue($propertyOverviewDisclaimer['label'] ?? 'Property Overview') ?></div>
+            <div class="callout-body">
+                <?= escapeReportValue($propertyOverviewDisclaimer['text'] ?? '') ?>
+                <br><strong>Source:</strong> <?= displayDisclaimerSource($propertyOverviewDisclaimer) ?>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>
 
 <div class="section-block">
