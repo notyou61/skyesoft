@@ -1028,7 +1028,19 @@ function buildLocationDisclaimers(array $p): array {
         $normalizedSpecialDisclaimers[] = $normalizedDisclaimer;
     }
 
+    $propertyOverviewSources = normalizeDisclaimerSources([
+        [
+            'label' => 'Maricopa County Assessor',
+            'url'   => null
+        ]
+    ]);
+
     return [
+        'propertyOverview' => [
+            'text' => 'Property information shown is based on the parcel and assessor records returned by the address-check workflow.',
+            'sources' => $propertyOverviewSources,
+            'sourceLabel' => formatDisclaimerSourceLabel($propertyOverviewSources)
+        ],
         'measurement' => [
             'text' => 'Frontage measurements and street classifications are GIS-derived and should be field-verified before final design, fabrication, or permit submittal.',
             'sources' => $measurementSources,
