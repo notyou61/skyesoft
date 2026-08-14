@@ -7,6 +7,8 @@ declare(strict_types=1);
 // Version: 1.1.0 (Jurisdiction-Driven Special Designations)
 // =============================================
 
+// #region Section 0 — Bootstrap & Core Report Helpers
+
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 ini_set('log_errors', '1');
@@ -118,6 +120,10 @@ function validationResult(bool $valid): string
 }
 
 
+// #endregion
+
+// #region Section 1 — Address Check Payload & Eligibility
+
 // Read address-check payload
 try {
     $payload = readAddressCheckPayload();
@@ -209,6 +215,10 @@ if (!$resolved) {
     );
 }
 
+
+// #endregion
+
+// #region Section 2 — Resolved Location & Jurisdiction Data
 
 // Prepare report values
 $fullAddress = trim((string)(
@@ -346,6 +356,10 @@ $activitySessionId = trim((string)(
 ));
 
 
+// #endregion
+
+// #region Section 3 — Report Output Options & Audit JSON
+
 // Prepare output options
 $safeFileToken = preg_replace(
     '/[^A-Za-z0-9_-]+/',
@@ -419,6 +433,10 @@ if ($jsonReviewMode) {
 
     exit;
 }
+
+// #endregion
+
+// #region Section 4 — PDF Branding, CSS, Header & Footer
 
 $logoPath = __DIR__ . '/../assets/images/christyLogo.png';
 $logoHtml = file_exists($logoPath)
@@ -548,6 +566,15 @@ $css = '
     .frontage-high { color: #a82f26; font-weight: bold; }
     .frontage-low { color: #17698d; font-weight: bold; }
     .map-legend { margin-top: 3px; color: #5a6571; font-size: 6.8pt; text-align: right; }
+    /* Zoning verification details */
+    .verification-details {
+        display: inline-block;
+        margin-left: 8px;
+        color: #444;
+        font-size: 7.8pt;
+        line-height: 1.3;
+        vertical-align: middle;
+    }
 ';
 
 $headerHtml = '
@@ -587,6 +614,10 @@ $footerHtml = '
     </tr>
 </table>';
 
+// #endregion
+
+// #region Section 5 — Report Body Sections
+
 ob_start();
 ?>
 <div class="section-block">
@@ -600,17 +631,6 @@ ob_start();
         <tr><th>County</th><td><?= displayReportValue($county) ?></td></tr>
     </table>
 
-    <div class="callout-box">
-        <div class="callout-title">Property Overview</div>
-        <div class="callout-body">
-            Property information shown above is based on the address, parcel, assessor, and jurisdiction records returned by the address-check workflow.
-            <br><strong>Source:</strong> <?= displayReportValue(
-                $parcelRecord['source']
-                    ?? $parcel['source']
-                    ?? null
-            ) ?>
-        </div>
-    </div>
 </div>
 
 <div class="section-block">
@@ -618,6 +638,16 @@ ob_start();
     <table class="data-table">
         <tr><th>Base Zoning District</th><td><strong><?= displayReportValue($zoningCode) ?></strong></td></tr>
         <tr><th>Description</th><td><?= displayReportValue($zoningDescription) ?></td></tr>
+        <tr>
+            <th>Verification</th>
+            <td>
+                <?= validationResult(!$requiresReview) ?>
+                <div class="verification-details">
+                    <strong>Source:</strong> <?= displayReportValue($zoningSource) ?><br>
+                    <strong>Verified:</strong> <?= displayReportValue($zoningVerifiedFormatted) ?>
+                </div>
+            </td>
+        </tr>
     </table>
     <div class="callout-box">
         <div class="callout-title">Resolved Result</div>
@@ -628,8 +658,6 @@ ob_start();
             <?= $requiresReview
                 ? 'flagged the base-zoning determination for manual review.'
                 : 'validated the base-zoning determination without requiring manual review.' ?>
-            <br>
-            <strong>Source:</strong> <?= displayReportValue($zoningSource) ?>
         </div>
     </div>
 </div>
@@ -748,15 +776,7 @@ ob_start();
             <?php if ($disclaimerText !== ''): ?>
                 <div class="callout-box">
                     <div class="callout-title"><?= escapeReportValue($disclaimerLabel) ?></div>
-                    <div class="callout-body">
-                        <?= escapeReportValue($disclaimerText) ?>
-                        <?php
-                        $disclaimerSource = $designationDisclaimer['source'] ?? null;
-                        ?>
-                        <?php if ($disclaimerSource !== null && trim((string)$disclaimerSource) !== ''): ?>
-                            <br><strong>Source:</strong> <?= escapeReportValue((string)$disclaimerSource) ?>
-                        <?php endif; ?>
-                    </div>
+                    <div class="callout-body"><?= escapeReportValue($disclaimerText) ?></div>
                 </div>
             <?php endif; ?>
         <?php endif; ?>
@@ -774,18 +794,7 @@ ob_start();
     </table>
     <div class="callout-box">
         <div class="callout-title">Sign Allowance Note</div>
-        <div class="callout-body">
-            <?= escapeReportValue($signAllowanceDisclaimer) ?>
-            <?php
-            $signAllowanceSource = $resolvedSignCode['source']
-                ?? $jurisdictionSource['source']['provider']
-                ?? $jurisdictionSource['provider']
-                ?? null;
-            ?>
-            <?php if ($signAllowanceSource !== null && trim((string)$signAllowanceSource) !== ''): ?>
-                <br><strong>Source:</strong> <?= escapeReportValue((string)$signAllowanceSource) ?>
-            <?php endif; ?>
-        </div>
+        <div class="callout-body"><?= escapeReportValue($signAllowanceDisclaimer) ?></div>
     </div>
     <div class="citation-subtext">
         Jurisdiction data: <?= displayReportValue(
@@ -829,6 +838,10 @@ ob_start();
 <?php
 $html = ob_get_clean();
 
+// #endregion
+
+// #region Section 6 — PDF Generation
+
 try {
     $mpdf = new \Mpdf\Mpdf([
         'mode' => 'utf-8',
@@ -852,6 +865,10 @@ try {
     http_response_code(500);
     echo 'Error generating PDF report: ' . escapeReportValue($e->getMessage());
 }
+
+// #endregion
+
+// #region Section 7 — Parcel Geometry & SVG Helpers
 
 /** Normalize a two-coordinate GIS point. */
 function normalizeParcelPoint(mixed $point): ?array
@@ -1291,6 +1308,10 @@ function buildParcelSvg(
     return $svg;
 }
 
+// #endregion
+
+// #region Section 8 — Jurisdiction Artifact & Special Designation Helpers
+
 /** Convert a resolved jurisdiction name to its authoritative-data folder slug. */
 function buildJurisdictionSlug(string $jurisdiction): string
 {
@@ -1446,6 +1467,10 @@ function buildDesignationStatus(array $designation): string
 
     return '<strong class="unverified">Not Available</strong> — Manual verification required.';
 }
+
+// #endregion
+
+// #region Section 9 — Sign-Code Research Helpers
 
 /** Convert a payload field name into a compact report label. */
 function formatSignCodeField(string $field): string
@@ -1674,3 +1699,5 @@ function buildDetachedAllowanceStatus(array $signCode): string
             : 'The applicable detached-sign standard was returned; review its structured details.'
     );
 }
+
+// #endregion
