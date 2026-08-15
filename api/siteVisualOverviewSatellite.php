@@ -26,6 +26,14 @@ header('Pragma: no-cache');
 header('Expires: 0');
 header('X-Content-Type-Options: nosniff');
 
+/**
+ * Return a controlled text error response and stop execution.
+ *
+ * @param string $statusLine HTTP response status line.
+ * @param string $message    Plain-text response message.
+ *
+ * @return void
+ */
 // Return a controlled text error
 function siteVisualSatelliteError($statusLine, $message)
 {
