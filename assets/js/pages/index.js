@@ -9112,6 +9112,7 @@ window.SkyIndex = {
                         </div>
                     </div>
 
+                    <!-- Location report actions -->
                     <div class="location-preview-card__footer">
                         <form
                             method="POST"
@@ -9131,12 +9132,34 @@ window.SkyIndex = {
                                 Zoning Report
                             </button>
                         </form>
+
+                        <button
+                            type="button"
+                            class="sky-btn sky-btn--outline"
+                            data-site-visual-overview-setup
+                            title="Set up a Site Visual Overview report"
+                        >
+                            Site Visual Overview
+                        </button>
                     </div>
                 </div>
             `;
 
             // Render location-preview card
             this.appendSystemHtml(cardHtml);
+
+            // Bind Site Visual Overview setup action (ephemeral report)
+            const setupButtons = document.querySelectorAll(
+                '[data-site-visual-overview-setup]'
+            );
+
+            const setupButton = setupButtons[
+                setupButtons.length - 1
+            ];
+
+            setupButton?.addEventListener('click', () => {
+                this.openSiteVisualOverviewSetup(data);
+            });
 
             console.log('[ADDRESS CHECK] Result:', data);
         } catch (err) {
@@ -9147,6 +9170,203 @@ window.SkyIndex = {
             );
         }
     },
+    // #endregion
+
+    // #region 📸 Site Visual Overview Setup
+
+    // Open ephemeral Site Visual Overview setup modal
+    openSiteVisualOverviewSetup(data) {
+        // Resolve address-check location
+        const location = data?.data?.location || null;
+
+        if (!location) {
+            this.appendSystemLine(
+                'Unable to open Site Visual Overview Setup: location data is unavailable.'
+            );
+            return;
+        }
+
+        // Close any existing setup modal
+        this.closeSiteVisualOverviewSetup();
+
+        // Retain transient response while modal is open
+        this.currentSiteVisualOverviewData = data;
+
+        const address =
+            location.locationResolvedAddress ||
+            location.locationAddressRaw ||
+            location.locationAddress ||
+            'Address unavailable';
+
+        // Create setup modal
+        const modal = document.createElement('div');
+
+        modal.id = 'siteVisualOverviewSetupModal';
+        modal.className = 'modal-backdrop';
+        modal.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:10000;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            background:rgba(0,0,0,0.58);
+        `;
+
+        modal.innerHTML = `
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="siteVisualOverviewSetupTitle"
+                style="
+                    width:100%;
+                    max-width:760px;
+                    max-height:85vh;
+                    background:#fff;
+                    border-radius:10px;
+                    box-shadow:0 18px 48px rgba(0,0,0,0.28);
+                    overflow:hidden;
+                    display:flex;
+                    flex-direction:column;
+                "
+            >
+                <!-- Modal header -->
+                <div
+                    style="
+                        display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        gap:12px;
+                        padding:16px 20px;
+                        border-bottom:1px solid #e8e8e8;
+                        background:#fafafa;
+                    "
+                >
+                    <div>
+                        <strong
+                            id="siteVisualOverviewSetupTitle"
+                            style="display:block; color:#222; font-size:1.15em;"
+                        >
+                            Site Visual Overview Setup
+                        </strong>
+
+                        <small
+                            style="
+                                display:block;
+                                margin-top:3px;
+                                color:#666;
+                                font-size:0.86em;
+                            "
+                        >
+                            📍 ${this.escapeHtml(address)}
+                        </small>
+                    </div>
+
+                    <button
+                        type="button"
+                        onclick="SkyIndex.closeSiteVisualOverviewSetup()"
+                        aria-label="Close Site Visual Overview Setup"
+                        style="
+                            border:0;
+                            background:transparent;
+                            color:#888;
+                            cursor:pointer;
+                            font-size:1.6rem;
+                            line-height:1;
+                            padding:0 4px;
+                        "
+                    >
+                        ×
+                    </button>
+                </div>
+
+                <!-- Modal body -->
+                <div
+                    style="
+                        padding:20px;
+                        overflow-y:auto;
+                        flex:1;
+                        color:#333;
+                        font-size:0.95em;
+                        line-height:1.5;
+                    "
+                >
+                    Site Visual Overview setup controls will appear here.
+                </div>
+
+                <!-- Modal footer -->
+                <div
+                    style="
+                        display:flex;
+                        justify-content:flex-end;
+                        gap:10px;
+                        padding:14px 20px;
+                        border-top:1px solid #eee;
+                        background:#fafafa;
+                    "
+                >
+                    <button
+                        type="button"
+                        onclick="SkyIndex.closeSiteVisualOverviewSetup()"
+                        style="
+                            padding:8px 18px;
+                            border:1px solid #ccc;
+                            border-radius:6px;
+                            background:#fff;
+                            color:#333;
+                            font-weight:500;
+                            cursor:pointer;
+                        "
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Close modal from backdrop
+        modal.addEventListener('click', event => {
+            if (event.target === modal) {
+                this.closeSiteVisualOverviewSetup();
+            }
+        });
+
+        document.body.appendChild(modal);
+
+        // Enable Escape-key closing
+        document.addEventListener(
+            'keydown',
+            this.handleSiteVisualOverviewSetupKeydown
+        );
+    },
+
+    // Close Site Visual Overview setup modal
+    closeSiteVisualOverviewSetup() {
+        const modal = document.getElementById(
+            'siteVisualOverviewSetupModal'
+        );
+
+        if (modal) {
+            modal.remove();
+        }
+
+        // Clear ephemeral modal data
+        this.currentSiteVisualOverviewData = null;
+
+        document.removeEventListener(
+            'keydown',
+            this.handleSiteVisualOverviewSetupKeydown
+        );
+    },
+
+    // Close Site Visual Overview setup modal with Escape
+    handleSiteVisualOverviewSetupKeydown(event) {
+        if (event.key === 'Escape') {
+            SkyIndex.closeSiteVisualOverviewSetup();
+        }
+    },
+
     // #endregion
 
     // #region 🔐 Login Logic (Server Auth)
