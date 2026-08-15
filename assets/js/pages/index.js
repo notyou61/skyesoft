@@ -9384,6 +9384,15 @@ window.SkyIndex = {
                 return;
             }
 
+            // Keep Preview on one page; allow workspaces to scroll
+            content.style.overflowY = tabName === 'preview'
+                ? 'hidden'
+                : 'auto';
+
+            content.style.padding = tabName === 'preview'
+                ? '14px 16px'
+                : '20px';
+
             // Render active workspace
             switch (tabName) {
                 case 'preview':
@@ -9414,9 +9423,10 @@ window.SkyIndex = {
             this.updateSiteVisualOverviewWorkspaceStatus();
         },
 
-        // Render report-image thumbnail dashboard
+        // Render compact report-image thumbnail dashboard
         renderSiteVisualOverviewPreviewTab() {
-            const workspace = this.currentSiteVisualOverviewWorkspace;
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
 
             if (!workspace) {
                 return '';
@@ -9425,60 +9435,110 @@ window.SkyIndex = {
             const sections = workspace.sections;
             const streetCards = [];
 
-            // Build requested Street View cards
-            for (let index = 0; index < sections.streetViews.requestedCount; index++) {
-                const selection = sections.streetViews.selections[index] || {};
+            // Build requested Street View thumbnail cards
+            for (
+                let index = 0;
+                index < sections.streetViews.requestedCount;
+                index++
+            ) {
+                const selection =
+                    sections.streetViews.selections[index] || {};
 
-                streetCards.push(this.renderSiteVisualOverviewThumbnailCard({
-                    title: `Street View ${index + 1}`,
-                    status: selection.status || 'notStarted',
-                    preview: selection.preview || null,
-                    tabName: 'streetViews',
-                    detail: selection.viewPurpose || 'Select the desired ground-level view.'
-                }));
+                streetCards.push(
+                    this.renderSiteVisualOverviewThumbnailCard({
+                        title: `Street View ${index + 1}`,
+                        status:
+                            selection.status ||
+                            'notStarted',
+                        preview:
+                            selection.preview ||
+                            null,
+                        detail:
+                            selection.viewPurpose ||
+                            'Selected ground-level property view.'
+                    })
+                );
             }
 
             return `
                 <!-- Preview heading -->
-                <div style="margin-bottom:18px;">
-                    <h3 style="margin:0 0 5px; color:#222; font-size:1.05rem;">
+                <div
+                    style="
+                        margin-bottom:10px;
+                    "
+                >
+                    <h3
+                        style="
+                            margin:0 0 3px;
+                            color:#222;
+                            font-size:1rem;
+                            line-height:1.2;
+                        "
+                    >
                         Report Image Preview
                     </h3>
-                    <p style="margin:0; color:#666;">
-                        Review each required report image as it is prepared in the workspace tabs.
+
+                    <p
+                        style="
+                            margin:0;
+                            color:#666;
+                            font-size:0.76rem;
+                            line-height:1.2;
+                            white-space:nowrap;
+                            overflow:hidden;
+                            text-overflow:ellipsis;
+                        "
+                    >
+                        Review the required images prepared in the
+                        Satellite, Parcel, Street Views, and Context
+                        Maps workspaces.
                     </p>
                 </div>
 
                 <!-- Required image thumbnails -->
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:16px;">
+                <div
+                    style="
+                        display:grid;
+                        grid-template-columns:
+                            repeat(auto-fit, minmax(220px, 1fr));
+                        gap:10px;
+                        align-items:start;
+                    "
+                >
                     ${this.renderSiteVisualOverviewThumbnailCard({
                         title: 'Satellite View',
                         status: sections.satellite.status,
                         preview: sections.satellite.preview,
-                        tabName: 'satellite',
                         detail: 'Aerial view of the subject property.'
                     })}
+
                     ${this.renderSiteVisualOverviewThumbnailCard({
                         title: 'Parcel Map',
                         status: sections.parcel.status,
                         preview: sections.parcel.preview,
-                        tabName: 'parcel',
                         detail: 'Subject parcel and boundary context.'
                     })}
+
                     ${streetCards.join('')}
+
                     ${this.renderSiteVisualOverviewThumbnailCard({
                         title: 'Immediate Vicinity Map',
-                        status: sections.immediateVicinity.status,
-                        preview: sections.immediateVicinity.preview,
-                        tabName: 'contextMaps',
-                        detail: 'Nearby streets, intersections, and development.'
+                        status:
+                            sections.immediateVicinity.status,
+                        preview:
+                            sections.immediateVicinity.preview,
+                        detail:
+                            'Nearby streets, intersections, and development.'
                     })}
+
                     ${this.renderSiteVisualOverviewThumbnailCard({
                         title: 'Extended Context Map',
-                        status: sections.extendedContext.status,
-                        preview: sections.extendedContext.preview,
-                        tabName: 'contextMaps',
-                        detail: 'Wider geographic and transportation context.'
+                        status:
+                            sections.extendedContext.status,
+                        preview:
+                            sections.extendedContext.preview,
+                        detail:
+                            'Wider geographic and transportation context.'
                     })}
                 </div>
             `;
@@ -9488,42 +9548,115 @@ window.SkyIndex = {
         renderSiteVisualOverviewThumbnailCard(config) {
             const status = config.status || 'notStarted';
             const isReady = status === 'ready';
-            const statusLabel = this.formatSiteVisualOverviewStatus(status);
+
+            const statusLabel =
+                this.formatSiteVisualOverviewStatus(status);
+
             const statusColor = isReady
                 ? '#166534'
-                : status === 'error' ? '#b91c1c' : '#64748b';
+                : status === 'error'
+                    ? '#b91c1c'
+                    : '#64748b';
+
             const statusBackground = isReady
                 ? '#dcfce7'
-                : status === 'error' ? '#fee2e2' : '#f1f5f9';
+                : status === 'error'
+                    ? '#fee2e2'
+                    : '#f1f5f9';
 
             const previewHtml = config.preview
-                ? `<img src="${this.escapeHtml(config.preview)}"
+                ? `
+                    <img
+                        src="${this.escapeHtml(config.preview)}"
                         alt="${this.escapeHtml(config.title)} preview"
-                        style="display:block; width:100%; height:155px; object-fit:cover;">`
-                : `<div style="height:155px; display:flex; align-items:center; justify-content:center;
-                        padding:20px; background:#f8fafc; color:#94a3b8; text-align:center;">
+                        style="
+                            display:block;
+                            width:100%;
+                            height:112px;
+                            object-fit:cover;
+                        "
+                    >
+                `
+                : `
+                    <div
+                        style="
+                            height:112px;
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            padding:12px;
+                            background:#f8fafc;
+                            color:#94a3b8;
+                            font-size:0.76rem;
+                            text-align:center;
+                        "
+                    >
                         Preview not prepared
-                    </div>`;
+                    </div>
+                `;
 
             return `
-                <article style="overflow:hidden; border:1px solid #d8dee6; border-radius:8px;
-                    background:#fff; box-shadow:0 2px 7px rgba(15,23,42,0.06);">
+                <article
+                    style="
+                        overflow:hidden;
+                        border:1px solid #d8dee6;
+                        border-radius:8px;
+                        background:#fff;
+                        box-shadow:0 2px 7px rgba(15,23,42,0.06);
+                    "
+                >
                     ${previewHtml}
-                    <div style="padding:13px 14px 14px;">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-                            <strong style="color:#222;">${this.escapeHtml(config.title)}</strong>
-                            <span style="flex:0 0 auto; padding:3px 7px; border-radius:999px;
-                                background:${statusBackground}; color:${statusColor};
-                                font-size:0.72rem; font-weight:700;">
+
+                    <div style="padding:8px 10px 9px;">
+                        <div
+                            style="
+                                display:flex;
+                                justify-content:space-between;
+                                align-items:center;
+                                gap:8px;
+                            "
+                        >
+                            <strong
+                                style="
+                                    color:#222;
+                                    font-size:0.86rem;
+                                    line-height:1.2;
+                                "
+                            >
+                                ${this.escapeHtml(config.title)}
+                            </strong>
+
+                            <span
+                                style="
+                                    flex:0 0 auto;
+                                    padding:2px 6px;
+                                    border-radius:999px;
+                                    background:${statusBackground};
+                                    color:${statusColor};
+                                    font-size:0.65rem;
+                                    font-weight:700;
+                                "
+                            >
                                 ${this.escapeHtml(statusLabel)}
                             </span>
                         </div>
-                    <p style="min-height:38px; margin:7px 0 0; color:#64748b;
-                        font-size:0.82rem; line-height:1.4;">
-                        ${this.escapeHtml(config.detail || '')}
-                    </p>
-                </div>
-            </article>
+
+                        <p
+                            title="${this.escapeHtml(config.detail || '')}"
+                            style="
+                                margin:4px 0 0;
+                                color:#64748b;
+                                font-size:0.68rem;
+                                line-height:1.15;
+                                white-space:nowrap;
+                                overflow:hidden;
+                                text-overflow:ellipsis;
+                            "
+                        >
+                            ${this.escapeHtml(config.detail || '')}
+                        </p>
+                    </div>
+                </article>
             `;
         },
 
