@@ -14,7 +14,13 @@
  */
 
 // Load Skyesoft environment
-require_once __DIR__ . '/../utils/envLoader.php';
+$envLoaderPath = __DIR__ . '/utils/envLoader.php';
+
+if (!file_exists($envLoaderPath)) {
+    die('Environment loader missing: ' . $envLoaderPath);
+}
+
+require_once $envLoaderPath;
 
 if (function_exists('skyesoftLoadEnv')) {
     skyesoftLoadEnv();
