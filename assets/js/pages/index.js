@@ -9174,7 +9174,7 @@ window.SkyIndex = {
 
     // #region 📸 Site Visual Overview Setup
 
-    // Open ephemeral Site Visual Overview setup modal
+    // Open ephemeral Site Visual Overview workspace
     openSiteVisualOverviewSetup(data) {
         // Resolve address-check location
         const location = data?.data?.location || null;
@@ -9186,19 +9186,65 @@ window.SkyIndex = {
             return;
         }
 
-        // Close any existing setup modal
+        // Close any existing workspace
         this.closeSiteVisualOverviewSetup();
 
-        // Retain transient response while modal is open
-        this.currentSiteVisualOverviewData = data;
+        // Initialize ephemeral workspace state
+        this.currentSiteVisualOverviewWorkspace = {
+            sourceData: data,
+            activeTab: 'setup',
 
+            sections: {
+                satellite: {
+                    included: true,
+                    status: 'notStarted',
+                    preview: null,
+                    settings: {}
+                },
+
+                parcel: {
+                    included: true,
+                    status: 'notStarted',
+                    preview: null,
+                    settings: {}
+                },
+
+                streetViews: {
+                    included: true,
+                    requestedCount: 2,
+                    status: 'notStarted',
+                    selections: []
+                },
+
+                immediateVicinity: {
+                    included: true,
+                    status: 'notStarted',
+                    preview: null,
+                    settings: {}
+                },
+
+                extendedContext: {
+                    included: true,
+                    status: 'notStarted',
+                    preview: null,
+                    settings: {}
+                }
+            },
+
+            reportContent: {
+                visualObservations: true,
+                sourceNotes: true
+            }
+        };
+
+        // Resolve display address
         const address =
             location.locationResolvedAddress ||
             location.locationAddressRaw ||
             location.locationAddress ||
             'Address unavailable';
 
-        // Create setup modal
+        // Create workspace modal
         const modal = document.createElement('div');
 
         modal.id = 'siteVisualOverviewSetupModal';
@@ -9220,9 +9266,10 @@ window.SkyIndex = {
                 aria-modal="true"
                 aria-labelledby="siteVisualOverviewSetupTitle"
                 style="
-                    width:100%;
-                    max-width:760px;
-                    max-height:85vh;
+                    width:95%;
+                    max-width:1150px;
+                    height:85vh;
+                    max-height:820px;
                     background:#fff;
                     border-radius:10px;
                     box-shadow:0 18px 48px rgba(0,0,0,0.28);
@@ -9246,7 +9293,11 @@ window.SkyIndex = {
                     <div>
                         <strong
                             id="siteVisualOverviewSetupTitle"
-                            style="display:block; color:#222; font-size:1.15em;"
+                            style="
+                                display:block;
+                                color:#222;
+                                font-size:1.15em;
+                            "
                         >
                             Site Visual Overview Setup
                         </strong>
@@ -9281,8 +9332,54 @@ window.SkyIndex = {
                     </button>
                 </div>
 
-                <!-- Modal body -->
+                <!-- Workspace tabs -->
                 <div
+                    role="tablist"
+                    aria-label="Site Visual Overview sections"
+                    style="
+                        display:flex;
+                        gap:4px;
+                        padding:10px 14px 0;
+                        border-bottom:1px solid #ddd;
+                        background:#f8f9fa;
+                        overflow-x:auto;
+                    "
+                >
+                    ${this.renderSiteVisualOverviewTabButton(
+                        'setup',
+                        'Setup',
+                        true
+                    )}
+
+                    ${this.renderSiteVisualOverviewTabButton(
+                        'satellite',
+                        'Satellite'
+                    )}
+
+                    ${this.renderSiteVisualOverviewTabButton(
+                        'parcel',
+                        'Parcel'
+                    )}
+
+                    ${this.renderSiteVisualOverviewTabButton(
+                        'streetViews',
+                        'Street Views'
+                    )}
+
+                    ${this.renderSiteVisualOverviewTabButton(
+                        'contextMaps',
+                        'Context Maps'
+                    )}
+
+                    ${this.renderSiteVisualOverviewTabButton(
+                        'reportPreview',
+                        'Report Preview'
+                    )}
+                </div>
+
+                <!-- Workspace tab content -->
+                <div
+                    id="siteVisualOverviewTabContent"
                     style="
                         padding:20px;
                         overflow-y:auto;
@@ -9290,37 +9387,52 @@ window.SkyIndex = {
                         color:#333;
                         font-size:0.95em;
                         line-height:1.5;
+                        background:#fff;
                     "
-                >
-                    Site Visual Overview setup controls will appear here.
-                </div>
+                ></div>
 
                 <!-- Modal footer -->
                 <div
                     style="
                         display:flex;
-                        justify-content:flex-end;
+                        justify-content:space-between;
+                        align-items:center;
                         gap:10px;
                         padding:14px 20px;
                         border-top:1px solid #eee;
                         background:#fafafa;
                     "
                 >
-                    <button
-                        type="button"
-                        onclick="SkyIndex.closeSiteVisualOverviewSetup()"
+                    <small
+                        id="siteVisualOverviewWorkspaceStatus"
+                        style="color:#666;"
+                    >
+                        Configure the report elements to continue.
+                    </small>
+
+                    <div
                         style="
-                            padding:8px 18px;
-                            border:1px solid #ccc;
-                            border-radius:6px;
-                            background:#fff;
-                            color:#333;
-                            font-weight:500;
-                            cursor:pointer;
+                            display:flex;
+                            justify-content:flex-end;
+                            gap:10px;
                         "
                     >
-                        Cancel
-                    </button>
+                        <button
+                            type="button"
+                            onclick="SkyIndex.closeSiteVisualOverviewSetup()"
+                            style="
+                                padding:8px 18px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                                background:#fff;
+                                color:#333;
+                                font-weight:500;
+                                cursor:pointer;
+                            "
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -9334,6 +9446,9 @@ window.SkyIndex = {
 
         document.body.appendChild(modal);
 
+        // Render initial Setup tab
+        this.showSiteVisualOverviewTab('setup');
+
         // Enable Escape-key closing
         document.addEventListener(
             'keydown',
@@ -9341,7 +9456,659 @@ window.SkyIndex = {
         );
     },
 
-    // Close Site Visual Overview setup modal
+    // Render one workspace tab button
+    renderSiteVisualOverviewTabButton(
+        tabName,
+        tabLabel,
+        isActive = false
+    ) {
+        return `
+            <button
+                type="button"
+                role="tab"
+                data-site-visual-tab="${tabName}"
+                aria-selected="${isActive ? 'true' : 'false'}"
+                onclick="SkyIndex.showSiteVisualOverviewTab('${tabName}')"
+                style="
+                    flex:0 0 auto;
+                    padding:9px 14px;
+                    border:1px solid ${isActive ? '#0d9488' : '#d1d5db'};
+                    border-bottom:${isActive ? '1px solid #fff' : '1px solid #d1d5db'};
+                    border-radius:6px 6px 0 0;
+                    background:${isActive ? '#fff' : '#f3f4f6'};
+                    color:${isActive ? '#0f766e' : '#4b5563'};
+                    font-weight:${isActive ? '700' : '500'};
+                    cursor:pointer;
+                    white-space:nowrap;
+                    margin-bottom:-1px;
+                "
+            >
+                ${tabLabel}
+            </button>
+        `;
+    },
+
+    // Switch the active workspace tab
+    showSiteVisualOverviewTab(tabName) {
+        const workspace =
+            this.currentSiteVisualOverviewWorkspace;
+
+        const validTabs = [
+            'setup',
+            'satellite',
+            'parcel',
+            'streetViews',
+            'contextMaps',
+            'reportPreview'
+        ];
+
+        if (
+            !workspace ||
+            !validTabs.includes(tabName)
+        ) {
+            return;
+        }
+
+        workspace.activeTab = tabName;
+
+        // Update tab presentation
+        document
+            .querySelectorAll('[data-site-visual-tab]')
+            .forEach(button => {
+                const isActive =
+                    button.dataset.siteVisualTab === tabName;
+
+                button.setAttribute(
+                    'aria-selected',
+                    isActive ? 'true' : 'false'
+                );
+
+                button.style.background =
+                    isActive ? '#fff' : '#f3f4f6';
+
+                button.style.color =
+                    isActive ? '#0f766e' : '#4b5563';
+
+                button.style.borderColor =
+                    isActive ? '#0d9488' : '#d1d5db';
+
+                button.style.borderBottom =
+                    isActive
+                        ? '1px solid #fff'
+                        : '1px solid #d1d5db';
+
+                button.style.fontWeight =
+                    isActive ? '700' : '500';
+            });
+
+        // Render selected tab
+        const content = document.getElementById(
+            'siteVisualOverviewTabContent'
+        );
+
+        if (!content) {
+            return;
+        }
+
+        switch (tabName) {
+            case 'setup':
+                content.innerHTML =
+                    this.renderSiteVisualOverviewSetupTab();
+                break;
+
+            case 'satellite':
+                content.innerHTML =
+                    this.renderSiteVisualOverviewPreviewPlaceholder(
+                        'Satellite View',
+                        'satellite',
+                        'The satellite image preview and zoom controls will appear here.'
+                    );
+                break;
+
+            case 'parcel':
+                content.innerHTML =
+                    this.renderSiteVisualOverviewPreviewPlaceholder(
+                        'Parcel Map',
+                        'parcel',
+                        'The parcel boundary and map preview will appear here.'
+                    );
+                break;
+
+            case 'streetViews':
+                content.innerHTML =
+                    this.renderSiteVisualOverviewPreviewPlaceholder(
+                        'Street Views',
+                        'streetViews',
+                        'The interactive Street View selection workspace will appear here.'
+                    );
+                break;
+
+            case 'contextMaps':
+                content.innerHTML =
+                    this.renderSiteVisualOverviewContextMapsTab();
+                break;
+
+            case 'reportPreview':
+                content.innerHTML =
+                    this.renderSiteVisualOverviewReportPreviewTab();
+                break;
+        }
+    },
+
+    // Render Setup tab
+    renderSiteVisualOverviewSetupTab() {
+        const workspace =
+            this.currentSiteVisualOverviewWorkspace;
+
+        if (!workspace) {
+            return '';
+        }
+
+        const sections = workspace.sections;
+        const reportContent = workspace.reportContent;
+
+        return `
+            <!-- Setup introduction -->
+            <div style="margin-bottom:18px;">
+                <h3
+                    style="
+                        margin:0 0 5px;
+                        color:#222;
+                        font-size:1.05rem;
+                    "
+                >
+                    Select Report Elements
+                </h3>
+
+                <p style="margin:0; color:#666;">
+                    Choose the imagery and supporting information to
+                    include in the temporary Site Visual Overview.
+                </p>
+            </div>
+
+            <!-- Report imagery -->
+            <fieldset
+                style="
+                    margin:0 0 18px;
+                    padding:14px 16px;
+                    border:1px solid #d1d5db;
+                    border-radius:8px;
+                "
+            >
+                <legend
+                    style="
+                        padding:0 7px;
+                        color:#222;
+                        font-weight:700;
+                    "
+                >
+                    Report Imagery
+                </legend>
+
+                ${this.renderSiteVisualOverviewSetupCheckbox(
+                    'satellite',
+                    'Satellite View',
+                    sections.satellite.included
+                )}
+
+                ${this.renderSiteVisualOverviewSetupCheckbox(
+                    'parcel',
+                    'Parcel Map',
+                    sections.parcel.included
+                )}
+
+                ${this.renderSiteVisualOverviewSetupCheckbox(
+                    'streetViews',
+                    'Street Views',
+                    sections.streetViews.included
+                )}
+
+                ${this.renderSiteVisualOverviewSetupCheckbox(
+                    'immediateVicinity',
+                    'Immediate Vicinity Map',
+                    sections.immediateVicinity.included
+                )}
+
+                ${this.renderSiteVisualOverviewSetupCheckbox(
+                    'extendedContext',
+                    'Extended Context Map',
+                    sections.extendedContext.included
+                )}
+            </fieldset>
+
+            <!-- Street View settings -->
+            <fieldset
+                style="
+                    margin:0 0 18px;
+                    padding:14px 16px;
+                    border:1px solid #d1d5db;
+                    border-radius:8px;
+                "
+            >
+                <legend
+                    style="
+                        padding:0 7px;
+                        color:#222;
+                        font-weight:700;
+                    "
+                >
+                    Street View Settings
+                </legend>
+
+                <label
+                    style="
+                        display:flex;
+                        align-items:center;
+                        gap:12px;
+                    "
+                >
+                    <span>Number of Street View images</span>
+
+                    <select
+                        onchange="
+                            SkyIndex.updateSiteVisualOverviewStreetViewCount(
+                                this.value
+                            )
+                        "
+                        ${sections.streetViews.included ? '' : 'disabled'}
+                        style="
+                            padding:6px 9px;
+                            border:1px solid #cbd5e1;
+                            border-radius:5px;
+                            background:#fff;
+                        "
+                    >
+                        <option
+                            value="1"
+                            ${sections.streetViews.requestedCount === 1
+                                ? 'selected'
+                                : ''}
+                        >
+                            1
+                        </option>
+
+                        <option
+                            value="2"
+                            ${sections.streetViews.requestedCount === 2
+                                ? 'selected'
+                                : ''}
+                        >
+                            2 — Recommended
+                        </option>
+
+                        <option
+                            value="3"
+                            ${sections.streetViews.requestedCount === 3
+                                ? 'selected'
+                                : ''}
+                        >
+                            3
+                        </option>
+                    </select>
+                </label>
+            </fieldset>
+
+            <!-- Report content -->
+            <fieldset
+                style="
+                    margin:0;
+                    padding:14px 16px;
+                    border:1px solid #d1d5db;
+                    border-radius:8px;
+                "
+            >
+                <legend
+                    style="
+                        padding:0 7px;
+                        color:#222;
+                        font-weight:700;
+                    "
+                >
+                    Report Content
+                </legend>
+
+                <label
+                    style="
+                        display:flex;
+                        align-items:center;
+                        gap:9px;
+                        margin:7px 0;
+                        cursor:pointer;
+                    "
+                >
+                    <input
+                        type="checkbox"
+                        ${reportContent.visualObservations
+                            ? 'checked'
+                            : ''}
+                        onchange="
+                            SkyIndex.updateSiteVisualOverviewReportContent(
+                                'visualObservations',
+                                this.checked
+                            )
+                        "
+                    >
+
+                    Include visual site observations
+                </label>
+
+                <label
+                    style="
+                        display:flex;
+                        align-items:center;
+                        gap:9px;
+                        margin:7px 0;
+                        cursor:pointer;
+                    "
+                >
+                    <input
+                        type="checkbox"
+                        ${reportContent.sourceNotes
+                            ? 'checked'
+                            : ''}
+                        onchange="
+                            SkyIndex.updateSiteVisualOverviewReportContent(
+                                'sourceNotes',
+                                this.checked
+                            )
+                        "
+                    >
+
+                    Include imagery sources and qualifications
+                </label>
+            </fieldset>
+        `;
+    },
+
+    // Render one Setup checkbox
+    renderSiteVisualOverviewSetupCheckbox(
+        sectionName,
+        sectionLabel,
+        isChecked
+    ) {
+        return `
+            <label
+                style="
+                    display:flex;
+                    align-items:center;
+                    gap:9px;
+                    margin:8px 0;
+                    cursor:pointer;
+                "
+            >
+                <input
+                    type="checkbox"
+                    ${isChecked ? 'checked' : ''}
+                    onchange="
+                        SkyIndex.updateSiteVisualOverviewSection(
+                            '${sectionName}',
+                            this.checked
+                        )
+                    "
+                >
+
+                ${sectionLabel}
+            </label>
+        `;
+    },
+
+    // Update an included report section
+    updateSiteVisualOverviewSection(
+        sectionName,
+        isIncluded
+    ) {
+        const workspace =
+            this.currentSiteVisualOverviewWorkspace;
+
+        const section =
+            workspace?.sections?.[sectionName];
+
+        if (!section) {
+            return;
+        }
+
+        section.included = Boolean(isIncluded);
+
+        if (!section.included) {
+            section.status = 'excluded';
+        } else if (section.status === 'excluded') {
+            section.status = 'notStarted';
+        }
+
+        // Refresh Setup controls
+        this.showSiteVisualOverviewTab('setup');
+    },
+
+    // Update requested Street View count
+    updateSiteVisualOverviewStreetViewCount(value) {
+        const workspace =
+            this.currentSiteVisualOverviewWorkspace;
+
+        if (!workspace) {
+            return;
+        }
+
+        const requestedCount = Number(value);
+
+        if (![1, 2, 3].includes(requestedCount)) {
+            return;
+        }
+
+        workspace.sections.streetViews.requestedCount =
+            requestedCount;
+    },
+
+    // Update optional report content
+    updateSiteVisualOverviewReportContent(
+        propertyName,
+        value
+    ) {
+        const workspace =
+            this.currentSiteVisualOverviewWorkspace;
+
+        if (
+            !workspace ||
+            !Object.prototype.hasOwnProperty.call(
+                workspace.reportContent,
+                propertyName
+            )
+        ) {
+            return;
+        }
+
+        workspace.reportContent[propertyName] =
+            Boolean(value);
+    },
+
+    // Render a preview placeholder
+    renderSiteVisualOverviewPreviewPlaceholder(
+        title,
+        sectionName,
+        message
+    ) {
+        const workspace =
+            this.currentSiteVisualOverviewWorkspace;
+
+        const section =
+            workspace?.sections?.[sectionName];
+
+        const status =
+            section?.status || 'notStarted';
+
+        return `
+            <div>
+                <div
+                    style="
+                        display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        gap:12px;
+                        margin-bottom:16px;
+                    "
+                >
+                    <div>
+                        <h3
+                            style="
+                                margin:0 0 4px;
+                                color:#222;
+                                font-size:1.05rem;
+                            "
+                        >
+                            ${title}
+                        </h3>
+
+                        <small style="color:#666;">
+                            Preview and approve this report image.
+                        </small>
+                    </div>
+
+                    <span
+                        style="
+                            padding:4px 9px;
+                            border:1px solid #d1d5db;
+                            border-radius:4px;
+                            background:#f8f9fa;
+                            color:#555;
+                            font-size:0.78rem;
+                            font-weight:600;
+                        "
+                    >
+                        ${this.escapeHtml(status)}
+                    </span>
+                </div>
+
+                <div
+                    style="
+                        min-height:360px;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        padding:30px;
+                        border:1px dashed #cbd5e1;
+                        border-radius:8px;
+                        background:#f8fafc;
+                        color:#64748b;
+                        text-align:center;
+                    "
+                >
+                    ${this.escapeHtml(message)}
+                </div>
+            </div>
+        `;
+    },
+
+    // Render Context Maps tab
+    renderSiteVisualOverviewContextMapsTab() {
+        return `
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:
+                        repeat(auto-fit, minmax(320px, 1fr));
+                    gap:18px;
+                "
+            >
+                <section>
+                    <h3
+                        style="
+                            margin:0 0 10px;
+                            color:#222;
+                            font-size:1.05rem;
+                        "
+                    >
+                        Immediate Vicinity Map
+                    </h3>
+
+                    <div
+                        style="
+                            min-height:300px;
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            padding:25px;
+                            border:1px dashed #cbd5e1;
+                            border-radius:8px;
+                            background:#f8fafc;
+                            color:#64748b;
+                            text-align:center;
+                        "
+                    >
+                        Immediate vicinity preview will appear here.
+                    </div>
+                </section>
+
+                <section>
+                    <h3
+                        style="
+                            margin:0 0 10px;
+                            color:#222;
+                            font-size:1.05rem;
+                        "
+                    >
+                        Extended Context Map
+                    </h3>
+
+                    <div
+                        style="
+                            min-height:300px;
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            padding:25px;
+                            border:1px dashed #cbd5e1;
+                            border-radius:8px;
+                            background:#f8fafc;
+                            color:#64748b;
+                            text-align:center;
+                        "
+                    >
+                        Extended context preview will appear here.
+                    </div>
+                </section>
+            </div>
+        `;
+    },
+
+    // Render final report-preview tab
+    renderSiteVisualOverviewReportPreviewTab() {
+        return `
+            <div>
+                <h3
+                    style="
+                        margin:0 0 5px;
+                        color:#222;
+                        font-size:1.05rem;
+                    "
+                >
+                    Report Preview
+                </h3>
+
+                <p style="margin:0 0 18px; color:#666;">
+                    The selected report images will be assembled here
+                    for final review before the temporary report is created.
+                </p>
+
+                <div
+                    style="
+                        min-height:400px;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        padding:30px;
+                        border:1px dashed #cbd5e1;
+                        border-radius:8px;
+                        background:#f8fafc;
+                        color:#64748b;
+                        text-align:center;
+                    "
+                >
+                    Image previews have not yet been prepared.
+                </div>
+            </div>
+        `;
+    },
+
+    // Close Site Visual Overview workspace
     closeSiteVisualOverviewSetup() {
         const modal = document.getElementById(
             'siteVisualOverviewSetupModal'
@@ -9351,8 +10118,8 @@ window.SkyIndex = {
             modal.remove();
         }
 
-        // Clear ephemeral modal data
-        this.currentSiteVisualOverviewData = null;
+        // Clear all ephemeral workspace data
+        this.currentSiteVisualOverviewWorkspace = null;
 
         document.removeEventListener(
             'keydown',
@@ -9360,7 +10127,7 @@ window.SkyIndex = {
         );
     },
 
-    // Close Site Visual Overview setup modal with Escape
+    // Close Site Visual Overview workspace with Escape
     handleSiteVisualOverviewSetupKeydown(event) {
         if (event.key === 'Escape') {
             SkyIndex.closeSiteVisualOverviewSetup();
