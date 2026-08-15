@@ -9205,7 +9205,7 @@ window.SkyIndex = {
                         settings: {}
                     },
                     streetViews: {
-                        requestedCount: 2,
+                        requestedCount: 1,
                         status: 'notStarted',
                         selections: []
                     },
@@ -9276,8 +9276,8 @@ window.SkyIndex = {
 
                     <!-- Workspace tabs -->
                     <div role="tablist" aria-label="Site Visual Overview workspaces"
-                        style="display:flex; gap:4px; padding:10px 14px 0; border-bottom:1px solid #ddd;
-                            background:#f8f9fa; overflow-x:auto;">
+                        style="display:flex; flex-wrap:wrap; gap:4px; padding:10px 14px 0;
+                            border-bottom:1px solid #ddd; background:#f8f9fa; overflow:visible;">
                         ${this.renderSiteVisualOverviewTabButton('preview', 'Preview', true)}
                         ${this.renderSiteVisualOverviewTabButton('satellite', 'Satellite')}
                         ${this.renderSiteVisualOverviewTabButton('parcel', 'Parcel')}
@@ -9445,7 +9445,7 @@ window.SkyIndex = {
                         Report Image Preview
                     </h3>
                     <p style="margin:0; color:#666;">
-                        Review each required image. Open its workspace to obtain or adjust it.
+                        Review each required report image as it is prepared in the workspace tabs.
                     </p>
                 </div>
 
@@ -9518,19 +9518,12 @@ window.SkyIndex = {
                                 ${this.escapeHtml(statusLabel)}
                             </span>
                         </div>
-                        <p style="min-height:38px; margin:7px 0 12px; color:#64748b;
-                            font-size:0.82rem; line-height:1.4;">
-                            ${this.escapeHtml(config.detail || '')}
-                        </p>
-                        <button type="button"
-                            onclick="SkyIndex.showSiteVisualOverviewTab('${config.tabName}')"
-                            style="width:100%; padding:7px 12px; border:1px solid #0d9488;
-                                border-radius:5px; background:${isReady ? '#fff' : '#0d9488'};
-                                color:${isReady ? '#0f766e' : '#fff'}; font-weight:600; cursor:pointer;">
-                            ${isReady ? 'Edit' : 'Open Workspace'}
-                        </button>
-                    </div>
-                </article>
+                    <p style="min-height:38px; margin:7px 0 0; color:#64748b;
+                        font-size:0.82rem; line-height:1.4;">
+                        ${this.escapeHtml(config.detail || '')}
+                    </p>
+                </div>
+            </article>
             `;
         },
 
@@ -9595,18 +9588,32 @@ window.SkyIndex = {
                             <h3 style="margin:0 0 4px; color:#222; font-size:1.05rem;">Street Views</h3>
                             <small style="color:#666;">Select the required ground-level report images.</small>
                         </div>
-                        <label style="display:flex; align-items:center; gap:9px; color:#374151;">
-                            <span>Number of images</span>
-                            <select onchange="SkyIndex.updateSiteVisualOverviewStreetViewCount(this.value)"
-                                style="padding:6px 9px; border:1px solid #cbd5e1;
-                                    border-radius:5px; background:#fff;">
-                                <option value="1" ${streetViews.requestedCount === 1 ? 'selected' : ''}>1</option>
-                                <option value="2" ${streetViews.requestedCount === 2 ? 'selected' : ''}>
-                                    2 — Recommended
-                                </option>
-                                <option value="3" ${streetViews.requestedCount === 3 ? 'selected' : ''}>3</option>
-                            </select>
-                        </label>
+                    <div style="display:flex; align-items:center; gap:9px; color:#374151;">
+                        <button type="button"
+                            onclick="SkyIndex.adjustSiteVisualOverviewStreetViewCount(-1)"
+                            ${streetViews.requestedCount <= 1 ? 'disabled' : ''}
+                            style="padding:6px 11px; border:1px solid #cbd5e1; border-radius:5px;
+                                background:${streetViews.requestedCount <= 1 ? '#f1f5f9' : '#fff'};
+                                color:${streetViews.requestedCount <= 1 ? '#94a3b8' : '#374151'};
+                                cursor:${streetViews.requestedCount <= 1 ? 'not-allowed' : 'pointer'};">
+                            Remove View
+                        </button>
+
+                        <strong style="min-width:108px; text-align:center;">
+                            ${streetViews.requestedCount}
+                            ${streetViews.requestedCount === 1 ? 'Street View' : 'Street Views'}
+                        </strong>
+
+                        <button type="button"
+                            onclick="SkyIndex.adjustSiteVisualOverviewStreetViewCount(1)"
+                            ${streetViews.requestedCount >= 10 ? 'disabled' : ''}
+                            style="padding:6px 11px; border:1px solid #0d9488; border-radius:5px;
+                                background:${streetViews.requestedCount >= 10 ? '#f1f5f9' : '#0d9488'};
+                                color:${streetViews.requestedCount >= 10 ? '#94a3b8' : '#fff'};
+                                cursor:${streetViews.requestedCount >= 10 ? 'not-allowed' : 'pointer'};">
+                            Add View
+                        </button>
+                    </div>
                     </div>
                     <div style="min-height:360px; display:flex; align-items:center; justify-content:center;
                         padding:30px; border:1px dashed #cbd5e1; border-radius:8px;
@@ -9618,16 +9625,23 @@ window.SkyIndex = {
             `;
         },
 
-        // Update requested Street View count
-        updateSiteVisualOverviewStreetViewCount(value) {
+        // Add or remove a requested Street View (minimum 1, maximum 10)
+        adjustSiteVisualOverviewStreetViewCount(change) {
             const workspace = this.currentSiteVisualOverviewWorkspace;
-            const requestedCount = Number(value);
 
-            if (!workspace || ![1, 2, 3].includes(requestedCount)) {
+            if (!workspace || ![-1, 1].includes(Number(change))) {
                 return;
             }
 
             const streetViews = workspace.sections.streetViews;
+            const requestedCount = Math.min(
+                10,
+                Math.max(1, streetViews.requestedCount + Number(change))
+            );
+
+            if (requestedCount === streetViews.requestedCount) {
+                return;
+            }
 
             streetViews.requestedCount = requestedCount;
             streetViews.selections = streetViews.selections.slice(0, requestedCount);
