@@ -9322,6 +9322,9 @@ window.SkyIndex = {
             document.body.appendChild(modal);
             this.showSiteVisualOverviewTab('preview');
 
+            // Load default satellite-image preview
+            this.loadSiteVisualOverviewSatellitePreview();
+
             document.addEventListener(
                 'keydown',
                 this.handleSiteVisualOverviewSetupKeydown
@@ -9418,6 +9421,114 @@ window.SkyIndex = {
                 case 'contextMaps':
                     content.innerHTML = this.renderSiteVisualOverviewContextMapsTab();
                     break;
+            }
+
+            this.updateSiteVisualOverviewWorkspaceStatus();
+        },
+
+        // Load default satellite preview from address-check coordinates
+        loadSiteVisualOverviewSatellitePreview() {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const location =
+                workspace?.sourceData?.data?.location || null;
+
+            const satellite =
+                workspace?.sections?.satellite || null;
+
+            if (!location || !satellite) {
+                return;
+            }
+
+            const latitude =
+                Number(location.locationLatitude);
+
+            const longitude =
+                Number(location.locationLongitude);
+
+            // Validate address-check coordinates
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude)
+            ) {
+                satellite.status = 'error';
+                satellite.preview = null;
+
+                this.refreshSiteVisualOverviewPreview();
+                return;
+            }
+
+            // Set loading state
+            satellite.status = 'loading';
+            satellite.preview = null;
+
+            this.refreshSiteVisualOverviewPreview();
+
+            // Build server-side satellite-image endpoint
+            const previewUrl =
+                '/skyesoft/api/siteVisualOverviewSatellite.php' +
+                `?latitude=${encodeURIComponent(latitude)}` +
+                `&longitude=${encodeURIComponent(longitude)}` +
+                '&zoom=19';
+
+            // Preload image before showing it
+            const previewImage = new Image();
+
+            previewImage.onload = () => {
+                const currentWorkspace =
+                    this.currentSiteVisualOverviewWorkspace;
+
+                if (currentWorkspace !== workspace) {
+                    return;
+                }
+
+                satellite.status = 'ready';
+                satellite.preview = previewUrl;
+                satellite.settings = {
+                    latitude,
+                    longitude,
+                    zoom: 19
+                };
+
+                this.refreshSiteVisualOverviewPreview();
+            };
+
+            previewImage.onerror = () => {
+                const currentWorkspace =
+                    this.currentSiteVisualOverviewWorkspace;
+
+                if (currentWorkspace !== workspace) {
+                    return;
+                }
+
+                satellite.status = 'error';
+                satellite.preview = null;
+
+                this.refreshSiteVisualOverviewPreview();
+            };
+
+            previewImage.src = previewUrl;
+        },
+
+        // Refresh Preview tab and readiness display
+        refreshSiteVisualOverviewPreview() {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            if (!workspace) {
+                return;
+            }
+
+            if (workspace.activeTab === 'preview') {
+                const content = document.getElementById(
+                    'siteVisualOverviewTabContent'
+                );
+
+                if (content) {
+                    content.innerHTML =
+                        this.renderSiteVisualOverviewPreviewTab();
+                }
             }
 
             this.updateSiteVisualOverviewWorkspaceStatus();
