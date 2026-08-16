@@ -1,6 +1,40 @@
 <?php
 
-// #region Section 0 — Endpoint Identity & Environment Bootstrap
+// ======================================================================
+// Skyesoft — siteVisualOverviewImages.php
+// Version: 1.0.0
+// Site Visual Overview Image Generation Endpoint
+// ======================================================================
+//
+// Primary Responsibilities
+// • Route Site Visual Overview image requests by image type
+// • Generate satellite and primary-parcel aerial imagery
+// • Apply parcel boundaries and location markers
+// • Store temporary generated imagery in /skyesoft/artifacts
+// • Return streamed images or structured artifact responses
+//
+// Architectural Principles
+// • Google API credentials remain exclusively server-side
+// • Primary-parcel data originates from the locationCheck.php response
+// • Image artifacts are temporary, reproducible, and non-authoritative
+// • No database writes occur during image generation
+// • All request values and upstream responses are validated
+//
+// Supported Image Types
+// • satellite
+// • parcel
+//
+// Reserved Image Types
+// • streetView
+// • immediateVicinity
+// • extendedContext
+//
+// Compatibility
+// • PHP 8.3
+//
+// ======================================================================
+
+#region Section 0 — Endpoint Identity & Environment Bootstrap
 
 /**
  * Skyesoft Site Visual Overview image endpoint.
@@ -52,9 +86,9 @@ header('Pragma: no-cache');
 header('Expires: 0');
 header('X-Content-Type-Options: nosniff');
 
-// #endregion
+#endregion
 
-// #region Section 1 — Shared Response & Request Helpers
+#region Section 1 — Shared Response & Request Helpers
 
 /**
  * Return a controlled error response and stop execution.
@@ -184,9 +218,9 @@ function siteVisualOverviewCoordinates($latitudeRaw, $longitudeRaw, $asJson)
     return array($latitude, $longitude);
 }
 
-// #endregion
+#endregion
 
-// #region Section 2 — Shared Remote Request Helpers
+#region Section 2 — Shared Remote Request Helpers
 
 /**
  * Resolve the server-side Google Static Maps API key.
@@ -266,9 +300,9 @@ function siteVisualOverviewCurlGet($url)
     );
 }
 
-// #endregion
+#endregion
 
-// #region Section 3 — Satellite Image Handler
+#region Section 3 — Satellite Image Handler
 
 /**
  * Stream a satellite image response.
@@ -368,9 +402,9 @@ function siteVisualOverviewSatellite($jsonBody, $googleKey)
     exit;
 }
 
-// #endregion
+#endregion
 
-// #region Section 4 — Parcel Geometry Projection
+#region Section 4 — Parcel Geometry Projection
 
 /**
  * Project the primary parcel polygon from its source WKID to WGS84.
@@ -488,9 +522,9 @@ function siteVisualOverviewParcelPath($rings)
     return implode('|', $pathPoints);
 }
 
-// #endregion
+#endregion
 
-// #region Section 5 — Parcel Artifact Handler
+#region Section 5 — Parcel Artifact Handler
 
 /**
  * Create the primary-parcel aerial artifact and return its URL.
@@ -668,9 +702,9 @@ function siteVisualOverviewParcel($jsonBody, $googleKey)
     ));
 }
 
-// #endregion
+#endregion
 
-// #region Section 6 — Request Router
+#region Section 6 — Request Router
 
 $jsonBody = siteVisualOverviewReadJsonBody();
 $imageType = trim((string) siteVisualOverviewRequestValue(
@@ -722,4 +756,4 @@ switch ($imageType) {
         break;
 }
 
-// #endregion
+#endregion
