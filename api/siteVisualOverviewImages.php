@@ -2,13 +2,13 @@
 
 // ======================================================================
 // Skyesoft — siteVisualOverviewImages.php
-// Version: 1.1.0
+// Version: 1.2.0
 // Site Visual Overview Image Generation Endpoint
 // ======================================================================
 //
 // Primary Responsibilities
 // • Route Site Visual Overview image requests by image type
-// • Generate satellite, primary-parcel, and Street View imagery
+// • Generate satellite, primary-parcel, Street View, and Immediate Vicinity imagery
 // • Apply parcel boundaries and location markers
 // • Store temporary generated imagery in /skyesoft/artifacts
 // • Return streamed images or structured artifact responses
@@ -24,9 +24,9 @@
 // • satellite
 // • parcel
 // • streetView
+// • immediateVicinity
 //
 // Reserved Image Types
-// • immediateVicinity
 // • extendedContext
 //
 // Compatibility
@@ -45,12 +45,16 @@
  *   returns its public artifact URL as JSON.
  * - streetView: Creates a temporary ground-level image aimed from the
  *   Google panorama toward the validated property coordinates.
+ * - immediateVicinity: Creates a temporary labeled roadmap of the
+ *   approximately 1.25-mile context around the property, with the
+ *   primary parcel boundary and a red location marker.
  *
- * Parcel request contract (POST JSON):
+ * Parcel / Immediate Vicinity request contract (POST JSON):
  * {
- *     "type": "parcel",
+ *     "type": "parcel" | "immediateVicinity",
  *     "latitude": 33.4848523,
  *     "longitude": -112.1288006,
+ *     "address": "3145 N 33rd Ave, Phoenix, AZ 85017, USA",
  *     "parcel": {
  *         "parcelNumber": "10803009E",
  *         "parcelGeometry": {
@@ -994,7 +998,237 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
 
 #endregion
 
-#region Section 7 — Request Router
+#region Section 7 — Immediate Vicinity Artifact Handler
+
+/**
+ * Create the Immediate Vicinity labeled roadmap artifact.
+ *
+ * Uses a transparent context path to force an approximately 1.25-mile
+ * map extent so nearby major intersections remain visible. Overlays the
+ * primary parcel boundary (blue) and a red property marker. The image
+ * is stored as a temporary artifact under /skyesoft/artifacts.
+ *
+ * @param array  $jsonBody  Request JSON.
+ * @param string $googleKey Google Maps Static API key.
+ *
+ * @return void
+ */
+function siteVisualOverviewImmediateVicinity($jsonBody, $googleKey)
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        siteVisualOverviewError(
+            'HTTP/1.1 405 Method Not Allowed',
+            'Immediate Vicinity images require a POST JSON request.',
+            true
+        );
+    }
+
+    $coordinates = siteVisualOverviewCoordinates(
+        siteVisualOverviewRequestValue($jsonBody, 'latitude', ''),
+        siteVisualOverviewRequestValue($jsonBody, 'longitude', ''),
+        true
+    );
+
+    $parcel = isset($jsonBody['parcel']) && is_array($jsonBody['parcel'])
+        ? $jsonBody['parcel']
+        : array();
+
+    $parcelNumber = isset($parcel['parcelNumber'])
+        ? trim((string) $parcel['parcelNumber'])
+        : '';
+
+    $parcelGeometry = isset($parcel['parcelGeometry']) &&
+        is_array($parcel['parcelGeometry'])
+        ? $parcel['parcelGeometry']
+        : array();
+
+    if ($parcelNumber === '' || empty($parcelGeometry)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'The primary parcel number and geometry are required.',
+            true
+        );
+    }
+
+    $projectedGeometry = siteVisualOverviewProjectParcel(
+        $parcelGeometry,
+        true
+    );
+
+    $parcelPath = siteVisualOverviewParcelPath(
+        $projectedGeometry['rings']
+    );
+
+    if ($parcelPath === '') {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'The primary parcel boundary contains no valid points.',
+            true
+        );
+    }
+
+    $latitude = $coordinates[0];
+    $longitude = $coordinates[1];
+
+    // Approximate 1.25-mile square context extent centered on the property.
+    // This forces the Static Maps viewport to include nearby major
+    // intersections while still framing the parcel and marker tightly.
+    $contextMiles = 1.25;
+    $halfMiles = $contextMiles / 2.0;
+    $latRad = deg2rad($latitude);
+    $milesPerDegreeLat = 69.0;
+    $milesPerDegreeLon = 69.0 * cos($latRad);
+    $dLat = $halfMiles / $milesPerDegreeLat;
+    $dLon = $halfMiles / $milesPerDegreeLon;
+
+    $contextPoints = array(
+        number_format($latitude + $dLat, 7, '.', '')
+            . ','
+            . number_format($longitude + $dLon, 7, '.', ''),
+        number_format($latitude + $dLat, 7, '.', '')
+            . ','
+            . number_format($longitude - $dLon, 7, '.', ''),
+        number_format($latitude - $dLat, 7, '.', '')
+            . ','
+            . number_format($longitude - $dLon, 7, '.', ''),
+        number_format($latitude - $dLat, 7, '.', '')
+            . ','
+            . number_format($longitude + $dLon, 7, '.', ''),
+        number_format($latitude + $dLat, 7, '.', '')
+            . ','
+            . number_format($longitude + $dLon, 7, '.', '')
+    );
+
+    $contextPath = implode('|', $contextPoints);
+
+    $latitudeParam = number_format($latitude, 7, '.', '');
+    $longitudeParam = number_format($longitude, 7, '.', '');
+    $coordinateParam = $latitudeParam . ',' . $longitudeParam;
+
+    // Transparent context path forces the 1.25-mile extent.
+    // Visible path draws the primary parcel boundary.
+    // Red marker identifies the validated property location.
+    $googleUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
+        . 'size=600x338'
+        . '&scale=2'
+        . '&maptype=roadmap'
+        . '&path=' . rawurlencode(
+            'color:0x00000000|weight:1|fillcolor:0x00000000|'
+            . $contextPath
+        )
+        . '&path=' . rawurlencode(
+            'color:0x1976D2FF|weight:4|fillcolor:0x1976D233|'
+            . $parcelPath
+        )
+        . '&markers=' . rawurlencode('color:red|' . $coordinateParam)
+        . '&format=jpg'
+        . '&key=' . rawurlencode($googleKey);
+
+    $imageResponse = siteVisualOverviewCurlGet($googleUrl);
+    $isImage = strpos(
+        strtolower($imageResponse['contentType']),
+        'image/'
+    ) === 0;
+
+    if (
+        !$imageResponse['success'] ||
+        $imageResponse['data'] === '' ||
+        !$isImage
+    ) {
+        error_log(
+            '[SITE VISUAL IMAGES] Immediate Vicinity image request failed. HTTP='
+            . $imageResponse['httpCode']
+            . ' Content-Type=' . $imageResponse['contentType']
+            . ' cURL=' . $imageResponse['error']
+        );
+
+        siteVisualOverviewError(
+            'HTTP/1.1 502 Bad Gateway',
+            'Unable to retrieve the Immediate Vicinity image.',
+            true
+        );
+    }
+
+    $artifactDirectory = dirname(__DIR__) . '/artifacts';
+
+    if (!is_dir($artifactDirectory)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'The Skyesoft artifacts directory is unavailable.',
+            true
+        );
+    }
+
+    if (!is_writable($artifactDirectory)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'The Skyesoft artifacts directory is not writable.',
+            true
+        );
+    }
+
+    $safeParcelNumber = preg_replace(
+        '/[^A-Za-z0-9_-]/',
+        '',
+        $parcelNumber
+    );
+
+    if ($safeParcelNumber === '') {
+        $safeParcelNumber = 'unknown';
+    }
+
+    $uniqueToken = function_exists('random_bytes')
+        ? bin2hex(random_bytes(6))
+        : (function_exists('openssl_random_pseudo_bytes')
+            ? bin2hex(openssl_random_pseudo_bytes(6))
+            : substr(md5(uniqid('', true)), 0, 12));
+
+    $artifactFilename = 'tmp-site-visual-immediate-vicinity-'
+        . $safeParcelNumber
+        . '-'
+        . time()
+        . '-'
+        . $uniqueToken
+        . '.jpg';
+
+    $artifactPath = $artifactDirectory . '/' . $artifactFilename;
+    $bytesWritten = file_put_contents(
+        $artifactPath,
+        $imageResponse['data'],
+        LOCK_EX
+    );
+
+    if ($bytesWritten === false || $bytesWritten <= 0) {
+        error_log(
+            '[SITE VISUAL IMAGES] Unable to write Immediate Vicinity artifact: '
+            . $artifactPath
+        );
+
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'Unable to create the temporary Immediate Vicinity artifact.',
+            true
+        );
+    }
+
+    siteVisualOverviewJson(array(
+        'success' => true,
+        'status' => 'ready',
+        'type' => 'immediateVicinity',
+        'parcelNumber' => $parcelNumber,
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'contextMiles' => $contextMiles,
+        'artifactFilename' => $artifactFilename,
+        'artifactUrl' => '/skyesoft/artifacts/' . $artifactFilename,
+        'createdAt' => time(),
+        'temporary' => true
+    ));
+}
+
+#endregion
+
+#region Section 8 — Request Router
 
 $jsonBody = siteVisualOverviewReadJsonBody();
 $imageType = trim((string) siteVisualOverviewRequestValue(
@@ -1013,7 +1247,9 @@ if ($googleKey === '') {
     siteVisualOverviewError(
         'HTTP/1.1 500 Internal Server Error',
         'Site Visual Overview image service is not configured.',
-        $imageType === 'parcel' || $imageType === 'streetView'
+        $imageType === 'parcel'
+            || $imageType === 'streetView'
+            || $imageType === 'immediateVicinity'
     );
 }
 
@@ -1032,6 +1268,9 @@ switch ($imageType) {
         break;
 
     case 'immediateVicinity':
+        siteVisualOverviewImmediateVicinity($jsonBody, $googleKey);
+        break;
+
     case 'extendedContext':
         siteVisualOverviewError(
             'HTTP/1.1 501 Not Implemented',
