@@ -9326,6 +9326,7 @@ window.SkyIndex = {
             this.loadSiteVisualOverviewSatellitePreview();
             this.loadSiteVisualOverviewParcelPreview();
             this.loadSiteVisualOverviewStreetViewPreview();
+            this.loadSiteVisualOverviewImmediateVicinityPreview()
 
             document.addEventListener(
                 'keydown',
@@ -9834,6 +9835,176 @@ window.SkyIndex = {
                     error instanceof Error
                         ? error.message
                         : 'Street View generation failed.';
+
+                this.refreshSiteVisualOverviewPreview();
+            }
+        },
+
+        // Load default Immediate Vicinity Map preview
+        async loadSiteVisualOverviewImmediateVicinityPreview() {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const location =
+                workspace?.sourceData?.data?.location || null;
+
+            const immediateVicinity =
+                workspace?.sections?.immediateVicinity || null;
+
+            const primaryParcel =
+                location?.parcelDetails?.[0] || null;
+
+            if (
+                !workspace ||
+                !location ||
+                !immediateVicinity
+            ) {
+                return;
+            }
+
+            const latitude =
+                Number(location.locationLatitude);
+
+            const longitude =
+                Number(location.locationLongitude);
+
+            const address =
+                String(
+                    location.locationResolvedAddress ||
+                    location.locationAddress ||
+                    ''
+                ).trim();
+
+            const parcelNumber =
+                String(
+                    primaryParcel?.parcelNumber || ''
+                ).trim();
+
+            const parcelGeometry =
+                primaryParcel?.parcelGeometry || null;
+
+            // Validate required vicinity-map inputs
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                !address ||
+                !parcelNumber ||
+                !parcelGeometry ||
+                !Array.isArray(parcelGeometry.rings) ||
+                parcelGeometry.rings.length === 0
+            ) {
+                immediateVicinity.status = 'error';
+                immediateVicinity.preview = null;
+                immediateVicinity.error =
+                    'Validated property and parcel data are unavailable.';
+
+                this.refreshSiteVisualOverviewPreview();
+                return;
+            }
+
+            // Set loading state
+            immediateVicinity.status = 'loading';
+            immediateVicinity.preview = null;
+            immediateVicinity.error = null;
+
+            this.refreshSiteVisualOverviewPreview();
+
+            try {
+                const response = await fetch(
+                    '/skyesoft/api/siteVisualOverviewImages.php',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            type: 'immediateVicinity',
+                            address,
+                            latitude,
+                            longitude,
+                            parcel: {
+                                parcelNumber,
+                                parcelGeometry
+                            }
+                        })
+                    }
+                );
+
+                const responseText =
+                    await response.text();
+
+                let responseData = null;
+
+                // Decode structured endpoint response
+                try {
+                    responseData =
+                        JSON.parse(responseText);
+                } catch (error) {
+                    throw new Error(
+                        'Immediate Vicinity endpoint returned invalid JSON.'
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    responseData?.success !== true ||
+                    !responseData.artifactUrl
+                ) {
+                    throw new Error(
+                        responseData?.error ||
+                        'Immediate Vicinity Map generation failed.'
+                    );
+                }
+
+                // Ignore a response for a replaced workspace
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                immediateVicinity.status = 'ready';
+                immediateVicinity.preview =
+                    responseData.artifactUrl;
+
+                immediateVicinity.settings = {
+                    address,
+                    latitude,
+                    longitude,
+                    parcelNumber,
+                    mapType:
+                        responseData.mapType || 'roadmap',
+                    mapExtent:
+                        responseData.mapExtent || null,
+                    artifactFilename:
+                        responseData.artifactFilename || null,
+                    artifactUrl:
+                        responseData.artifactUrl
+                };
+
+                this.refreshSiteVisualOverviewPreview();
+            } catch (error) {
+                // Ignore errors for a replaced workspace
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                console.error(
+                    'Site Visual Overview Immediate Vicinity preview failed:',
+                    error
+                );
+
+                immediateVicinity.status = 'error';
+                immediateVicinity.preview = null;
+                immediateVicinity.error =
+                    error instanceof Error
+                        ? error.message
+                        : 'Immediate Vicinity Map generation failed.';
 
                 this.refreshSiteVisualOverviewPreview();
             }
