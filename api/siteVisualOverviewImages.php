@@ -2,13 +2,13 @@
 
 // ======================================================================
 // Skyesoft — siteVisualOverviewImages.php
-// Version: 1.0.0
+// Version: 1.1.0
 // Site Visual Overview Image Generation Endpoint
 // ======================================================================
 //
 // Primary Responsibilities
 // • Route Site Visual Overview image requests by image type
-// • Generate satellite and primary-parcel aerial imagery
+// • Generate satellite, primary-parcel, and Street View imagery
 // • Apply parcel boundaries and location markers
 // • Store temporary generated imagery in /skyesoft/artifacts
 // • Return streamed images or structured artifact responses
@@ -23,14 +23,14 @@
 // Supported Image Types
 // • satellite
 // • parcel
+// • streetView
 //
 // Reserved Image Types
-// • streetView
 // • immediateVicinity
 // • extendedContext
 //
 // Compatibility
-// • PHP 8.3
+// • PHP 8.3+
 //
 // ======================================================================
 
@@ -43,6 +43,8 @@
  * - satellite: Streams a Google Static Maps satellite image.
  * - parcel: Creates a temporary aerial image for the primary parcel and
  *   returns its public artifact URL as JSON.
+ * - streetView: Creates a temporary ground-level image aimed from the
+ *   Google panorama toward the validated property coordinates.
  *
  * Parcel request contract (POST JSON):
  * {
@@ -60,7 +62,7 @@
  *     }
  * }
  *
- * Compatibility: PHP 5.3+
+ * Compatibility: PHP 8.3+
  */
 
 // Load Skyesoft environment
@@ -704,7 +706,295 @@ function siteVisualOverviewParcel($jsonBody, $googleKey)
 
 #endregion
 
-#region Section 6 — Request Router
+#region Section 6 — Street View Artifact Handler
+
+/**
+ * Calculate the initial compass bearing between two WGS84 points.
+ *
+ * @param float $fromLatitude  Panorama latitude.
+ * @param float $fromLongitude Panorama longitude.
+ * @param float $toLatitude    Property latitude.
+ * @param float $toLongitude   Property longitude.
+ *
+ * @return float
+ */
+function siteVisualOverviewBearing(
+    $fromLatitude,
+    $fromLongitude,
+    $toLatitude,
+    $toLongitude
+) {
+    $fromLatitudeRadians = deg2rad($fromLatitude);
+    $toLatitudeRadians = deg2rad($toLatitude);
+    $longitudeDifference = deg2rad(
+        $toLongitude - $fromLongitude
+    );
+
+    $bearingY = sin($longitudeDifference) *
+        cos($toLatitudeRadians);
+
+    $bearingX = cos($fromLatitudeRadians) *
+        sin($toLatitudeRadians) -
+        sin($fromLatitudeRadians) *
+        cos($toLatitudeRadians) *
+        cos($longitudeDifference);
+
+    $bearing = rad2deg(atan2($bearingY, $bearingX));
+
+    return fmod($bearing + 360.0, 360.0);
+}
+
+/**
+ * Resolve the Phoenix odd/even addressing notation.
+ *
+ * Odd-numbered properties are generally located on the east side of
+ * north-south streets or the south side of east-west streets. Even-numbered
+ * properties are generally located on the opposing sides.
+ *
+ * @param string $address Validated property address.
+ *
+ * @return array
+ */
+function siteVisualOverviewAddressParity($address)
+{
+    $streetNumber = null;
+
+    if (preg_match('/^\s*(\d+)/', $address, $matches)) {
+        $streetNumber = (int) $matches[1];
+    }
+
+    if ($streetNumber === null) {
+        return array(
+            'streetNumber' => null,
+            'parity' => 'unavailable',
+            'propertySideNotation' => 'Address parity unavailable.'
+        );
+    }
+
+    $isOdd = ($streetNumber % 2) === 1;
+
+    return array(
+        'streetNumber' => $streetNumber,
+        'parity' => $isOdd ? 'odd' : 'even',
+        'propertySideNotation' => $isOdd
+            ? 'Odd address: east side of a north-south street or south '
+                . 'side of an east-west street.'
+            : 'Even address: west side of a north-south street or north '
+                . 'side of an east-west street.'
+    );
+}
+
+/**
+ * Create the default Street View artifact aimed toward the property.
+ *
+ * @param array  $jsonBody Request JSON.
+ * @param string $googleKey Google Maps Static API key.
+ *
+ * @return void
+ */
+function siteVisualOverviewStreetView($jsonBody, $googleKey)
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        siteVisualOverviewError(
+            'HTTP/1.1 405 Method Not Allowed',
+            'Street View images require a POST JSON request.',
+            true
+        );
+    }
+
+    $coordinates = siteVisualOverviewCoordinates(
+        siteVisualOverviewRequestValue($jsonBody, 'latitude', ''),
+        siteVisualOverviewRequestValue($jsonBody, 'longitude', ''),
+        true
+    );
+
+    $address = trim((string) siteVisualOverviewRequestValue(
+        $jsonBody,
+        'address',
+        ''
+    ));
+
+    if ($address === '') {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'A validated property address is required.',
+            true
+        );
+    }
+
+    $propertyLatitude = $coordinates[0];
+    $propertyLongitude = $coordinates[1];
+    $addressParity = siteVisualOverviewAddressParity($address);
+
+    // Resolve the nearest available panorama for the validated address
+    $metadataUrl =
+        'https://maps.googleapis.com/maps/api/streetview/metadata?'
+        . 'location=' . rawurlencode($address)
+        . '&source=outdoor'
+        . '&key=' . rawurlencode($googleKey);
+
+    $metadataResponse = siteVisualOverviewCurlGet($metadataUrl);
+    $metadata = json_decode($metadataResponse['data'], true);
+
+    $metadataStatus = is_array($metadata) && isset($metadata['status'])
+        ? (string) $metadata['status']
+        : 'UNKNOWN';
+
+    if (
+        !$metadataResponse['success'] ||
+        !is_array($metadata) ||
+        $metadataStatus !== 'OK' ||
+        empty($metadata['pano_id']) ||
+        !isset($metadata['location']['lat']) ||
+        !isset($metadata['location']['lng']) ||
+        !is_numeric($metadata['location']['lat']) ||
+        !is_numeric($metadata['location']['lng'])
+    ) {
+        error_log(
+            '[SITE VISUAL IMAGES] Street View metadata unavailable. '
+            . 'Status=' . $metadataStatus
+            . ' HTTP=' . $metadataResponse['httpCode']
+            . ' cURL=' . $metadataResponse['error']
+        );
+
+        siteVisualOverviewError(
+            'HTTP/1.1 404 Not Found',
+            'No usable outdoor Street View panorama was found.',
+            true
+        );
+    }
+
+    $panoramaId = (string) $metadata['pano_id'];
+    $panoramaLatitude = (float) $metadata['location']['lat'];
+    $panoramaLongitude = (float) $metadata['location']['lng'];
+
+    // Aim the camera from the panorama directly toward the property
+    $heading = siteVisualOverviewBearing(
+        $panoramaLatitude,
+        $panoramaLongitude,
+        $propertyLatitude,
+        $propertyLongitude
+    );
+
+    $fovRaw = siteVisualOverviewRequestValue($jsonBody, 'fov', 75);
+    $pitchRaw = siteVisualOverviewRequestValue($jsonBody, 'pitch', 5);
+    $fov = is_numeric($fovRaw) ? (int) $fovRaw : 75;
+    $pitch = is_numeric($pitchRaw) ? (int) $pitchRaw : 5;
+
+    // Enforce Google Street View image limits
+    $fov = max(10, min(120, $fov));
+    $pitch = max(-90, min(90, $pitch));
+
+    $streetViewUrl =
+        'https://maps.googleapis.com/maps/api/streetview?'
+        . 'size=600x338'
+        . '&scale=2'
+        . '&pano=' . rawurlencode($panoramaId)
+        . '&heading=' . rawurlencode(
+            number_format($heading, 2, '.', '')
+        )
+        . '&fov=' . $fov
+        . '&pitch=' . $pitch
+        . '&source=outdoor'
+        . '&return_error_code=true'
+        . '&key=' . rawurlencode($googleKey);
+
+    $imageResponse = siteVisualOverviewCurlGet($streetViewUrl);
+    $isImage = strpos(
+        strtolower($imageResponse['contentType']),
+        'image/'
+    ) === 0;
+
+    if (
+        !$imageResponse['success'] ||
+        $imageResponse['data'] === '' ||
+        !$isImage
+    ) {
+        error_log(
+            '[SITE VISUAL IMAGES] Street View image request failed. HTTP='
+            . $imageResponse['httpCode']
+            . ' Content-Type=' . $imageResponse['contentType']
+            . ' cURL=' . $imageResponse['error']
+        );
+
+        siteVisualOverviewError(
+            'HTTP/1.1 502 Bad Gateway',
+            'Unable to retrieve the Street View image.',
+            true
+        );
+    }
+
+    $artifactDirectory = dirname(__DIR__) . '/artifacts';
+
+    if (!is_dir($artifactDirectory)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'The Skyesoft artifacts directory is unavailable.',
+            true
+        );
+    }
+
+    if (!is_writable($artifactDirectory)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'The Skyesoft artifacts directory is not writable.',
+            true
+        );
+    }
+
+    $uniqueToken = bin2hex(random_bytes(6));
+    $artifactFilename = 'tmp-site-visual-street-view-1-'
+        . time()
+        . '-'
+        . $uniqueToken
+        . '.jpg';
+
+    $artifactPath = $artifactDirectory . '/' . $artifactFilename;
+    $bytesWritten = file_put_contents(
+        $artifactPath,
+        $imageResponse['data'],
+        LOCK_EX
+    );
+
+    if ($bytesWritten === false || $bytesWritten <= 0) {
+        error_log(
+            '[SITE VISUAL IMAGES] Unable to write Street View artifact: '
+            . $artifactPath
+        );
+
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'Unable to create the temporary Street View artifact.',
+            true
+        );
+    }
+
+    siteVisualOverviewJson(array(
+        'success' => true,
+        'status' => 'ready',
+        'type' => 'streetView',
+        'viewIndex' => 1,
+        'address' => $address,
+        'propertyLatitude' => $propertyLatitude,
+        'propertyLongitude' => $propertyLongitude,
+        'panoramaId' => $panoramaId,
+        'panoramaLatitude' => $panoramaLatitude,
+        'panoramaLongitude' => $panoramaLongitude,
+        'heading' => round($heading, 2),
+        'headingSource' => 'panoramaToPropertyBearing',
+        'addressParity' => $addressParity,
+        'fov' => $fov,
+        'pitch' => $pitch,
+        'artifactFilename' => $artifactFilename,
+        'artifactUrl' => '/skyesoft/artifacts/' . $artifactFilename,
+        'createdAt' => time(),
+        'temporary' => true
+    ));
+}
+
+#endregion
+
+#region Section 7 — Request Router
 
 $jsonBody = siteVisualOverviewReadJsonBody();
 $imageType = trim((string) siteVisualOverviewRequestValue(
@@ -723,7 +1013,7 @@ if ($googleKey === '') {
     siteVisualOverviewError(
         'HTTP/1.1 500 Internal Server Error',
         'Site Visual Overview image service is not configured.',
-        $imageType === 'parcel'
+        $imageType === 'parcel' || $imageType === 'streetView'
     );
 }
 
@@ -738,6 +1028,9 @@ switch ($imageType) {
         break;
 
     case 'streetView':
+        siteVisualOverviewStreetView($jsonBody, $googleKey);
+        break;
+
     case 'immediateVicinity':
     case 'extendedContext':
         siteVisualOverviewError(
