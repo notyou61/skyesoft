@@ -9324,6 +9324,7 @@ window.SkyIndex = {
 
             // Load default satellite-image preview
             this.loadSiteVisualOverviewSatellitePreview();
+            this.loadSiteVisualOverviewParcelPreview();
 
             document.addEventListener(
                 'keydown',
@@ -9510,6 +9511,151 @@ window.SkyIndex = {
             };
 
             previewImage.src = previewUrl;
+        },
+
+        // Load default primary-parcel preview
+        async loadSiteVisualOverviewParcelPreview() {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const location =
+                workspace?.sourceData?.data?.location || null;
+
+            const parcel =
+                workspace?.sections?.parcel || null;
+
+            // Resolve only the primary parcel
+            const primaryParcel =
+                location?.parcelDetails?.[0] || null;
+
+            if (!workspace || !location || !parcel) {
+                return;
+            }
+
+            const latitude =
+                Number(location.locationLatitude);
+
+            const longitude =
+                Number(location.locationLongitude);
+
+            const parcelNumber =
+                String(primaryParcel?.parcelNumber || '').trim();
+
+            const parcelGeometry =
+                primaryParcel?.parcelGeometry || null;
+
+            // Validate required parcel-map inputs
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                !parcelNumber ||
+                !parcelGeometry ||
+                !Array.isArray(parcelGeometry.rings) ||
+                parcelGeometry.rings.length === 0
+            ) {
+                parcel.status = 'error';
+                parcel.preview = null;
+
+                this.refreshSiteVisualOverviewPreview();
+                return;
+            }
+
+            // Set loading state
+            parcel.status = 'loading';
+            parcel.preview = null;
+
+            this.refreshSiteVisualOverviewPreview();
+
+            try {
+                const response = await fetch(
+                    '/skyesoft/api/siteVisualOverviewImages.php',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            type: 'parcel',
+                            latitude,
+                            longitude,
+                            parcel: {
+                                parcelNumber,
+                                parcelGeometry
+                            }
+                        })
+                    }
+                );
+
+                const responseText = await response.text();
+                let responseData = null;
+
+                // Decode structured endpoint response
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (error) {
+                    throw new Error(
+                        'Parcel-image endpoint returned invalid JSON.'
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    responseData?.success !== true ||
+                    !responseData.artifactUrl
+                ) {
+                    throw new Error(
+                        responseData?.error ||
+                        'Parcel-image generation failed.'
+                    );
+                }
+
+                // Ignore responses from a closed or replaced workspace
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                parcel.status = 'ready';
+                parcel.preview = responseData.artifactUrl;
+                parcel.settings = {
+                    parcelNumber,
+                    latitude,
+                    longitude,
+                    artifactFilename:
+                        responseData.artifactFilename || null,
+                    artifactUrl:
+                        responseData.artifactUrl
+                };
+
+                this.refreshSiteVisualOverviewPreview();
+            } catch (error) {
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                console.error(
+                    'Site Visual Overview parcel preview failed:',
+                    error
+                );
+
+                parcel.status = 'error';
+                parcel.preview = null;
+                parcel.settings = {
+                    parcelNumber,
+                    error:
+                        error instanceof Error
+                            ? error.message
+                            : 'Parcel-image generation failed.'
+                };
+
+                this.refreshSiteVisualOverviewPreview();
+            }
         },
 
         // Refresh Preview tab and readiness display
