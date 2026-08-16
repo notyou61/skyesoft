@@ -9467,7 +9467,7 @@ window.SkyIndex = {
 
             // Build server-side satellite-image endpoint
             const previewUrl =
-                '/skyesoft/api/siteVisualOverviewSatellite.php' +
+                '/skyesoft/api/siteVisualOverviewImages.php' +
                 `?latitude=${encodeURIComponent(latitude)}` +
                 `&longitude=${encodeURIComponent(longitude)}` +
                 '&zoom=19';
