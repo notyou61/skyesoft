@@ -2,13 +2,14 @@
 
 // ======================================================================
 // Skyesoft — siteVisualOverviewImages.php
-// Version: 1.2.0
+// Version: 1.3.0
 // Site Visual Overview Image Generation Endpoint
 // ======================================================================
 //
 // Primary Responsibilities
 // • Route Site Visual Overview image requests by image type
-// • Generate satellite, primary-parcel, Street View, and Immediate Vicinity imagery
+// • Generate satellite, primary-parcel, Street View, Immediate Vicinity,
+//   and Extended Context imagery
 // • Apply parcel boundaries and location markers
 // • Store temporary generated imagery in /skyesoft/artifacts
 // • Return streamed images or structured artifact responses
@@ -25,8 +26,6 @@
 // • parcel
 // • streetView
 // • immediateVicinity
-//
-// Reserved Image Types
 // • extendedContext
 //
 // Compatibility
@@ -48,22 +47,17 @@
  * - immediateVicinity: Creates a temporary labeled roadmap of the
  *   approximately 1.25-mile context around the property, with the
  *   primary parcel boundary and a red location marker.
+ * - extendedContext: Creates a temporary roadmap showing the fastest
+ *   driving route from Christy Signs (Entity 1) to the destination,
+ *   with both locations marked, the driving polyline, a direct line,
+ *   and distance/duration metrics returned in JSON for caption use.
  *
- * Parcel / Immediate Vicinity request contract (POST JSON):
+ * Extended Context request contract (POST JSON):
  * {
- *     "type": "parcel" | "immediateVicinity",
+ *     "type": "extendedContext",
  *     "latitude": 33.4848523,
  *     "longitude": -112.1288006,
- *     "address": "3145 N 33rd Ave, Phoenix, AZ 85017, USA",
- *     "parcel": {
- *         "parcelNumber": "10803009E",
- *         "parcelGeometry": {
- *             "geometryType": "polygon",
- *             "spatialReference": { "wkid": 2223 },
- *             "rings": [],
- *             "bounds": {}
- *         }
- *     }
+ *     "address": "3145 N 33rd Ave, Phoenix, AZ 85017, USA"
  * }
  *
  * Compatibility: PHP 8.3+
@@ -1228,7 +1222,469 @@ function siteVisualOverviewImmediateVicinity($jsonBody, $googleKey)
 
 #endregion
 
-#region Section 8 — Request Router
+#region Section 8 — Extended Context Artifact Handler
+
+/**
+ * Resolve the server-side Google Maps Backend API key
+ * (used for Directions / server-to-server calls).
+ *
+ * @return string
+ */
+function siteVisualOverviewBackendKey()
+{
+    $backendKey = '';
+
+    if (function_exists('skyesoftGetEnv')) {
+        $backendKey = (string) skyesoftGetEnv(
+            'GOOGLE_MAPS_BACKEND_API_KEY'
+        );
+    }
+
+    if ($backendKey === '') {
+        $environmentKey = getenv('GOOGLE_MAPS_BACKEND_API_KEY');
+        $backendKey = $environmentKey !== false
+            ? (string) $environmentKey
+            : '';
+    }
+
+    return $backendKey;
+}
+
+/**
+ * Calculate the great-circle (straight-line) distance in miles
+ * between two WGS84 points using the Haversine formula.
+ *
+ * @param float $lat1 Origin latitude.
+ * @param float $lon1 Origin longitude.
+ * @param float $lat2 Destination latitude.
+ * @param float $lon2 Destination longitude.
+ *
+ * @return float Distance in miles.
+ */
+function siteVisualOverviewHaversineMiles($lat1, $lon1, $lat2, $lon2)
+{
+    $earthRadiusMiles = 3958.7613;
+
+    $lat1Rad = deg2rad($lat1);
+    $lat2Rad = deg2rad($lat2);
+    $deltaLat = deg2rad($lat2 - $lat1);
+    $deltaLon = deg2rad($lon2 - $lon1);
+
+    $a = sin($deltaLat / 2) * sin($deltaLat / 2)
+        + cos($lat1Rad) * cos($lat2Rad)
+        * sin($deltaLon / 2) * sin($deltaLon / 2);
+
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+    return round($earthRadiusMiles * $c, 2);
+}
+
+/**
+ * Load Christy Signs primary location (Entity 1) from tblLocations.
+ *
+ * Prefers the billing location for locationEntityId = 1.
+ *
+ * @param boolean $asJson Whether errors should be returned as JSON.
+ *
+ * @return array Associative array with latitude, longitude, name, address.
+ */
+function siteVisualOverviewLoadChristyLocation($asJson)
+{
+    $latitude = null;
+    $longitude = null;
+    $name = 'Christy Signs';
+    $address = '';
+
+    // Attempt to use an already-available PDO connection if present
+    $pdo = null;
+    if (isset($GLOBALS['pdo']) && $GLOBALS['pdo'] instanceof PDO) {
+        $pdo = $GLOBALS['pdo'];
+    } elseif (function_exists('skyesoftGetPdo')) {
+        $pdo = skyesoftGetPdo();
+    }
+
+    // Fallback: build a short-lived PDO from environment variables
+    if (!($pdo instanceof PDO) && function_exists('skyesoftGetEnv')) {
+        $dbHost = (string) skyesoftGetEnv('DB_HOST');
+        $dbName = (string) skyesoftGetEnv('DB_NAME');
+        $dbUser = (string) skyesoftGetEnv('DB_USER');
+        $dbPass = (string) skyesoftGetEnv('DB_PASS');
+
+        if ($dbHost === '') {
+            $dbHost = (string) skyesoftGetEnv('DB_HOSTNAME');
+        }
+        if ($dbName === '') {
+            $dbName = (string) skyesoftGetEnv('DB_DATABASE');
+        }
+        if ($dbUser === '') {
+            $dbUser = (string) skyesoftGetEnv('DB_USERNAME');
+        }
+        if ($dbPass === '') {
+            $dbPass = (string) skyesoftGetEnv('DB_PASSWORD');
+        }
+
+        if ($dbHost !== '' && $dbName !== '' && $dbUser !== '') {
+            try {
+                $dsn = 'mysql:host=' . $dbHost . ';dbname=' . $dbName
+                    . ';charset=utf8mb4';
+                $pdo = new PDO(
+                    $dsn,
+                    $dbUser,
+                    $dbPass,
+                    array(
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                        PDO::ATTR_EMULATE_PREPARES => false
+                    )
+                );
+            } catch (Exception $e) {
+                error_log(
+                    '[SITE VISUAL IMAGES] DB connection failed: '
+                    . $e->getMessage()
+                );
+                $pdo = null;
+            }
+        }
+    }
+
+    if ($pdo instanceof PDO) {
+        try {
+            $sql = 'SELECT locationLatitude, locationLongitude, '
+                . 'locationName, locationAddress, locationCity, '
+                . 'locationState, locationZip '
+                . 'FROM tblLocations '
+                . 'WHERE locationEntityId = 1 '
+                . 'AND locationIsNotValid = 0 '
+                . 'ORDER BY locationIsBilling DESC, locationId ASC '
+                . 'LIMIT 1';
+
+            $stmt = $pdo->query($sql);
+            $row = $stmt ? $stmt->fetch() : false;
+
+            if (is_array($row)
+                && isset($row['locationLatitude'])
+                && isset($row['locationLongitude'])
+                && is_numeric($row['locationLatitude'])
+                && is_numeric($row['locationLongitude'])
+            ) {
+                $latitude = (float) $row['locationLatitude'];
+                $longitude = (float) $row['locationLongitude'];
+
+                if (!empty($row['locationName'])) {
+                    $name = trim((string) $row['locationName']);
+                }
+
+                $parts = array();
+                if (!empty($row['locationAddress'])) {
+                    $parts[] = trim((string) $row['locationAddress']);
+                }
+                if (!empty($row['locationCity'])) {
+                    $parts[] = trim((string) $row['locationCity']);
+                }
+                if (!empty($row['locationState'])) {
+                    $parts[] = trim((string) $row['locationState']);
+                }
+                if (!empty($row['locationZip'])) {
+                    $parts[] = trim((string) $row['locationZip']);
+                }
+                $address = implode(', ', $parts);
+            }
+        } catch (Exception $e) {
+            error_log(
+                '[SITE VISUAL IMAGES] Failed to load Christy Signs location: '
+                . $e->getMessage()
+            );
+        }
+    }
+
+    // Hard fallback matching the known Entity 1 / billing row if DB is unreachable
+    if ($latitude === null || $longitude === null) {
+        $latitude = 33.4848523;
+        $longitude = -112.1288006;
+        $name = 'Christy Signs';
+        $address = '3145 N 33rd Ave, Phoenix, AZ 85017';
+
+        error_log(
+            '[SITE VISUAL IMAGES] Using hard-coded Christy Signs coordinates '
+            . '(DB lookup unavailable).'
+        );
+    }
+
+    return array(
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'name' => $name,
+        'address' => $address
+    );
+}
+
+/**
+ * Create the Extended Context roadmap artifact showing the fastest
+ * driving route from Christy Signs to the destination property.
+ *
+ * Returns the artifact URL plus driving and straight-line metrics
+ * so the client can render a caption under the image.
+ *
+ * @param array  $jsonBody  Request JSON.
+ * @param string $googleKey Google Maps Static API key (for the final image).
+ *
+ * @return void
+ */
+function siteVisualOverviewExtendedContext($jsonBody, $googleKey)
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        siteVisualOverviewError(
+            'HTTP/1.1 405 Method Not Allowed',
+            'Extended Context images require a POST JSON request.',
+            true
+        );
+    }
+
+    $destinationCoordinates = siteVisualOverviewCoordinates(
+        siteVisualOverviewRequestValue($jsonBody, 'latitude', ''),
+        siteVisualOverviewRequestValue($jsonBody, 'longitude', ''),
+        true
+    );
+
+    $destinationAddress = trim((string) siteVisualOverviewRequestValue(
+        $jsonBody,
+        'address',
+        ''
+    ));
+
+    $destinationLatitude = $destinationCoordinates[0];
+    $destinationLongitude = $destinationCoordinates[1];
+
+    // Load Christy Signs (Entity 1) primary / billing location
+    $origin = siteVisualOverviewLoadChristyLocation(true);
+    $originLatitude = $origin['latitude'];
+    $originLongitude = $origin['longitude'];
+    $originName = $origin['name'];
+    $originAddress = $origin['address'];
+
+    $backendKey = siteVisualOverviewBackendKey();
+
+    if ($backendKey === '') {
+        error_log(
+            '[SITE VISUAL IMAGES] Google Maps Backend API key missing.'
+        );
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'Directions service is not configured.',
+            true
+        );
+    }
+
+    // Request the fastest driving route (classic Directions API)
+    $originParam = number_format($originLatitude, 7, '.', '')
+        . ','
+        . number_format($originLongitude, 7, '.', '');
+    $destinationParam = number_format($destinationLatitude, 7, '.', '')
+        . ','
+        . number_format($destinationLongitude, 7, '.', '');
+
+    $directionsUrl =
+        'https://maps.googleapis.com/maps/api/directions/json?'
+        . 'origin=' . rawurlencode($originParam)
+        . '&destination=' . rawurlencode($destinationParam)
+        . '&mode=driving'
+        . '&units=imperial'
+        . '&key=' . rawurlencode($backendKey);
+
+    $directionsResponse = siteVisualOverviewCurlGet($directionsUrl);
+    $directionsData = json_decode($directionsResponse['data'], true);
+
+    $directionsStatus = is_array($directionsData)
+        && isset($directionsData['status'])
+        ? (string) $directionsData['status']
+        : 'UNKNOWN';
+
+    if (
+        !$directionsResponse['success']
+        || !is_array($directionsData)
+        || $directionsStatus !== 'OK'
+        || empty($directionsData['routes'][0]['overview_polyline']['points'])
+        || empty($directionsData['routes'][0]['legs'][0])
+    ) {
+        error_log(
+            '[SITE VISUAL IMAGES] Directions request failed. Status='
+            . $directionsStatus
+            . ' HTTP=' . $directionsResponse['httpCode']
+            . ' cURL=' . $directionsResponse['error']
+        );
+
+        siteVisualOverviewError(
+            'HTTP/1.1 502 Bad Gateway',
+            'Unable to retrieve the driving route.',
+            true
+        );
+    }
+
+    $route = $directionsData['routes'][0];
+    $leg = $route['legs'][0];
+
+    $encodedPolyline = (string) $route['overview_polyline']['points'];
+    $drivingDistanceText = isset($leg['distance']['text'])
+        ? (string) $leg['distance']['text']
+        : '';
+    $drivingDistanceMeters = isset($leg['distance']['value'])
+        ? (int) $leg['distance']['value']
+        : 0;
+    $drivingDurationText = isset($leg['duration']['text'])
+        ? (string) $leg['duration']['text']
+        : '';
+    $drivingDurationSeconds = isset($leg['duration']['value'])
+        ? (int) $leg['duration']['value']
+        : 0;
+    $routeSummary = isset($route['summary'])
+        ? (string) $route['summary']
+        : '';
+
+    // Straight-line (great-circle) distance
+    $straightLineMiles = siteVisualOverviewHaversineMiles(
+        $originLatitude,
+        $originLongitude,
+        $destinationLatitude,
+        $destinationLongitude
+    );
+
+    // Build the Static Map
+    // - encoded driving route polyline (blue)
+    // - direct geodesic line between the two points (gray)
+    // - two red labeled markers (C = Christy Signs, D = Destination)
+    $directPath = number_format($originLatitude, 7, '.', '')
+        . ','
+        . number_format($originLongitude, 7, '.', '')
+        . '|'
+        . number_format($destinationLatitude, 7, '.', '')
+        . ','
+        . number_format($destinationLongitude, 7, '.', '');
+
+    $googleUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
+        . 'size=600x338'
+        . '&scale=2'
+        . '&maptype=roadmap'
+        . '&path=' . rawurlencode(
+            'color:0x1976D2FF|weight:5|enc:' . $encodedPolyline
+        )
+        . '&path=' . rawurlencode(
+            'color:0x757575AA|weight:2|' . $directPath
+        )
+        . '&markers=' . rawurlencode(
+            'color:red|label:C|' . $originParam
+        )
+        . '&markers=' . rawurlencode(
+            'color:red|label:D|' . $destinationParam
+        )
+        . '&format=jpg'
+        . '&key=' . rawurlencode($googleKey);
+
+    $imageResponse = siteVisualOverviewCurlGet($googleUrl);
+    $isImage = strpos(
+        strtolower($imageResponse['contentType']),
+        'image/'
+    ) === 0;
+
+    if (
+        !$imageResponse['success']
+        || $imageResponse['data'] === ''
+        || !$isImage
+    ) {
+        error_log(
+            '[SITE VISUAL IMAGES] Extended Context image request failed. HTTP='
+            . $imageResponse['httpCode']
+            . ' Content-Type=' . $imageResponse['contentType']
+            . ' cURL=' . $imageResponse['error']
+        );
+
+        siteVisualOverviewError(
+            'HTTP/1.1 502 Bad Gateway',
+            'Unable to retrieve the Extended Context image.',
+            true
+        );
+    }
+
+    $artifactDirectory = dirname(__DIR__) . '/artifacts';
+
+    if (!is_dir($artifactDirectory)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'The Skyesoft artifacts directory is unavailable.',
+            true
+        );
+    }
+
+    if (!is_writable($artifactDirectory)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'The Skyesoft artifacts directory is not writable.',
+            true
+        );
+    }
+
+    $uniqueToken = function_exists('random_bytes')
+        ? bin2hex(random_bytes(6))
+        : (function_exists('openssl_random_pseudo_bytes')
+            ? bin2hex(openssl_random_pseudo_bytes(6))
+            : substr(md5(uniqid('', true)), 0, 12));
+
+    $artifactFilename = 'tmp-site-visual-extended-context-'
+        . time()
+        . '-'
+        . $uniqueToken
+        . '.jpg';
+
+    $artifactPath = $artifactDirectory . '/' . $artifactFilename;
+    $bytesWritten = file_put_contents(
+        $artifactPath,
+        $imageResponse['data'],
+        LOCK_EX
+    );
+
+    if ($bytesWritten === false || $bytesWritten <= 0) {
+        error_log(
+            '[SITE VISUAL IMAGES] Unable to write Extended Context artifact: '
+            . $artifactPath
+        );
+
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'Unable to create the temporary Extended Context artifact.',
+            true
+        );
+    }
+
+    siteVisualOverviewJson(array(
+        'success' => true,
+        'status' => 'ready',
+        'type' => 'extendedContext',
+        'origin' => array(
+            'name' => $originName,
+            'address' => $originAddress,
+            'latitude' => $originLatitude,
+            'longitude' => $originLongitude
+        ),
+        'destination' => array(
+            'address' => $destinationAddress,
+            'latitude' => $destinationLatitude,
+            'longitude' => $destinationLongitude
+        ),
+        'drivingDistanceText' => $drivingDistanceText,
+        'drivingDistanceMeters' => $drivingDistanceMeters,
+        'drivingDurationText' => $drivingDurationText,
+        'drivingDurationSeconds' => $drivingDurationSeconds,
+        'straightLineMiles' => $straightLineMiles,
+        'routeSummary' => $routeSummary,
+        'artifactFilename' => $artifactFilename,
+        'artifactUrl' => '/skyesoft/artifacts/' . $artifactFilename,
+        'createdAt' => time(),
+        'temporary' => true
+    ));
+}
+
+#endregion
+
+#region Section 9 — Request Router
 
 $jsonBody = siteVisualOverviewReadJsonBody();
 $imageType = trim((string) siteVisualOverviewRequestValue(
@@ -1250,6 +1706,7 @@ if ($googleKey === '') {
         $imageType === 'parcel'
             || $imageType === 'streetView'
             || $imageType === 'immediateVicinity'
+            || $imageType === 'extendedContext'
     );
 }
 
@@ -1272,11 +1729,7 @@ switch ($imageType) {
         break;
 
     case 'extendedContext':
-        siteVisualOverviewError(
-            'HTTP/1.1 501 Not Implemented',
-            'The requested image type is reserved but not implemented.',
-            true
-        );
+        siteVisualOverviewExtendedContext($jsonBody, $googleKey);
         break;
 
     default:
