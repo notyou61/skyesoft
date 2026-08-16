@@ -10661,17 +10661,121 @@ window.SkyIndex = {
             createButton.style.cursor = readiness.isComplete ? 'pointer' : 'not-allowed';
         },
 
-        // Begin report creation when all images are ready
-        createSiteVisualOverviewReport() {
-            const readiness = this.getSiteVisualOverviewReadiness();
+        // Generate and open the ephemeral Site Visual Overview PDF
+        async createSiteVisualOverviewReport() {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
 
-            if (!readiness.isComplete) {
+            const readiness =
+                this.getSiteVisualOverviewReadiness();
+
+            if (!workspace || !readiness.isComplete) {
                 return;
             }
 
-            this.appendSystemLine(
-                'Site Visual Overview report generation is ready to be connected.'
+            const createButton = document.getElementById(
+                'siteVisualOverviewCreateButton'
             );
+
+            // Open immediately to avoid popup blocking after fetch
+            const reportWindow = window.open('', '_blank');
+
+            if (!reportWindow) {
+                this.appendSystemLine(
+                    'Unable to open the report window. Please allow popups.'
+                );
+                return;
+            }
+
+            reportWindow.document.write(
+                '<p style="font-family:Arial,sans-serif;' +
+                'padding:20px;">Generating Site Visual Overview Report…</p>'
+            );
+
+            if (createButton) {
+                createButton.disabled = true;
+                createButton.textContent = 'Creating Report…';
+                createButton.style.cursor = 'wait';
+            }
+
+            try {
+                const response = await fetch(
+                    '/skyesoft/reports/siteVisualOverviewReport.php',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/pdf'
+                        },
+                        body: JSON.stringify({
+                            workspace
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorText =
+                        await response.text();
+
+                    throw new Error(
+                        errorText ||
+                        'The report server returned an error.'
+                    );
+                }
+
+                const contentType =
+                    response.headers.get('Content-Type') || '';
+
+                if (
+                    !contentType
+                        .toLowerCase()
+                        .includes('application/pdf')
+                ) {
+                    const errorText =
+                        await response.text();
+
+                    throw new Error(
+                        errorText ||
+                        'The report server did not return a PDF.'
+                    );
+                }
+
+                const pdfBlob =
+                    await response.blob();
+
+                const pdfUrl =
+                    URL.createObjectURL(pdfBlob);
+
+                reportWindow.location.href =
+                    pdfUrl;
+
+                // Close workspace after its artifacts are consumed
+                this.closeSiteVisualOverviewSetup();
+
+                // Release the temporary browser URL later
+                window.setTimeout(() => {
+                    URL.revokeObjectURL(pdfUrl);
+                }, 120000);
+            } catch (error) {
+                reportWindow.close();
+
+                console.error(
+                    'Site Visual Overview PDF generation failed:',
+                    error
+                );
+
+                this.appendSystemLine(
+                    error instanceof Error
+                        ? `Unable to create report: ${error.message}`
+                        : 'Unable to create the Site Visual Overview Report.'
+                );
+
+                if (createButton) {
+                    createButton.disabled = false;
+                    createButton.textContent = 'Create Report';
+                    createButton.style.cursor = 'pointer';
+                }
+            }
         },
 
         // Close Site Visual Overview workspace

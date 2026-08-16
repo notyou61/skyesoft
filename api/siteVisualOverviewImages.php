@@ -2,7 +2,7 @@
 
 // ======================================================================
 // Skyesoft — siteVisualOverviewImages.php
-// Version: 1.3.0
+// Version: 1.4.0
 // Site Visual Overview Image Generation Endpoint
 // ======================================================================
 //
@@ -12,7 +12,7 @@
 //   and Extended Context imagery
 // • Apply parcel boundaries and location markers
 // • Store temporary generated imagery in /skyesoft/artifacts
-// • Return streamed images or structured artifact responses
+// • Return structured artifact responses (filename + public URL)
 //
 // Architectural Principles
 // • Google API credentials remain exclusively server-side
@@ -20,13 +20,15 @@
 // • Image artifacts are temporary, reproducible, and non-authoritative
 // • No database writes occur during image generation
 // • All request values and upstream responses are validated
+// • Artifact filenames follow the Skyesoft REC-IMG convention:
+//     REC-IMG-{TYPE}-{LOCATION_ID}-{IMAGE_SEQUENCE}-{TIMESTAMP}-{REVISION}.jpg
 //
-// Supported Image Types
-// • satellite
-// • parcel
-// • streetView
-// • immediateVicinity
-// • extendedContext
+// Supported Image Types (and REC-IMG codes)
+// • satellite          → SAT
+// • parcel             → PAR
+// • streetView         → STV
+// • immediateVicinity  → VIC
+// • extendedContext    → CTX
 //
 // Compatibility
 // • PHP 8.3+
@@ -38,23 +40,30 @@
 /**
  * Skyesoft Site Visual Overview image endpoint.
  *
- * Supported image types:
- * - satellite: Streams a Google Static Maps satellite image.
- * - parcel: Creates a temporary aerial image for the primary parcel and
- *   returns its public artifact URL as JSON.
- * - streetView: Creates a temporary ground-level image aimed from the
- *   Google panorama toward the validated property coordinates.
- * - immediateVicinity: Creates a temporary labeled roadmap of the
+ * Supported image types and REC-IMG codes:
+ * - satellite (SAT): Creates a temporary Google Static Maps satellite
+ *   image and returns its public artifact URL as JSON.
+ * - parcel (PAR): Creates a temporary aerial image for the primary
+ *   parcel and returns its public artifact URL as JSON.
+ * - streetView (STV): Creates a temporary ground-level image aimed from
+ *   the Google panorama toward the validated property coordinates.
+ * - immediateVicinity (VIC): Creates a temporary labeled roadmap of the
  *   approximately 1.25-mile context around the property, with the
  *   primary parcel boundary and a red location marker.
- * - extendedContext: Creates a temporary roadmap showing the fastest
- *   driving route from Christy Signs (Entity 1) to the destination,
- *   with both locations marked, the driving polyline, a direct line,
- *   and distance/duration metrics returned in JSON for caption use.
+ * - extendedContext (CTX): Creates a temporary roadmap showing the
+ *   fastest driving route from Christy Signs (Entity 1) to the
+ *   destination, with both locations marked, the driving polyline, a
+ *   direct line, and distance/duration metrics returned in JSON for
+ *   caption use.
+ *
+ * All handlers require a canonical locationId so the generated artifact
+ * filename follows the established Skyesoft convention:
+ *   REC-IMG-{TYPE}-{LOCATION_ID}-{IMAGE_SEQUENCE}-{TIMESTAMP}-{REVISION}.jpg
  *
  * Extended Context request contract (POST JSON):
  * {
  *     "type": "extendedContext",
+ *     "locationId": 1,
  *     "destination": {
  *         "address": "2252 N 44th St, Phoenix, AZ 85008, USA",
  *         "latitude": 33.4720564,
@@ -223,6 +232,158 @@ function siteVisualOverviewCoordinates($latitudeRaw, $longitudeRaw, $asJson)
     return array($latitude, $longitude);
 }
 
+/**
+ * Validate and normalize the canonical location identifier.
+ *
+ * Every image artifact filename requires a padded six-digit locationId.
+ * The primary parcel number remains part of request/report data but is
+ * never substituted for this identifier.
+ *
+ * @param mixed   $locationIdRaw Raw locationId from the request.
+ * @param boolean $asJson        Whether errors should be JSON.
+ *
+ * @return integer Positive integer locationId.
+ */
+function siteVisualOverviewLocationId($locationIdRaw, $asJson)
+{
+    if ($locationIdRaw === null || $locationIdRaw === '') {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'A valid locationId is required.',
+            $asJson
+        );
+    }
+
+    if (!is_numeric($locationIdRaw)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'locationId must be a positive integer.',
+            $asJson
+        );
+    }
+
+    $locationId = (int) $locationIdRaw;
+
+    if ($locationId <= 0) {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'locationId must be a positive integer.',
+            $asJson
+        );
+    }
+
+    return $locationId;
+}
+
+/**
+ * Build a Skyesoft REC-IMG artifact filename.
+ *
+ * Convention:
+ *   REC-IMG-{TYPE}-{LOCATION_ID}-{IMAGE_SEQUENCE}-{TIMESTAMP}-{REVISION}.jpg
+ *
+ * Example:
+ *   REC-IMG-PAR-000001-001-1784916627-001.jpg
+ *
+ * @param string  $imageCode     Uppercase image type code (SAT, PAR, STV, VIC, CTX).
+ * @param integer $locationId    Canonical location identifier.
+ * @param integer $imageSequence Sequence number for this image type (default 1).
+ * @param integer $revision      Revision number (default 1).
+ *
+ * @return string
+ */
+function siteVisualOverviewArtifactFilename(
+    $imageCode,
+    $locationId,
+    $imageSequence = 1,
+    $revision = 1
+) {
+    $locationIdPadded = str_pad(
+        (string) $locationId,
+        6,
+        '0',
+        STR_PAD_LEFT
+    );
+
+    return 'REC-IMG-'
+        . strtoupper((string) $imageCode)
+        . '-'
+        . $locationIdPadded
+        . '-'
+        . str_pad((string) $imageSequence, 3, '0', STR_PAD_LEFT)
+        . '-'
+        . time()
+        . '-'
+        . str_pad((string) $revision, 3, '0', STR_PAD_LEFT)
+        . '.jpg';
+}
+
+/**
+ * Resolve the Skyesoft artifacts directory and confirm it is writable.
+ *
+ * @param boolean $asJson Whether errors should be JSON.
+ *
+ * @return string Absolute path to the artifacts directory.
+ */
+function siteVisualOverviewArtifactDirectory($asJson)
+{
+    $artifactDirectory = dirname(__DIR__) . '/artifacts';
+
+    if (!is_dir($artifactDirectory)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'The Skyesoft artifacts directory is unavailable.',
+            $asJson
+        );
+    }
+
+    if (!is_writable($artifactDirectory)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'The Skyesoft artifacts directory is not writable.',
+            $asJson
+        );
+    }
+
+    return $artifactDirectory;
+}
+
+/**
+ * Write binary image data to a temporary artifact file.
+ *
+ * @param string  $artifactDirectory Absolute artifacts directory path.
+ * @param string  $artifactFilename  REC-IMG filename.
+ * @param string  $imageData         Binary image payload.
+ * @param boolean $asJson            Whether errors should be JSON.
+ *
+ * @return void
+ */
+function siteVisualOverviewWriteArtifact(
+    $artifactDirectory,
+    $artifactFilename,
+    $imageData,
+    $asJson
+) {
+    $artifactPath = $artifactDirectory . '/' . $artifactFilename;
+    $bytesWritten = file_put_contents(
+        $artifactPath,
+        $imageData,
+        LOCK_EX
+    );
+
+    if ($bytesWritten === false || $bytesWritten <= 0) {
+        error_log(
+            '[SITE VISUAL IMAGES] Unable to write artifact: '
+            . $artifactPath
+        );
+
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'Unable to create the temporary image artifact.',
+            $asJson
+        );
+    }
+}
+
 #endregion
 
 #region Section 2 — Shared Remote Request Helpers
@@ -310,31 +471,36 @@ function siteVisualOverviewCurlGet($url)
 #region Section 3 — Satellite Image Handler
 
 /**
- * Stream a satellite image response.
+ * Create the satellite aerial artifact and return its URL.
  *
- * @param array  $jsonBody Request JSON.
+ * Requires a POST JSON request with locationId, latitude, and longitude.
+ * The image is stored under /skyesoft/artifacts using the REC-IMG-SAT
+ * convention and the client receives artifactFilename + artifactUrl.
+ *
+ * @param array  $jsonBody  Request JSON.
  * @param string $googleKey Google Maps Static API key.
  *
  * @return void
  */
 function siteVisualOverviewSatellite($jsonBody, $googleKey)
 {
-    $latitudeRaw = siteVisualOverviewRequestValue(
-        $jsonBody,
-        'latitude',
-        ''
-    );
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        siteVisualOverviewError(
+            'HTTP/1.1 405 Method Not Allowed',
+            'Satellite images require a POST JSON request.',
+            true
+        );
+    }
 
-    $longitudeRaw = siteVisualOverviewRequestValue(
-        $jsonBody,
-        'longitude',
-        ''
+    $locationId = siteVisualOverviewLocationId(
+        siteVisualOverviewRequestValue($jsonBody, 'locationId', ''),
+        true
     );
 
     $coordinates = siteVisualOverviewCoordinates(
-        $latitudeRaw,
-        $longitudeRaw,
-        false
+        siteVisualOverviewRequestValue($jsonBody, 'latitude', ''),
+        siteVisualOverviewRequestValue($jsonBody, 'longitude', ''),
+        true
     );
 
     $zoomRaw = siteVisualOverviewRequestValue($jsonBody, 'zoom', '19');
@@ -343,7 +509,7 @@ function siteVisualOverviewSatellite($jsonBody, $googleKey)
         siteVisualOverviewError(
             'HTTP/1.1 400 Bad Request',
             'A valid zoom value is required.',
-            false
+            true
         );
     }
 
@@ -353,7 +519,7 @@ function siteVisualOverviewSatellite($jsonBody, $googleKey)
         siteVisualOverviewError(
             'HTTP/1.1 400 Bad Request',
             'Zoom must be between 0 and 21.',
-            false
+            true
         );
     }
 
@@ -392,19 +558,36 @@ function siteVisualOverviewSatellite($jsonBody, $googleKey)
         siteVisualOverviewError(
             'HTTP/1.1 502 Bad Gateway',
             'Unable to retrieve the satellite image.',
-            false
+            true
         );
     }
 
-    header('Content-Type: ' . $imageResponse['contentType']);
-    header('Content-Length: ' . strlen($imageResponse['data']));
-    header(
-        'Content-Disposition: inline; '
-        . 'filename="site-visual-satellite.jpg"'
+    $artifactDirectory = siteVisualOverviewArtifactDirectory(true);
+    $artifactFilename = siteVisualOverviewArtifactFilename(
+        'SAT',
+        $locationId
     );
 
-    echo $imageResponse['data'];
-    exit;
+    siteVisualOverviewWriteArtifact(
+        $artifactDirectory,
+        $artifactFilename,
+        $imageResponse['data'],
+        true
+    );
+
+    siteVisualOverviewJson(array(
+        'success' => true,
+        'status' => 'ready',
+        'type' => 'satellite',
+        'locationId' => $locationId,
+        'latitude' => $coordinates[0],
+        'longitude' => $coordinates[1],
+        'zoom' => $zoom,
+        'artifactFilename' => $artifactFilename,
+        'artifactUrl' => '/skyesoft/artifacts/' . $artifactFilename,
+        'createdAt' => time(),
+        'temporary' => true
+    ));
 }
 
 #endregion
@@ -549,6 +732,11 @@ function siteVisualOverviewParcel($jsonBody, $googleKey)
         );
     }
 
+    $locationId = siteVisualOverviewLocationId(
+        siteVisualOverviewRequestValue($jsonBody, 'locationId', ''),
+        true
+    );
+
     $coordinates = siteVisualOverviewCoordinates(
         siteVisualOverviewRequestValue($jsonBody, 'latitude', ''),
         siteVisualOverviewRequestValue($jsonBody, 'longitude', ''),
@@ -635,70 +823,24 @@ function siteVisualOverviewParcel($jsonBody, $googleKey)
         );
     }
 
-    $artifactDirectory = dirname(__DIR__) . '/artifacts';
-
-    if (!is_dir($artifactDirectory)) {
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'The Skyesoft artifacts directory is unavailable.',
-            true
-        );
-    }
-
-    if (!is_writable($artifactDirectory)) {
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'The Skyesoft artifacts directory is not writable.',
-            true
-        );
-    }
-
-    $safeParcelNumber = preg_replace(
-        '/[^A-Za-z0-9_-]/',
-        '',
-        $parcelNumber
+    $artifactDirectory = siteVisualOverviewArtifactDirectory(true);
+    $artifactFilename = siteVisualOverviewArtifactFilename(
+        'PAR',
+        $locationId
     );
 
-    if ($safeParcelNumber === '') {
-        $safeParcelNumber = 'unknown';
-    }
-
-    $uniqueToken = function_exists('openssl_random_pseudo_bytes')
-        ? bin2hex(openssl_random_pseudo_bytes(6))
-        : substr(md5(uniqid('', true)), 0, 12);
-
-    $artifactFilename = 'tmp-site-visual-parcel-'
-        . $safeParcelNumber
-        . '-'
-        . time()
-        . '-'
-        . $uniqueToken
-        . '.jpg';
-
-    $artifactPath = $artifactDirectory . '/' . $artifactFilename;
-    $bytesWritten = file_put_contents(
-        $artifactPath,
+    siteVisualOverviewWriteArtifact(
+        $artifactDirectory,
+        $artifactFilename,
         $imageResponse['data'],
-        LOCK_EX
+        true
     );
-
-    if ($bytesWritten === false || $bytesWritten <= 0) {
-        error_log(
-            '[SITE VISUAL IMAGES] Unable to write parcel artifact: '
-            . $artifactPath
-        );
-
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'Unable to create the temporary parcel artifact.',
-            true
-        );
-    }
 
     siteVisualOverviewJson(array(
         'success' => true,
         'status' => 'ready',
         'type' => 'parcel',
+        'locationId' => $locationId,
         'parcelNumber' => $parcelNumber,
         'artifactFilename' => $artifactFilename,
         'artifactUrl' => '/skyesoft/artifacts/' . $artifactFilename,
@@ -804,6 +946,11 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
             true
         );
     }
+
+    $locationId = siteVisualOverviewLocationId(
+        siteVisualOverviewRequestValue($jsonBody, 'locationId', ''),
+        true
+    );
 
     $coordinates = siteVisualOverviewCoordinates(
         siteVisualOverviewRequestValue($jsonBody, 'latitude', ''),
@@ -927,55 +1074,25 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         );
     }
 
-    $artifactDirectory = dirname(__DIR__) . '/artifacts';
-
-    if (!is_dir($artifactDirectory)) {
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'The Skyesoft artifacts directory is unavailable.',
-            true
-        );
-    }
-
-    if (!is_writable($artifactDirectory)) {
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'The Skyesoft artifacts directory is not writable.',
-            true
-        );
-    }
-
-    $uniqueToken = bin2hex(random_bytes(6));
-    $artifactFilename = 'tmp-site-visual-street-view-1-'
-        . time()
-        . '-'
-        . $uniqueToken
-        . '.jpg';
-
-    $artifactPath = $artifactDirectory . '/' . $artifactFilename;
-    $bytesWritten = file_put_contents(
-        $artifactPath,
-        $imageResponse['data'],
-        LOCK_EX
+    $artifactDirectory = siteVisualOverviewArtifactDirectory(true);
+    $artifactFilename = siteVisualOverviewArtifactFilename(
+        'STV',
+        $locationId,
+        1
     );
 
-    if ($bytesWritten === false || $bytesWritten <= 0) {
-        error_log(
-            '[SITE VISUAL IMAGES] Unable to write Street View artifact: '
-            . $artifactPath
-        );
-
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'Unable to create the temporary Street View artifact.',
-            true
-        );
-    }
+    siteVisualOverviewWriteArtifact(
+        $artifactDirectory,
+        $artifactFilename,
+        $imageResponse['data'],
+        true
+    );
 
     siteVisualOverviewJson(array(
         'success' => true,
         'status' => 'ready',
         'type' => 'streetView',
+        'locationId' => $locationId,
         'viewIndex' => 1,
         'address' => $address,
         'propertyLatitude' => $propertyLatitude,
@@ -1021,6 +1138,11 @@ function siteVisualOverviewImmediateVicinity($jsonBody, $googleKey)
             true
         );
     }
+
+    $locationId = siteVisualOverviewLocationId(
+        siteVisualOverviewRequestValue($jsonBody, 'locationId', ''),
+        true
+    );
 
     $coordinates = siteVisualOverviewCoordinates(
         siteVisualOverviewRequestValue($jsonBody, 'latitude', ''),
@@ -1148,72 +1270,24 @@ function siteVisualOverviewImmediateVicinity($jsonBody, $googleKey)
         );
     }
 
-    $artifactDirectory = dirname(__DIR__) . '/artifacts';
-
-    if (!is_dir($artifactDirectory)) {
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'The Skyesoft artifacts directory is unavailable.',
-            true
-        );
-    }
-
-    if (!is_writable($artifactDirectory)) {
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'The Skyesoft artifacts directory is not writable.',
-            true
-        );
-    }
-
-    $safeParcelNumber = preg_replace(
-        '/[^A-Za-z0-9_-]/',
-        '',
-        $parcelNumber
+    $artifactDirectory = siteVisualOverviewArtifactDirectory(true);
+    $artifactFilename = siteVisualOverviewArtifactFilename(
+        'VIC',
+        $locationId
     );
 
-    if ($safeParcelNumber === '') {
-        $safeParcelNumber = 'unknown';
-    }
-
-    $uniqueToken = function_exists('random_bytes')
-        ? bin2hex(random_bytes(6))
-        : (function_exists('openssl_random_pseudo_bytes')
-            ? bin2hex(openssl_random_pseudo_bytes(6))
-            : substr(md5(uniqid('', true)), 0, 12));
-
-    $artifactFilename = 'tmp-site-visual-immediate-vicinity-'
-        . $safeParcelNumber
-        . '-'
-        . time()
-        . '-'
-        . $uniqueToken
-        . '.jpg';
-
-    $artifactPath = $artifactDirectory . '/' . $artifactFilename;
-    $bytesWritten = file_put_contents(
-        $artifactPath,
+    siteVisualOverviewWriteArtifact(
+        $artifactDirectory,
+        $artifactFilename,
         $imageResponse['data'],
-        LOCK_EX
+        true
     );
-
-    if ($bytesWritten === false || $bytesWritten <= 0) {
-        error_log(
-            '[SITE VISUAL IMAGES] Unable to write Immediate Vicinity artifact: '
-            . $artifactPath
-        );
-
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'Unable to create the temporary Immediate Vicinity artifact.',
-            true
-        );
-    }
 
     siteVisualOverviewJson(array(
         'success' => true,
         'status' => 'ready',
         'type' => 'immediateVicinity',
+        'locationId' => $locationId,
         'parcelNumber' => $parcelNumber,
         'latitude' => $latitude,
         'longitude' => $longitude,
@@ -1445,6 +1519,11 @@ function siteVisualOverviewExtendedContext($jsonBody, $googleKey)
         );
     }
 
+    $locationId = siteVisualOverviewLocationId(
+        siteVisualOverviewRequestValue($jsonBody, 'locationId', ''),
+        true
+    );
+
     // Accept either top-level latitude/longitude/address or the nested
     // destination object used by the current client payload.
     $latitudeRaw = siteVisualOverviewRequestValue($jsonBody, 'latitude', '');
@@ -1650,60 +1729,24 @@ function siteVisualOverviewExtendedContext($jsonBody, $googleKey)
         );
     }
 
-    $artifactDirectory = dirname(__DIR__) . '/artifacts';
-
-    if (!is_dir($artifactDirectory)) {
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'The Skyesoft artifacts directory is unavailable.',
-            true
-        );
-    }
-
-    if (!is_writable($artifactDirectory)) {
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'The Skyesoft artifacts directory is not writable.',
-            true
-        );
-    }
-
-    $uniqueToken = function_exists('random_bytes')
-        ? bin2hex(random_bytes(6))
-        : (function_exists('openssl_random_pseudo_bytes')
-            ? bin2hex(openssl_random_pseudo_bytes(6))
-            : substr(md5(uniqid('', true)), 0, 12));
-
-    $artifactFilename = 'tmp-site-visual-extended-context-'
-        . time()
-        . '-'
-        . $uniqueToken
-        . '.jpg';
-
-    $artifactPath = $artifactDirectory . '/' . $artifactFilename;
-    $bytesWritten = file_put_contents(
-        $artifactPath,
-        $imageResponse['data'],
-        LOCK_EX
+    $artifactDirectory = siteVisualOverviewArtifactDirectory(true);
+    $artifactFilename = siteVisualOverviewArtifactFilename(
+        'CTX',
+        $locationId
     );
 
-    if ($bytesWritten === false || $bytesWritten <= 0) {
-        error_log(
-            '[SITE VISUAL IMAGES] Unable to write Extended Context artifact: '
-            . $artifactPath
-        );
-
-        siteVisualOverviewError(
-            'HTTP/1.1 500 Internal Server Error',
-            'Unable to create the temporary Extended Context artifact.',
-            true
-        );
-    }
+    siteVisualOverviewWriteArtifact(
+        $artifactDirectory,
+        $artifactFilename,
+        $imageResponse['data'],
+        true
+    );
 
     siteVisualOverviewJson(array(
         'success' => true,
         'status' => 'ready',
         'type' => 'extendedContext',
+        'locationId' => $locationId,
         'origin' => array(
             'name' => $originName,
             'address' => $originAddress,
@@ -1746,13 +1789,11 @@ if ($googleKey === '') {
         '[SITE VISUAL IMAGES] Google Maps Static API key missing.'
     );
 
+    // All five image types now return structured JSON artifact responses.
     siteVisualOverviewError(
         'HTTP/1.1 500 Internal Server Error',
         'Site Visual Overview image service is not configured.',
-        $imageType === 'parcel'
-            || $imageType === 'streetView'
-            || $imageType === 'immediateVicinity'
-            || $imageType === 'extendedContext'
+        true
     );
 }
 
