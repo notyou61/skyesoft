@@ -9325,6 +9325,7 @@ window.SkyIndex = {
             // Load default satellite-image preview
             this.loadSiteVisualOverviewSatellitePreview();
             this.loadSiteVisualOverviewParcelPreview();
+            this.loadSiteVisualOverviewStreetViewPreview();
 
             document.addEventListener(
                 'keydown',
@@ -9653,6 +9654,186 @@ window.SkyIndex = {
                             ? error.message
                             : 'Parcel-image generation failed.'
                 };
+
+                this.refreshSiteVisualOverviewPreview();
+            }
+        },
+
+        // Load default property-facing Street View preview
+        async loadSiteVisualOverviewStreetViewPreview() {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const location =
+                workspace?.sourceData?.data?.location || null;
+
+            const streetViews =
+                workspace?.sections?.streetViews || null;
+
+            if (!workspace || !location || !streetViews) {
+                return;
+            }
+
+            const latitude =
+                Number(location.locationLatitude);
+
+            const longitude =
+                Number(location.locationLongitude);
+
+            const address =
+                String(
+                    location.locationResolvedAddress ||
+                    location.locationAddress ||
+                    ''
+                ).trim();
+
+            // Ensure the default Street View selection exists
+            if (!Array.isArray(streetViews.selections)) {
+                streetViews.selections = [];
+            }
+
+            if (!streetViews.selections[0]) {
+                streetViews.selections[0] = {
+                    status: 'notStarted',
+                    preview: null,
+                    viewPurpose:
+                        'Default property-facing Street View.'
+                };
+            }
+
+            const selection =
+                streetViews.selections[0];
+
+            // Validate required Street View inputs
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                !address
+            ) {
+                selection.status = 'error';
+                selection.preview = null;
+                selection.error =
+                    'Validated address coordinates are unavailable.';
+
+                this.refreshSiteVisualOverviewPreview();
+                return;
+            }
+
+            // Set loading state
+            selection.status = 'loading';
+            selection.preview = null;
+            selection.error = null;
+
+            this.refreshSiteVisualOverviewPreview();
+
+            try {
+                const response = await fetch(
+                    '/skyesoft/api/siteVisualOverviewImages.php',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            type: 'streetView',
+                            address,
+                            latitude,
+                            longitude,
+                            fov: 75,
+                            pitch: 5
+                        })
+                    }
+                );
+
+                const responseText =
+                    await response.text();
+
+                let responseData = null;
+
+                // Decode structured endpoint response
+                try {
+                    responseData =
+                        JSON.parse(responseText);
+                } catch (error) {
+                    throw new Error(
+                        'Street View endpoint returned invalid JSON.'
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    responseData?.success !== true ||
+                    !responseData.artifactUrl
+                ) {
+                    throw new Error(
+                        responseData?.error ||
+                        'Street View generation failed.'
+                    );
+                }
+
+                // Ignore a response for a replaced workspace
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                selection.status = 'ready';
+                selection.preview =
+                    responseData.artifactUrl;
+
+                selection.viewPurpose =
+                    'Default property-facing Street View.';
+
+                selection.settings = {
+                    address,
+                    latitude,
+                    longitude,
+                    panoramaId:
+                        responseData.panoramaId || null,
+                    panoramaLatitude:
+                        responseData.panoramaLatitude ?? null,
+                    panoramaLongitude:
+                        responseData.panoramaLongitude ?? null,
+                    heading:
+                        responseData.heading ?? null,
+                    headingSource:
+                        responseData.headingSource || null,
+                    addressParity:
+                        responseData.addressParity || null,
+                    fov:
+                        responseData.fov ?? 75,
+                    pitch:
+                        responseData.pitch ?? 5,
+                    artifactFilename:
+                        responseData.artifactFilename || null,
+                    artifactUrl:
+                        responseData.artifactUrl
+                };
+
+                this.refreshSiteVisualOverviewPreview();
+            } catch (error) {
+                // Ignore errors for a replaced workspace
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                console.error(
+                    'Site Visual Overview Street View preview failed:',
+                    error
+                );
+
+                selection.status = 'error';
+                selection.preview = null;
+                selection.error =
+                    error instanceof Error
+                        ? error.message
+                        : 'Street View generation failed.';
 
                 this.refreshSiteVisualOverviewPreview();
             }
