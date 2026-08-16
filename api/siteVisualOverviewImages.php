@@ -994,26 +994,7 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
 
 #endregion
 
-#region Section 7 — Immediate Vicinity Artifact Handler
-
-/**
- * Create the Immediate Vicinity roadmap artifact.
- *
- * @param array  $jsonBody Request JSON.
- * @param string $googleKey Google Maps Static API key.
- *
- * @return void
- */
-function siteVisualOverviewImmediateVicinity(
-    $jsonBody,
-    $googleKey
-) {
-    // Complete Immediate Vicinity implementation belongs here.
-}
-
-#endregion
-
-#region Section 8 — Request Router
+#region Section 7 — Request Router
 
 $jsonBody = siteVisualOverviewReadJsonBody();
 $imageType = trim((string) siteVisualOverviewRequestValue(
@@ -1051,11 +1032,6 @@ switch ($imageType) {
         break;
 
     case 'immediateVicinity':
-    siteVisualOverviewImmediateVicinity(
-        $jsonBody,
-        $googleKey
-    );
-    break;
     case 'extendedContext':
         siteVisualOverviewError(
             'HTTP/1.1 501 Not Implemented',
