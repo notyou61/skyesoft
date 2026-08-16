@@ -55,10 +55,15 @@
  * Extended Context request contract (POST JSON):
  * {
  *     "type": "extendedContext",
- *     "latitude": 33.4848523,
- *     "longitude": -112.1288006,
- *     "address": "3145 N 33rd Ave, Phoenix, AZ 85017, USA"
+ *     "destination": {
+ *         "address": "2252 N 44th St, Phoenix, AZ 85008, USA",
+ *         "latitude": 33.4720564,
+ *         "longitude": -111.9902556
+ *     }
  * }
+ *
+ * Top-level latitude / longitude / address are also accepted for
+ * backward compatibility.
  *
  * Compatibility: PHP 8.3+
  */
@@ -1222,7 +1227,7 @@ function siteVisualOverviewImmediateVicinity($jsonBody, $googleKey)
 
 #endregion
 
-#region Section 8 — Extended Context Artifact Handler
+#region Section 8 — Extended Context Artifact Handle
 
 /**
  * Resolve the server-side Google Maps Backend API key
@@ -1440,17 +1445,43 @@ function siteVisualOverviewExtendedContext($jsonBody, $googleKey)
         );
     }
 
-    $destinationCoordinates = siteVisualOverviewCoordinates(
-        siteVisualOverviewRequestValue($jsonBody, 'latitude', ''),
-        siteVisualOverviewRequestValue($jsonBody, 'longitude', ''),
-        true
-    );
-
+    // Accept either top-level latitude/longitude/address or the nested
+    // destination object used by the current client payload.
+    $latitudeRaw = siteVisualOverviewRequestValue($jsonBody, 'latitude', '');
+    $longitudeRaw = siteVisualOverviewRequestValue($jsonBody, 'longitude', '');
     $destinationAddress = trim((string) siteVisualOverviewRequestValue(
         $jsonBody,
         'address',
         ''
     ));
+
+    if (isset($jsonBody['destination']) && is_array($jsonBody['destination'])) {
+        $destination = $jsonBody['destination'];
+
+        if (($latitudeRaw === '' || $latitudeRaw === null)
+            && isset($destination['latitude'])
+        ) {
+            $latitudeRaw = $destination['latitude'];
+        }
+
+        if (($longitudeRaw === '' || $longitudeRaw === null)
+            && isset($destination['longitude'])
+        ) {
+            $longitudeRaw = $destination['longitude'];
+        }
+
+        if ($destinationAddress === ''
+            && isset($destination['address'])
+        ) {
+            $destinationAddress = trim((string) $destination['address']);
+        }
+    }
+
+    $destinationCoordinates = siteVisualOverviewCoordinates(
+        $latitudeRaw,
+        $longitudeRaw,
+        true
+    );
 
     $destinationLatitude = $destinationCoordinates[0];
     $destinationLongitude = $destinationCoordinates[1];
