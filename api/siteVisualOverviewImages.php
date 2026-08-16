@@ -1227,7 +1227,7 @@ function siteVisualOverviewImmediateVicinity($jsonBody, $googleKey)
 
 #endregion
 
-#region Section 8 — Extended Context Artifact Handle
+#region Section 8 — Extended Context Artifact Handler
 
 /**
  * Resolve the server-side Google Maps Backend API key
@@ -1537,16 +1537,31 @@ function siteVisualOverviewExtendedContext($jsonBody, $googleKey)
         || empty($directionsData['routes'][0]['overview_polyline']['points'])
         || empty($directionsData['routes'][0]['legs'][0])
     ) {
+        $googleErrorMessage = '';
+        if (is_array($directionsData) && isset($directionsData['error_message'])) {
+            $googleErrorMessage = (string) $directionsData['error_message'];
+        }
+
         error_log(
             '[SITE VISUAL IMAGES] Directions request failed. Status='
             . $directionsStatus
             . ' HTTP=' . $directionsResponse['httpCode']
             . ' cURL=' . $directionsResponse['error']
+            . ' Message=' . $googleErrorMessage
+            . ' Body=' . substr((string) $directionsResponse['data'], 0, 500)
         );
+
+        $clientMessage = 'Unable to retrieve the driving route.';
+        if ($directionsStatus !== 'UNKNOWN' && $directionsStatus !== '') {
+            $clientMessage .= ' (Google status: ' . $directionsStatus . ')';
+        }
+        if ($googleErrorMessage !== '') {
+            $clientMessage .= ' ' . $googleErrorMessage;
+        }
 
         siteVisualOverviewError(
             'HTTP/1.1 502 Bad Gateway',
-            'Unable to retrieve the driving route.',
+            $clientMessage,
             true
         );
     }
