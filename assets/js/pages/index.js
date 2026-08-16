@@ -9322,11 +9322,12 @@ window.SkyIndex = {
             document.body.appendChild(modal);
             this.showSiteVisualOverviewTab('preview');
 
-            // Load default satellite-image preview
+            // Load default report-image previews
             this.loadSiteVisualOverviewSatellitePreview();
             this.loadSiteVisualOverviewParcelPreview();
             this.loadSiteVisualOverviewStreetViewPreview();
-            this.loadSiteVisualOverviewImmediateVicinityPreview()
+            this.loadSiteVisualOverviewImmediateVicinityPreview();
+            this.loadSiteVisualOverviewExtendedContextPreview();
 
             document.addEventListener(
                 'keydown',
@@ -10005,6 +10006,166 @@ window.SkyIndex = {
                     error instanceof Error
                         ? error.message
                         : 'Immediate Vicinity Map generation failed.';
+
+                this.refreshSiteVisualOverviewPreview();
+            }
+        },
+
+        // Load default Extended Context Map preview
+        async loadSiteVisualOverviewExtendedContextPreview() {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const location =
+                workspace?.sourceData?.data?.location || null;
+
+            const extendedContext =
+                workspace?.sections?.extendedContext || null;
+
+            if (
+                !workspace ||
+                !location ||
+                !extendedContext
+            ) {
+                return;
+            }
+
+            const latitude =
+                Number(location.locationLatitude);
+
+            const longitude =
+                Number(location.locationLongitude);
+
+            const address =
+                String(
+                    location.locationResolvedAddress ||
+                    location.locationAddress ||
+                    ''
+                ).trim();
+
+            // Validate required destination inputs
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                !address
+            ) {
+                extendedContext.status = 'error';
+                extendedContext.preview = null;
+                extendedContext.error =
+                    'Validated destination data are unavailable.';
+
+                this.refreshSiteVisualOverviewPreview();
+                return;
+            }
+
+            // Set loading state
+            extendedContext.status = 'loading';
+            extendedContext.preview = null;
+            extendedContext.error = null;
+
+            this.refreshSiteVisualOverviewPreview();
+
+            try {
+                const response = await fetch(
+                    '/skyesoft/api/siteVisualOverviewImages.php',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            type: 'extendedContext',
+                            destination: {
+                                address,
+                                latitude,
+                                longitude
+                            }
+                        })
+                    }
+                );
+
+                const responseText =
+                    await response.text();
+
+                let responseData = null;
+
+                // Decode structured endpoint response
+                try {
+                    responseData =
+                        JSON.parse(responseText);
+                } catch (error) {
+                    throw new Error(
+                        'Extended Context endpoint returned invalid JSON.'
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    responseData?.success !== true ||
+                    !responseData.artifactUrl
+                ) {
+                    throw new Error(
+                        responseData?.error ||
+                        'Extended Context Map generation failed.'
+                    );
+                }
+
+                // Ignore a response for a replaced workspace
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                extendedContext.status = 'ready';
+                extendedContext.preview =
+                    responseData.artifactUrl;
+
+                extendedContext.settings = {
+                    destinationAddress: address,
+                    destinationLatitude: latitude,
+                    destinationLongitude: longitude,
+                    origin:
+                        responseData.origin || null,
+                    destination:
+                        responseData.destination || null,
+                    drivingDistanceMiles:
+                        responseData.drivingDistanceMiles ?? null,
+                    drivingDurationText:
+                        responseData.drivingDurationText || null,
+                    directDistanceMiles:
+                        responseData.directDistanceMiles ?? null,
+                    routeSummary:
+                        responseData.routeSummary || null,
+                    artifactFilename:
+                        responseData.artifactFilename || null,
+                    artifactUrl:
+                        responseData.artifactUrl
+                };
+
+                this.refreshSiteVisualOverviewPreview();
+            } catch (error) {
+                // Ignore errors for a replaced workspace
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                console.error(
+                    'Site Visual Overview Extended Context preview failed:',
+                    error
+                );
+
+                extendedContext.status = 'error';
+                extendedContext.preview = null;
+                extendedContext.error =
+                    error instanceof Error
+                        ? error.message
+                        : 'Extended Context Map generation failed.';
 
                 this.refreshSiteVisualOverviewPreview();
             }
