@@ -552,6 +552,51 @@ $extendedSettings = is_array($sections['extendedContext']['settings'] ?? null)
     ? $sections['extendedContext']['settings']
     : [];
 
+// Resolve Driving Distance (miles) from the keys actually produced
+// by siteVisualOverviewImages.php (extendedContext) and any frontend
+// mapping that may already exist in the workspace payload.
+$resolvedDrivingDistanceMiles = null;
+if (
+    isset($extendedSettings['drivingDistanceMiles'])
+    && is_numeric($extendedSettings['drivingDistanceMiles'])
+) {
+    $resolvedDrivingDistanceMiles = (float)$extendedSettings['drivingDistanceMiles'];
+} elseif (
+    isset($extendedSettings['drivingDistanceMeters'])
+    && is_numeric($extendedSettings['drivingDistanceMeters'])
+) {
+    $resolvedDrivingDistanceMiles = round(
+        (float)$extendedSettings['drivingDistanceMeters'] / 1609.344,
+        1
+    );
+} elseif (
+    !empty($extendedSettings['drivingDistanceText'])
+    && is_string($extendedSettings['drivingDistanceText'])
+) {
+    if (preg_match(
+        '/([\d.]+)\s*mi/i',
+        $extendedSettings['drivingDistanceText'],
+        $distanceMatch
+    )) {
+        $resolvedDrivingDistanceMiles = (float)$distanceMatch[1];
+    }
+}
+
+// Resolve Direct / Straight-line Distance (miles).
+// Upstream images endpoint returns straightLineMiles (Haversine).
+$resolvedDirectDistanceMiles = null;
+if (
+    isset($extendedSettings['directDistanceMiles'])
+    && is_numeric($extendedSettings['directDistanceMiles'])
+) {
+    $resolvedDirectDistanceMiles = (float)$extendedSettings['directDistanceMiles'];
+} elseif (
+    isset($extendedSettings['straightLineMiles'])
+    && is_numeric($extendedSettings['straightLineMiles'])
+) {
+    $resolvedDirectDistanceMiles = (float)$extendedSettings['straightLineMiles'];
+}
+
 $reportImages[] = [
     'key' => 'extendedContext',
     'title' => 'Extended Context Map',
@@ -761,7 +806,7 @@ ob_start();
                 <tr>
                     <th>Driving Distance</th>
                     <td><?= escapeSiteVisualValue(formatSiteVisualDistance(
-                        $extendedSettings['drivingDistanceMiles'] ?? null
+                        $resolvedDrivingDistanceMiles
                     )) ?></td>
                 </tr>
                 <tr>
@@ -773,7 +818,7 @@ ob_start();
                 <tr>
                     <th>Direct Distance</th>
                     <td><?= escapeSiteVisualValue(formatSiteVisualDistance(
-                        $extendedSettings['directDistanceMiles'] ?? null
+                        $resolvedDirectDistanceMiles
                     )) ?></td>
                 </tr>
             </table>
