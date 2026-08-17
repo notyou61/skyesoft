@@ -6,32 +6,75 @@ declare(strict_types=1);
 //  Version: 2.5.0 (Section Disclaimer Sources)
 // ======================================================================
 
-#region SECTION 0 — Headers & Environment
+#region SECTION 0 — Headers, Session & Environment Bootstrap
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=UTF-8');
+
+// ======================================================================
+// Canonical Session Bootstrap
+// ======================================================================
+
+require_once __DIR__ . '/sessionBootstrap.php';
+
+// ======================================================================
+// Environment Bootstrap
+// ======================================================================
 
 $envLoaderPath = __DIR__ . '/utils/envLoader.php';
+
 if (!file_exists($envLoaderPath)) {
     $envLoaderPath = __DIR__ . '/../utils/envLoader.php';
 }
 
 if (file_exists($envLoaderPath)) {
     require_once $envLoaderPath;
+
     if (function_exists('skyesoftLoadEnv')) {
         skyesoftLoadEnv();
     }
 }
 
+// ======================================================================
+// Database & Action-Layer Bootstrap
+// ======================================================================
+
+require_once __DIR__ . '/dbConnect.php';
+require_once __DIR__ . '/utils/actions.php';
+
+if (!function_exists('getPDO')) {
+    throw new RuntimeException(
+        'The Skyesoft database connection is unavailable.'
+    );
+}
+
+if (!function_exists('insertActionPrompt')) {
+    throw new RuntimeException(
+        'The Skyesoft action-logging layer is unavailable.'
+    );
+}
+
+// ======================================================================
+// Request Execution Context
+// ======================================================================
+
 $executionTime = time();
-$isoTimestamp  = date('c', $executionTime);
+$isoTimestamp = date('c', $executionTime);
+
+// ======================================================================
+// Google Maps API Configuration
+// ======================================================================
 
 $googleMapsApiKey = '';
+
 if (function_exists('skyesoftGetEnv')) {
-    $googleMapsApiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY') ?: skyesoftGetEnv('GOOGLE_MAPS_API_KEY');
+    $googleMapsApiKey =
+        skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY')
+        ?: skyesoftGetEnv('GOOGLE_MAPS_API_KEY');
 }
 
 if (empty($googleMapsApiKey)) {
-    $googleMapsApiKey = $_ENV['GOOGLE_MAPS_BACKEND_API_KEY']
+    $googleMapsApiKey =
+        $_ENV['GOOGLE_MAPS_BACKEND_API_KEY']
         ?? $_ENV['GOOGLE_MAPS_API_KEY']
         ?? getenv('GOOGLE_MAPS_BACKEND_API_KEY')
         ?? getenv('GOOGLE_MAPS_API_KEY')
@@ -45,45 +88,160 @@ if (empty($googleMapsApiKey)) {
 #region SECTION 1 — Request Ingestion & Data Cleansing
 
 $rawInput = file_get_contents('php://input');
-$input    = json_decode((string)$rawInput, true);
+$input = json_decode((string) $rawInput, true);
 
 if (!is_array($input)) {
     $input = $_GET;
 }
 
-$dataObj  = $input['data'] ?? [];
-$location = $input['location'] ?? $dataObj['location'] ?? $input;
-$parcel   = $location['parcel'] ?? $dataObj['location']['parcelDetails'][0] ?? $dataObj['parcel'] ?? [];
+$dataObj = $input['data'] ?? [];
+$location = $input['location']
+    ?? $dataObj['location']
+    ?? $input;
 
-$activitySessionId = $input['activitySessionId'] ?? $dataObj['activitySessionId'] ?? bin2hex(random_bytes(16));
-$debugEnabled      = filter_var($input['debug'] ?? $_GET['debug'] ?? false, FILTER_VALIDATE_BOOLEAN);
+$parcel = $location['parcel']
+    ?? $dataObj['location']['parcelDetails'][0]
+    ?? $dataObj['parcel']
+    ?? [];
 
-$address      = $location['locationAddress'] ?? $dataObj['locationAddress'] ?? $input['locationAddress'] ?? null;
-$city         = $location['locationCity'] ?? $dataObj['locationCity'] ?? null;
-$state        = $location['locationState'] ?? $dataObj['locationState'] ?? 'AZ';
-$zip          = $location['locationZip'] ?? $dataObj['locationZip'] ?? null;
-$cityStateZip = $location['locationCityStateZip'] ?? $dataObj['locationCityStateZip'] ?? implode(', ', array_filter([$city, trim($state . ' ' . $zip)]));
+// ======================================================================
+// Canonical Activity Session
+// ======================================================================
 
-$cleanAddress = preg_replace('/\b(suite|ste|unit|apt|#)\s*[\w-]+/i', '', (string)$address);
-$cleanAddress = trim(preg_replace('/\s+/', ' ', (string)$cleanAddress), " ,");
+$activitySessionId =
+    $_SESSION['activitySessionId']
+    ?? $input['activitySessionId']
+    ?? $dataObj['activitySessionId']
+    ?? session_id();
 
-$locationPlaceId = $location['locationPlaceId'] 
-    ?? $location['placeId'] 
-    ?? $location['place_id'] 
-    ?? $dataObj['locationPlaceId'] 
-    ?? $dataObj['placeId'] 
-    ?? $dataObj['place_id'] 
-    ?? $input['locationPlaceId'] 
+// ======================================================================
+// Action Audit Coordinates
+// ======================================================================
+
+// Browser coordinates are used only for tblActions auditing
+$actionLatitude = is_numeric(
+    $input['actionLatitude'] ?? null
+)
+    ? (float) $input['actionLatitude']
+    : null;
+
+$actionLongitude = is_numeric(
+    $input['actionLongitude'] ?? null
+)
+    ? (float) $input['actionLongitude']
+    : null;
+
+// ======================================================================
+// Request Options
+// ======================================================================
+
+$debugEnabled = filter_var(
+    $input['debug'] ?? $_GET['debug'] ?? false,
+    FILTER_VALIDATE_BOOLEAN
+);
+
+// ======================================================================
+// Address Components
+// ======================================================================
+
+$address = $location['locationAddress']
+    ?? $dataObj['locationAddress']
+    ?? $input['locationAddress']
     ?? null;
 
-$locationParcelNumber = $location['locationParcelNumberRaw'] ?? $location['locationParcelNumber'] ?? $dataObj['locationParcelNumber'] ?? $parcel['apnDisplay'] ?? $parcel['apnRaw'] ?? $parcel['parcelNumber'] ?? null;
-$locationJurisdiction = $location['locationJurisdiction'] ?? $dataObj['locationJurisdiction'] ?? $city ?? null;
-$locationCounty       = $location['locationCounty'] ?? $dataObj['locationCounty'] ?? 'Maricopa';
+$city = $location['locationCity']
+    ?? $dataObj['locationCity']
+    ?? null;
 
-$addressParts      = array_filter([$address, $cityStateZip]);
-$fullAddress       = !empty($addressParts) ? implode(', ', $addressParts) : null;
-$cleanAddressParts = array_filter([$cleanAddress, $cityStateZip]);
-$fullCleanAddress  = !empty($cleanAddressParts) ? implode(', ', $cleanAddressParts) : $fullAddress;
+$state = $location['locationState']
+    ?? $dataObj['locationState']
+    ?? 'AZ';
+
+$zip = $location['locationZip']
+    ?? $dataObj['locationZip']
+    ?? null;
+
+$cityStateZip = $location['locationCityStateZip']
+    ?? $dataObj['locationCityStateZip']
+    ?? implode(
+        ', ',
+        array_filter([
+            $city,
+            trim($state . ' ' . $zip)
+        ])
+    );
+
+// Remove unit or suite information before geocoding
+$cleanAddress = preg_replace(
+    '/\b(suite|ste|unit|apt|#)\s*[\w-]+/i',
+    '',
+    (string) $address
+);
+
+$cleanAddress = trim(
+    preg_replace(
+        '/\s+/',
+        ' ',
+        (string) $cleanAddress
+    ),
+    ' ,'
+);
+
+// ======================================================================
+// Place & Parcel Resolution Inputs
+// ======================================================================
+
+$locationPlaceId =
+    $location['locationPlaceId']
+    ?? $location['placeId']
+    ?? $location['place_id']
+    ?? $dataObj['locationPlaceId']
+    ?? $dataObj['placeId']
+    ?? $dataObj['place_id']
+    ?? $input['locationPlaceId']
+    ?? null;
+
+$locationParcelNumber =
+    $location['locationParcelNumberRaw']
+    ?? $location['locationParcelNumber']
+    ?? $dataObj['locationParcelNumber']
+    ?? $parcel['apnDisplay']
+    ?? $parcel['apnRaw']
+    ?? $parcel['parcelNumber']
+    ?? null;
+
+$locationJurisdiction =
+    $location['locationJurisdiction']
+    ?? $dataObj['locationJurisdiction']
+    ?? $city
+    ?? null;
+
+$locationCounty =
+    $location['locationCounty']
+    ?? $dataObj['locationCounty']
+    ?? 'Maricopa';
+
+// ======================================================================
+// Composite Address Values
+// ======================================================================
+
+$addressParts = array_filter([
+    $address,
+    $cityStateZip
+]);
+
+$fullAddress = !empty($addressParts)
+    ? implode(', ', $addressParts)
+    : null;
+
+$cleanAddressParts = array_filter([
+    $cleanAddress,
+    $cityStateZip
+]);
+
+$fullCleanAddress = !empty($cleanAddressParts)
+    ? implode(', ', $cleanAddressParts)
+    : $fullAddress;
 
 #endregion
 
@@ -518,59 +676,174 @@ $specialDesignations = resolveLocationSpecialDesignations(
 
 #region SECTION 6 — Payload Output & Execution Termination
 
+// ======================================================================
+// Successful Response Assembly
+// ======================================================================
+
 $output = [
     'success'           => true,
-    'status'            => $hasZoningMatch ? 'resolved' : 'zoning_unmapped',
+    'status'            => 'resolved',
     'activitySessionId' => $activitySessionId,
     'data'              => [
         'location' => formatLocationResponse([
-            'address'           => $address,
-            'resolvedAddress'   => $locationResolvedAddress,
-            'city'              => $city ?: ucfirst((string)$locationJurisdiction),
-            'state'             => $state,
-            'zip'               => $zip,
-            'placeId'           => $locationPlaceId,
-            'lat'               => $lat,
-            'lng'               => $lng,
-            'county'            => $locationCounty,
-            'jurisdiction'      => ucfirst((string)$locationJurisdiction),
-            'parcelNumber'      => $locationParcelNumber,
-            'ownerName'         => $ownerName,
-            'subdivision'       => $subdiv,
-            'lotSize'           => $lotSize,
-            'zoningCode'        => $zoningCode,
-            'zoningDescription' => $zoningDesc,
-            'zoningSource'      => $sourceLayer,
-            'confidence'        => $resultConfidence,
-            'verifiedAt'        => $executionTime,
-            'frontages'         => $frontageResult['frontages'],
-            'parcelGeometry'    => $frontageResult['parcelGeometry'],
-            'signCode'          => $signCodeResult['signCode'],
+            'address'             => $address,
+            'resolvedAddress'     => $locationResolvedAddress,
+            'city'                => $city
+                ?: ucfirst((string) $locationJurisdiction),
+            'state'               => $state,
+            'zip'                 => $zip,
+            'placeId'             => $locationPlaceId,
+            'lat'                 => $lat,
+            'lng'                 => $lng,
+            'county'              => $locationCounty,
+            'jurisdiction'        =>
+                ucfirst((string) $locationJurisdiction),
+            'parcelNumber'        => $locationParcelNumber,
+            'ownerName'           => $ownerName,
+            'subdivision'         => $subdiv,
+            'lotSize'             => $lotSize,
+            'zoningCode'          => $zoningCode,
+            'zoningDescription'   => $zoningDesc,
+            'zoningSource'        => $sourceLayer,
+            'confidence'          => $resultConfidence,
+            'verifiedAt'          => $executionTime,
+            'frontages'           =>
+                $frontageResult['frontages'],
+            'parcelGeometry'      =>
+                $frontageResult['parcelGeometry'],
+            'signCode'            =>
+                $signCodeResult['signCode'],
             'specialDesignations' => $specialDesignations
         ])
     ]
 ];
 
+// ======================================================================
+// Diagnostic Response Assembly
+// ======================================================================
+
 if ($debugEnabled || isset($zoningResult)) {
     $output['debug'] = [
         'jurisdictionKey'  => $jurisKey,
         'jurisdictionSlug' => $jurisSlug,
-        'regionalPath'     => "data/authoritative/{$stateSlug}/{$countySlug}/jurisdictions/{$jurisSlug}/zoning.json",
+        'regionalPath'     =>
+            "data/authoritative/{$stateSlug}/{$countySlug}/" .
+            "jurisdictions/{$jurisSlug}/zoning.json",
         'configMatched'    => ($matchedConfig !== null),
         'zoningQuery'      => [
             'configFile'   => $zoningRegistryFile,
             'endpoint'     => $endpoint ?? null,
-            'httpCode'     => $zoningResult['httpCode'] ?? 200,
-            'curlError'    => $zoningResult['curlError'] ?? '',
-            'arcGisError'  => $zoningResult['data']['error'] ?? null,
-            'featureCount' => count($features ?? [])
+            'httpCode'     =>
+                $zoningResult['httpCode'] ?? 200,
+            'curlError'    =>
+                $zoningResult['curlError'] ?? '',
+            'arcGisError'  =>
+                $zoningResult['data']['error'] ?? null,
+            'featureCount' =>
+                count($features ?? [])
         ],
-        'frontageQuery'    => $frontageResult['diagnostics'],
-        'signCodeQuery'    => $signCodeResult['diagnostics']
+        'frontageQuery'    =>
+            $frontageResult['diagnostics'],
+        'signCodeQuery'    =>
+            $signCodeResult['diagnostics']
     ];
 }
 
-echo json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+// ======================================================================
+// Address Check Action Recording
+// ======================================================================
+
+// Resolve authenticated actor
+$actorContactId = (int) (
+    $_SESSION['SKYESOFT_contactId']
+    ?? $_SESSION['contactId']
+    ?? 0
+);
+
+// Classify Address Check as a location review
+$addressCheckActionTypeId = 12;
+
+// Record only authenticated, successful requests
+if (
+    $actorContactId > 0
+    && ($output['success'] ?? false) === true
+) {
+    try {
+        insertActionPrompt(
+            [
+                'actionTypeId'      =>
+                    $addressCheckActionTypeId,
+                'contactId'         => $actorContactId,
+                'origin'            => 1,
+                'activitySessionId' => $activitySessionId,
+
+                // User-facing action description
+                'promptText' =>
+                    'address check ' . $fullCleanAddress,
+
+                'responseText' =>
+                    'Address check completed for ' .
+                    $fullCleanAddress . '.',
+
+                // Canonical operation identity
+                'intent'           =>
+                    'locations.addressCheck',
+                'intentConfidence' =>
+                    1.00,
+
+                // Browser coordinates for action auditing
+                'latitude'  => $actionLatitude,
+                'longitude' => $actionLongitude,
+
+                // Structured request audit data
+                'actionPayloadData' => [
+                    'operation'       =>
+                        'locations.addressCheck',
+                    'locationAddress' =>
+                        $fullCleanAddress
+                ],
+
+                // Preserve the completed response
+                'actionResponseData' => $output
+            ],
+            getPDO()
+        );
+    } catch (Throwable $error) {
+        // Preserve the successful Address Check response
+        error_log(
+            '[locationCheck] Action recording failed: ' .
+            $error->getMessage()
+        );
+    }
+}
+
+// ======================================================================
+// Authoritative Idle Activity Reset
+// ======================================================================
+
+// Refresh authenticated session activity
+if (
+    session_status() === PHP_SESSION_ACTIVE
+    && !empty($_SESSION['authenticated'])
+) {
+    $_SESSION['lastActivity'] = time();
+}
+
+// Commit session changes and release the session lock
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+// ======================================================================
+// Response Transmission
+// ======================================================================
+
+echo json_encode(
+    $output,
+    JSON_PRETTY_PRINT |
+    JSON_UNESCAPED_SLASHES
+);
+
 exit;
 
 #endregion

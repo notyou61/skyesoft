@@ -2144,14 +2144,15 @@ window.SkyIndex = {
     async dispatchWorkflow(workflow, text, activitySessionId) {
 
         const meta = this.commandRegistry?.[workflow] || {};
-
+        // Workflow Conditional
         switch (workflow) {
 
-            // --------------------------------------------------
-            // Street View — full original behavior preserved
-            // --------------------------------------------------
+            // ==================================================================
+            // Street View Workflow
+            // ==================================================================
             case 'street_view': {
                 const userLineNode = this.appendSystemLine(text, 'user');
+
                 this.suppressRawIntentEcho();
                 this.renderStreetViewProcessingState();
 
@@ -2159,50 +2160,93 @@ window.SkyIndex = {
                     let cleanAddress = text.trim();
 
                     try {
-                        const parseRes = await fetch('/skyesoft/api/askOpenAI.php', {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                type: "parseIntent",
-                                userQuery: text
-                            })
-                        });
+                        const parseRes = await fetch(
+                            '/skyesoft/api/askOpenAI.php',
+                            {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    type: 'parseIntent',
+                                    userQuery: text
+                                })
+                            }
+                        );
 
                         if (parseRes.ok) {
                             const parsed = await parseRes.json();
-                            if (parsed.cleanAddress) cleanAddress = parsed.cleanAddress;
+
+                            if (parsed.cleanAddress) {
+                                cleanAddress = parsed.cleanAddress;
+                            }
                         }
-                    } catch (e) {
-                        console.error('[Intent Parse Error]', e);
+                    } catch (error) {
+                        console.error('[Intent Parse Error]', error);
                     }
 
-                    // Rename using registry display name
+                    // Update displayed command
                     if (userLineNode) {
-                        const textSpan = userLineNode.querySelector('.commandText');
+                        const textSpan =
+                            userLineNode.querySelector('.commandText');
+
                         if (textSpan) {
-                            textSpan.textContent = `${meta.display || 'Google Street View'} - ${cleanAddress}`;
+                            textSpan.textContent =
+                                `${meta.display || 'Google Street View'} - ` +
+                                cleanAddress;
                         }
                     }
 
-                    await this.executeStreetViewWorkflow(text, activitySessionId, cleanAddress);
+                    await this.executeStreetViewWorkflow(
+                        text,
+                        activitySessionId,
+                        cleanAddress
+                    );
                 })();
+
                 break;
             }
 
-            // --------------------------------------------------
-            // Location / Property / Parcel Review
-            // --------------------------------------------------
+            // ==================================================================
+            // Address Check Workflow
+            // ==================================================================
+            case 'address_check': {
+                this.appendSystemLine(text, 'user');
+
+                await this.executeAddressCheckWorkflow(
+                    text,
+                    activitySessionId
+                );
+
+                break;
+            }
+
+            // ==================================================================
+            // Location, Property & Parcel Review Workflows
+            // ==================================================================
             case 'location_review':
             case 'property_review':
-            case 'parcel_review':
+            case 'parcel_review': {
                 this.appendSystemLine(text, 'user');
-                this.appendSystemLine(`${meta.display || 'Review'} workflow coming soon.`);
-                break;
+                this.appendSystemLine(
+                    `${meta.display || 'Review'} workflow coming soon.`
+                );
 
-            default:
+                break;
+            }
+
+            // ==================================================================
+            // Default AI Command Workflow
+            // ==================================================================
+            default: {
                 this.appendSystemLine(text, 'user');
-                await this.executeAICommand(text, activitySessionId);
+
+                await this.executeAICommand(
+                    text,
+                    activitySessionId
+                );
+            }
         }
     },
     // #endregion
@@ -3147,6 +3191,56 @@ window.SkyIndex = {
             document.querySelectorAll('#locationProcessing, #streetViewProcessing, .processing').forEach(el => el.remove());
             this.appendSystemLine(`Failed to process location proposal: ${e.message}`, 'system-error');
         }
+    },
+    // #endregion
+
+    // #region 🔎 Address Check Workflow
+    async executeAddressCheckWorkflow(text, activitySessionId) {
+        const cleanAddress = String(text || '')
+            .replace(
+                /^(?:address\s+check|check\s+address)\s*/i,
+                ''
+            )
+            .replace(/\r?\n/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // Validate address
+        if (!cleanAddress) {
+            this.appendSystemLine(
+                '⚠️ Please provide an address. Example: ' +
+                'address check 3145 N 33rd Ave, Phoenix, AZ 85017'
+            );
+
+            return;
+        }
+
+        // Resolve browser coordinates for action auditing
+        let actionLocation = this.lastLocation || {
+            latitude: null,
+            longitude: null
+        };
+
+        if (
+            actionLocation.latitude === null ||
+            actionLocation.longitude === null
+        ) {
+            actionLocation = await this.getLocationSafe();
+
+            // Cache valid browser coordinates
+            if (
+                actionLocation.latitude !== null &&
+                actionLocation.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+            }
+        }
+
+        await this.address_check(
+            cleanAddress,
+            activitySessionId,
+            actionLocation
+        );
     },
     // #endregion
 
@@ -8578,26 +8672,6 @@ window.SkyIndex = {
             const firstWord = trimmed.split(/\s+/)[0]?.toLowerCase();
 
             // =====================================================
-            // 📍 Address Check Dispatcher
-            // Route the local command before the skyebot fallback.
-            // =====================================================
-            const addressCheckMatch = trimmed.match(
-                /^(?:address\s+check|check\s+address)\s+(.+)$/i
-            );
-
-            if (addressCheckMatch) {
-                console.log('[ADDRESS CHECK] Command matched:', addressCheckMatch[1]);
-
-                if (typeof this.address_check !== 'function') {
-                    throw new Error(
-                        'address_check() is not defined on the active SkyIndex instance.'
-                    );
-                }
-
-                await this.address_check(addressCheckMatch[1].trim());
-                return;
-            }
-            // =====================================================
 
             // =====================================================
             // 📦 Object Keyword Dispatcher (Entity / Location / …)
@@ -8853,8 +8927,12 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📍 Address Check Operation
-    async address_check(args = '') {
+    // #region 🔎 Address Check Operation
+    async address_check(
+        args = '',
+        activitySessionId = null,
+        actionLocation = null
+    ) {
         // Normalize address
         const cleanAddress = String(args || '')
             .replace(/^(?:address\s+check|check\s+address)\s*/i, '')
