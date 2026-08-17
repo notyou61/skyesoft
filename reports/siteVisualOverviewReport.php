@@ -626,6 +626,7 @@ $css = '
     .unverified { color: #777; font-style: italic; }
 
     .report-image-frame { border: 1px solid #c4ceda; background: #f7f9fc; padding: 5px; text-align: center; }
+    .report-image-frame--overview { width: 72%; margin: 0 auto; }
     .report-image { display: block; width: 100%; height: auto; }
     .image-caption { margin: 4px 0 0; color: #4a607a; font-size: 7.2pt; text-align: center; }
     .report-page { page-break-inside: avoid; }
@@ -683,39 +684,33 @@ ob_start();
 </div>
 
 <div class="section-block">
-    <?= buildSiteVisualSectionHeading('Report Contents', 'camera.png') ?>
-    <table class="data-table data-table--contents">
-        <?php foreach ($reportImages as $imageIndex => $reportImage): ?>
-            <tr>
-                <th><?= escapeSiteVisualValue($reportImage['title']) ?></th>
-                <td>Page <?= $imageIndex + 2 ?></td>
-            </tr>
-        <?php endforeach; ?>
-    </table>
-</div>
+    <?= buildSiteVisualSectionHeading(
+        $reportImages[0]['title'],
+        $reportImages[0]['icon']
+    ) ?>
 
-<div class="section-block">
-    <?= buildSiteVisualSectionHeading('Extended Context Summary', 'map.png') ?>
-    <table class="data-table">
-        <tr>
-            <th>Driving Distance</th>
-            <td><?= escapeSiteVisualValue(formatSiteVisualDistance(
-                $extendedSettings['drivingDistanceMiles'] ?? null
-            )) ?></td>
-        </tr>
-        <tr>
-            <th>Estimated Driving Time</th>
-            <td><?= displaySiteVisualValue(
-                $extendedSettings['drivingDurationText'] ?? null
-            ) ?></td>
-        </tr>
-        <tr>
-            <th>Direct Distance</th>
-            <td><?= escapeSiteVisualValue(formatSiteVisualDistance(
-                $extendedSettings['directDistanceMiles'] ?? null
-            )) ?></td>
-        </tr>
-    </table>
+    <div class="report-image-frame report-image-frame--overview">
+        <img
+            src="<?= escapeSiteVisualValue($reportImages[0]['path']) ?>"
+            class="report-image"
+            alt="<?= escapeSiteVisualValue($reportImages[0]['title']) ?>"
+        />
+    </div>
+
+    <div class="image-caption">
+        <?= escapeSiteVisualValue($fullAddress) ?>
+    </div>
+
+    <div class="callout-box">
+        <div class="callout-title">
+            <?= escapeSiteVisualValue($reportImages[0]['noteTitle']) ?>
+        </div>
+        <div class="callout-body">
+            <?= escapeSiteVisualValue($reportImages[0]['noteText']) ?>
+            <br><strong>Source:</strong>
+            <?= escapeSiteVisualValue($reportImages[0]['source']) ?>
+        </div>
+    </div>
 </div>
 
 <div class="callout-box">
@@ -731,7 +726,7 @@ ob_start();
     </div>
 </div>
 
-<?php foreach ($reportImages as $reportImage): ?>
+<?php foreach (array_slice($reportImages, 1) as $reportImage): ?>
     <pagebreak />
     <div class="report-page">
         <?= buildSiteVisualSectionHeading(
