@@ -10123,6 +10123,23 @@ window.SkyIndex = {
                 extendedContext.preview =
                     responseData.artifactUrl;
 
+                // Map metrics from siteVisualOverviewImages.php response.
+                // The images endpoint returns drivingDistanceMeters,
+                // drivingDistanceText, and straightLineMiles (not the
+                // *Miles / directDistanceMiles names the report originally
+                // expected). Store both the canonical report keys and the
+                // raw upstream keys so the report can resolve either.
+                const drivingDistanceMeters =
+                    responseData.drivingDistanceMeters != null
+                        && Number.isFinite(Number(responseData.drivingDistanceMeters))
+                        ? Number(responseData.drivingDistanceMeters)
+                        : null;
+
+                const drivingDistanceMilesFromMeters =
+                    drivingDistanceMeters !== null
+                        ? Math.round((drivingDistanceMeters / 1609.344) * 10) / 10
+                        : null;
+
                 extendedContext.settings = {
                     destinationAddress: address,
                     destinationLatitude: latitude,
@@ -10131,12 +10148,23 @@ window.SkyIndex = {
                         responseData.origin || null,
                     destination:
                         responseData.destination || null,
+                    // Canonical keys expected by the report
                     drivingDistanceMiles:
-                        responseData.drivingDistanceMiles ?? null,
+                        responseData.drivingDistanceMiles
+                        ?? drivingDistanceMilesFromMeters
+                        ?? null,
                     drivingDurationText:
                         responseData.drivingDurationText || null,
                     directDistanceMiles:
-                        responseData.directDistanceMiles ?? null,
+                        responseData.directDistanceMiles
+                        ?? responseData.straightLineMiles
+                        ?? null,
+                    // Raw upstream keys (kept for resilience)
+                    drivingDistanceMeters: drivingDistanceMeters,
+                    drivingDistanceText:
+                        responseData.drivingDistanceText || null,
+                    straightLineMiles:
+                        responseData.straightLineMiles ?? null,
                     routeSummary:
                         responseData.routeSummary || null,
                     artifactFilename:
