@@ -779,11 +779,11 @@ if (
 
                 // User-facing action description
                 'promptText' =>
-                    'address check ' . $fullCleanAddress,
+                    'address check ' . $cleanAddress,
 
                 'responseText' =>
                     'Address check completed for ' .
-                    $fullCleanAddress . '.',
+                    $locationResolvedAddress . '.',
 
                 // Canonical operation identity
                 'intent'           =>
@@ -800,7 +800,7 @@ if (
                     'operation'       =>
                         'locations.addressCheck',
                     'locationAddress' =>
-                        $fullCleanAddress
+                        $cleanAddress
                 ],
 
                 // Preserve the completed response

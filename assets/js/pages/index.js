@@ -2214,9 +2214,10 @@ window.SkyIndex = {
             case 'address_check': {
                 this.appendSystemLine(text, 'user');
 
-                await this.executeAddressCheckWorkflow(
-                    text,
-                    activitySessionId
+                await this.address_check(
+                    cleanAddress,
+                    activitySessionId,
+                    actionLocation
                 );
 
                 break;
@@ -8950,17 +8951,32 @@ window.SkyIndex = {
         );
 
         try {
-            // Run location-resolution pipeline with JSON payload
-            const res = await fetch('/skyesoft/api/locationCheck.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    locationAddress: cleanAddress
-                })
-            });
+            // Run location-resolution pipeline with audit context
+            const res = await fetch(
+                '/skyesoft/api/locationCheck.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        locationAddress: cleanAddress,
+
+                        // Canonical activity session
+                        activitySessionId:
+                            activitySessionId ||
+                            this.getActivitySessionId(),
+
+                        // Browser coordinates for action auditing
+                        actionLatitude:
+                            actionLocation?.latitude ?? null,
+
+                        actionLongitude:
+                            actionLocation?.longitude ?? null
+                    })
+                }
+            );
 
             const responseText = await res.text();
 
