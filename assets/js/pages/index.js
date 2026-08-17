@@ -2214,10 +2214,9 @@ window.SkyIndex = {
             case 'address_check': {
                 this.appendSystemLine(text, 'user');
 
-                await this.address_check(
-                    cleanAddress,
-                    activitySessionId,
-                    actionLocation
+                await this.executeAddressCheckWorkflow(
+                    text,
+                    activitySessionId
                 );
 
                 break;
@@ -3226,7 +3225,12 @@ window.SkyIndex = {
             actionLocation.latitude === null ||
             actionLocation.longitude === null
         ) {
-            actionLocation = await this.getLocationSafe();
+            actionLocation =
+                await this.getLocationSafe() ||
+                {
+                    latitude: null,
+                    longitude: null
+                };
 
             // Cache valid browser coordinates
             if (
