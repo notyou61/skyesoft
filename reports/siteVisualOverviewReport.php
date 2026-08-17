@@ -626,7 +626,6 @@ $css = '
     .unverified { color: #777; font-style: italic; }
 
     .report-image-frame { border: 1px solid #c4ceda; background: #f7f9fc; padding: 5px; text-align: center; }
-    .report-image-frame--overview { width: 72%; margin: 0 auto; }
     .report-image { display: block; width: 100%; height: auto; }
     .image-caption { margin: 4px 0 0; color: #4a607a; font-size: 7.2pt; text-align: center; }
     .report-page { page-break-inside: avoid; }
@@ -681,6 +680,19 @@ ob_start();
                 <?= escapeSiteVisualValue(number_format((float)$longitude, 7)) ?></td>
         </tr>
     </table>
+
+    <div class="callout-box">
+        <div class="callout-title">Report Basis &amp; Qualification</div>
+        <div class="callout-body">
+            This report is a pre-design visual context document generated from the
+            address-check result and the map-provider imagery available when the
+            workspace was prepared. It supports preliminary site review and does
+            not replace a field survey, legal boundary survey, property criteria
+            review, engineering evaluation, or jurisdictional approval.
+            <br><strong>Sources:</strong> Google Maps Platform; Maricopa County
+            Assessor Parcel GIS
+        </div>
+    </div>
 </div>
 
 <div class="section-block">
@@ -689,7 +701,7 @@ ob_start();
         $reportImages[0]['icon']
     ) ?>
 
-    <div class="report-image-frame report-image-frame--overview">
+    <div class="report-image-frame">
         <img
             src="<?= escapeSiteVisualValue($reportImages[0]['path']) ?>"
             class="report-image"
@@ -710,19 +722,6 @@ ob_start();
             <br><strong>Source:</strong>
             <?= escapeSiteVisualValue($reportImages[0]['source']) ?>
         </div>
-    </div>
-</div>
-
-<div class="callout-box">
-    <div class="callout-title">Report Basis &amp; Qualification</div>
-    <div class="callout-body">
-        This report is a pre-design visual context document generated from the
-        address-check result and the map-provider imagery available when the
-        workspace was prepared. It supports preliminary site review and does
-        not replace a field survey, legal boundary survey, property criteria
-        review, engineering evaluation, or jurisdictional approval.
-        <br><strong>Sources:</strong> Google Maps Platform; Maricopa County
-        Assessor Parcel GIS
     </div>
 </div>
 
