@@ -8963,7 +8963,28 @@ window.SkyIndex = {
         );
 
         try {
-            // Run location-resolution pipeline with audit context
+            // Build Address Check request
+            const requestPayload = {
+                locationAddress: cleanAddress,
+
+                // Browser coordinates for action auditing
+                actionLatitude:
+                    actionLocation?.latitude ?? null,
+
+                actionLongitude:
+                    actionLocation?.longitude ?? null
+            };
+
+            // Include only a valid projected session identifier
+            if (
+                activitySessionId &&
+                activitySessionId !== 'no_session'
+            ) {
+                requestPayload.activitySessionId =
+                    activitySessionId;
+            }
+
+            // Run location-resolution pipeline
             const res = await fetch(
                 '/skyesoft/api/locationCheck.php',
                 {
@@ -8972,21 +8993,7 @@ window.SkyIndex = {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        locationAddress: cleanAddress,
-
-                        // Canonical activity session
-                        activitySessionId:
-                            activitySessionId ||
-                            this.getActivitySessionId(),
-
-                        // Browser coordinates for action auditing
-                        actionLatitude:
-                            actionLocation?.latitude ?? null,
-
-                        actionLongitude:
-                            actionLocation?.longitude ?? null
-                    })
+                    body: JSON.stringify(requestPayload)
                 }
             );
 
@@ -9236,10 +9243,15 @@ window.SkyIndex = {
                                 type="hidden"
                                 name="activitySessionId"
                                 value="${escapeHtml(
-                                    data.activitySessionId ||
-                                    activitySessionId ||
-                                    this.getActivitySessionId() ||
-                                    ''
+                                    data.activitySessionId &&
+                                    data.activitySessionId !== 'no_session'
+                                        ? data.activitySessionId
+                                        : (
+                                            activitySessionId &&
+                                            activitySessionId !== 'no_session'
+                                                ? activitySessionId
+                                                : ''
+                                        )
                                 )}"
                             >
 
