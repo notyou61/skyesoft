@@ -3215,37 +3215,45 @@ window.SkyIndex = {
             return;
         }
 
-        // Resolve browser coordinates for action auditing
-        let actionLocation = this.lastLocation || {
-            latitude: null,
-            longitude: null
-        };
+        // Display standard hourglass processing state
+        this.setThinking(true);
 
-        if (
-            actionLocation.latitude === null ||
-            actionLocation.longitude === null
-        ) {
-            actionLocation =
-                await this.getLocationSafe() ||
-                {
-                    latitude: null,
-                    longitude: null
-                };
+        try {
+            // Resolve browser coordinates for action auditing
+            let actionLocation = this.lastLocation || {
+                latitude: null,
+                longitude: null
+            };
 
-            // Cache valid browser coordinates
             if (
-                actionLocation.latitude !== null &&
-                actionLocation.longitude !== null
+                actionLocation.latitude === null ||
+                actionLocation.longitude === null
             ) {
-                this.lastLocation = actionLocation;
-            }
-        }
+                actionLocation =
+                    await this.getLocationSafe() ||
+                    {
+                        latitude: null,
+                        longitude: null
+                    };
 
-        await this.address_check(
-            cleanAddress,
-            activitySessionId,
-            actionLocation
-        );
+                // Cache valid browser coordinates
+                if (
+                    actionLocation.latitude !== null &&
+                    actionLocation.longitude !== null
+                ) {
+                    this.lastLocation = actionLocation;
+                }
+            }
+
+            await this.address_check(
+                cleanAddress,
+                activitySessionId,
+                actionLocation
+            );
+        } finally {
+            // Remove hourglass after success or failure
+            this.setThinking(false);
+        }
     },
     // #endregion
 

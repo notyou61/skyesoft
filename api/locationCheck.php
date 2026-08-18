@@ -108,11 +108,20 @@ $parcel = $location['parcel']
 // Canonical Activity Session
 // ======================================================================
 
-$activitySessionId =
-    $_SESSION['activitySessionId']
-    ?? $input['activitySessionId']
-    ?? $dataObj['activitySessionId']
-    ?? session_id();
+// Preserve the server-bootstrap session as the single authority.
+// The SKYESOFTSESSID cookie is HttpOnly and cannot be read by index.js.
+$activitySessionId = defined('ACTIVITY_SESSION_ID')
+    ? trim((string) ACTIVITY_SESSION_ID)
+    : trim((string) session_id());
+
+if (
+    $activitySessionId === ''
+    || $activitySessionId === 'no_session'
+) {
+    throw new RuntimeException(
+        'The canonical activity session is unavailable.'
+    );
+}
 
 // ======================================================================
 // Action Audit Coordinates
