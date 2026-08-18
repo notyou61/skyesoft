@@ -9650,11 +9650,8 @@ window.SkyIndex = {
                     content.innerHTML = this.renderSiteVisualOverviewPreviewTab();
                     break;
                 case 'satellite':
-                    content.innerHTML = this.renderSiteVisualOverviewWorkspacePlaceholder(
-                        'Satellite View',
-                        'satellite',
-                        'The satellite image preview and adjustment controls will appear here.'
-                    );
+                    content.innerHTML =
+                        this.renderSiteVisualOverviewSatelliteTab();
                     break;
                 case 'parcel':
                     content.innerHTML = this.renderSiteVisualOverviewWorkspacePlaceholder(
