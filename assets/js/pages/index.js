@@ -9743,7 +9743,8 @@ window.SkyIndex = {
             const applyDisabled =
                 satellite.isWorkingLoading ||
                 !previewUrl ||
-                satellite.status === 'error';
+                satellite.status === 'error' ||
+                Boolean(satellite.error);
 
             return `
                 <div>
@@ -9770,15 +9771,17 @@ window.SkyIndex = {
                         </div>
 
                         <span style="
-                            padding:4px 9px;
-                            border:1px solid #d1d5db;
-                            border-radius:4px;
-                            background:#f8f9fa;
-                            color:#555;
-                            font-size:0.78rem;
-                            font-weight:600;
+                            display:inline-flex;
+                            align-items:center;
+                            padding:4px 10px;
+                            border-radius:999px;
+                            background:${statusBackground};
+                            color:${statusColor};
+                            font-size:0.76rem;
+                            font-weight:700;
+                            line-height:1.2;
                         ">
-                            ${this.escapeHtml(status)}
+                            ${this.escapeHtml(statusLabel)}
                         </span>
                     </div>
 
