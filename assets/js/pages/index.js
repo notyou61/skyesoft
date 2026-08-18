@@ -446,31 +446,115 @@ window.SkyIndex = {
     // #region ⏳ PC-6 Hourglass Processing Layer
     renderHourglassProcessingState() {
         const output = this.getOutputHost();
+
         if (!output) return;
 
-        // Clean up any stray occurrences first
-        document.querySelectorAll('#hourglassProcessing').forEach(el => el.remove());
+        // Remove previous processing state and timer
+        this.replaceHourglassProcessingWithResult();
 
         const processing = document.createElement('div');
+
         processing.id = 'hourglassProcessing';
-        processing.className = 'commandLine system processing';
+        processing.className =
+            'commandLine system processing';
+
         processing.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 1.5em; animation: spin 1.3s linear infinite;">⏳</span>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span
+                    style="font-size:1.5em;animation:spin 1.3s linear infinite;"
+                >
+                    ⏳
+                </span>
+
                 <div>
-                    <strong>⌛ Syncing Dynamic Stream Framework...</strong><br>
-                    <span style="font-size: 0.92em;">Establishing secure pipeline • Syncing live telemetry records • Refreshing UI projection matrices</span>
+                    <strong>
+                        Syncing Dynamic Stream Framework...
+                    </strong>
+
+                    <br>
+
+                    <span style="font-size:0.92em;">
+                        Establishing secure pipeline •
+                        Syncing live telemetry records •
+                        Refreshing UI projection matrices
+                    </span>
+
+                    <br>
+
+                    <span
+                        id="hourglassElapsedTime"
+                        style="font-size:0.85em;opacity:0.75;"
+                    >
+                        Processing time: 00:00.0
+                    </span>
                 </div>
             </div>
         `;
+
         output.appendChild(processing);
+
         this.scrollOutputToBottom(output);
-        this._currentHourglassProcessingEl = processing;
+
+        this._currentHourglassProcessingEl =
+            processing;
+
+        this._hourglassStartedAt =
+            performance.now();
+
+        // Update live processing time every tenth of a second
+        this._hourglassTimer = window.setInterval(() => {
+            const elapsedNode = document.getElementById(
+                'hourglassElapsedTime'
+            );
+
+            if (!elapsedNode) return;
+
+            const elapsedMilliseconds =
+                performance.now() -
+                this._hourglassStartedAt;
+
+            const elapsedSeconds =
+                elapsedMilliseconds / 1000;
+
+            const minutes =
+                Math.floor(elapsedSeconds / 60);
+
+            const seconds =
+                Math.floor(elapsedSeconds % 60);
+
+            const tenths =
+                Math.floor(
+                    (elapsedSeconds % 1) * 10
+                );
+
+            elapsedNode.textContent =
+                'Processing time: ' +
+                `${String(minutes).padStart(2, '0')}:` +
+                `${String(seconds).padStart(2, '0')}.` +
+                tenths;
+        }, 100);
     },
 
     replaceHourglassProcessingWithResult() {
-        document.querySelectorAll('#hourglassProcessing').forEach(el => el.remove());
-        this._currentHourglassProcessingEl = null;
+        // Stop live processing timer
+        if (this._hourglassTimer) {
+            window.clearInterval(
+                this._hourglassTimer
+            );
+
+            this._hourglassTimer = null;
+        }
+
+        // Remove hourglass processing display
+        document
+            .querySelectorAll('#hourglassProcessing')
+            .forEach((element) => element.remove());
+
+        this._currentHourglassProcessingEl =
+            null;
+
+        this._hourglassStartedAt =
+            null;
     },
     // #endregion
 
