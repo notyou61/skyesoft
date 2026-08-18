@@ -9441,6 +9441,7 @@ window.SkyIndex = {
                         // Adjustment state
                         isAdjusted: false,
                         hasUnappliedChanges: false,
+                        isWorkingLoading: false,
                         error: null
                     },
                     parcel: {
@@ -9671,6 +9672,335 @@ window.SkyIndex = {
             this.updateSiteVisualOverviewWorkspaceStatus();
         },
 
+        // Render adjustable Satellite workspace
+        renderSiteVisualOverviewSatelliteTab() {
+            const satellite =
+                this.currentSiteVisualOverviewWorkspace?.sections?.satellite || null;
+
+            if (!satellite) {
+                return '';
+            }
+
+            const settings =
+                satellite.workingSettings || satellite.settings || {};
+
+            const previewUrl =
+                satellite.workingPreview || satellite.preview || '';
+
+            const zoom =
+                Number.isFinite(Number(settings.zoom))
+                    ? Number(settings.zoom)
+                    : 19;
+
+            const status =
+                satellite.isWorkingLoading
+                    ? 'Loading'
+                    : this.formatSiteVisualOverviewStatus(
+                        satellite.status || 'notStarted'
+                    );
+
+            const applyDisabled =
+                satellite.isWorkingLoading ||
+                !previewUrl ||
+                satellite.status === 'error';
+
+            return `
+                <div>
+                    <!-- Workspace heading -->
+                    <div style="
+                        display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        flex-wrap:wrap;
+                        gap:12px;
+                        margin-bottom:14px;
+                    ">
+                        <div>
+                            <h3 style="
+                                margin:0 0 4px;
+                                color:#222;
+                                font-size:1.05rem;
+                            ">
+                                Satellite View
+                            </h3>
+                            <small style="color:#666;">
+                                Drag the image or use the controls to frame the property.
+                            </small>
+                        </div>
+
+                        <span style="
+                            padding:4px 9px;
+                            border:1px solid #d1d5db;
+                            border-radius:4px;
+                            background:#f8f9fa;
+                            color:#555;
+                            font-size:0.78rem;
+                            font-weight:600;
+                        ">
+                            ${this.escapeHtml(status)}
+                        </span>
+                    </div>
+
+                    <!-- Satellite workspace -->
+                    <div style="
+                        display:grid;
+                        grid-template-columns:minmax(0, 1fr) 190px;
+                        gap:16px;
+                        align-items:start;
+                    ">
+                        <!-- Adjustable image -->
+                        <div
+                            id="siteVisualOverviewSatelliteViewport"
+                            style="
+                                position:relative;
+                                min-height:390px;
+                                overflow:hidden;
+                                border:1px solid #cbd5e1;
+                                border-radius:8px;
+                                background:#e2e8f0;
+                                touch-action:none;
+                                user-select:none;
+                                cursor:${previewUrl ? 'grab' : 'default'};
+                            "
+                            onpointerdown="SkyIndex.startSiteVisualOverviewSatelliteDrag(event)"
+                            onpointermove="SkyIndex.moveSiteVisualOverviewSatelliteDrag(event)"
+                            onpointerup="SkyIndex.endSiteVisualOverviewSatelliteDrag(event)"
+                            onpointercancel="SkyIndex.cancelSiteVisualOverviewSatelliteDrag(event)"
+                        >
+                            ${
+                                previewUrl
+                                    ? `
+                                        <img
+                                            id="siteVisualOverviewSatelliteWorkingImage"
+                                            src="${this.escapeHtml(previewUrl)}"
+                                            alt="Adjustable satellite view"
+                                            draggable="false"
+                                            style="
+                                                width:100%;
+                                                height:100%;
+                                                min-height:390px;
+                                                display:block;
+                                                object-fit:cover;
+                                                pointer-events:none;
+                                                transform:translate(0, 0);
+                                            "
+                                        >
+                                    `
+                                    : `
+                                        <div style="
+                                            min-height:390px;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            padding:30px;
+                                            color:#64748b;
+                                            text-align:center;
+                                        ">
+                                            Satellite image unavailable.
+                                        </div>
+                                    `
+                            }
+
+                            ${
+                                satellite.isWorkingLoading
+                                    ? `
+                                        <div style="
+                                            position:absolute;
+                                            inset:0;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            background:rgba(255,255,255,0.68);
+                                            color:#0f766e;
+                                            font-weight:700;
+                                        ">
+                                            Updating Satellite View…
+                                        </div>
+                                    `
+                                    : ''
+                            }
+                        </div>
+
+                        <!-- Adjustment controls -->
+                        <div style="
+                            padding:14px;
+                            border:1px solid #dbe2ea;
+                            border-radius:8px;
+                            background:#f8fafc;
+                        ">
+                            <strong style="
+                                display:block;
+                                margin-bottom:12px;
+                                color:#334155;
+                                font-size:0.88rem;
+                            ">
+                                Map Position
+                            </strong>
+
+                            <!-- Directional controls -->
+                            <div style="
+                                display:grid;
+                                grid-template-columns:repeat(3, 42px);
+                                grid-template-rows:repeat(3, 38px);
+                                justify-content:center;
+                                gap:5px;
+                                margin-bottom:18px;
+                            ">
+                                <span></span>
+
+                                <button type="button"
+                                    onclick="SkyIndex.panSiteVisualOverviewSatellite(0, -80)"
+                                    aria-label="Move map north"
+                                    style="${this.getSiteVisualOverviewSatelliteControlStyle()}">
+                                    ↑
+                                </button>
+
+                                <span></span>
+
+                                <button type="button"
+                                    onclick="SkyIndex.panSiteVisualOverviewSatellite(-80, 0)"
+                                    aria-label="Move map west"
+                                    style="${this.getSiteVisualOverviewSatelliteControlStyle()}">
+                                    ←
+                                </button>
+
+                                <button type="button"
+                                    onclick="SkyIndex.resetSiteVisualOverviewSatellite()"
+                                    aria-label="Reset map position"
+                                    title="Reset"
+                                    style="${this.getSiteVisualOverviewSatelliteControlStyle()}">
+                                    ⦿
+                                </button>
+
+                                <button type="button"
+                                    onclick="SkyIndex.panSiteVisualOverviewSatellite(80, 0)"
+                                    aria-label="Move map east"
+                                    style="${this.getSiteVisualOverviewSatelliteControlStyle()}">
+                                    →
+                                </button>
+
+                                <span></span>
+
+                                <button type="button"
+                                    onclick="SkyIndex.panSiteVisualOverviewSatellite(0, 80)"
+                                    aria-label="Move map south"
+                                    style="${this.getSiteVisualOverviewSatelliteControlStyle()}">
+                                    ↓
+                                </button>
+
+                                <span></span>
+                            </div>
+
+                            <!-- Zoom controls -->
+                            <strong style="
+                                display:block;
+                                margin-bottom:8px;
+                                color:#334155;
+                                font-size:0.88rem;
+                            ">
+                                Zoom
+                            </strong>
+
+                            <div style="
+                                display:flex;
+                                align-items:center;
+                                justify-content:center;
+                                gap:8px;
+                                margin-bottom:18px;
+                            ">
+                                <button type="button"
+                                    onclick="SkyIndex.zoomSiteVisualOverviewSatellite(-1)"
+                                    ${zoom <= 0 ? 'disabled' : ''}
+                                    style="${this.getSiteVisualOverviewSatelliteControlStyle()}">
+                                    −
+                                </button>
+
+                                <span style="
+                                    min-width:42px;
+                                    color:#334155;
+                                    font-weight:700;
+                                    text-align:center;
+                                ">
+                                    ${zoom}
+                                </span>
+
+                                <button type="button"
+                                    onclick="SkyIndex.zoomSiteVisualOverviewSatellite(1)"
+                                    ${zoom >= 21 ? 'disabled' : ''}
+                                    style="${this.getSiteVisualOverviewSatelliteControlStyle()}">
+                                    +
+                                </button>
+                            </div>
+
+                            <!-- Adjustment notice -->
+                            <div style="
+                                min-height:34px;
+                                margin-bottom:12px;
+                                color:${satellite.hasUnappliedChanges ? '#b45309' : '#64748b'};
+                                font-size:0.76rem;
+                                line-height:1.35;
+                                text-align:center;
+                            ">
+                                ${
+                                    satellite.hasUnappliedChanges
+                                        ? 'Changes have not been applied to the report.'
+                                        : 'The displayed view is applied to the report.'
+                                }
+                            </div>
+
+                            <button type="button"
+                                onclick="SkyIndex.applySiteVisualOverviewSatellite()"
+                                ${applyDisabled ? 'disabled' : ''}
+                                style="
+                                    width:100%;
+                                    padding:9px 12px;
+                                    border:1px solid ${applyDisabled ? '#cbd5e1' : '#0d9488'};
+                                    border-radius:6px;
+                                    background:${applyDisabled ? '#e2e8f0' : '#0d9488'};
+                                    color:${applyDisabled ? '#94a3b8' : '#fff'};
+                                    font-weight:700;
+                                    cursor:${applyDisabled ? 'not-allowed' : 'pointer'};
+                                ">
+                                Apply to Report
+                            </button>
+                        </div>
+                    </div>
+
+                    ${
+                        satellite.error
+                            ? `
+                                <div style="
+                                    margin-top:12px;
+                                    padding:9px 12px;
+                                    border:1px solid #fecaca;
+                                    border-radius:6px;
+                                    background:#fef2f2;
+                                    color:#b91c1c;
+                                    font-size:0.82rem;
+                                ">
+                                    ${this.escapeHtml(satellite.error)}
+                                </div>
+                            `
+                            : ''
+                    }
+                </div>
+            `;
+        },
+
+        // Return shared Satellite control styling
+        getSiteVisualOverviewSatelliteControlStyle() {
+            return `
+                padding:6px;
+                border:1px solid #cbd5e1;
+                border-radius:5px;
+                background:#fff;
+                color:#334155;
+                font-size:1rem;
+                font-weight:700;
+                cursor:pointer;
+            `;
+        },
+
         // Load default satellite preview from address-check coordinates
         loadSiteVisualOverviewSatellitePreview() {
             const workspace =
@@ -9801,6 +10131,535 @@ window.SkyIndex = {
             };
 
             previewImage.src = previewUrl;
+        },
+
+        // Build adjustable Satellite preview URL
+        buildSiteVisualOverviewSatelliteUrl(settings) {
+            if (!settings) {
+                return '';
+            }
+
+            const latitude =
+                Number(settings.latitude);
+
+            const longitude =
+                Number(settings.longitude);
+
+            const centerLatitude =
+                Number(settings.centerLatitude);
+
+            const centerLongitude =
+                Number(settings.centerLongitude);
+
+            const zoom =
+                Number(settings.zoom);
+
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                !Number.isFinite(centerLatitude) ||
+                !Number.isFinite(centerLongitude) ||
+                !Number.isFinite(zoom)
+            ) {
+                return '';
+            }
+
+            return (
+                '/skyesoft/api/siteVisualOverviewImages.php' +
+                '?type=satellite' +
+                `&latitude=${encodeURIComponent(latitude)}` +
+                `&longitude=${encodeURIComponent(longitude)}` +
+                `&centerLatitude=${encodeURIComponent(centerLatitude)}` +
+                `&centerLongitude=${encodeURIComponent(centerLongitude)}` +
+                `&zoom=${encodeURIComponent(zoom)}` +
+                `&_=${Date.now()}`
+            );
+        },
+
+        // Regenerate the adjustable Satellite preview
+        regenerateSiteVisualOverviewSatellite() {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const satellite =
+                workspace?.sections?.satellite || null;
+
+            if (!workspace || !satellite) {
+                return;
+            }
+
+            const previewUrl =
+                this.buildSiteVisualOverviewSatelliteUrl(
+                    satellite.workingSettings
+                );
+
+            if (!previewUrl) {
+                satellite.error =
+                    'The Satellite View settings are invalid.';
+
+                this.showSiteVisualOverviewTab('satellite');
+                return;
+            }
+
+            satellite.isWorkingLoading = true;
+            satellite.error = null;
+
+            this.showSiteVisualOverviewTab('satellite');
+
+            const previewImage =
+                new Image();
+
+            previewImage.onload = () => {
+                if (
+                    this.currentSiteVisualOverviewWorkspace !== workspace
+                ) {
+                    return;
+                }
+
+                satellite.workingPreview =
+                    previewUrl;
+
+                satellite.isWorkingLoading =
+                    false;
+
+                satellite.error =
+                    null;
+
+                if (workspace.activeTab === 'satellite') {
+                    this.showSiteVisualOverviewTab('satellite');
+                }
+            };
+
+            previewImage.onerror = () => {
+                if (
+                    this.currentSiteVisualOverviewWorkspace !== workspace
+                ) {
+                    return;
+                }
+
+                satellite.isWorkingLoading =
+                    false;
+
+                satellite.error =
+                    'Unable to regenerate the Satellite View.';
+
+                if (workspace.activeTab === 'satellite') {
+                    this.showSiteVisualOverviewTab('satellite');
+                }
+            };
+
+            previewImage.src =
+                previewUrl;
+        },
+
+        // Convert geographic coordinates to map pixels
+        siteVisualOverviewSatelliteToWorldPixels(
+            latitude,
+            longitude,
+            zoom
+        ) {
+            const maximumLatitude =
+                85.05112878;
+
+            const constrainedLatitude =
+                Math.max(
+                    -maximumLatitude,
+                    Math.min(maximumLatitude, latitude)
+                );
+
+            const worldSize =
+                256 * Math.pow(2, zoom);
+
+            const latitudeRadians =
+                constrainedLatitude * Math.PI / 180;
+
+            const sineLatitude =
+                Math.sin(latitudeRadians);
+
+            return {
+                x:
+                    ((longitude + 180) / 360) *
+                    worldSize,
+
+                y:
+                    (
+                        0.5 -
+                        Math.log(
+                            (1 + sineLatitude) /
+                            (1 - sineLatitude)
+                        ) /
+                        (4 * Math.PI)
+                    ) *
+                    worldSize,
+
+                worldSize
+            };
+        },
+
+        // Convert map pixels to geographic coordinates
+        siteVisualOverviewSatelliteFromWorldPixels(
+            x,
+            y,
+            worldSize
+        ) {
+            const wrappedX =
+                ((x % worldSize) + worldSize) %
+                worldSize;
+
+            const constrainedY =
+                Math.max(0, Math.min(worldSize, y));
+
+            const longitude =
+                wrappedX / worldSize * 360 - 180;
+
+            const mercatorValue =
+                Math.PI -
+                2 * Math.PI * constrainedY / worldSize;
+
+            const latitude =
+                180 / Math.PI *
+                Math.atan(Math.sinh(mercatorValue));
+
+            return {
+                latitude,
+                longitude
+            };
+        },
+
+        // Move the Satellite map by screen pixels
+        panSiteVisualOverviewSatellite(deltaX, deltaY) {
+            const satellite =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections?.satellite || null;
+
+            const settings =
+                satellite?.workingSettings || null;
+
+            if (
+                !satellite ||
+                !settings ||
+                satellite.isWorkingLoading
+            ) {
+                return;
+            }
+
+            const latitude =
+                Number(settings.centerLatitude);
+
+            const longitude =
+                Number(settings.centerLongitude);
+
+            const zoom =
+                Number(settings.zoom);
+
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                !Number.isFinite(zoom)
+            ) {
+                return;
+            }
+
+            const worldPosition =
+                this.siteVisualOverviewSatelliteToWorldPixels(
+                    latitude,
+                    longitude,
+                    zoom
+                );
+
+            const adjustedPosition =
+                this.siteVisualOverviewSatelliteFromWorldPixels(
+                    worldPosition.x + Number(deltaX),
+                    worldPosition.y + Number(deltaY),
+                    worldPosition.worldSize
+                );
+
+            satellite.workingSettings = {
+                ...settings,
+                centerLatitude:
+                    adjustedPosition.latitude,
+                centerLongitude:
+                    adjustedPosition.longitude
+            };
+
+            satellite.hasUnappliedChanges =
+                true;
+
+            this.regenerateSiteVisualOverviewSatellite();
+        },
+
+        // Adjust Satellite zoom
+        zoomSiteVisualOverviewSatellite(change) {
+            const satellite =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections?.satellite || null;
+
+            if (
+                !satellite ||
+                satellite.isWorkingLoading
+            ) {
+                return;
+            }
+
+            const currentZoom =
+                Number(
+                    satellite.workingSettings?.zoom ?? 19
+                );
+
+            const revisedZoom =
+                Math.max(
+                    0,
+                    Math.min(21, currentZoom + Number(change))
+                );
+
+            if (revisedZoom === currentZoom) {
+                return;
+            }
+
+            satellite.workingSettings = {
+                ...satellite.workingSettings,
+                zoom: revisedZoom
+            };
+
+            satellite.hasUnappliedChanges =
+                true;
+
+            this.regenerateSiteVisualOverviewSatellite();
+        },
+
+        // Reset Satellite working view to its original framing
+        resetSiteVisualOverviewSatellite() {
+            const satellite =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections?.satellite || null;
+
+            if (
+                !satellite ||
+                satellite.isWorkingLoading ||
+                !satellite.defaultSettings
+            ) {
+                return;
+            }
+
+            satellite.workingSettings = {
+                ...satellite.defaultSettings
+            };
+
+            satellite.hasUnappliedChanges =
+                !this.siteVisualOverviewSatelliteSettingsMatch(
+                    satellite.workingSettings,
+                    satellite.settings
+                );
+
+            satellite.error =
+                null;
+
+            this.regenerateSiteVisualOverviewSatellite();
+        },
+
+        // Apply the working Satellite view to the report
+        applySiteVisualOverviewSatellite() {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const satellite =
+                workspace?.sections?.satellite || null;
+
+            if (
+                !workspace ||
+                !satellite ||
+                satellite.isWorkingLoading ||
+                !satellite.workingPreview
+            ) {
+                return;
+            }
+
+            satellite.preview =
+                satellite.workingPreview;
+
+            satellite.settings = {
+                ...satellite.workingSettings
+            };
+
+            satellite.status =
+                'ready';
+
+            satellite.isAdjusted =
+                !this.siteVisualOverviewSatelliteSettingsMatch(
+                    satellite.settings,
+                    satellite.defaultSettings
+                );
+
+            satellite.hasUnappliedChanges =
+                false;
+
+            satellite.error =
+                null;
+
+            this.refreshSiteVisualOverviewPreview();
+            this.updateSiteVisualOverviewWorkspaceStatus();
+
+            if (workspace.activeTab === 'satellite') {
+                this.showSiteVisualOverviewTab('satellite');
+            }
+        },
+
+        // Compare two Satellite setting objects
+        siteVisualOverviewSatelliteSettingsMatch(
+            firstSettings,
+            secondSettings
+        ) {
+            if (!firstSettings || !secondSettings) {
+                return false;
+            }
+
+            const tolerance =
+                0.0000001;
+
+            return (
+                Math.abs(
+                    Number(firstSettings.centerLatitude) -
+                    Number(secondSettings.centerLatitude)
+                ) <= tolerance &&
+                Math.abs(
+                    Number(firstSettings.centerLongitude) -
+                    Number(secondSettings.centerLongitude)
+                ) <= tolerance &&
+                Number(firstSettings.zoom) ===
+                    Number(secondSettings.zoom)
+            );
+        },
+
+        // Begin mouse or pointer map movement
+        startSiteVisualOverviewSatelliteDrag(event) {
+            const satellite =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections?.satellite || null;
+
+            if (
+                !satellite ||
+                satellite.isWorkingLoading ||
+                !satellite.workingPreview
+            ) {
+                return;
+            }
+
+            const viewport =
+                event.currentTarget;
+
+            if (
+                typeof viewport.setPointerCapture ===
+                'function'
+            ) {
+                viewport.setPointerCapture(
+                    event.pointerId
+                );
+            }
+
+            this.siteVisualOverviewSatelliteDrag = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                deltaX: 0,
+                deltaY: 0
+            };
+
+            viewport.style.cursor =
+                'grabbing';
+
+            event.preventDefault();
+        },
+
+        // Display temporary map movement during dragging
+        moveSiteVisualOverviewSatelliteDrag(event) {
+            const drag =
+                this.siteVisualOverviewSatelliteDrag;
+
+            if (
+                !drag ||
+                drag.pointerId !== event.pointerId
+            ) {
+                return;
+            }
+
+            drag.deltaX =
+                event.clientX - drag.startX;
+
+            drag.deltaY =
+                event.clientY - drag.startY;
+
+            const image =
+                document.getElementById(
+                    'siteVisualOverviewSatelliteWorkingImage'
+                );
+
+            if (image) {
+                image.style.transform =
+                    `translate(${drag.deltaX}px, ${drag.deltaY}px)`;
+            }
+
+            event.preventDefault();
+        },
+
+        // Accept map movement after dragging
+        endSiteVisualOverviewSatelliteDrag(event) {
+            const drag =
+                this.siteVisualOverviewSatelliteDrag;
+
+            if (
+                !drag ||
+                drag.pointerId !== event.pointerId
+            ) {
+                return;
+            }
+
+            const deltaX =
+                drag.deltaX;
+
+            const deltaY =
+                drag.deltaY;
+
+            this.siteVisualOverviewSatelliteDrag =
+                null;
+
+            if (
+                Math.abs(deltaX) < 3 &&
+                Math.abs(deltaY) < 3
+            ) {
+                const image =
+                    document.getElementById(
+                        'siteVisualOverviewSatelliteWorkingImage'
+                    );
+
+                if (image) {
+                    image.style.transform =
+                        'translate(0, 0)';
+                }
+
+                return;
+            }
+
+            // Move map opposite the dragged image
+            this.panSiteVisualOverviewSatellite(
+                -deltaX,
+                -deltaY
+            );
+        },
+
+        // Cancel an unfinished Satellite drag
+        cancelSiteVisualOverviewSatelliteDrag() {
+            this.siteVisualOverviewSatelliteDrag =
+                null;
+
+            const image =
+                document.getElementById(
+                    'siteVisualOverviewSatelliteWorkingImage'
+                );
+
+            if (image) {
+                image.style.transform =
+                    'translate(0, 0)';
+            }
         },
 
         // Load default primary-parcel preview
