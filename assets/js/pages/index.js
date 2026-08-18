@@ -9223,6 +9223,35 @@ window.SkyIndex = {
                                 hidden
                             >${escapeHtml(JSON.stringify(data))}</textarea>
 
+                            <!-- Canonical activity-session identifier -->
+                            <input
+                                type="hidden"
+                                name="activitySessionId"
+                                value="${escapeHtml(
+                                    data.activitySessionId ||
+                                    activitySessionId ||
+                                    this.getActivitySessionId() ||
+                                    ''
+                                )}"
+                            >
+
+                            <!-- Browser coordinates for action auditing -->
+                            <input
+                                type="hidden"
+                                name="actionLatitude"
+                                value="${escapeHtml(
+                                    actionLocation?.latitude ?? ''
+                                )}"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="actionLongitude"
+                                value="${escapeHtml(
+                                    actionLocation?.longitude ?? ''
+                                )}"
+                            >
+
                             <button
                                 type="submit"
                                 class="sky-btn sky-btn--outline"

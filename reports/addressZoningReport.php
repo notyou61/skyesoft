@@ -275,6 +275,29 @@ try {
     exit;
 }
 
+// ======================================================================
+// Report Action Audit Context
+// ======================================================================
+
+// Resolve explicitly submitted activity session
+$submittedActivitySessionId = trim((string) (
+    $_POST['activitySessionId']
+    ?? ''
+));
+
+// Resolve browser coordinates for action auditing
+$reportActionLatitude = is_numeric(
+    $_POST['actionLatitude'] ?? null
+)
+    ? (float) $_POST['actionLatitude']
+    : null;
+
+$reportActionLongitude = is_numeric(
+    $_POST['actionLongitude'] ?? null
+)
+    ? (float) $_POST['actionLongitude']
+    : null;
+
 
 // Get resolved location
 $location = $payload['data']['location'] ?? null;
@@ -1197,10 +1220,28 @@ try {
         ?? 0
     );
 
-    $reportActivitySessionId =
+    // Resolve canonical report activity session
+    $reportActivitySessionId = trim((string) (
         $_SESSION['activitySessionId']
-        ?? $activitySessionId
-        ?? session_id();
+        ?? ''
+    ));
+
+    if ($reportActivitySessionId === '') {
+        $reportActivitySessionId =
+            $submittedActivitySessionId;
+    }
+
+    if (
+        $reportActivitySessionId === ''
+        && trim((string) $activitySessionId) !== ''
+    ) {
+        $reportActivitySessionId =
+            trim((string) $activitySessionId);
+    }
+
+    if ($reportActivitySessionId === '') {
+        $reportActivitySessionId = session_id();
+    }
 
     if ($actorContactId > 0) {
         try {
@@ -1228,9 +1269,9 @@ try {
                     'intentConfidence' =>
                         1.00,
 
-                    // Browser coordinates were not submitted
-                    'latitude'  => null,
-                    'longitude' => null,
+                    // Browser coordinates for action auditing
+                    'latitude'  => $reportActionLatitude,
+                    'longitude' => $reportActionLongitude,
 
                     // Structured report request
                     'actionPayloadData' => [
