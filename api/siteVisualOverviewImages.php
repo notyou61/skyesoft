@@ -223,6 +223,160 @@ function siteVisualOverviewCoordinates($latitudeRaw, $longitudeRaw, $asJson)
     return array($latitude, $longitude);
 }
 
+/**
+ * Validate and normalize a boolean request value.
+ *
+ * Accepts true/false, 1/0, "true"/"false", "1"/"0" (case-insensitive).
+ *
+ * @param mixed   $rawValue   Raw request value.
+ * @param boolean $default    Default when the value is absent / null.
+ * @param boolean $asJson     Whether errors should be JSON.
+ * @param string  $fieldLabel Human-readable field name for error messages.
+ *
+ * @return boolean
+ */
+function siteVisualOverviewBooleanValue(
+    $rawValue,
+    $default,
+    $asJson,
+    $fieldLabel = 'value'
+) {
+    if ($rawValue === null || $rawValue === '') {
+        return (bool) $default;
+    }
+
+    if (is_bool($rawValue)) {
+        return $rawValue;
+    }
+
+    if (is_int($rawValue) || is_float($rawValue)) {
+        if ($rawValue === 1 || $rawValue === 1.0) {
+            return true;
+        }
+        if ($rawValue === 0 || $rawValue === 0.0) {
+            return false;
+        }
+    }
+
+    if (is_string($rawValue)) {
+        $normalized = strtolower(trim($rawValue));
+
+        if (
+            $normalized === 'true' ||
+            $normalized === '1' ||
+            $normalized === 'yes' ||
+            $normalized === 'on'
+        ) {
+            return true;
+        }
+
+        if (
+            $normalized === 'false' ||
+            $normalized === '0' ||
+            $normalized === 'no' ||
+            $normalized === 'off'
+        ) {
+            return false;
+        }
+    }
+
+    siteVisualOverviewError(
+        'HTTP/1.1 400 Bad Request',
+        'A valid boolean is required for ' . $fieldLabel . '.',
+        $asJson
+    );
+}
+
+/**
+ * Validate and normalize a six-character hexadecimal color.
+ *
+ * Accepts values with or without a leading '#'. Returns uppercase
+ * six-character hex without the hash (suitable for Google Static Maps
+ * path color parameters).
+ *
+ * @param mixed   $rawValue   Raw request value.
+ * @param string  $default    Default six-character hex (no hash).
+ * @param boolean $asJson     Whether errors should be JSON.
+ * @param string  $fieldLabel Human-readable field name for error messages.
+ *
+ * @return string
+ */
+function siteVisualOverviewHexColor(
+    $rawValue,
+    $default,
+    $asJson,
+    $fieldLabel = 'color'
+) {
+    if ($rawValue === null || $rawValue === '') {
+        $candidate = (string) $default;
+    } else {
+        $candidate = trim((string) $rawValue);
+    }
+
+    if (strpos($candidate, '#') === 0) {
+        $candidate = substr($candidate, 1);
+    }
+
+    $candidate = strtoupper($candidate);
+
+    if (!preg_match('/^[0-9A-F]{6}$/', $candidate)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'A valid six-character hexadecimal color is required for '
+            . $fieldLabel . '.',
+            $asJson
+        );
+    }
+
+    return $candidate;
+}
+
+/**
+ * Validate and normalize an integer within an inclusive range.
+ *
+ * @param mixed   $rawValue   Raw request value.
+ * @param integer $default    Default integer.
+ * @param integer $minimum    Inclusive lower bound.
+ * @param integer $maximum    Inclusive upper bound.
+ * @param boolean $asJson     Whether errors should be JSON.
+ * @param string  $fieldLabel Human-readable field name for error messages.
+ *
+ * @return integer
+ */
+function siteVisualOverviewIntegerRange(
+    $rawValue,
+    $default,
+    $minimum,
+    $maximum,
+    $asJson,
+    $fieldLabel = 'value'
+) {
+    if ($rawValue === null || $rawValue === '') {
+        $value = (int) $default;
+    } else {
+        if (!is_numeric($rawValue)) {
+            siteVisualOverviewError(
+                'HTTP/1.1 400 Bad Request',
+                'A valid integer is required for ' . $fieldLabel . '.',
+                $asJson
+            );
+        }
+
+        $value = (int) $rawValue;
+    }
+
+    if ($value < (int) $minimum || $value > (int) $maximum) {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            $fieldLabel . ' must be between '
+            . (int) $minimum . ' and ' . (int) $maximum . '.',
+            $asJson
+        );
+    }
+
+    return $value;
+}
+
 #endregion
 
 #region Section 2 — Shared Remote Request Helpers
@@ -954,21 +1108,74 @@ function siteVisualOverviewParcel($jsonBody, $googleKey)
     $centerCoordinateParam =
         $centerLatitudeParam . ',' . $centerLongitudeParam;
 
+    // Resolve marker and boundary display options
+    $markerVisible = siteVisualOverviewBooleanValue(
+        siteVisualOverviewRequestValue($jsonBody, 'markerVisible', true),
+        true,
+        true,
+        'markerVisible'
+    );
+
+    $boundaryVisible = siteVisualOverviewBooleanValue(
+        siteVisualOverviewRequestValue($jsonBody, 'boundaryVisible', true),
+        true,
+        true,
+        'boundaryVisible'
+    );
+
+    $boundaryColor = siteVisualOverviewHexColor(
+        siteVisualOverviewRequestValue($jsonBody, 'boundaryColor', '1976D2'),
+        '1976D2',
+        true,
+        'boundaryColor'
+    );
+
+    $boundaryFillColor = siteVisualOverviewHexColor(
+        siteVisualOverviewRequestValue(
+            $jsonBody,
+            'boundaryFillColor',
+            '1976D2'
+        ),
+        '1976D2',
+        true,
+        'boundaryFillColor'
+    );
+
+    $boundaryWeight = siteVisualOverviewIntegerRange(
+        siteVisualOverviewRequestValue($jsonBody, 'boundaryWeight', 4),
+        4,
+        1,
+        20,
+        true,
+        'boundaryWeight'
+    );
+
     // Build explicitly framed primary-parcel map
     $googleUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
         . 'center=' . rawurlencode($centerCoordinateParam)
         . '&zoom=' . $zoom
         . '&size=600x338'
         . '&scale=2'
-        . '&maptype=satellite'
-        . '&path=' . rawurlencode(
-            'color:0x1976D2FF|weight:4|fillcolor:0x1976D233|'
-            . $parcelPath
-        )
-        . '&markers=' . rawurlencode(
+        . '&maptype=satellite';
+
+    if ($boundaryVisible) {
+        // Stroke fully opaque; fill ~20% opacity (33 hex)
+        $pathStyle =
+            'color:0x' . $boundaryColor . 'FF'
+            . '|weight:' . $boundaryWeight
+            . '|fillcolor:0x' . $boundaryFillColor . '33|'
+            . $parcelPath;
+
+        $googleUrl .= '&path=' . rawurlencode($pathStyle);
+    }
+
+    if ($markerVisible) {
+        $googleUrl .= '&markers=' . rawurlencode(
             'color:red|' . $coordinateParam
-        )
-        . '&format=jpg'
+        );
+    }
+
+    $googleUrl .= '&format=jpg'
         . '&key=' . rawurlencode($googleKey);
 
     $imageResponse = siteVisualOverviewCurlGet($googleUrl);
@@ -1078,6 +1285,11 @@ function siteVisualOverviewParcel($jsonBody, $googleKey)
             $parcelFrame['zoom'],
         'parcelBounds' =>
             $parcelFrame['bounds'],
+        'markerVisible' => $markerVisible,
+        'boundaryVisible' => $boundaryVisible,
+        'boundaryColor' => $boundaryColor,
+        'boundaryFillColor' => $boundaryFillColor,
+        'boundaryWeight' => $boundaryWeight,
         'artifactFilename' => $artifactFilename,
         'artifactUrl' => '/skyesoft/artifacts/' . $artifactFilename,
         'createdAt' => time(),
