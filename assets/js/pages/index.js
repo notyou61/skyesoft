@@ -9669,11 +9669,7 @@ window.SkyIndex = {
                         this.renderSiteVisualOverviewSatelliteTab();
                     break;
                 case 'parcel':
-                    content.innerHTML = this.renderSiteVisualOverviewWorkspacePlaceholder(
-                        'Parcel Map',
-                        'parcel',
-                        'The parcel boundary map and adjustment controls will appear here.'
-                    );
+                    content.innerHTML = this.renderSiteVisualOverviewParcelTab();
                     break;
                 case 'streetViews':
                     content.innerHTML = this.renderSiteVisualOverviewStreetViewsTab();
@@ -10041,6 +10037,355 @@ window.SkyIndex = {
                             `
                             : ''
                     }
+                </div>
+            `;
+        },
+
+        // Render adjustable Parcel workspace
+        renderSiteVisualOverviewParcelTab() {
+            const parcel =
+                this.currentSiteVisualOverviewWorkspace?.sections?.parcel || null;
+
+            if (!parcel) {
+                return '';
+            }
+
+            const settings =
+                parcel.workingSettings || parcel.settings || {};
+
+            const previewUrl =
+                parcel.workingPreview || parcel.preview || '';
+
+            const zoom =
+                Number.isFinite(Number(settings.zoom))
+                    ? Number(settings.zoom)
+                    : 16;
+
+            const markerVisible = settings.markerVisible !== false;
+            const boundaryVisible = settings.boundaryVisible !== false;
+            const boundaryColor = String(settings.boundaryColor || '1976D2').toUpperCase();
+            const boundaryWeight = Number.isFinite(Number(settings.boundaryWeight))
+                ? Number(settings.boundaryWeight)
+                : 4;
+
+            // Resolve Parcel workspace badge
+            let statusLabel = 'Ready';
+            let statusBackground = '#dcfce7';
+            let statusColor = '#166534';
+
+            if (parcel.error) {
+                statusLabel = 'Error';
+                statusBackground = '#fee2e2';
+                statusColor = '#b91c1c';
+            } else if (parcel.isWorkingLoading) {
+                statusLabel = 'Updating';
+                statusBackground = '#dbeafe';
+                statusColor = '#1d4ed8';
+            } else if (parcel.hasUnappliedChanges) {
+                statusLabel = 'Changes Pending';
+                statusBackground = '#fef3c7';
+                statusColor = '#92400e';
+            } else if (parcel.isAdjusted) {
+                statusLabel = 'Adjusted';
+                statusBackground = '#ccfbf1';
+                statusColor = '#0f766e';
+            }
+
+            const applyDisabled =
+                parcel.isWorkingLoading ||
+                !previewUrl ||
+                parcel.status === 'error' ||
+                Boolean(parcel.error);
+
+            const controlsDisabled = parcel.isWorkingLoading || Boolean(parcel.error);
+
+            return `
+                <div>
+                    <!-- Workspace heading -->
+                    <div style="
+                        display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        flex-wrap:wrap;
+                        gap:12px;
+                        margin-bottom:14px;
+                    ">
+                        <div>
+                            <h3 style="margin:0 0 3px; color:#222; font-size:1.05rem;">
+                                Parcel Map
+                            </h3>
+                            <small style="color:#666;">
+                                Obtain and adjust this required report image.
+                            </small>
+                        </div>
+                        <span style="
+                            flex:0 0 auto;
+                            padding:4px 10px;
+                            border-radius:4px;
+                            background:${statusBackground};
+                            color:${statusColor};
+                            font-size:0.72rem;
+                            font-weight:700;
+                        ">
+                            ${this.escapeHtml(statusLabel)}
+                        </span>
+                    </div>
+
+                    <div style="
+                        display:grid;
+                        grid-template-columns:minmax(0, 1fr) 280px;
+                        gap:16px;
+                        align-items:start;
+                    ">
+                        <!-- Adjustable image -->
+                        <div
+                            id="siteVisualOverviewParcelViewport"
+                            style="
+                                position:relative;
+                                height:390px;
+                                overflow:hidden;
+                                border:1px solid #cbd5e1;
+                                border-radius:8px;
+                                background:#e2e8f0;
+                                touch-action:none;
+                                user-select:none;
+                                cursor:${previewUrl ? 'grab' : 'default'};
+                            "
+                            onpointerdown="SkyIndex.startSiteVisualOverviewParcelDrag(event)"
+                            onpointermove="SkyIndex.moveSiteVisualOverviewParcelDrag(event)"
+                            onpointerup="SkyIndex.endSiteVisualOverviewParcelDrag(event)"
+                            onpointercancel="SkyIndex.cancelSiteVisualOverviewParcelDrag(event)"
+                        >
+                            ${
+                                previewUrl
+                                    ? `
+                                        <img
+                                            id="siteVisualOverviewParcelWorkingImage"
+                                            src="${this.escapeHtml(previewUrl)}"
+                                            alt="Adjustable parcel map"
+                                            draggable="false"
+                                            style="
+                                                width:100%;
+                                                height:390px;
+                                                display:block;
+                                                object-fit:cover;
+                                                pointer-events:none;
+                                                transform:translate(0, 0);
+                                            "
+                                        >
+                                    `
+                                    : `
+                                        <div style="
+                                            height:390px;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            padding:30px;
+                                            color:#64748b;
+                                            text-align:center;
+                                        ">
+                                            ${parcel.error
+                                                ? this.escapeHtml(parcel.error)
+                                                : 'Parcel map will appear here.'}
+                                        </div>
+                                    `
+                            }
+
+                            ${
+                                parcel.isWorkingLoading
+                                    ? `
+                                        <div style="
+                                            position:absolute;
+                                            inset:0;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            background:rgba(255,255,255,0.68);
+                                            color:#0f766e;
+                                            font-weight:700;
+                                        ">
+                                            Updating Parcel Map…
+                                        </div>
+                                    `
+                                    : ''
+                            }
+                        </div>
+
+                        <!-- Adjustment controls -->
+                        <div style="
+                            padding:14px;
+                            border:1px solid #dbe2ea;
+                            border-radius:8px;
+                            background:#f8fafc;
+                        ">
+                            <strong style="
+                                display:block;
+                                margin-bottom:12px;
+                                color:#334155;
+                                font-size:0.88rem;
+                            ">
+                                Map Position
+                            </strong>
+
+                            <!-- Directional controls -->
+                            <div style="
+                                display:grid;
+                                grid-template-columns:repeat(3, 40px);
+                                gap:6px;
+                                justify-content:center;
+                                margin-bottom:14px;
+                            ">
+                                <div></div>
+                                <button type="button"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    onclick="SkyIndex.nudgeSiteVisualOverviewParcel(0, -1)"
+                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    ↑
+                                </button>
+                                <div></div>
+                                <button type="button"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    onclick="SkyIndex.nudgeSiteVisualOverviewParcel(-1, 0)"
+                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    ←
+                                </button>
+                                <button type="button"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    onclick="SkyIndex.resetSiteVisualOverviewParcel()"
+                                    title="Reset to automatic parcel frame"
+                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; font-size:0.75rem;">
+                                    ↺
+                                </button>
+                                <button type="button"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    onclick="SkyIndex.nudgeSiteVisualOverviewParcel(1, 0)"
+                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    →
+                                </button>
+                                <div></div>
+                                <button type="button"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    onclick="SkyIndex.nudgeSiteVisualOverviewParcel(0, 1)"
+                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    ↓
+                                </button>
+                                <div></div>
+                            </div>
+
+                            <!-- Zoom -->
+                            <div style="margin-bottom:16px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                    <span style="font-size:0.82rem; color:#475569;">Zoom</span>
+                                    <span style="font-size:0.82rem; color:#0f766e; font-weight:600;">${zoom}</span>
+                                </div>
+                                <div style="display:flex; gap:8px;">
+                                    <button type="button"
+                                        ${controlsDisabled || zoom <= 0 ? 'disabled' : ''}
+                                        onclick="SkyIndex.changeSiteVisualOverviewParcelZoom(-1)"
+                                        style="flex:1; height:34px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                        −
+                                    </button>
+                                    <button type="button"
+                                        ${controlsDisabled || zoom >= 21 ? 'disabled' : ''}
+                                        onclick="SkyIndex.changeSiteVisualOverviewParcelZoom(1)"
+                                        style="flex:1; height:34px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+
+                            <strong style="
+                                display:block;
+                                margin-bottom:10px;
+                                color:#334155;
+                                font-size:0.88rem;
+                            ">
+                                Overlay
+                            </strong>
+
+                            <!-- Marker toggle -->
+                            <label style="
+                                display:flex;
+                                align-items:center;
+                                gap:8px;
+                                margin-bottom:10px;
+                                font-size:0.84rem;
+                                color:#334155;
+                                cursor:pointer;
+                            ">
+                                <input type="checkbox"
+                                    ${markerVisible ? 'checked' : ''}
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    onchange="SkyIndex.toggleSiteVisualOverviewParcelMarker(this.checked)"
+                                >
+                                Show property marker
+                            </label>
+
+                            <!-- Boundary toggle -->
+                            <label style="
+                                display:flex;
+                                align-items:center;
+                                gap:8px;
+                                margin-bottom:12px;
+                                font-size:0.84rem;
+                                color:#334155;
+                                cursor:pointer;
+                            ">
+                                <input type="checkbox"
+                                    ${boundaryVisible ? 'checked' : ''}
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    onchange="SkyIndex.toggleSiteVisualOverviewParcelBoundary(this.checked)"
+                                >
+                                Show parcel boundary
+                            </label>
+
+                            <!-- Boundary weight -->
+                            <div style="margin-bottom:16px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                    <span style="font-size:0.82rem; color:#475569;">Boundary weight</span>
+                                    <span style="font-size:0.82rem; color:#0f766e; font-weight:600;">${boundaryWeight}</span>
+                                </div>
+                                <input type="range"
+                                    min="1" max="12" step="1"
+                                    value="${boundaryWeight}"
+                                    ${controlsDisabled || !boundaryVisible ? 'disabled' : ''}
+                                    onchange="SkyIndex.changeSiteVisualOverviewParcelBoundaryWeight(this.value)"
+                                    style="width:100%;"
+                                >
+                            </div>
+
+                            <!-- Actions -->
+                            <div style="display:grid; gap:8px;">
+                                <button type="button"
+                                    ${applyDisabled ? 'disabled' : ''}
+                                    onclick="SkyIndex.applySiteVisualOverviewParcel()"
+                                    style="
+                                        height:38px;
+                                        border:none;
+                                        border-radius:6px;
+                                        background:${applyDisabled ? '#e5e7eb' : '#0d9488'};
+                                        color:${applyDisabled ? '#9ca3af' : '#fff'};
+                                        font-weight:600;
+                                        cursor:${applyDisabled ? 'not-allowed' : 'pointer'};
+                                    ">
+                                    Apply to Report
+                                </button>
+                                <button type="button"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    onclick="SkyIndex.resetSiteVisualOverviewParcel()"
+                                    style="
+                                        height:36px;
+                                        border:1px solid #cbd5e1;
+                                        border-radius:6px;
+                                        background:#fff;
+                                        color:#334155;
+                                        cursor:pointer;
+                                    ">
+                                    Reset to Automatic Frame
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
         },
@@ -10720,6 +11065,549 @@ window.SkyIndex = {
             }
         },
 
+        // ------------------------------------------------------------------
+        // Parcel Map — helpers & interaction handlers
+        // ------------------------------------------------------------------
+
+        // Build the POST body for a Parcel regeneration request
+        buildSiteVisualOverviewParcelRequestBody(settings) {
+            if (!settings) {
+                return null;
+            }
+
+            const latitude = Number(settings.latitude);
+            const longitude = Number(settings.longitude);
+            const centerLatitude = Number(settings.centerLatitude);
+            const centerLongitude = Number(settings.centerLongitude);
+            const zoom = Number(settings.zoom);
+
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                !Number.isFinite(centerLatitude) ||
+                !Number.isFinite(centerLongitude) ||
+                !Number.isFinite(zoom)
+            ) {
+                return null;
+            }
+
+            const workspace = this.currentSiteVisualOverviewWorkspace;
+            const location = workspace?.sourceData?.data?.location || null;
+            const primaryParcel = location?.parcelDetails?.[0] || null;
+            const parcelNumber = String(
+                settings.parcelNumber || primaryParcel?.parcelNumber || ''
+            ).trim();
+            const parcelGeometry = primaryParcel?.parcelGeometry || null;
+
+            if (!parcelNumber || !parcelGeometry) {
+                return null;
+            }
+
+            return {
+                type: 'parcel',
+                latitude,
+                longitude,
+                centerLatitude,
+                centerLongitude,
+                zoom,
+                markerVisible: settings.markerVisible !== false,
+                boundaryVisible: settings.boundaryVisible !== false,
+                boundaryColor: String(settings.boundaryColor || '1976D2').toUpperCase(),
+                boundaryFillColor: String(
+                    settings.boundaryFillColor || settings.boundaryColor || '1976D2'
+                ).toUpperCase(),
+                boundaryWeight: Number.isFinite(Number(settings.boundaryWeight))
+                    ? Number(settings.boundaryWeight)
+                    : 4,
+                parcel: {
+                    parcelNumber,
+                    parcelGeometry
+                }
+            };
+        },
+
+        // Regenerate the adjustable Parcel preview from workingSettings
+        async regenerateSiteVisualOverviewParcel() {
+            const workspace = this.currentSiteVisualOverviewWorkspace;
+            const parcel = workspace?.sections?.parcel || null;
+
+            if (!workspace || !parcel) {
+                return;
+            }
+
+            const requestBody = this.buildSiteVisualOverviewParcelRequestBody(
+                parcel.workingSettings
+            );
+
+            if (!requestBody) {
+                parcel.error = 'The Parcel Map settings are invalid.';
+                parcel.isWorkingLoading = false;
+                this.showSiteVisualOverviewTab('parcel');
+                return;
+            }
+
+            parcel.isWorkingLoading = true;
+            parcel.error = null;
+            this.showSiteVisualOverviewTab('parcel');
+
+            try {
+                const response = await fetch(
+                    '/skyesoft/api/siteVisualOverviewImages.php',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Accept: 'application/json'
+                        },
+                        body: JSON.stringify(requestBody)
+                    }
+                );
+
+                const responseText = await response.text();
+                let responseData = null;
+
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (error) {
+                    throw new Error('Parcel-image endpoint returned invalid JSON.');
+                }
+
+                if (
+                    !response.ok ||
+                    responseData?.success !== true ||
+                    !responseData.artifactUrl
+                ) {
+                    throw new Error(
+                        responseData?.error || 'Parcel-image generation failed.'
+                    );
+                }
+
+                // Ignore responses from a closed or replaced workspace
+                if (this.currentSiteVisualOverviewWorkspace !== workspace) {
+                    return;
+                }
+
+                // Update working state only (accepted state is unchanged until Apply)
+                parcel.workingPreview = responseData.artifactUrl;
+                parcel.workingSettings = {
+                    ...parcel.workingSettings,
+                    centerLatitude: Number(responseData.centerLatitude),
+                    centerLongitude: Number(responseData.centerLongitude),
+                    zoom: Number(responseData.zoom),
+                    markerVisible: responseData.markerVisible !== false,
+                    boundaryVisible: responseData.boundaryVisible !== false,
+                    boundaryColor: String(
+                        responseData.boundaryColor || '1976D2'
+                    ).toUpperCase(),
+                    boundaryFillColor: String(
+                        responseData.boundaryFillColor || '1976D2'
+                    ).toUpperCase(),
+                    boundaryWeight: Number.isFinite(
+                        Number(responseData.boundaryWeight)
+                    )
+                        ? Number(responseData.boundaryWeight)
+                        : 4,
+                    artifactFilename: responseData.artifactFilename || null,
+                    artifactUrl: responseData.artifactUrl
+                };
+
+                parcel.hasUnappliedChanges =
+                    !this.siteVisualOverviewParcelSettingsMatch(
+                        parcel.workingSettings,
+                        parcel.settings
+                    );
+
+                parcel.isWorkingLoading = false;
+                parcel.error = null;
+
+                this.showSiteVisualOverviewTab('parcel');
+            } catch (error) {
+                if (this.currentSiteVisualOverviewWorkspace !== workspace) {
+                    return;
+                }
+
+                console.error('Parcel regeneration failed:', error);
+
+                parcel.isWorkingLoading = false;
+                parcel.error =
+                    error instanceof Error
+                        ? error.message
+                        : 'Parcel-image generation failed.';
+
+                this.showSiteVisualOverviewTab('parcel');
+            }
+        },
+
+        // Nudge the map center (button controls)
+        // dx/dy are in “steps”; each step is roughly 1/8 of the current viewport
+        nudgeSiteVisualOverviewParcel(dx, dy) {
+            const parcel =
+                this.currentSiteVisualOverviewWorkspace?.sections?.parcel || null;
+            const settings = parcel?.workingSettings || null;
+
+            if (!parcel || !settings || parcel.isWorkingLoading) {
+                return;
+            }
+
+            const zoom = Number(settings.zoom);
+            if (!Number.isFinite(zoom)) {
+                return;
+            }
+
+            // Approximate degrees-per-pixel at this zoom (Web Mercator)
+            const latRad = (Number(settings.centerLatitude) * Math.PI) / 180;
+            const degreesPerPixelX = 360 / (256 * Math.pow(2, zoom));
+            const degreesPerPixelY =
+                (360 * Math.cos(latRad)) / (256 * Math.pow(2, zoom));
+
+            // 80 px ≈ one comfortable nudge
+            const stepPixels = 80;
+            const deltaLon = Number(dx) * stepPixels * degreesPerPixelX;
+            const deltaLat = Number(dy) * stepPixels * degreesPerPixelY;
+
+            parcel.workingSettings = {
+                ...settings,
+                centerLatitude: Number(settings.centerLatitude) - deltaLat,
+                centerLongitude: Number(settings.centerLongitude) + deltaLon
+            };
+
+            parcel.hasUnappliedChanges = true;
+            this.regenerateSiteVisualOverviewParcel();
+        },
+
+        // Change Parcel zoom
+        changeSiteVisualOverviewParcelZoom(change) {
+            const parcel =
+                this.currentSiteVisualOverviewWorkspace?.sections?.parcel || null;
+
+            if (!parcel || parcel.isWorkingLoading) {
+                return;
+            }
+
+            const currentZoom = Number(parcel.workingSettings?.zoom ?? 16);
+            const revisedZoom = Math.max(
+                0,
+                Math.min(21, currentZoom + Number(change))
+            );
+
+            if (revisedZoom === currentZoom) {
+                return;
+            }
+
+            parcel.workingSettings = {
+                ...parcel.workingSettings,
+                zoom: revisedZoom
+            };
+
+            parcel.hasUnappliedChanges = true;
+            this.regenerateSiteVisualOverviewParcel();
+        },
+
+        // Toggle property marker
+        toggleSiteVisualOverviewParcelMarker(visible) {
+            const parcel =
+                this.currentSiteVisualOverviewWorkspace?.sections?.parcel || null;
+
+            if (!parcel || parcel.isWorkingLoading) {
+                return;
+            }
+
+            parcel.workingSettings = {
+                ...parcel.workingSettings,
+                markerVisible: Boolean(visible)
+            };
+
+            parcel.hasUnappliedChanges = true;
+            this.regenerateSiteVisualOverviewParcel();
+        },
+
+        // Toggle parcel boundary
+        toggleSiteVisualOverviewParcelBoundary(visible) {
+            const parcel =
+                this.currentSiteVisualOverviewWorkspace?.sections?.parcel || null;
+
+            if (!parcel || parcel.isWorkingLoading) {
+                return;
+            }
+
+            parcel.workingSettings = {
+                ...parcel.workingSettings,
+                boundaryVisible: Boolean(visible)
+            };
+
+            parcel.hasUnappliedChanges = true;
+            this.regenerateSiteVisualOverviewParcel();
+        },
+
+        // Change boundary stroke weight
+        changeSiteVisualOverviewParcelBoundaryWeight(value) {
+            const parcel =
+                this.currentSiteVisualOverviewWorkspace?.sections?.parcel || null;
+
+            if (!parcel || parcel.isWorkingLoading) {
+                return;
+            }
+
+            const weight = Math.max(1, Math.min(20, Number(value) || 4));
+
+            parcel.workingSettings = {
+                ...parcel.workingSettings,
+                boundaryWeight: weight
+            };
+
+            parcel.hasUnappliedChanges = true;
+            this.regenerateSiteVisualOverviewParcel();
+        },
+
+        // Reset to the original automatic parcel frame + default overlays
+        resetSiteVisualOverviewParcel() {
+            const parcel =
+                this.currentSiteVisualOverviewWorkspace?.sections?.parcel || null;
+
+            if (!parcel || parcel.isWorkingLoading || !parcel.defaultSettings) {
+                return;
+            }
+
+            const defaults = parcel.defaultSettings;
+
+            parcel.workingSettings = {
+                ...parcel.workingSettings,
+                centerLatitude: defaults.centerLatitude,
+                centerLongitude: defaults.centerLongitude,
+                zoom: defaults.zoom,
+                markerVisible: defaults.markerVisible !== false,
+                boundaryVisible: defaults.boundaryVisible !== false,
+                boundaryColor: defaults.boundaryColor || '1976D2',
+                boundaryFillColor: defaults.boundaryFillColor || '1976D2',
+                boundaryWeight: defaults.boundaryWeight || 4
+            };
+
+            parcel.hasUnappliedChanges = !this.siteVisualOverviewParcelSettingsMatch(
+                parcel.workingSettings,
+                parcel.settings
+            );
+
+            parcel.error = null;
+            this.regenerateSiteVisualOverviewParcel();
+        },
+
+        // Apply the working Parcel view to the report
+        applySiteVisualOverviewParcel() {
+            const workspace = this.currentSiteVisualOverviewWorkspace;
+            const parcel = workspace?.sections?.parcel || null;
+
+            if (
+                !workspace ||
+                !parcel ||
+                parcel.isWorkingLoading ||
+                !parcel.workingPreview
+            ) {
+                return;
+            }
+
+            // Promote working → accepted
+            parcel.preview = parcel.workingPreview;
+            parcel.settings = { ...parcel.workingSettings };
+            parcel.status = 'ready';
+
+            parcel.isAdjusted = !this.siteVisualOverviewParcelSettingsMatch(
+                parcel.settings,
+                parcel.defaultSettings
+            );
+
+            parcel.hasUnappliedChanges = false;
+            parcel.error = null;
+
+            this.refreshSiteVisualOverviewPreview();
+            this.updateSiteVisualOverviewWorkspaceStatus();
+
+            if (workspace.activeTab === 'parcel') {
+                this.showSiteVisualOverviewTab('parcel');
+            }
+        },
+
+        // Compare two Parcel setting objects (framing + overlays)
+        siteVisualOverviewParcelSettingsMatch(firstSettings, secondSettings) {
+            if (!firstSettings || !secondSettings) {
+                return false;
+            }
+
+            const tolerance = 0.0000001;
+
+            return (
+                Math.abs(
+                    Number(firstSettings.centerLatitude) -
+                        Number(secondSettings.centerLatitude)
+                ) <= tolerance &&
+                Math.abs(
+                    Number(firstSettings.centerLongitude) -
+                        Number(secondSettings.centerLongitude)
+                ) <= tolerance &&
+                Number(firstSettings.zoom) === Number(secondSettings.zoom) &&
+                Boolean(firstSettings.markerVisible) ===
+                    Boolean(secondSettings.markerVisible) &&
+                Boolean(firstSettings.boundaryVisible) ===
+                    Boolean(secondSettings.boundaryVisible) &&
+                String(firstSettings.boundaryColor || '').toUpperCase() ===
+                    String(secondSettings.boundaryColor || '').toUpperCase() &&
+                String(firstSettings.boundaryFillColor || '').toUpperCase() ===
+                    String(secondSettings.boundaryFillColor || '').toUpperCase() &&
+                Number(firstSettings.boundaryWeight) ===
+                    Number(secondSettings.boundaryWeight)
+            );
+        },
+
+        // ------------------------------------------------------------------
+        // Parcel drag (pointer events)
+        // ------------------------------------------------------------------
+
+        startSiteVisualOverviewParcelDrag(event) {
+            const parcel =
+                this.currentSiteVisualOverviewWorkspace?.sections?.parcel || null;
+
+            if (
+                !parcel ||
+                parcel.isWorkingLoading ||
+                !parcel.workingPreview ||
+                event.button !== 0
+            ) {
+                return;
+            }
+
+            const viewport = document.getElementById(
+                'siteVisualOverviewParcelViewport'
+            );
+
+            if (!viewport) {
+                return;
+            }
+
+            this.siteVisualOverviewParcelDrag = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                deltaX: 0,
+                deltaY: 0
+            };
+
+            try {
+                viewport.setPointerCapture(event.pointerId);
+            } catch (error) {
+                // Older browsers may not support setPointerCapture
+            }
+
+            viewport.style.cursor = 'grabbing';
+            event.preventDefault();
+        },
+
+        moveSiteVisualOverviewParcelDrag(event) {
+            const drag = this.siteVisualOverviewParcelDrag;
+
+            if (!drag || drag.pointerId !== event.pointerId) {
+                return;
+            }
+
+            drag.deltaX = event.clientX - drag.startX;
+            drag.deltaY = event.clientY - drag.startY;
+
+            const image = document.getElementById(
+                'siteVisualOverviewParcelWorkingImage'
+            );
+
+            if (image) {
+                image.style.transform = `translate(${drag.deltaX}px, ${drag.deltaY}px)`;
+            }
+
+            event.preventDefault();
+        },
+
+        endSiteVisualOverviewParcelDrag(event) {
+            const drag = this.siteVisualOverviewParcelDrag;
+
+            if (!drag || drag.pointerId !== event.pointerId) {
+                return;
+            }
+
+            const deltaX = drag.deltaX;
+            const deltaY = drag.deltaY;
+
+            this.siteVisualOverviewParcelDrag = null;
+
+            const image = document.getElementById(
+                'siteVisualOverviewParcelWorkingImage'
+            );
+
+            if (image) {
+                image.style.transform = 'translate(0, 0)';
+            }
+
+            const viewport = document.getElementById(
+                'siteVisualOverviewParcelViewport'
+            );
+
+            if (viewport) {
+                viewport.style.cursor = 'grab';
+            }
+
+            // Ignore tiny movements (clicks)
+            if (Math.abs(deltaX) < 3 && Math.abs(deltaY) < 3) {
+                return;
+            }
+
+            // Convert pixel drag into a geographic nudge
+            // (same step logic used by the arrow buttons)
+            const parcel =
+                this.currentSiteVisualOverviewWorkspace?.sections?.parcel || null;
+            const settings = parcel?.workingSettings || null;
+
+            if (!parcel || !settings || parcel.isWorkingLoading) {
+                return;
+            }
+
+            const zoom = Number(settings.zoom);
+            if (!Number.isFinite(zoom)) {
+                return;
+            }
+
+            const latRad = (Number(settings.centerLatitude) * Math.PI) / 180;
+            const degreesPerPixelX = 360 / (256 * Math.pow(2, zoom));
+            const degreesPerPixelY =
+                (360 * Math.cos(latRad)) / (256 * Math.pow(2, zoom));
+
+            // Dragging the image right → map center moves left
+            const deltaLon = -deltaX * degreesPerPixelX;
+            const deltaLat = deltaY * degreesPerPixelY;
+
+            parcel.workingSettings = {
+                ...settings,
+                centerLatitude: Number(settings.centerLatitude) + deltaLat,
+                centerLongitude: Number(settings.centerLongitude) + deltaLon
+            };
+
+            parcel.hasUnappliedChanges = true;
+            this.regenerateSiteVisualOverviewParcel();
+        },
+
+        cancelSiteVisualOverviewParcelDrag() {
+            this.siteVisualOverviewParcelDrag = null;
+
+            const image = document.getElementById(
+                'siteVisualOverviewParcelWorkingImage'
+            );
+
+            if (image) {
+                image.style.transform = 'translate(0, 0)';
+            }
+
+            const viewport = document.getElementById(
+                'siteVisualOverviewParcelViewport'
+            );
+
+            if (viewport) {
+                viewport.style.cursor = 'grab';
+            }
+        },
+
         // Load default primary-parcel preview
         async loadSiteVisualOverviewParcelPreview() {
             const workspace =
@@ -10762,6 +11650,11 @@ window.SkyIndex = {
             ) {
                 parcel.status = 'error';
                 parcel.preview = null;
+                parcel.workingPreview = null;
+                parcel.error = 'Primary parcel geometry is unavailable.';
+                parcel.isWorkingLoading = false;
+                parcel.hasUnappliedChanges = false;
+                parcel.isAdjusted = false;
 
                 this.refreshSiteVisualOverviewPreview();
                 return;
@@ -10770,6 +11663,11 @@ window.SkyIndex = {
             // Set loading state
             parcel.status = 'loading';
             parcel.preview = null;
+            parcel.workingPreview = null;
+            parcel.error = null;
+            parcel.isWorkingLoading = true;
+            parcel.hasUnappliedChanges = false;
+            parcel.isAdjusted = false;
 
             this.refreshSiteVisualOverviewPreview();
 
@@ -10825,17 +11723,77 @@ window.SkyIndex = {
                     return;
                 }
 
-                parcel.status = 'ready';
-                parcel.preview = responseData.artifactUrl;
-                parcel.settings = {
+                // Normalize framing and display settings from the endpoint
+                const resolvedSettings = {
                     parcelNumber,
                     latitude,
                     longitude,
+
+                    // Framing (actual values used for this image)
+                    centerLatitude: Number(responseData.centerLatitude),
+                    centerLongitude: Number(responseData.centerLongitude),
+                    zoom: Number(responseData.zoom),
+
+                    // Original automatic frame (for Reset)
+                    defaultCenterLatitude: Number(
+                        responseData.defaultCenterLatitude
+                    ),
+                    defaultCenterLongitude: Number(
+                        responseData.defaultCenterLongitude
+                    ),
+                    defaultZoom: Number(responseData.defaultZoom),
+                    parcelBounds: responseData.parcelBounds || null,
+
+                    // Marker / boundary display options
+                    markerVisible:
+                        responseData.markerVisible !== false,
+                    boundaryVisible:
+                        responseData.boundaryVisible !== false,
+                    boundaryColor:
+                        String(responseData.boundaryColor || '1976D2')
+                            .toUpperCase(),
+                    boundaryFillColor:
+                        String(
+                            responseData.boundaryFillColor || '1976D2'
+                        ).toUpperCase(),
+                    boundaryWeight: Number.isFinite(
+                        Number(responseData.boundaryWeight)
+                    )
+                        ? Number(responseData.boundaryWeight)
+                        : 4,
+
+                    // Artifact identity
                     artifactFilename:
                         responseData.artifactFilename || null,
-                    artifactUrl:
-                        responseData.artifactUrl
+                    artifactUrl: responseData.artifactUrl
                 };
+
+                // Accepted report image + settings
+                parcel.status = 'ready';
+                parcel.preview = responseData.artifactUrl;
+                parcel.settings = { ...resolvedSettings };
+
+                // Working (temporary) state starts identical to accepted
+                parcel.workingPreview = responseData.artifactUrl;
+                parcel.workingSettings = { ...resolvedSettings };
+
+                // Preserve the original automatic frame for Reset
+                parcel.defaultSettings = {
+                    centerLatitude: resolvedSettings.defaultCenterLatitude,
+                    centerLongitude: resolvedSettings.defaultCenterLongitude,
+                    zoom: resolvedSettings.defaultZoom,
+                    markerVisible: true,
+                    boundaryVisible: true,
+                    boundaryColor: '1976D2',
+                    boundaryFillColor: '1976D2',
+                    boundaryWeight: 4,
+                    parcelBounds: resolvedSettings.parcelBounds
+                };
+
+                parcel.error = null;
+                parcel.isWorkingLoading = false;
+                parcel.hasUnappliedChanges = false;
+                parcel.isAdjusted = false;
 
                 this.refreshSiteVisualOverviewPreview();
             } catch (error) {
@@ -10853,12 +11811,17 @@ window.SkyIndex = {
 
                 parcel.status = 'error';
                 parcel.preview = null;
+                parcel.workingPreview = null;
+                parcel.error =
+                    error instanceof Error
+                        ? error.message
+                        : 'Parcel-image generation failed.';
+                parcel.isWorkingLoading = false;
+                parcel.hasUnappliedChanges = false;
+                parcel.isAdjusted = false;
                 parcel.settings = {
                     parcelNumber,
-                    error:
-                        error instanceof Error
-                            ? error.message
-                            : 'Parcel-image generation failed.'
+                    error: parcel.error
                 };
 
                 this.refreshSiteVisualOverviewPreview();
