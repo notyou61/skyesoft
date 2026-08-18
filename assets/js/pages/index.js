@@ -9426,9 +9426,22 @@ window.SkyIndex = {
                 activeTab: 'preview',
                 sections: {
                     satellite: {
+                        // Accepted report image
                         status: 'notStarted',
                         preview: null,
-                        settings: {}
+                        settings: {},
+
+                        // Temporary Satellite-tab adjustments
+                        workingPreview: null,
+                        workingSettings: {},
+
+                        // Original property-centered view
+                        defaultSettings: {},
+
+                        // Adjustment state
+                        isAdjusted: false,
+                        hasUnappliedChanges: false,
+                        error: null
                     },
                     parcel: {
                         status: 'notStarted',
@@ -9689,18 +9702,41 @@ window.SkyIndex = {
             ) {
                 satellite.status = 'error';
                 satellite.preview = null;
+                satellite.workingPreview = null;
+                satellite.error =
+                    'Valid property coordinates are unavailable.';
 
                 this.refreshSiteVisualOverviewPreview();
                 return;
             }
 
+            // Prepare original property-centered settings
+            const defaultSettings = {
+                latitude,
+                longitude,
+                centerLatitude: latitude,
+                centerLongitude: longitude,
+                zoom: 19
+            };
+
             // Set loading state
             satellite.status = 'loading';
             satellite.preview = null;
+            satellite.settings = {};
+            satellite.workingPreview = null;
+            satellite.workingSettings = {
+                ...defaultSettings
+            };
+            satellite.defaultSettings = {
+                ...defaultSettings
+            };
+            satellite.isAdjusted = false;
+            satellite.hasUnappliedChanges = false;
+            satellite.error = null;
 
             this.refreshSiteVisualOverviewPreview();
 
-            // Build server-side satellite-image endpoint
+            // Build initial server-side satellite-image endpoint
             const previewUrl =
                 '/skyesoft/api/siteVisualOverviewImages.php' +
                 '?type=satellite' +
@@ -9708,7 +9744,7 @@ window.SkyIndex = {
                 `&longitude=${encodeURIComponent(longitude)}` +
                 '&zoom=19';
 
-            // Preload satellite image before showing it
+            // Preload satellite image before accepting it
             const previewImage = new Image();
 
             previewImage.onload = () => {
@@ -9720,14 +9756,29 @@ window.SkyIndex = {
                 }
 
                 satellite.status = 'ready';
+
+                // Set accepted report image
                 satellite.preview = previewUrl;
                 satellite.settings = {
-                    latitude,
-                    longitude,
-                    zoom: 19
+                    ...defaultSettings
                 };
 
+                // Set adjustable Satellite-tab image
+                satellite.workingPreview = previewUrl;
+                satellite.workingSettings = {
+                    ...defaultSettings
+                };
+
+                satellite.isAdjusted = false;
+                satellite.hasUnappliedChanges = false;
+                satellite.error = null;
+
                 this.refreshSiteVisualOverviewPreview();
+
+                // Refresh Satellite tab if currently visible
+                if (workspace.activeTab === 'satellite') {
+                    this.showSiteVisualOverviewTab('satellite');
+                }
             };
 
             previewImage.onerror = () => {
@@ -9740,8 +9791,16 @@ window.SkyIndex = {
 
                 satellite.status = 'error';
                 satellite.preview = null;
+                satellite.workingPreview = null;
+                satellite.error =
+                    'Unable to load the Satellite View image.';
 
                 this.refreshSiteVisualOverviewPreview();
+
+                // Refresh Satellite tab if currently visible
+                if (workspace.activeTab === 'satellite') {
+                    this.showSiteVisualOverviewTab('satellite');
+                }
             };
 
             previewImage.src = previewUrl;

@@ -310,15 +310,16 @@ function siteVisualOverviewCurlGet($url)
 #region Section 3 — Satellite Image Handler
 
 /**
- * Stream a satellite image response.
+ * Stream an adjustable satellite image response.
  *
- * @param array  $jsonBody Request JSON.
+ * @param array  $jsonBody  Request JSON.
  * @param string $googleKey Google Maps Static API key.
  *
  * @return void
  */
 function siteVisualOverviewSatellite($jsonBody, $googleKey)
 {
+    // Resolve fixed property-marker coordinates
     $latitudeRaw = siteVisualOverviewRequestValue(
         $jsonBody,
         'latitude',
@@ -331,13 +332,37 @@ function siteVisualOverviewSatellite($jsonBody, $googleKey)
         ''
     );
 
-    $coordinates = siteVisualOverviewCoordinates(
+    $propertyCoordinates = siteVisualOverviewCoordinates(
         $latitudeRaw,
         $longitudeRaw,
         false
     );
 
-    $zoomRaw = siteVisualOverviewRequestValue($jsonBody, 'zoom', '19');
+    // Resolve adjustable map-center coordinates
+    $centerLatitudeRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'centerLatitude',
+        $propertyCoordinates[0]
+    );
+
+    $centerLongitudeRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'centerLongitude',
+        $propertyCoordinates[1]
+    );
+
+    $centerCoordinates = siteVisualOverviewCoordinates(
+        $centerLatitudeRaw,
+        $centerLongitudeRaw,
+        false
+    );
+
+    // Resolve adjustable zoom
+    $zoomRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'zoom',
+        '19'
+    );
 
     if (!is_numeric($zoomRaw)) {
         siteVisualOverviewError(
@@ -357,21 +382,57 @@ function siteVisualOverviewSatellite($jsonBody, $googleKey)
         );
     }
 
-    $latitudeParam = number_format($coordinates[0], 7, '.', '');
-    $longitudeParam = number_format($coordinates[1], 7, '.', '');
-    $coordinateParam = $latitudeParam . ',' . $longitudeParam;
+    // Format fixed property coordinates
+    $propertyLatitudeParam = number_format(
+        $propertyCoordinates[0],
+        7,
+        '.',
+        ''
+    );
 
+    $propertyLongitudeParam = number_format(
+        $propertyCoordinates[1],
+        7,
+        '.',
+        ''
+    );
+
+    $propertyCoordinateParam =
+        $propertyLatitudeParam . ',' . $propertyLongitudeParam;
+
+    // Format adjustable map-center coordinates
+    $centerLatitudeParam = number_format(
+        $centerCoordinates[0],
+        7,
+        '.',
+        ''
+    );
+
+    $centerLongitudeParam = number_format(
+        $centerCoordinates[1],
+        7,
+        '.',
+        ''
+    );
+
+    $centerCoordinateParam =
+        $centerLatitudeParam . ',' . $centerLongitudeParam;
+
+    // Build adjustable satellite-image request
     $googleUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
-        . 'center=' . rawurlencode($coordinateParam)
+        . 'center=' . rawurlencode($centerCoordinateParam)
         . '&zoom=' . $zoom
         . '&size=600x338'
         . '&scale=2'
         . '&maptype=satellite'
-        . '&markers=' . rawurlencode('color:red|' . $coordinateParam)
+        . '&markers=' . rawurlencode(
+            'color:red|' . $propertyCoordinateParam
+        )
         . '&format=jpg'
         . '&key=' . rawurlencode($googleKey);
 
     $imageResponse = siteVisualOverviewCurlGet($googleUrl);
+
     $isImage = strpos(
         strtolower($imageResponse['contentType']),
         'image/'

@@ -275,11 +275,24 @@ function materializeSiteVisualSatellite(
         ? $satelliteSection['settings']
         : [];
 
+    // Resolve fixed property-marker coordinates
     $latitude = $settings['latitude'] ?? null;
     $longitude = $settings['longitude'] ?? null;
+
+    // Resolve accepted map-center coordinates
+    $centerLatitude = $settings['centerLatitude'] ?? $latitude;
+    $centerLongitude = $settings['centerLongitude'] ?? $longitude;
+
+    // Resolve accepted zoom
     $zoom = $settings['zoom'] ?? 19;
 
-    if (!is_numeric($latitude) || !is_numeric($longitude)) {
+    if (
+        !is_numeric($latitude) ||
+        !is_numeric($longitude) ||
+        !is_numeric($centerLatitude) ||
+        !is_numeric($centerLongitude) ||
+        !is_numeric($zoom)
+    ) {
         return null;
     }
 
@@ -289,12 +302,19 @@ function materializeSiteVisualSatellite(
         return null;
     }
 
+    // Request the exact Satellite view accepted in the workspace
     $endpointUrl = 'https://'
         . $host
         . '/skyesoft/api/siteVisualOverviewImages.php'
         . '?type=satellite'
         . '&latitude=' . rawurlencode((string)$latitude)
         . '&longitude=' . rawurlencode((string)$longitude)
+        . '&centerLatitude=' . rawurlencode(
+            (string)$centerLatitude
+        )
+        . '&centerLongitude=' . rawurlencode(
+            (string)$centerLongitude
+        )
         . '&zoom=' . rawurlencode((string)$zoom);
 
     $curl = curl_init();
