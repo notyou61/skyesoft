@@ -9692,12 +9692,53 @@ window.SkyIndex = {
                     ? Number(settings.zoom)
                     : 19;
 
-            const status =
-                satellite.isWorkingLoading
-                    ? 'Loading'
-                    : this.formatSiteVisualOverviewStatus(
-                        satellite.status || 'notStarted'
-                    );
+            // Resolve Satellite workspace badge
+            let statusLabel =
+                'Ready';
+
+            let statusBackground =
+                '#dcfce7';
+
+            let statusColor =
+                '#166534';
+
+            if (satellite.error) {
+                statusLabel =
+                    'Error';
+
+                statusBackground =
+                    '#fee2e2';
+
+                statusColor =
+                    '#b91c1c';
+            } else if (satellite.isWorkingLoading) {
+                statusLabel =
+                    'Updating';
+
+                statusBackground =
+                    '#dbeafe';
+
+                statusColor =
+                    '#1d4ed8';
+            } else if (satellite.hasUnappliedChanges) {
+                statusLabel =
+                    'Changes Pending';
+
+                statusBackground =
+                    '#fef3c7';
+
+                statusColor =
+                    '#92400e';
+            } else if (satellite.isAdjusted) {
+                statusLabel =
+                    'Adjusted';
+
+                statusBackground =
+                    '#ccfbf1';
+
+                statusColor =
+                    '#0f766e';
+            }
 
             const applyDisabled =
                 satellite.isWorkingLoading ||
@@ -9753,7 +9794,7 @@ window.SkyIndex = {
                             id="siteVisualOverviewSatelliteViewport"
                             style="
                                 position:relative;
-                                min-height:390px;
+                                height:390px;
                                 overflow:hidden;
                                 border:1px solid #cbd5e1;
                                 border-radius:8px;
@@ -9778,7 +9819,7 @@ window.SkyIndex = {
                                             style="
                                                 width:100%;
                                                 height:100%;
-                                                min-height:390px;
+                                                height:390px;
                                                 display:block;
                                                 object-fit:cover;
                                                 pointer-events:none;
@@ -9788,7 +9829,7 @@ window.SkyIndex = {
                                     `
                                     : `
                                         <div style="
-                                            min-height:390px;
+                                            height:390px;
                                             display:flex;
                                             align-items:center;
                                             justify-content:center;
@@ -11571,17 +11612,17 @@ window.SkyIndex = {
                                 ${this.escapeHtml(config.title)}
                             </strong>
 
-                            <span
-                                style="
-                                    flex:0 0 auto;
-                                    padding:2px 6px;
-                                    border-radius:999px;
-                                    background:${statusBackground};
-                                    color:${statusColor};
-                                    font-size:0.65rem;
-                                    font-weight:700;
-                                "
-                            >
+                            <span style="
+                                display:inline-flex;
+                                align-items:center;
+                                padding:4px 10px;
+                                border-radius:999px;
+                                background:${statusBackground};
+                                color:${statusColor};
+                                font-size:0.76rem;
+                                font-weight:700;
+                                line-height:1.2;
+                            ">
                                 ${this.escapeHtml(statusLabel)}
                             </span>
                         </div>
