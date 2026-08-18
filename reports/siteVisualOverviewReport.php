@@ -17,7 +17,8 @@ declare(strict_types=1);
 // Architectural Principles
 // • Report imagery remains ephemeral and non-authoritative
 // • Only files inside /skyesoft/artifacts may be deleted
-// • Report generation performs no database writes
+// • Report generation performs no domain-data writes
+// • Successful report reads are recorded in tblActions
 // • The Address Zoning Report defines the PDF visual standard
 //
 // Compatibility
@@ -34,8 +35,28 @@ ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/php-error.log');
 error_reporting(E_ALL);
 
+// ======================================================================
+// Session, Database & Action-Layer Bootstrap
+// ======================================================================
+
 require_once __DIR__ . '/../api/sessionBootstrap.php';
+require_once __DIR__ . '/../api/dbConnect.php';
+require_once __DIR__ . '/../api/utils/actions.php';
 require_once __DIR__ . '/../vendor/autoload.php';
+
+// Confirm database connection availability
+if (!function_exists('getPDO')) {
+    throw new RuntimeException(
+        'The Skyesoft database connection is unavailable.'
+    );
+}
+
+// Confirm action-recording availability
+if (!function_exists('insertActionPrompt')) {
+    throw new RuntimeException(
+        'The Skyesoft action-recording layer is unavailable.'
+    );
+}
 
 /** Escape a report value for HTML output. */
 function escapeSiteVisualValue(mixed $value): string
@@ -56,17 +77,34 @@ function siteVisualReportError(int $statusCode, string $message): never
     exit;
 }
 
-/** Read the Site Visual Overview workspace from JSON or a payload field. */
+/**
+ * Read the Site Visual Overview workspace and supplemental audit context
+ * from a JSON request or form payload.
+ */
 function readSiteVisualReportPayload(): array
 {
-    $rawBody = (string)file_get_contents('php://input');
-    $contentType = strtolower((string)($_SERVER['CONTENT_TYPE'] ?? ''));
+    $rawBody = (string) file_get_contents(
+        'php://input'
+    );
+
+    $contentType = strtolower(
+        (string) ($_SERVER['CONTENT_TYPE'] ?? '')
+    );
+
     $rawPayload = '';
 
-    if ($rawBody !== '' && str_contains($contentType, 'application/json')) {
+    // Resolve JSON request body
+    if (
+        $rawBody !== ''
+        && str_contains(
+            $contentType,
+            'application/json'
+        )
+    ) {
         $rawPayload = $rawBody;
     } elseif (isset($_POST['payload'])) {
-        $rawPayload = (string)$_POST['payload'];
+        // Resolve form-submitted payload
+        $rawPayload = (string) $_POST['payload'];
     }
 
     if ($rawPayload === '') {
@@ -75,6 +113,7 @@ function readSiteVisualReportPayload(): array
         );
     }
 
+    // Decode report request
     $payload = json_decode(
         $rawPayload,
         true,
@@ -88,7 +127,10 @@ function readSiteVisualReportPayload(): array
         );
     }
 
-    $workspace = $payload['workspace'] ?? $payload;
+    // Resolve report workspace
+    $workspace =
+        $payload['workspace']
+        ?? $payload;
 
     if (!is_array($workspace)) {
         throw new InvalidArgumentException(
@@ -96,7 +138,24 @@ function readSiteVisualReportPayload(): array
         );
     }
 
-    return $workspace;
+    // Return workspace with supplemental audit context
+    return [
+        'workspace' => $workspace,
+
+        'auditContext' => [
+            'activitySessionId' =>
+                $payload['activitySessionId']
+                ?? null,
+
+            'actionLatitude' =>
+                $payload['actionLatitude']
+                ?? null,
+
+            'actionLongitude' =>
+                $payload['actionLongitude']
+                ?? null
+        ]
+    ];
 }
 
 /** Build a branded section heading using the standard report icon set. */
@@ -325,7 +384,8 @@ function deleteSiteVisualArtifacts(
 #region Section 2 — Workspace Validation & Report Model
 
 try {
-    $workspace = readSiteVisualReportPayload();
+    $reportRequest = readSiteVisualReportPayload();
+    $workspace = $reportRequest['workspace'];
 } catch (Throwable $error) {
     siteVisualReportError(
         400,
@@ -333,6 +393,29 @@ try {
             . $error->getMessage()
     );
 }
+
+// ======================================================================
+// Report Action Audit Context
+// ======================================================================
+
+$auditContext = is_array(
+    $reportRequest['auditContext'] ?? null
+)
+    ? $reportRequest['auditContext']
+    : [];
+
+// Resolve browser coordinates for action auditing
+$reportActionLatitude = is_numeric(
+    $auditContext['actionLatitude'] ?? null
+)
+    ? (float) $auditContext['actionLatitude']
+    : null;
+
+$reportActionLongitude = is_numeric(
+    $auditContext['actionLongitude'] ?? null
+)
+    ? (float) $auditContext['actionLongitude']
+    : null;
 
 $sourceData = is_array($workspace['sourceData'] ?? null)
     ? $workspace['sourceData']
@@ -870,15 +953,113 @@ try {
     );
 }
 
+$pdfFilename = 'Site_Visual_Overview_'
+    . $safeFileToken
+    . '.pdf';
+
+// ======================================================================
+// Report Read Action Recording
+// ======================================================================
+
+$actorContactId = (int) (
+    $_SESSION['SKYESOFT_contactId']
+    ?? $_SESSION['contactId']
+    ?? 0
+);
+
+// Preserve the server-bootstrap session as the canonical identifier
+$reportActivitySessionId = defined('ACTIVITY_SESSION_ID')
+    ? trim((string) ACTIVITY_SESSION_ID)
+    : trim((string) session_id());
+
+if ($reportActivitySessionId === 'no_session') {
+    $reportActivitySessionId = trim((string) session_id());
+}
+
+if ($actorContactId > 0) {
+    try {
+        insertActionPrompt(
+            [
+                'actionTypeId'      => 11,
+                'contactId'         => $actorContactId,
+                'origin'            => 1,
+                'activitySessionId' =>
+                    $reportActivitySessionId,
+
+                // User-facing action description
+                'promptText' =>
+                    'Open Site Visual Overview Report',
+
+                'responseText' =>
+                    'Displayed Site Visual Overview Report for '
+                    . $fullAddress
+                    . '.',
+
+                // Canonical operation identity
+                'intent' =>
+                    'reports.siteVisualOverview.read',
+
+                'intentConfidence' => 1.00,
+
+                // Browser coordinates for action auditing
+                'latitude'  => $reportActionLatitude,
+                'longitude' => $reportActionLongitude,
+
+                // Structured report request
+                'actionPayloadData' => [
+                    'operation'    =>
+                        'reports.siteVisualOverview.read',
+                    'reportType'   =>
+                        'siteVisualOverview',
+                    'address'      => $fullAddress,
+                    'parcelNumber' => $parcelNumber,
+                    'imageCount'   => count($reportImages)
+                ],
+
+                // Structured report result
+                'actionResponseData' => [
+                    'success'      => true,
+                    'reportType'   =>
+                        'siteVisualOverview',
+                    'fileName'     => $pdfFilename,
+                    'address'      => $fullAddress,
+                    'parcelNumber' => $parcelNumber,
+                    'imageCount'   => count($reportImages)
+                ]
+            ],
+            getPDO()
+        );
+    } catch (Throwable $actionError) {
+        // Preserve the successfully generated PDF
+        error_log(
+            '[siteVisualOverviewReport] '
+            . 'Read-action recording failed: '
+            . $actionError->getMessage()
+        );
+    }
+}
+
+// ======================================================================
+// Authoritative Idle Activity Reset
+// ======================================================================
+
+if (
+    session_status() === PHP_SESSION_ACTIVE
+    && !empty($_SESSION['authenticated'])
+) {
+    $_SESSION['lastActivity'] = time();
+}
+
+// Commit session changes before streaming the PDF
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
 // Delete temporary imagery only after mPDF has embedded every image
 deleteSiteVisualArtifacts(
     $temporaryArtifactPaths,
     $artifactsDirectory
 );
-
-$pdfFilename = 'Site_Visual_Overview_'
-    . $safeFileToken
-    . '.pdf';
 
 header('Content-Type: application/pdf');
 header(

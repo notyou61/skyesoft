@@ -10839,6 +10839,7 @@ window.SkyIndex = {
                 this.appendSystemLine(
                     'Unable to open the report window. Please allow popups.'
                 );
+
                 return;
             }
 
@@ -10854,16 +10855,61 @@ window.SkyIndex = {
             }
 
             try {
+                // ==============================================================
+                // Report Action Audit Context
+                // ==============================================================
+
+                let reportActionLocation = this.lastLocation || {
+                    latitude: null,
+                    longitude: null
+                };
+
+                if (
+                    reportActionLocation.latitude === null ||
+                    reportActionLocation.longitude === null
+                ) {
+                    reportActionLocation =
+                        await this.getLocationSafe() ||
+                        {
+                            latitude: null,
+                            longitude: null
+                        };
+
+                    // Cache valid browser coordinates
+                    if (
+                        reportActionLocation.latitude !== null &&
+                        reportActionLocation.longitude !== null
+                    ) {
+                        this.lastLocation = reportActionLocation;
+                    }
+                }
+
+                // ==============================================================
+                // PDF Request
+                // ==============================================================
+
                 const response = await fetch(
                     '/skyesoft/reports/siteVisualOverviewReport.php',
                     {
                         method: 'POST',
+                        credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/pdf'
                         },
                         body: JSON.stringify({
-                            workspace
+                            workspace,
+
+                            // Supplemental activity-session context
+                            activitySessionId:
+                                this.getActivitySessionId(),
+
+                            // Browser coordinates for action auditing
+                            actionLatitude:
+                                reportActionLocation.latitude,
+
+                            actionLongitude:
+                                reportActionLocation.longitude
                         })
                     }
                 );
@@ -10894,6 +10940,10 @@ window.SkyIndex = {
                         'The report server did not return a PDF.'
                     );
                 }
+
+                // ==============================================================
+                // PDF Presentation
+                // ==============================================================
 
                 const pdfBlob =
                     await response.blob();
