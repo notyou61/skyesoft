@@ -15,8 +15,28 @@ ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/php-error.log');
 error_reporting(E_ALL);
 
+// ======================================================================
+// Session, Database & Action-Layer Bootstrap
+// ======================================================================
+
 require_once __DIR__ . '/../api/sessionBootstrap.php';
+require_once __DIR__ . '/../api/dbConnect.php';
+require_once __DIR__ . '/../api/utils/actions.php';
 require_once __DIR__ . '/../vendor/autoload.php';
+
+// Confirm database connection availability
+if (!function_exists('getPDO')) {
+    throw new RuntimeException(
+        'The Skyesoft database connection is unavailable.'
+    );
+}
+
+// Confirm action-recording availability
+if (!function_exists('insertActionPrompt')) {
+    throw new RuntimeException(
+        'The Skyesoft action-recording layer is unavailable.'
+    );
+}
 
 /** Escape a value for HTML output. */
 function escapeReportValue(mixed $value): string
@@ -238,7 +258,6 @@ function validationResult(bool $valid): string
         ? '<span class="status status--resolved">Validated</span>'
         : '<span class="status status--review">Review required</span>';
 }
-
 
 #endregion
 
@@ -1124,30 +1143,161 @@ $html = ob_get_clean();
 
 #endregion
 
-#region Section 6 — PDF Generation
+#region Section 6 — PDF Generation & Read Action
 
 try {
+    // ==================================================================
+    // PDF Generation
+    // ==================================================================
+
     $mpdf = new \Mpdf\Mpdf([
-        'mode' => 'utf-8',
-        'format' => 'Letter',
-        'margin_left' => 10,
-        'margin_right' => 10,
-        'margin_top' => 27,
+        'mode'          => 'utf-8',
+        'format'        => 'Letter',
+        'margin_left'   => 10,
+        'margin_right'  => 10,
+        'margin_top'    => 27,
         'margin_bottom' => 18,
         'margin_header' => 6,
         'margin_footer' => 7
     ]);
 
-    $mpdf->SetTitle('Address Zoning Report - ' . ($fullAddress ?: $parcelNumber));
+    $reportSubject = $fullAddress ?: $parcelNumber;
+    $reportFileName =
+        'Address_Zoning_Report_' .
+        $safeFileToken .
+        '.pdf';
+
+    $mpdf->SetTitle(
+        'Address Zoning Report - ' .
+        $reportSubject
+    );
+
     $mpdf->SetAuthor('Steve Skye');
-    $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
+
+    $mpdf->WriteHTML(
+        $css,
+        \Mpdf\HTMLParserMode::HEADER_CSS
+    );
+
     $mpdf->SetHTMLHeader($headerHtml);
     $mpdf->SetHTMLFooter($footerHtml);
-    $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
-    $mpdf->Output('Address_Zoning_Report_' . $safeFileToken . '.pdf', \Mpdf\Output\Destination::INLINE);
-} catch (\Mpdf\MpdfException $e) {
+
+    $mpdf->WriteHTML(
+        $html,
+        \Mpdf\HTMLParserMode::HTML_BODY
+    );
+
+    // ==================================================================
+    // Report Read Action Recording
+    // ==================================================================
+
+    $actorContactId = (int) (
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    $reportActivitySessionId =
+        $_SESSION['activitySessionId']
+        ?? $activitySessionId
+        ?? session_id();
+
+    if ($actorContactId > 0) {
+        try {
+            insertActionPrompt(
+                [
+                    'actionTypeId'      => 11,
+                    'contactId'         => $actorContactId,
+                    'origin'            => 1,
+                    'activitySessionId' =>
+                        $reportActivitySessionId,
+
+                    // User-facing action description
+                    'promptText' =>
+                        'Open Address Zoning Report',
+
+                    'responseText' =>
+                        'Displayed Address Zoning Report for ' .
+                        $reportSubject .
+                        '.',
+
+                    // Canonical operation identity
+                    'intent' =>
+                        'reports.addressZoning.read',
+
+                    'intentConfidence' =>
+                        1.00,
+
+                    // Browser coordinates were not submitted
+                    'latitude'  => null,
+                    'longitude' => null,
+
+                    // Structured report request
+                    'actionPayloadData' => [
+                        'operation'    =>
+                            'reports.addressZoning.read',
+                        'reportType'   =>
+                            'addressZoning',
+                        'address'      =>
+                            $fullAddress,
+                        'parcelNumber' =>
+                            $parcelNumber
+                    ],
+
+                    // Structured report result
+                    'actionResponseData' => [
+                        'success'      => true,
+                        'reportType'   =>
+                            'addressZoning',
+                        'fileName'     =>
+                            $reportFileName,
+                        'address'      =>
+                            $fullAddress,
+                        'parcelNumber' =>
+                            $parcelNumber
+                    ]
+                ],
+                getPDO()
+            );
+        } catch (Throwable $actionError) {
+            // Preserve successfully generated PDF
+            error_log(
+                '[addressZoningReport] ' .
+                'Read-action recording failed: ' .
+                $actionError->getMessage()
+            );
+        }
+    }
+
+    // ==================================================================
+    // Authoritative Idle Activity Reset
+    // ==================================================================
+
+    if (
+        session_status() === PHP_SESSION_ACTIVE
+        && !empty($_SESSION['authenticated'])
+    ) {
+        $_SESSION['lastActivity'] = time();
+    }
+
+    // Commit session changes before streaming the PDF
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
+    // ==================================================================
+    // PDF Transmission
+    // ==================================================================
+
+    $mpdf->Output(
+        $reportFileName,
+        \Mpdf\Output\Destination::INLINE
+    );
+} catch (\Mpdf\MpdfException $error) {
     http_response_code(500);
-    echo 'Error generating PDF report: ' . escapeReportValue($e->getMessage());
+
+    echo 'Error generating PDF report: ' .
+        escapeReportValue($error->getMessage());
 }
 
 #endregion
