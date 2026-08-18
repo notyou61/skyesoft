@@ -532,7 +532,7 @@ $detachedSignAllowanceDisplay = buildDetachedAllowanceStatus(
     $resolvedSignCode
 );
 
-$activitySessionId = trim((string)(
+$payloadActivitySessionId = trim((string)(
     $payload['activitySessionId']
     ?? ''
 ));
@@ -1220,27 +1220,31 @@ try {
         ?? 0
     );
 
-    // Resolve canonical report activity session
-    $reportActivitySessionId = trim((string) (
-        $_SESSION['activitySessionId']
-        ?? ''
-    ));
+    // Preserve the server-bootstrap session as the canonical identifier
+    $reportActivitySessionId = defined('ACTIVITY_SESSION_ID')
+        ? trim((string) ACTIVITY_SESSION_ID)
+        : trim((string) session_id());
 
-    if ($reportActivitySessionId === '') {
+    // Fall back only when the canonical server value is unavailable
+    if (
+        $reportActivitySessionId === ''
+        || $reportActivitySessionId === 'no_session'
+    ) {
         $reportActivitySessionId =
             $submittedActivitySessionId;
     }
 
     if (
         $reportActivitySessionId === ''
-        && trim((string) $activitySessionId) !== ''
+        || $reportActivitySessionId === 'no_session'
     ) {
         $reportActivitySessionId =
-            trim((string) $activitySessionId);
+            $payloadActivitySessionId;
     }
 
-    if ($reportActivitySessionId === '') {
-        $reportActivitySessionId = session_id();
+    // Never submit the sentinel value as an action-session identifier
+    if ($reportActivitySessionId === 'no_session') {
+        $reportActivitySessionId = '';
     }
 
     if ($actorContactId > 0) {
