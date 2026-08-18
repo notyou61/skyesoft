@@ -9445,9 +9445,23 @@ window.SkyIndex = {
                         error: null
                     },
                     parcel: {
+                        // Accepted report image
                         status: 'notStarted',
                         preview: null,
-                        settings: {}
+                        settings: {},
+
+                        // Temporary Parcel-tab adjustments
+                        workingPreview: null,
+                        workingSettings: {},
+
+                        // Original automatically framed parcel map
+                        defaultSettings: {},
+
+                        // Adjustment state
+                        isAdjusted: false,
+                        hasUnappliedChanges: false,
+                        isWorkingLoading: false,
+                        error: null
                     },
                     streetViews: {
                         requestedCount: 1,

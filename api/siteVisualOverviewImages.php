@@ -33,8 +33,6 @@
 //
 // ======================================================================
 
-#region Section 0 — Endpoint Identity & Environment Bootstrap
-
 /**
  * Skyesoft Site Visual Overview image endpoint.
  *
@@ -67,6 +65,8 @@
  *
  * Compatibility: PHP 8.3+
  */
+
+#region Section 0 — Endpoint Identity & Environment Bootstrap
 
 // Load Skyesoft environment
 $envLoaderPath = __DIR__ . '/utils/envLoader.php';
@@ -554,6 +554,224 @@ function siteVisualOverviewProjectParcel($parcelGeometry, $asJson)
 }
 
 /**
+ * Calculate an explicit center and zoom for a parcel map.
+ *
+ * The projected rings must contain WGS84 points in
+ * longitude/latitude order.
+ *
+ * @param array   $rings     Projected WGS84 parcel rings.
+ * @param integer $mapWidth  Static-map logical width.
+ * @param integer $mapHeight Static-map logical height.
+ * @param integer $padding   Required framing padding in pixels.
+ *
+ * @return array|null
+ */
+function siteVisualOverviewParcelFrame(
+    $rings,
+    $mapWidth = 600,
+    $mapHeight = 338,
+    $padding = 48
+) {
+    if (empty($rings) || !is_array($rings)) {
+        return null;
+    }
+
+    $minimumLongitude = null;
+    $maximumLongitude = null;
+    $minimumMercatorY = null;
+    $maximumMercatorY = null;
+    $validPointCount = 0;
+
+    // Inspect every valid parcel-boundary point
+    foreach ($rings as $ring) {
+        if (!is_array($ring)) {
+            continue;
+        }
+
+        foreach ($ring as $point) {
+            if (
+                !is_array($point) ||
+                !isset($point[0], $point[1]) ||
+                !is_numeric($point[0]) ||
+                !is_numeric($point[1])
+            ) {
+                continue;
+            }
+
+            $longitude = (float) $point[0];
+            $latitude = (float) $point[1];
+
+            if (
+                $longitude < -180.0 ||
+                $longitude > 180.0 ||
+                $latitude < -90.0 ||
+                $latitude > 90.0
+            ) {
+                continue;
+            }
+
+            // Constrain latitude to Web Mercator limits
+            $latitude = max(
+                -85.05112878,
+                min(85.05112878, $latitude)
+            );
+
+            $latitudeRadians = deg2rad($latitude);
+            $sineLatitude = sin($latitudeRadians);
+
+            // Convert latitude to normalized Web Mercator Y
+            $mercatorY = 0.5 - (
+                log(
+                    (1.0 + $sineLatitude) /
+                    (1.0 - $sineLatitude)
+                ) /
+                (4.0 * M_PI)
+            );
+
+            $minimumLongitude = $minimumLongitude === null
+                ? $longitude
+                : min($minimumLongitude, $longitude);
+
+            $maximumLongitude = $maximumLongitude === null
+                ? $longitude
+                : max($maximumLongitude, $longitude);
+
+            $minimumMercatorY = $minimumMercatorY === null
+                ? $mercatorY
+                : min($minimumMercatorY, $mercatorY);
+
+            $maximumMercatorY = $maximumMercatorY === null
+                ? $mercatorY
+                : max($maximumMercatorY, $mercatorY);
+
+            $validPointCount++;
+        }
+    }
+
+    if (
+        $validPointCount === 0 ||
+        $minimumLongitude === null ||
+        $maximumLongitude === null ||
+        $minimumMercatorY === null ||
+        $maximumMercatorY === null
+    ) {
+        return null;
+    }
+
+    // Calculate geographic center
+    $centerLongitude = (
+        $minimumLongitude +
+        $maximumLongitude
+    ) / 2.0;
+
+    $centerMercatorY = (
+        $minimumMercatorY +
+        $maximumMercatorY
+    ) / 2.0;
+
+    $mercatorValue =
+        M_PI -
+        (2.0 * M_PI * $centerMercatorY);
+
+    $centerLatitude = rad2deg(
+        atan(sinh($mercatorValue))
+    );
+
+    // Calculate usable map dimensions after padding
+    $usableWidth = max(
+        1,
+        (int) $mapWidth - ((int) $padding * 2)
+    );
+
+    $usableHeight = max(
+        1,
+        (int) $mapHeight - ((int) $padding * 2)
+    );
+
+    // Calculate normalized Web Mercator spans
+    $longitudeSpan = max(
+        0.0,
+        ($maximumLongitude - $minimumLongitude) /
+        360.0
+    );
+
+    $mercatorYSpan = max(
+        0.0,
+        $maximumMercatorY - $minimumMercatorY
+    );
+
+    $tileSize = 256.0;
+    $zoomCandidates = array();
+
+    if ($longitudeSpan > 0.0) {
+        $zoomCandidates[] = log(
+            $usableWidth /
+            ($tileSize * $longitudeSpan),
+            2
+        );
+    }
+
+    if ($mercatorYSpan > 0.0) {
+        $zoomCandidates[] = log(
+            $usableHeight /
+            ($tileSize * $mercatorYSpan),
+            2
+        );
+    }
+
+    // Use a practical property-level fallback for degenerate bounds
+    $zoom = empty($zoomCandidates)
+        ? 19
+        : (int) floor(min($zoomCandidates));
+
+    $zoom = max(
+        0,
+        min(21, $zoom)
+    );
+
+    return array(
+        'centerLatitude' => round($centerLatitude, 7),
+        'centerLongitude' => round($centerLongitude, 7),
+        'zoom' => $zoom,
+        'bounds' => array(
+            'minimumLatitude' => round(
+                rad2deg(
+                    atan(
+                        sinh(
+                            M_PI -
+                            (2.0 * M_PI * $maximumMercatorY)
+                        )
+                    )
+                ),
+                7
+            ),
+            'maximumLatitude' => round(
+                rad2deg(
+                    atan(
+                        sinh(
+                            M_PI -
+                            (2.0 * M_PI * $minimumMercatorY)
+                        )
+                    )
+                ),
+                7
+            ),
+            'minimumLongitude' => round(
+                $minimumLongitude,
+                7
+            ),
+            'maximumLongitude' => round(
+                $maximumLongitude,
+                7
+            )
+        ),
+        'mapWidth' => (int) $mapWidth,
+        'mapHeight' => (int) $mapHeight,
+        'padding' => (int) $padding
+    );
+}
+
+/**
  * Build Google Static Maps path coordinates from projected rings.
  *
  * @param array $rings Projected WGS84 rings.
@@ -595,7 +813,7 @@ function siteVisualOverviewParcelPath($rings)
 /**
  * Create the primary-parcel aerial artifact and return its URL.
  *
- * @param array  $jsonBody Request JSON.
+ * @param array  $jsonBody  Request JSON.
  * @param string $googleKey Google Maps Static API key.
  *
  * @return void
@@ -642,9 +860,69 @@ function siteVisualOverviewParcel($jsonBody, $googleKey)
         true
     );
 
+    // Calculate the automatic primary-parcel frame
+    $parcelFrame = siteVisualOverviewParcelFrame(
+        $projectedGeometry['rings'],
+        600,
+        338,
+        48
+    );
+
+    if ($parcelFrame === null) {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'Unable to calculate the primary parcel map frame.',
+            true
+        );
+    }
+
     $parcelPath = siteVisualOverviewParcelPath(
         $projectedGeometry['rings']
     );
+
+    // Resolve adjustable map-center coordinates
+    $centerLatitudeRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'centerLatitude',
+        $parcelFrame['centerLatitude']
+    );
+
+    $centerLongitudeRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'centerLongitude',
+        $parcelFrame['centerLongitude']
+    );
+
+    $centerCoordinates = siteVisualOverviewCoordinates(
+        $centerLatitudeRaw,
+        $centerLongitudeRaw,
+        true
+    );
+
+    // Resolve adjustable parcel-map zoom
+    $zoomRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'zoom',
+        $parcelFrame['zoom']
+    );
+
+    if (!is_numeric($zoomRaw)) {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'A valid parcel-map zoom value is required.',
+            true
+        );
+    }
+
+    $zoom = (int) $zoomRaw;
+
+    if ($zoom < 0 || $zoom > 21) {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'Parcel-map zoom must be between 0 and 21.',
+            true
+        );
+    }
 
     if ($parcelPath === '') {
         siteVisualOverviewError(
@@ -658,16 +936,38 @@ function siteVisualOverviewParcel($jsonBody, $googleKey)
     $longitudeParam = number_format($coordinates[1], 7, '.', '');
     $coordinateParam = $latitudeParam . ',' . $longitudeParam;
 
-    // Let the parcel path determine the map extent and preserve the marker
+    // Format the adjustable map center
+    $centerLatitudeParam = number_format(
+        $centerCoordinates[0],
+        7,
+        '.',
+        ''
+    );
+
+    $centerLongitudeParam = number_format(
+        $centerCoordinates[1],
+        7,
+        '.',
+        ''
+    );
+
+    $centerCoordinateParam =
+        $centerLatitudeParam . ',' . $centerLongitudeParam;
+
+    // Build explicitly framed primary-parcel map
     $googleUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
-        . 'size=600x338'
+        . 'center=' . rawurlencode($centerCoordinateParam)
+        . '&zoom=' . $zoom
+        . '&size=600x338'
         . '&scale=2'
         . '&maptype=satellite'
         . '&path=' . rawurlencode(
             'color:0x1976D2FF|weight:4|fillcolor:0x1976D233|'
             . $parcelPath
         )
-        . '&markers=' . rawurlencode('color:red|' . $coordinateParam)
+        . '&markers=' . rawurlencode(
+            'color:red|' . $coordinateParam
+        )
         . '&format=jpg'
         . '&key=' . rawurlencode($googleKey);
 
@@ -761,6 +1061,23 @@ function siteVisualOverviewParcel($jsonBody, $googleKey)
         'status' => 'ready',
         'type' => 'parcel',
         'parcelNumber' => $parcelNumber,
+        'centerLatitude' => round(
+            $centerCoordinates[0],
+            7
+        ),
+        'centerLongitude' => round(
+            $centerCoordinates[1],
+            7
+        ),
+        'zoom' => $zoom,
+        'defaultCenterLatitude' =>
+            $parcelFrame['centerLatitude'],
+        'defaultCenterLongitude' =>
+            $parcelFrame['centerLongitude'],
+        'defaultZoom' =>
+            $parcelFrame['zoom'],
+        'parcelBounds' =>
+            $parcelFrame['bounds'],
         'artifactFilename' => $artifactFilename,
         'artifactUrl' => '/skyesoft/artifacts/' . $artifactFilename,
         'createdAt' => time(),
