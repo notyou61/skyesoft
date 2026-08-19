@@ -1338,6 +1338,38 @@ function siteVisualOverviewBearing(
 }
 
 /**
+ * Convert a camera heading to a compass direction.
+ *
+ * @param float $heading Camera heading in degrees.
+ *
+ * @return string
+ */
+function siteVisualOverviewCompassDirection($heading)
+{
+    $directions = array(
+        'north',
+        'northeast',
+        'east',
+        'southeast',
+        'south',
+        'southwest',
+        'west',
+        'northwest'
+    );
+
+    $normalizedHeading = fmod(
+        ((float) $heading + 360.0),
+        360.0
+    );
+
+    $directionIndex = (int) floor(
+        ($normalizedHeading + 22.5) / 45.0
+    ) % 8;
+
+    return $directions[$directionIndex];
+}
+
+/**
  * Resolve the Phoenix odd/even addressing notation.
  *
  * Odd-numbered properties are generally located on the east side of
@@ -1378,7 +1410,11 @@ function siteVisualOverviewAddressParity($address)
 }
 
 /**
- * Create the default Street View artifact aimed toward the property.
+ * Create a default or user-selected Street View artifact.
+ *
+ * The default request locates the nearest available outdoor panorama
+ * and aims it toward the property. A selected-view request may provide
+ * a panorama ID and camera heading from the imagery workspace.
  *
  * @param array  $jsonBody Request JSON.
  * @param string $googleKey Google Maps Static API key.
@@ -1395,9 +1431,18 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         );
     }
 
+    // Resolve validated property coordinates
     $coordinates = siteVisualOverviewCoordinates(
-        siteVisualOverviewRequestValue($jsonBody, 'latitude', ''),
-        siteVisualOverviewRequestValue($jsonBody, 'longitude', ''),
+        siteVisualOverviewRequestValue(
+            $jsonBody,
+            'latitude',
+            ''
+        ),
+        siteVisualOverviewRequestValue(
+            $jsonBody,
+            'longitude',
+            ''
+        ),
         true
     );
 
@@ -1417,21 +1462,68 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
 
     $propertyLatitude = $coordinates[0];
     $propertyLongitude = $coordinates[1];
-    $addressParity = siteVisualOverviewAddressParity($address);
+    $addressParity =
+        siteVisualOverviewAddressParity($address);
 
-    // Resolve the nearest available panorama for the validated address
+    // Resolve the requested Street View position
+    $viewIndex = siteVisualOverviewIntegerRange(
+        siteVisualOverviewRequestValue(
+            $jsonBody,
+            'viewIndex',
+            1
+        ),
+        1,
+        1,
+        4,
+        true,
+        'Street View index'
+    );
+
+    $requestedPanoramaId = trim((string)
+        siteVisualOverviewRequestValue(
+            $jsonBody,
+            'panoramaId',
+            ''
+        )
+    );
+
+    if (strlen($requestedPanoramaId) > 255) {
+        siteVisualOverviewError(
+            'HTTP/1.1 400 Bad Request',
+            'The selected Street View panorama ID is invalid.',
+            true
+        );
+    }
+
+    // Verify a selected panorama or locate the default panorama
     $metadataUrl =
-        'https://maps.googleapis.com/maps/api/streetview/metadata?'
-        . 'location=' . rawurlencode($address)
-        . '&source=outdoor'
+        'https://maps.googleapis.com/maps/api/streetview/metadata?';
+
+    if ($requestedPanoramaId !== '') {
+        $metadataUrl .=
+            'pano=' . rawurlencode($requestedPanoramaId);
+    } else {
+        $metadataUrl .=
+            'location=' . rawurlencode($address);
+    }
+
+    $metadataUrl .=
+        '&source=outdoor'
         . '&key=' . rawurlencode($googleKey);
 
-    $metadataResponse = siteVisualOverviewCurlGet($metadataUrl);
-    $metadata = json_decode($metadataResponse['data'], true);
+    $metadataResponse =
+        siteVisualOverviewCurlGet($metadataUrl);
 
-    $metadataStatus = is_array($metadata) && isset($metadata['status'])
-        ? (string) $metadata['status']
-        : 'UNKNOWN';
+    $metadata = json_decode(
+        $metadataResponse['data'],
+        true
+    );
+
+    $metadataStatus =
+        is_array($metadata) &&
+        isset($metadata['status'])
+            ? (string) $metadata['status']
+            : 'UNKNOWN';
 
     if (
         !$metadataResponse['success'] ||
@@ -1457,27 +1549,84 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         );
     }
 
-    $panoramaId = (string) $metadata['pano_id'];
-    $panoramaLatitude = (float) $metadata['location']['lat'];
-    $panoramaLongitude = (float) $metadata['location']['lng'];
+    $panoramaId =
+        (string) $metadata['pano_id'];
 
-    // Aim the camera from the panorama directly toward the property
-    $heading = siteVisualOverviewBearing(
-        $panoramaLatitude,
-        $panoramaLongitude,
-        $propertyLatitude,
-        $propertyLongitude
+    $panoramaLatitude =
+        (float) $metadata['location']['lat'];
+
+    $panoramaLongitude =
+        (float) $metadata['location']['lng'];
+
+    // Resolve camera heading
+    $headingRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'heading',
+        null
     );
 
-    $fovRaw = siteVisualOverviewRequestValue($jsonBody, 'fov', 75);
-    $pitchRaw = siteVisualOverviewRequestValue($jsonBody, 'pitch', 5);
-    $fov = is_numeric($fovRaw) ? (int) $fovRaw : 75;
-    $pitch = is_numeric($pitchRaw) ? (int) $pitchRaw : 5;
+    if ($headingRaw === null || $headingRaw === '') {
+        // Aim the default camera toward the property
+        $heading = siteVisualOverviewBearing(
+            $panoramaLatitude,
+            $panoramaLongitude,
+            $propertyLatitude,
+            $propertyLongitude
+        );
 
-    // Enforce Google Street View image limits
-    $fov = max(10, min(120, $fov));
-    $pitch = max(-90, min(90, $pitch));
+        $headingSource =
+            'panoramaToPropertyBearing';
+    } else {
+        if (!is_numeric($headingRaw)) {
+            siteVisualOverviewError(
+                'HTTP/1.1 400 Bad Request',
+                'A valid Street View heading is required.',
+                true
+            );
+        }
 
+        // Normalize selected heading to 0 through 359.99 degrees
+        $heading = fmod(
+            ((float) $headingRaw + 360.0),
+            360.0
+        );
+
+        $headingSource = 'userSelected';
+    }
+
+    // Resolve camera field of view
+    $fov = siteVisualOverviewIntegerRange(
+        siteVisualOverviewRequestValue(
+            $jsonBody,
+            'fov',
+            75
+        ),
+        75,
+        10,
+        120,
+        true,
+        'Street View field of view'
+    );
+
+    // Resolve camera pitch
+    $pitch = siteVisualOverviewIntegerRange(
+        siteVisualOverviewRequestValue(
+            $jsonBody,
+            'pitch',
+            5
+        ),
+        5,
+        -90,
+        90,
+        true,
+        'Street View pitch'
+    );
+
+    $heading = round($heading, 2);
+    $viewDirection =
+        siteVisualOverviewCompassDirection($heading);
+
+    // Request the exact resolved Street View
     $streetViewUrl =
         'https://maps.googleapis.com/maps/api/streetview?'
         . 'size=600x338'
@@ -1486,13 +1635,14 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         . '&heading=' . rawurlencode(
             number_format($heading, 2, '.', '')
         )
-        . '&fov=' . $fov
-        . '&pitch=' . $pitch
-        . '&source=outdoor'
+        . '&fov=' . rawurlencode((string) $fov)
+        . '&pitch=' . rawurlencode((string) $pitch)
         . '&return_error_code=true'
         . '&key=' . rawurlencode($googleKey);
 
-    $imageResponse = siteVisualOverviewCurlGet($streetViewUrl);
+    $imageResponse =
+        siteVisualOverviewCurlGet($streetViewUrl);
+
     $isImage = strpos(
         strtolower($imageResponse['contentType']),
         'image/'
@@ -1506,8 +1656,10 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         error_log(
             '[SITE VISUAL IMAGES] Street View image request failed. HTTP='
             . $imageResponse['httpCode']
-            . ' Content-Type=' . $imageResponse['contentType']
-            . ' cURL=' . $imageResponse['error']
+            . ' Content-Type='
+            . $imageResponse['contentType']
+            . ' cURL='
+            . $imageResponse['error']
         );
 
         siteVisualOverviewError(
@@ -1517,7 +1669,8 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         );
     }
 
-    $artifactDirectory = dirname(__DIR__) . '/artifacts';
+    $artifactDirectory =
+        dirname(__DIR__) . '/artifacts';
 
     if (!is_dir($artifactDirectory)) {
         siteVisualOverviewError(
@@ -1535,21 +1688,33 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         );
     }
 
-    $uniqueToken = bin2hex(random_bytes(6));
-    $artifactFilename = 'tmp-site-visual-street-view-1-'
+    $uniqueToken =
+        bin2hex(random_bytes(6));
+
+    $artifactFilename =
+        'tmp-site-visual-street-view-'
+        . $viewIndex
+        . '-'
         . time()
         . '-'
         . $uniqueToken
         . '.jpg';
 
-    $artifactPath = $artifactDirectory . '/' . $artifactFilename;
+    $artifactPath =
+        $artifactDirectory
+        . '/'
+        . $artifactFilename;
+
     $bytesWritten = file_put_contents(
         $artifactPath,
         $imageResponse['data'],
         LOCK_EX
     );
 
-    if ($bytesWritten === false || $bytesWritten <= 0) {
+    if (
+        $bytesWritten === false ||
+        $bytesWritten <= 0
+    ) {
         error_log(
             '[SITE VISUAL IMAGES] Unable to write Street View artifact: '
             . $artifactPath
@@ -1562,24 +1727,42 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         );
     }
 
+    // Resolve optional verified panorama metadata
+    $panoramaDate =
+        isset($metadata['date']) &&
+        trim((string) $metadata['date']) !== ''
+            ? trim((string) $metadata['date'])
+            : null;
+
+    $panoramaCopyright =
+        isset($metadata['copyright']) &&
+        trim((string) $metadata['copyright']) !== ''
+            ? trim((string) $metadata['copyright'])
+            : null;
+
     siteVisualOverviewJson(array(
         'success' => true,
         'status' => 'ready',
         'type' => 'streetView',
-        'viewIndex' => 1,
+        'viewIndex' => $viewIndex,
         'address' => $address,
         'propertyLatitude' => $propertyLatitude,
         'propertyLongitude' => $propertyLongitude,
         'panoramaId' => $panoramaId,
         'panoramaLatitude' => $panoramaLatitude,
         'panoramaLongitude' => $panoramaLongitude,
-        'heading' => round($heading, 2),
-        'headingSource' => 'panoramaToPropertyBearing',
+        'panoramaDate' => $panoramaDate,
+        'panoramaCopyright' => $panoramaCopyright,
+        'heading' => $heading,
+        'headingSource' => $headingSource,
+        'viewDirection' => $viewDirection,
         'addressParity' => $addressParity,
         'fov' => $fov,
         'pitch' => $pitch,
         'artifactFilename' => $artifactFilename,
-        'artifactUrl' => '/skyesoft/artifacts/' . $artifactFilename,
+        'artifactUrl' =>
+            '/skyesoft/artifacts/'
+            . $artifactFilename,
         'createdAt' => time(),
         'temporary' => true
     ));
