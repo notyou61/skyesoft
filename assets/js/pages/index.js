@@ -3052,6 +3052,8 @@ window.SkyIndex = {
                         center: centerPoint,
                         zoom: 19,
                         mapTypeId: 'satellite',
+                        // Temporary Advanced Marker test Map ID
+                        mapId: 'DEMO_MAP_ID',
                         streetViewControl: false,
                         mapTypeControl: false,
                         tilt: 0
