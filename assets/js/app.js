@@ -448,9 +448,6 @@ window.SkyeApp.handleSSE = async function (payload) {
     // Always commit the latest authoritative snapshot
     this.lastSSE = payload;
 
-    // Render version from authoritative SSE metadata
-    this.renderVersionFooter(payload);
-
     // ─────────────────────────────────────────
     // 🔄 ALWAYS UPDATE IDLE STATE + RENDER COUNTDOWN
     // ─────────────────────────────────────────
@@ -492,6 +489,10 @@ window.SkyeApp.handleSSE = async function (payload) {
         this.updateHSB?.(payload);
         this.routeSSEToPage?.(payload);
         this.renderIdleCountdown(page);
+
+        // Render version after page-specific DOM updates
+        this.renderVersionFooter(payload);
+
         return;
     }
 
@@ -525,6 +526,8 @@ window.SkyeApp.handleSSE = async function (payload) {
     // Route to page-specific handlers and update other UI
     this.updateHSB?.(payload);
     this.routeSSEToPage?.(payload);
+    // Render version last (page rendering may rebuild footer DOM)
+    this.renderVersionFooter(payload);
 };
 /* #endregion */
 
