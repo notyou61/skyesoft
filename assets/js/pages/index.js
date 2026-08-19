@@ -9940,7 +9940,14 @@ window.SkyIndex = {
                         ${this.renderSiteVisualOverviewTabButton('satellite', 'Satellite')}
                         ${this.renderSiteVisualOverviewTabButton('parcel', 'Parcel')}
                         ${this.renderSiteVisualOverviewTabButton('streetViews', 'Street Views')}
-                        ${this.renderSiteVisualOverviewTabButton('contextMaps', 'Context Maps')}
+                        ${this.renderSiteVisualOverviewTabButton(
+                            'immediateVicinity',
+                            'Vicinity Map'
+                        )}
+                        ${this.renderSiteVisualOverviewTabButton(
+                            'extendedContext',
+                            'Extended Map'
+                        )}
                     </div>
 
                     <!-- Workspace content -->
@@ -10020,7 +10027,8 @@ window.SkyIndex = {
                 'satellite',
                 'parcel',
                 'streetViews',
-                'contextMaps'
+                'immediateVicinity',
+                'extendedContext'
             ];
 
             if (!workspace || !validTabs.includes(tabName)) {
@@ -10053,7 +10061,9 @@ window.SkyIndex = {
             const fixedHeightTabs = [
                 'preview',
                 'satellite',
-                'parcel'
+                'parcel',
+                'immediateVicinity',
+                'extendedContext'
             ];
 
             content.style.overflowY =
@@ -10061,12 +10071,18 @@ window.SkyIndex = {
                     ? 'hidden'
                     : 'auto';
 
-            // Use compact padding for image workspaces
+            // Use compact padding for adjustable image workspaces
+            const compactWorkspaceTabs = [
+                'satellite',
+                'parcel',
+                'immediateVicinity',
+                'extendedContext'
+            ];
+
             content.style.padding =
                 tabName === 'preview'
                     ? '14px 16px'
-                    : tabName === 'satellite' ||
-                    tabName === 'parcel'
+                    : compactWorkspaceTabs.includes(tabName)
                         ? '16px 20px'
                         : '20px';
 
@@ -10085,8 +10101,21 @@ window.SkyIndex = {
                 case 'streetViews':
                     content.innerHTML = this.renderSiteVisualOverviewStreetViewsTab();
                     break;
-                case 'contextMaps':
-                    content.innerHTML = this.renderSiteVisualOverviewContextMapsTab();
+                case 'immediateVicinity':
+                    content.innerHTML =
+                        this.renderSiteVisualOverviewContextMapWorkspace(
+                            'Vicinity Map',
+                            'immediateVicinity',
+                            'Nearby streets, intersections, access, and development.'
+                        );
+                    break;
+                case 'extendedContext':
+                    content.innerHTML =
+                        this.renderSiteVisualOverviewContextMapWorkspace(
+                            'Extended Map',
+                            'extendedContext',
+                            'Major roads, freeways, commercial areas, and regional orientation.'
+                        );
                     break;
             }
 
