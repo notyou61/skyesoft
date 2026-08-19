@@ -9823,6 +9823,8 @@ window.SkyIndex = {
                         status: 'notStarted',
                         minimumSelections: 1,
                         maximumSelections: 4,
+                        // Browser-side Google Maps SDK key
+                        apiKey: null,
 
                         // Embedded Street View selection workspace
                         editor: {
@@ -12498,7 +12500,12 @@ window.SkyIndex = {
                     return;
                 }
 
+                // Retain the browser key for the embedded editor
+                streetViews.apiKey =
+                    String(responseData.apiKey || '').trim();
+
                 selection.status = 'ready';
+
                 selection.preview =
                     responseData.artifactUrl;
 
@@ -13782,7 +13789,10 @@ window.SkyIndex = {
             const isEditing =
                 Boolean(selectionId && targetSelection);
 
-            if (!isEditing && selections.length >= maximumSelections) {
+            if (
+                !isEditing &&
+                selections.length >= maximumSelections
+            ) {
                 alert(
                     `A maximum of ${maximumSelections} Street Views is allowed.`
                 );
@@ -13812,9 +13822,13 @@ window.SkyIndex = {
                 return;
             }
 
-            const apiKey =
+            // Resolve the browser-side Google Maps key
+            const apiKey = String(
+                streetViews.apiKey ||
                 this.googleMapsApiKey ||
-                window.GOOGLE_MAPS_API_KEY;
+                window.GOOGLE_MAPS_API_KEY ||
+                ''
+            ).trim();
 
             if (!apiKey) {
                 alert(
@@ -13852,14 +13866,18 @@ window.SkyIndex = {
             const heading =
                 Number.isFinite(Number(targetSettings.heading))
                     ? Number(targetSettings.heading)
-                    : Number.isFinite(Number(defaultSettings.heading))
+                    : Number.isFinite(
+                        Number(defaultSettings.heading)
+                    )
                         ? Number(defaultSettings.heading)
                         : 105;
 
             const pitch =
                 Number.isFinite(Number(targetSettings.pitch))
                     ? Number(targetSettings.pitch)
-                    : Number.isFinite(Number(defaultSettings.pitch))
+                    : Number.isFinite(
+                        Number(defaultSettings.pitch)
+                    )
                         ? Number(defaultSettings.pitch)
                         : 5;
 
@@ -13873,7 +13891,10 @@ window.SkyIndex = {
                     ? Number(targetSettings.zoom)
                     : Math.max(
                         0,
-                        Math.log2(180 / Math.max(10, fov))
+                        Math.log2(
+                            180 /
+                            Math.max(10, fov)
+                        )
                     );
 
             const panoramaId =
@@ -13899,7 +13920,9 @@ window.SkyIndex = {
             };
 
             // Render the editor inside the current tab
-            this.showSiteVisualOverviewTab('streetViews');
+            this.showSiteVisualOverviewTab(
+                'streetViews'
+            );
 
             // Register Site Visual capture handling
             this._streetViewWorkspace.onCapture =
@@ -13915,6 +13938,7 @@ window.SkyIndex = {
             this._streetViewWorkspace.context =
                 'siteVisualOverview';
 
+            // Load and initialize the embedded workspace
             this._loadGoogleMapsSdk(apiKey, () => {
                 setTimeout(() => {
                     const currentWorkspace =
