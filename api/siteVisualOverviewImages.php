@@ -1431,6 +1431,13 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         );
     }
 
+    // Resolve the browser-side Google Maps key
+    $embedKey = skyesoftGetEnv(
+        'GOOGLE_MAPS_EMBED_API_KEY'
+    )
+        ?: getenv('GOOGLE_MAPS_EMBED_API_KEY')
+        ?: $googleKey;
+
     // Resolve validated property coordinates
     $coordinates = siteVisualOverviewCoordinates(
         siteVisualOverviewRequestValue(
@@ -1745,6 +1752,7 @@ function siteVisualOverviewStreetView($jsonBody, $googleKey)
         'status' => 'ready',
         'type' => 'streetView',
         'viewIndex' => $viewIndex,
+        'apiKey' => $embedKey,
         'address' => $address,
         'propertyLatitude' => $propertyLatitude,
         'propertyLongitude' => $propertyLongitude,
