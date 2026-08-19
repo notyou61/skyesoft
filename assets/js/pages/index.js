@@ -10068,34 +10068,63 @@ window.SkyIndex = {
                     ? Number(settings.zoom)
                     : 16;
 
-            const markerVisible = settings.markerVisible !== false;
-            const boundaryVisible = settings.boundaryVisible !== false;
-            const boundaryColor = String(settings.boundaryColor || '1976D2').toUpperCase();
-            const boundaryWeight = Number.isFinite(Number(settings.boundaryWeight))
-                ? Number(settings.boundaryWeight)
-                : 4;
+            const markerVisible =
+                settings.markerVisible !== false;
+
+            const boundaryVisible =
+                settings.boundaryVisible !== false;
+
+            const boundaryWeight =
+                Number.isFinite(Number(settings.boundaryWeight))
+                    ? Number(settings.boundaryWeight)
+                    : 4;
 
             // Resolve Parcel workspace badge
-            let statusLabel = 'Ready';
-            let statusBackground = '#dcfce7';
-            let statusColor = '#166534';
+            let statusLabel =
+                'Ready';
+
+            let statusBackground =
+                '#dcfce7';
+
+            let statusColor =
+                '#166534';
 
             if (parcel.error) {
-                statusLabel = 'Error';
-                statusBackground = '#fee2e2';
-                statusColor = '#b91c1c';
+                statusLabel =
+                    'Error';
+
+                statusBackground =
+                    '#fee2e2';
+
+                statusColor =
+                    '#b91c1c';
             } else if (parcel.isWorkingLoading) {
-                statusLabel = 'Updating';
-                statusBackground = '#dbeafe';
-                statusColor = '#1d4ed8';
+                statusLabel =
+                    'Updating';
+
+                statusBackground =
+                    '#dbeafe';
+
+                statusColor =
+                    '#1d4ed8';
             } else if (parcel.hasUnappliedChanges) {
-                statusLabel = 'Changes Pending';
-                statusBackground = '#fef3c7';
-                statusColor = '#92400e';
+                statusLabel =
+                    'Changes Pending';
+
+                statusBackground =
+                    '#fef3c7';
+
+                statusColor =
+                    '#92400e';
             } else if (parcel.isAdjusted) {
-                statusLabel = 'Adjusted';
-                statusBackground = '#ccfbf1';
-                statusColor = '#0f766e';
+                statusLabel =
+                    'Adjusted';
+
+                statusBackground =
+                    '#ccfbf1';
+
+                statusColor =
+                    '#0f766e';
             }
 
             const applyDisabled =
@@ -10104,7 +10133,9 @@ window.SkyIndex = {
                 parcel.status === 'error' ||
                 Boolean(parcel.error);
 
-            const controlsDisabled = parcel.isWorkingLoading || Boolean(parcel.error);
+            const controlsDisabled =
+                parcel.isWorkingLoading ||
+                Boolean(parcel.error);
 
             return `
                 <div>
@@ -10118,13 +10149,19 @@ window.SkyIndex = {
                         margin-bottom:10px;
                     ">
                         <div>
-                            <h3 style="margin:0 0 3px; color:#222; font-size:1.05rem;">
+                            <h3 style="
+                                margin:0 0 3px;
+                                color:#222;
+                                font-size:1.05rem;
+                            ">
                                 Parcel Map
                             </h3>
+
                             <small style="color:#666;">
                                 Obtain and adjust this required report image.
                             </small>
                         </div>
+
                         <span style="
                             flex:0 0 auto;
                             padding:4px 10px;
@@ -10138,6 +10175,7 @@ window.SkyIndex = {
                         </span>
                     </div>
 
+                    <!-- Parcel workspace -->
                     <div style="
                         display:grid;
                         grid-template-columns:minmax(0, 1fr) 280px;
@@ -10149,7 +10187,7 @@ window.SkyIndex = {
                             id="siteVisualOverviewParcelViewport"
                             style="
                                 position:relative;
-                                height:370px;
+                                height:400px;
                                 overflow:hidden;
                                 border:1px solid #cbd5e1;
                                 border-radius:8px;
@@ -10173,7 +10211,7 @@ window.SkyIndex = {
                                             draggable="false"
                                             style="
                                                 width:100%;
-                                                height:370px;
+                                                height:400px;
                                                 display:block;
                                                 object-fit:cover;
                                                 pointer-events:none;
@@ -10183,7 +10221,7 @@ window.SkyIndex = {
                                     `
                                     : `
                                         <div style="
-                                            height:370px;
+                                            height:400px;
                                             display:flex;
                                             align-items:center;
                                             justify-content:center;
@@ -10191,9 +10229,11 @@ window.SkyIndex = {
                                             color:#64748b;
                                             text-align:center;
                                         ">
-                                            ${parcel.error
-                                                ? this.escapeHtml(parcel.error)
-                                                : 'Parcel map will appear here.'}
+                                            ${
+                                                parcel.error
+                                                    ? this.escapeHtml(parcel.error)
+                                                    : 'Parcel map will appear here.'
+                                            }
                                         </div>
                                     `
                             }
@@ -10220,7 +10260,7 @@ window.SkyIndex = {
 
                         <!-- Adjustment controls -->
                         <div style="
-                            height:370px;
+                            height:400px;
                             box-sizing:border-box;
                             padding:10px 12px;
                             border:1px solid #dbe2ea;
@@ -10230,75 +10270,106 @@ window.SkyIndex = {
                         ">
                             <strong style="
                                 display:block;
-                                margin-bottom:12px;
+                                margin-bottom:6px;
                                 color:#334155;
                                 font-size:0.88rem;
                             ">
                                 Map Position
                             </strong>
 
-                                <!-- Directional controls -->
-                                <div style="
-                                    display:grid;
-                                    grid-template-columns:repeat(3, 36px);
-                                    gap:4px;
-                                    justify-content:center;
-                                    margin-bottom:8px;
-                                ">
+                            <!-- Directional controls -->
+                            <div style="
+                                display:grid;
+                                grid-template-columns:repeat(3, 36px);
+                                gap:4px;
+                                justify-content:center;
+                                margin-bottom:8px;
+                            ">
                                 <div></div>
+
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.nudgeSiteVisualOverviewParcel(0, -1)"
-                                    style="height:30px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    style="height:30px; border:1px solid #cbd5e1;
+                                        border-radius:6px; background:#fff; cursor:pointer;">
                                     ↑
                                 </button>
+
                                 <div></div>
+
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.nudgeSiteVisualOverviewParcel(-1, 0)"
-                                    style="height:30px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    style="height:30px; border:1px solid #cbd5e1;
+                                        border-radius:6px; background:#fff; cursor:pointer;">
                                     ←
                                 </button>
+
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.resetSiteVisualOverviewParcel()"
                                     title="Reset to automatic parcel frame"
-                                    style="height:30x; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; font-size:0.75rem;">
+                                    style="height:30px; border:1px solid #cbd5e1;
+                                        border-radius:6px; background:#fff; cursor:pointer;
+                                        font-size:0.75rem;">
                                     ↺
                                 </button>
+
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.nudgeSiteVisualOverviewParcel(1, 0)"
-                                    style="height:30px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    style="height:30px; border:1px solid #cbd5e1;
+                                        border-radius:6px; background:#fff; cursor:pointer;">
                                     →
                                 </button>
+
                                 <div></div>
+
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.nudgeSiteVisualOverviewParcel(0, 1)"
-                                    style="height:30px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    style="height:30px; border:1px solid #cbd5e1;
+                                        border-radius:6px; background:#fff; cursor:pointer;">
                                     ↓
                                 </button>
+
                                 <div></div>
                             </div>
 
-                            <!-- Zoom -->
-                            <div style="margin-bottom:16px;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                                    <span style="font-size:0.82rem; color:#475569;">Zoom</span>
-                                    <span style="font-size:0.82rem; color:#0f766e; font-weight:600;">${zoom}</span>
+                            <!-- Zoom controls -->
+                            <div style="margin-bottom:8px;">
+                                <div style="
+                                    display:flex;
+                                    justify-content:space-between;
+                                    margin-bottom:3px;
+                                ">
+                                    <span style="font-size:0.82rem; color:#475569;">
+                                        Zoom
+                                    </span>
+
+                                    <span style="
+                                        font-size:0.82rem;
+                                        color:#0f766e;
+                                        font-weight:600;
+                                    ">
+                                        ${zoom}
+                                    </span>
                                 </div>
+
                                 <div style="display:flex; gap:8px;">
                                     <button type="button"
                                         ${controlsDisabled || zoom <= 0 ? 'disabled' : ''}
                                         onclick="SkyIndex.changeSiteVisualOverviewParcelZoom(-1)"
-                                        style="flex:1; height:34px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                        style="flex:1; height:30px; border:1px solid #cbd5e1;
+                                            border-radius:6px; background:#fff; cursor:pointer;">
                                         −
                                     </button>
+
                                     <button type="button"
                                         ${controlsDisabled || zoom >= 21 ? 'disabled' : ''}
                                         onclick="SkyIndex.changeSiteVisualOverviewParcelZoom(1)"
-                                        style="flex:1; height:34px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                        style="flex:1; height:30px; border:1px solid #cbd5e1;
+                                            border-radius:6px; background:#fff; cursor:pointer;">
                                         +
                                     </button>
                                 </div>
@@ -10306,7 +10377,7 @@ window.SkyIndex = {
 
                             <strong style="
                                 display:block;
-                                margin-bottom:10px;
+                                margin-bottom:5px;
                                 color:#334155;
                                 font-size:0.88rem;
                             ">
@@ -10318,7 +10389,7 @@ window.SkyIndex = {
                                 display:flex;
                                 align-items:center;
                                 gap:8px;
-                                margin-bottom:10px;
+                                margin-bottom:5px;
                                 font-size:0.80rem;
                                 color:#334155;
                                 cursor:pointer;
@@ -10336,7 +10407,7 @@ window.SkyIndex = {
                                 display:flex;
                                 align-items:center;
                                 gap:8px;
-                                margin-bottom:12px;
+                                margin-bottom:7px;
                                 font-size:0.80rem;
                                 color:#334155;
                                 cursor:pointer;
@@ -10350,13 +10421,29 @@ window.SkyIndex = {
                             </label>
 
                             <!-- Boundary weight -->
-                            <div style="margin-bottom:16px;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                                    <span style="font-size:0.82rem; color:#475569;">Boundary weight</span>
-                                    <span style="font-size:0.82rem; color:#0f766e; font-weight:600;">${boundaryWeight}</span>
+                            <div style="margin-bottom:8px;">
+                                <div style="
+                                    display:flex;
+                                    justify-content:space-between;
+                                    margin-bottom:3px;
+                                ">
+                                    <span style="font-size:0.82rem; color:#475569;">
+                                        Boundary weight
+                                    </span>
+
+                                    <span style="
+                                        font-size:0.82rem;
+                                        color:#0f766e;
+                                        font-weight:600;
+                                    ">
+                                        ${boundaryWeight}
+                                    </span>
                                 </div>
+
                                 <input type="range"
-                                    min="1" max="12" step="1"
+                                    min="1"
+                                    max="12"
+                                    step="1"
                                     value="${boundaryWeight}"
                                     ${controlsDisabled || !boundaryVisible ? 'disabled' : ''}
                                     onchange="SkyIndex.changeSiteVisualOverviewParcelBoundaryWeight(this.value)"
@@ -10365,12 +10452,16 @@ window.SkyIndex = {
                             </div>
 
                             <!-- Actions -->
-                            <div style="display:grid; gap:8px;">
+                            <div style="
+                                display:grid;
+                                grid-template-columns:1fr 1fr;
+                                gap:5px;
+                            ">
                                 <button type="button"
                                     ${applyDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.applySiteVisualOverviewParcel()"
                                     style="
-                                        height:38px;
+                                        height:32px;
                                         border:none;
                                         border-radius:6px;
                                         background:${applyDisabled ? '#e5e7eb' : '#0d9488'};
@@ -10380,18 +10471,20 @@ window.SkyIndex = {
                                     ">
                                     Apply to Report
                                 </button>
+
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.resetSiteVisualOverviewParcel()"
+                                    title="Reset to automatic parcel frame"
                                     style="
-                                        height:36px;
+                                        height:32px;
                                         border:1px solid #cbd5e1;
                                         border-radius:6px;
                                         background:#fff;
                                         color:#334155;
                                         cursor:pointer;
                                     ">
-                                    Reset to Automatic Frame
+                                    Reset Frame
                                 </button>
                             </div>
                         </div>
