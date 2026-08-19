@@ -2515,7 +2515,12 @@ window.SkyIndex = {
         _streetViewWorkspace: {
             map: null,
             panorama: null,
-            marker: null
+            panoramaInstance: null,
+            marker: null,
+
+            // Optional workflow-specific capture handler
+            onCapture: null,
+            context: null
         },
 
         // Helper to determine if intent matches Street View data
@@ -2735,54 +2740,220 @@ window.SkyIndex = {
         },
 
         openInteractiveStreetView(data) {
-
-            this.replaceStreetViewProcessingWithResult();
-
-            console.log('[OPEN INTERACTIVE STREET VIEW]', data);
-
-            const lat = parseFloat(data.latitude);
-            const lng = parseFloat(data.longitude);
-            const apiKey = data.apiKey || this.googleMapsApiKey || window.GOOGLE_MAPS_API_KEY;
-
-            if (!lat || !lng || !apiKey) {
-                alert("Workspace load failed: Missing coordinate mappings or API key.");
+            if (!data || typeof data !== 'object') {
+                alert(
+                    'Workspace load failed: Invalid Street View data.'
+                );
                 return;
             }
 
+            const lat =
+                Number(data.latitude);
+
+            const lng =
+                Number(data.longitude);
+
+            const apiKey =
+                data.apiKey ||
+                this.googleMapsApiKey ||
+                window.GOOGLE_MAPS_API_KEY;
+
+            if (
+                !Number.isFinite(lat) ||
+                !Number.isFinite(lng) ||
+                !apiKey
+            ) {
+                alert(
+                    'Workspace load failed: Missing coordinate mappings or API key.'
+                );
+                return;
+            }
+
+            const onCapture =
+                typeof data.onCapture === 'function'
+                    ? data.onCapture
+                    : null;
+
+            const context =
+                String(data.context || 'existingWorkflow');
+
+            // Preserve existing command-workflow behavior
+            if (!onCapture) {
+                this.replaceStreetViewProcessingWithResult();
+            }
+
+            console.log(
+                '[OPEN INTERACTIVE STREET VIEW]',
+                {
+                    latitude: lat,
+                    longitude: lng,
+                    context
+                }
+            );
+
+            // Close and clear any previous workspace
             this.closeStreetViewModal();
 
-            const modal = document.createElement('div');
+            // Register the current capture destination
+            this._streetViewWorkspace.onCapture =
+                onCapture;
+
+            this._streetViewWorkspace.context =
+                context;
+
+            const heading =
+                Number.isFinite(Number(data.heading))
+                    ? Number(data.heading)
+                    : 105;
+
+            const pitch =
+                Number.isFinite(Number(data.pitch))
+                    ? Number(data.pitch)
+                    : 8;
+
+            const zoom =
+                Number.isFinite(Number(data.zoom))
+                    ? Number(data.zoom)
+                    : 1;
+
+            const panoramaId =
+                String(data.panoramaId || '').trim();
+
+            const modal =
+                document.createElement('div');
+
             modal.id = 'streetViewModal';
             modal.className = 'modal-backdrop';
+
             modal.style.cssText = `
-                position:fixed; top:0; left:0; width:100%; height:100%; 
-                background:rgba(0,0,0,0.85); z-index:99999; display:flex; 
-                align-items:center; justify-content:center; font-family:sans-serif;
+                position:fixed;
+                top:0;
+                left:0;
+                width:100%;
+                height:100%;
+                background:rgba(0,0,0,0.85);
+                z-index:99999;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-family:sans-serif;
             `;
 
             modal.innerHTML = `
-                <div style="background:#fff; padding:20px; border-radius:12px; width:95%; max-width:1150px; box-shadow:0 15px 45px rgba(0,0,0,.6);">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:center;">
+                <div style="
+                    background:#fff;
+                    padding:20px;
+                    border-radius:12px;
+                    width:95%;
+                    max-width:1150px;
+                    box-shadow:0 15px 45px rgba(0,0,0,.6);
+                ">
+                    <div style="
+                        display:flex;
+                        justify-content:space-between;
+                        margin-bottom:12px;
+                        align-items:center;
+                    ">
                         <div>
-                            <strong style="font-size:1.15em; color:#222; display:block; margin-bottom:2px;">Location Imagery Selection Workspace</strong>
-                            <small style="color:#666; font-size:0.9em; display:block;">📍 ${this.escapeHtml(data.address || '')}</small>
+                            <strong style="
+                                display:block;
+                                margin-bottom:2px;
+                                color:#222;
+                                font-size:1.15em;
+                            ">
+                                Location Imagery Selection Workspace
+                            </strong>
+
+                            <small style="
+                                display:block;
+                                color:#666;
+                                font-size:0.9em;
+                            ">
+                                📍 ${this.escapeHtml(data.address || '')}
+                            </small>
                         </div>
-                        <button onclick="SkyIndex.closeStreetViewModal()" 
-                                style="background:none; border:none; font-size:32px; cursor:pointer; color:#bbb; line-height:1;">&times;</button>
-                    </div>
-                    
-                    <div style="display:flex; gap:16px; height:500px; margin-bottom:16px;">
-                        <div id="workspaceMapCanvas" style="flex:1; background:#f0f0f0; border-radius:8px; border:1px solid #ddd;"></div>
-                        <div id="workspacePanCanvas" style="flex:1; background:#f0f0f0; border-radius:8px; border:1px solid #ddd;"></div>
+
+                        <button
+                            type="button"
+                            onclick="SkyIndex.closeStreetViewModal()"
+                            style="
+                                background:none;
+                                border:none;
+                                color:#bbb;
+                                cursor:pointer;
+                                font-size:32px;
+                                line-height:1;
+                            "
+                            aria-label="Close Street View workspace"
+                        >
+                            &times;
+                        </button>
                     </div>
 
-                    <div style="display:flex; justify-content:flex-end; gap:12px; border-top:1px solid #eee; padding-top:14px;">
-                        <button onclick="SkyIndex.closeStreetViewModal()" 
-                                style="background:#f1f3f5; color:#495057; border:none; padding:11px 20px; border-radius:6px; font-weight:600; cursor:pointer;">
+                    <div style="
+                        display:flex;
+                        gap:16px;
+                        height:500px;
+                        margin-bottom:16px;
+                    ">
+                        <div
+                            id="workspaceMapCanvas"
+                            style="
+                                flex:1;
+                                background:#f0f0f0;
+                                border:1px solid #ddd;
+                                border-radius:8px;
+                            "
+                        ></div>
+
+                        <div
+                            id="workspacePanCanvas"
+                            style="
+                                flex:1;
+                                background:#f0f0f0;
+                                border:1px solid #ddd;
+                                border-radius:8px;
+                            "
+                        ></div>
+                    </div>
+
+                    <div style="
+                        display:flex;
+                        justify-content:flex-end;
+                        gap:12px;
+                        padding-top:14px;
+                        border-top:1px solid #eee;
+                    ">
+                        <button
+                            type="button"
+                            onclick="SkyIndex.closeStreetViewModal()"
+                            style="
+                                padding:11px 20px;
+                                background:#f1f3f5;
+                                border:none;
+                                border-radius:6px;
+                                color:#495057;
+                                cursor:pointer;
+                                font-weight:600;
+                            "
+                        >
                             Cancel
                         </button>
-                        <button onclick="SkyIndex.captureCurrentView()" 
-                                style="background:#28a745; color:white; border:none; padding:11px 26px; border-radius:6px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(40,167,69,.3);">
+
+                        <button
+                            type="button"
+                            onclick="SkyIndex.captureCurrentView()"
+                            style="
+                                padding:11px 26px;
+                                background:#28a745;
+                                border:none;
+                                border-radius:6px;
+                                box-shadow:0 2px 8px rgba(40,167,69,.3);
+                                color:#fff;
+                                cursor:pointer;
+                                font-weight:700;
+                            "
+                        >
                             📸 Use This View
                         </button>
                     </div>
@@ -2792,15 +2963,17 @@ window.SkyIndex = {
             document.body.appendChild(modal);
 
             this._loadGoogleMapsSdk(apiKey, () => {
-                // Small delay for DOM readiness
+                // Allow the modal canvases to enter the DOM
                 setTimeout(() => {
                     this._initializeDualPaneWorkspace(
-                        lat, lng,
+                        lat,
+                        lng,
                         'workspaceMapCanvas',
                         'workspacePanCanvas',
-                        data.heading || 105,
-                        data.pitch || 8,
-                        data.zoom || 1
+                        heading,
+                        pitch,
+                        zoom,
+                        panoramaId
                     );
                 }, 100);
             });
@@ -2841,7 +3014,7 @@ window.SkyIndex = {
             document.head.appendChild(script);
         },
 
-        // INITIALIZE DUAL-PANE STREET VIEW WORKSPACE (Modern + Warning-Free)
+        // INITIALIZE DUAL-PANE STREET VIEW WORKSPACE
         _initializeDualPaneWorkspace(
             lat,
             lng,
@@ -2849,109 +3022,300 @@ window.SkyIndex = {
             panoCanvasId = 'workspacePanCanvas',
             heading = 105,
             pitch = 8,
-            zoom = 1
+            zoom = 1,
+            panoramaId = ''
         ) {
+            const centerPoint = {
+                lat,
+                lng
+            };
 
-            const centerPoint = { lat: lat, lng: lng };
+            // Clear old map listeners
+            if (this._streetViewWorkspace.map) {
+                google.maps.event.clearInstanceListeners(
+                    this._streetViewWorkspace.map
+                );
+            }
 
-            // Clear old listeners
-            if (this._streetViewWorkspace.map) google.maps.event.clearInstanceListeners(this._streetViewWorkspace.map);
-            if (this._streetViewWorkspace.panorama) google.maps.event.clearInstanceListeners(this._streetViewWorkspace.panorama);
+            // Clear old panorama listeners
+            if (this._streetViewWorkspace.panorama) {
+                google.maps.event.clearInstanceListeners(
+                    this._streetViewWorkspace.panorama
+                );
+            }
 
             // Initialize overhead map
-            this._streetViewWorkspace.map = new google.maps.Map(
-                document.getElementById(mapCanvasId),
-                {
-                    center: centerPoint,
-                    zoom: 19,
-                    mapTypeId: 'satellite',
-                    streetViewControl: false,
-                    mapTypeControl: false,
-                    tilt: 0
-                }
-            );
+            this._streetViewWorkspace.map =
+                new google.maps.Map(
+                    document.getElementById(mapCanvasId),
+                    {
+                        center: centerPoint,
+                        zoom: 19,
+                        mapTypeId: 'satellite',
+                        streetViewControl: false,
+                        mapTypeControl: false,
+                        tilt: 0
+                    }
+                );
+
+            // Configure Street View panorama
+            const panoramaOptions = {
+                pov: {
+                    heading,
+                    pitch
+                },
+                zoom,
+                visible: true
+            };
+
+            // Restore an exact panorama when editing
+            if (panoramaId) {
+                panoramaOptions.pano = panoramaId;
+            } else {
+                panoramaOptions.position = centerPoint;
+            }
 
             // Initialize Street View panorama
-            this._streetViewWorkspace.panorama = new google.maps.StreetViewPanorama(
-                document.getElementById(panoCanvasId),
-                {
-                    position: centerPoint,
-                    pov: { heading: heading, pitch: pitch },
-                    zoom: zoom,
-                    visible: true
-                }
+            this._streetViewWorkspace.panorama =
+                new google.maps.StreetViewPanorama(
+                    document.getElementById(panoCanvasId),
+                    panoramaOptions
+                );
+
+            this._streetViewWorkspace.map.setStreetView(
+                this._streetViewWorkspace.panorama
             );
 
-            this._streetViewWorkspace.map.setStreetView(this._streetViewWorkspace.panorama);
+            // Initialize draggable perspective marker
+            this._streetViewWorkspace.marker =
+                new google.maps.marker.AdvancedMarkerElement({
+                    position: centerPoint,
+                    map: this._streetViewWorkspace.map,
+                    gmpDraggable: true,
+                    title:
+                        'Selected Frame Perspective Centerpoint'
+                });
 
-            // Modern Advanced Marker
-            this._streetViewWorkspace.marker = new google.maps.marker.AdvancedMarkerElement({
-                position: centerPoint,
-                map: this._streetViewWorkspace.map,
-                title: "Selected Frame Perspective Centerpoint"
-            });
+            const mapObj =
+                this._streetViewWorkspace.map;
 
-            const mapObj    = this._streetViewWorkspace.map;
-            const panObj    = this._streetViewWorkspace.panorama;
-            const markerObj = this._streetViewWorkspace.marker;
+            const panObj =
+                this._streetViewWorkspace.panorama;
 
-            // Interactive Hook A - Map click
-            mapObj.addListener('click', (event) => {
-                const point = event.latLng;
+            const markerObj =
+                this._streetViewWorkspace.marker;
+
+            // Move the panorama from a map click
+            mapObj.addListener('click', event => {
+                const point =
+                    event.latLng;
+
+                if (!point) {
+                    return;
+                }
+
                 markerObj.position = point;
                 panObj.setPosition(point);
             });
 
-            // Interactive Hook B - Marker drag
+            // Move the panorama from the draggable marker
             markerObj.addListener('gmp-dragend', () => {
-                const point = markerObj.position;
+                const point =
+                    markerObj.position;
+
+                if (!point) {
+                    return;
+                }
+
                 panObj.setPosition(point);
             });
 
-            // Interactive Hook C - Panorama movement
+            // Keep map and marker synchronized with panorama movement
             panObj.addListener('position_changed', () => {
-                const position = panObj.getPosition();
+                const position =
+                    panObj.getPosition();
+
+                if (!position) {
+                    return;
+                }
+
                 mapObj.setCenter(position);
                 markerObj.position = position;
             });
 
-            // Compatibility alias
-            this._streetViewWorkspace.panoramaInstance = panObj;
+            // Preserve compatibility with existing callers
+            this._streetViewWorkspace.panoramaInstance =
+                panObj;
 
-            console.log(`[DUAL WORKSPACE] Initialized → Map: ${mapCanvasId} | Panorama: ${panoCanvasId}`);
+            console.log(
+                '[DUAL WORKSPACE] Initialized',
+                {
+                    mapCanvasId,
+                    panoCanvasId,
+                    panoramaId:
+                        panObj.getPano() || null
+                }
+            );
         },
 
         closeStreetViewModal() {
-            const modal = document.getElementById('streetViewModal');
-            if (modal) modal.remove();
+            const modal =
+                document.getElementById('streetViewModal');
 
-            // Flush reference pointers to avoid garbage collector block arrays leaks
+            if (modal) {
+                modal.remove();
+            }
+
+            // Clear Google Maps event listeners
+            if (
+                typeof google === 'object' &&
+                google.maps?.event
+            ) {
+                if (this._streetViewWorkspace.map) {
+                    google.maps.event.clearInstanceListeners(
+                        this._streetViewWorkspace.map
+                    );
+                }
+
+                if (this._streetViewWorkspace.panorama) {
+                    google.maps.event.clearInstanceListeners(
+                        this._streetViewWorkspace.panorama
+                    );
+                }
+            }
+
+            // Release runtime references
             this._streetViewWorkspace.map = null;
             this._streetViewWorkspace.panorama = null;
+            this._streetViewWorkspace.panoramaInstance = null;
             this._streetViewWorkspace.marker = null;
+            this._streetViewWorkspace.onCapture = null;
+            this._streetViewWorkspace.context = null;
         },
 
         captureCurrentView() {
-            const panInstance = this._streetViewWorkspace.panorama;
-            if (!panInstance) return;
+            const workspace =
+                this._streetViewWorkspace;
 
-            const currentPos = panInstance.getPosition();
-            const currentPov = panInstance.getPov();
+            const panInstance =
+                workspace.panorama;
+
+            if (!panInstance) {
+                alert(
+                    'The Street View workspace is unavailable.'
+                );
+                return;
+            }
+
+            const currentPosition =
+                panInstance.getPosition();
+
+            const currentPov =
+                panInstance.getPov();
+
+            const panoramaId =
+                String(
+                    panInstance.getPano() || ''
+                ).trim();
+
+            const zoom =
+                Number(panInstance.getZoom());
+
+            if (
+                !currentPosition ||
+                !currentPov ||
+                !panoramaId ||
+                !Number.isFinite(zoom)
+            ) {
+                alert(
+                    'A valid Street View panorama has not been selected.'
+                );
+                return;
+            }
+
+            const latitude =
+                Number(currentPosition.lat());
+
+            const longitude =
+                Number(currentPosition.lng());
+
+            const heading =
+                Number(currentPov.heading);
+
+            const pitch =
+                Number(currentPov.pitch);
+
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                !Number.isFinite(heading) ||
+                !Number.isFinite(pitch)
+            ) {
+                alert(
+                    'The selected Street View position is invalid.'
+                );
+                return;
+            }
+
+            // Convert interactive zoom to Static Street View FOV
+            const fov = Math.max(
+                10,
+                Math.min(
+                    120,
+                    Math.round(
+                        180 / Math.pow(2, zoom)
+                    )
+                )
+            );
 
             const selectionPayload = {
-                lat: currentPos.lat(),
-                lng: currentPos.lng(),
-                heading: currentPov.heading,
-                pitch: currentPov.pitch,
-                zoom: panInstance.getZoom()
+                panoramaId,
+
+                // Preserve existing coordinate aliases
+                lat: latitude,
+                lng: longitude,
+
+                // Provide descriptive panorama coordinates
+                panoramaLatitude: latitude,
+                panoramaLongitude: longitude,
+
+                heading,
+                pitch,
+                zoom,
+                fov
             };
 
-            console.log("🎯 Exact Proposal Workspace Coordinates Captured:", selectionPayload);
-            this.appendSystemLine(`📸 View Saved: Lat ${selectionPayload.lat.toFixed(5)}, Heading ${selectionPayload.heading.toFixed(0)}°`, 'success');
-            
-            // TODO: Pass 'selectionPayload' downstream to your proposal document generator.
+            const onCapture =
+                workspace.onCapture;
 
+            const context =
+                workspace.context;
+
+            console.log(
+                '[STREET VIEW CAPTURE]',
+                {
+                    context,
+                    selectionPayload
+                }
+            );
+
+            // Retain callback before cleanup
             this.closeStreetViewModal();
+
+            if (typeof onCapture === 'function') {
+                onCapture(selectionPayload);
+                return;
+            }
+
+            // Preserve existing command-workflow behavior
+            this.appendSystemLine(
+                `📸 View Saved: Lat ${
+                    selectionPayload.lat.toFixed(5)
+                }, Heading ${
+                    selectionPayload.heading.toFixed(0)
+                }°`,
+                'success'
+            );
         },
 
         // PROPOSAL STREET VIEW EDITOR - Opens the Proposal Street View Editor
