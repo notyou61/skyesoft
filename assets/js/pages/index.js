@@ -621,7 +621,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🧾 Footer Status (Single Authority)
+    // #region 🧾 Footer Status
     renderFooterStatus() {
 
         if (!this) {
@@ -647,43 +647,17 @@ window.SkyIndex = {
             return;
         }
 
+        // Render footer status
         const render = (dotColor, text) => {
             dot.style.background = dotColor;
             textEl.textContent = text;
         };
 
-        // 0️⃣ Version
-        try {
-            const siteMeta = this.lastSSE?.siteMeta;
-            const versionEl =
-                this.dom?.version ||
-                document.getElementById('versionFooter');
-
-            const hasValidVersion =
-                siteMeta &&
-                typeof siteMeta.siteVersion === 'string' &&
-                siteMeta.siteVersion.trim() !== '' &&
-                siteMeta.siteVersion !== 'unknown';
-
-            // Preserve the current version until valid metadata arrives
-            if (versionEl && hasValidVersion) {
-                const newHtml = formatVersionFooter(siteMeta);
-
-                if (versionEl.innerHTML !== newHtml) {
-                    versionEl.innerHTML = newHtml;
-                }
-            }
-        } catch (error) {
-            console.error(
-                '[FOOTER] Version rendering failed:',
-                error
-            );
-        }
-
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
             dot.style.background = '#007aff';
-            textEl.innerHTML = '⏳ Thinking<span class="ellipsis" aria-hidden="true"></span>';
+            textEl.innerHTML =
+                '⏳ Thinking<span class="ellipsis" aria-hidden="true"></span>';
             return;
         }
 
@@ -693,13 +667,13 @@ window.SkyIndex = {
             return;
         }
 
-        // 3️⃣ 🆕 IDLE STATE (NEW LAYER)
+        // 3️⃣ Idle state
         if (idle) {
 
             const auth = this.lastSSE?.auth || {};
 
             const first = auth.firstName || '';
-            const last  = auth.lastName || '';
+            const last = auth.lastName || '';
 
             let name =
                 `${first} ${last}`.trim() ||
@@ -707,7 +681,7 @@ window.SkyIndex = {
                 this.authUser ||
                 'User';
 
-            // Optional: clean email → display name
+            // Clean email into display name
             if (name.includes('@')) {
                 name = name
                     .split('@')[0]
@@ -718,41 +692,59 @@ window.SkyIndex = {
             const seconds = idle.remainingSeconds ?? 0;
             const mins = Math.floor(seconds / 60);
             const secs = seconds % 60;
-            const time = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-            if (idle.state === "expired") {
-                render('#ff3b30', `Session Expired · ${name} · 00:00 remaining`);
+            const time =
+                `${mins.toString().padStart(2, '0')}:` +
+                `${secs.toString().padStart(2, '0')}`;
+
+            if (idle.state === 'expired') {
+                render(
+                    '#ff3b30',
+                    `Session Expired · ${name} · 00:00 remaining`
+                );
                 return;
             }
 
-            if (idle.state === "warning") {
-                render('#ff9500', `Session Expiring · ${name} · ${time} remaining`);
+            if (idle.state === 'warning') {
+                render(
+                    '#ff9500',
+                    `Session Expiring · ${name} · ${time} remaining`
+                );
                 return;
             }
 
-            if (idle.state === "active") {
-                // allow governance to override active state if needed
-                render('#00c853', `Session Active · ${name} · ${time} remaining`);
+            if (idle.state === 'active') {
+                // Allow governance to override active state
+                render(
+                    '#00c853',
+                    `Session Active · ${name} · ${time} remaining`
+                );
             }
         }
 
         // 4️⃣ Governance (can override active idle)
         if (sentinel && typeof sentinel === 'object') {
 
-            const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
-            const structuralCount   = Number(sentinel.unresolvedViolations || 0);
+            const hasIntegrityDrift =
+                Boolean(sentinel.integrityMismatch);
+
+            const structuralCount =
+                Number(sentinel.unresolvedViolations || 0);
 
             if (hasIntegrityDrift === true) {
                 const text = structuralCount > 0
                     ? `Integrity Drift • ${structuralCount} Structural Deviations`
-                    : `Codex Integrity Drift`;
+                    : 'Codex Integrity Drift';
 
                 render('#ff3b30', text);
                 return;
             }
 
             if (structuralCount > 0) {
-                render('#ff9500', `Structural Deviations • ${structuralCount}`);
+                render(
+                    '#ff9500',
+                    `Structural Deviations • ${structuralCount}`
+                );
                 return;
             }
         }
