@@ -9820,13 +9820,16 @@ window.SkyIndex = {
                         error: null
                     },
                     streetViews: {
-                        // Temporary compatibility until the tab rewrite
-                        requestedCount: 1,
-
                         status: 'notStarted',
                         minimumSelections: 1,
                         maximumSelections: 4,
 
+                        // Embedded Street View selection workspace
+                        editor: {
+                            isOpen: false,
+                            mode: null,
+                            selectionId: null
+                        },
                         selections: [
                             {
                                 id: 'street-view-default',
@@ -13255,87 +13258,1109 @@ window.SkyIndex = {
         // Render Street Views workspace
         renderSiteVisualOverviewStreetViewsTab() {
             const streetViews =
-                this.currentSiteVisualOverviewWorkspace?.sections?.streetViews;
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections
+                    ?.streetViews;
 
             if (!streetViews) {
                 return '';
             }
 
+            const selections =
+                Array.isArray(streetViews.selections)
+                    ? streetViews.selections.slice(
+                        0,
+                        streetViews.maximumSelections || 4
+                    )
+                    : [];
+
+            const editor =
+                streetViews.editor &&
+                typeof streetViews.editor === 'object'
+                    ? streetViews.editor
+                    : {
+                        isOpen: false,
+                        mode: null,
+                        selectionId: null
+                    };
+
+            // Render embedded selection workspace
+            if (editor.isOpen) {
+                return this.renderSiteVisualOverviewStreetViewEditor(
+                    editor,
+                    selections
+                );
+            }
+
+            const maximumSelections =
+                Number(streetViews.maximumSelections) || 4;
+
+            const canAdd =
+                selections.length < maximumSelections;
+
+            const cardsHtml = selections.map(
+                (selection, index) => {
+                    const selectionId =
+                        String(selection?.id || '');
+
+                    const status =
+                        selection?.status || 'notStarted';
+
+                    const preview =
+                        selection?.preview || '';
+
+                    const caption = String(
+                        selection?.caption ||
+                        selection?.aiCaption ||
+                        selection?.viewPurpose ||
+                        'Selected ground-level property view.'
+                    ).trim();
+
+                    const isReady =
+                        status === 'ready';
+
+                    const isLoading =
+                        status === 'loading';
+
+                    const isError =
+                        status === 'error';
+
+                    const badgeLabel =
+                        isLoading
+                            ? 'Loading'
+                            : isError
+                                ? 'Error'
+                                : isReady
+                                    ? 'Ready'
+                                    : 'Not Started';
+
+                    const badgeBackground =
+                        isLoading
+                            ? '#dbeafe'
+                            : isError
+                                ? '#fee2e2'
+                                : isReady
+                                    ? '#dcfce7'
+                                    : '#f1f5f9';
+
+                    const badgeColor =
+                        isLoading
+                            ? '#1d4ed8'
+                            : isError
+                                ? '#b91c1c'
+                                : isReady
+                                    ? '#166534'
+                                    : '#64748b';
+
+                    const canRemove =
+                        selections.length > 1;
+
+                    return `
+                        <article style="
+                            overflow:hidden;
+                            background:#fff;
+                            border:1px solid #dbe2ea;
+                            border-radius:8px;
+                            box-shadow:0 1px 3px rgba(15,23,42,.08);
+                        ">
+                            <div style="
+                                position:relative;
+                                height:180px;
+                                overflow:hidden;
+                                background:#f1f5f9;
+                            ">
+                                ${
+                                    preview
+                                        ? `
+                                            <img
+                                                src="${this.escapeHtml(preview)}"
+                                                alt="Street View ${index + 1}"
+                                                draggable="false"
+                                                style="
+                                                    display:block;
+                                                    width:100%;
+                                                    height:100%;
+                                                    object-fit:cover;
+                                                "
+                                            />
+                                        `
+                                        : `
+                                            <div style="
+                                                display:flex;
+                                                align-items:center;
+                                                justify-content:center;
+                                                width:100%;
+                                                height:100%;
+                                                padding:18px;
+                                                box-sizing:border-box;
+                                                color:#64748b;
+                                                text-align:center;
+                                            ">
+                                                ${
+                                                    isLoading
+                                                        ? 'Preparing Street View...'
+                                                        : 'Street View preview unavailable.'
+                                                }
+                                            </div>
+                                        `
+                                }
+
+                                <span style="
+                                    position:absolute;
+                                    top:9px;
+                                    right:9px;
+                                    padding:4px 9px;
+                                    background:${badgeBackground};
+                                    border-radius:999px;
+                                    color:${badgeColor};
+                                    font-size:.74rem;
+                                    font-weight:700;
+                                ">
+                                    ${this.escapeHtml(badgeLabel)}
+                                </span>
+                            </div>
+
+                            <div style="padding:11px 12px 12px;">
+                                <div style="
+                                    display:flex;
+                                    align-items:center;
+                                    justify-content:space-between;
+                                    gap:10px;
+                                    margin-bottom:5px;
+                                ">
+                                    <strong style="
+                                        color:#1f2937;
+                                        font-size:.94rem;
+                                    ">
+                                        Street View ${index + 1}
+                                    </strong>
+
+                                    ${
+                                        selection?.isDefault
+                                            ? `
+                                                <span style="
+                                                    color:#64748b;
+                                                    font-size:.72rem;
+                                                ">
+                                                    Default
+                                                </span>
+                                            `
+                                            : ''
+                                    }
+                                </div>
+
+                                <div style="
+                                    min-height:34px;
+                                    margin-bottom:10px;
+                                    color:#64748b;
+                                    font-size:.78rem;
+                                    line-height:1.35;
+                                ">
+                                    ${this.escapeHtml(caption)}
+                                </div>
+
+                                ${
+                                    selection?.error
+                                        ? `
+                                            <div style="
+                                                margin-bottom:9px;
+                                                color:#b91c1c;
+                                                font-size:.76rem;
+                                            ">
+                                                ${this.escapeHtml(selection.error)}
+                                            </div>
+                                        `
+                                        : ''
+                                }
+
+                                <div style="
+                                    display:grid;
+                                    grid-template-columns:1fr 1fr;
+                                    gap:7px;
+                                ">
+                                    <button
+                                        type="button"
+                                        onclick="SkyIndex.openSiteVisualOverviewStreetViewEditor('${this.escapeHtml(selectionId)}')"
+                                        style="
+                                            height:32px;
+                                            background:#fff;
+                                            border:1px solid #0d9488;
+                                            border-radius:5px;
+                                            color:#0f766e;
+                                            cursor:pointer;
+                                            font-weight:700;
+                                        "
+                                    >
+                                        Edit / Replace
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick="SkyIndex.removeSiteVisualOverviewStreetView('${this.escapeHtml(selectionId)}')"
+                                        ${canRemove ? '' : 'disabled'}
+                                        style="
+                                            height:32px;
+                                            background:${
+                                                canRemove
+                                                    ? '#fff'
+                                                    : '#f1f5f9'
+                                            };
+                                            border:1px solid #cbd5e1;
+                                            border-radius:5px;
+                                            color:${
+                                                canRemove
+                                                    ? '#475569'
+                                                    : '#94a3b8'
+                                            };
+                                            cursor:${
+                                                canRemove
+                                                    ? 'pointer'
+                                                    : 'not-allowed'
+                                            };
+                                            font-weight:600;
+                                        "
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
+                    `;
+                }
+            ).join('');
+
             return `
                 <div>
-                    <div style="display:flex; justify-content:space-between; align-items:flex-end;
-                        flex-wrap:wrap; gap:14px; margin-bottom:16px;">
+                    <div style="
+                        display:flex;
+                        align-items:flex-end;
+                        justify-content:space-between;
+                        flex-wrap:wrap;
+                        gap:14px;
+                        margin-bottom:14px;
+                    ">
                         <div>
-                            <h3 style="margin:0 0 4px; color:#222; font-size:1.05rem;">Street Views</h3>
-                            <small style="color:#666;">Select the required ground-level report images.</small>
+                            <h3 style="
+                                margin:0 0 4px;
+                                color:#222;
+                                font-size:1.05rem;
+                            ">
+                                Street Views
+                            </h3>
+
+                            <small style="color:#666;">
+                                Select, arrange, and caption the required
+                                ground-level report images.
+                            </small>
                         </div>
-                    <div style="display:flex; align-items:center; gap:9px; color:#374151;">
-                        <button type="button"
-                            onclick="SkyIndex.adjustSiteVisualOverviewStreetViewCount(-1)"
-                            ${streetViews.requestedCount <= 1 ? 'disabled' : ''}
-                            style="padding:6px 11px; border:1px solid #cbd5e1; border-radius:5px;
-                                background:${streetViews.requestedCount <= 1 ? '#f1f5f9' : '#fff'};
-                                color:${streetViews.requestedCount <= 1 ? '#94a3b8' : '#374151'};
-                                cursor:${streetViews.requestedCount <= 1 ? 'not-allowed' : 'pointer'};">
-                            Remove View
-                        </button>
 
-                        <strong style="min-width:108px; text-align:center;">
-                            ${streetViews.requestedCount}
-                            ${streetViews.requestedCount === 1 ? 'Street View' : 'Street Views'}
-                        </strong>
+                        <div style="
+                            display:flex;
+                            align-items:center;
+                            gap:11px;
+                        ">
+                            <strong style="
+                                min-width:94px;
+                                color:#374151;
+                                text-align:center;
+                            ">
+                                ${selections.length} of
+                                ${maximumSelections}
+                            </strong>
 
-                        <button type="button"
-                            onclick="SkyIndex.adjustSiteVisualOverviewStreetViewCount(1)"
-                            ${streetViews.requestedCount >= 10 ? 'disabled' : ''}
-                            style="padding:6px 11px; border:1px solid #0d9488; border-radius:5px;
-                                background:${streetViews.requestedCount >= 10 ? '#f1f5f9' : '#0d9488'};
-                                color:${streetViews.requestedCount >= 10 ? '#94a3b8' : '#fff'};
-                                cursor:${streetViews.requestedCount >= 10 ? 'not-allowed' : 'pointer'};">
-                            Add View
-                        </button>
+                            <button
+                                type="button"
+                                onclick="SkyIndex.openSiteVisualOverviewStreetViewEditor()"
+                                ${canAdd ? '' : 'disabled'}
+                                style="
+                                    padding:7px 13px;
+                                    background:${
+                                        canAdd
+                                            ? '#0d9488'
+                                            : '#f1f5f9'
+                                    };
+                                    border:1px solid ${
+                                        canAdd
+                                            ? '#0d9488'
+                                            : '#cbd5e1'
+                                    };
+                                    border-radius:5px;
+                                    color:${
+                                        canAdd
+                                            ? '#fff'
+                                            : '#94a3b8'
+                                    };
+                                    cursor:${
+                                        canAdd
+                                            ? 'pointer'
+                                            : 'not-allowed'
+                                    };
+                                    font-weight:700;
+                                "
+                            >
+                                Add View
+                            </button>
+                        </div>
                     </div>
-                    </div>
-                    <div style="min-height:360px; display:flex; align-items:center; justify-content:center;
-                        padding:30px; border:1px dashed #cbd5e1; border-radius:8px;
-                        background:#f8fafc; color:#64748b; text-align:center;">
-                        The interactive Street View selection workspace and selected-image thumbnails
-                        will appear here.
+
+                    <div style="
+                        display:grid;
+                        grid-template-columns:repeat(2, minmax(0, 1fr));
+                        gap:12px;
+                    ">
+                        ${cardsHtml}
                     </div>
                 </div>
             `;
         },
 
-        // Add or remove a requested Street View (minimum 1, maximum 10)
-        adjustSiteVisualOverviewStreetViewCount(change) {
-            const workspace = this.currentSiteVisualOverviewWorkspace;
+        // Render embedded Street View selection workspace
+        renderSiteVisualOverviewStreetViewEditor(
+            editor,
+            selections
+        ) {
+            const isEditing =
+                editor.mode === 'edit';
 
-            if (!workspace || ![-1, 1].includes(Number(change))) {
+            const selectionIndex =
+                selections.findIndex(
+                    selection =>
+                        selection?.id === editor.selectionId
+                );
+
+            const title =
+                isEditing && selectionIndex >= 0
+                    ? `Edit Street View ${selectionIndex + 1}`
+                    : 'Add Street View';
+
+            return `
+                <div>
+                    <div style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:space-between;
+                        gap:12px;
+                        margin-bottom:12px;
+                    ">
+                        <div>
+                            <h3 style="
+                                margin:0 0 4px;
+                                color:#222;
+                                font-size:1.05rem;
+                            ">
+                                ${this.escapeHtml(title)}
+                            </h3>
+
+                            <small style="color:#666;">
+                                Select the panorama position and frame
+                                the report image.
+                            </small>
+                        </div>
+
+                        <button
+                            type="button"
+                            onclick="SkyIndex.cancelSiteVisualOverviewStreetViewEditor()"
+                            style="
+                                padding:7px 13px;
+                                background:#fff;
+                                border:1px solid #cbd5e1;
+                                border-radius:5px;
+                                color:#475569;
+                                cursor:pointer;
+                                font-weight:600;
+                            "
+                        >
+                            Back to Views
+                        </button>
+                    </div>
+
+                    <div style="
+                        display:grid;
+                        grid-template-columns:1fr 1fr;
+                        gap:14px;
+                        height:390px;
+                        margin-bottom:12px;
+                    ">
+                        <div
+                            id="siteVisualOverviewStreetViewMapCanvas"
+                            style="
+                                min-width:0;
+                                background:#f1f5f9;
+                                border:1px solid #dbe2ea;
+                                border-radius:8px;
+                            "
+                        ></div>
+
+                        <div
+                            id="siteVisualOverviewStreetViewPanCanvas"
+                            style="
+                                min-width:0;
+                                background:#f1f5f9;
+                                border:1px solid #dbe2ea;
+                                border-radius:8px;
+                            "
+                        ></div>
+                    </div>
+
+                    <div style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:flex-end;
+                        gap:9px;
+                    ">
+                        <button
+                            type="button"
+                            onclick="SkyIndex.cancelSiteVisualOverviewStreetViewEditor()"
+                            style="
+                                height:34px;
+                                padding:0 16px;
+                                background:#fff;
+                                border:1px solid #cbd5e1;
+                                border-radius:5px;
+                                color:#475569;
+                                cursor:pointer;
+                                font-weight:600;
+                            "
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="button"
+                            onclick="SkyIndex.captureCurrentView()"
+                            style="
+                                height:34px;
+                                padding:0 18px;
+                                background:#0d9488;
+                                border:1px solid #0d9488;
+                                border-radius:5px;
+                                color:#fff;
+                                cursor:pointer;
+                                font-weight:700;
+                            "
+                        >
+                            Use This View
+                        </button>
+                    </div>
+                </div>
+            `;
+        },
+
+        // Open the embedded Street View selection workspace
+        openSiteVisualOverviewStreetViewEditor(
+            selectionId = null
+        ) {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const location =
+                workspace?.sourceData?.data?.location || null;
+
+            const streetViews =
+                workspace?.sections?.streetViews || null;
+
+            if (!workspace || !location || !streetViews) {
                 return;
             }
 
-            const streetViews = workspace.sections.streetViews;
-            const requestedCount = Math.min(
-                10,
-                Math.max(1, streetViews.requestedCount + Number(change))
-            );
+            const selections =
+                Array.isArray(streetViews.selections)
+                    ? streetViews.selections
+                    : [];
 
-            if (requestedCount === streetViews.requestedCount) {
+            const maximumSelections =
+                Number(streetViews.maximumSelections) || 4;
+
+            const targetSelection =
+                selectionId
+                    ? selections.find(
+                        selection =>
+                            selection?.id === selectionId
+                    ) || null
+                    : null;
+
+            const isEditing =
+                Boolean(selectionId && targetSelection);
+
+            if (!isEditing && selections.length >= maximumSelections) {
+                alert(
+                    `A maximum of ${maximumSelections} Street Views is allowed.`
+                );
                 return;
             }
 
-            streetViews.requestedCount = requestedCount;
-            streetViews.selections = streetViews.selections.slice(0, requestedCount);
+            const propertyLatitude =
+                Number(location.locationLatitude);
 
-            const readyCount = streetViews.selections.filter(
-                selection => selection?.status === 'ready'
-            ).length;
+            const propertyLongitude =
+                Number(location.locationLongitude);
 
-            streetViews.status = readyCount === requestedCount
-                ? 'ready'
-                : 'notStarted';
+            const address = String(
+                location.locationResolvedAddress ||
+                location.locationAddress ||
+                ''
+            ).trim();
+
+            if (
+                !Number.isFinite(propertyLatitude) ||
+                !Number.isFinite(propertyLongitude) ||
+                !address
+            ) {
+                alert(
+                    'Validated address coordinates are unavailable.'
+                );
+                return;
+            }
+
+            const apiKey =
+                this.googleMapsApiKey ||
+                window.GOOGLE_MAPS_API_KEY;
+
+            if (!apiKey) {
+                alert(
+                    'The Google Maps selection workspace is unavailable.'
+                );
+                return;
+            }
+
+            const targetSettings =
+                targetSelection?.settings &&
+                typeof targetSelection.settings === 'object'
+                    ? targetSelection.settings
+                    : {};
+
+            const defaultSettings =
+                selections[0]?.settings &&
+                typeof selections[0].settings === 'object'
+                    ? selections[0].settings
+                    : {};
+
+            const latitude =
+                Number.isFinite(
+                    Number(targetSettings.panoramaLatitude)
+                )
+                    ? Number(targetSettings.panoramaLatitude)
+                    : propertyLatitude;
+
+            const longitude =
+                Number.isFinite(
+                    Number(targetSettings.panoramaLongitude)
+                )
+                    ? Number(targetSettings.panoramaLongitude)
+                    : propertyLongitude;
+
+            const heading =
+                Number.isFinite(Number(targetSettings.heading))
+                    ? Number(targetSettings.heading)
+                    : Number.isFinite(Number(defaultSettings.heading))
+                        ? Number(defaultSettings.heading)
+                        : 105;
+
+            const pitch =
+                Number.isFinite(Number(targetSettings.pitch))
+                    ? Number(targetSettings.pitch)
+                    : Number.isFinite(Number(defaultSettings.pitch))
+                        ? Number(defaultSettings.pitch)
+                        : 5;
+
+            const fov =
+                Number.isFinite(Number(targetSettings.fov))
+                    ? Number(targetSettings.fov)
+                    : 90;
+
+            const zoom =
+                Number.isFinite(Number(targetSettings.zoom))
+                    ? Number(targetSettings.zoom)
+                    : Math.max(
+                        0,
+                        Math.log2(180 / Math.max(10, fov))
+                    );
+
+            const panoramaId =
+                isEditing
+                    ? String(
+                        targetSettings.panoramaId || ''
+                    ).trim()
+                    : '';
+
+            // Clear any prior embedded selector
+            this.closeStreetViewModal();
+
+            streetViews.editor = {
+                isOpen: true,
+                mode:
+                    isEditing
+                        ? 'edit'
+                        : 'add',
+                selectionId:
+                    isEditing
+                        ? targetSelection.id
+                        : null
+            };
+
+            // Render the editor inside the current tab
+            this.showSiteVisualOverviewTab('streetViews');
+
+            // Register Site Visual capture handling
+            this._streetViewWorkspace.onCapture =
+                capturePayload => {
+                    this.saveSiteVisualOverviewStreetViewSelection(
+                        isEditing
+                            ? targetSelection.id
+                            : null,
+                        capturePayload
+                    );
+                };
+
+            this._streetViewWorkspace.context =
+                'siteVisualOverview';
+
+            this._loadGoogleMapsSdk(apiKey, () => {
+                setTimeout(() => {
+                    const currentWorkspace =
+                        this.currentSiteVisualOverviewWorkspace;
+
+                    const currentEditor =
+                        currentWorkspace
+                            ?.sections
+                            ?.streetViews
+                            ?.editor;
+
+                    const mapCanvas =
+                        document.getElementById(
+                            'siteVisualOverviewStreetViewMapCanvas'
+                        );
+
+                    const panoramaCanvas =
+                        document.getElementById(
+                            'siteVisualOverviewStreetViewPanCanvas'
+                        );
+
+                    // Ignore stale initialization callbacks
+                    if (
+                        currentWorkspace !== workspace ||
+                        !currentEditor?.isOpen ||
+                        !mapCanvas ||
+                        !panoramaCanvas
+                    ) {
+                        return;
+                    }
+
+                    this._initializeDualPaneWorkspace(
+                        latitude,
+                        longitude,
+                        'siteVisualOverviewStreetViewMapCanvas',
+                        'siteVisualOverviewStreetViewPanCanvas',
+                        heading,
+                        pitch,
+                        zoom,
+                        panoramaId
+                    );
+                }, 100);
+            });
+        },
+
+        // Close the embedded selector without changing selections
+        cancelSiteVisualOverviewStreetViewEditor() {
+            const streetViews =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections
+                    ?.streetViews;
+
+            if (!streetViews) {
+                return;
+            }
+
+            this.closeStreetViewModal();
+
+            streetViews.editor = {
+                isOpen: false,
+                mode: null,
+                selectionId: null
+            };
 
             this.showSiteVisualOverviewTab('streetViews');
+        },
+
+        // Generate and save a captured Street View selection
+        async saveSiteVisualOverviewStreetViewSelection(
+            selectionId,
+            capturePayload
+        ) {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const location =
+                workspace?.sourceData?.data?.location || null;
+
+            const streetViews =
+                workspace?.sections?.streetViews || null;
+
+            if (
+                !workspace ||
+                !location ||
+                !streetViews ||
+                !capturePayload
+            ) {
+                return;
+            }
+
+            const address = String(
+                location.locationResolvedAddress ||
+                location.locationAddress ||
+                ''
+            ).trim();
+
+            const latitude =
+                Number(location.locationLatitude);
+
+            const longitude =
+                Number(location.locationLongitude);
+
+            if (
+                !address ||
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude)
+            ) {
+                alert(
+                    'Validated address coordinates are unavailable.'
+                );
+                return;
+            }
+
+            if (!Array.isArray(streetViews.selections)) {
+                streetViews.selections = [];
+            }
+
+            const selections =
+                streetViews.selections;
+
+            let selectionIndex =
+                selectionId
+                    ? selections.findIndex(
+                        selection =>
+                            selection?.id === selectionId
+                    )
+                    : -1;
+
+            const isEditing =
+                selectionIndex >= 0;
+
+            const maximumSelections =
+                Number(streetViews.maximumSelections) || 4;
+
+            if (!isEditing && selections.length >= maximumSelections) {
+                alert(
+                    `A maximum of ${maximumSelections} Street Views is allowed.`
+                );
+                return;
+            }
+
+            // Create a stable ID for a new selection
+            if (!isEditing) {
+                const generatedId =
+                    'street-view-'
+                    + Date.now().toString(36)
+                    + '-'
+                    + Math.random()
+                        .toString(36)
+                        .slice(2, 8);
+
+                selections.push({
+                    id: generatedId,
+                    order: selections.length,
+                    status: 'loading',
+                    preview: null,
+                    error: null,
+                    isDefault: false,
+
+                    viewPurpose:
+                        'User-selected Street View.',
+
+                    settings: {},
+
+                    caption: '',
+                    aiCaption: '',
+                    captionSource: 'ai',
+                    captionEdited: false,
+                    captionStatus: 'notStarted',
+                    captionError: null
+                });
+
+                selectionIndex =
+                    selections.length - 1;
+            }
+
+            const selection =
+                selections[selectionIndex];
+
+            const viewIndex =
+                selectionIndex + 1;
+
+            // Set loading state while preserving an edited preview
+            selection.status = 'loading';
+            selection.error = null;
+
+            streetViews.status = 'loading';
+
+            streetViews.editor = {
+                isOpen: false,
+                mode: null,
+                selectionId: null
+            };
+
+            this.showSiteVisualOverviewTab('streetViews');
+            this.refreshSiteVisualOverviewPreview();
+
+            try {
+                const response = await fetch(
+                    '/skyesoft/api/siteVisualOverviewImages.php',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            type: 'streetView',
+                            viewIndex,
+                            address,
+                            latitude,
+                            longitude,
+
+                            panoramaId:
+                                capturePayload.panoramaId,
+
+                            heading:
+                                capturePayload.heading,
+
+                            pitch:
+                                capturePayload.pitch,
+
+                            fov:
+                                capturePayload.fov
+                        })
+                    }
+                );
+
+                const responseText =
+                    await response.text();
+
+                let responseData = null;
+
+                try {
+                    responseData =
+                        JSON.parse(responseText);
+                } catch (error) {
+                    throw new Error(
+                        'Street View endpoint returned invalid JSON.'
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    responseData?.success !== true ||
+                    !responseData.artifactUrl
+                ) {
+                    throw new Error(
+                        responseData?.error ||
+                        'Street View generation failed.'
+                    );
+                }
+
+                // Ignore responses for a replaced workspace
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                const currentSelection =
+                    streetViews.selections.find(
+                        item =>
+                            item?.id === selection.id
+                    );
+
+                if (!currentSelection) {
+                    return;
+                }
+
+                currentSelection.status = 'ready';
+
+                currentSelection.preview =
+                    responseData.artifactUrl;
+
+                currentSelection.error = null;
+
+                currentSelection.viewPurpose =
+                    currentSelection.isDefault
+                        ? 'Default property-facing Street View.'
+                        : 'User-selected Street View.';
+
+                currentSelection.settings = {
+                    address,
+
+                    propertyLatitude:
+                        responseData.propertyLatitude ??
+                        latitude,
+
+                    propertyLongitude:
+                        responseData.propertyLongitude ??
+                        longitude,
+
+                    panoramaId:
+                        responseData.panoramaId || null,
+
+                    panoramaLatitude:
+                        responseData.panoramaLatitude ?? null,
+
+                    panoramaLongitude:
+                        responseData.panoramaLongitude ?? null,
+
+                    panoramaDate:
+                        responseData.panoramaDate || null,
+
+                    panoramaCopyright:
+                        responseData.panoramaCopyright || null,
+
+                    heading:
+                        responseData.heading ?? null,
+
+                    headingSource:
+                        responseData.headingSource || null,
+
+                    viewDirection:
+                        responseData.viewDirection || null,
+
+                    addressParity:
+                        responseData.addressParity || null,
+
+                    fov:
+                        responseData.fov ??
+                        capturePayload.fov,
+
+                    pitch:
+                        responseData.pitch ??
+                        capturePayload.pitch,
+
+                    zoom:
+                        capturePayload.zoom,
+
+                    artifactFilename:
+                        responseData.artifactFilename || null,
+
+                    artifactUrl:
+                        responseData.artifactUrl
+                };
+
+                // Normalize the display order
+                streetViews.selections.forEach(
+                    (item, index) => {
+                        item.order = index;
+                    }
+                );
+
+                streetViews.status =
+                    streetViews.selections.every(
+                        item =>
+                            item?.status === 'ready' &&
+                            Boolean(item?.preview)
+                    )
+                        ? 'ready'
+                        : 'notStarted';
+
+                this.showSiteVisualOverviewTab('streetViews');
+                this.refreshSiteVisualOverviewPreview();
+            } catch (error) {
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                console.error(
+                    'Site Visual Overview Street View selection failed:',
+                    error
+                );
+
+                selection.status = 'error';
+
+                selection.error =
+                    error instanceof Error
+                        ? error.message
+                        : 'Street View generation failed.';
+
+                streetViews.status = 'error';
+
+                this.showSiteVisualOverviewTab('streetViews');
+                this.refreshSiteVisualOverviewPreview();
+            }
+        },
+
+        // Remove a Street View while preserving the required minimum
+        removeSiteVisualOverviewStreetView(selectionId) {
+            const streetViews =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections
+                    ?.streetViews;
+
+            if (
+                !streetViews ||
+                !Array.isArray(streetViews.selections)
+            ) {
+                return;
+            }
+
+            const minimumSelections =
+                Number(streetViews.minimumSelections) || 1;
+
+            if (
+                streetViews.selections.length <=
+                minimumSelections
+            ) {
+                return;
+            }
+
+            const selectionIndex =
+                streetViews.selections.findIndex(
+                    selection =>
+                        selection?.id === selectionId
+                );
+
+            if (selectionIndex < 0) {
+                return;
+            }
+
+            // Remove the selected Street View
+            streetViews.selections.splice(
+                selectionIndex,
+                1
+            );
+
+            // Normalize report order
+            streetViews.selections.forEach(
+                (selection, index) => {
+                    selection.order = index;
+                }
+            );
+
+            // Recalculate section readiness
+            streetViews.status =
+                streetViews.selections.every(
+                    selection =>
+                        selection?.status === 'ready' &&
+                        Boolean(selection?.preview)
+                )
+                    ? 'ready'
+                    : 'notStarted';
+
+            this.showSiteVisualOverviewTab(
+                'streetViews'
+            );
+
+            this.refreshSiteVisualOverviewPreview();
         },
 
         // Render Context Maps workspace
