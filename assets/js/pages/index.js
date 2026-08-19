@@ -9456,9 +9456,35 @@ window.SkyIndex = {
                         error: null
                     },
                     streetViews: {
+                        // Temporary compatibility until the tab rewrite
                         requestedCount: 1,
+
                         status: 'notStarted',
-                        selections: []
+                        minimumSelections: 1,
+                        maximumSelections: 4,
+
+                        selections: [
+                            {
+                                id: 'street-view-default',
+                                order: 0,
+                                status: 'notStarted',
+                                preview: null,
+                                error: null,
+                                isDefault: true,
+
+                                viewPurpose:
+                                    'Default property-facing Street View.',
+
+                                settings: {},
+
+                                caption: '',
+                                aiCaption: '',
+                                captionSource: 'ai',
+                                captionEdited: false,
+                                captionStatus: 'notStarted',
+                                captionError: null
+                            }
+                        ]
                     },
                     immediateVicinity: {
                         status: 'notStarted',
@@ -11931,7 +11957,7 @@ window.SkyIndex = {
             }
         },
 
-        // Load default property-facing Street View preview
+        // Load the default property-facing Street View preview
         async loadSiteVisualOverviewStreetViewPreview() {
             const workspace =
                 this.currentSiteVisualOverviewWorkspace;
@@ -11952,29 +11978,77 @@ window.SkyIndex = {
             const longitude =
                 Number(location.locationLongitude);
 
-            const address =
-                String(
-                    location.locationResolvedAddress ||
-                    location.locationAddress ||
-                    ''
-                ).trim();
+            const address = String(
+                location.locationResolvedAddress ||
+                location.locationAddress ||
+                ''
+            ).trim();
 
-            // Ensure the default Street View selection exists
+            // Preserve a valid selections collection
             if (!Array.isArray(streetViews.selections)) {
                 streetViews.selections = [];
             }
 
+            // Preserve or create the default selection
             if (!streetViews.selections[0]) {
                 streetViews.selections[0] = {
+                    id: 'street-view-default',
+                    order: 0,
                     status: 'notStarted',
                     preview: null,
+                    error: null,
+                    isDefault: true,
+
                     viewPurpose:
-                        'Default property-facing Street View.'
+                        'Default property-facing Street View.',
+
+                    settings: {},
+
+                    caption: '',
+                    aiCaption: '',
+                    captionSource: 'ai',
+                    captionEdited: false,
+                    captionStatus: 'notStarted',
+                    captionError: null
                 };
             }
 
             const selection =
                 streetViews.selections[0];
+
+            // Normalize the default selection structure
+            selection.id =
+                selection.id || 'street-view-default';
+
+            selection.order = 0;
+            selection.isDefault = true;
+
+            selection.viewPurpose =
+                'Default property-facing Street View.';
+
+            selection.settings =
+                selection.settings &&
+                typeof selection.settings === 'object'
+                    ? selection.settings
+                    : {};
+
+            selection.caption =
+                String(selection.caption || '');
+
+            selection.aiCaption =
+                String(selection.aiCaption || '');
+
+            selection.captionSource =
+                selection.captionSource || 'ai';
+
+            selection.captionEdited =
+                selection.captionEdited === true;
+
+            selection.captionStatus =
+                selection.captionStatus || 'notStarted';
+
+            selection.captionError =
+                selection.captionError || null;
 
             // Validate required Street View inputs
             if (
@@ -11987,6 +12061,8 @@ window.SkyIndex = {
                 selection.error =
                     'Validated address coordinates are unavailable.';
 
+                streetViews.status = 'error';
+
                 this.refreshSiteVisualOverviewPreview();
                 return;
             }
@@ -11995,6 +12071,8 @@ window.SkyIndex = {
             selection.status = 'loading';
             selection.preview = null;
             selection.error = null;
+
+            streetViews.status = 'loading';
 
             this.refreshSiteVisualOverviewPreview();
 
@@ -12009,6 +12087,7 @@ window.SkyIndex = {
                         },
                         body: JSON.stringify({
                             type: 'streetView',
+                            viewIndex: 1,
                             address,
                             latitude,
                             longitude,
@@ -12056,34 +12135,60 @@ window.SkyIndex = {
                 selection.preview =
                     responseData.artifactUrl;
 
-                selection.viewPurpose =
-                    'Default property-facing Street View.';
+                selection.error = null;
 
                 selection.settings = {
                     address,
-                    latitude,
-                    longitude,
+
+                    propertyLatitude:
+                        responseData.propertyLatitude ??
+                        latitude,
+
+                    propertyLongitude:
+                        responseData.propertyLongitude ??
+                        longitude,
+
                     panoramaId:
                         responseData.panoramaId || null,
+
                     panoramaLatitude:
                         responseData.panoramaLatitude ?? null,
+
                     panoramaLongitude:
                         responseData.panoramaLongitude ?? null,
+
+                    panoramaDate:
+                        responseData.panoramaDate || null,
+
+                    panoramaCopyright:
+                        responseData.panoramaCopyright || null,
+
                     heading:
                         responseData.heading ?? null,
+
                     headingSource:
                         responseData.headingSource || null,
+
+                    viewDirection:
+                        responseData.viewDirection || null,
+
                     addressParity:
                         responseData.addressParity || null,
+
                     fov:
                         responseData.fov ?? 75,
+
                     pitch:
                         responseData.pitch ?? 5,
+
                     artifactFilename:
                         responseData.artifactFilename || null,
+
                     artifactUrl:
                         responseData.artifactUrl
                 };
+
+                streetViews.status = 'ready';
 
                 this.refreshSiteVisualOverviewPreview();
             } catch (error) {
@@ -12102,10 +12207,13 @@ window.SkyIndex = {
 
                 selection.status = 'error';
                 selection.preview = null;
+
                 selection.error =
                     error instanceof Error
                         ? error.message
                         : 'Street View generation failed.';
+
+                streetViews.status = 'error';
 
                 this.refreshSiteVisualOverviewPreview();
             }
