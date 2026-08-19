@@ -9650,14 +9650,26 @@ window.SkyIndex = {
                 return;
             }
 
-            // Keep Preview on one page; allow workspaces to scroll
-            content.style.overflowY = tabName === 'preview'
-                ? 'hidden'
-                : 'auto';
+            // Keep completed image workspaces on one page
+            const fixedHeightTabs = [
+                'preview',
+                'satellite',
+                'parcel'
+            ];
 
-            content.style.padding = tabName === 'preview'
-                ? '14px 16px'
-                : '20px';
+            content.style.overflowY =
+                fixedHeightTabs.includes(tabName)
+                    ? 'hidden'
+                    : 'auto';
+
+            // Use compact padding for image workspaces
+            content.style.padding =
+                tabName === 'preview'
+                    ? '14px 16px'
+                    : tabName === 'satellite' ||
+                    tabName === 'parcel'
+                        ? '16px 20px'
+                        : '20px';
 
             // Render active workspace
             switch (tabName) {
@@ -9765,7 +9777,7 @@ window.SkyIndex = {
                         align-items:center;
                         flex-wrap:wrap;
                         gap:12px;
-                        margin-bottom:14px;
+                        margin-bottom:10px;
                     ">
                         <div>
                             <h3 style="
@@ -9807,7 +9819,7 @@ window.SkyIndex = {
                             id="siteVisualOverviewSatelliteViewport"
                             style="
                                 position:relative;
-                                height:390px;
+                                height:370px;
                                 overflow:hidden;
                                 border:1px solid #cbd5e1;
                                 border-radius:8px;
@@ -9832,7 +9844,7 @@ window.SkyIndex = {
                                             style="
                                                 width:100%;
                                                 height:100%;
-                                                height:390px;
+                                                height:370px;
                                                 display:block;
                                                 object-fit:cover;
                                                 pointer-events:none;
@@ -9842,7 +9854,7 @@ window.SkyIndex = {
                                     `
                                     : `
                                         <div style="
-                                            height:390px;
+                                            height:370px;
                                             display:flex;
                                             align-items:center;
                                             justify-content:center;
@@ -9877,10 +9889,13 @@ window.SkyIndex = {
 
                         <!-- Adjustment controls -->
                         <div style="
-                            padding:14px;
+                            height:370px;
+                            box-sizing:border-box;
+                            padding:10px 12px;
                             border:1px solid #dbe2ea;
                             border-radius:8px;
                             background:#f8fafc;
+                            overflow:hidden;
                         ">
                             <strong style="
                                 display:block;
@@ -10108,7 +10123,7 @@ window.SkyIndex = {
                         align-items:center;
                         flex-wrap:wrap;
                         gap:12px;
-                        margin-bottom:14px;
+                        margin-bottom:10px;
                     ">
                         <div>
                             <h3 style="margin:0 0 3px; color:#222; font-size:1.05rem;">
@@ -10142,7 +10157,7 @@ window.SkyIndex = {
                             id="siteVisualOverviewParcelViewport"
                             style="
                                 position:relative;
-                                height:390px;
+                                height:370px;
                                 overflow:hidden;
                                 border:1px solid #cbd5e1;
                                 border-radius:8px;
@@ -10166,7 +10181,7 @@ window.SkyIndex = {
                                             draggable="false"
                                             style="
                                                 width:100%;
-                                                height:390px;
+                                                height:370px;
                                                 display:block;
                                                 object-fit:cover;
                                                 pointer-events:none;
@@ -10176,7 +10191,7 @@ window.SkyIndex = {
                                     `
                                     : `
                                         <div style="
-                                            height:390px;
+                                            height:370px;
                                             display:flex;
                                             align-items:center;
                                             justify-content:center;
@@ -10213,10 +10228,13 @@ window.SkyIndex = {
 
                         <!-- Adjustment controls -->
                         <div style="
-                            padding:14px;
+                            height:370px;
+                            box-sizing:border-box;
+                            padding:10px 12px;
                             border:1px solid #dbe2ea;
                             border-radius:8px;
                             background:#f8fafc;
+                            overflow:hidden;
                         ">
                             <strong style="
                                 display:block;
@@ -10227,46 +10245,46 @@ window.SkyIndex = {
                                 Map Position
                             </strong>
 
-                            <!-- Directional controls -->
-                            <div style="
-                                display:grid;
-                                grid-template-columns:repeat(3, 40px);
-                                gap:6px;
-                                justify-content:center;
-                                margin-bottom:14px;
-                            ">
+                                <!-- Directional controls -->
+                                <div style="
+                                    display:grid;
+                                    grid-template-columns:repeat(3, 36px);
+                                    gap:4px;
+                                    justify-content:center;
+                                    margin-bottom:8px;
+                                ">
                                 <div></div>
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.nudgeSiteVisualOverviewParcel(0, -1)"
-                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    style="height:30px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
                                     ↑
                                 </button>
                                 <div></div>
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.nudgeSiteVisualOverviewParcel(-1, 0)"
-                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    style="height:30px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
                                     ←
                                 </button>
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.resetSiteVisualOverviewParcel()"
                                     title="Reset to automatic parcel frame"
-                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; font-size:0.75rem;">
+                                    style="height:30x; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; font-size:0.75rem;">
                                     ↺
                                 </button>
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.nudgeSiteVisualOverviewParcel(1, 0)"
-                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    style="height:30px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
                                     →
                                 </button>
                                 <div></div>
                                 <button type="button"
                                     ${controlsDisabled ? 'disabled' : ''}
                                     onclick="SkyIndex.nudgeSiteVisualOverviewParcel(0, 1)"
-                                    style="height:36px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
+                                    style="height:30px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer;">
                                     ↓
                                 </button>
                                 <div></div>
@@ -10309,7 +10327,7 @@ window.SkyIndex = {
                                 align-items:center;
                                 gap:8px;
                                 margin-bottom:10px;
-                                font-size:0.84rem;
+                                font-size:0.80rem;
                                 color:#334155;
                                 cursor:pointer;
                             ">
@@ -10327,7 +10345,7 @@ window.SkyIndex = {
                                 align-items:center;
                                 gap:8px;
                                 margin-bottom:12px;
-                                font-size:0.84rem;
+                                font-size:0.80rem;
                                 color:#334155;
                                 cursor:pointer;
                             ">
