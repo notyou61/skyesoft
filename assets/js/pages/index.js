@@ -12612,30 +12612,37 @@ window.SkyIndex = {
             const sections = workspace.sections;
             const streetCards = [];
 
-            // Build requested Street View thumbnail cards
-            for (
-                let index = 0;
-                index < sections.streetViews.requestedCount;
-                index++
-            ) {
-                const selection =
-                    sections.streetViews.selections[index] || {};
+            // Build accepted Street View thumbnail cards
+            const streetSelections = Array.isArray(
+                sections.streetViews.selections
+            )
+                ? sections.streetViews.selections.slice(
+                    0,
+                    sections.streetViews.maximumSelections || 4
+                )
+                : [];
+
+            streetSelections.forEach((selection, index) => {
+                const detail = String(
+                    selection?.caption ||
+                    selection?.aiCaption ||
+                    selection?.viewPurpose ||
+                    'Selected ground-level property view.'
+                ).trim();
 
                 streetCards.push(
                     this.renderSiteVisualOverviewThumbnailCard({
                         title: `Street View ${index + 1}`,
                         status:
-                            selection.status ||
+                            selection?.status ||
                             'notStarted',
                         preview:
-                            selection.preview ||
+                            selection?.preview ||
                             null,
-                        detail:
-                            selection.viewPurpose ||
-                            'Selected ground-level property view.'
+                        detail
                     })
                 );
-            }
+            });
 
             return `
                 <!-- Preview heading -->
@@ -13017,31 +13024,89 @@ window.SkyIndex = {
             `;
         },
 
-        // Calculate required and ready image totals
+        // Calculate Site Visual Overview report readiness
         getSiteVisualOverviewReadiness() {
-            const workspace = this.currentSiteVisualOverviewWorkspace;
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
 
             if (!workspace) {
-                return { ready: 0, required: 0, isComplete: false };
+                return {
+                    ready: 0,
+                    required: 0,
+                    isComplete: false
+                };
             }
 
-            const sections = workspace.sections;
-            const streetReady = sections.streetViews.selections.filter(
-                selection => selection?.status === 'ready'
-            ).length;
+            const sections =
+                workspace.sections;
+
+            const streetViews =
+                sections.streetViews;
+
+            const minimumStreetViews =
+                Number.isFinite(
+                    Number(streetViews.minimumSelections)
+                )
+                    ? Number(streetViews.minimumSelections)
+                    : 1;
+
+            const maximumStreetViews =
+                Number.isFinite(
+                    Number(streetViews.maximumSelections)
+                )
+                    ? Number(streetViews.maximumSelections)
+                    : 4;
+
+            const streetSelections =
+                Array.isArray(streetViews.selections)
+                    ? streetViews.selections.slice(
+                        0,
+                        maximumStreetViews
+                    )
+                    : [];
+
+            const streetReady =
+                streetSelections.filter(
+                    selection =>
+                        selection?.status === 'ready' &&
+                        Boolean(selection?.preview)
+                ).length;
+
             const fixedReady = [
                 sections.satellite,
                 sections.parcel,
                 sections.immediateVicinity,
                 sections.extendedContext
-            ].filter(section => section.status === 'ready').length;
-            const required = 4 + sections.streetViews.requestedCount;
-            const ready = fixedReady + streetReady;
+            ].filter(
+                section =>
+                    section?.status === 'ready'
+            ).length;
+
+            const streetSelectionCount =
+                streetSelections.length;
+
+            const requiredStreetViews =
+                Math.max(
+                    minimumStreetViews,
+                    streetSelectionCount
+                );
+
+            const hasValidStreetViewCount =
+                streetSelectionCount >= minimumStreetViews &&
+                streetSelectionCount <= maximumStreetViews;
+
+            const required =
+                4 + requiredStreetViews;
+
+            const ready =
+                fixedReady + streetReady;
 
             return {
                 ready,
                 required,
-                isComplete: ready === required
+                isComplete:
+                    hasValidStreetViewCount &&
+                    ready === required
             };
         },
 
