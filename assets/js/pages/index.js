@@ -3050,10 +3050,20 @@ window.SkyIndex = {
                     document.getElementById(mapCanvasId),
                     {
                         center: centerPoint,
-                        zoom: 19,
+
+                        // Show enough surrounding area for camera placement
+                        zoom: 18,
+
                         mapTypeId: 'satellite',
-                        // Temporary Advanced Marker test Map ID
                         mapId: 'DEMO_MAP_ID',
+
+                        // Provide explicit overhead-map zoom controls
+                        zoomControl: true,
+                        zoomControlOptions: {
+                            position:
+                                google.maps.ControlPosition.RIGHT_CENTER
+                        },
+
                         streetViewControl: false,
                         mapTypeControl: false,
                         tilt: 0
