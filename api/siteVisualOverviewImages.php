@@ -1850,9 +1850,7 @@ function siteVisualOverviewImmediateVicinity($jsonBody, $googleKey)
     $latitude = $coordinates[0];
     $longitude = $coordinates[1];
 
-    // Approximate 1.25-mile square context extent centered on the property.
-    // This forces the Static Maps viewport to include nearby major
-    // intersections while still framing the parcel and marker tightly.
+    // Define the automatic 1.25-mile context extent
     $contextMiles = 1.25;
     $halfMiles = $contextMiles / 2.0;
     $latRad = deg2rad($latitude);
@@ -1861,46 +1859,119 @@ function siteVisualOverviewImmediateVicinity($jsonBody, $googleKey)
     $dLat = $halfMiles / $milesPerDegreeLat;
     $dLon = $halfMiles / $milesPerDegreeLon;
 
-    $contextPoints = array(
-        number_format($latitude + $dLat, 7, '.', '')
-            . ','
-            . number_format($longitude + $dLon, 7, '.', ''),
-        number_format($latitude + $dLat, 7, '.', '')
-            . ','
-            . number_format($longitude - $dLon, 7, '.', ''),
-        number_format($latitude - $dLat, 7, '.', '')
-            . ','
-            . number_format($longitude - $dLon, 7, '.', ''),
-        number_format($latitude - $dLat, 7, '.', '')
-            . ','
-            . number_format($longitude + $dLon, 7, '.', ''),
-        number_format($latitude + $dLat, 7, '.', '')
-            . ','
-            . number_format($longitude + $dLon, 7, '.', '')
+    // Build WGS84 bounds for automatic framing
+    $contextRings = array(
+        array(
+            array(
+                $longitude - $dLon,
+                $latitude - $dLat
+            ),
+            array(
+                $longitude + $dLon,
+                $latitude - $dLat
+            ),
+            array(
+                $longitude + $dLon,
+                $latitude + $dLat
+            ),
+            array(
+                $longitude - $dLon,
+                $latitude + $dLat
+            ),
+            array(
+                $longitude - $dLon,
+                $latitude - $dLat
+            )
+        )
     );
 
-    $contextPath = implode('|', $contextPoints);
+    $contextFrame = siteVisualOverviewParcelFrame(
+        $contextRings,
+        600,
+        338,
+        24
+    );
+
+    if ($contextFrame === null) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'Unable to calculate the Vicinity Map frame.',
+            true
+        );
+    }
+
+    // Resolve adjustable map-center coordinates
+    $centerLatitudeRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'centerLatitude',
+        $contextFrame['centerLatitude']
+    );
+
+    $centerLongitudeRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'centerLongitude',
+        $contextFrame['centerLongitude']
+    );
+
+    $centerCoordinates = siteVisualOverviewCoordinates(
+        $centerLatitudeRaw,
+        $centerLongitudeRaw,
+        true
+    );
+
+    // Resolve adjustable Vicinity Map zoom
+    $zoom = siteVisualOverviewIntegerRange(
+        siteVisualOverviewRequestValue(
+            $jsonBody,
+            'zoom',
+            $contextFrame['zoom']
+        ),
+        $contextFrame['zoom'],
+        0,
+        21,
+        true,
+        'Vicinity Map zoom'
+    );
 
     $latitudeParam = number_format($latitude, 7, '.', '');
     $longitudeParam = number_format($longitude, 7, '.', '');
     $coordinateParam = $latitudeParam . ',' . $longitudeParam;
 
-    // Transparent context path forces the 1.25-mile extent.
-    // Visible path draws the primary parcel boundary.
-    // Red marker identifies the validated property location.
-    $googleUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
-        . 'size=600x338'
+        // Format the adjustable map center
+    $centerLatitudeParam = number_format(
+        $centerCoordinates[0],
+        7,
+        '.',
+        ''
+    );
+
+    $centerLongitudeParam = number_format(
+        $centerCoordinates[1],
+        7,
+        '.',
+        ''
+    );
+
+    $centerCoordinateParam =
+        $centerLatitudeParam
+        . ','
+        . $centerLongitudeParam;
+
+    // Build the explicitly framed Vicinity Map
+    $googleUrl =
+        'https://maps.googleapis.com/maps/api/staticmap?'
+        . 'center=' . rawurlencode($centerCoordinateParam)
+        . '&zoom=' . $zoom
+        . '&size=600x338'
         . '&scale=2'
         . '&maptype=roadmap'
-        . '&path=' . rawurlencode(
-            'color:0x00000000|weight:1|fillcolor:0x00000000|'
-            . $contextPath
-        )
         . '&path=' . rawurlencode(
             'color:0x1976D2FF|weight:4|fillcolor:0x1976D233|'
             . $parcelPath
         )
-        . '&markers=' . rawurlencode('color:red|' . $coordinateParam)
+        . '&markers=' . rawurlencode(
+            'color:red|' . $coordinateParam
+        )
         . '&format=jpg'
         . '&key=' . rawurlencode($googleKey);
 
@@ -1998,6 +2069,23 @@ function siteVisualOverviewImmediateVicinity($jsonBody, $googleKey)
         'parcelNumber' => $parcelNumber,
         'latitude' => $latitude,
         'longitude' => $longitude,
+        'centerLatitude' => round(
+            $centerCoordinates[0],
+            7
+        ),
+        'centerLongitude' => round(
+            $centerCoordinates[1],
+            7
+        ),
+        'zoom' => $zoom,
+        'defaultCenterLatitude' =>
+            $contextFrame['centerLatitude'],
+        'defaultCenterLongitude' =>
+            $contextFrame['centerLongitude'],
+        'defaultZoom' =>
+            $contextFrame['zoom'],
+        'contextBounds' =>
+            $contextFrame['bounds'],
         'contextMiles' => $contextMiles,
         'artifactFilename' => $artifactFilename,
         'artifactUrl' => '/skyesoft/artifacts/' . $artifactFilename,
@@ -2367,6 +2455,148 @@ function siteVisualOverviewExtendedContext($jsonBody, $googleKey)
         ? (string) $route['summary']
         : '';
 
+    // Resolve verified route bounds
+    $minimumLatitude = min(
+        $originLatitude,
+        $destinationLatitude
+    );
+
+    $maximumLatitude = max(
+        $originLatitude,
+        $destinationLatitude
+    );
+
+    $minimumLongitude = min(
+        $originLongitude,
+        $destinationLongitude
+    );
+
+    $maximumLongitude = max(
+        $originLongitude,
+        $destinationLongitude
+    );
+
+    if (
+        isset(
+            $route['bounds']['southwest']['lat'],
+            $route['bounds']['southwest']['lng'],
+            $route['bounds']['northeast']['lat'],
+            $route['bounds']['northeast']['lng']
+        ) &&
+        is_numeric($route['bounds']['southwest']['lat']) &&
+        is_numeric($route['bounds']['southwest']['lng']) &&
+        is_numeric($route['bounds']['northeast']['lat']) &&
+        is_numeric($route['bounds']['northeast']['lng'])
+    ) {
+        $minimumLatitude = min(
+            $minimumLatitude,
+            (float) $route['bounds']['southwest']['lat']
+        );
+
+        $minimumLongitude = min(
+            $minimumLongitude,
+            (float) $route['bounds']['southwest']['lng']
+        );
+
+        $maximumLatitude = max(
+            $maximumLatitude,
+            (float) $route['bounds']['northeast']['lat']
+        );
+
+        $maximumLongitude = max(
+            $maximumLongitude,
+            (float) $route['bounds']['northeast']['lng']
+        );
+    }
+
+    // Convert the route bounds into a framing ring
+    $routeFrameRings = array(
+        array(
+            array(
+                $minimumLongitude,
+                $minimumLatitude
+            ),
+            array(
+                $maximumLongitude,
+                $minimumLatitude
+            ),
+            array(
+                $maximumLongitude,
+                $maximumLatitude
+            ),
+            array(
+                $minimumLongitude,
+                $maximumLatitude
+            ),
+            array(
+                $minimumLongitude,
+                $minimumLatitude
+            )
+        )
+    );
+
+    $routeFrame = siteVisualOverviewParcelFrame(
+        $routeFrameRings,
+        600,
+        338,
+        48
+    );
+
+    if ($routeFrame === null) {
+        siteVisualOverviewError(
+            'HTTP/1.1 500 Internal Server Error',
+            'Unable to calculate the Extended Map frame.',
+            true
+        );
+    }
+
+    // Resolve adjustable map-center coordinates
+    $centerLatitudeRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'centerLatitude',
+        $routeFrame['centerLatitude']
+    );
+
+    $centerLongitudeRaw = siteVisualOverviewRequestValue(
+        $jsonBody,
+        'centerLongitude',
+        $routeFrame['centerLongitude']
+    );
+
+    $centerCoordinates = siteVisualOverviewCoordinates(
+        $centerLatitudeRaw,
+        $centerLongitudeRaw,
+        true
+    );
+
+    // Resolve adjustable Extended Map zoom
+    $zoom = siteVisualOverviewIntegerRange(
+        siteVisualOverviewRequestValue(
+            $jsonBody,
+            'zoom',
+            $routeFrame['zoom']
+        ),
+        $routeFrame['zoom'],
+        0,
+        21,
+        true,
+        'Extended Map zoom'
+    );
+
+    $centerCoordinateParam = number_format(
+        $centerCoordinates[0],
+        7,
+        '.',
+        ''
+    )
+        . ','
+        . number_format(
+            $centerCoordinates[1],
+            7,
+            '.',
+            ''
+        );
+
     // Straight-line (great-circle) distance
     $straightLineMiles = siteVisualOverviewHaversineMiles(
         $originLatitude,
@@ -2388,7 +2618,9 @@ function siteVisualOverviewExtendedContext($jsonBody, $googleKey)
         . number_format($destinationLongitude, 7, '.', '');
 
     $googleUrl = 'https://maps.googleapis.com/maps/api/staticmap?'
-        . 'size=600x338'
+        . 'center=' . rawurlencode($centerCoordinateParam)
+        . '&zoom=' . $zoom
+        . '&size=600x338'
         . '&scale=2'
         . '&maptype=roadmap'
         . '&path=' . rawurlencode(
@@ -2485,6 +2717,23 @@ function siteVisualOverviewExtendedContext($jsonBody, $googleKey)
         'success' => true,
         'status' => 'ready',
         'type' => 'extendedContext',
+        'centerLatitude' => round(
+            $centerCoordinates[0],
+            7
+        ),
+        'centerLongitude' => round(
+            $centerCoordinates[1],
+            7
+        ),
+        'zoom' => $zoom,
+        'defaultCenterLatitude' =>
+            $routeFrame['centerLatitude'],
+        'defaultCenterLongitude' =>
+            $routeFrame['centerLongitude'],
+        'defaultZoom' =>
+            $routeFrame['zoom'],
+        'routeBounds' =>
+            $routeFrame['bounds'],
         'origin' => array(
             'name' => $originName,
             'address' => $originAddress,

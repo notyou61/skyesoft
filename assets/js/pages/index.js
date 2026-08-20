@@ -9868,14 +9868,42 @@ window.SkyIndex = {
                         ]
                     },
                     immediateVicinity: {
+                        // Accepted report image
                         status: 'notStarted',
                         preview: null,
-                        settings: {}
+                        settings: {},
+
+                        // Temporary Vicinity Map adjustments
+                        workingPreview: null,
+                        workingSettings: {},
+
+                        // Original automatically framed map
+                        defaultSettings: {},
+
+                        // Adjustment state
+                        isAdjusted: false,
+                        hasUnappliedChanges: false,
+                        isWorkingLoading: false,
+                        error: null
                     },
                     extendedContext: {
+                        // Accepted report image
                         status: 'notStarted',
                         preview: null,
-                        settings: {}
+                        settings: {},
+
+                        // Temporary Extended Map adjustments
+                        workingPreview: null,
+                        workingSettings: {},
+
+                        // Original automatically framed route map
+                        defaultSettings: {},
+
+                        // Adjustment state
+                        isAdjusted: false,
+                        hasUnappliedChanges: false,
+                        isWorkingLoading: false,
+                        error: null
                     }
                 }
             };
@@ -12634,7 +12662,7 @@ window.SkyIndex = {
             }
         },
 
-        // Load default Immediate Vicinity Map preview
+        // Load default Vicinity Map preview
         async loadSiteVisualOverviewImmediateVicinityPreview() {
             const workspace =
                 this.currentSiteVisualOverviewWorkspace;
@@ -12662,22 +12690,20 @@ window.SkyIndex = {
             const longitude =
                 Number(location.locationLongitude);
 
-            const address =
-                String(
-                    location.locationResolvedAddress ||
-                    location.locationAddress ||
-                    ''
-                ).trim();
+            const address = String(
+                location.locationResolvedAddress ||
+                location.locationAddress ||
+                ''
+            ).trim();
 
-            const parcelNumber =
-                String(
-                    primaryParcel?.parcelNumber || ''
-                ).trim();
+            const parcelNumber = String(
+                primaryParcel?.parcelNumber || ''
+            ).trim();
 
             const parcelGeometry =
                 primaryParcel?.parcelGeometry || null;
 
-            // Validate required vicinity-map inputs
+            // Validate required Vicinity Map inputs
             if (
                 !Number.isFinite(latitude) ||
                 !Number.isFinite(longitude) ||
@@ -12689,6 +12715,8 @@ window.SkyIndex = {
             ) {
                 immediateVicinity.status = 'error';
                 immediateVicinity.preview = null;
+                immediateVicinity.workingPreview = null;
+                immediateVicinity.isWorkingLoading = false;
                 immediateVicinity.error =
                     'Validated property and parcel data are unavailable.';
 
@@ -12699,6 +12727,8 @@ window.SkyIndex = {
             // Set loading state
             immediateVicinity.status = 'loading';
             immediateVicinity.preview = null;
+            immediateVicinity.workingPreview = null;
+            immediateVicinity.isWorkingLoading = true;
             immediateVicinity.error = null;
 
             this.refreshSiteVisualOverviewPreview();
@@ -12736,7 +12766,7 @@ window.SkyIndex = {
                         JSON.parse(responseText);
                 } catch (error) {
                     throw new Error(
-                        'Immediate Vicinity endpoint returned invalid JSON.'
+                        'Vicinity Map endpoint returned invalid JSON.'
                     );
                 }
 
@@ -12747,7 +12777,7 @@ window.SkyIndex = {
                 ) {
                     throw new Error(
                         responseData?.error ||
-                        'Immediate Vicinity Map generation failed.'
+                        'Vicinity Map generation failed.'
                     );
                 }
 
@@ -12759,24 +12789,109 @@ window.SkyIndex = {
                     return;
                 }
 
-                immediateVicinity.status = 'ready';
-                immediateVicinity.preview =
-                    responseData.artifactUrl;
+                const responseCenterLatitude =
+                    Number(responseData.centerLatitude);
 
-                immediateVicinity.settings = {
+                const responseCenterLongitude =
+                    Number(responseData.centerLongitude);
+
+                const responseZoom =
+                    Number(responseData.zoom);
+
+                const centerLatitude =
+                    Number.isFinite(responseCenterLatitude)
+                        ? responseCenterLatitude
+                        : latitude;
+
+                const centerLongitude =
+                    Number.isFinite(responseCenterLongitude)
+                        ? responseCenterLongitude
+                        : longitude;
+
+                const zoom =
+                    Number.isFinite(responseZoom)
+                        ? responseZoom
+                        : 14;
+
+                const defaultCenterLatitude =
+                    Number.isFinite(
+                        Number(
+                            responseData.defaultCenterLatitude
+                        )
+                    )
+                        ? Number(
+                            responseData.defaultCenterLatitude
+                        )
+                        : centerLatitude;
+
+                const defaultCenterLongitude =
+                    Number.isFinite(
+                        Number(
+                            responseData.defaultCenterLongitude
+                        )
+                    )
+                        ? Number(
+                            responseData.defaultCenterLongitude
+                        )
+                        : centerLongitude;
+
+                const defaultZoom =
+                    Number.isFinite(
+                        Number(responseData.defaultZoom)
+                    )
+                        ? Number(responseData.defaultZoom)
+                        : zoom;
+
+                const acceptedSettings = {
                     address,
                     latitude,
                     longitude,
                     parcelNumber,
+                    centerLatitude,
+                    centerLongitude,
+                    zoom,
                     mapType:
                         responseData.mapType || 'roadmap',
-                    mapExtent:
-                        responseData.mapExtent || null,
+                    contextMiles:
+                        responseData.contextMiles ?? null,
+                    contextBounds:
+                        responseData.contextBounds || null,
                     artifactFilename:
                         responseData.artifactFilename || null,
                     artifactUrl:
                         responseData.artifactUrl
                 };
+
+                // Seed accepted, working, and automatic frames
+                immediateVicinity.status = 'ready';
+
+                immediateVicinity.preview =
+                    responseData.artifactUrl;
+
+                immediateVicinity.settings = {
+                    ...acceptedSettings
+                };
+
+                immediateVicinity.workingPreview =
+                    responseData.artifactUrl;
+
+                immediateVicinity.workingSettings = {
+                    ...acceptedSettings
+                };
+
+                immediateVicinity.defaultSettings = {
+                    centerLatitude:
+                        defaultCenterLatitude,
+                    centerLongitude:
+                        defaultCenterLongitude,
+                    zoom:
+                        defaultZoom
+                };
+
+                immediateVicinity.isAdjusted = false;
+                immediateVicinity.hasUnappliedChanges = false;
+                immediateVicinity.isWorkingLoading = false;
+                immediateVicinity.error = null;
 
                 this.refreshSiteVisualOverviewPreview();
             } catch (error) {
@@ -12789,22 +12904,25 @@ window.SkyIndex = {
                 }
 
                 console.error(
-                    'Site Visual Overview Immediate Vicinity preview failed:',
+                    'Site Visual Overview Vicinity Map preview failed:',
                     error
                 );
 
                 immediateVicinity.status = 'error';
                 immediateVicinity.preview = null;
+                immediateVicinity.workingPreview = null;
+                immediateVicinity.isWorkingLoading = false;
+
                 immediateVicinity.error =
                     error instanceof Error
                         ? error.message
-                        : 'Immediate Vicinity Map generation failed.';
+                        : 'Vicinity Map generation failed.';
 
                 this.refreshSiteVisualOverviewPreview();
             }
         },
 
-        // Load default Extended Context Map preview
+        // Load default Extended Map preview
         async loadSiteVisualOverviewExtendedContextPreview() {
             const workspace =
                 this.currentSiteVisualOverviewWorkspace;
@@ -12829,12 +12947,11 @@ window.SkyIndex = {
             const longitude =
                 Number(location.locationLongitude);
 
-            const address =
-                String(
-                    location.locationResolvedAddress ||
-                    location.locationAddress ||
-                    ''
-                ).trim();
+            const address = String(
+                location.locationResolvedAddress ||
+                location.locationAddress ||
+                ''
+            ).trim();
 
             // Validate required destination inputs
             if (
@@ -12844,6 +12961,8 @@ window.SkyIndex = {
             ) {
                 extendedContext.status = 'error';
                 extendedContext.preview = null;
+                extendedContext.workingPreview = null;
+                extendedContext.isWorkingLoading = false;
                 extendedContext.error =
                     'Validated destination data are unavailable.';
 
@@ -12854,6 +12973,8 @@ window.SkyIndex = {
             // Set loading state
             extendedContext.status = 'loading';
             extendedContext.preview = null;
+            extendedContext.workingPreview = null;
+            extendedContext.isWorkingLoading = true;
             extendedContext.error = null;
 
             this.refreshSiteVisualOverviewPreview();
@@ -12889,7 +13010,7 @@ window.SkyIndex = {
                         JSON.parse(responseText);
                 } catch (error) {
                     throw new Error(
-                        'Extended Context endpoint returned invalid JSON.'
+                        'Extended Map endpoint returned invalid JSON.'
                     );
                 }
 
@@ -12900,7 +13021,7 @@ window.SkyIndex = {
                 ) {
                     throw new Error(
                         responseData?.error ||
-                        'Extended Context Map generation failed.'
+                        'Extended Map generation failed.'
                     );
                 }
 
@@ -12912,59 +13033,171 @@ window.SkyIndex = {
                     return;
                 }
 
-                extendedContext.status = 'ready';
-                extendedContext.preview =
-                    responseData.artifactUrl;
+                const responseCenterLatitude =
+                    Number(responseData.centerLatitude);
 
-                // Map metrics from siteVisualOverviewImages.php response.
-                // The images endpoint returns drivingDistanceMeters,
-                // drivingDistanceText, and straightLineMiles (not the
-                // *Miles / directDistanceMiles names the report originally
-                // expected). Store both the canonical report keys and the
-                // raw upstream keys so the report can resolve either.
+                const responseCenterLongitude =
+                    Number(responseData.centerLongitude);
+
+                const responseZoom =
+                    Number(responseData.zoom);
+
+                const centerLatitude =
+                    Number.isFinite(responseCenterLatitude)
+                        ? responseCenterLatitude
+                        : latitude;
+
+                const centerLongitude =
+                    Number.isFinite(responseCenterLongitude)
+                        ? responseCenterLongitude
+                        : longitude;
+
+                const zoom =
+                    Number.isFinite(responseZoom)
+                        ? responseZoom
+                        : 10;
+
+                const defaultCenterLatitude =
+                    Number.isFinite(
+                        Number(
+                            responseData.defaultCenterLatitude
+                        )
+                    )
+                        ? Number(
+                            responseData.defaultCenterLatitude
+                        )
+                        : centerLatitude;
+
+                const defaultCenterLongitude =
+                    Number.isFinite(
+                        Number(
+                            responseData.defaultCenterLongitude
+                        )
+                    )
+                        ? Number(
+                            responseData.defaultCenterLongitude
+                        )
+                        : centerLongitude;
+
+                const defaultZoom =
+                    Number.isFinite(
+                        Number(responseData.defaultZoom)
+                    )
+                        ? Number(responseData.defaultZoom)
+                        : zoom;
+
+                // Normalize route metrics for report compatibility
                 const drivingDistanceMeters =
-                    responseData.drivingDistanceMeters != null
-                        && Number.isFinite(Number(responseData.drivingDistanceMeters))
-                        ? Number(responseData.drivingDistanceMeters)
+                    responseData.drivingDistanceMeters != null &&
+                    Number.isFinite(
+                        Number(
+                            responseData.drivingDistanceMeters
+                        )
+                    )
+                        ? Number(
+                            responseData.drivingDistanceMeters
+                        )
                         : null;
 
                 const drivingDistanceMilesFromMeters =
                     drivingDistanceMeters !== null
-                        ? Math.round((drivingDistanceMeters / 1609.344) * 10) / 10
+                        ? Math.round(
+                            (
+                                drivingDistanceMeters /
+                                1609.344
+                            ) * 10
+                        ) / 10
                         : null;
 
-                extendedContext.settings = {
-                    destinationAddress: address,
-                    destinationLatitude: latitude,
-                    destinationLongitude: longitude,
+                const acceptedSettings = {
+                    destinationAddress:
+                        address,
+                    destinationLatitude:
+                        latitude,
+                    destinationLongitude:
+                        longitude,
+
+                    centerLatitude,
+                    centerLongitude,
+                    zoom,
+
                     origin:
                         responseData.origin || null,
+
                     destination:
                         responseData.destination || null,
-                    // Canonical keys expected by the report
+
+                    // Canonical report keys
                     drivingDistanceMiles:
                         responseData.drivingDistanceMiles
                         ?? drivingDistanceMilesFromMeters
                         ?? null,
+
                     drivingDurationText:
-                        responseData.drivingDurationText || null,
+                        responseData.drivingDurationText ||
+                        null,
+
                     directDistanceMiles:
                         responseData.directDistanceMiles
                         ?? responseData.straightLineMiles
                         ?? null,
-                    // Raw upstream keys (kept for resilience)
-                    drivingDistanceMeters: drivingDistanceMeters,
+
+                    // Raw upstream keys retained for resilience
+                    drivingDistanceMeters:
+                        drivingDistanceMeters,
+
                     drivingDistanceText:
-                        responseData.drivingDistanceText || null,
+                        responseData.drivingDistanceText ||
+                        null,
+
                     straightLineMiles:
-                        responseData.straightLineMiles ?? null,
+                        responseData.straightLineMiles ??
+                        null,
+
                     routeSummary:
                         responseData.routeSummary || null,
+
+                    routeBounds:
+                        responseData.routeBounds || null,
+
                     artifactFilename:
-                        responseData.artifactFilename || null,
+                        responseData.artifactFilename ||
+                        null,
+
                     artifactUrl:
                         responseData.artifactUrl
                 };
+
+                // Seed accepted, working, and automatic frames
+                extendedContext.status = 'ready';
+
+                extendedContext.preview =
+                    responseData.artifactUrl;
+
+                extendedContext.settings = {
+                    ...acceptedSettings
+                };
+
+                extendedContext.workingPreview =
+                    responseData.artifactUrl;
+
+                extendedContext.workingSettings = {
+                    ...acceptedSettings
+                };
+
+                extendedContext.defaultSettings = {
+                    centerLatitude:
+                        defaultCenterLatitude,
+                    centerLongitude:
+                        defaultCenterLongitude,
+                    zoom:
+                        defaultZoom
+                };
+
+                extendedContext.isAdjusted = false;
+                extendedContext.hasUnappliedChanges = false;
+                extendedContext.isWorkingLoading = false;
+                extendedContext.error = null;
 
                 this.refreshSiteVisualOverviewPreview();
             } catch (error) {
@@ -12977,16 +13210,19 @@ window.SkyIndex = {
                 }
 
                 console.error(
-                    'Site Visual Overview Extended Context preview failed:',
+                    'Site Visual Overview Extended Map preview failed:',
                     error
                 );
 
                 extendedContext.status = 'error';
                 extendedContext.preview = null;
+                extendedContext.workingPreview = null;
+                extendedContext.isWorkingLoading = false;
+
                 extendedContext.error =
                     error instanceof Error
                         ? error.message
-                        : 'Extended Context Map generation failed.';
+                        : 'Extended Map generation failed.';
 
                 this.refreshSiteVisualOverviewPreview();
             }
@@ -14428,53 +14664,1077 @@ window.SkyIndex = {
             this.refreshSiteVisualOverviewPreview();
         },
 
-        // Render Context Maps workspace
-        renderSiteVisualOverviewContextMapsTab() {
-            return `
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:18px;">
-                    ${this.renderSiteVisualOverviewContextMapWorkspace(
-                        'Immediate Vicinity Map',
-                        'immediateVicinity',
-                        'Nearby streets, intersections, access, and development.'
-                    )}
-                    ${this.renderSiteVisualOverviewContextMapWorkspace(
-                        'Extended Context Map',
-                        'extendedContext',
-                        'Major roads, freeways, commercial areas, and regional orientation.'
-                    )}
-                </div>
-            `;
+        // ------------------------------------------------------------------
+        // Context Maps — shared framing and interaction handlers
+        // ------------------------------------------------------------------
+
+        // Validate a supported adjustable context-map section
+        isSiteVisualOverviewContextMapSection(sectionName) {
+            return [
+                'immediateVicinity',
+                'extendedContext'
+            ].includes(sectionName);
         },
 
-        // Render one context-map workspace
-        renderSiteVisualOverviewContextMapWorkspace(title, sectionName, description) {
+        // Compare two context-map framing settings
+        siteVisualOverviewContextMapSettingsMatch(
+            firstSettings,
+            secondSettings
+        ) {
+            if (!firstSettings || !secondSettings) {
+                return false;
+            }
+
+            const firstLatitude =
+                Number(firstSettings.centerLatitude);
+
+            const secondLatitude =
+                Number(secondSettings.centerLatitude);
+
+            const firstLongitude =
+                Number(firstSettings.centerLongitude);
+
+            const secondLongitude =
+                Number(secondSettings.centerLongitude);
+
+            const firstZoom =
+                Number(firstSettings.zoom);
+
+            const secondZoom =
+                Number(secondSettings.zoom);
+
+            return (
+                Number.isFinite(firstLatitude) &&
+                Number.isFinite(secondLatitude) &&
+                Number.isFinite(firstLongitude) &&
+                Number.isFinite(secondLongitude) &&
+                Number.isFinite(firstZoom) &&
+                Number.isFinite(secondZoom) &&
+                Math.abs(
+                    firstLatitude -
+                    secondLatitude
+                ) < 0.0000001 &&
+                Math.abs(
+                    firstLongitude -
+                    secondLongitude
+                ) < 0.0000001 &&
+                firstZoom === secondZoom
+            );
+        },
+
+        // Build a context-map regeneration request
+        buildSiteVisualOverviewContextMapRequestBody(
+            sectionName,
+            settings
+        ) {
+            if (
+                !this.isSiteVisualOverviewContextMapSection(
+                    sectionName
+                ) ||
+                !settings
+            ) {
+                return null;
+            }
+
+            const centerLatitude =
+                Number(settings.centerLatitude);
+
+            const centerLongitude =
+                Number(settings.centerLongitude);
+
+            const zoom =
+                Number(settings.zoom);
+
+            if (
+                !Number.isFinite(centerLatitude) ||
+                !Number.isFinite(centerLongitude) ||
+                !Number.isFinite(zoom)
+            ) {
+                return null;
+            }
+
+            if (sectionName === 'immediateVicinity') {
+                const workspace =
+                    this.currentSiteVisualOverviewWorkspace;
+
+                const location =
+                    workspace?.sourceData?.data?.location ||
+                    null;
+
+                const primaryParcel =
+                    location?.parcelDetails?.[0] || null;
+
+                const latitude =
+                    Number(settings.latitude);
+
+                const longitude =
+                    Number(settings.longitude);
+
+                const address =
+                    String(settings.address || '').trim();
+
+                const parcelNumber =
+                    String(
+                        settings.parcelNumber ||
+                        primaryParcel?.parcelNumber ||
+                        ''
+                    ).trim();
+
+                const parcelGeometry =
+                    primaryParcel?.parcelGeometry || null;
+
+                if (
+                    !Number.isFinite(latitude) ||
+                    !Number.isFinite(longitude) ||
+                    !address ||
+                    !parcelNumber ||
+                    !parcelGeometry
+                ) {
+                    return null;
+                }
+
+                return {
+                    type: 'immediateVicinity',
+                    address,
+                    latitude,
+                    longitude,
+                    centerLatitude,
+                    centerLongitude,
+                    zoom,
+                    parcel: {
+                        parcelNumber,
+                        parcelGeometry
+                    }
+                };
+            }
+
+            const destinationAddress =
+                String(
+                    settings.destinationAddress || ''
+                ).trim();
+
+            const destinationLatitude =
+                Number(settings.destinationLatitude);
+
+            const destinationLongitude =
+                Number(settings.destinationLongitude);
+
+            if (
+                !destinationAddress ||
+                !Number.isFinite(destinationLatitude) ||
+                !Number.isFinite(destinationLongitude)
+            ) {
+                return null;
+            }
+
+            return {
+                type: 'extendedContext',
+                centerLatitude,
+                centerLongitude,
+                zoom,
+                destination: {
+                    address:
+                        destinationAddress,
+                    latitude:
+                        destinationLatitude,
+                    longitude:
+                        destinationLongitude
+                }
+            };
+        },
+
+        // Regenerate one adjustable context-map preview
+        async regenerateSiteVisualOverviewContextMap(
+            sectionName
+        ) {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
             const section =
-                this.currentSiteVisualOverviewWorkspace?.sections?.[sectionName] || {};
-            const status = this.formatSiteVisualOverviewStatus(
-                section.status || 'notStarted'
+                workspace?.sections?.[sectionName] || null;
+
+            if (
+                !workspace ||
+                !section ||
+                !this.isSiteVisualOverviewContextMapSection(
+                    sectionName
+                )
+            ) {
+                return;
+            }
+
+            const requestBody =
+                this.buildSiteVisualOverviewContextMapRequestBody(
+                    sectionName,
+                    section.workingSettings
+                );
+
+            if (!requestBody) {
+                section.error =
+                    'The map framing settings are invalid.';
+
+                section.isWorkingLoading = false;
+
+                if (workspace.activeTab === sectionName) {
+                    this.showSiteVisualOverviewTab(
+                        sectionName
+                    );
+                }
+
+                return;
+            }
+
+            section.isWorkingLoading = true;
+            section.error = null;
+
+            if (workspace.activeTab === sectionName) {
+                this.showSiteVisualOverviewTab(
+                    sectionName
+                );
+            }
+
+            try {
+                const response = await fetch(
+                    '/skyesoft/api/siteVisualOverviewImages.php',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type':
+                                'application/json',
+                            'Accept':
+                                'application/json'
+                        },
+                        body:
+                            JSON.stringify(requestBody)
+                    }
+                );
+
+                const responseText =
+                    await response.text();
+
+                let responseData = null;
+
+                try {
+                    responseData =
+                        JSON.parse(responseText);
+                } catch (error) {
+                    throw new Error(
+                        'Map endpoint returned invalid JSON.'
+                    );
+                }
+
+                if (
+                    !response.ok ||
+                    responseData?.success !== true ||
+                    !responseData.artifactUrl
+                ) {
+                    throw new Error(
+                        responseData?.error ||
+                        'Map regeneration failed.'
+                    );
+                }
+
+                // Ignore a response for a replaced workspace
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                const workingSettings = {
+                    ...section.workingSettings,
+
+                    centerLatitude:
+                        Number(responseData.centerLatitude),
+
+                    centerLongitude:
+                        Number(responseData.centerLongitude),
+
+                    zoom:
+                        Number(responseData.zoom),
+
+                    artifactFilename:
+                        responseData.artifactFilename ||
+                        null,
+
+                    artifactUrl:
+                        responseData.artifactUrl
+                };
+
+                if (sectionName === 'immediateVicinity') {
+                    workingSettings.contextMiles =
+                        responseData.contextMiles ?? null;
+
+                    workingSettings.contextBounds =
+                        responseData.contextBounds || null;
+                } else {
+                    const drivingDistanceMeters =
+                        responseData.drivingDistanceMeters !=
+                            null &&
+                        Number.isFinite(
+                            Number(
+                                responseData
+                                    .drivingDistanceMeters
+                            )
+                        )
+                            ? Number(
+                                responseData
+                                    .drivingDistanceMeters
+                            )
+                            : null;
+
+                    const drivingDistanceMiles =
+                        drivingDistanceMeters !== null
+                            ? Math.round(
+                                (
+                                    drivingDistanceMeters /
+                                    1609.344
+                                ) * 10
+                            ) / 10
+                            : null;
+
+                    workingSettings.origin =
+                        responseData.origin || null;
+
+                    workingSettings.destination =
+                        responseData.destination || null;
+
+                    workingSettings.drivingDistanceMiles =
+                        responseData.drivingDistanceMiles
+                        ?? drivingDistanceMiles
+                        ?? null;
+
+                    workingSettings.drivingDurationText =
+                        responseData.drivingDurationText ||
+                        null;
+
+                    workingSettings.directDistanceMiles =
+                        responseData.directDistanceMiles
+                        ?? responseData.straightLineMiles
+                        ?? null;
+
+                    workingSettings.drivingDistanceMeters =
+                        drivingDistanceMeters;
+
+                    workingSettings.drivingDistanceText =
+                        responseData.drivingDistanceText ||
+                        null;
+
+                    workingSettings.straightLineMiles =
+                        responseData.straightLineMiles ??
+                        null;
+
+                    workingSettings.routeSummary =
+                        responseData.routeSummary || null;
+
+                    workingSettings.routeBounds =
+                        responseData.routeBounds || null;
+                }
+
+                section.workingPreview =
+                    responseData.artifactUrl;
+
+                section.workingSettings =
+                    workingSettings;
+
+                section.hasUnappliedChanges =
+                    !this
+                        .siteVisualOverviewContextMapSettingsMatch(
+                            section.workingSettings,
+                            section.settings
+                        );
+
+                section.isWorkingLoading = false;
+                section.error = null;
+
+                if (workspace.activeTab === sectionName) {
+                    this.showSiteVisualOverviewTab(
+                        sectionName
+                    );
+                }
+            } catch (error) {
+                if (
+                    this.currentSiteVisualOverviewWorkspace !==
+                    workspace
+                ) {
+                    return;
+                }
+
+                console.error(
+                    'Context map regeneration failed:',
+                    error
+                );
+
+                section.isWorkingLoading = false;
+
+                section.error =
+                    error instanceof Error
+                        ? error.message
+                        : 'Map regeneration failed.';
+
+                if (workspace.activeTab === sectionName) {
+                    this.showSiteVisualOverviewTab(
+                        sectionName
+                    );
+                }
+            }
+        },
+
+        // Nudge a context-map center
+        nudgeSiteVisualOverviewContextMap(
+            sectionName,
+            dx,
+            dy
+        ) {
+            const section =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections
+                    ?.[sectionName] || null;
+
+            const settings =
+                section?.workingSettings || null;
+
+            if (
+                !section ||
+                !settings ||
+                section.isWorkingLoading ||
+                !this.isSiteVisualOverviewContextMapSection(
+                    sectionName
+                )
+            ) {
+                return;
+            }
+
+            const zoom =
+                Number(settings.zoom);
+
+            const centerLatitude =
+                Number(settings.centerLatitude);
+
+            const centerLongitude =
+                Number(settings.centerLongitude);
+
+            if (
+                !Number.isFinite(zoom) ||
+                !Number.isFinite(centerLatitude) ||
+                !Number.isFinite(centerLongitude)
+            ) {
+                return;
+            }
+
+            const latRad =
+                centerLatitude * Math.PI / 180;
+
+            const degreesPerPixelX =
+                360 /
+                (
+                    256 *
+                    Math.pow(2, zoom)
+                );
+
+            const degreesPerPixelY =
+                (
+                    360 *
+                    Math.cos(latRad)
+                ) /
+                (
+                    256 *
+                    Math.pow(2, zoom)
+                );
+
+            // Move approximately one-eighth viewport
+            const stepPixels = 80;
+
+            const deltaLongitude =
+                Number(dx) *
+                stepPixels *
+                degreesPerPixelX;
+
+            const deltaLatitude =
+                Number(dy) *
+                stepPixels *
+                degreesPerPixelY;
+
+            section.workingSettings = {
+                ...settings,
+
+                centerLatitude:
+                    centerLatitude -
+                    deltaLatitude,
+
+                centerLongitude:
+                    centerLongitude +
+                    deltaLongitude
+            };
+
+            section.hasUnappliedChanges = true;
+
+            this.regenerateSiteVisualOverviewContextMap(
+                sectionName
+            );
+        },
+
+        // Change a context-map zoom level
+        changeSiteVisualOverviewContextMapZoom(
+            sectionName,
+            change
+        ) {
+            const section =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections
+                    ?.[sectionName] || null;
+
+            if (
+                !section ||
+                section.isWorkingLoading ||
+                !this.isSiteVisualOverviewContextMapSection(
+                    sectionName
+                )
+            ) {
+                return;
+            }
+
+            const currentZoom =
+                Number(
+                    section.workingSettings?.zoom
+                );
+
+            if (!Number.isFinite(currentZoom)) {
+                return;
+            }
+
+            const revisedZoom = Math.max(
+                0,
+                Math.min(
+                    21,
+                    currentZoom + Number(change)
+                )
             );
 
+            if (revisedZoom === currentZoom) {
+                return;
+            }
+
+            section.workingSettings = {
+                ...section.workingSettings,
+                zoom: revisedZoom
+            };
+
+            section.hasUnappliedChanges = true;
+
+            this.regenerateSiteVisualOverviewContextMap(
+                sectionName
+            );
+        },
+
+        // Reset a context map to its automatic frame
+        resetSiteVisualOverviewContextMap(sectionName) {
+            const section =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections
+                    ?.[sectionName] || null;
+
+            if (
+                !section ||
+                section.isWorkingLoading ||
+                !section.defaultSettings ||
+                !this.isSiteVisualOverviewContextMapSection(
+                    sectionName
+                )
+            ) {
+                return;
+            }
+
+            section.workingSettings = {
+                ...section.workingSettings,
+
+                centerLatitude:
+                    section.defaultSettings.centerLatitude,
+
+                centerLongitude:
+                    section.defaultSettings.centerLongitude,
+
+                zoom:
+                    section.defaultSettings.zoom
+            };
+
+            section.hasUnappliedChanges =
+                !this
+                    .siteVisualOverviewContextMapSettingsMatch(
+                        section.workingSettings,
+                        section.settings
+                    );
+
+            section.error = null;
+
+            this.regenerateSiteVisualOverviewContextMap(
+                sectionName
+            );
+        },
+
+        // Apply a working context map to the report
+        applySiteVisualOverviewContextMap(sectionName) {
+            const workspace =
+                this.currentSiteVisualOverviewWorkspace;
+
+            const section =
+                workspace?.sections?.[sectionName] || null;
+
+            if (
+                !workspace ||
+                !section ||
+                section.isWorkingLoading ||
+                !section.workingPreview ||
+                !this.isSiteVisualOverviewContextMapSection(
+                    sectionName
+                )
+            ) {
+                return;
+            }
+
+            section.preview =
+                section.workingPreview;
+
+            section.settings = {
+                ...section.workingSettings
+            };
+
+            section.status = 'ready';
+
+            section.isAdjusted =
+                !this
+                    .siteVisualOverviewContextMapSettingsMatch(
+                        section.settings,
+                        section.defaultSettings
+                    );
+
+            section.hasUnappliedChanges = false;
+            section.error = null;
+
+            this.refreshSiteVisualOverviewPreview();
+            this.updateSiteVisualOverviewWorkspaceStatus();
+
+            if (workspace.activeTab === sectionName) {
+                this.showSiteVisualOverviewTab(
+                    sectionName
+                );
+            }
+        },
+
+        // Render one adjustable context-map workspace
+        renderSiteVisualOverviewContextMapWorkspace(
+            title,
+            sectionName,
+            description
+        ) {
+            const section =
+                this.currentSiteVisualOverviewWorkspace
+                    ?.sections
+                    ?.[sectionName] || null;
+
+            if (
+                !section ||
+                !this.isSiteVisualOverviewContextMapSection(
+                    sectionName
+                )
+            ) {
+                return '';
+            }
+
+            const settings =
+                section.workingSettings ||
+                section.settings ||
+                {};
+
+            const previewUrl =
+                section.workingPreview ||
+                section.preview ||
+                '';
+
+            const zoom =
+                Number.isFinite(Number(settings.zoom))
+                    ? Number(settings.zoom)
+                    : '—';
+
+            // Resolve workspace badge
+            let statusLabel = 'Ready';
+            let statusBackground = '#dcfce7';
+            let statusColor = '#166534';
+
+            if (section.error) {
+                statusLabel = 'Error';
+                statusBackground = '#fee2e2';
+                statusColor = '#b91c1c';
+            } else if (
+                section.isWorkingLoading ||
+                section.status === 'loading'
+            ) {
+                statusLabel = 'Updating';
+                statusBackground = '#dbeafe';
+                statusColor = '#1d4ed8';
+            } else if (section.hasUnappliedChanges) {
+                statusLabel = 'Changes Pending';
+                statusBackground = '#fef3c7';
+                statusColor = '#92400e';
+            } else if (section.isAdjusted) {
+                statusLabel = 'Adjusted';
+                statusBackground = '#ccfbf1';
+                statusColor = '#0f766e';
+            } else if (section.status !== 'ready') {
+                statusLabel =
+                    this.formatSiteVisualOverviewStatus(
+                        section.status || 'notStarted'
+                    );
+
+                statusBackground = '#f1f5f9';
+                statusColor = '#64748b';
+            }
+
+            const controlsDisabled =
+                section.isWorkingLoading === true;
+
+            const applyDisabled =
+                controlsDisabled ||
+                !section.hasUnappliedChanges ||
+                !section.workingPreview;
+
             return `
-                <section>
-                    <div style="display:flex; justify-content:space-between; align-items:center;
-                        gap:10px; margin-bottom:10px;">
+                <div>
+                    <div style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:space-between;
+                        flex-wrap:wrap;
+                        gap:12px;
+                        margin-bottom:10px;
+                    ">
                         <div>
-                            <h3 style="margin:0 0 3px; color:#222; font-size:1.05rem;">
+                            <h3 style="
+                                margin:0 0 3px;
+                                color:#222;
+                                font-size:1.05rem;
+                            ">
                                 ${this.escapeHtml(title)}
                             </h3>
-                            <small style="color:#666;">${this.escapeHtml(description)}</small>
+
+                            <small style="color:#666;">
+                                ${this.escapeHtml(description)}
+                            </small>
                         </div>
-                        <span style="flex:0 0 auto; padding:4px 8px; border-radius:4px;
-                            background:#f1f5f9; color:#64748b; font-size:0.72rem; font-weight:700;">
-                            ${this.escapeHtml(status)}
+
+                        <span style="
+                            flex:0 0 auto;
+                            padding:4px 10px;
+                            background:${statusBackground};
+                            border-radius:5px;
+                            color:${statusColor};
+                            font-size:.75rem;
+                            font-weight:700;
+                        ">
+                            ${this.escapeHtml(statusLabel)}
                         </span>
                     </div>
-                    <div style="min-height:300px; display:flex; align-items:center; justify-content:center;
-                        padding:25px; border:1px dashed #cbd5e1; border-radius:8px;
-                        background:#f8fafc; color:#64748b; text-align:center;">
-                        ${this.escapeHtml(title)} preview and controls will appear here.
+
+                    <div style="
+                        display:grid;
+                        grid-template-columns:minmax(0, 1fr) 220px;
+                        gap:14px;
+                        align-items:start;
+                    ">
+                        <!-- Map preview -->
+                        <div style="
+                            position:relative;
+                            height:370px;
+                            overflow:hidden;
+                            background:#e2e8f0;
+                            border:1px solid #cbd5e1;
+                            border-radius:8px;
+                        ">
+                            ${
+                                previewUrl
+                                    ? `
+                                        <img
+                                            src="${this.escapeHtml(previewUrl)}"
+                                            alt="${this.escapeHtml(title)}"
+                                            draggable="false"
+                                            style="
+                                                display:block;
+                                                width:100%;
+                                                height:100%;
+                                                object-fit:cover;
+                                                pointer-events:none;
+                                            "
+                                        />
+                                    `
+                                    : `
+                                        <div style="
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            width:100%;
+                                            height:100%;
+                                            padding:24px;
+                                            box-sizing:border-box;
+                                            color:#64748b;
+                                            text-align:center;
+                                        ">
+                                            ${
+                                                section.status === 'loading'
+                                                    ? 'Preparing map preview...'
+                                                    : 'Map preview unavailable.'
+                                            }
+                                        </div>
+                                    `
+                            }
+
+                            ${
+                                section.isWorkingLoading
+                                    ? `
+                                        <div style="
+                                            position:absolute;
+                                            inset:0;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            background:rgba(255,255,255,.65);
+                                            color:#1e293b;
+                                            font-weight:700;
+                                        ">
+                                            Updating map...
+                                        </div>
+                                    `
+                                    : ''
+                            }
+                        </div>
+
+                        <!-- Map controls -->
+                        <div style="
+                            height:370px;
+                            box-sizing:border-box;
+                            padding:10px 12px;
+                            overflow:hidden;
+                            background:#f8fafc;
+                            border:1px solid #dbe2ea;
+                            border-radius:8px;
+                        ">
+                            <strong style="
+                                display:block;
+                                margin-bottom:8px;
+                                color:#334155;
+                                font-size:.88rem;
+                            ">
+                                Map Position
+                            </strong>
+
+                            <!-- Directional controls -->
+                            <div style="
+                                display:grid;
+                                grid-template-columns:repeat(3, 36px);
+                                gap:4px;
+                                justify-content:center;
+                                margin-bottom:10px;
+                            ">
+                                <div></div>
+
+                                <button
+                                    type="button"
+                                    onclick="SkyIndex.nudgeSiteVisualOverviewContextMap('${sectionName}', 0, -1)"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    aria-label="Move map north"
+                                    style="height:30px;"
+                                >
+                                    ↑
+                                </button>
+
+                                <div></div>
+
+                                <button
+                                    type="button"
+                                    onclick="SkyIndex.nudgeSiteVisualOverviewContextMap('${sectionName}', -1, 0)"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    aria-label="Move map west"
+                                    style="height:30px;"
+                                >
+                                    ←
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onclick="SkyIndex.resetSiteVisualOverviewContextMap('${sectionName}')"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    aria-label="Reset automatic frame"
+                                    style="height:30px;"
+                                >
+                                    ↻
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onclick="SkyIndex.nudgeSiteVisualOverviewContextMap('${sectionName}', 1, 0)"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    aria-label="Move map east"
+                                    style="height:30px;"
+                                >
+                                    →
+                                </button>
+
+                                <div></div>
+
+                                <button
+                                    type="button"
+                                    onclick="SkyIndex.nudgeSiteVisualOverviewContextMap('${sectionName}', 0, 1)"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    aria-label="Move map south"
+                                    style="height:30px;"
+                                >
+                                    ↓
+                                </button>
+
+                                <div></div>
+                            </div>
+
+                            <!-- Zoom controls -->
+                            <div style="margin-bottom:12px;">
+                                <div style="
+                                    display:flex;
+                                    align-items:center;
+                                    justify-content:space-between;
+                                    margin-bottom:4px;
+                                    color:#475569;
+                                    font-size:.82rem;
+                                ">
+                                    <span>Zoom</span>
+
+                                    <strong style="color:#0f766e;">
+                                        ${this.escapeHtml(String(zoom))}
+                                    </strong>
+                                </div>
+
+                                <div style="
+                                    display:grid;
+                                    grid-template-columns:1fr 1fr;
+                                    gap:8px;
+                                ">
+                                    <button
+                                        type="button"
+                                        onclick="SkyIndex.changeSiteVisualOverviewContextMapZoom('${sectionName}', -1)"
+                                        ${controlsDisabled ? 'disabled' : ''}
+                                        aria-label="Zoom out"
+                                        style="height:30px;"
+                                    >
+                                        −
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick="SkyIndex.changeSiteVisualOverviewContextMapZoom('${sectionName}', 1)"
+                                        ${controlsDisabled ? 'disabled' : ''}
+                                        aria-label="Zoom in"
+                                        style="height:30px;"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+
+                            ${
+                                section.error
+                                    ? `
+                                        <div style="
+                                            margin-bottom:8px;
+                                            color:#b91c1c;
+                                            font-size:.75rem;
+                                            line-height:1.3;
+                                            text-align:center;
+                                        ">
+                                            ${this.escapeHtml(section.error)}
+                                        </div>
+                                    `
+                                    : `
+                                        <div style="
+                                            min-height:34px;
+                                            margin-bottom:8px;
+                                            color:${
+                                                section.hasUnappliedChanges
+                                                    ? '#b45309'
+                                                    : '#64748b'
+                                            };
+                                            font-size:.75rem;
+                                            line-height:1.35;
+                                            text-align:center;
+                                        ">
+                                            ${
+                                                section.hasUnappliedChanges
+                                                    ? 'Changes have not been applied to the report.'
+                                                    : 'The displayed map is applied to the report.'
+                                            }
+                                        </div>
+                                    `
+                            }
+
+                            <!-- Actions -->
+                            <div style="
+                                display:grid;
+                                gap:6px;
+                            ">
+                                <button
+                                    type="button"
+                                    onclick="SkyIndex.applySiteVisualOverviewContextMap('${sectionName}')"
+                                    ${applyDisabled ? 'disabled' : ''}
+                                    style="
+                                        height:34px;
+                                        background:${
+                                            applyDisabled
+                                                ? '#cbd5e1'
+                                                : '#0d9488'
+                                        };
+                                        border:1px solid ${
+                                            applyDisabled
+                                                ? '#cbd5e1'
+                                                : '#0d9488'
+                                        };
+                                        border-radius:5px;
+                                        color:${
+                                            applyDisabled
+                                                ? '#64748b'
+                                                : '#fff'
+                                        };
+                                        cursor:${
+                                            applyDisabled
+                                                ? 'not-allowed'
+                                                : 'pointer'
+                                        };
+                                        font-weight:700;
+                                    "
+                                >
+                                    Apply to Report
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onclick="SkyIndex.resetSiteVisualOverviewContextMap('${sectionName}')"
+                                    ${controlsDisabled ? 'disabled' : ''}
+                                    style="
+                                        height:32px;
+                                        background:#fff;
+                                        border:1px solid #cbd5e1;
+                                        border-radius:5px;
+                                        color:#475569;
+                                        cursor:${
+                                            controlsDisabled
+                                                ? 'not-allowed'
+                                                : 'pointer'
+                                        };
+                                        font-weight:600;
+                                    "
+                                >
+                                    Reset Frame
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </section>
+                </div>
             `;
         },
 
