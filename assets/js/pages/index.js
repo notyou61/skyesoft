@@ -768,7 +768,9 @@ window.SkyIndex = {
         exit: "logout",
 
         "?": "help",
-        help: "help"
+        help: "help",
+
+        "create order": "create_order"
     },
 
     // Command Registry (Authoritative)
@@ -825,6 +827,12 @@ window.SkyIndex = {
 
     // #region 🧩 UI Action Registry (Authoritative)
     uiActionRegistry: {
+        
+        // 📦 Create Order
+        create_order() {
+            this.openNewOrderWorkspace();
+        },        
+        
         // 🧹 Clear Session Surface
         clear_screen() {
             this.clearSessionSurface();
@@ -9080,6 +9088,14 @@ window.SkyIndex = {
         } else {
             this.appendSystemLine('Workspace is not available.');
         }
+    },
+
+    // #endregion
+
+    // #region 📦 Order Creation Workspace
+
+    openNewOrderWorkspace() {
+        this.appendSystemLine('Opening New Order workspace...');
     },
 
     // #endregion
