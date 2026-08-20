@@ -9095,7 +9095,89 @@ window.SkyIndex = {
     // #region 📦 Order Creation Workspace
 
     openNewOrderWorkspace() {
-        this.appendSystemLine('Opening New Order workspace...');
+        if (!window.SkyWorkspace) {
+            this.appendSystemLine('Workspace is not available.');
+            return;
+        }
+
+        window.SkyWorkspace.open({
+            pageType:   'order_create',
+            objectType: 'order',
+            objectId:   null,
+            title:      'New Order',
+            state: {
+                locationId: null
+            }
+        });
+    },
+
+    async renderOrderCreatePage(page, ctx) {
+        return {
+            titleHtml: `
+                <div>
+                    <strong>New Order</strong>
+                    <div style="margin-top:3px; color:#777; font-size:0.82em;">
+                        Select the jobsite Location
+                    </div>
+                </div>
+            `,
+
+            bodyHtml: `
+                <div style="padding:4px 0;">
+                    <label for="newOrderLocationSearch"
+                           style="display:block; margin-bottom:6px; color:#333; font-weight:600;">
+                        Location
+                    </label>
+
+                    <input
+                        id="newOrderLocationSearch"
+                        type="text"
+                        placeholder="Start typing location..."
+                        autocomplete="off"
+                        style="
+                            box-sizing:border-box;
+                            width:100%;
+                            padding:10px 12px;
+                            border:1px solid #ccc;
+                            border-radius:6px;
+                            font-size:0.95em;
+                        "
+                    >
+
+                    <div id="newOrderLocationResults"
+                         style="margin-top:8px;"></div>
+                </div>
+            `,
+
+            actionsHtml: `
+                <button type="button"
+                        onclick="SkyWorkspace.close()"
+                        style="
+                            padding:8px 16px;
+                            border:1px solid #ccc;
+                            border-radius:6px;
+                            background:#fff;
+                            color:#333;
+                            cursor:pointer;
+                        ">
+                    Cancel
+                </button>
+
+                <button type="button"
+                        id="newOrderContinueButton"
+                        disabled
+                        style="
+                            padding:8px 16px;
+                            border:0;
+                            border-radius:6px;
+                            background:#999;
+                            color:#fff;
+                            cursor:not-allowed;
+                        ">
+                    Continue
+                </button>
+            `
+        };
     },
 
     // #endregion
