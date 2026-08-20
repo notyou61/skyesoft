@@ -16698,6 +16698,12 @@ if (window.SkyWorkspace) {
     if (typeof SkyIndex.renderContactPage === 'function') {
         SkyWorkspace.registerPage('contact', SkyIndex.renderContactPage.bind(SkyIndex));
     }
+    if (typeof SkyIndex.renderOrderCreatePage === 'function') {
+        SkyWorkspace.registerPage(
+            'order_create',
+            SkyIndex.renderOrderCreatePage.bind(SkyIndex)
+        );
+    }
 
     console.log('[SkyWorkspace] registered:', Object.keys(SkyWorkspace._registry));
     console.log('[SkyWorkspace] renderers:', {
