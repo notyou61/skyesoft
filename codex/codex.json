@@ -6208,6 +6208,354 @@
                     "Phase 1 zoning intentionally stores minimal normalized zoning intelligence."
                 ]
             },
+            "orderLifecycleStandard": {
+                "title": {
+                    "icon": 16,
+                    "text": "Order Lifecycle & Operational Standard"
+                },
+                "tier": 2,
+                "type": "Order Identity, Fulfillment & Lifecycle Standard",
+                "hierarchyOrder": 7,
+                "preamble": {
+                    "text": "Defines the authoritative lifecycle, operational identity, fulfillment classification, status, progress, and downstream relationships governing Orders within Skyesoft. This standard establishes the Order as the persistent project-level record connecting proposed work, customer authorization, fulfillment, permitting, completion, collection, and administrative closeout without fragmenting the project across multiple Order records."
+                },
+                "purpose": {
+                    "icon": 6,
+                    "text": "Establish a consistent Order lifecycle that preserves project identity from proposed work through final closeout while separating commercial progress, operational fulfillment, financial completion, and jurisdictional permitting activity."
+                },
+                "corePrinciples": {
+                    "rules": [
+                        "The Order is the primary project-level operational record.",
+                        "An Order persists through the lifecycle of the work and must not be recreated merely because its commercial or operational state changes.",
+                        "Customer authorization converts proposed work into sold work within the existing Order.",
+                        "The five-digit Christy Work Order number is the human-facing project identity.",
+                        "Order Type, Order Status, and Order Progress represent separate operational concepts.",
+                        "Order Type defines how the work is expected to be fulfilled.",
+                        "Order Status defines the overall disposition of the Order.",
+                        "Order Progress identifies meaningful operational and commercial milestones.",
+                        "Order Progress must not be treated as a rigid single-state workflow.",
+                        "Permit and inspection activity operates as a parallel lifecycle through related Application records.",
+                        "Application progress must not overwrite or redefine Order progress.",
+                        "Historical lifecycle activity must remain auditable through the Skyesoft Action architecture."
+                    ]
+                },
+                "orderIdentityModel": {
+                    "description": "Defines the persistent identity and project-level role of an Order.",
+                    "rules": [
+                        "One Order represents one persistent body of customer-authorized or proposed work.",
+                        "The Order remains the same record as work advances from proposal through fulfillment and closeout.",
+                        "A change from proposed to sold work must update the existing Order rather than create a replacement Order.",
+                        "The Christy Work Order number provides the primary human-facing project reference.",
+                        "Downstream Applications, tasks, actions, artifacts, notes, and related operational records may reference the Order.",
+                        "An Order must remain identifiable independently from any individual Application or permit."
+                    ]
+                },
+                "orderTypeModel": {
+                    "description": "Defines the fulfillment model governing how an Order is expected to be executed.",
+                    "types": [
+                        {
+                            "value": "Production",
+                            "description": "Work requiring internal or coordinated fabrication, production, delivery, installation, or related fulfillment activity."
+                        },
+                        {
+                            "value": "Fabricate / Ship",
+                            "description": "Work fabricated for shipment or delivery without Christy Signs performing the final installation."
+                        },
+                        {
+                            "value": "Receive / Install",
+                            "description": "Work involving receipt of customer, vendor, or third-party supplied materials followed by installation or field fulfillment."
+                        },
+                        {
+                            "value": "Service",
+                            "description": "Service, repair, maintenance, survey, diagnostic, removal, replacement, or other field-oriented work not primarily governed by new-sign production."
+                        }
+                    ],
+                    "rules": [
+                        "Order Type describes the fulfillment model and must not be used as Order Status.",
+                        "Order Type must remain independent from permit requirements.",
+                        "Orders of any applicable type may require one or more Applications.",
+                        "Changing Order Type must not create a new Order."
+                    ]
+                },
+                "orderStatusModel": {
+                    "description": "Defines the overall operational disposition of an Order independently from its detailed progress.",
+                    "statuses": [
+                        {
+                            "value": "Active",
+                            "description": "The Order remains active and capable of progressing."
+                        },
+                        {
+                            "value": "On Hold",
+                            "description": "The Order remains valid but advancement is temporarily suspended."
+                        },
+                        {
+                            "value": "Lost",
+                            "description": "Proposed work was not awarded or otherwise will not proceed as an active sale."
+                        },
+                        {
+                            "value": "Cancelled",
+                            "description": "Previously active or authorized work has been cancelled."
+                        },
+                        {
+                            "value": "Closed",
+                            "description": "The Order has completed its required operational and administrative lifecycle."
+                        }
+                    ],
+                    "rules": [
+                        "Order Status represents disposition rather than detailed workflow position.",
+                        "Order Status and Order Progress must be stored and interpreted independently.",
+                        "An Active Order may contain multiple completed progress milestones.",
+                        "On Hold does not erase prior progress.",
+                        "Lost and Cancelled Orders remain historical records and must not be deleted merely because work will not proceed.",
+                        "Closed represents lifecycle completion and must not be used merely because fabrication or installation has finished."
+                    ]
+                },
+                "orderProgressModel": {
+                    "description": "Defines meaningful commercial and operational milestones associated with an Order.",
+                    "progressValues": [
+                        "Design",
+                        "Estimating",
+                        "Sold",
+                        "Fulfillment",
+                        "Completed",
+                        "Collected",
+                        "Closed Out"
+                    ],
+                    "rules": [
+                        "Order Progress represents lifecycle milestones rather than the overall disposition of the Order.",
+                        "Progress values must not be assumed to represent a rigid sequential state machine.",
+                        "More than one operational concern may exist simultaneously.",
+                        "Design and estimating activity may occur before customer authorization.",
+                        "Sold indicates customer authorization or equivalent commercial acceptance.",
+                        "Fulfillment represents execution of the authorized scope according to the Order Type.",
+                        "Completed indicates that the applicable physical or service scope has been substantially completed.",
+                        "Collected represents satisfaction of the applicable customer payment obligation.",
+                        "Closed Out represents completion of the applicable administrative and project-closeout obligations.",
+                        "Progress history must remain auditable."
+                    ]
+                },
+                "proposalToSoldModel": {
+                    "description": "Defines conversion of proposed work into customer-authorized work.",
+                    "rules": [
+                        "Proposed work and sold work belong to the same Order lifecycle.",
+                        "Customer approval must not generate a second Order solely to represent the sale.",
+                        "The existing Order must retain its identity when the work becomes Sold.",
+                        "Proposal history must remain associated with the Order after customer authorization.",
+                        "The Sold milestone records commercial authorization and does not imply that permitting, production, installation, collection, or closeout is complete."
+                    ]
+                },
+                "applicationRelationshipModel": {
+                    "description": "Defines the relationship between Orders and jurisdictional Application records.",
+                    "rules": [
+                        "The Order is the parent project-level operational record.",
+                        "Applications represent jurisdiction-specific permitting, approval, inspection, or regulatory processes associated with the Order.",
+                        "One Order may have zero, one, or multiple Applications.",
+                        "Applications maintain their own lifecycle independently from Order Progress.",
+                        "Application review cycles, corrections, resubmittals, approvals, permit issuance, inspections, and jurisdictional closeout belong to the Application lifecycle.",
+                        "Application activity must not be compressed into Order Progress.",
+                        "An Order may be Sold while an Application remains under review.",
+                        "An Order may reach physical completion while an Application or inspection obligation remains unresolved.",
+                        "Closing an Application does not automatically close the parent Order.",
+                        "Closing an Order requires consideration of all applicable downstream obligations."
+                    ]
+                },
+                "parallelLifecycleModel": {
+                    "description": "Defines the independent but related operational rails that may progress concurrently within an Order.",
+                    "rails": {
+                        "commercial": [
+                            "Design",
+                            "Estimating",
+                            "Sold"
+                        ],
+                        "fulfillment": [
+                            "Production",
+                            "Fabrication",
+                            "Shipping",
+                            "Receiving",
+                            "Installation",
+                            "Service",
+                            "Completed"
+                        ],
+                        "financial": [
+                            "Invoicing",
+                            "Collection",
+                            "Collected"
+                        ],
+                        "jurisdictional": [
+                            "Application Preparation",
+                            "Submittal",
+                            "Review",
+                            "Corrections",
+                            "Resubmittal",
+                            "Approval",
+                            "Permit Issuance",
+                            "Inspection",
+                            "Jurisdictional Closeout"
+                        ],
+                        "administrative": [
+                            "Documentation",
+                            "Artifact Retention",
+                            "Final Review",
+                            "Closed Out"
+                        ]
+                    },
+                    "rules": [
+                        "Lifecycle rails may advance independently and concurrently.",
+                        "Completion of one rail must not falsely imply completion of another.",
+                        "Jurisdictional activity is primarily represented through related Application records.",
+                        "The Order provides the project-level context connecting the parallel lifecycle rails."
+                    ]
+                },
+                "closeoutModel": {
+                    "description": "Defines the conditions governing final Order closeout.",
+                    "rules": [
+                        "Physical completion alone does not necessarily constitute Order closeout.",
+                        "Applicable fulfillment obligations must be resolved.",
+                        "Applicable financial obligations must be resolved or administratively dispositioned.",
+                        "Applicable Applications, permits, inspections, and regulatory obligations must be resolved or administratively dispositioned.",
+                        "Required project documentation and artifacts must be retained according to Skyesoft standards.",
+                        "Closed Out represents administrative completion of the Order lifecycle.",
+                        "Order Status may transition to Closed only when the Order no longer requires active operational management."
+                    ]
+                },
+                "actionIntegration": {
+                    "description": "Defines lifecycle audit behavior under the Skyesoft Action architecture.",
+                    "rules": [
+                        "Meaningful Order lifecycle changes must remain auditable.",
+                        "Historical lifecycle events must not be silently overwritten.",
+                        "Order lifecycle actions must follow the governing Skyesoft Action and CRUD doctrine.",
+                        "Corrections to historical actions must be represented through subsequent actions rather than mutation of immutable historical records.",
+                        "Action payloads should preserve sufficient structured context to reconstruct meaningful Order lifecycle changes."
+                    ]
+                },
+                "databaseRules": {
+                    "rules": [
+                        "Order identity must remain stable throughout the project lifecycle.",
+                        "Order Type, Order Status, and Order Progress must remain logically distinct.",
+                        "Application lifecycle data must not be duplicated into the Order merely for convenience.",
+                        "Order records must not be duplicated solely because commercial, fulfillment, financial, or permit state changes.",
+                        "Historical Order lifecycle activity must remain reconstructable through authoritative database records and actions.",
+                        "Foreign-key relationships should preserve the Order as the parent project context for applicable downstream operational records."
+                    ]
+                },
+                "notes": [
+                    "The Order is the durable project-level record connecting customer intent to operational completion.",
+                    "This standard intentionally separates Status from Progress to prevent workflow state from being confused with project disposition.",
+                    "Permit and inspection workflows remain subordinate but independently progressing Application lifecycles.",
+                    "The parallel lifecycle model allows Skyesoft to represent real-world projects where design, permitting, production, installation, invoicing, and collection overlap.",
+                    "Future workflow automation must preserve these distinctions rather than forcing Orders into a single linear state machine."
+                ]
+            },
+            "permitApplicationWorkflow": {
+                "version": "1.0.0",
+                "status": "draft",
+                "binding": false,
+                "scope": "global",
+                "description": "Defines the canonical Skyesoft workflow architecture for sign permit applications. The standard governs the relationship between an order and its permit application, application stages and statuses, completeness checks, jurisdiction review cycles, fees, inspections, lifecycle events, and finalization.",
+                "rules": [
+                    {
+                        "id": "order_application_relationship",
+                        "title": "Order and Application Relationship",
+                        "description": "A permit application must be associated with an order. The order represents the underlying project or work, while the application represents the permit process associated with that work. Permit workflow state must be maintained at the application level and must not be inferred solely from the order status."
+                    },
+                    {
+                        "id": "stage_status_separation",
+                        "title": "Stage and Status Separation",
+                        "description": "Application stage and application status are distinct concepts. Stage identifies the major workflow phase occupied by the application. Status identifies the application's current condition within that stage. Status values must not be used as substitutes for workflow stages."
+                    },
+                    {
+                        "id": "canonical_permit_stages",
+                        "title": "Canonical Permit Stages",
+                        "description": "The standard permit workflow consists of Pre-Submittal, Submitted, Jurisdiction Review, Approval / Issuance, Inspection, and Finaled stages. Movement between stages represents meaningful advancement of the permit application lifecycle."
+                    },
+                    {
+                        "id": "internal_completeness",
+                        "title": "Internal Completeness Check",
+                        "description": "Prior to permit submission, Skyesoft must support an internal completeness determination confirming that the application package is sufficiently complete for submission. Internal completeness is a workflow control and does not represent jurisdiction acceptance or approval."
+                    },
+                    {
+                        "id": "jurisdiction_completeness",
+                        "title": "Jurisdiction Completeness Check",
+                        "description": "After submission, a jurisdiction may perform its own completeness or intake review. Jurisdiction completeness must remain distinct from Skyesoft's internal completeness determination and from substantive permit review."
+                    },
+                    {
+                        "id": "review_correction_cycle",
+                        "title": "Review and Correction Cycle",
+                        "description": "Jurisdiction review may contain repeatable correction and resubmittal cycles. An application may transition from Under Review to Corrections Required, then to Resubmitted, and subsequently return to Under Review. The architecture must support any reasonable number of review cycles without creating a new permit application."
+                    },
+                    {
+                        "id": "lifecycle_events",
+                        "title": "Permit Lifecycle Events",
+                        "description": "Significant occurrences in the permit process must be represented as lifecycle events rather than being inferred exclusively from the current application status. Lifecycle events may include submission, jurisdiction acceptance, correction issuance, resubmittal, approval, fee payment, permit issuance, inspection requests, inspection results, and finalization."
+                    },
+                    {
+                        "id": "current_state_history_separation",
+                        "title": "Current State and Historical Event Separation",
+                        "description": "The application's current stage and status represent its present workflow state. Lifecycle events represent the historical sequence that produced that state. Updating current state must not destroy or overwrite the historical record of prior workflow events."
+                    },
+                    {
+                        "id": "permit_fee_architecture",
+                        "title": "Permit Fee Architecture",
+                        "description": "Permit fees must be represented as discrete workflow records or events rather than as a single assumed permit fee. The architecture must support Review Fees and Final Fees, including multiple Review Fees when required by the jurisdiction. A separate Final Fee must not be assumed when the jurisdiction does not impose one."
+                    },
+                    {
+                        "id": "fee_payment_state",
+                        "title": "Fee Payment State",
+                        "description": "Assessment of a permit fee and payment of that fee are separate conditions. Skyesoft must be capable of identifying the fee type, amount when known, assessment state, payment state, and associated lifecycle event without treating fee payment itself as permit approval or issuance."
+                    },
+                    {
+                        "id": "approval_issuance_separation",
+                        "title": "Approval and Issuance Separation",
+                        "description": "Permit approval and permit issuance must be capable of being represented separately. An approved application may still require payment, administrative processing, or other jurisdiction requirements before the permit is issued."
+                    },
+                    {
+                        "id": "inspection_repeatability",
+                        "title": "Repeatable Inspection Workflow",
+                        "description": "Permit inspections must support repeatable inspection events. An inspection may be requested and result in Passed, Failed, Cancelled, or another supported result. A failed inspection may be followed by another inspection request without replacing or deleting the prior inspection event."
+                    },
+                    {
+                        "id": "finalization",
+                        "title": "Permit Finalization",
+                        "description": "Finaled represents completion of the permit lifecycle. Finalization must be based on an authoritative permit outcome or supported workflow event and must not be inferred merely because installation, inspection activity, or project work appears complete."
+                    },
+                    {
+                        "id": "checklist_separation",
+                        "title": "Checklist Separation",
+                        "description": "Checklist items represent requirements or tasks associated with progressing an application and are not themselves application stages or statuses. Completion of checklist items may support a stage transition but must not independently redefine the application's lifecycle state."
+                    },
+                    {
+                        "id": "append_only_workflow_history",
+                        "title": "Append-Only Workflow History",
+                        "description": "Historical permit lifecycle events must be preserved as append-only workflow history. Corrections, resubmittals, fee activity, inspections, and other completed events must not be physically removed merely because the application has advanced to a later stage."
+                    },
+                    {
+                        "id": "special_application_exclusion",
+                        "title": "Special Application Exclusion",
+                        "description": "This standard governs the normal sign permit application workflow only. Variances, use permits, Comprehensive Sign Plans, zoning adjustments, planning applications, and other special entitlement or planning processes are outside the scope of this version and must not be assumed to follow this workflow."
+                    }
+                ],
+                "application": {
+                    "default": true,
+                    "overridable": false,
+                    "injection": "automatic",
+                    "appliesTo": [
+                        "permitApplications",
+                        "permitWorkflow",
+                        "applicationManagement",
+                        "permitReporting",
+                        "skyebotCore"
+                    ]
+                },
+                "notes": [
+                    "This standard defines permit workflow architecture and does not prescribe jurisdiction-specific permit requirements.",
+                    "An Order and a Permit Application are related but distinct business objects.",
+                    "Stage describes workflow position; Status describes current condition; Lifecycle Events preserve history; Checklists describe requirements.",
+                    "Correction, resubmittal, fee, and inspection activity may repeat during the life of a single permit application.",
+                    "Jurisdiction-specific terminology may be mapped to canonical Skyesoft workflow concepts without replacing the canonical architecture.",
+                    "Special entitlement and planning workflows will be governed by separate or future Codex standards.",
+                    "Changes to this workflow are Codex-governed and Merkle-protected post-SIS."
+                ]
+            },
             "gisVerifiedStreetFrontageStandard": {
                 "title": {
                     "icon": 15,
