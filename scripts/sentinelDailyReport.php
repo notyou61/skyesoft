@@ -29,18 +29,27 @@ function fail(string $message): never
 
 #region SECTION II — Configuration Loading
 
+// Resolve Skyesoft installation root
 $rootDir = realpath(__DIR__ . '/../');
 
 if ($rootDir === false) {
     fail('Unable to resolve Skyesoft root directory.');
 }
 
+// Define Sentinel runtime state
 $statePath = $rootDir . '/data/runtimeEphemeral/sentinelState.json';
-// Define authoritative version metadata
+
+// Define authoritative Skyesoft version metadata
 $versionsPath = $rootDir . '/data/authoritative/versions.json';
 
+// Validate Sentinel runtime state
 if (!is_file($statePath)) {
     fail('Sentinel runtime state is unavailable.');
+}
+
+// Validate authoritative version metadata
+if (!is_file($versionsPath)) {
+    fail('Authoritative version metadata is unavailable: ' . $versionsPath);
 }
 
 #endregion
