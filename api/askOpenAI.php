@@ -2481,6 +2481,104 @@ function loadLocationPage(?PDO $db, int $page = 1, int $pageSize = 5): array
 }
 
 /**
+ * Search authoritative Locations for autocomplete.
+ *
+ * @param PDO|null $db
+ * @param string   $query
+ * @param int      $limit
+ * @return array
+ */
+function searchLocations(?PDO $db, string $query, int $limit = 10): array
+{
+    // Normalize search
+    $query = trim($query);
+    $limit = max(1, min(10, $limit));
+
+    if (!$db instanceof PDO || strlen($query) < 2) {
+        return [];
+    }
+
+    try {
+        // Prepare search values
+        $contains = '%' . $query . '%';
+        $prefix   = $query . '%';
+
+        $stmt = $db->prepare("
+            SELECT
+                l.locationId,
+                l.locationName,
+                l.locationAddress,
+                l.locationAddressSuite,
+                l.locationCity,
+                l.locationState,
+                l.locationZip,
+                l.locationEntityId,
+                e.entityName
+            FROM tblLocations l
+            LEFT JOIN tblEntities e
+                ON e.entityId = l.locationEntityId
+            WHERE COALESCE(l.locationIsNotValid, 0) = 0
+              AND (
+                    l.locationName LIKE :nameContains
+                 OR l.locationAddress LIKE :addressContains
+                 OR l.locationCity LIKE :cityContains
+                 OR e.entityName LIKE :entityContains
+              )
+            ORDER BY
+                CASE
+                    WHEN l.locationName = :exactName THEN 1
+                    WHEN l.locationName LIKE :namePrefix THEN 2
+                    WHEN l.locationAddress LIKE :addressPrefix THEN 3
+                    WHEN e.entityName LIKE :entityPrefix THEN 4
+                    ELSE 5
+                END,
+                l.locationName ASC,
+                l.locationId ASC
+            LIMIT :limit
+        ");
+
+        $stmt->bindValue(':nameContains',    $contains, PDO::PARAM_STR);
+        $stmt->bindValue(':addressContains', $contains, PDO::PARAM_STR);
+        $stmt->bindValue(':cityContains',    $contains, PDO::PARAM_STR);
+        $stmt->bindValue(':entityContains',  $contains, PDO::PARAM_STR);
+        $stmt->bindValue(':exactName',       $query,    PDO::PARAM_STR);
+        $stmt->bindValue(':namePrefix',      $prefix,   PDO::PARAM_STR);
+        $stmt->bindValue(':addressPrefix',   $prefix,   PDO::PARAM_STR);
+        $stmt->bindValue(':entityPrefix',    $prefix,   PDO::PARAM_STR);
+        $stmt->bindValue(':limit',           $limit,    PDO::PARAM_INT);
+        $stmt->execute();
+
+        $locations = [];
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $locations[] = [
+                'locationId'           => (int)$row['locationId'],
+                'locationName'         => $row['locationName'] ?: 'Unnamed Location',
+                'locationAddress'      => $row['locationAddress'] ?: null,
+                'locationAddressSuite' => $row['locationAddressSuite'] ?: null,
+                'locationCity'         => $row['locationCity'] ?: null,
+                'locationState'        => $row['locationState'] ?: null,
+                'locationZip'          => $row['locationZip'] ?: null,
+                'locationEntityId'     => $row['locationEntityId']
+                    ? (int)$row['locationEntityId']
+                    : null,
+                'entityName'           => $row['entityName'] ?: null
+            ];
+        }
+
+        return $locations;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[searchLocations] Search failed: ' .
+            $e->getMessage()
+        );
+
+        return [];
+    }
+}
+
+/**
  * Resolve a location by natural-language phrase.
  * Returns a structured location_detail payload or null.
  *
@@ -3655,6 +3753,44 @@ if ($type === 'locationUpdate') {
         ], JSON_UNESCAPED_SLASHES);
         exit;
     }
+}
+
+// =====================================================
+// READ-ONLY LOCATION SEARCH (Order autocomplete)
+// =====================================================
+
+if ($type === 'locationSearch') {
+
+    // Resolve search request
+    $query = trim((string)($input['query'] ?? ''));
+    $limit = max(1, min(10, (int)($input['limit'] ?? 10)));
+
+    // Require enough input for a useful search
+    if (strlen($query) < 2) {
+        echo json_encode([
+            'success'   => true,
+            'type'      => 'location_search',
+            'query'     => $query,
+            'locations' => []
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Search authoritative Locations
+    $locations = searchLocations(
+        $db,
+        $query,
+        $limit
+    );
+
+    echo json_encode([
+        'success'   => true,
+        'type'      => 'location_search',
+        'query'     => $query,
+        'locations' => $locations
+    ], JSON_UNESCAPED_SLASHES);
+
+    exit;
 }
 
 // =====================================================
