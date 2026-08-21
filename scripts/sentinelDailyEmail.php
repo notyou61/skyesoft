@@ -395,7 +395,6 @@ $mail = new PHPMailer(true);
 
 // Limit SMTP connection wait during diagnostics
 $mail->Timeout = 15;
-$mail->Timelimit = 20;
 
 // Enable SMTP diagnostic output
 $mail->SMTPDebug = 2;
