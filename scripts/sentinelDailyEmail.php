@@ -393,6 +393,37 @@ $html = '
 // Initialize PHPMailer
 $mail = new PHPMailer(true);
 
+// Limit SMTP connection wait during diagnostics
+$mail->Timeout = 15;
+$mail->Timelimit = 20;
+
+// Enable SMTP diagnostic output
+$mail->SMTPDebug = 2;
+
+$mail->Debugoutput = static function (
+    string $message,
+    int $level
+): void {
+    echo '<pre style="
+        margin: 4px 20px;
+        padding: 6px;
+        background: #f5f5f5;
+        font-size: 12px;
+        white-space: pre-wrap;
+    ">';
+
+    echo htmlspecialchars(
+        'SMTP [' . $level . '] ' . $message,
+        ENT_QUOTES,
+        'UTF-8'
+    );
+
+    echo '</pre>';
+
+    @ob_flush();
+    flush();
+};
+
 // Configure SMTP transport
 $mail->isSMTP();
 
@@ -411,7 +442,6 @@ $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
 $mail->CharSet = 'UTF-8';
 
 // Disable SMTP debug output for normal execution
-$mail->SMTPDebug = 0;
 
 // Define sender
 $mail->setFrom(
