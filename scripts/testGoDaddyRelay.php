@@ -25,7 +25,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 
 // Configure test addresses
 $senderEmail = 'steve.skye@skyelighting.com';
-$recipientEmail = 'steve.skye.skyelighting@gmail.com';
+$recipientEmail = 'steve@christysigns.com';
 
 // Initialize result
 $success = false;
