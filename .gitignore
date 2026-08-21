@@ -41,16 +41,18 @@ reports/generated/
 reports/temp/
 
 # Composer dependencies (excluded by default)
-
-vendor/
+vendor/*
 
 # PHPMailer runtime dependencies
 # Version-controlled because GoDaddy does not rebuild Composer packages.
-!vendor/
 !vendor/phpmailer/
 !vendor/phpmailer/**
+
+# Composer autoload metadata required by PHPMailer
 !vendor/composer/
 !vendor/composer/**
+
+# Composer root autoloader
 !vendor/autoload.php
 
 # Kalshi runtime dependencies
