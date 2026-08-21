@@ -20,7 +20,7 @@ header('Content-Type: text/html; charset=UTF-8');
 #region SECTION II — Mail Configuration
 
 // Define test recipient
-$recipientEmail = 'steve.skye@skyelighting.com';
+$recipientEmail = 'steve.skye.skyelighting@gmail.com';
 
 // Define local transport sender
 $senderEmail = 'steve.skye@skyelighting.com';
@@ -155,12 +155,16 @@ $headerString = implode(
 // Record transport start time
 $startTime = microtime(true);
 
+// Define explicit envelope sender
+$envelopeSender = '-f ' . $senderEmail;
+
 // Submit message to local mail transport
 $mailAccepted = mail(
     $recipientEmail,
     $subject,
     $html,
-    $headerString
+    $headerString,
+    $envelopeSender
 );
 
 // Calculate submission duration
