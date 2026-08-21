@@ -43,6 +43,10 @@ synchronize remote -delete -filemask="|artifacts/;*/vendor/;*/.git/;*/node_modul
 # Only the required PHPMailer runtime classes are deployed.
 # =========================================================
 
+mkdir skyesoft/vendor/phpmailer
+mkdir skyesoft/vendor/phpmailer/phpmailer
+mkdir skyesoft/vendor/phpmailer/phpmailer/src
+
 synchronize remote -delete vendor/phpmailer/phpmailer/src skyesoft/vendor/phpmailer/phpmailer/src
 
 # =========================================================
