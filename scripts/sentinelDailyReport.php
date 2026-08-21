@@ -36,6 +36,8 @@ if ($rootDir === false) {
 }
 
 $statePath = $rootDir . '/data/runtimeEphemeral/sentinelState.json';
+// Define authoritative version metadata
+$versionsPath = $rootDir . '/data/authoritative/versions.json';
 
 if (!is_file($statePath)) {
     fail('Sentinel runtime state is unavailable.');
@@ -91,10 +93,38 @@ function formatExecutionStatus(string $status): string
     }
 }
 
+function formatElapsedTime(?int $unix): string
+{
+    if ($unix === null || $unix <= 0) {
+        return 'Not Available';
+    }
+
+    $elapsedSeconds = time() - $unix;
+
+    if ($elapsedSeconds < 0) {
+        return 'Not Available';
+    }
+
+    $days = (int) floor($elapsedSeconds / 86400);
+    $hours = (int) floor(($elapsedSeconds % 86400) / 3600);
+    $minutes = (int) floor(($elapsedSeconds % 3600) / 60);
+
+    if ($days > 0) {
+        return $days . ' days, ' . $hours . ' hours';
+    }
+
+    if ($hours > 0) {
+        return $hours . ' hours, ' . $minutes . ' minutes';
+    }
+
+    return $minutes . ' minutes';
+}
+
 #endregion
 
 #region SECTION IV — Report Data
 
+// Load Sentinel runtime state
 $rawState = file_get_contents($statePath);
 
 if ($rawState === false) {
@@ -107,6 +137,7 @@ if (!is_array($state)) {
     fail('Sentinel runtime state contains invalid JSON.');
 }
 
+// Resolve Sentinel runtime details
 $initialRunUnix = isset($state['initialRunUnix'])
     ? (int) $state['initialRunUnix']
     : null;
@@ -124,6 +155,28 @@ $unresolvedViolations = (int) ($state['unresolvedViolations'] ?? 0);
 $constitutionalViolations = (int) ($state['constitutionalViolations'] ?? 0);
 
 $governanceStatus = (string) ($state['governanceStatus'] ?? 'unknown');
+
+// Load authoritative version metadata
+$rawVersions = file_get_contents($versionsPath);
+
+if ($rawVersions === false) {
+    fail('Unable to read authoritative version metadata.');
+}
+
+$versions = json_decode($rawVersions, true);
+
+if (!is_array($versions)) {
+    fail('Authoritative version metadata contains invalid JSON.');
+}
+
+// Resolve current Skyesoft version details
+$siteVersion = (string) ($versions['system']['siteVersion'] ?? 'Unknown');
+$siteState = (string) ($versions['system']['state'] ?? 'Unknown');
+$commitHash = (string) ($versions['system']['commitHash'] ?? 'Unknown');
+
+$lastUpdateUnix = isset($versions['system']['lastUpdateUnix'])
+    ? (int) $versions['system']['lastUpdateUnix']
+    : null;
 
 #endregion
 
@@ -250,6 +303,35 @@ $governanceStatus = (string) ($state['governanceStatus'] ?? 'unknown');
                     'UTF-8'
                 ) ?>
             </td>
+        </tr>
+    </table>
+
+    <h2 class="sectionTitle">Version Details</h2>
+
+    <table>
+        <tr>
+            <th>Skyesoft Version</th>
+            <td><?= htmlspecialchars($siteVersion, ENT_QUOTES, 'UTF-8') ?></td>
+        </tr>
+
+        <tr>
+            <th>Environment</th>
+            <td><?= htmlspecialchars(strtoupper($siteState), ENT_QUOTES, 'UTF-8') ?></td>
+        </tr>
+
+        <tr>
+            <th>Deployed</th>
+            <td><?= htmlspecialchars(formatUnixDate($lastUpdateUnix), ENT_QUOTES, 'UTF-8') ?></td>
+        </tr>
+
+        <tr>
+            <th>Version Age</th>
+            <td><?= htmlspecialchars(formatElapsedTime($lastUpdateUnix), ENT_QUOTES, 'UTF-8') ?></td>
+        </tr>
+
+        <tr>
+            <th>Commit</th>
+            <td><?= htmlspecialchars($commitHash, ENT_QUOTES, 'UTF-8') ?></td>
         </tr>
     </table>
 
