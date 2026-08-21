@@ -34,9 +34,24 @@ cd /home/notyou64/public_html
 synchronize remote -delete -filemask="|artifacts/;*/vendor/;*/.git/;*/node_modules/;*/secure/;*.env;repoTree.txt;tree.txt;*/data/authoritative/jurisdictions/;*/api/logs/;*/data/runtimeEphemeral/;*/scripts/error_log" . skyesoft
 
 # =========================================================
+# 🔐 MANAGED COMPOSER DEPENDENCIES
+# =========================================================
+# Root vendor dependencies are excluded from the primary
+# Skyesoft synchronization and deployed selectively here.
+#
+# PHPMailer is required by Sentinel authenticated SMTP.
+# Only the required PHPMailer runtime classes are deployed.
+# =========================================================
+
+synchronize remote -delete vendor/phpmailer/phpmailer/src skyesoft/vendor/phpmailer/phpmailer/src
+
+# =========================================================
 # 🔐 KALSHI COMPOSER DEPENDENCIES
 # =========================================================
-# Vendor dependencies are maintained separately on GoDaddy.
+# Kalshi vendor dependencies are maintained separately.
+# Enable when a Kalshi dependency deployment is required.
+# =========================================================
+
 # synchronize remote -delete kalshi-composer/vendor skyesoft/kalshi-composer/vendor
 
 # =========================================================
