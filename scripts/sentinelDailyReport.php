@@ -42,6 +42,9 @@ $statePath = $rootDir . '/data/runtimeEphemeral/sentinelState.json';
 // Define authoritative Skyesoft version metadata
 $versionsPath = $rootDir . '/data/authoritative/versions.json';
 
+// Define standard Christy Signs report logo
+$logoPath = $rootDir . '/assets/images/christyLogo.png';
+
 // Validate Sentinel runtime state
 if (!is_file($statePath)) {
     fail('Sentinel runtime state is unavailable.');
@@ -56,15 +59,33 @@ if (!is_file($versionsPath)) {
 
 #region SECTION III — Helpers & Utilities
 
+/**
+ * Escape report output.
+ */
+function escapeReportValue(mixed $value): string
+{
+    return htmlspecialchars(
+        trim((string) ($value ?? '')),
+        ENT_QUOTES,
+        'UTF-8'
+    );
+}
+
+/**
+ * Format a Unix timestamp in Phoenix local time.
+ */
 function formatUnixDate(?int $unix): string
 {
     if ($unix === null || $unix <= 0) {
         return 'Not Available';
     }
 
-    return date('m/d/Y g:i:s A', $unix);
+    return date('F j, Y g:i A', $unix);
 }
 
+/**
+ * Format Sentinel governance status.
+ */
 function formatGovernanceStatus(string $status): string
 {
     switch ($status) {
@@ -82,6 +103,9 @@ function formatGovernanceStatus(string $status): string
     }
 }
 
+/**
+ * Format Sentinel execution status.
+ */
 function formatExecutionStatus(string $status): string
 {
     switch ($status) {
@@ -102,6 +126,9 @@ function formatExecutionStatus(string $status): string
     }
 }
 
+/**
+ * Format elapsed time from a Unix timestamp.
+ */
 function formatElapsedTime(?int $unix): string
 {
     if ($unix === null || $unix <= 0) {
@@ -127,6 +154,18 @@ function formatElapsedTime(?int $unix): string
     }
 
     return $minutes . ' minutes';
+}
+
+/**
+ * Build a standard Skyesoft report section heading.
+ */
+function buildSectionHeading(string $title): string
+{
+    return '<div class="section-heading">'
+        . '<span class="section-heading-title">'
+        . escapeReportValue($title)
+        . '</span>'
+        . '</div>';
 }
 
 #endregion
@@ -187,6 +226,15 @@ $lastUpdateUnix = isset($versions['system']['lastUpdateUnix'])
     ? (int) $versions['system']['lastUpdateUnix']
     : null;
 
+// Resolve report-generation time
+$reportGeneratedUnix = time();
+$reportDate = date('F j, Y', $reportGeneratedUnix);
+$reportTime = date('g:i A', $reportGeneratedUnix);
+
+// Resolve standard Christy Signs logo
+$logoUrl = '../assets/images/christyLogo.png';
+$logoAvailable = is_file($logoPath);
+
 #endregion
 
 #region SECTION V — Report Rendering
@@ -195,173 +243,606 @@ $lastUpdateUnix = isset($versions['system']['lastUpdateUnix'])
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Skyesoft Sentinel Daily Report</title>
 
     <style>
+
+        /* =============================================================
+         * Page
+         * ============================================================= */
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            margin: 40px;
+            margin: 0;
+            padding: 32px 24px;
             font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            line-height: 1.35;
             color: #222;
             background: #fff;
         }
 
         .report {
-            max-width: 900px;
+            width: 100%;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
-        h1 {
-            margin-bottom: 5px;
-        }
 
-        .subtitle {
-            margin-top: 0;
-            color: #666;
-        }
+        /* =============================================================
+         * Report Header
+         * ============================================================= */
 
-        table {
+        .header-table {
             width: 100%;
-            margin-top: 30px;
+            margin: 0;
+            border-collapse: collapse;
+            border-bottom: 3px solid #14377c;
+        }
+
+        .header-table td {
+            padding: 0 0 8px;
+            border: 0;
+            vertical-align: bottom;
+        }
+
+        .header-logo {
+            display: block;
+            width: auto;
+            height: 74px;
+        }
+
+        .logo-fallback {
+            color: #14377c;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .header-report-details {
+            width: 100%;
+            text-align: right;
+        }
+
+        .header-title {
+            margin: 0;
+            color: #14377c;
+            font-size: 25px;
+            font-weight: bold;
+            line-height: 1.05;
+        }
+
+        .header-subtitle-main {
+            margin-top: 3px;
+            color: #333;
+            font-size: 17px;
+            font-weight: bold;
+            line-height: 1.15;
+        }
+
+        .header-subtitle-sub {
+            margin-top: 2px;
+            color: #555;
+            font-size: 14px;
+            line-height: 1.15;
+        }
+
+        .header-report-date {
+            margin-top: 2px;
+            color: #666;
+            font-size: 12px;
+            line-height: 1.15;
+        }
+
+
+        /* =============================================================
+         * Report Sections
+         * ============================================================= */
+
+        .section-block {
+            margin-top: 24px;
+        }
+
+        .section-heading {
+            margin-bottom: 7px;
+            padding-bottom: 4px;
+            color: #14377c;
+            font-size: 17px;
+            font-weight: bold;
+            border-bottom: 2px solid #14377c;
+        }
+
+        .section-heading-title {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+
+        /* =============================================================
+         * Data Tables
+         * ============================================================= */
+
+        .data-table {
+            width: 100%;
+            margin: 0;
             border-collapse: collapse;
         }
 
-        th,
-        td {
-            padding: 10px 12px;
+        .data-table th,
+        .data-table td {
+            padding: 8px 10px;
             border: 1px solid #ccc;
+            vertical-align: top;
             text-align: left;
         }
 
-        th {
-            width: 40%;
-            background: #f3f3f3;
+        .data-table th {
+            width: 32%;
+            color: #333;
+            font-weight: bold;
+            background: #f8f9fa;
         }
 
-        .sectionTitle {
-            margin-top: 35px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #ccc;
+        .data-table td {
+            width: 68%;
+            color: #111;
+            background: #fff;
+        }
+
+
+        /* =============================================================
+         * Status Presentation
+         * ============================================================= */
+
+        .status {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status--resolved {
+            color: #176638;
+            background: #eaf7ef;
+            border: 1px solid #9fd0ae;
+        }
+
+        .status--review {
+            color: #8a5a00;
+            background: #fff5dc;
+            border: 1px solid #e8c46e;
+        }
+
+        .status--error {
+            color: #8a1f1f;
+            background: #fbeaea;
+            border: 1px solid #d9a0a0;
         }
 
         .error {
             color: #a00000;
+            font-weight: bold;
         }
+
+
+        /* =============================================================
+         * Report Callouts
+         * ============================================================= */
+
+        .callout-box {
+            margin: 8px 0 0;
+            padding: 9px 12px;
+            background: #f0f4f9;
+            border: 1px solid #b8cbe5;
+            border-left: 4px solid #14377c;
+        }
+
+        .callout-title {
+            margin-bottom: 4px;
+            color: #14377c;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .callout-body {
+            color: #333;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+
+        /* =============================================================
+         * Report Footer
+         * ============================================================= */
+
+        .report-footer {
+            width: 100%;
+            margin-top: 32px;
+            padding-top: 7px;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #ccc;
+        }
+
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .footer-table td {
+            padding: 0;
+            border: 0;
+        }
+
+        .footer-right {
+            text-align: right;
+        }
+
+
+        /* =============================================================
+         * Responsive Browser Display
+         * ============================================================= */
+
+        @media (max-width: 650px) {
+
+            body {
+                padding: 18px 12px;
+            }
+
+            .header-logo {
+                height: 55px;
+            }
+
+            .header-title {
+                font-size: 19px;
+            }
+
+            .header-subtitle-main {
+                font-size: 14px;
+            }
+
+            .data-table th {
+                width: 40%;
+            }
+
+            .data-table td {
+                width: 60%;
+            }
+        }
+
     </style>
+
 </head>
 
 <body>
 
 <div class="report">
 
-    <h1>Skyesoft Sentinel Daily Report</h1>
+    <!-- =============================================================
+         Report Header
+         ============================================================= -->
 
-    <p class="subtitle">
-        Governance and execution status reported from Sentinel runtime state.
-    </p>
-
-    <h2 class="sectionTitle">Governance Status</h2>
-
-    <table>
+    <table class="header-table">
         <tr>
-            <th>Governance Status</th>
-            <td>
-                <?= htmlspecialchars(
-                    formatGovernanceStatus($governanceStatus),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
+
+            <td style="width: 32%;">
+
+                <?php if ($logoAvailable): ?>
+
+                    <img
+                        src="<?= escapeReportValue($logoUrl) ?>"
+                        class="header-logo"
+                        alt="Christy Signs"
+                    >
+
+                <?php else: ?>
+
+                    <div class="logo-fallback">
+                        Christy Signs
+                    </div>
+
+                <?php endif; ?>
+
             </td>
-        </tr>
 
-        <tr>
-            <th>Unresolved Violations</th>
-            <td><?= number_format($unresolvedViolations) ?></td>
-        </tr>
+            <td style="width: 68%; text-align: right;">
 
-        <tr>
-            <th>Constitutional Violations</th>
-            <td><?= number_format($constitutionalViolations) ?></td>
-        </tr>
-    </table>
+                <div class="header-report-details">
 
-    <h2 class="sectionTitle">Sentinel Execution</h2>
+                    <div class="header-title">
+                        Skyesoft Sentinel Daily Report
+                    </div>
 
-    <table>
-        <tr>
-            <th>Execution Status</th>
-            <td>
-                <?= htmlspecialchars(
-                    formatExecutionStatus($executionStatus),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
+                    <div class="header-subtitle-main">
+                        System Governance &amp; Health
+                    </div>
+
+                    <div class="header-subtitle-sub">
+                        Skyesoft Sentinel
+                    </div>
+
+                    <div class="header-report-date">
+                        Report Date:
+                        <?= escapeReportValue($reportDate) ?>
+                        ·
+                        <?= escapeReportValue($reportTime) ?>
+                        MST
+                    </div>
+
+                </div>
+
             </td>
-        </tr>
 
-        <tr>
-            <th>Execution Error</th>
-            <td class="<?= $executionError !== null ? 'error' : '' ?>">
-                <?= htmlspecialchars(
-                    $executionError !== null
-                        ? (string) $executionError
-                        : 'None',
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </td>
         </tr>
     </table>
 
-    <h2 class="sectionTitle">Version Details</h2>
 
-    <table>
-        <tr>
-            <th>Skyesoft Version</th>
-            <td><?= htmlspecialchars($siteVersion, ENT_QUOTES, 'UTF-8') ?></td>
-        </tr>
+    <!-- =============================================================
+         Governance Status
+         ============================================================= -->
 
-        <tr>
-            <th>Environment</th>
-            <td><?= htmlspecialchars(strtoupper($siteState), ENT_QUOTES, 'UTF-8') ?></td>
-        </tr>
+    <div class="section-block">
 
-        <tr>
-            <th>Deployed</th>
-            <td><?= htmlspecialchars(formatUnixDate($lastUpdateUnix), ENT_QUOTES, 'UTF-8') ?></td>
-        </tr>
+        <?= buildSectionHeading('Governance Status') ?>
 
-        <tr>
-            <th>Version Age</th>
-            <td><?= htmlspecialchars(formatElapsedTime($lastUpdateUnix), ENT_QUOTES, 'UTF-8') ?></td>
-        </tr>
+        <table class="data-table">
 
-        <tr>
-            <th>Commit</th>
-            <td><?= htmlspecialchars($commitHash, ENT_QUOTES, 'UTF-8') ?></td>
-        </tr>
-    </table>
+            <tr>
+                <th>Governance Status</th>
 
-    <h2 class="sectionTitle">Runtime</h2>
+                <td>
+                    <?php
+                    $governanceDisplay = formatGovernanceStatus(
+                        $governanceStatus
+                    );
 
-    <table>
-        <tr>
-            <th>Initial Run</th>
-            <td><?= htmlspecialchars(formatUnixDate($initialRunUnix)) ?></td>
-        </tr>
+                    $governanceClass = match ($governanceStatus) {
+                        'clean' => 'status--resolved',
+                        'violations-pending' => 'status--review',
+                        'constitutional-breach' => 'status--error',
+                        default => 'status--review'
+                    };
+                    ?>
 
-        <tr>
-            <th>Last Run</th>
-            <td><?= htmlspecialchars(formatUnixDate($lastRunUnix)) ?></td>
-        </tr>
+                    <span class="status <?= $governanceClass ?>">
+                        <?= escapeReportValue($governanceDisplay) ?>
+                    </span>
+                </td>
+            </tr>
 
-        <tr>
-            <th>Total Runs</th>
-            <td><?= number_format($runCount) ?></td>
-        </tr>
-    </table>
+            <tr>
+                <th>Unresolved Violations</th>
+                <td>
+                    <strong>
+                        <?= number_format($unresolvedViolations) ?>
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Constitutional Violations</th>
+                <td>
+                    <strong>
+                        <?= number_format($constitutionalViolations) ?>
+                    </strong>
+                </td>
+            </tr>
+
+        </table>
+
+    </div>
+
+
+    <!-- =============================================================
+         Sentinel Execution
+         ============================================================= -->
+
+    <div class="section-block">
+
+        <?= buildSectionHeading('Sentinel Execution') ?>
+
+        <table class="data-table">
+
+            <tr>
+                <th>Execution Status</th>
+
+                <td>
+                    <?php
+                    $executionDisplay = formatExecutionStatus(
+                        $executionStatus
+                    );
+
+                    $executionClass = $executionStatus === 'ok'
+                        ? 'status--resolved'
+                        : 'status--error';
+                    ?>
+
+                    <span class="status <?= $executionClass ?>">
+                        <?= escapeReportValue($executionDisplay) ?>
+                    </span>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Execution Error</th>
+
+                <td class="<?= $executionError !== null ? 'error' : '' ?>">
+                    <?= escapeReportValue(
+                        $executionError !== null
+                            ? (string) $executionError
+                            : 'None'
+                    ) ?>
+                </td>
+            </tr>
+
+        </table>
+
+    </div>
+
+
+    <!-- =============================================================
+         Version Details
+         ============================================================= -->
+
+    <div class="section-block">
+
+        <?= buildSectionHeading('Version Details') ?>
+
+        <table class="data-table">
+
+            <tr>
+                <th>Skyesoft Version</th>
+                <td>
+                    <strong>
+                        <?= escapeReportValue($siteVersion) ?>
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Environment</th>
+                <td>
+                    <?= escapeReportValue(strtoupper($siteState)) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Deployed</th>
+                <td>
+                    <?= escapeReportValue(
+                        formatUnixDate($lastUpdateUnix)
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Version Age</th>
+                <td>
+                    <?= escapeReportValue(
+                        formatElapsedTime($lastUpdateUnix)
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Commit</th>
+                <td>
+                    <?= escapeReportValue($commitHash) ?>
+                </td>
+            </tr>
+
+        </table>
+
+    </div>
+
+
+    <!-- =============================================================
+         Runtime
+         ============================================================= -->
+
+    <div class="section-block">
+
+        <?= buildSectionHeading('Runtime') ?>
+
+        <table class="data-table">
+
+            <tr>
+                <th>Initial Run</th>
+                <td>
+                    <?= escapeReportValue(
+                        formatUnixDate($initialRunUnix)
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Last Run</th>
+                <td>
+                    <?= escapeReportValue(
+                        formatUnixDate($lastRunUnix)
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Total Runs</th>
+                <td>
+                    <strong>
+                        <?= number_format($runCount) ?>
+                    </strong>
+                </td>
+            </tr>
+
+        </table>
+
+    </div>
+
+
+    <!-- =============================================================
+         Report Basis
+         ============================================================= -->
+
+    <div class="section-block">
+
+        <?= buildSectionHeading('Report Basis') ?>
+
+        <div class="callout-box">
+
+            <div class="callout-title">
+                Sentinel Status
+            </div>
+
+            <div class="callout-body">
+                This report summarizes Skyesoft Sentinel governance,
+                execution, version, and runtime state as of
+                <strong><?= escapeReportValue($reportDate) ?></strong>
+                at
+                <strong><?= escapeReportValue($reportTime) ?> MST</strong>.
+                Runtime information is sourced from the Sentinel runtime
+                state and version information is sourced from Skyesoft's
+                authoritative version metadata.
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =============================================================
+         Report Footer
+         ============================================================= -->
+
+    <div class="report-footer">
+
+        <table class="footer-table">
+            <tr>
+
+                <td style="width: 70%;">
+                    Prepared by Steve Skye | Christy Signs
+                </td>
+
+                <td
+                    class="footer-right"
+                    style="width: 30%;"
+                >
+                    Skyesoft Sentinel
+                </td>
+
+            </tr>
+        </table>
+
+    </div>
 
 </div>
 
