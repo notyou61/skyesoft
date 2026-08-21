@@ -885,50 +885,91 @@ try {
             Entity Classification
         </div>
 
-        <table class="data-table">
+    <table class="data-table">
 
-            <tr>
-                <th>
-                    Company
+        <tr>
+            <th>
 
-                    <?php if ($companyNeedsAttention): ?>
+                <table
+                    cellpadding="0"
+                    cellspacing="0"
+                    border="0"
+                    style="
+                        width: auto;
+                        border-collapse: collapse;
+                    "
+                >
+                    <tr>
 
-                        <span class="status status--review">
-                            Needs Attention
-                        </span>
+                        <td
+                            style="
+                                padding: 0 5px 0 0;
+                                border: 0;
+                                background: transparent;
+                                color: #333333;
+                                font-weight: bold;
+                                white-space: nowrap;
+                            "
+                        >
+                            Company
+                        </td>
 
-                    <?php endif; ?>
-                </th>
+                        <?php if ($companyNeedsAttention): ?>
 
-                <td>
-                    <strong>
-                        <?= number_format($entityCounts['company']) ?>
-                    </strong>
-                </td>
-            </tr>
+                            <td
+                                style="
+                                    padding: 2px 6px;
+                                    border: 1px solid #e8c46e;
+                                    background: #fff5dc;
+                                    color: #8a5a00;
+                                    font-size: 11px;
+                                    font-weight: bold;
+                                    line-height: 1.1;
+                                    white-space: nowrap;
+                                "
+                            >
+                                Needs Attention
+                            </td>
 
-            <tr>
-                <th>Customers</th>
-                <td>
-                    <?= number_format($entityCounts['customer']) ?>
-                </td>
-            </tr>
+                        <?php endif; ?>
 
-            <tr>
-                <th>Vendors</th>
-                <td>
-                    <?= number_format($entityCounts['vendor']) ?>
-                </td>
-            </tr>
+                    </tr>
+                </table>
 
-            <tr>
-                <th>Jurisdictions</th>
-                <td>
-                    <?= number_format($entityCounts['jurisdiction']) ?>
-                </td>
-            </tr>
+            </th>
 
-        </table>
+            <td>
+                <strong>
+                    <?= number_format($entityCounts['company']) ?>
+                </strong>
+            </td>
+        </tr>
+
+        <tr>
+            <th>Customers</th>
+
+            <td>
+                <?= number_format($entityCounts['customer']) ?>
+            </td>
+        </tr>
+
+        <tr>
+            <th>Vendors</th>
+
+            <td>
+                <?= number_format($entityCounts['vendor']) ?>
+            </td>
+        </tr>
+
+        <tr>
+            <th>Jurisdictions</th>
+
+            <td>
+                <?= number_format($entityCounts['jurisdiction']) ?>
+            </td>
+        </tr>
+
+    </table>
 
     </div>
 
