@@ -2481,7 +2481,7 @@ function loadLocationPage(?PDO $db, int $page = 1, int $pageSize = 5): array
 }
 
 /**
- * Search authoritative Locations for autocomplete.
+ * Search authoritative Locations by Location name for autocomplete.
  *
  * @param PDO|null $db
  * @param string   $query
@@ -2499,7 +2499,7 @@ function searchLocations(?PDO $db, string $query, int $limit = 10): array
     }
 
     try {
-        // Prepare search values
+        // Prepare Location-name search values
         $contains = '%' . $query . '%';
         $prefix   = $query . '%';
 
@@ -2518,34 +2518,42 @@ function searchLocations(?PDO $db, string $query, int $limit = 10): array
             LEFT JOIN tblEntities e
                 ON e.entityId = l.locationEntityId
             WHERE COALESCE(l.locationIsNotValid, 0) = 0
-              AND (
-                    l.locationName LIKE :nameContains
-                 OR l.locationAddress LIKE :addressContains
-                 OR l.locationCity LIKE :cityContains
-                 OR e.entityName LIKE :entityContains
-              )
+              AND l.locationName LIKE :nameContains
             ORDER BY
                 CASE
                     WHEN l.locationName = :exactName THEN 1
                     WHEN l.locationName LIKE :namePrefix THEN 2
-                    WHEN l.locationAddress LIKE :addressPrefix THEN 3
-                    WHEN e.entityName LIKE :entityPrefix THEN 4
-                    ELSE 5
+                    ELSE 3
                 END,
                 l.locationName ASC,
                 l.locationId ASC
             LIMIT :limit
         ");
 
-        $stmt->bindValue(':nameContains',    $contains, PDO::PARAM_STR);
-        $stmt->bindValue(':addressContains', $contains, PDO::PARAM_STR);
-        $stmt->bindValue(':cityContains',    $contains, PDO::PARAM_STR);
-        $stmt->bindValue(':entityContains',  $contains, PDO::PARAM_STR);
-        $stmt->bindValue(':exactName',       $query,    PDO::PARAM_STR);
-        $stmt->bindValue(':namePrefix',      $prefix,   PDO::PARAM_STR);
-        $stmt->bindValue(':addressPrefix',   $prefix,   PDO::PARAM_STR);
-        $stmt->bindValue(':entityPrefix',    $prefix,   PDO::PARAM_STR);
-        $stmt->bindValue(':limit',           $limit,    PDO::PARAM_INT);
+        $stmt->bindValue(
+            ':nameContains',
+            $contains,
+            PDO::PARAM_STR
+        );
+
+        $stmt->bindValue(
+            ':exactName',
+            $query,
+            PDO::PARAM_STR
+        );
+
+        $stmt->bindValue(
+            ':namePrefix',
+            $prefix,
+            PDO::PARAM_STR
+        );
+
+        $stmt->bindValue(
+            ':limit',
+            $limit,
+            PDO::PARAM_INT
+        );
+
         $stmt->execute();
 
         $locations = [];
@@ -2553,16 +2561,23 @@ function searchLocations(?PDO $db, string $query, int $limit = 10): array
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $locations[] = [
                 'locationId'           => (int)$row['locationId'],
-                'locationName'         => $row['locationName'] ?: 'Unnamed Location',
-                'locationAddress'      => $row['locationAddress'] ?: null,
-                'locationAddressSuite' => $row['locationAddressSuite'] ?: null,
-                'locationCity'         => $row['locationCity'] ?: null,
-                'locationState'        => $row['locationState'] ?: null,
-                'locationZip'          => $row['locationZip'] ?: null,
+                'locationName'         => $row['locationName']
+                    ?: 'Unnamed Location',
+                'locationAddress'      => $row['locationAddress']
+                    ?: null,
+                'locationAddressSuite' => $row['locationAddressSuite']
+                    ?: null,
+                'locationCity'         => $row['locationCity']
+                    ?: null,
+                'locationState'        => $row['locationState']
+                    ?: null,
+                'locationZip'          => $row['locationZip']
+                    ?: null,
                 'locationEntityId'     => $row['locationEntityId']
                     ? (int)$row['locationEntityId']
                     : null,
-                'entityName'           => $row['entityName'] ?: null
+                'entityName'           => $row['entityName']
+                    ?: null
             ];
         }
 
