@@ -49,6 +49,16 @@ $recipientEmail = 'steve@christysigns.com';
 // Configure report subject
 $subject = 'Skyesoft Sentinel Daily Report';
 
+// Load canonical Skyesoft database connection
+require_once $rootDir . '/api/dbConnect.php';
+
+if (!function_exists('getPDO')) {
+    fail('Skyesoft database connection is unavailable.');
+}
+
+// Initialize database connection
+$pdo = getPDO();
+
 #endregion
 
 #region SECTION III — Report Generation
@@ -107,25 +117,16 @@ if ($html === false || trim($html) === '') {
 // Initialize PHPMailer
 $mail = new PHPMailer(true);
 
-// Configure SMTP transport
+// Configure GoDaddy local SMTP relay
 $mail->isSMTP();
-
 $mail->Host = $smtpHost;
 $mail->Port = $smtpPort;
-
-// GoDaddy local relay does not require authentication
 $mail->SMTPAuth = false;
-
-// GoDaddy local relay does not require SMTP encryption
 $mail->SMTPSecure = '';
 
-// Limit SMTP connection wait
+// Configure SMTP runtime
 $mail->Timeout = 15;
-
-// Disable SMTP protocol output during normal execution
 $mail->SMTPDebug = 0;
-
-// Require UTF-8 message encoding
 $mail->CharSet = 'UTF-8';
 
 // Configure sender
@@ -145,19 +146,10 @@ $mail->addAddress(
     $recipientEmail
 );
 
-// Configure HTML message
+// Configure HTML report
 $mail->isHTML(true);
-
 $mail->Subject = $subject;
 $mail->Body = $html;
-
-// Configure plain-text fallback
-$mail->AltBody =
-    'Skyesoft Sentinel Daily Report' .
-    PHP_EOL .
-    PHP_EOL .
-    'The Sentinel Daily Report was generated successfully. ' .
-    'Please view this message using an HTML-capable email client.';
 
 #endregion
 

@@ -55,6 +55,16 @@ if (!is_file($versionsPath)) {
     fail('Authoritative version metadata is unavailable: ' . $versionsPath);
 }
 
+// Load canonical Skyesoft database connection
+require_once $rootDir . '/api/dbConnect.php';
+
+if (!function_exists('getPDO')) {
+    fail('Skyesoft database connection is unavailable.');
+}
+
+// Initialize database connection
+$pdo = getPDO();
+
 #endregion
 
 #region SECTION III — Helpers & Utilities
@@ -234,6 +244,77 @@ $reportTime = date('g:i A', $reportGeneratedUnix);
 // Resolve standard Christy Signs logo
 $logoUrl = '../assets/images/christyLogo.png';
 $logoAvailable = is_file($logoPath);
+
+// #region Entity Classification Audit
+
+// Initialize Entity classification counts
+$entityCounts = [
+    'company' => 0,
+    'customer' => 0,
+    'vendor' => 0,
+    'jurisdiction' => 0
+];
+
+try {
+
+    // Count valid Entities by classification
+    $entityCountSql = "
+        SELECT
+            entityType,
+            COUNT(*) AS entityCount
+        FROM tblEntities
+        WHERE entityIsNotValid = 0
+        GROUP BY entityType
+    ";
+
+    $entityCountStmt = $pdo->prepare($entityCountSql);
+    $entityCountStmt->execute();
+
+    $entityCountRows = $entityCountStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($entityCountRows as $entityCountRow) {
+
+        $entityType = (string) ($entityCountRow['entityType'] ?? '');
+
+        if (array_key_exists($entityType, $entityCounts)) {
+            $entityCounts[$entityType] =
+                (int) ($entityCountRow['entityCount'] ?? 0);
+        }
+    }
+
+    // Load valid Company-classified Entities
+    $companySql = "
+        SELECT
+            entityId,
+            entityName
+        FROM tblEntities
+        WHERE entityType = 'company'
+            AND entityIsNotValid = 0
+        ORDER BY entityId
+    ";
+
+    $companyStmt = $pdo->prepare($companySql);
+    $companyStmt->execute();
+
+    $companyEntities = $companyStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Validate sole Company classification
+    $companyNeedsAttention =
+        count($companyEntities) !== 1 ||
+        strcasecmp(
+            (string) ($companyEntities[0]['entityName'] ?? ''),
+            'Christy Signs'
+        ) !== 0;
+
+} catch (Throwable $throwable) {
+
+    fail(
+        'Unable to complete Entity classification audit: ' .
+        $throwable->getMessage()
+    );
+}
+
+// #endregion
 
 #endregion
 
@@ -790,6 +871,69 @@ $logoAvailable = is_file($logoPath);
 
 
     <!-- =============================================================
+         Database Integrity
+         ============================================================= -->
+
+    <div class="section-block">
+
+        <?= buildSectionHeading('Database Integrity') ?>
+
+        <div
+            class="callout-title"
+            style="margin-bottom: 7px;"
+        >
+            Entity Classification
+        </div>
+
+        <table class="data-table">
+
+            <tr>
+                <th>
+                    Company
+
+                    <?php if ($companyNeedsAttention): ?>
+
+                        <span class="status status--review">
+                            Needs Attention
+                        </span>
+
+                    <?php endif; ?>
+                </th>
+
+                <td>
+                    <strong>
+                        <?= number_format($entityCounts['company']) ?>
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Customers</th>
+                <td>
+                    <?= number_format($entityCounts['customer']) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Vendors</th>
+                <td>
+                    <?= number_format($entityCounts['vendor']) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Jurisdictions</th>
+                <td>
+                    <?= number_format($entityCounts['jurisdiction']) ?>
+                </td>
+            </tr>
+
+        </table>
+
+    </div>
+
+
+    <!-- =============================================================
          Report Basis
          ============================================================= -->
 
@@ -805,13 +949,15 @@ $logoAvailable = is_file($logoPath);
 
             <div class="callout-body">
                 This report summarizes Skyesoft Sentinel governance,
-                execution, version, and runtime state as of
+                execution, version, runtime, and database integrity
+                state as of
                 <strong><?= escapeReportValue($reportDate) ?></strong>
                 at
                 <strong><?= escapeReportValue($reportTime) ?> MST</strong>.
                 Runtime information is sourced from the Sentinel runtime
-                state and version information is sourced from Skyesoft's
-                authoritative version metadata.
+                state, version information is sourced from Skyesoft's
+                authoritative version metadata, and database integrity
+                information is sourced from the live Skyesoft database.
             </div>
 
         </div>
