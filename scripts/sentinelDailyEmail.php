@@ -31,8 +31,10 @@ require_once $rootDir . '/api/utils/envLoader.php';
 
 skyesoftLoadEnv();
 
-// Load Composer dependencies
-require_once $rootDir . '/vendor/autoload.php';
+// Load PHPMailer runtime classes
+require_once $rootDir . '/vendor/phpmailer/phpmailer/src/Exception.php';
+require_once $rootDir . '/vendor/phpmailer/phpmailer/src/PHPMailer.php';
+require_once $rootDir . '/vendor/phpmailer/phpmailer/src/SMTP.php';
 
 #endregion
 
