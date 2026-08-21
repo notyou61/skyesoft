@@ -40,6 +40,21 @@ try {
     // Initialize PHPMailer
     $mail = new PHPMailer(true);
 
+    // Enable SMTP protocol diagnostics
+    $mail->SMTPDebug = 2;
+
+    // Render SMTP conversation for diagnostic review
+    $mail->Debugoutput = function ($message, $level) {
+
+        echo '<pre style="white-space: pre-wrap;">';
+        echo htmlspecialchars(
+            'SMTP [' . $level . '] ' . $message,
+            ENT_QUOTES,
+            'UTF-8'
+        );
+        echo '</pre>';
+    };
+
     // Use GoDaddy local SMTP relay
     $mail->isSMTP();
     $mail->Host = 'localhost';
