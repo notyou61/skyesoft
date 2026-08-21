@@ -9185,6 +9185,260 @@ window.SkyIndex = {
         };
     },
 
+    handleNewOrderLocationInput(value) {
+        const query = String(value || '').trim();
+        const resultsHost = document.getElementById(
+            'newOrderLocationResults'
+        );
+
+        // Clear previous authoritative selection
+        this._newOrderSelectedLocation = null;
+        this.setNewOrderContinueEnabled(false);
+
+        // Reset pending search
+        clearTimeout(this._newOrderLocationSearchTimer);
+
+        if (!resultsHost) return;
+
+        if (query.length < 2) {
+            resultsHost.innerHTML = '';
+            this._newOrderLocationResults = [];
+            return;
+        }
+
+        resultsHost.innerHTML = `
+            <div style="padding:8px 2px; color:#777; font-size:0.88em;">
+                Searching Locations...
+            </div>
+        `;
+
+        // Search when typing pauses
+        this._newOrderLocationSearchTimer = setTimeout(() => {
+            this.searchNewOrderLocations(query);
+        }, 300);
+    },
+
+    async searchNewOrderLocations(query) {
+        const resultsHost = document.getElementById(
+            'newOrderLocationResults'
+        );
+
+        if (!resultsHost) return;
+
+        try {
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type:  'locationSearch',
+                        query: query,
+                        limit: 10
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Ignore results for an outdated query
+            const currentQuery = document
+                .getElementById('newOrderLocationSearch')
+                ?.value
+                ?.trim();
+
+            if (currentQuery !== query) return;
+
+            const locations = Array.isArray(data.locations)
+                ? data.locations
+                : [];
+
+            this._newOrderLocationResults = locations;
+            this.renderNewOrderLocationResults(locations);
+
+        } catch (error) {
+            console.error(
+                '[New Order] Location search failed:',
+                error
+            );
+
+            resultsHost.innerHTML = `
+                <div style="padding:8px 2px; color:#b42318; font-size:0.88em;">
+                    Unable to search Locations.
+                </div>
+            `;
+        }
+    },
+
+    renderNewOrderLocationResults(locations) {
+        const resultsHost = document.getElementById(
+            'newOrderLocationResults'
+        );
+
+        if (!resultsHost) return;
+
+        if (!locations.length) {
+            resultsHost.innerHTML = `
+                <div style="padding:8px 2px; color:#777; font-size:0.88em;">
+                    No matching Locations found.
+                </div>
+            `;
+            return;
+        }
+
+        resultsHost.innerHTML = locations.map(location => {
+            const locationId = Number(location.locationId);
+
+            const name = this.escapeHtml(
+                location.locationName || 'Unnamed Location'
+            );
+
+            const address = this.escapeHtml(
+                [
+                    location.locationAddress,
+                    location.locationCity,
+                    location.locationState,
+                    location.locationZip
+                ].filter(Boolean).join(', ')
+            );
+
+            const entityName = this.escapeHtml(
+                location.entityName || ''
+            );
+
+            return `
+                <button
+                    type="button"
+                    onclick="SkyIndex.selectNewOrderLocation(${locationId})"
+                    style="
+                        display:block;
+                        box-sizing:border-box;
+                        width:100%;
+                        padding:10px 12px;
+                        border:1px solid #ddd;
+                        background:#fff;
+                        color:#222;
+                        text-align:left;
+                        cursor:pointer;
+                    "
+                >
+                    <strong>${name}</strong>
+
+                    ${address ? `
+                        <div style="margin-top:2px; color:#666; font-size:0.86em;">
+                            ${address}
+                        </div>
+                    ` : ''}
+
+                    ${entityName ? `
+                        <div style="margin-top:2px; color:#117a8b; font-size:0.82em;">
+                            ${entityName}
+                        </div>
+                    ` : ''}
+                </button>
+            `;
+        }).join('');
+    },
+
+    selectNewOrderLocation(locationId) {
+        const location = (
+            this._newOrderLocationResults || []
+        ).find(item =>
+            Number(item.locationId) === Number(locationId)
+        );
+
+        if (!location) return;
+
+        // Store authoritative Location selection
+        this._newOrderSelectedLocation = location;
+
+        const input = document.getElementById(
+            'newOrderLocationSearch'
+        );
+
+        const resultsHost = document.getElementById(
+            'newOrderLocationResults'
+        );
+
+        if (input) {
+            input.value = location.locationName || '';
+        }
+
+        if (resultsHost) {
+            const name = this.escapeHtml(
+                location.locationName || 'Unnamed Location'
+            );
+
+            const address = this.escapeHtml(
+                [
+                    location.locationAddress,
+                    location.locationCity,
+                    location.locationState,
+                    location.locationZip
+                ].filter(Boolean).join(', ')
+            );
+
+            const entityName = this.escapeHtml(
+                location.entityName || ''
+            );
+
+            resultsHost.innerHTML = `
+                <div style="
+                    padding:10px 12px;
+                    border:1px solid #b7dfc4;
+                    border-radius:6px;
+                    background:#f1faf4;
+                ">
+                    <strong style="color:#20733a;">
+                        Location selected
+                    </strong>
+
+                    <div style="margin-top:4px; color:#222;">
+                        ${name}
+                    </div>
+
+                    ${address ? `
+                        <div style="margin-top:2px; color:#555; font-size:0.88em;">
+                            ${address}
+                        </div>
+                    ` : ''}
+
+                    ${entityName ? `
+                        <div style="margin-top:2px; color:#117a8b; font-size:0.84em;">
+                            Entity: ${entityName}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        this.setNewOrderContinueEnabled(true);
+    },
+
+    setNewOrderContinueEnabled(enabled) {
+        const button = document.getElementById(
+            'newOrderContinueButton'
+        );
+
+        if (!button) return;
+
+        button.disabled = !enabled;
+        button.style.background = enabled
+            ? '#117a8b'
+            : '#999';
+        button.style.cursor = enabled
+            ? 'pointer'
+            : 'not-allowed';
+    },
+   
+
     // #endregion
 
     // #region 🔎 AI Query Information Card
