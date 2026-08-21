@@ -10,6 +10,9 @@ declare(strict_types=1);
 
 #region SECTION I — Metadata & Error Handling
 
+// Set Skyesoft reporting timezone (Phoenix, Arizona)
+date_default_timezone_set('America/Phoenix');
+
 header('Content-Type: text/html; charset=UTF-8');
 
 function fail(string $message): never
