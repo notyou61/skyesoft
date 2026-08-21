@@ -44,6 +44,15 @@ reports/temp/
 
 vendor/
 
+# PHPMailer runtime dependencies
+# Version-controlled because GoDaddy does not rebuild Composer packages.
+!vendor/
+!vendor/phpmailer/
+!vendor/phpmailer/**
+!vendor/composer/
+!vendor/composer/**
+!vendor/autoload.php
+
 # Kalshi runtime dependencies
 # Version-controlled because GoDaddy does not rebuild Composer packages.
 # Deployed separately by tools/deploy-winscp.txt.
