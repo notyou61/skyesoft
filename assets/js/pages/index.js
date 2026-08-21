@@ -9145,8 +9145,16 @@ window.SkyIndex = {
                         "
                     >
 
-                    <div id="newOrderLocationResults"
-                         style="margin-top:8px;"></div>
+                    <div
+                        id="newOrderLocationResults"
+                        style="
+                            box-sizing:border-box;
+                            height:200px;
+                            margin-top:8px;
+                            overflow-y:auto;
+                            border-radius:4px;
+                        "
+                    ></div>
                 </div>
             `,
 
@@ -9195,27 +9203,23 @@ window.SkyIndex = {
         this._newOrderSelectedLocation = null;
         this.setNewOrderContinueEnabled(false);
 
-        // Reset pending search
+        // Cancel pending search
         clearTimeout(this._newOrderLocationSearchTimer);
 
         if (!resultsHost) return;
 
-        if (query.length < 2) {
-            resultsHost.innerHTML = '';
+        // Require three characters
+        if (query.length < 3) {
             this._newOrderLocationResults = [];
+            this._newOrderLocationResultsSignature = '';
+            resultsHost.innerHTML = '';
             return;
         }
 
-        resultsHost.innerHTML = `
-            <div style="padding:8px 2px; color:#777; font-size:0.88em;">
-                Searching Locations...
-            </div>
-        `;
-
-        // Search when typing pauses
+        // Preserve displayed results while typing
         this._newOrderLocationSearchTimer = setTimeout(() => {
             this.searchNewOrderLocations(query);
-        }, 300);
+        }, 500);
     },
 
     async searchNewOrderLocations(query) {
@@ -9283,6 +9287,22 @@ window.SkyIndex = {
         );
 
         if (!resultsHost) return;
+
+        // Build stable signature from authoritative Location IDs
+        const resultSignature = locations
+            .map(location => Number(location.locationId))
+            .join(',');
+
+        // Preserve existing DOM when results have not changed
+        if (
+            this._newOrderLocationResultsSignature ===
+            resultSignature
+        ) {
+            return;
+        }
+
+        this._newOrderLocationResultsSignature =
+            resultSignature;
 
         if (!locations.length) {
             resultsHost.innerHTML = `
