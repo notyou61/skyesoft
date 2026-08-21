@@ -9134,6 +9134,7 @@ window.SkyIndex = {
                         type="text"
                         placeholder="Start typing location..."
                         autocomplete="off"
+                        oninput="SkyIndex.handleNewOrderLocationInput(this.value)"
                         style="
                             box-sizing:border-box;
                             width:100%;
@@ -9150,30 +9151,34 @@ window.SkyIndex = {
             `,
 
             actionsHtml: `
-                <button type="button"
-                        onclick="SkyWorkspace.close()"
-                        style="
-                            padding:8px 16px;
-                            border:1px solid #ccc;
-                            border-radius:6px;
-                            background:#fff;
-                            color:#333;
-                            cursor:pointer;
-                        ">
+                <button
+                    type="button"
+                    onclick="SkyWorkspace.close()"
+                    style="
+                        padding:8px 16px;
+                        border:1px solid #ccc;
+                        border-radius:6px;
+                        background:#fff;
+                        color:#333;
+                        cursor:pointer;
+                    "
+                >
                     Cancel
                 </button>
 
-                <button type="button"
-                        id="newOrderContinueButton"
-                        disabled
-                        style="
-                            padding:8px 16px;
-                            border:0;
-                            border-radius:6px;
-                            background:#999;
-                            color:#fff;
-                            cursor:not-allowed;
-                        ">
+                <button
+                    type="button"
+                    id="newOrderContinueButton"
+                    disabled
+                    style="
+                        padding:8px 16px;
+                        border:0;
+                        border-radius:6px;
+                        background:#999;
+                        color:#fff;
+                        cursor:not-allowed;
+                    "
+                >
                     Continue
                 </button>
             `
