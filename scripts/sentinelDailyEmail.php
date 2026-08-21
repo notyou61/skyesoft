@@ -7,6 +7,9 @@ declare(strict_types=1);
  *  Codex-Governed Module • PHP 8.3
  * ===================================================================== */
 
+use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\PHPMailer;
+
 #region SECTION I — Environment Setup
 
 // Set Skyesoft reporting timezone (Phoenix, Arizona)
@@ -23,19 +26,73 @@ if ($rootDir === false) {
     exit(1);
 }
 
+// Load Skyesoft environment configuration
+require_once $rootDir . '/api/utils/envLoader.php';
+
+skyesoftLoadEnv();
+
+// Load Composer dependencies
+require_once $rootDir . '/vendor/autoload.php';
+
 #endregion
 
 #region SECTION II — Email Configuration
 
+// Load authenticated SMTP configuration
+$smtpHost = skyesoftGetEnv('SMTP_HOST');
+$smtpPort = skyesoftGetEnv('SMTP_PORT');
+$smtpUsername = skyesoftGetEnv('SMTP_USERNAME');
+$smtpPassword = skyesoftGetEnv('SMTP_PASSWORD');
+$smtpFromEmail = skyesoftGetEnv('SMTP_FROM_EMAIL');
+$smtpFromName = skyesoftGetEnv('SMTP_FROM_NAME');
+
 // Define Sentinel report recipient
 $recipientEmail = 'steve.skye@skyelighting.com';
 
-// Define authenticated Skyelighting sender identity
-$senderEmail = 'steve.skye@skyelighting.com';
-$senderName = 'Skyesoft Sentinel';
-
 // Define transport-test subject
-$subject = 'Skyesoft Sentinel Daily Report — Email Test';
+$subject = 'Skyesoft Sentinel Daily Report — SMTP Test';
+
+// Validate required SMTP configuration
+$requiredSmtpValues = [
+    'SMTP_HOST' => $smtpHost,
+    'SMTP_PORT' => $smtpPort,
+    'SMTP_USERNAME' => $smtpUsername,
+    'SMTP_PASSWORD' => $smtpPassword,
+    'SMTP_FROM_EMAIL' => $smtpFromEmail,
+    'SMTP_FROM_NAME' => $smtpFromName
+];
+
+$missingSmtpValues = [];
+
+foreach ($requiredSmtpValues as $key => $value) {
+    if ($value === null || trim($value) === '') {
+        $missingSmtpValues[] = $key;
+    }
+}
+
+if ($missingSmtpValues !== []) {
+    error_log(
+        'SENTINEL EMAIL ERROR: Missing SMTP environment values: ' .
+        implode(', ', $missingSmtpValues)
+    );
+
+    http_response_code(500);
+
+    echo '<h2>Sentinel SMTP Configuration Error</h2>';
+    echo '<p>Required SMTP configuration is missing.</p>';
+    echo '<p>Missing: ' .
+        htmlspecialchars(
+            implode(', ', $missingSmtpValues),
+            ENT_QUOTES,
+            'UTF-8'
+        ) .
+        '</p>';
+
+    exit(1);
+}
+
+// Normalize SMTP configuration
+$smtpPortNumber = (int) $smtpPort;
 
 #endregion
 
@@ -160,7 +217,7 @@ $html = '
                                 border-bottom: 2px solid #14377c;
                             "
                         >
-                            Email Transport Test
+                            Authenticated SMTP Test
                         </div>
 
                     </td>
@@ -178,7 +235,9 @@ $html = '
                                 border-collapse: collapse;
                             "
                         >
+
                             <tr>
+
                                 <td
                                     width="32%"
                                     style="
@@ -198,11 +257,41 @@ $html = '
                                         border: 1px solid #cccccc;
                                     "
                                 >
-                                    Transport test
+                                    Microsoft 365 Authenticated SMTP
                                 </td>
+
                             </tr>
 
                             <tr>
+
+                                <td
+                                    style="
+                                        padding: 8px 10px;
+                                        border: 1px solid #cccccc;
+                                        background: #f8f9fa;
+                                        font-weight: bold;
+                                    "
+                                >
+                                    SMTP Server
+                                </td>
+
+                                <td
+                                    style="
+                                        padding: 8px 10px;
+                                        border: 1px solid #cccccc;
+                                    "
+                                >
+                                    ' . htmlspecialchars(
+                                        $smtpHost,
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) . '
+                                </td>
+
+                            </tr>
+
+                            <tr>
+
                                 <td
                                     style="
                                         padding: 8px 10px;
@@ -226,7 +315,9 @@ $html = '
                                         'UTF-8'
                                     ) . '
                                 </td>
+
                             </tr>
+
                         </table>
 
                     </td>
@@ -245,15 +336,17 @@ $html = '
                                 line-height: 1.4;
                             "
                         >
+
                             <strong style="color: #14377c;">
-                                Sentinel Email Test
+                                Sentinel SMTP Test
                             </strong>
 
                             <br><br>
 
                             This message confirms that the Skyesoft
-                            Sentinel reporting process can send an HTML
-                            email from the production server.
+                            Sentinel reporting process successfully
+                            authenticated with the configured SMTP
+                            service and delivered an HTML email.
 
                         </div>
 
@@ -268,6 +361,7 @@ $html = '
                             font-size: 11px;
                         "
                     >
+
                         <div
                             style="
                                 padding-top: 6px;
@@ -276,6 +370,7 @@ $html = '
                         >
                             Skyesoft Sentinel | Christy Signs
                         </div>
+
                     </td>
                 </tr>
 
@@ -291,157 +386,297 @@ $html = '
 
 #endregion
 
-#region SECTION V — Email Headers
+#region SECTION V — SMTP Transport
 
-$headers = [];
+// Initialize PHPMailer
+$mail = new PHPMailer(true);
 
-$headers[] =
-    'MIME-Version: 1.0';
+// Configure SMTP transport
+$mail->isSMTP();
 
-$headers[] =
-    'Content-Type: text/html; charset=UTF-8';
+$mail->Host = $smtpHost;
+$mail->Port = $smtpPortNumber;
 
-$headers[] =
-    'From: ' .
-    $senderName .
-    ' <' .
-    $senderEmail .
-    '>';
+$mail->SMTPAuth = true;
 
-$headers[] =
-    'Reply-To: ' .
-    $senderEmail;
+$mail->Username = $smtpUsername;
+$mail->Password = $smtpPassword;
 
-$headers[] =
-    'X-Mailer: PHP/' .
-    phpversion();
+// Microsoft 365 SMTP submission uses STARTTLS
+$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
 
-$headerString = implode(
-    "\r\n",
-    $headers
+// Require UTF-8 message encoding
+$mail->CharSet = 'UTF-8';
+
+// Disable SMTP debug output for normal execution
+$mail->SMTPDebug = 0;
+
+// Define sender
+$mail->setFrom(
+    $smtpFromEmail,
+    $smtpFromName
 );
+
+// Define reply address
+$mail->addReplyTo(
+    $smtpFromEmail,
+    $smtpFromName
+);
+
+// Define recipient
+$mail->addAddress(
+    $recipientEmail
+);
+
+// Define message format
+$mail->isHTML(true);
+
+$mail->Subject = $subject;
+$mail->Body = $html;
+
+// Define plain-text fallback
+$mail->AltBody =
+    'Skyesoft Sentinel Daily Report — SMTP Test' .
+    PHP_EOL .
+    PHP_EOL .
+    'Authenticated SMTP test generated ' .
+    $reportDate .
+    ' at ' .
+    $reportTime .
+    ' MST.';
 
 #endregion
 
 #region SECTION VI — Send Email
 
-// Validate configured recipient
-if (
-    $recipientEmail === ''
-    || $recipientEmail === 'YOUR_EMAIL_ADDRESS_HERE'
-) {
-    http_response_code(500);
+$smtpSuccess = false;
+$smtpError = null;
 
-    echo '<h2>Sentinel Email Test: CONFIGURATION ERROR</h2>';
-    echo '<p>Recipient email has not been configured.</p>';
+try {
 
-    exit(1);
+    // Send authenticated SMTP message
+    $mail->send();
+
+    $smtpSuccess = true;
+
+    error_log(
+        'SENTINEL EMAIL SUCCESS: Authenticated SMTP message sent to ' .
+        $recipientEmail .
+        ' at ' .
+        $reportDate .
+        ' ' .
+        $reportTime .
+        ' MST.'
+    );
+
+} catch (Exception $exception) {
+
+    $smtpError = $mail->ErrorInfo !== ''
+        ? $mail->ErrorInfo
+        : $exception->getMessage();
+
+    error_log(
+        'SENTINEL EMAIL ERROR: SMTP delivery failed: ' .
+        $smtpError
+    );
 }
-
-// Attempt HTML email delivery
-$mailSent = mail(
-    $recipientEmail,
-    $subject,
-    $html,
-    $headerString
-);
 
 #endregion
 
 #region SECTION VII — Delivery Diagnostic
 
+// Return browser diagnostic
 header('Content-Type: text/html; charset=UTF-8');
 
+http_response_code(
+    $smtpSuccess
+        ? 200
+        : 500
+);
+
 echo '<div style="
-    max-width: 700px;
+    max-width: 760px;
     margin: 40px auto;
     font-family: Arial, Helvetica, sans-serif;
+    color: #222;
 ">';
 
-echo '<h1 style="color:#14377c;">Skyesoft Sentinel Email Test</h1>';
+echo '<h1 style="
+    margin-bottom: 6px;
+    color: #14377c;
+">
+    Skyesoft Sentinel SMTP Test
+</h1>';
+
+echo '<p style="
+    margin-top: 0;
+    color: #666;
+">
+    Authenticated Microsoft 365 email transport diagnostic.
+</p>';
 
 echo '<table style="
-    width:100%;
-    border-collapse:collapse;
+    width: 100%;
+    margin-top: 24px;
+    border-collapse: collapse;
 ">';
 
+// Recipient
 echo '<tr>';
+
 echo '<th style="
-    width:35%;
-    padding:10px;
-    text-align:left;
-    background:#f8f9fa;
-    border:1px solid #ccc;
-">Recipient</th>';
+    width: 35%;
+    padding: 10px;
+    text-align: left;
+    background: #f8f9fa;
+    border: 1px solid #ccc;
+">
+    Recipient
+</th>';
 
 echo '<td style="
-    padding:10px;
-    border:1px solid #ccc;
-">' . htmlspecialchars($recipientEmail, ENT_QUOTES, 'UTF-8') . '</td>';
+    padding: 10px;
+    border: 1px solid #ccc;
+">' .
+    htmlspecialchars(
+        $recipientEmail,
+        ENT_QUOTES,
+        'UTF-8'
+    ) .
+'</td>';
+
 echo '</tr>';
 
+// Sender
 echo '<tr>';
+
 echo '<th style="
-    padding:10px;
-    text-align:left;
-    background:#f8f9fa;
-    border:1px solid #ccc;
-">Sender</th>';
+    padding: 10px;
+    text-align: left;
+    background: #f8f9fa;
+    border: 1px solid #ccc;
+">
+    Sender
+</th>';
 
 echo '<td style="
-    padding:10px;
-    border:1px solid #ccc;
-">' . htmlspecialchars($senderEmail, ENT_QUOTES, 'UTF-8') . '</td>';
+    padding: 10px;
+    border: 1px solid #ccc;
+">' .
+    htmlspecialchars(
+        $smtpFromEmail,
+        ENT_QUOTES,
+        'UTF-8'
+    ) .
+'</td>';
+
 echo '</tr>';
 
+// SMTP server
 echo '<tr>';
+
 echo '<th style="
-    padding:10px;
-    text-align:left;
-    background:#f8f9fa;
-    border:1px solid #ccc;
-">PHP mail() Result</th>';
+    padding: 10px;
+    text-align: left;
+    background: #f8f9fa;
+    border: 1px solid #ccc;
+">
+    SMTP Server
+</th>';
 
 echo '<td style="
-    padding:10px;
-    border:1px solid #ccc;
-    font-weight:bold;
+    padding: 10px;
+    border: 1px solid #ccc;
+">' .
+    htmlspecialchars(
+        $smtpHost . ':' . $smtpPortNumber,
+        ENT_QUOTES,
+        'UTF-8'
+    ) .
+'</td>';
+
+echo '</tr>';
+
+// Transport result
+echo '<tr>';
+
+echo '<th style="
+    padding: 10px;
+    text-align: left;
+    background: #f8f9fa;
+    border: 1px solid #ccc;
+">
+    SMTP Result
+</th>';
+
+echo '<td style="
+    padding: 10px;
+    border: 1px solid #ccc;
+    font-weight: bold;
 ">';
 
-if ($mailSent) {
-    echo 'SUCCESS — PHP accepted the message for delivery.';
+if ($smtpSuccess) {
+
+    echo '<span style="color:#176638;">';
+    echo 'SUCCESS — Authenticated SMTP delivery completed.';
+    echo '</span>';
+
 } else {
-    echo 'FAILED — PHP mail() returned false.';
+
+    echo '<span style="color:#a00000;">';
+    echo 'FAILED — Authenticated SMTP delivery failed.';
+    echo '</span>';
+
 }
 
 echo '</td>';
+
 echo '</tr>';
 
 echo '</table>';
 
-echo '<p style="
-    margin-top:18px;
-    padding:10px 12px;
-    background:#f0f4f9;
-    border-left:4px solid #14377c;
+// Result callout
+echo '<div style="
+    margin-top: 18px;
+    padding: 11px 13px;
+    background: #f0f4f9;
+    border: 1px solid #b8cbe5;
+    border-left: 4px solid #14377c;
 ">';
 
-if ($mailSent) {
-    echo 'PHP accepted the email, but this does not guarantee that the mail server delivered it. If it still does not arrive, the next step is to inspect the GoDaddy mail configuration or use authenticated SMTP.';
+if ($smtpSuccess) {
+
+    echo '<strong style="color:#14377c;">SMTP Transport Operational</strong>';
+
+    echo '<p style="margin-bottom:0;">';
+    echo 'PHPMailer authenticated with the configured SMTP service and ';
+    echo 'reported successful message delivery. Check the recipient inbox.';
+    echo '</p>';
+
 } else {
-    echo 'The production server did not accept the message through PHP mail(). We should move to authenticated SMTP rather than modifying the Sentinel reporting logic.';
+
+    echo '<strong style="color:#a00000;">SMTP Transport Error</strong>';
+
+    echo '<p style="margin-bottom:0;">';
+
+    echo htmlspecialchars(
+        $smtpError ?? 'No SMTP error information was returned.',
+        ENT_QUOTES,
+        'UTF-8'
+    );
+
+    echo '</p>';
+
 }
 
-echo '</p>';
 echo '</div>';
 
-error_log(
-    'SENTINEL EMAIL TEST: mail()=' .
-    ($mailSent ? 'true' : 'false') .
-    '; recipient=' .
-    $recipientEmail
-);
+echo '</div>';
 
-exit($mailSent ? 0 : 1);
+exit(
+    $smtpSuccess
+        ? 0
+        : 1
+);
 
 #endregion
