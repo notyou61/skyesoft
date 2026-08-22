@@ -869,7 +869,7 @@ $pdfCss = '
 
     .header-logo-cell {
         width: 18%;
-        padding-right: 10px !important;
+        padding: 0 6px 4px 0 !important;
         text-align: left;
         vertical-align: middle;
     }
@@ -883,9 +883,20 @@ $pdfCss = '
 
     .header-details-cell {
         width: 82%;
-        padding: 3px 0 3px 12px !important;
-        border-left: 1px solid #999999;
+        padding: 3px 0 3px 6px !important;
         text-align: left;
+        vertical-align: middle;
+    }
+
+    .header-details-cell > table {
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+    }
+
+    .header-details-cell > table td {
+        padding: 2px 0 2px 8px !important;
+        border-left: 1px solid #999999;
         vertical-align: middle;
     }
 
@@ -908,7 +919,7 @@ $pdfCss = '
     }
 
     .header-report-date {
-        margin: 2px 0 0 0;
+        margin: 1px 0 0 0;
         color: #555555;
         font-size: 7pt;
         line-height: 1;
