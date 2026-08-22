@@ -375,7 +375,14 @@ try {
         .header-table td {
             padding: 0 0 5px;
             border: 0;
-            vertical-align: bottom;
+            vertical-align: middle;
+        }
+
+        .header-details-cell {
+            padding-left: 12px !important;
+            border-left: 1px solid #999 !important;
+            vertical-align: middle;
+            text-align: left;
         }
 
         .header-logo {
@@ -392,7 +399,7 @@ try {
 
         .header-report-details {
             width: 100%;
-            padding-left: 8px;
+            padding-left: 0;
             text-align: left;
         }
         .header-title {
@@ -637,7 +644,14 @@ try {
 
             </td>
 
-            <td style="width: 82%; text-align: left;">
+            <td
+                style="
+                    width: 82%;
+                    padding-left: 12px;
+                    border-left: 1px solid #999;
+                    text-align: left;
+                "
+            >
 
                 <div class="header-report-details">
 
