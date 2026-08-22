@@ -52,18 +52,8 @@ $senderName = 'Skyesoft Sentinel';
 // Configure Sentinel recipient
 $recipientEmail = 'steve@christysigns.com';
 
-// Configure report subject
+// Configure Sentinel email subject
 $subject = 'Skyesoft Sentinel Daily Report';
-
-// Load canonical Skyesoft database connection
-require_once $rootDir . '/api/dbConnect.php';
-
-if (!function_exists('getPDO')) {
-    fail('Skyesoft database connection is unavailable.');
-}
-
-// Initialize database connection
-$pdo = getPDO();
 
 #endregion
 
@@ -71,6 +61,25 @@ $pdo = getPDO();
 
 // Initialize generated report HTML
 $html = '';
+
+// Initialize report values consumed by the email body
+$governanceStatus = 'unknown';
+$executionStatus = 'unknown';
+
+$unresolvedViolations = 0;
+$constitutionalViolations = 0;
+
+$companyNeedsAttention = false;
+
+$siteVersion = 'Unknown';
+
+$lastUpdateUnix = null;
+$lastRunUnix = null;
+
+$runCount = 0;
+
+$reportDate = '';
+$reportTime = '';
 
 // Resolve Sentinel report script
 $reportFile = $rootDir . '/scripts/sentinelDailyReport.php';
@@ -92,7 +101,7 @@ try {
     // Render existing Sentinel Daily Report
     require $reportFile;
 
-    // Capture rendered HTML
+    // Capture complete rendered report
     $html = ob_get_clean();
 
 } catch (\Throwable $throwable) {
@@ -119,19 +128,678 @@ if ($html === false || trim($html) === '') {
     exit(1);
 }
 
-// Render report HTML without sending email in preview mode
+#endregion
+
+#region SECTION IV — Email Body Generation
+
+// Resolve overall Sentinel email status
+$emailNeedsAttention =
+    $governanceStatus !== 'clean' ||
+    $executionStatus !== 'ok' ||
+    $unresolvedViolations > 0 ||
+    $constitutionalViolations > 0 ||
+    $companyNeedsAttention;
+
+// Resolve overall status presentation
+if ($emailNeedsAttention) {
+
+    $overallStatus = 'ATTENTION REQUIRED';
+    $overallStatusColor = '#8a5a00';
+    $overallStatusBackground = '#fff5dc';
+    $overallStatusBorder = '#e8c46e';
+
+} else {
+
+    $overallStatus = 'CLEAN';
+    $overallStatusColor = '#176638';
+    $overallStatusBackground = '#eaf7ef';
+    $overallStatusBorder = '#9fd0ae';
+}
+
+// Resolve governance presentation
+$governanceDisplay = formatGovernanceStatus(
+    $governanceStatus
+);
+
+// Resolve execution presentation
+$executionDisplay = formatExecutionStatus(
+    $executionStatus
+);
+
+// Resolve database integrity presentation
+$databaseIntegrityDisplay = $companyNeedsAttention
+    ? 'Needs Attention'
+    : 'OK';
+
+// Resolve Sentinel summary
+if ($emailNeedsAttention) {
+
+    $sentinelSummary =
+        'Sentinel identified one or more governance, execution, or ' .
+        'database-integrity conditions requiring review. See the ' .
+        'attached Skyesoft Sentinel Daily Report for complete details.';
+
+} else {
+
+    $sentinelSummary =
+        'No governance, execution, or database-integrity conditions ' .
+        'requiring attention were identified during the latest ' .
+        'Sentinel review.';
+}
+
+// Resolve email logo
+$emailLogoUrl =
+    'https://www.skyelighting.com/skyesoft/assets/images/christyLogo.png';
+
+// Build concise Sentinel email body
+$emailHtml = '
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>Skyesoft Sentinel Daily Report</title>
+</head>
+
+<body
+    style="
+        margin: 0;
+        padding: 24px;
+        background: #ffffff;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 14px;
+        line-height: 1.35;
+        color: #222222;
+    "
+>
+
+<table
+    role="presentation"
+    cellpadding="0"
+    cellspacing="0"
+    border="0"
+    style="
+        width: 100%;
+        max-width: 760px;
+        margin: 0 auto;
+        border-collapse: collapse;
+    "
+>
+
+    <!-- =============================================================
+         Email Header
+         ============================================================= -->
+
+    <tr>
+        <td>
+
+            <table
+                role="presentation"
+                cellpadding="0"
+                cellspacing="0"
+                border="0"
+                style="
+                    width: 100%;
+                    border-collapse: collapse;
+                    border-bottom: 3px solid #14377c;
+                "
+            >
+                <tr>
+
+                    <td
+                        style="
+                            width: 18%;
+                            padding: 0 0 8px 0;
+                            vertical-align: middle;
+                            white-space: nowrap;
+                        "
+                    >
+                        <img
+                            src="' . escapeReportValue($emailLogoUrl) . '"
+                            width="148"
+                            alt="Christy Signs"
+                            style="
+                                display: block;
+                                width: auto;
+                                height: 74px;
+                                border: 0;
+                            "
+                        >
+                    </td>
+
+                    <td
+                        style="
+                            width: 82%;
+                            padding: 6px 0 6px 14px;
+                            vertical-align: middle;
+                        "
+                    >
+
+                        <table
+                            role="presentation"
+                            cellpadding="0"
+                            cellspacing="0"
+                            border="0"
+                            style="
+                                width: 100%;
+                                border-collapse: collapse;
+                            "
+                        >
+                            <tr>
+
+                                <td
+                                    style="
+                                        padding-left: 14px;
+                                        border-left: 1px solid #999999;
+                                    "
+                                >
+
+                                    <div
+                                        style="
+                                            margin: 0;
+                                            color: #14377c;
+                                            font-size: 25px;
+                                            font-weight: bold;
+                                            line-height: 1;
+                                        "
+                                    >
+                                        Skyesoft Sentinel Daily Report
+                                    </div>
+
+                                    <div
+                                        style="
+                                            margin-top: 2px;
+                                            color: #333333;
+                                            font-size: 17px;
+                                            font-weight: bold;
+                                            line-height: 1.05;
+                                        "
+                                    >
+                                        System Governance &amp; Health
+                                    </div>
+
+                                    <div
+                                        style="
+                                            margin-top: 2px;
+                                            color: #666666;
+                                            font-size: 12px;
+                                            line-height: 1.05;
+                                        "
+                                    >
+                                        Report Date:
+                                        ' . escapeReportValue($reportDate) . '
+                                        &middot;
+                                        ' . escapeReportValue($reportTime) . '
+                                        MST
+                                    </div>
+
+                                </td>
+
+                            </tr>
+                        </table>
+
+                    </td>
+
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+
+
+    <!-- =============================================================
+         System Status
+         ============================================================= -->
+
+    <tr>
+        <td style="padding-top: 22px;">
+
+            <div
+                style="
+                    margin-bottom: 7px;
+                    padding-bottom: 4px;
+                    color: #14377c;
+                    font-size: 17px;
+                    font-weight: bold;
+                    border-bottom: 2px solid #14377c;
+                "
+            >
+                System Status
+            </div>
+
+            <table
+                role="presentation"
+                cellpadding="0"
+                cellspacing="0"
+                border="0"
+                style="
+                    width: 100%;
+                    border-collapse: collapse;
+                "
+            >
+
+                <tr>
+
+                    <th
+                        style="
+                            width: 38%;
+                            padding: 9px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            color: #333333;
+                            text-align: left;
+                        "
+                    >
+                        Overall Status
+                    </th>
+
+                    <td
+                        style="
+                            padding: 9px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        <span
+                            style="
+                                display: inline-block;
+                                padding: 3px 8px;
+                                border: 1px solid ' .
+                                    $overallStatusBorder . ';
+                                background: ' .
+                                    $overallStatusBackground . ';
+                                color: ' .
+                                    $overallStatusColor . ';
+                                font-size: 12px;
+                                font-weight: bold;
+                            "
+                        >
+                            ' . escapeReportValue($overallStatus) . '
+                        </span>
+                    </td>
+
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Governance
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        ' . escapeReportValue($governanceDisplay) . '
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Sentinel Execution
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        ' . escapeReportValue($executionDisplay) . '
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Database Integrity
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        ' . escapeReportValue(
+                            $databaseIntegrityDisplay
+                        ) . '
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Unresolved Violations
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        <strong>' .
+                            number_format($unresolvedViolations) .
+                        '</strong>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Constitutional Violations
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        <strong>' .
+                            number_format($constitutionalViolations) .
+                        '</strong>
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+
+
+    <!-- =============================================================
+         System Details
+         ============================================================= -->
+
+    <tr>
+        <td style="padding-top: 22px;">
+
+            <div
+                style="
+                    margin-bottom: 7px;
+                    padding-bottom: 4px;
+                    color: #14377c;
+                    font-size: 17px;
+                    font-weight: bold;
+                    border-bottom: 2px solid #14377c;
+                "
+            >
+                System Details
+            </div>
+
+            <table
+                role="presentation"
+                cellpadding="0"
+                cellspacing="0"
+                border="0"
+                style="
+                    width: 100%;
+                    border-collapse: collapse;
+                "
+            >
+
+                <tr>
+                    <th
+                        style="
+                            width: 38%;
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Skyesoft Version
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        <strong>' .
+                            escapeReportValue($siteVersion) .
+                        '</strong>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Version Age
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        ' . escapeReportValue(
+                            formatElapsedTime($lastUpdateUnix)
+                        ) . '
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Last Sentinel Run
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        ' . escapeReportValue(
+                            formatUnixDate($lastRunUnix)
+                        ) . '
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Total Runs
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        <strong>' .
+                            number_format($runCount) .
+                        '</strong>
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+
+
+    <!-- =============================================================
+         Sentinel Summary
+         ============================================================= -->
+
+    <tr>
+        <td style="padding-top: 22px;">
+
+            <div
+                style="
+                    padding: 10px 12px;
+                    background: #f0f4f9;
+                    border: 1px solid #b8cbe5;
+                    border-left: 4px solid #14377c;
+                "
+            >
+
+                <div
+                    style="
+                        margin-bottom: 4px;
+                        color: #14377c;
+                        font-size: 14px;
+                        font-weight: bold;
+                    "
+                >
+                    Sentinel Summary
+                </div>
+
+                <div
+                    style="
+                        color: #333333;
+                        font-size: 13px;
+                        line-height: 1.4;
+                    "
+                >
+                    ' . escapeReportValue($sentinelSummary) . '
+                </div>
+
+            </div>
+
+        </td>
+    </tr>
+
+
+    <!-- =============================================================
+         Email Footer
+         ============================================================= -->
+
+    <tr>
+        <td
+            style="
+                padding-top: 26px;
+                color: #666666;
+                font-size: 12px;
+            "
+        >
+
+            <table
+                role="presentation"
+                cellpadding="0"
+                cellspacing="0"
+                border="0"
+                style="
+                    width: 100%;
+                    border-collapse: collapse;
+                    border-top: 1px solid #cccccc;
+                "
+            >
+                <tr>
+
+                    <td
+                        style="
+                            width: 70%;
+                            padding-top: 7px;
+                        "
+                    >
+                        Prepared by Steve Skye | Christy Signs
+                    </td>
+
+                    <td
+                        style="
+                            width: 30%;
+                            padding-top: 7px;
+                            text-align: right;
+                        "
+                    >
+                        Skyesoft Sentinel
+                    </td>
+
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+
+</table>
+
+</body>
+</html>
+';
+
+// Validate generated email body
+if (trim($emailHtml) === '') {
+    error_log(
+        'SENTINEL EMAIL ERROR: Sentinel email generated no HTML output.'
+    );
+
+    exit(1);
+}
+
+// Render email body without sending in preview mode
 if ($isPreviewMode) {
 
     header('Content-Type: text/html; charset=UTF-8');
 
-    echo $html;
+    echo $emailHtml;
 
     exit;
 }
 
 #endregion
 
-#region SECTION IV — GoDaddy SMTP Transport
+#region SECTION V — GoDaddy SMTP Transport
 
 // Initialize PHPMailer
 $mail = new PHPMailer(true);
@@ -165,21 +833,22 @@ $mail->addAddress(
     $recipientEmail
 );
 
-// Configure HTML report
+// Configure Sentinel email
 $mail->isHTML(true);
 $mail->Subject = $subject;
-$mail->Body = $html;
+$mail->Body = $emailHtml;
 
 #endregion
 
-#region SECTION V — Send Email
+#region SECTION VI — Send Email
 
+// Initialize email execution result
 $sendSuccess = false;
 $sendError = null;
 
 try {
 
-    // Send Sentinel report through GoDaddy local relay
+    // Send Sentinel email through GoDaddy local relay
     $mail->send();
 
     $sendSuccess = true;
@@ -207,7 +876,7 @@ try {
 
 #endregion
 
-#region SECTION VI — Execution Result
+#region SECTION VII — Execution Result
 
 // Determine whether execution is browser-based
 $isBrowserRequest = PHP_SAPI !== 'cli';
