@@ -15,6 +15,12 @@ use PHPMailer\PHPMailer\PHPMailer;
 // Set Skyesoft reporting timezone (Phoenix, Arizona)
 date_default_timezone_set('America/Phoenix');
 
+// Determine whether browser preview mode is requested
+$isPreviewMode =
+    PHP_SAPI !== 'cli' &&
+    isset($_GET['preview']) &&
+    $_GET['preview'] === '1';
+
 // Resolve Skyesoft installation root
 $rootDir = realpath(__DIR__ . '/../');
 
@@ -63,6 +69,9 @@ $pdo = getPDO();
 
 #region SECTION III — Report Generation
 
+// Initialize generated report HTML
+$html = '';
+
 // Resolve Sentinel report script
 $reportFile = $rootDir . '/scripts/sentinelDailyReport.php';
 
@@ -108,6 +117,16 @@ if ($html === false || trim($html) === '') {
     );
 
     exit(1);
+}
+
+// Render report HTML without sending email in preview mode
+if ($isPreviewMode) {
+
+    header('Content-Type: text/html; charset=UTF-8');
+
+    echo $html;
+
+    exit;
 }
 
 #endregion
