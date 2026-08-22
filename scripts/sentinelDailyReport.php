@@ -627,7 +627,10 @@ try {
     <table class="header-table">
         <tr>
 
-            <td style="width: 18%; white-space: nowrap;">
+            <td
+                class="header-logo-cell"
+                style="width: 17%; white-space: nowrap;"
+            >
 
                 <?php if ($logoAvailable): ?>
 
@@ -648,8 +651,15 @@ try {
             </td>
 
             <td
+                class="header-divider-cell"
+                style="width: 2%;"
+            >
+                <div class="header-divider"></div>
+            </td>
+
+            <td
                 class="header-details-cell"
-                style="width: 82%;"
+                style="width: 81%;"
             >
 
                 <div class="header-report-details">

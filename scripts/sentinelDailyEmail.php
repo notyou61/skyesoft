@@ -868,8 +868,8 @@ $pdfCss = '
     }
 
     .header-logo-cell {
-        width: 18%;
-        padding: 0 6px 4px 0 !important;
+        width: 17%;
+        padding: 0 8px 4px 0 !important;
         text-align: left;
         vertical-align: middle;
     }
@@ -882,8 +882,8 @@ $pdfCss = '
     }
 
     .header-details-cell {
-        width: 82%;
-        padding: 3px 0 3px 8px !important;
+        width: 83%;
+        padding: 6px 0 6px 10px !important;
         border-left: 1px solid #999999;
         text-align: left;
         vertical-align: middle;
