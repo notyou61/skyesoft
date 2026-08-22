@@ -373,32 +373,47 @@ try {
         }
 
         .header-table td {
-            padding: 0 0 8px;
             border: 0;
             vertical-align: middle;
         }
 
-        .header-details-cell {
-            position: relative;
-            padding-left: 14px !important;
-            vertical-align: middle;
+        .header-logo-cell {
+            width: 17%;
+            padding: 0 5px 8px 0;
+            white-space: nowrap;
             text-align: left;
+            vertical-align: middle;
         }
 
-        .header-details-cell::before {
-            position: absolute;
-            top: 6px;
-            bottom: 6px;
-            left: 0;
+        /* A — Divider Position */
+        .header-divider-cell {
+            width: 2%;
+            padding: 0 5px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* B — Divider Height */
+        .header-divider {
             width: 1px;
+            height: 46px;
+            margin: 0 auto;
             background: #999;
-            content: '';
+        }
+
+        .header-details-cell {
+            width: 81%;
+            padding: 0 0 8px 5px;
+            text-align: left;
+            vertical-align: middle;
         }
 
         .header-logo {
             display: block;
             width: auto;
             height: 74px;
+            margin: 0;
+            border: 0;
         }
 
         .logo-fallback {
@@ -409,9 +424,11 @@ try {
 
         .header-report-details {
             width: 100%;
-            padding-left: 0;
+            margin: 0;
+            padding: 0;
             text-align: left;
         }
+
         .header-title {
             margin: 0;
             color: #14377c;
@@ -421,7 +438,7 @@ try {
         }
 
         .header-subtitle-main {
-            margin-top: 2px;
+            margin: 2px 0 0;
             color: #333;
             font-size: 17px;
             font-weight: bold;
@@ -429,7 +446,7 @@ try {
         }
 
         .header-report-date {
-            margin-top: 1px;
+            margin: 1px 0 0;
             color: #666;
             font-size: 12px;
             line-height: 1.05;
@@ -595,6 +612,10 @@ try {
                 height: 55px;
             }
 
+            .header-divider {
+                height: 38px;
+            }
+
             .header-title {
                 font-size: 19px;
             }
@@ -627,10 +648,7 @@ try {
     <table class="header-table">
         <tr>
 
-            <td
-                class="header-logo-cell"
-                style="width: 17%; white-space: nowrap;"
-            >
+            <td class="header-logo-cell">
 
                 <?php if ($logoAvailable): ?>
 
@@ -650,17 +668,13 @@ try {
 
             </td>
 
-            <td
-                class="header-divider-cell"
-                style="width: 2%;"
-            >
+            <td class="header-divider-cell">
+
                 <div class="header-divider"></div>
+
             </td>
 
-            <td
-                class="header-details-cell"
-                style="width: 81%;"
-            >
+            <td class="header-details-cell">
 
                 <div class="header-report-details">
 
@@ -904,91 +918,88 @@ try {
             Entity Classification
         </div>
 
-    <table class="data-table">
+        <table class="data-table">
 
-        <tr>
-            <th>
+            <tr>
+                <th>
 
-                <table
-                    cellpadding="0"
-                    cellspacing="0"
-                    border="0"
-                    style="
-                        width: auto;
-                        border-collapse: collapse;
-                    "
-                >
-                    <tr>
-
-                        <td
-                            style="
-                                padding: 0 5px 0 0;
-                                border: 0;
-                                background: transparent;
-                                color: #333333;
-                                font-weight: bold;
-                                white-space: nowrap;
-                            "
-                        >
-                            Company
-                        </td>
-
-                        <?php if ($companyNeedsAttention): ?>
+                    <table
+                        cellpadding="0"
+                        cellspacing="0"
+                        border="0"
+                        style="
+                            width: auto;
+                            border-collapse: collapse;
+                        "
+                    >
+                        <tr>
 
                             <td
                                 style="
-                                    padding: 2px 6px;
-                                    border: 1px solid #e8c46e;
-                                    background: #fff5dc;
-                                    color: #8a5a00;
-                                    font-size: 11px;
+                                    padding: 0 5px 0 0;
+                                    border: 0;
+                                    background: transparent;
+                                    color: #333333;
                                     font-weight: bold;
-                                    line-height: 1.1;
                                     white-space: nowrap;
                                 "
                             >
-                                Needs Attention
+                                Company
                             </td>
 
-                        <?php endif; ?>
+                            <?php if ($companyNeedsAttention): ?>
 
-                    </tr>
-                </table>
+                                <td
+                                    style="
+                                        padding: 2px 6px;
+                                        border: 1px solid #e8c46e;
+                                        background: #fff5dc;
+                                        color: #8a5a00;
+                                        font-size: 11px;
+                                        font-weight: bold;
+                                        line-height: 1.1;
+                                        white-space: nowrap;
+                                    "
+                                >
+                                    Needs Attention
+                                </td>
 
-            </th>
+                            <?php endif; ?>
 
-            <td>
-                <strong>
-                    <?= number_format($entityCounts['company']) ?>
-                </strong>
-            </td>
-        </tr>
+                        </tr>
+                    </table>
 
-        <tr>
-            <th>Customers</th>
+                </th>
 
-            <td>
-                <?= number_format($entityCounts['customer']) ?>
-            </td>
-        </tr>
+                <td>
+                    <strong>
+                        <?= number_format($entityCounts['company']) ?>
+                    </strong>
+                </td>
+            </tr>
 
-        <tr>
-            <th>Vendors</th>
+            <tr>
+                <th>Customers</th>
+                <td>
+                    <?= number_format($entityCounts['customer']) ?>
+                </td>
+            </tr>
 
-            <td>
-                <?= number_format($entityCounts['vendor']) ?>
-            </td>
-        </tr>
+            <tr>
+                <th>Vendors</th>
+                <td>
+                    <?= number_format($entityCounts['vendor']) ?>
+                </td>
+            </tr>
 
-        <tr>
-            <th>Jurisdictions</th>
+            <tr>
+                <th>Jurisdictions</th>
+                <td>
+                    <?= number_format($entityCounts['jurisdiction']) ?>
+                </td>
+            </tr>
 
-            <td>
-                <?= number_format($entityCounts['jurisdiction']) ?>
-            </td>
-        </tr>
-
-    </table>
+        </table>
 
     </div>
 
