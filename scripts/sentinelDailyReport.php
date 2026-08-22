@@ -396,7 +396,7 @@ try {
         /* B — Divider Height */
         .header-divider {
             width: 1px;
-            height: 46px;
+            height: 42px;
             margin: 0 auto;
             background: #999;
         }
