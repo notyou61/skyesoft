@@ -7,6 +7,7 @@ declare(strict_types=1);
  *  Codex-Governed Module • PHP 8.3
  * ===================================================================== */
 
+use Mpdf\Mpdf;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -20,6 +21,12 @@ $isPreviewMode =
     PHP_SAPI !== 'cli' &&
     isset($_GET['preview']) &&
     $_GET['preview'] === '1';
+
+// Determine whether browser PDF preview mode is requested
+$isPdfPreviewMode =
+    PHP_SAPI !== 'cli' &&
+    isset($_GET['pdf']) &&
+    $_GET['pdf'] === '1';
 
 // Resolve Skyesoft installation root
 $rootDir = realpath(__DIR__ . '/../');
@@ -36,6 +43,21 @@ if ($rootDir === false) {
 require_once $rootDir . '/vendor/phpmailer/phpmailer/src/Exception.php';
 require_once $rootDir . '/vendor/phpmailer/phpmailer/src/PHPMailer.php';
 require_once $rootDir . '/vendor/phpmailer/phpmailer/src/SMTP.php';
+
+// Resolve Composer autoloader
+$composerAutoload = $rootDir . '/vendor/autoload.php';
+
+if (!is_file($composerAutoload)) {
+    error_log(
+        'SENTINEL EMAIL ERROR: Composer autoloader was not found: ' .
+        $composerAutoload
+    );
+
+    exit(1);
+}
+
+// Load Composer dependencies (mPDF)
+require_once $composerAutoload;
 
 #endregion
 
@@ -799,7 +821,80 @@ if ($isPreviewMode) {
 
 #endregion
 
-#region SECTION V — GoDaddy SMTP Transport
+#region SECTION V — PDF Attachment Generation
+
+// Initialize PDF attachment values
+$pdfContent = '';
+
+$pdfFilename =
+    'Skyesoft_Sentinel_Daily_Report_' .
+    date('Y-m-d') .
+    '.pdf';
+
+try {
+
+    // Initialize mPDF
+    $mpdf = new Mpdf([
+        'format' => 'Letter',
+        'orientation' => 'P',
+        'margin_left' => 10,
+        'margin_right' => 10,
+        'margin_top' => 10,
+        'margin_bottom' => 10
+    ]);
+
+    // Render full Sentinel report into PDF
+    $mpdf->WriteHTML($html);
+
+    // Capture PDF in memory
+    $pdfContent = $mpdf->Output(
+        '',
+        'S'
+    );
+
+} catch (\Throwable $throwable) {
+
+    error_log(
+        'SENTINEL EMAIL ERROR: Unable to generate PDF attachment: ' .
+        $throwable->getMessage()
+    );
+
+    exit(1);
+}
+
+// Validate generated PDF attachment
+if ($pdfContent === '') {
+    error_log(
+        'SENTINEL EMAIL ERROR: PDF attachment generated no content.'
+    );
+
+    exit(1);
+}
+
+// Render PDF without sending email in PDF preview mode
+if ($isPdfPreviewMode) {
+
+    header('Content-Type: application/pdf');
+
+    header(
+        'Content-Disposition: inline; filename="' .
+        $pdfFilename .
+        '"'
+    );
+
+    header(
+        'Content-Length: ' .
+        strlen($pdfContent)
+    );
+
+    echo $pdfContent;
+
+    exit;
+}
+
+#endregion
+
+#region SECTION VI — GoDaddy SMTP Transport
 
 // Initialize PHPMailer
 $mail = new PHPMailer(true);
@@ -838,9 +933,17 @@ $mail->isHTML(true);
 $mail->Subject = $subject;
 $mail->Body = $emailHtml;
 
+// Attach detailed Sentinel PDF report
+$mail->addStringAttachment(
+    $pdfContent,
+    $pdfFilename,
+    'base64',
+    'application/pdf'
+);
+
 #endregion
 
-#region SECTION VI — Send Email
+#region SECTION VII — Send Email
 
 // Initialize email execution result
 $sendSuccess = false;
@@ -876,7 +979,7 @@ try {
 
 #endregion
 
-#region SECTION VII — Execution Result
+#region SECTION VIII — Execution Result
 
 // Determine whether execution is browser-based
 $isBrowserRequest = PHP_SAPI !== 'cli';
