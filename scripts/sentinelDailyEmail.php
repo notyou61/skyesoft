@@ -831,20 +831,219 @@ $pdfFilename =
     date('Y-m-d') .
     '.pdf';
 
+// Configure compact PDF-only styling
+$pdfCss = '
+    @page {
+        margin: 8mm 10mm 10mm 10mm;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        font-size: 8pt;
+        line-height: 1.18;
+        color: #222;
+    }
+
+    /* Preserve existing Sentinel header layout */
+    .report-header,
+    .header,
+    .header-table {
+        margin-top: 0;
+        margin-bottom: 5px;
+    }
+
+    /* Compact report sections */
+    .section,
+    .section-block {
+        margin-top: 0;
+        margin-bottom: 6px;
+        page-break-inside: avoid;
+    }
+
+    /* Section headings */
+    h1,
+    h2,
+    h3,
+    .section-heading {
+        color: #14377c;
+        page-break-after: avoid;
+    }
+
+    h1 {
+        margin: 0 0 2px;
+        font-size: 13pt;
+        line-height: 1.05;
+    }
+
+    h2 {
+        margin: 5px 0 3px;
+        padding-bottom: 2px;
+        border-bottom: 1.5px solid #14377c;
+        font-size: 9.5pt;
+        line-height: 1.05;
+    }
+
+    h3 {
+        margin: 3px 0 2px;
+        font-size: 8.5pt;
+        line-height: 1.05;
+    }
+
+    /* Compact tables */
+    table {
+        border-collapse: collapse;
+    }
+
+    td,
+    th {
+        line-height: 1.15;
+    }
+
+    .data-table,
+    .status-table,
+    .details-table {
+        width: 100%;
+        margin: 0 0 4px;
+        border-collapse: collapse;
+    }
+
+    .data-table th,
+    .data-table td,
+    .status-table th,
+    .status-table td,
+    .details-table th,
+    .details-table td {
+        padding: 3px 5px;
+        border: 1px solid #ccc;
+        font-size: 7.7pt;
+        vertical-align: top;
+    }
+
+    .data-table th,
+    .status-table th,
+    .details-table th {
+        background: #f8f9fa;
+        text-align: left;
+        font-weight: bold;
+    }
+
+    /* Compact report callouts */
+    .callout-box,
+    .summary-box,
+    .sentinel-summary {
+        margin: 4px 0;
+        padding: 5px 7px;
+        background: #f0f4f9;
+        border: 1px solid #b8cbe5;
+        border-left: 3px solid #14377c;
+        page-break-inside: avoid;
+    }
+
+    /* Compact text */
+    p {
+        margin: 1px 0 3px;
+    }
+
+    ul,
+    ol {
+        margin-top: 2px;
+        margin-bottom: 3px;
+        padding-left: 16px;
+    }
+
+    li {
+        margin-bottom: 1px;
+    }
+
+    /* Status labels */
+    .status {
+        padding: 1px 5px;
+        font-size: 7pt;
+    }
+
+    /* Suppress browser-only spacing */
+    br {
+        line-height: 1;
+    }
+';
+
+// Configure PDF footer
+$pdfFooter = '
+<table
+    style="
+        width: 100%;
+        border-top: 1px solid #ccc;
+        font-family: Arial, sans-serif;
+        font-size: 7pt;
+        color: #666;
+    "
+>
+    <tr>
+        <td
+            style="
+                width: 70%;
+                padding-top: 3px;
+                text-align: left;
+            "
+        >
+            Prepared by Steve Skye | Christy Signs
+        </td>
+
+        <td
+            style="
+                width: 30%;
+                padding-top: 3px;
+                text-align: right;
+            "
+        >
+            Page {PAGENO} of {nbpg}
+        </td>
+    </tr>
+</table>
+';
+
 try {
 
     // Initialize mPDF
     $mpdf = new Mpdf([
+        'mode' => 'utf-8',
         'format' => 'Letter',
         'orientation' => 'P',
         'margin_left' => 10,
         'margin_right' => 10,
-        'margin_top' => 10,
-        'margin_bottom' => 10
+        'margin_top' => 8,
+        'margin_bottom' => 11,
+        'margin_header' => 0,
+        'margin_footer' => 5
     ]);
 
-    // Render full Sentinel report into PDF
-    $mpdf->WriteHTML($html);
+    // Configure PDF metadata
+    $mpdf->SetTitle(
+        'Skyesoft Sentinel Daily Report'
+    );
+
+    $mpdf->SetAuthor(
+        'Steve Skye'
+    );
+
+    // Load compact PDF-specific styling
+    $mpdf->WriteHTML(
+        $pdfCss,
+        \Mpdf\HTMLParserMode::HEADER_CSS
+    );
+
+    // Configure report footer
+    $mpdf->SetHTMLFooter(
+        $pdfFooter
+    );
+
+    // Render full Sentinel report
+    $mpdf->WriteHTML(
+        $html,
+        \Mpdf\HTMLParserMode::HTML_BODY
+    );
 
     // Capture PDF in memory
     $pdfContent = $mpdf->Output(
@@ -874,7 +1073,9 @@ if ($pdfContent === '') {
 // Render PDF without sending email in PDF preview mode
 if ($isPdfPreviewMode) {
 
-    header('Content-Type: application/pdf');
+    header(
+        'Content-Type: application/pdf'
+    );
 
     header(
         'Content-Disposition: inline; filename="' .
