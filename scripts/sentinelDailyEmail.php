@@ -831,153 +831,159 @@ $pdfFilename =
     date('Y-m-d') .
     '.pdf';
 
-// Configure compact PDF-only styling
+// Configure compact PDF styling
 $pdfCss = '
     @page {
-        margin: 8mm 10mm 10mm 10mm;
+        margin: 7mm 10mm 10mm 10mm;
     }
 
     body {
         margin: 0;
         padding: 0;
-        font-family: Arial, sans-serif;
-        font-size: 8pt;
-        line-height: 1.18;
-        color: #222;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 7.5pt;
+        line-height: 1.12;
+        color: #222222;
+        background: #ffffff;
     }
 
-    /* Preserve existing Sentinel header layout */
-    .report-header,
-    .header,
+    .report {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Header */
     .header-table {
-        margin-top: 0;
-        margin-bottom: 5px;
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+        border-bottom: 2px solid #14377c;
     }
 
-    /* Compact report sections */
-    .section,
+    .header-table td {
+        padding-top: 0;
+        padding-bottom: 4px;
+        vertical-align: middle;
+    }
+
+    .header-logo {
+        height: 44px;
+        width: auto;
+    }
+
+    .header-title {
+        font-size: 14pt;
+        line-height: 1;
+    }
+
+    .header-subtitle-main {
+        margin-top: 1px;
+        font-size: 8.5pt;
+        line-height: 1;
+    }
+
+    .header-report-date {
+        margin-top: 1px;
+        font-size: 6.8pt;
+        line-height: 1;
+    }
+
+    /* Sections */
     .section-block {
-        margin-top: 0;
-        margin-bottom: 6px;
+        margin-top: 5px;
         page-break-inside: avoid;
     }
 
-    /* Section headings */
-    h1,
-    h2,
-    h3,
     .section-heading {
-        color: #14377c;
-        page-break-after: avoid;
-    }
-
-    h1 {
-        margin: 0 0 2px;
-        font-size: 13pt;
-        line-height: 1.05;
-    }
-
-    h2 {
-        margin: 5px 0 3px;
+        margin-bottom: 3px;
         padding-bottom: 2px;
-        border-bottom: 1.5px solid #14377c;
-        font-size: 9.5pt;
-        line-height: 1.05;
+        color: #14377c;
+        font-size: 9pt;
+        line-height: 1;
+        border-bottom: 1px solid #14377c;
     }
 
-    h3 {
-        margin: 3px 0 2px;
-        font-size: 8.5pt;
-        line-height: 1.05;
+    .section-heading-title {
+        display: inline-block;
+        vertical-align: middle;
     }
 
-    /* Compact tables */
-    table {
-        border-collapse: collapse;
-    }
-
-    td,
-    th {
-        line-height: 1.15;
-    }
-
-    .data-table,
-    .status-table,
-    .details-table {
+    /* Tables */
+    .data-table {
         width: 100%;
-        margin: 0 0 4px;
+        margin: 0;
         border-collapse: collapse;
     }
 
     .data-table th,
-    .data-table td,
-    .status-table th,
-    .status-table td,
-    .details-table th,
-    .details-table td {
-        padding: 3px 5px;
-        border: 1px solid #ccc;
-        font-size: 7.7pt;
+    .data-table td {
+        padding: 2px 4px;
+        border: 1px solid #cccccc;
+        font-size: 7pt;
+        line-height: 1.08;
         vertical-align: top;
     }
 
-    .data-table th,
-    .status-table th,
-    .details-table th {
-        background: #f8f9fa;
-        text-align: left;
+    .data-table th {
+        width: 38%;
+        color: #333333;
         font-weight: bold;
+        text-align: left;
+        background: #f8f9fa;
     }
 
-    /* Compact report callouts */
-    .callout-box,
-    .summary-box,
-    .sentinel-summary {
+    .data-table td {
+        width: 62%;
+        background: #ffffff;
+    }
+
+    /* Status */
+    .status {
+        padding: 1px 4px;
+        font-size: 6.5pt;
+        line-height: 1;
+    }
+
+    /* Callouts */
+    .callout-box {
         margin: 4px 0;
-        padding: 5px 7px;
+        padding: 4px 6px;
         background: #f0f4f9;
         border: 1px solid #b8cbe5;
         border-left: 3px solid #14377c;
         page-break-inside: avoid;
     }
 
-    /* Compact text */
-    p {
-        margin: 1px 0 3px;
+    .callout-title {
+        margin-bottom: 2px;
+        color: #14377c;
+        font-size: 7.5pt;
+        font-weight: bold;
     }
 
-    ul,
-    ol {
-        margin-top: 2px;
-        margin-bottom: 3px;
-        padding-left: 16px;
+    .callout-body {
+        font-size: 6.8pt;
+        line-height: 1.12;
     }
 
-    li {
-        margin-bottom: 1px;
-    }
-
-    /* Status labels */
-    .status {
-        padding: 1px 5px;
-        font-size: 7pt;
-    }
-
-    /* Suppress browser-only spacing */
-    br {
-        line-height: 1;
+    /* Remove report HTML footer (mPDF supplies canonical footer) */
+    .report-footer {
+        display: none;
     }
 ';
 
-// Configure PDF footer
+// Configure canonical PDF footer
 $pdfFooter = '
 <table
     style="
         width: 100%;
-        border-top: 1px solid #ccc;
-        font-family: Arial, sans-serif;
+        border-top: 1px solid #cccccc;
+        border-collapse: collapse;
+        font-family: Arial, Helvetica, sans-serif;
         font-size: 7pt;
-        color: #666;
+        color: #666666;
     "
 >
     <tr>
@@ -1013,7 +1019,7 @@ try {
         'orientation' => 'P',
         'margin_left' => 10,
         'margin_right' => 10,
-        'margin_top' => 8,
+        'margin_top' => 7,
         'margin_bottom' => 11,
         'margin_header' => 0,
         'margin_footer' => 5
@@ -1028,20 +1034,33 @@ try {
         'Steve Skye'
     );
 
-    // Load compact PDF-specific styling
+    // Configure PDF footer
+    $mpdf->SetHTMLFooter(
+        $pdfFooter
+    );
+
+    // Load PDF-specific stylesheet
     $mpdf->WriteHTML(
         $pdfCss,
         \Mpdf\HTMLParserMode::HEADER_CSS
     );
 
-    // Configure report footer
-    $mpdf->SetHTMLFooter(
-        $pdfFooter
-    );
+    // Extract report body from complete HTML document
+    $pdfHtml = $html;
 
-    // Render full Sentinel report
+    if (
+        preg_match(
+            '/<body\b[^>]*>(.*?)<\/body>/is',
+            $html,
+            $bodyMatch
+        ) === 1
+    ) {
+        $pdfHtml = $bodyMatch[1];
+    }
+
+    // Render report body only
     $mpdf->WriteHTML(
-        $html,
+        $pdfHtml,
         \Mpdf\HTMLParserMode::HTML_BODY
     );
 
