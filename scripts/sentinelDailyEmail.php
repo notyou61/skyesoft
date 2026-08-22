@@ -857,43 +857,62 @@ $pdfCss = '
     /* Header */
     .header-table {
         width: 100%;
-        margin: 0;
+        margin: 0 0 3px 0;
         border-collapse: collapse;
         border-bottom: 2px solid #14377c;
     }
 
     .header-table td {
-        padding-top: 0;
-        padding-bottom: 4px;
+        padding: 0 0 4px 0;
+        vertical-align: middle;
+    }
+
+    .header-logo-cell {
+        width: 18%;
+        padding-right: 10px !important;
+        text-align: left;
         vertical-align: middle;
     }
 
     .header-logo {
-        height: 44px;
+        display: block;
         width: auto;
+        height: 54px;
+        margin: 0;
+    }
+
+    .header-details-cell {
+        width: 82%;
+        padding: 3px 0 3px 12px !important;
+        border-left: 1px solid #999999;
+        text-align: left;
+        vertical-align: middle;
     }
 
     .header-title {
-        font-size: 14pt;
+        margin: 0;
+        color: #14377c;
+        font-size: 16pt;
+        font-weight: bold;
         line-height: 1;
+        text-align: left;
     }
 
     .header-subtitle-main {
-        margin-top: 1px;
-        font-size: 8.5pt;
+        margin: 1px 0 0 0;
+        color: #222222;
+        font-size: 9pt;
+        font-weight: bold;
         line-height: 1;
+        text-align: left;
     }
 
     .header-report-date {
-        margin-top: 1px;
-        font-size: 6.8pt;
+        margin: 2px 0 0 0;
+        color: #555555;
+        font-size: 7pt;
         line-height: 1;
-    }
-
-    /* Sections */
-    .section-block {
-        margin-top: 5px;
-        page-break-inside: avoid;
+        text-align: left;
     }
 
     .section-heading {
