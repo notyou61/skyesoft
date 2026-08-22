@@ -883,7 +883,8 @@ $pdfCss = '
 
     .header-details-cell {
         width: 82%;
-        padding: 3px 0 3px 6px !important;
+        padding: 3px 0 3px 8px !important;
+        border-left: 1px solid #999999;
         text-align: left;
         vertical-align: middle;
     }
@@ -895,8 +896,7 @@ $pdfCss = '
     }
 
     .header-details-cell > table td {
-        padding: 2px 0 2px 8px !important;
-        border-left: 1px solid #999999;
+        padding: 0 !important;
         vertical-align: middle;
     }
 
