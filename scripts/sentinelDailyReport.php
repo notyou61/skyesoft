@@ -377,33 +377,11 @@ try {
             vertical-align: middle;
         }
 
+        /* Logo uses only the width it actually requires */
         .header-logo-cell {
-            width: 17%;
-            padding: 0 5px 8px 0;
+            width: 1%;
+            padding: 0 8px 8px 0;
             white-space: nowrap;
-            text-align: left;
-            vertical-align: middle;
-        }
-
-        /* A — Divider Position */
-        .header-divider-cell {
-            width: 2%;
-            padding: 0 5px 8px;
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        /* B — Divider Height */
-        .header-divider {
-            width: 1px;
-            height: 42px;
-            margin: 0 auto;
-            background: #999;
-        }
-
-        .header-details-cell {
-            width: 81%;
-            padding: 0 0 8px 5px;
             text-align: left;
             vertical-align: middle;
         }
@@ -420,6 +398,31 @@ try {
             color: #14377c;
             font-size: 22px;
             font-weight: bold;
+        }
+
+        /* Divider uses a dedicated fixed-width cell */
+        .header-divider-cell {
+            width: 17px;
+            padding: 0 8px 8px;
+            white-space: nowrap;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* Divider height control */
+        .header-divider {
+            width: 1px;
+            height: 42px;
+            margin: 0 auto;
+            background: #999;
+        }
+
+        /* Header text consumes remaining width */
+        .header-details-cell {
+            width: auto;
+            padding: 0 0 8px 8px;
+            text-align: left;
+            vertical-align: middle;
         }
 
         .header-report-details {
