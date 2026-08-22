@@ -373,7 +373,7 @@ try {
         }
 
         .header-table td {
-            padding: 0 0 5px;
+            padding: 0 0 8px;
             border: 0;
             vertical-align: middle;
         }
