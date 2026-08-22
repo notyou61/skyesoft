@@ -392,9 +392,9 @@ try {
 
         .header-report-details {
             width: 100%;
-            text-align: right;
+            padding-left: 18px;
+            text-align: left;
         }
-
         .header-title {
             margin: 0;
             color: #14377c;
@@ -617,7 +617,7 @@ try {
     <table class="header-table">
         <tr>
 
-            <td style="width: 32%;">
+            <td style="width: 24%; white-space: nowrap;">
 
                 <?php if ($logoAvailable): ?>
 
@@ -637,7 +637,7 @@ try {
 
             </td>
 
-            <td style="width: 68%; text-align: right;">
+            <td style="width: 76%; text-align: left;">
 
                 <div class="header-report-details">
 
