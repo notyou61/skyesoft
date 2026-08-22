@@ -379,10 +379,20 @@ try {
         }
 
         .header-details-cell {
-            padding-left: 12px !important;
-            border-left: 1px solid #999 !important;
+            position: relative;
+            padding-left: 14px !important;
             vertical-align: middle;
             text-align: left;
+        }
+
+        .header-details-cell::before {
+            position: absolute;
+            top: 6px;
+            bottom: 6px;
+            left: 0;
+            width: 1px;
+            background: #999;
+            content: '';
         }
 
         .header-logo {
@@ -415,13 +425,6 @@ try {
             color: #333;
             font-size: 17px;
             font-weight: bold;
-            line-height: 1.05;
-        }
-
-        .header-subtitle-sub {
-            margin-top: 1px;
-            color: #555;
-            font-size: 14px;
             line-height: 1.05;
         }
 
@@ -645,12 +648,8 @@ try {
             </td>
 
             <td
-                style="
-                    width: 82%;
-                    padding-left: 12px;
-                    border-left: 1px solid #999;
-                    text-align: left;
-                "
+                class="header-details-cell"
+                style="width: 82%;"
             >
 
                 <div class="header-report-details">
@@ -661,10 +660,6 @@ try {
 
                     <div class="header-subtitle-main">
                         System Governance &amp; Health
-                    </div>
-
-                    <div class="header-subtitle-sub">
-                        Skyesoft Sentinel
                     </div>
 
                     <div class="header-report-date">
