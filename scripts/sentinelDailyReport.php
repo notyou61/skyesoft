@@ -373,7 +373,7 @@ try {
         }
 
         .header-table td {
-            padding: 0 0 8px;
+            padding: 0 0 5px;
             border: 0;
             vertical-align: bottom;
         }
@@ -392,7 +392,7 @@ try {
 
         .header-report-details {
             width: 100%;
-            padding-left: 18px;
+            padding-left: 8px;
             text-align: left;
         }
         .header-title {
@@ -400,29 +400,29 @@ try {
             color: #14377c;
             font-size: 25px;
             font-weight: bold;
-            line-height: 1.05;
+            line-height: 1;
         }
 
         .header-subtitle-main {
-            margin-top: 3px;
+            margin-top: 2px;
             color: #333;
             font-size: 17px;
             font-weight: bold;
-            line-height: 1.15;
+            line-height: 1.05;
         }
 
         .header-subtitle-sub {
-            margin-top: 2px;
+            margin-top: 1px;
             color: #555;
             font-size: 14px;
-            line-height: 1.15;
+            line-height: 1.05;
         }
 
         .header-report-date {
-            margin-top: 2px;
+            margin-top: 1px;
             color: #666;
             font-size: 12px;
-            line-height: 1.15;
+            line-height: 1.05;
         }
 
 
@@ -617,7 +617,7 @@ try {
     <table class="header-table">
         <tr>
 
-            <td style="width: 24%; white-space: nowrap;">
+            <td style="width: 18%; white-space: nowrap;">
 
                 <?php if ($logoAvailable): ?>
 
@@ -637,7 +637,7 @@ try {
 
             </td>
 
-            <td style="width: 76%; text-align: left;">
+            <td style="width: 82%; text-align: left;">
 
                 <div class="header-report-details">
 
