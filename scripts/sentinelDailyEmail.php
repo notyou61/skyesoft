@@ -63,12 +63,8 @@ require_once $composerAutoload;
 
 #region SECTION II — Email Configuration
 
-// Configure GoDaddy local SMTP relay
-$smtpHost = 'localhost';
-$smtpPort = 25;
-
-// Configure Sentinel sender
-$senderEmail = 'steve.skye@skyelighting.com';
+// Configure Microsoft Graph sender
+$senderEmail = 'info@skyelighting.com';
 $senderName = 'Skyesoft Sentinel';
 
 // Configure Sentinel recipient
@@ -1260,56 +1256,207 @@ if ($isPdfPreviewMode) {
 
 #endregion
 
-#region SECTION VI — GoDaddy SMTP Transport
+#region SECTION VI — Microsoft Graph Transport
 
-// Initialize PHPMailer
-$mail = new PHPMailer(true);
+// Load Microsoft Graph environment from /secure (cPanel-safe, absolute anchor)
+$msEnvPath = dirname(__DIR__, 3) . '/secure/microsoft.env';
 
-// Configure GoDaddy local SMTP relay
-$mail->isSMTP();
-$mail->Host = $smtpHost;
-$mail->Port = $smtpPort;
-$mail->SMTPAuth = false;
-$mail->SMTPSecure = '';
+if (!file_exists($msEnvPath)) {
+    throw new RuntimeException(
+        'Microsoft Graph environment file not found.'
+    );
+}
 
-// Configure SMTP runtime
-$mail->Timeout = 15;
-$mail->SMTPDebug = 0;
-$mail->CharSet = 'UTF-8';
-
-// Configure sender
-$mail->setFrom(
-    $senderEmail,
-    $senderName
+// Read Microsoft Graph environment file
+$msEnvLines = file(
+    $msEnvPath,
+    FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES
 );
 
-// Configure reply address
-$mail->addReplyTo(
-    $senderEmail,
-    $senderName
+foreach ($msEnvLines as $msEnvLine) {
+
+    // Ignore comments
+    if (strpos(trim($msEnvLine), '#') === 0) {
+        continue;
+    }
+
+    // Ignore malformed entries
+    if (strpos($msEnvLine, '=') === false) {
+        continue;
+    }
+
+    list($msEnvKey, $msEnvValue) = explode('=', $msEnvLine, 2);
+
+    $msEnvKey = trim($msEnvKey);
+    $msEnvValue = trim($msEnvValue);
+
+    if ($msEnvKey !== '') {
+        $_ENV[$msEnvKey] = $msEnvValue;
+    }
+}
+
+// Read Microsoft Graph credentials
+$msTenantId = $_ENV['SKYESOFT_MS_TENANT_ID'] ?? '';
+$msClientId = $_ENV['SKYESOFT_MS_CLIENT_ID'] ?? '';
+$msClientSecret = $_ENV['SKYESOFT_MS_CLIENT_SECRET'] ?? '';
+$msMailbox = $_ENV['SKYESOFT_MS_MAILBOX'] ?? '';
+
+if (
+    $msTenantId === '' ||
+    $msClientId === '' ||
+    $msClientSecret === '' ||
+    $msMailbox === ''
+) {
+    throw new RuntimeException(
+        'Microsoft Graph configuration is incomplete.'
+    );
+}
+
+// Build Microsoft OAuth token endpoint
+$tokenUrl =
+    'https://login.microsoftonline.com/' .
+    rawurlencode($msTenantId) .
+    '/oauth2/v2.0/token';
+
+// Build client credentials request
+$tokenFields = http_build_query([
+    'client_id'     => $msClientId,
+    'client_secret' => $msClientSecret,
+    'scope'         => 'https://graph.microsoft.com/.default',
+    'grant_type'    => 'client_credentials',
+]);
+
+// Request Microsoft Graph access token
+$tokenCurl = curl_init();
+
+curl_setopt_array($tokenCurl, [
+    CURLOPT_URL            => $tokenUrl,
+    CURLOPT_POST           => true,
+    CURLOPT_POSTFIELDS     => $tokenFields,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER     => [
+        'Content-Type: application/x-www-form-urlencoded',
+    ],
+    CURLOPT_TIMEOUT        => 30,
+]);
+
+$tokenResponse = curl_exec($tokenCurl);
+$tokenError = curl_error($tokenCurl);
+$tokenHttpCode = (int) curl_getinfo(
+    $tokenCurl,
+    CURLINFO_HTTP_CODE
 );
 
-// Configure recipient
-$mail->addAddress(
-    $recipientEmail
+curl_close($tokenCurl);
+
+if ($tokenResponse === false) {
+    throw new RuntimeException(
+        'Microsoft Graph token request failed: ' .
+        $tokenError
+    );
+}
+
+// Decode Microsoft Graph token response
+$tokenData = json_decode($tokenResponse, true);
+
+if (
+    $tokenHttpCode !== 200 ||
+    !is_array($tokenData) ||
+    empty($tokenData['access_token'])
+) {
+    throw new RuntimeException(
+        'Microsoft Graph authentication failed.'
+    );
+}
+
+$accessToken = $tokenData['access_token'];
+
+// Build Microsoft Graph email payload
+$mailPayload = [
+    'message' => [
+        'subject' => $subject,
+        'body' => [
+            'contentType' => 'HTML',
+            'content'     => $emailHtml,
+        ],
+        'toRecipients' => [
+            [
+                'emailAddress' => [
+                    'address' => $recipientEmail,
+                ],
+            ],
+        ],
+        'attachments' => [
+            [
+                '@odata.type' => '#microsoft.graph.fileAttachment',
+                'name'        => $pdfFilename,
+                'contentType' => 'application/pdf',
+                'contentBytes'=> base64_encode($pdfContent),
+            ],
+        ],
+    ],
+    'saveToSentItems' => true,
+];
+
+// Encode Microsoft Graph email payload
+$mailJson = json_encode($mailPayload);
+
+if ($mailJson === false) {
+    throw new RuntimeException(
+        'Unable to encode Microsoft Graph email payload.'
+    );
+}
+
+// Build Microsoft Graph sendMail endpoint
+$sendMailUrl =
+    'https://graph.microsoft.com/v1.0/users/' .
+    rawurlencode($msMailbox) .
+    '/sendMail';
+
+// Send Sentinel report through Microsoft Graph
+$mailCurl = curl_init();
+
+curl_setopt_array($mailCurl, [
+    CURLOPT_URL            => $sendMailUrl,
+    CURLOPT_POST           => true,
+    CURLOPT_POSTFIELDS     => $mailJson,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER     => [
+        'Authorization: Bearer ' . $accessToken,
+        'Content-Type: application/json',
+    ],
+    CURLOPT_TIMEOUT        => 30,
+]);
+
+$mailResponse = curl_exec($mailCurl);
+$mailError = curl_error($mailCurl);
+$mailHttpCode = (int) curl_getinfo(
+    $mailCurl,
+    CURLINFO_HTTP_CODE
 );
 
-// Configure Sentinel email
-$mail->isHTML(true);
-$mail->Subject = $subject;
-$mail->Body = $emailHtml;
+curl_close($mailCurl);
 
-// Attach detailed Sentinel PDF report
-$mail->addStringAttachment(
-    $pdfContent,
-    $pdfFilename,
-    'base64',
-    'application/pdf'
-);
+if ($mailResponse === false) {
+    throw new RuntimeException(
+        'Microsoft Graph sendMail request failed: ' .
+        $mailError
+    );
+}
+
+// Microsoft Graph sendMail returns HTTP 202 when accepted
+if ($mailHttpCode !== 202) {
+    throw new RuntimeException(
+        'Microsoft Graph rejected the Sentinel email. HTTP ' .
+        $mailHttpCode .
+        ': ' .
+        $mailResponse
+    );
+}
 
 #endregion
 
-#region SECTION VII — Send Email
+#region SECTION VII — Email Delivery Result
 
 // Initialize email execution result
 $sendSuccess = false;
@@ -1317,25 +1464,30 @@ $sendError = null;
 
 try {
 
-    // Send Sentinel email through GoDaddy local relay
-    $mail->send();
+    // Confirm Microsoft Graph accepted Sentinel email
+    if ($mailHttpCode !== 202) {
+        throw new RuntimeException(
+            'Microsoft Graph did not accept the Sentinel email.'
+        );
+    }
 
+    // Record successful delivery submission
     $sendSuccess = true;
 
     error_log(
-        'SENTINEL EMAIL SUCCESS: Daily report sent to ' .
+        'SENTINEL EMAIL SUCCESS: Daily report sent through Microsoft Graph to ' .
         $recipientEmail .
+        ' from ' .
+        $senderEmail .
         ' at ' .
         date('Y-m-d H:i:s T') .
         '.'
     );
 
-} catch (Exception $exception) {
+} catch (Throwable $throwable) {
 
-    // Capture SMTP transport error
-    $sendError = $mail->ErrorInfo !== ''
-        ? $mail->ErrorInfo
-        : $exception->getMessage();
+    // Capture Microsoft Graph transport error
+    $sendError = $throwable->getMessage();
 
     error_log(
         'SENTINEL EMAIL ERROR: Daily report delivery failed: ' .
@@ -1379,7 +1531,7 @@ if ($isBrowserRequest) {
         margin-top: 0;
         color: #666666;
     ">
-        GoDaddy local SMTP relay transport.
+        Microsoft Graph application transport.
     </p>';
 
     echo '<table style="
@@ -1388,7 +1540,7 @@ if ($isBrowserRequest) {
         border-collapse: collapse;
     ">';
 
-    // SMTP host
+    // Transport
     echo '<tr>';
 
     echo '<th style="
@@ -1398,7 +1550,28 @@ if ($isBrowserRequest) {
         background: #f8f9fa;
         border: 1px solid #cccccc;
     ">
-        SMTP Server
+        Transport
+    </th>';
+
+    echo '<td style="
+        padding: 10px;
+        border: 1px solid #cccccc;
+    ">
+        Microsoft Graph
+    </td>';
+
+    echo '</tr>';
+
+    // Mailbox
+    echo '<tr>';
+
+    echo '<th style="
+        padding: 10px;
+        text-align: left;
+        background: #f8f9fa;
+        border: 1px solid #cccccc;
+    ">
+        Microsoft 365 Mailbox
     </th>';
 
     echo '<td style="
@@ -1406,7 +1579,7 @@ if ($isBrowserRequest) {
         border: 1px solid #cccccc;
     ">' .
         htmlspecialchars(
-            $smtpHost . ':' . $smtpPort,
+            $msMailbox,
             ENT_QUOTES,
             'UTF-8'
         ) .
@@ -1464,6 +1637,33 @@ if ($isBrowserRequest) {
 
     echo '</tr>';
 
+    // HTTP response
+    echo '<tr>';
+
+    echo '<th style="
+        padding: 10px;
+        text-align: left;
+        background: #f8f9fa;
+        border: 1px solid #cccccc;
+    ">
+        Graph Response
+    </th>';
+
+    echo '<td style="
+        padding: 10px;
+        border: 1px solid #cccccc;
+    ">';
+
+    echo htmlspecialchars(
+        'HTTP ' . $mailHttpCode,
+        ENT_QUOTES,
+        'UTF-8'
+    );
+
+    echo '</td>';
+
+    echo '</tr>';
+
     // Result
     echo '<tr>';
 
@@ -1485,7 +1685,7 @@ if ($isBrowserRequest) {
     if ($sendSuccess) {
 
         echo '<span style="color:#176638;">';
-        echo 'SUCCESS — Sentinel report accepted by GoDaddy SMTP relay.';
+        echo 'SUCCESS — Sentinel report accepted by Microsoft Graph.';
         echo '</span>';
 
     } else {
@@ -1514,13 +1714,14 @@ if ($isBrowserRequest) {
         ">';
 
         echo '<strong style="color:#a00000;">';
-        echo 'SMTP Transport Error';
+        echo 'Microsoft Graph Transport Error';
         echo '</strong>';
 
         echo '<p style="margin-bottom:0;">';
 
         echo htmlspecialchars(
-            $sendError ?? 'No SMTP error information was returned.',
+            $sendError ??
+                'No Microsoft Graph error information was returned.',
             ENT_QUOTES,
             'UTF-8'
         );
