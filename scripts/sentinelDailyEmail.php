@@ -1204,24 +1204,6 @@ try {
         1
     ) ?? $pdfHtml;
 
-    // Resolve PDF HTML diagnostic file
-    $pdfDebugFile =
-        $rootDir .
-        '/scripts/sentinelPdfHtmlDebug.html';
-
-    // Write exact HTML submitted to mPDF
-    $pdfDebugResult = file_put_contents(
-        $pdfDebugFile,
-        $pdfHtml
-    );
-
-    if ($pdfDebugResult === false) {
-        error_log(
-            'SENTINEL PDF DEBUG: Unable to write diagnostic HTML: ' .
-            $pdfDebugFile
-        );
-    }
-
     // Render body content within fixed page geometry
     $mpdf->WriteHTML(
         $pdfHtml,
