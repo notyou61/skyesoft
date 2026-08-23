@@ -373,8 +373,8 @@ $emailHtml = '
 
 
     <!-- =============================================================
-         System Status
-         ============================================================= -->
+        System Status
+        ============================================================= -->
 
     <tr>
         <td style="padding-top: 22px;">
@@ -445,6 +445,7 @@ $emailHtml = '
                 </tr>
 
                 <tr>
+
                     <th
                         style="
                             padding: 8px 10px;
@@ -464,9 +465,11 @@ $emailHtml = '
                     >
                         ' . escapeReportValue($governanceDisplay) . '
                     </td>
+
                 </tr>
 
                 <tr>
+
                     <th
                         style="
                             padding: 8px 10px;
@@ -486,9 +489,11 @@ $emailHtml = '
                     >
                         ' . escapeReportValue($executionDisplay) . '
                     </td>
+
                 </tr>
 
                 <tr>
+
                     <th
                         style="
                             padding: 8px 10px;
@@ -510,9 +515,50 @@ $emailHtml = '
                             $databaseIntegrityDisplay
                         ) . '
                     </td>
+
+                </tr>
+
+                <!-- Jurisdiction currency placeholder -->
+                <tr>
+
+                    <th
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                            background: #f8f9fa;
+                            text-align: left;
+                        "
+                    >
+                        Jurisdiction Currency
+                    </th>
+
+                    <td
+                        style="
+                            padding: 8px 10px;
+                            border: 1px solid #cccccc;
+                        "
+                    >
+                        <span
+                            style="
+                                display: inline-block;
+                                padding: 2px 6px;
+                                border: 1px solid #e8c46e;
+                                background: #fff5dc;
+                                color: #8a5a00;
+                                font-size: 11px;
+                                font-weight: bold;
+                                line-height: 1;
+                                white-space: nowrap;
+                            "
+                        >
+                            Currency Check Pending
+                        </span>
+                    </td>
+
                 </tr>
 
                 <tr>
+
                     <th
                         style="
                             padding: 8px 10px;
@@ -534,9 +580,11 @@ $emailHtml = '
                             number_format($unresolvedViolations) .
                         '</strong>
                     </td>
+
                 </tr>
 
                 <tr>
+
                     <th
                         style="
                             padding: 8px 10px;
@@ -558,6 +606,7 @@ $emailHtml = '
                             number_format($constitutionalViolations) .
                         '</strong>
                     </td>
+
                 </tr>
 
             </table>
