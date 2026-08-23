@@ -997,9 +997,31 @@ $pdfCss = '
         line-height: 1.12;
     }
 
-    /* Remove report HTML footer (mPDF supplies canonical footer) */
+    /* PDF report footer */
     .report-footer {
-        display: none;
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+        padding-top: 4px;
+        color: #666666;
+        font-size: 7pt;
+        border-top: 1px solid #cccccc;
+    }
+
+    .footer-table {
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+    }
+
+    .footer-table td {
+        padding: 0;
+        border: 0;
+        font-size: 7pt;
+    }
+
+    .footer-right {
+        text-align: right;
     }
 ';
 
