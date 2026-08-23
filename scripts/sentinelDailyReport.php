@@ -950,6 +950,51 @@ try {
 
     </div>
 
+        </table>
+
+    </div>
+
+
+    <!-- =============================================================
+         Jurisdiction Currency
+         ============================================================= -->
+
+    <div class="section-block">
+
+        <?= buildSectionHeading('Jurisdiction Currency') ?>
+
+        <table class="data-table">
+
+            <tr>
+                <th>Currency Status</th>
+
+                <td>
+                    <span class="status status--review">
+                        Currency Check Pending
+                    </span>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Phoenix</th>
+
+                <td>
+                    Configured — Automated Currency Check Pending
+                </td>
+            </tr>
+
+            <tr>
+                <th>Other Jurisdictions</th>
+
+                <td>
+                    Under Construction
+                </td>
+            </tr>
+
+        </table>
+
+    </div>
+
 
     <!-- =============================================================
          Report Basis
