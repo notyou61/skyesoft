@@ -1140,7 +1140,23 @@ try {
         $pdfHtml = $bodyMatch[1];
     }
 
-    // Render report body within fixed page geometry
+    // Remove canonical HTML report header from PDF body
+    $pdfHtml = preg_replace(
+        '/<table\b[^>]*class=["\'][^"\']*\bheader-table\b[^"\']*["\'][^>]*>.*?<\/table>/is',
+        '',
+        $pdfHtml,
+        1
+    ) ?? $pdfHtml;
+
+    // Remove canonical HTML report footer from PDF body
+    $pdfHtml = preg_replace(
+        '/<div\b[^>]*class=["\'][^"\']*\breport-footer\b[^"\']*["\'][^>]*>.*?<\/div>/is',
+        '',
+        $pdfHtml,
+        1
+    ) ?? $pdfHtml;
+
+    // Render body content within fixed page geometry
     $mpdf->WriteHTML(
         $pdfHtml,
         \Mpdf\HTMLParserMode::HTML_BODY
