@@ -1075,7 +1075,6 @@ $pdfCss = '
         width: 100%;
         margin: 0;
         border-collapse: collapse;
-        page-break-inside: avoid;
     }
 
     .data-table th,

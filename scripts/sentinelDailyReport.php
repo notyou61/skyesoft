@@ -967,28 +967,17 @@ try {
 
             <tr>
                 <th>Currency Status</th>
-
-                <td>
-                    <span class="status status--review">
-                        Currency Check Pending
-                    </span>
-                </td>
+                <td>Currency Check Pending</td>
             </tr>
 
             <tr>
                 <th>Phoenix</th>
-
-                <td>
-                    Configured — Automated Currency Check Pending
-                </td>
+                <td>Automated Currency Check Pending</td>
             </tr>
 
             <tr>
                 <th>Other Jurisdictions</th>
-
-                <td>
-                    Under Construction
-                </td>
+                <td>Under Construction</td>
             </tr>
 
         </table>
