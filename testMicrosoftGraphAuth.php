@@ -6,8 +6,8 @@ header('Content-Type: application/json; charset=utf-8');
 
 // #region Environment
 
-// Load secure Microsoft Graph configuration
-$envPath = dirname(__DIR__) . '/secure/microsoft.env';
+// Load Microsoft environment from /secure (cPanel-safe, absolute anchor)
+$envPath = dirname(__DIR__, 2) . '/secure/microsoft.env';
 
 if (!file_exists($envPath)) {
     fail('Microsoft environment file not found.');
