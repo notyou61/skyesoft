@@ -1016,11 +1016,13 @@ $pdfFooter = '
     "
 >
     <tr>
+
         <td
             style="
-                width: 70%;
+                width: 60%;
                 padding-top: 3px;
                 text-align: left;
+                vertical-align: top;
             "
         >
             Prepared by Steve Skye | Christy Signs
@@ -1028,13 +1030,15 @@ $pdfFooter = '
 
         <td
             style="
-                width: 30%;
+                width: 40%;
                 padding-top: 3px;
                 text-align: right;
+                vertical-align: top;
             "
         >
-            Page {PAGENO} of {nbpg}
+            Skyesoft Sentinel | Page {PAGENO} of {nbpg}
         </td>
+
     </tr>
 </table>
 ';
