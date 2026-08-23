@@ -927,6 +927,7 @@ try {
 
             <tr>
                 <th>Customers</th>
+
                 <td>
                     <?= number_format($entityCounts['customer']) ?>
                 </td>
@@ -934,6 +935,7 @@ try {
 
             <tr>
                 <th>Vendors</th>
+
                 <td>
                     <?= number_format($entityCounts['vendor']) ?>
                 </td>
@@ -941,14 +943,11 @@ try {
 
             <tr>
                 <th>Jurisdictions</th>
+
                 <td>
                     <?= number_format($entityCounts['jurisdiction']) ?>
                 </td>
             </tr>
-
-        </table>
-
-    </div>
 
         </table>
 
@@ -967,17 +966,26 @@ try {
 
             <tr>
                 <th>Currency Status</th>
-                <td>Currency Check Pending</td>
+
+                <td>
+                    Currency Check Pending
+                </td>
             </tr>
 
             <tr>
                 <th>Phoenix</th>
-                <td>Automated Currency Check Pending</td>
+
+                <td>
+                    Automated Currency Check Pending
+                </td>
             </tr>
 
             <tr>
                 <th>Other Jurisdictions</th>
-                <td>Under Construction</td>
+
+                <td>
+                    Under Construction
+                </td>
             </tr>
 
         </table>
