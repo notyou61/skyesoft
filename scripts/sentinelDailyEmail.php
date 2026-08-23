@@ -831,11 +831,151 @@ $pdfFilename =
     date('Y-m-d') .
     '.pdf';
 
-// Configure compact PDF styling
+// Configure fixed PDF header
+$pdfHeader = '
+<table
+    style="
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+        border-bottom: 2px solid #14377c;
+        font-family: Arial, Helvetica, sans-serif;
+    "
+>
+    <tr>
+
+        <td
+            style="
+                width: 17%;
+                padding: 0 8px 4px 0;
+                text-align: left;
+                vertical-align: middle;
+            "
+        >
+            <img
+                src="' . htmlspecialchars(
+                    $logoUrl,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) . '"
+                style="
+                    display: block;
+                    width: auto;
+                    height: 54px;
+                    margin: 0;
+                    border: 0;
+                "
+                alt="Christy Signs"
+            >
+        </td>
+
+        <td
+            style="
+                width: 83%;
+                padding: 6px 0 6px 10px;
+                text-align: left;
+                vertical-align: middle;
+            "
+        >
+
+            <div
+                style="
+                    margin: 0;
+                    color: #14377c;
+                    font-size: 16pt;
+                    font-weight: bold;
+                    line-height: 1;
+                    text-align: left;
+                "
+            >
+                Skyesoft Sentinel Daily Report
+            </div>
+
+            <div
+                style="
+                    margin: 1px 0 0;
+                    color: #222222;
+                    font-size: 9pt;
+                    font-weight: bold;
+                    line-height: 1;
+                    text-align: left;
+                "
+            >
+                System Governance &amp; Health
+            </div>
+
+            <div
+                style="
+                    margin: 1px 0 0;
+                    color: #555555;
+                    font-size: 7pt;
+                    line-height: 1;
+                    text-align: left;
+                "
+            >
+                Report Date:
+                ' . htmlspecialchars(
+                    $reportDate,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) . '
+                &nbsp;&middot;&nbsp;
+                ' . htmlspecialchars(
+                    $reportTime,
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) . '
+                MST
+            </div>
+
+        </td>
+
+    </tr>
+</table>
+';
+
+// Configure fixed PDF footer
+$pdfFooter = '
+<table
+    style="
+        width: 100%;
+        border-top: 1px solid #cccccc;
+        border-collapse: collapse;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 7pt;
+        color: #666666;
+    "
+>
+    <tr>
+
+        <td
+            style="
+                width: 60%;
+                padding-top: 3px;
+                text-align: left;
+                vertical-align: top;
+            "
+        >
+            Prepared by Steve Skye | Christy Signs
+        </td>
+
+        <td
+            style="
+                width: 40%;
+                padding-top: 3px;
+                text-align: right;
+                vertical-align: top;
+            "
+        >
+            Skyesoft Sentinel | Page {PAGENO} of {nbpg}
+        </td>
+
+    </tr>
+</table>
+';
+
+// Configure compact PDF body styling
 $pdfCss = '
-    @page {
-        margin: 7mm 10mm 10mm 10mm;
-    }
 
     body {
         margin: 0;
@@ -854,75 +994,15 @@ $pdfCss = '
         padding: 0;
     }
 
-    /* Header */
+    /* Remove report HTML header */
     .header-table {
-        width: 100%;
-        margin: 0 0 3px 0;
-        border-collapse: collapse;
-        border-bottom: 2px solid #14377c;
+        display: none;
     }
 
-    .header-table td {
-        padding: 0 0 4px 0;
-        vertical-align: middle;
-    }
-
-    .header-logo-cell {
-        width: 17%;
-        padding: 0 8px 4px 0 !important;
-        text-align: left;
-        vertical-align: middle;
-    }
-
-    .header-logo {
-        display: block;
-        width: auto;
-        height: 54px;
-        margin: 0;
-    }
-
-    .header-details-cell {
-        width: 83%;
-        padding: 6px 0 6px 10px !important;
-        text-align: left;
-        vertical-align: middle;
-    }
-
-    .header-details-cell > table {
-        width: 100%;
-        margin: 0;
-        border-collapse: collapse;
-    }
-
-    .header-details-cell > table td {
-        padding: 0 !important;
-        vertical-align: middle;
-    }
-
-    .header-title {
-        margin: 0;
-        color: #14377c;
-        font-size: 16pt;
-        font-weight: bold;
-        line-height: 1;
-        text-align: left;
-    }
-
-    .header-subtitle-main {
-        margin: 1px 0 0 0;
-        color: #222222;
-        font-size: 9pt;
-        font-weight: bold;
-        line-height: 1;
-        text-align: left;
-    }
-
-    .header-report-date {
-        margin: 1px 0 0 0;
-        color: #555555;
-        font-size: 7pt;
-        line-height: 1;
-        text-align: left;
+    /* Keep complete sections together */
+    .section-block {
+        margin-top: 8px;
+        page-break-inside: avoid;
     }
 
     .section-heading {
@@ -930,8 +1010,10 @@ $pdfCss = '
         padding-bottom: 2px;
         color: #14377c;
         font-size: 9pt;
+        font-weight: bold;
         line-height: 1;
         border-bottom: 1px solid #14377c;
+        page-break-after: avoid;
     }
 
     .section-heading-title {
@@ -944,6 +1026,7 @@ $pdfCss = '
         width: 100%;
         margin: 0;
         border-collapse: collapse;
+        page-break-inside: avoid;
     }
 
     .data-table th,
@@ -997,69 +1080,26 @@ $pdfCss = '
         line-height: 1.12;
     }
 
-    /* PDF report footer */
+    /* Remove report HTML footer */
     .report-footer {
-        display: block;
-        width: 100%;
-        margin-top: 8px;
-        padding-top: 4px;
-        color: #666666;
-        font-size: 7pt;
-        border-top: 1px solid #cccccc;
+        display: none;
     }
 
-    .footer-table {
-        width: 100%;
-        margin: 0;
-        border-collapse: collapse;
-    }
-
-    .footer-table td {
-        padding: 0;
-        border: 0;
-        font-size: 7pt;
-    }
-
-    .footer-right {
-        text-align: right;
-    }
-';
-
-// Configure canonical PDF footer
-$pdfFooter = '
-<div
-    style="
-        width: 100%;
-        padding-top: 3px;
-        border-top: 1px solid #cccccc;
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 7pt;
-        color: #666666;
-    "
->
-    <span>
-        Prepared by Steve Skye | Christy Signs
-    </span>
-
-    <span style="float: right;">
-        Skyesoft Sentinel | Page {PAGENO} of {nbpg}
-    </span>
-</div>
 ';
 
 try {
 
-    // Initialize mPDF
+    // Initialize mPDF with fixed page geometry
     $mpdf = new Mpdf([
         'mode' => 'utf-8',
         'format' => 'Letter',
         'orientation' => 'P',
         'margin_left' => 10,
         'margin_right' => 10,
-        'margin_top' => 7,
-        'margin_bottom' => 16,
-        'margin_header' => 0,
-        'margin_footer' => 7
+        'margin_top' => 28,
+        'margin_bottom' => 13,
+        'margin_header' => 5,
+        'margin_footer' => 5
     ]);
 
     // Configure PDF metadata
@@ -1071,7 +1111,12 @@ try {
         'Steve Skye'
     );
 
-    // Configure PDF footer
+    // Configure fixed page header
+    $mpdf->SetHTMLHeader(
+        $pdfHeader
+    );
+
+    // Configure fixed page footer
     $mpdf->SetHTMLFooter(
         $pdfFooter
     );
@@ -1095,7 +1140,7 @@ try {
         $pdfHtml = $bodyMatch[1];
     }
 
-    // Render report body only
+    // Render report body within fixed page geometry
     $mpdf->WriteHTML(
         $pdfHtml,
         \Mpdf\HTMLParserMode::HTML_BODY
