@@ -68,7 +68,7 @@ $senderEmail = 'info@skyelighting.com';
 $senderName = 'Skyesoft Sentinel';
 
 // Configure Sentinel recipient
-$recipientEmail = 'steve@christysigns.com';
+$recipientEmail = 'steve.skye@skyelighting.com';
 
 // Configure Sentinel email subject
 $subject = 'Skyesoft Sentinel Daily Report';
