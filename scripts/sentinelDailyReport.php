@@ -276,71 +276,216 @@ $logoAvailable = is_file($logoPath);
 
 // #endregion
 
-// #region Entity Classification Audit
+// #region Database Health
 
-// Initialize Entity classification counts
-$entityCounts = [
-    'company' => 0,
-    'customer' => 0,
-    'vendor' => 0,
-    'jurisdiction' => 0
+// Initialize Database Health metrics storage
+$dbHealth = [
+    'actions' => [
+        'total'           => 0,
+        'definedTypes'    => 0,
+        'unknownTypes'    => 0,
+        'coordPairErrors' => 0
+    ],
+    'entities' => [
+        'total'         => 0,
+        'valid'         => 0,
+        'invalid'       => 0,
+        'companies'     => 0,
+        'customers'     => 0,
+        'vendors'       => 0,
+        'jurisdictions' => 0
+    ],
+    'locations' => [
+        'total'           => 0,
+        'valid'           => 0,
+        'invalid'         => 0,
+        'blankRequired'   => 0,
+        'coordPairErrors' => 0
+    ],
+    'contacts' => [
+        'total'         => 0,
+        'valid'         => 0,
+        'invalid'       => 0,
+        'inactive'      => 0,
+        'blankRequired' => 0
+    ],
+    'orders' => [
+        'status' => 'Under Construction'
+    ],
+    'applications' => [
+        'status' => 'Under Construction'
+    ]
 ];
 
 try {
 
-    // Count valid Entities by classification
-    $entityCountSql = "
-        SELECT
-            entityType,
-            COUNT(*) AS entityCount
-        FROM tblEntities
-        WHERE entityIsNotValid = 0
-        GROUP BY entityType
+    // #region Actions Health Audit
+
+    // Query defined Action Types catalog size independently
+    $actionTypesSql = "
+        SELECT COUNT(*) AS definedTypes
+        FROM tblActionTypes
     ";
 
-    $entityCountStmt = $pdo->prepare($entityCountSql);
-    $entityCountStmt->execute();
+    $actionTypesStmt = $pdo->prepare($actionTypesSql);
+    $actionTypesStmt->execute();
+    $actionTypesRow = $actionTypesStmt->fetch(PDO::FETCH_ASSOC);
 
-    $entityCountRows = $entityCountStmt->fetchAll(PDO::FETCH_ASSOC);
+    $dbHealth['actions']['definedTypes'] = (int) ($actionTypesRow['definedTypes'] ?? 0);
 
-    foreach ($entityCountRows as $entityCountRow) {
+    // Audit total actions, unknown types, and coordinate pair completeness
+    $actionsSql = "
+        SELECT
+            COUNT(*) AS totalActions,
+            SUM(CASE WHEN at.actionTypeId IS NULL THEN 1 ELSE 0 END) AS unknownTypes,
+            SUM(
+                CASE 
+                    WHEN (a.latitude IS NULL AND a.longitude IS NOT NULL)
+                      OR (a.latitude IS NOT NULL AND a.longitude IS NULL)
+                    THEN 1 
+                    ELSE 0 
+                END
+            ) AS coordPairErrors
+        FROM tblActions a
+        LEFT JOIN tblActionTypes at ON a.actionTypeId = at.actionTypeId
+    ";
 
-        $entityType = (string) ($entityCountRow['entityType'] ?? '');
+    $actionsStmt = $pdo->prepare($actionsSql);
+    $actionsStmt->execute();
+    $actionsRow = $actionsStmt->fetch(PDO::FETCH_ASSOC);
 
-        if (array_key_exists($entityType, $entityCounts)) {
-            $entityCounts[$entityType] =
-                (int) ($entityCountRow['entityCount'] ?? 0);
-        }
+    if ($actionsRow) {
+        $dbHealth['actions']['total']           = (int) ($actionsRow['totalActions'] ?? 0);
+        $dbHealth['actions']['unknownTypes']    = (int) ($actionsRow['unknownTypes'] ?? 0);
+        $dbHealth['actions']['coordPairErrors'] = (int) ($actionsRow['coordPairErrors'] ?? 0);
     }
 
-    // Load valid Company-classified Entities
-    $companySql = "
+    // #endregion
+
+    // #region Entity Health Audit
+
+    // Audit total entities, validity states, and classifications
+    $entitySql = "
         SELECT
-            entityId,
-            entityName
+            COUNT(*) AS totalEntities,
+            SUM(CASE WHEN entityIsNotValid = 0 THEN 1 ELSE 0 END) AS validEntities,
+            SUM(CASE WHEN entityIsNotValid <> 0 THEN 1 ELSE 0 END) AS invalidEntities,
+            SUM(CASE WHEN entityType = 'company' AND entityIsNotValid = 0 THEN 1 ELSE 0 END) AS companyCount,
+            SUM(CASE WHEN entityType = 'customer' AND entityIsNotValid = 0 THEN 1 ELSE 0 END) AS customerCount,
+            SUM(CASE WHEN entityType = 'vendor' AND entityIsNotValid = 0 THEN 1 ELSE 0 END) AS vendorCount,
+            SUM(CASE WHEN entityType = 'jurisdiction' AND entityIsNotValid = 0 THEN 1 ELSE 0 END) AS jurisdictionCount
         FROM tblEntities
-        WHERE entityType = 'company'
-            AND entityIsNotValid = 0
-        ORDER BY entityId
     ";
 
-    $companyStmt = $pdo->prepare($companySql);
-    $companyStmt->execute();
+    $entityStmt = $pdo->prepare($entitySql);
+    $entityStmt->execute();
+    $entityRow = $entityStmt->fetch(PDO::FETCH_ASSOC);
 
-    $companyEntities = $companyStmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($entityRow) {
+        $dbHealth['entities']['total']         = (int) ($entityRow['totalEntities'] ?? 0);
+        $dbHealth['entities']['valid']         = (int) ($entityRow['validEntities'] ?? 0);
+        $dbHealth['entities']['invalid']       = (int) ($entityRow['invalidEntities'] ?? 0);
+        $dbHealth['entities']['companies']     = (int) ($entityRow['companyCount'] ?? 0);
+        $dbHealth['entities']['customers']     = (int) ($entityRow['customerCount'] ?? 0);
+        $dbHealth['entities']['vendors']       = (int) ($entityRow['vendorCount'] ?? 0);
+        $dbHealth['entities']['jurisdictions'] = (int) ($entityRow['jurisdictionCount'] ?? 0);
+    }
 
-    // Validate sole Company classification
-    $companyNeedsAttention =
-        count($companyEntities) !== 1 ||
-        strcasecmp(
-            (string) ($companyEntities[0]['entityName'] ?? ''),
-            'Christy Signs'
-        ) !== 0;
+    // #endregion
+
+    // #region Location Health Audit
+
+    // Audit total locations, validity, required text fields (locationName, locationPlaceId), and coordinate pairs
+    $locationSql = "
+        SELECT
+            COUNT(*) AS totalLocations,
+            SUM(CASE WHEN locationIsNotValid = 0 THEN 1 ELSE 0 END) AS validLocations,
+            SUM(CASE WHEN locationIsNotValid <> 0 THEN 1 ELSE 0 END) AS invalidLocations,
+            SUM(
+                CASE 
+                    WHEN locationName IS NULL OR TRIM(locationName) = ''
+                      OR locationPlaceId IS NULL OR TRIM(locationPlaceId) = ''
+                    THEN 1 
+                    ELSE 0 
+                END
+            ) AS blankRequired,
+            SUM(
+                CASE 
+                    WHEN (locationLatitude IS NULL AND locationLongitude IS NOT NULL)
+                      OR (locationLatitude IS NOT NULL AND locationLongitude IS NULL)
+                    THEN 1 
+                    ELSE 0 
+                END
+            ) AS coordPairErrors
+        FROM tblLocations
+    ";
+
+    $locationStmt = $pdo->prepare($locationSql);
+    $locationStmt->execute();
+    $locationRow = $locationStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($locationRow) {
+        $dbHealth['locations']['total']           = (int) ($locationRow['totalLocations'] ?? 0);
+        $dbHealth['locations']['valid']           = (int) ($locationRow['validLocations'] ?? 0);
+        $dbHealth['locations']['invalid']         = (int) ($locationRow['invalidLocations'] ?? 0);
+        $dbHealth['locations']['blankRequired']   = (int) ($locationRow['blankRequired'] ?? 0);
+        $dbHealth['locations']['coordPairErrors'] = (int) ($locationRow['coordPairErrors'] ?? 0);
+    }
+
+    // #endregion
+
+    // #region Contact Health Audit
+
+    // Audit total contacts, validity, active/inactive state (isActive), and required text fields
+    $contactSql = "
+        SELECT
+            COUNT(*) AS totalContacts,
+            SUM(CASE WHEN contactIsNotValid = 0 THEN 1 ELSE 0 END) AS validContacts,
+            SUM(CASE WHEN contactIsNotValid <> 0 THEN 1 ELSE 0 END) AS invalidContacts,
+            SUM(CASE WHEN isActive = 0 THEN 1 ELSE 0 END) AS inactiveContacts,
+            SUM(
+                CASE 
+                    WHEN contactFirstName IS NULL OR TRIM(contactFirstName) = ''
+                      OR contactLastName IS NULL OR TRIM(contactLastName) = ''
+                      OR contactPrimaryPhone IS NULL OR TRIM(contactPrimaryPhone) = ''
+                      OR contactEmail IS NULL OR TRIM(contactEmail) = ''
+                    THEN 1 
+                    ELSE 0 
+                END
+            ) AS blankRequired
+        FROM tblContacts
+    ";
+
+    $contactStmt = $pdo->prepare($contactSql);
+    $contactStmt->execute();
+    $contactRow = $contactStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($contactRow) {
+        $dbHealth['contacts']['total']         = (int) ($contactRow['totalContacts'] ?? 0);
+        $dbHealth['contacts']['valid']         = (int) ($contactRow['validContacts'] ?? 0);
+        $dbHealth['contacts']['invalid']       = (int) ($contactRow['invalidContacts'] ?? 0);
+        $dbHealth['contacts']['inactive']      = (int) ($contactRow['inactiveContacts'] ?? 0);
+        $dbHealth['contacts']['blankRequired'] = (int) ($contactRow['blankRequired'] ?? 0);
+    }
+
+    // #endregion
+
+    // #region Orders Health
+
+    // Reserved for future operational orders audit checks
+
+    // #endregion
+
+    // #region Applications Health
+
+    // Reserved for future applications audit checks
+
+    // #endregion
 
 } catch (Throwable $throwable) {
 
     fail(
-        'Unable to complete Entity classification audit: ' .
+        'Unable to complete Database Health audit: ' .
         $throwable->getMessage()
     );
 }
@@ -1054,46 +1199,165 @@ $artifactTotalSizeDisplay =
 
 
     <!-- =============================================================
-         Database Integrity
+         Database Health
          ============================================================= -->
 
     <div class="section-block">
 
-        <?= buildSectionHeading('Database Integrity') ?>
+        <?= buildSectionHeading('Database Health') ?>
+
+        <!-- #region Actions -->
 
         <table class="data-table">
 
             <tr>
-                <th>
-                    Company
+                <th colspan="2">
+                    Actions
+                </th>
+            </tr>
 
-                    <?php if ($companyNeedsAttention): ?>
+            <tr>
+                <th>Total Records</th>
 
-                        <span
-                            style="
-                                display: inline-block;
-                                margin-left: 4px;
-                                padding: 0 4px;
-                                border: 1px solid #e8c46e;
-                                background: #fff5dc;
-                                color: #8a5a00;
-                                font-size: 6.5pt;
-                                font-weight: bold;
-                                line-height: 1;
-                                white-space: nowrap;
-                                vertical-align: baseline;
-                            "
-                        >
+                <td>
+                    <strong>
+                        <?= number_format(
+                            $dbHealth['actions']['total']
+                        ) ?>
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Defined Action Types</th>
+
+                <td>
+                    <?= number_format(
+                        $dbHealth['actions']['definedTypes']
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Unknown Action Types</th>
+
+                <td>
+                    <strong>
+                        <?= number_format(
+                            $dbHealth['actions']['unknownTypes']
+                        ) ?>
+                    </strong>
+
+                    <?php if (
+                        $dbHealth['actions']['unknownTypes'] > 0
+                    ): ?>
+
+                        <span class="status status--review">
                             Needs Attention
                         </span>
 
                     <?php endif; ?>
-                </th>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Coordinate Pair Errors</th>
 
                 <td>
                     <strong>
-                        <?= number_format($entityCounts['company']) ?>
+                        <?= number_format(
+                            $dbHealth['actions']['coordPairErrors']
+                        ) ?>
                     </strong>
+
+                    <?php if (
+                        $dbHealth['actions']['coordPairErrors'] > 0
+                    ): ?>
+
+                        <span class="status status--review">
+                            Needs Attention
+                        </span>
+
+                    <?php endif; ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Session Sequence Audit</th>
+
+                <td>
+                    <span class="status status--review">
+                        Pending
+                    </span>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Required Data Audit</th>
+
+                <td>
+                    <span class="status status--review">
+                        Pending
+                    </span>
+                </td>
+            </tr>
+
+        </table>
+
+        <!-- #endregion -->
+
+        <!-- #region Entities -->
+
+        <table
+            class="data-table"
+            style="margin-top: 8px;"
+        >
+
+            <tr>
+                <th colspan="2">
+                    Entities
+                </th>
+            </tr>
+
+            <tr>
+                <th>Total Records</th>
+
+                <td>
+                    <strong>
+                        <?= number_format(
+                            $dbHealth['entities']['total']
+                        ) ?>
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Valid Records</th>
+
+                <td>
+                    <?= number_format(
+                        $dbHealth['entities']['valid']
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Invalid Records</th>
+
+                <td>
+                    <?= number_format(
+                        $dbHealth['entities']['invalid']
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Companies</th>
+
+                <td>
+                    <?= number_format(
+                        $dbHealth['entities']['companies']
+                    ) ?>
                 </td>
             </tr>
 
@@ -1101,7 +1365,9 @@ $artifactTotalSizeDisplay =
                 <th>Customers</th>
 
                 <td>
-                    <?= number_format($entityCounts['customer']) ?>
+                    <?= number_format(
+                        $dbHealth['entities']['customers']
+                    ) ?>
                 </td>
             </tr>
 
@@ -1109,7 +1375,9 @@ $artifactTotalSizeDisplay =
                 <th>Vendors</th>
 
                 <td>
-                    <?= number_format($entityCounts['vendor']) ?>
+                    <?= number_format(
+                        $dbHealth['entities']['vendors']
+                    ) ?>
                 </td>
             </tr>
 
@@ -1117,11 +1385,235 @@ $artifactTotalSizeDisplay =
                 <th>Jurisdictions</th>
 
                 <td>
-                    <?= number_format($entityCounts['jurisdiction']) ?>
+                    <?= number_format(
+                        $dbHealth['entities']['jurisdictions']
+                    ) ?>
                 </td>
             </tr>
 
         </table>
+
+        <!-- #endregion -->
+
+        <!-- #region Locations -->
+
+        <table
+            class="data-table"
+            style="margin-top: 8px;"
+        >
+
+            <tr>
+                <th colspan="2">
+                    Locations
+                </th>
+            </tr>
+
+            <tr>
+                <th>Total Records</th>
+
+                <td>
+                    <strong>
+                        <?= number_format(
+                            $dbHealth['locations']['total']
+                        ) ?>
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Valid Records</th>
+
+                <td>
+                    <?= number_format(
+                        $dbHealth['locations']['valid']
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Invalid Records</th>
+
+                <td>
+                    <?= number_format(
+                        $dbHealth['locations']['invalid']
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Required Data Missing</th>
+
+                <td>
+                    <strong>
+                        <?= number_format(
+                            $dbHealth['locations']['blankRequired']
+                        ) ?>
+                    </strong>
+
+                    <?php if (
+                        $dbHealth['locations']['blankRequired'] > 0
+                    ): ?>
+
+                        <span class="status status--review">
+                            Needs Attention
+                        </span>
+
+                    <?php endif; ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Coordinate Pair Errors</th>
+
+                <td>
+                    <strong>
+                        <?= number_format(
+                            $dbHealth['locations']['coordPairErrors']
+                        ) ?>
+                    </strong>
+
+                    <?php if (
+                        $dbHealth['locations']['coordPairErrors'] > 0
+                    ): ?>
+
+                        <span class="status status--review">
+                            Needs Attention
+                        </span>
+
+                    <?php endif; ?>
+                </td>
+            </tr>
+
+        </table>
+
+        <!-- #endregion -->
+
+        <!-- #region Contacts -->
+
+        <table
+            class="data-table"
+            style="margin-top: 8px;"
+        >
+
+            <tr>
+                <th colspan="2">
+                    Contacts
+                </th>
+            </tr>
+
+            <tr>
+                <th>Total Records</th>
+
+                <td>
+                    <strong>
+                        <?= number_format(
+                            $dbHealth['contacts']['total']
+                        ) ?>
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Valid Records</th>
+
+                <td>
+                    <?= number_format(
+                        $dbHealth['contacts']['valid']
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Invalid Records</th>
+
+                <td>
+                    <?= number_format(
+                        $dbHealth['contacts']['invalid']
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Inactive Records</th>
+
+                <td>
+                    <?= number_format(
+                        $dbHealth['contacts']['inactive']
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Required Data Missing</th>
+
+                <td>
+                    <strong>
+                        <?= number_format(
+                            $dbHealth['contacts']['blankRequired']
+                        ) ?>
+                    </strong>
+
+                    <?php if (
+                        $dbHealth['contacts']['blankRequired'] > 0
+                    ): ?>
+
+                        <span class="status status--review">
+                            Needs Attention
+                        </span>
+
+                    <?php endif; ?>
+                </td>
+            </tr>
+
+        </table>
+
+        <!-- #endregion -->
+
+        <!-- #region Orders -->
+
+        <table
+            class="data-table"
+            style="margin-top: 8px;"
+        >
+
+            <tr>
+                <th>Orders</th>
+
+                <td>
+                    <span class="status status--review">
+                        <?= escapeReportValue(
+                            $dbHealth['orders']['status']
+                        ) ?>
+                    </span>
+                </td>
+            </tr>
+
+        </table>
+
+        <!-- #endregion -->
+
+        <!-- #region Applications -->
+
+        <table
+            class="data-table"
+            style="margin-top: 8px;"
+        >
+
+            <tr>
+                <th>Applications</th>
+
+                <td>
+                    <span class="status status--review">
+                        <?= escapeReportValue(
+                            $dbHealth['applications']['status']
+                        ) ?>
+                    </span>
+                </td>
+            </tr>
+
+        </table>
+
+        <!-- #endregion -->
 
     </div>
 
@@ -1366,7 +1858,7 @@ $artifactTotalSizeDisplay =
 
             <div class="callout-body">
                 This report summarizes Skyesoft Sentinel governance,
-                execution, version, runtime, database integrity,
+                execution, version, runtime, database health,
                 artifact repository health, and jurisdiction currency
                 state as of
                 <strong><?= escapeReportValue($reportDate) ?></strong>
@@ -1374,7 +1866,7 @@ $artifactTotalSizeDisplay =
                 <strong><?= escapeReportValue($reportTime) ?> MST</strong>.
                 Runtime information is sourced from the Sentinel runtime
                 state, version information is sourced from Skyesoft's
-                authoritative version metadata, database integrity
+                authoritative version metadata, database health
                 information is sourced from the live Skyesoft database,
                 and artifact repository health is sourced from the
                 canonical server Artifact repository.
