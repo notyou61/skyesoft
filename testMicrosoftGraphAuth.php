@@ -143,6 +143,11 @@ echo json_encode(
 
 /**
  * Return a controlled test failure.
+ *
+ * @param string $message Failure message.
+ * @param mixed  $details Optional diagnostic details.
+ *
+ * @return void
  */
 function fail($message, $details = null)
 {
