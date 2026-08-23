@@ -182,6 +182,8 @@ function buildSectionHeading(string $title): string
 
 #region SECTION IV — Report Data
 
+// #region Sentinel Runtime State
+
 // Load Sentinel runtime state
 $rawState = file_get_contents($statePath);
 
@@ -189,11 +191,18 @@ if ($rawState === false) {
     fail('Unable to read Sentinel runtime state.');
 }
 
-$state = json_decode($rawState, true);
+$state = json_decode(
+    $rawState,
+    true
+);
 
 if (!is_array($state)) {
     fail('Sentinel runtime state contains invalid JSON.');
 }
+
+// #endregion
+
+// #region Sentinel Runtime Details
 
 // Resolve Sentinel runtime details
 $initialRunUnix = isset($state['initialRunUnix'])
@@ -213,6 +222,10 @@ $unresolvedViolations = (int) ($state['unresolvedViolations'] ?? 0);
 $constitutionalViolations = (int) ($state['constitutionalViolations'] ?? 0);
 
 $governanceStatus = (string) ($state['governanceStatus'] ?? 'unknown');
+
+// #endregion
+
+// #region Authoritative Version Metadata
 
 // Load authoritative version metadata
 $rawVersions = file_get_contents($versionsPath);
@@ -236,14 +249,32 @@ $lastUpdateUnix = isset($versions['system']['lastUpdateUnix'])
     ? (int) $versions['system']['lastUpdateUnix']
     : null;
 
+// #endregion
+
+// #region Report Generation Details
+
 // Resolve report-generation time
 $reportGeneratedUnix = time();
-$reportDate = date('F j, Y', $reportGeneratedUnix);
-$reportTime = date('g:i A', $reportGeneratedUnix);
+
+$reportDate = date(
+    'F j, Y',
+    $reportGeneratedUnix
+);
+
+$reportTime = date(
+    'g:i A',
+    $reportGeneratedUnix
+);
+
+// #endregion
+
+// #region Report Branding
 
 // Resolve standard Christy Signs logo
 $logoUrl = '../assets/images/christyLogo.png';
 $logoAvailable = is_file($logoPath);
+
+// #endregion
 
 // #region Entity Classification Audit
 
@@ -313,6 +344,147 @@ try {
         $throwable->getMessage()
     );
 }
+
+// #endregion
+
+// #region Artifact Repository Health
+
+// Resolve canonical Artifact repository
+$artifactsPath = $rootDir . '/artifacts';
+
+// Initialize Artifact repository health
+$artifactRepositoryAvailable = false;
+$artifactTotalFiles = 0;
+$artifactRecFiles = 0;
+$artifactTmpFiles = 0;
+$artifactSysFiles = 0;
+$artifactOtherFiles = 0;
+$artifactTotalBytes = 0;
+
+$artifactOldestFilename = null;
+$artifactOldestModifiedUnix = null;
+
+$artifactNewestFilename = null;
+$artifactNewestModifiedUnix = null;
+
+// Validate canonical Artifact repository
+if (
+    is_dir($artifactsPath) &&
+    is_readable($artifactsPath)
+) {
+
+    $artifactRepositoryAvailable = true;
+
+    try {
+
+        // Initialize recursive Artifact iterator
+        $artifactIterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator(
+                $artifactsPath,
+                FilesystemIterator::SKIP_DOTS
+            )
+        );
+
+        foreach ($artifactIterator as $artifactFile) {
+
+            // Ignore directories
+            if (!$artifactFile->isFile()) {
+                continue;
+            }
+
+            // Resolve Artifact file details
+            $artifactFilename = $artifactFile->getFilename();
+            $artifactModifiedUnix = $artifactFile->getMTime();
+            $artifactFileSize = $artifactFile->getSize();
+
+            // Increment repository totals
+            $artifactTotalFiles++;
+            $artifactTotalBytes += $artifactFileSize;
+
+            // Classify Artifact lifecycle
+            if (stripos($artifactFilename, 'REC-') === 0) {
+
+                $artifactRecFiles++;
+
+            } elseif (
+                stripos($artifactFilename, 'TMP-') === 0 ||
+                stripos($artifactFilename, 'tmp-') === 0
+            ) {
+
+                $artifactTmpFiles++;
+
+            } elseif (stripos($artifactFilename, 'SYS-') === 0) {
+
+                $artifactSysFiles++;
+
+            } else {
+
+                $artifactOtherFiles++;
+            }
+
+            // Resolve oldest modified Artifact
+            if (
+                $artifactOldestModifiedUnix === null ||
+                $artifactModifiedUnix < $artifactOldestModifiedUnix
+            ) {
+                $artifactOldestModifiedUnix = $artifactModifiedUnix;
+                $artifactOldestFilename = $artifactFilename;
+            }
+
+            // Resolve newest modified Artifact
+            if (
+                $artifactNewestModifiedUnix === null ||
+                $artifactModifiedUnix > $artifactNewestModifiedUnix
+            ) {
+                $artifactNewestModifiedUnix = $artifactModifiedUnix;
+                $artifactNewestFilename = $artifactFilename;
+            }
+        }
+
+    } catch (Throwable $throwable) {
+
+        $artifactRepositoryAvailable = false;
+
+        error_log(
+            'SENTINEL ARTIFACT HEALTH ERROR: ' .
+            $throwable->getMessage()
+        );
+    }
+}
+
+// Determine Artifact repository attention state
+$artifactNeedsAttention =
+    !$artifactRepositoryAvailable ||
+    $artifactTmpFiles > 0 ||
+    $artifactOtherFiles > 0;
+
+// Resolve human-readable repository size
+$artifactSizeUnits = [
+    'B',
+    'KB',
+    'MB',
+    'GB',
+    'TB'
+];
+
+$artifactSizeValue = (float) $artifactTotalBytes;
+$artifactSizeUnitIndex = 0;
+
+while (
+    $artifactSizeValue >= 1024 &&
+    $artifactSizeUnitIndex < count($artifactSizeUnits) - 1
+) {
+    $artifactSizeValue /= 1024;
+    $artifactSizeUnitIndex++;
+}
+
+$artifactTotalSizeDisplay =
+    number_format(
+        $artifactSizeValue,
+        $artifactSizeUnitIndex === 0 ? 0 : 2
+    ) .
+    ' ' .
+    $artifactSizeUnits[$artifactSizeUnitIndex];
 
 // #endregion
 
@@ -953,6 +1125,191 @@ try {
 
     </div>
 
+    <!-- =============================================================
+         Artifact Repository Health
+         ============================================================= -->
+
+    <div class="section-block">
+
+        <?= buildSectionHeading('Artifact Repository Health') ?>
+
+        <table class="data-table">
+
+            <tr>
+                <th>Repository Status</th>
+
+                <td>
+                    <span
+                        class="status <?= $artifactNeedsAttention
+                            ? 'status--review'
+                            : 'status--resolved' ?>"
+                    >
+                        <?= $artifactRepositoryAvailable
+                            ? (
+                                $artifactNeedsAttention
+                                    ? 'Needs Attention'
+                                    : 'Healthy'
+                            )
+                            : 'Unavailable' ?>
+                    </span>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Total Files</th>
+
+                <td>
+                    <strong>
+                        <?= number_format($artifactTotalFiles) ?>
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Permanent Records (REC)</th>
+
+                <td>
+                    <?= number_format($artifactRecFiles) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Temporary Files (TMP)</th>
+
+                <td>
+                    <strong>
+                        <?= number_format($artifactTmpFiles) ?>
+                    </strong>
+
+                    <?php if ($artifactTmpFiles > 0): ?>
+
+                        <span
+                            style="
+                                display: inline-block;
+                                margin-left: 4px;
+                                padding: 0 4px;
+                                border: 1px solid #e8c46e;
+                                background: #fff5dc;
+                                color: #8a5a00;
+                                font-size: 6.5pt;
+                                font-weight: bold;
+                                line-height: 1;
+                                white-space: nowrap;
+                                vertical-align: baseline;
+                            "
+                        >
+                            Needs Attention
+                        </span>
+
+                    <?php endif; ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>System Files (SYS)</th>
+
+                <td>
+                    <?= number_format($artifactSysFiles) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Other Files</th>
+
+                <td>
+                    <strong>
+                        <?= number_format($artifactOtherFiles) ?>
+                    </strong>
+
+                    <?php if ($artifactOtherFiles > 0): ?>
+
+                        <span
+                            style="
+                                display: inline-block;
+                                margin-left: 4px;
+                                padding: 0 4px;
+                                border: 1px solid #e8c46e;
+                                background: #fff5dc;
+                                color: #8a5a00;
+                                font-size: 6.5pt;
+                                font-weight: bold;
+                                line-height: 1;
+                                white-space: nowrap;
+                                vertical-align: baseline;
+                            "
+                        >
+                            Needs Attention
+                        </span>
+
+                    <?php endif; ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Repository Size</th>
+
+                <td>
+                    <?= escapeReportValue(
+                        $artifactTotalSizeDisplay
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Oldest Modified</th>
+
+                <td>
+                    <?php if ($artifactOldestFilename !== null): ?>
+
+                        <?= escapeReportValue(
+                            $artifactOldestFilename
+                        ) ?>
+
+                        &nbsp;&middot;&nbsp;
+
+                        <?= escapeReportValue(
+                            formatUnixDate(
+                                $artifactOldestModifiedUnix
+                            )
+                        ) ?>
+
+                    <?php else: ?>
+
+                        None
+
+                    <?php endif; ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>Newest Modified</th>
+
+                <td>
+                    <?php if ($artifactNewestFilename !== null): ?>
+
+                        <?= escapeReportValue(
+                            $artifactNewestFilename
+                        ) ?>
+
+                        &nbsp;&middot;&nbsp;
+
+                        <?= escapeReportValue(
+                            formatUnixDate(
+                                $artifactNewestModifiedUnix
+                            )
+                        ) ?>
+
+                    <?php else: ?>
+
+                        None
+
+                    <?php endif; ?>
+                </td>
+            </tr>
+
+        </table>
+
+    </div>
 
     <!-- =============================================================
          Jurisdiction Currency
@@ -1009,15 +1366,18 @@ try {
 
             <div class="callout-body">
                 This report summarizes Skyesoft Sentinel governance,
-                execution, version, runtime, and database integrity
+                execution, version, runtime, database integrity,
+                artifact repository health, and jurisdiction currency
                 state as of
                 <strong><?= escapeReportValue($reportDate) ?></strong>
                 at
                 <strong><?= escapeReportValue($reportTime) ?> MST</strong>.
                 Runtime information is sourced from the Sentinel runtime
                 state, version information is sourced from Skyesoft's
-                authoritative version metadata, and database integrity
-                information is sourced from the live Skyesoft database.
+                authoritative version metadata, database integrity
+                information is sourced from the live Skyesoft database,
+                and artifact repository health is sourced from the
+                canonical server Artifact repository.
             </div>
 
         </div>
