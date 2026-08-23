@@ -377,10 +377,9 @@ try {
             vertical-align: middle;
         }
 
-        /* Logo uses only the width it actually requires */
         .header-logo-cell {
             width: 1%;
-            padding: 0 0 8px 0;
+            padding: 0 12px 8px 0;
             white-space: nowrap;
             text-align: left;
             vertical-align: middle;
@@ -400,14 +399,28 @@ try {
             font-weight: bold;
         }
 
-
-        /* Header text consumes remaining width */
         .header-details-cell {
             width: auto;
             padding: 0 0 8px 0;
             text-align: left;
             vertical-align: middle;
         }
+
+        .header-report-details {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+        }
+
+        .header-title {
+            margin: 0;
+            color: #14377c;
+            font-size: 25px;
+            font-weight: bold;
+            line-height: 1;
+        }
+
         .header-subtitle-main {
             margin: 2px 0 0;
             color: #333;
@@ -583,16 +596,16 @@ try {
                 height: 55px;
             }
 
-            .header-divider {
-                height: 38px;
-            }
-
             .header-title {
                 font-size: 19px;
             }
 
             .header-subtitle-main {
                 font-size: 14px;
+            }
+
+            .header-report-date {
+                font-size: 11px;
             }
 
             .data-table th {
