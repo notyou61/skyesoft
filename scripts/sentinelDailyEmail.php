@@ -1005,42 +1005,24 @@ $pdfCss = '
 
 // Configure canonical PDF footer
 $pdfFooter = '
-<table
+<div
     style="
         width: 100%;
+        padding-top: 3px;
         border-top: 1px solid #cccccc;
-        border-collapse: collapse;
         font-family: Arial, Helvetica, sans-serif;
         font-size: 7pt;
         color: #666666;
     "
 >
-    <tr>
+    <span>
+        Prepared by Steve Skye | Christy Signs
+    </span>
 
-        <td
-            style="
-                width: 60%;
-                padding-top: 3px;
-                text-align: left;
-                vertical-align: top;
-            "
-        >
-            Prepared by Steve Skye | Christy Signs
-        </td>
-
-        <td
-            style="
-                width: 40%;
-                padding-top: 3px;
-                text-align: right;
-                vertical-align: top;
-            "
-        >
-            Skyesoft Sentinel | Page {PAGENO} of {nbpg}
-        </td>
-
-    </tr>
-</table>
+    <span style="float: right;">
+        Skyesoft Sentinel | Page {PAGENO} of {nbpg}
+    </span>
+</div>
 ';
 
 try {
@@ -1053,9 +1035,9 @@ try {
         'margin_left' => 10,
         'margin_right' => 10,
         'margin_top' => 7,
-        'margin_bottom' => 11,
+        'margin_bottom' => 16,
         'margin_header' => 0,
-        'margin_footer' => 5
+        'margin_footer' => 7
     ]);
 
     // Configure PDF metadata
