@@ -1207,7 +1207,7 @@ try {
     // Resolve PDF HTML diagnostic file
     $pdfDebugFile =
         $rootDir .
-        '/logs/sentinelPdfHtmlDebug.html';
+        '/scripts/sentinelPdfHtmlDebug.html';
 
     // Write exact HTML submitted to mPDF
     $pdfDebugResult = file_put_contents(
