@@ -884,7 +884,6 @@ $pdfCss = '
     .header-details-cell {
         width: 83%;
         padding: 6px 0 6px 10px !important;
-        border-left: 1px solid #999999;
         text-align: left;
         vertical-align: middle;
     }
