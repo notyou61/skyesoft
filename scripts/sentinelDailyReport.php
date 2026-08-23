@@ -400,22 +400,6 @@ try {
             font-weight: bold;
         }
 
-        /* Divider uses a dedicated fixed-width cell */
-        .header-divider-cell {
-            width: 25px;
-            padding: 0 8px 8px;
-            white-space: nowrap;
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        /* Divider height control */
-        .header-divider {
-            width: 1px;
-            height: 42px;
-            margin: 0 auto;
-            background: #999;
-        }
 
         /* Header text consumes remaining width */
         .header-details-cell {
@@ -652,12 +636,6 @@ try {
                     </div>
 
                 <?php endif; ?>
-
-            </td>
-
-            <td class="header-divider-cell">
-
-                <div class="header-divider"></div>
 
             </td>
 
