@@ -3884,6 +3884,225 @@ if ($type === 'locationDetail') {
 }
 
 // =====================================================
+// READ-ONLY ORDER CREATE OPTIONS
+// =====================================================
+
+if ($type === 'orderCreateOptions') {
+
+    // Resolve selected jobsite
+    $locationId = (int)($input['locationID'] ?? 0);
+
+    if ($locationId <= 0) {
+        echo json_encode([
+            'success' => false,
+            'type'    => 'order_create_options',
+            'error'   => 'Valid locationID is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    try {
+        // Confirm authoritative Location
+        $locationStmt = $db->prepare("
+            SELECT
+                l.locationId,
+                l.locationEntityId,
+                l.locationName,
+                l.locationAddress,
+                l.locationAddressSuite,
+                l.locationCity,
+                l.locationState,
+                l.locationZip,
+                e.entityName
+            FROM tblLocations l
+            LEFT JOIN tblEntities e
+                ON e.entityId = l.locationEntityId
+            WHERE l.locationId = :locationId
+              AND COALESCE(l.locationIsNotValid, 0) = 0
+            LIMIT 1
+        ");
+
+        $locationStmt->execute([
+            'locationId' => $locationId
+        ]);
+
+        $location = $locationStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+        if (!is_array($location)) {
+            echo json_encode([
+                'success' => false,
+                'type'    => 'order_create_options',
+                'error'   => 'Jobsite Location was not found.'
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        // Load authoritative Order Types
+        $typeStmt = $db->query("
+            SELECT
+                orderTypeID,
+                orderTypeName,
+                orderTypeDescription
+            FROM tblOrderTypes
+            ORDER BY orderTypeID ASC
+        ");
+
+        $orderTypes = $typeStmt
+            ? $typeStmt->fetchAll(PDO::FETCH_ASSOC)
+            : [];
+
+        // Load authoritative Order Statuses
+        $statusStmt = $db->query("
+            SELECT
+                orderStatusID,
+                orderStatusName,
+                orderStatusDescription
+            FROM tblOrderStatuses
+            ORDER BY orderStatusID ASC
+        ");
+
+        $orderStatuses = $statusStmt
+            ? $statusStmt->fetchAll(PDO::FETCH_ASSOC)
+            : [];
+
+        // Resolve Active status without assuming its ID
+        $activeStatusID = null;
+
+        foreach ($orderStatuses as $status) {
+            if (
+                strtolower(
+                    trim((string)$status['orderStatusName'])
+                ) === 'active'
+            ) {
+                $activeStatusID = (int)$status[
+                    'orderStatusID'
+                ];
+                break;
+            }
+        }
+
+        // Load active contacts at the selected jobsite
+        $contactStmt = $db->prepare("
+            SELECT
+                c.contactId,
+                c.contactEntityId,
+                c.contactLocationId,
+                c.contactSalutation,
+                c.contactFirstName,
+                c.contactLastName,
+                c.contactTitle,
+                c.contactPrimaryPhone,
+                c.contactEmail,
+                c.contactIsBilling,
+                e.entityName
+            FROM tblContacts c
+            LEFT JOIN tblEntities e
+                ON e.entityId = c.contactEntityId
+            WHERE c.contactLocationId = :locationId
+              AND COALESCE(c.contactIsNotValid, 0) = 0
+              AND COALESCE(c.isActive, 1) = 1
+            ORDER BY
+                c.contactLastName ASC,
+                c.contactFirstName ASC,
+                c.contactId ASC
+        ");
+
+        $contactStmt->execute([
+            'locationId' => $locationId
+        ]);
+
+        $jobsiteContacts = $contactStmt->fetchAll(
+            PDO::FETCH_ASSOC
+        );
+
+        // Resolve authenticated salesperson
+        $salespersonID = (int)(
+            $_SESSION['SKYESOFT_contactId']
+            ?? $_SESSION['contactId']
+            ?? 1
+        );
+
+        if ($salespersonID <= 0) {
+            $salespersonID = 1;
+        }
+
+        // Normalize numeric identifiers
+        $location['locationId'] = (int)$location[
+            'locationId'
+        ];
+
+        $location['locationEntityId'] = (int)$location[
+            'locationEntityId'
+        ];
+
+        foreach ($orderTypes as &$orderType) {
+            $orderType['orderTypeID'] = (int)$orderType[
+                'orderTypeID'
+            ];
+        }
+        unset($orderType);
+
+        foreach ($orderStatuses as &$orderStatus) {
+            $orderStatus['orderStatusID'] = (int)$orderStatus[
+                'orderStatusID'
+            ];
+        }
+        unset($orderStatus);
+
+        foreach ($jobsiteContacts as &$contact) {
+            $contact['contactId'] = (int)$contact[
+                'contactId'
+            ];
+
+            $contact['contactEntityId'] = (int)$contact[
+                'contactEntityId'
+            ];
+
+            $contact['contactLocationId'] = (int)$contact[
+                'contactLocationId'
+            ];
+
+            $contact['contactIsBilling'] = (int)$contact[
+                'contactIsBilling'
+            ];
+        }
+        unset($contact);
+
+        echo json_encode([
+            'success'         => true,
+            'type'            => 'order_create_options',
+            'location'        => $location,
+            'orderTypes'      => $orderTypes,
+            'orderStatuses'   => $orderStatuses,
+            'jobsiteContacts' => $jobsiteContacts,
+            'defaults'        => [
+                'statusID'       => $activeStatusID,
+                'salespersonID'  => $salespersonID,
+                'orderDateUnix'  => time()
+            ]
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[askOpenAI] orderCreateOptions failed: ' .
+            $e->getMessage()
+        );
+
+        echo json_encode([
+            'success' => false,
+            'type'    => 'order_create_options',
+            'error'   => 'Unable to load Order creation options.'
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+    }
+}
+
+// =====================================================
 // CONTACT UPDATE (mutation) — Contact Edit v1.0
 // =====================================================
 
