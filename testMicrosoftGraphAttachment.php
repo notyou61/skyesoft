@@ -690,6 +690,14 @@ function graphRequest(
 
         $options[CURLOPT_HTTPHEADER] = $headers;
         $options[CURLOPT_POSTFIELDS] = $payloadJson;
+
+    } elseif (strtoupper($method) === 'POST') {
+
+        // Explicitly send zero-length body for bodyless Graph POST requests
+        $headers[] = 'Content-Length: 0';
+
+        $options[CURLOPT_HTTPHEADER] = $headers;
+        $options[CURLOPT_POSTFIELDS] = '';
     }
 
     curl_setopt_array(
