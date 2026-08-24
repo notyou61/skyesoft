@@ -9480,16 +9480,10 @@ window.SkyIndex = {
 
             const location = data.location;
 
-            // Resolve today in Phoenix
-            const orderDate = new Intl.DateTimeFormat(
-                'en-CA',
-                {
-                    timeZone: 'America/Phoenix',
-                    year:  'numeric',
-                    month: '2-digit',
-                    day:   '2-digit'
-                }
-            ).format(new Date());
+            // Default Order date to current Unix timestamp
+            const orderDate = Math.floor(
+                Date.now() / 1000
+            );
 
             // Initialize unsaved Order payload
             this._newOrderDraft = {
@@ -9520,20 +9514,7 @@ window.SkyIndex = {
                     note: ''
                 },
 
-                progress: {
-                    designComplete: false,
-                    estimateComplete: false,
-                    sold: false,
-                    requiresPermit: false,
-                    permitComplete: false,
-                    fulfillmentComplete: false,
-                    completed: false,
-                    requiresInspection: false,
-                    inspectionComplete: false,
-                    collected: false,
-                    closedOut: false
-                },
-
+                // Client-only authoritative context
                 context: {
                     location: location,
                     fallbackEntityID: Number(
