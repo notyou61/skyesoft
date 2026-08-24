@@ -4,7 +4,7 @@ declare(strict_types=1);
 /* =====================================================================
  *  Skyesoft — testMicrosoftGraphAttachment.php
  *  Microsoft Graph Sentinel Attachment Diagnostic
- *  Read-Only Diagnostic • PHP 8.3
+ *  Attachment Diagnostic + Draft/Attach/Send Transport Test • PHP 8.3
  * ===================================================================== */
 
 #region SECTION I — Environment Setup
@@ -161,6 +161,187 @@ if (
 
 // Resolve Microsoft Graph access token
 $accessToken = (string) $tokenData['access_token'];
+
+#endregion
+
+#region SECTION II.B — Draft / Attach / Send Transport Test
+
+// Determine whether alternate Graph transport test was requested
+$sendTestRequested =
+    isset($_GET['sendTest']) &&
+    $_GET['sendTest'] === '1';
+
+if ($sendTestRequested) {
+
+    // Configure isolated transport test
+    $testRecipient = 'steve.skye@skyelighting.com';
+    $testSubject   = 'Skyesoft Sentinel Graph Attachment Transport Test';
+
+    // Resolve current Sentinel PDF through existing report endpoint
+    $reportUrl =
+        'https://www.skyelighting.com/skyesoft/scripts/' .
+        'sentinelDailyEmail.php?pdf=1';
+
+    $reportCurl = curl_init();
+
+    curl_setopt_array($reportCurl, [
+        CURLOPT_URL            => $reportUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 60,
+    ]);
+
+    $testPdfContent = curl_exec($reportCurl);
+    $reportError = curl_error($reportCurl);
+
+    $reportHttpCode = (int) curl_getinfo(
+        $reportCurl,
+        CURLINFO_HTTP_CODE
+    );
+
+    $reportContentType = (string) curl_getinfo(
+        $reportCurl,
+        CURLINFO_CONTENT_TYPE
+    );
+
+    curl_close($reportCurl);
+
+    if (
+        $testPdfContent === false ||
+        $reportHttpCode !== 200 ||
+        substr($testPdfContent, 0, 5) !== '%PDF-'
+    ) {
+        outputFailure(
+            'Unable to retrieve valid Sentinel PDF for transport test. ' .
+            'HTTP ' . $reportHttpCode .
+            '; Content-Type ' . $reportContentType .
+            '; Error ' . $reportError
+        );
+    }
+
+    // Create unsent Exchange message first
+    $createMessageUrl =
+        'https://graph.microsoft.com/v1.0/users/' .
+        rawurlencode($msMailbox) .
+        '/messages';
+
+    $createMessagePayload = [
+        'subject' => $testSubject,
+        'body' => [
+            'contentType' => 'HTML',
+            'content' =>
+                '<p>Skyesoft Microsoft Graph attachment transport test.</p>' .
+                '<p>This message was created using the three-step workflow: ' .
+                '<strong>create message → attach PDF → send message</strong>.</p>',
+        ],
+        'toRecipients' => [
+            [
+                'emailAddress' => [
+                    'address' => $testRecipient,
+                ],
+            ],
+        ],
+    ];
+
+    $createMessageResponse = graphRequest(
+        'POST',
+        $createMessageUrl,
+        $accessToken,
+        $createMessagePayload,
+        [201]
+    );
+
+    $createdMessage = json_decode(
+        $createMessageResponse,
+        true
+    );
+
+    $createdMessageId = is_array($createdMessage)
+        ? (string) ($createdMessage['id'] ?? '')
+        : '';
+
+    if ($createdMessageId === '') {
+        outputFailure(
+            'Microsoft Graph created the test message but returned no message ID.'
+        );
+    }
+
+    // Attach exact Sentinel PDF to the unsent Exchange message
+    $testPdfFilename =
+        'Skyesoft_Sentinel_Graph_Transport_Test_' .
+        date('Y-m-d_His') .
+        '.pdf';
+
+    $attachmentUrl =
+        'https://graph.microsoft.com/v1.0/users/' .
+        rawurlencode($msMailbox) .
+        '/messages/' .
+        rawurlencode($createdMessageId) .
+        '/attachments';
+
+    $attachmentPayload = [
+        '@odata.type' => '#microsoft.graph.fileAttachment',
+        'name' => $testPdfFilename,
+        'contentType' => 'application/pdf',
+        'contentBytes' => base64_encode($testPdfContent),
+    ];
+
+    graphRequest(
+        'POST',
+        $attachmentUrl,
+        $accessToken,
+        $attachmentPayload,
+        [201]
+    );
+
+    // Send the already-created Exchange message
+    $sendMessageUrl =
+        'https://graph.microsoft.com/v1.0/users/' .
+        rawurlencode($msMailbox) .
+        '/messages/' .
+        rawurlencode($createdMessageId) .
+        '/send';
+
+    graphRequest(
+        'POST',
+        $sendMessageUrl,
+        $accessToken,
+        null,
+        [202]
+    );
+
+    // Return isolated transport-test result
+    header(
+        'Content-Type: application/json; charset=UTF-8'
+    );
+
+    echo json_encode(
+        [
+            'success' => true,
+            'transport' => 'create-message -> attach-pdf -> send-message',
+            'mailbox' => $msMailbox,
+            'recipient' => $testRecipient,
+            'subject' => $testSubject,
+            'attachment' => [
+                'filename' => $testPdfFilename,
+                'bytes' => strlen($testPdfContent),
+                'pdfHeaderValid' =>
+                    substr($testPdfContent, 0, 5) === '%PDF-',
+                'sha256' => hash(
+                    'sha256',
+                    $testPdfContent
+                ),
+            ],
+            'message' =>
+                'Transport test accepted by Microsoft Graph. ' .
+                'Check Outlook and test the PDF attachment.',
+        ],
+        JSON_PRETTY_PRINT |
+        JSON_UNESCAPED_SLASHES
+    );
+
+    exit;
+}
 
 #endregion
 
@@ -460,6 +641,98 @@ exit;
 #endregion
 
 #region SECTION VII — Functions
+
+/**
+ * Execute authenticated Microsoft Graph request.
+ *
+ * @param array<string, mixed>|null $payload
+ * @param array<int> $expectedHttpCodes
+ */
+function graphRequest(
+    string $method,
+    string $url,
+    string $accessToken,
+    ?array $payload,
+    array $expectedHttpCodes
+): string {
+
+    // Initialize Graph request
+    $curl = curl_init();
+
+    $headers = [
+        'Authorization: Bearer ' . $accessToken,
+        'Accept: application/json',
+    ];
+
+    $options = [
+        CURLOPT_URL            => $url,
+        CURLOPT_CUSTOMREQUEST  => $method,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => $headers,
+        CURLOPT_TIMEOUT        => 60,
+    ];
+
+    // Add JSON payload when required
+    if ($payload !== null) {
+
+        $payloadJson = json_encode(
+            $payload,
+            JSON_UNESCAPED_SLASHES
+        );
+
+        if ($payloadJson === false) {
+            outputFailure(
+                'Unable to encode Microsoft Graph request payload.'
+            );
+        }
+
+        $headers[] = 'Content-Type: application/json';
+
+        $options[CURLOPT_HTTPHEADER] = $headers;
+        $options[CURLOPT_POSTFIELDS] = $payloadJson;
+    }
+
+    curl_setopt_array(
+        $curl,
+        $options
+    );
+
+    // Execute Graph request
+    $response = curl_exec(
+        $curl
+    );
+
+    $error = curl_error(
+        $curl
+    );
+
+    $httpCode = (int) curl_getinfo(
+        $curl,
+        CURLINFO_HTTP_CODE
+    );
+
+    curl_close(
+        $curl
+    );
+
+    if ($response === false) {
+        outputFailure(
+            'Microsoft Graph request failed: ' .
+            $error
+        );
+    }
+
+    if (!in_array($httpCode, $expectedHttpCodes, true)) {
+        outputFailure(
+            'Microsoft Graph request returned HTTP ' .
+            $httpCode .
+            ': ' .
+            $response
+        );
+    }
+
+    return $response;
+}
 
 /**
  * Execute authenticated Microsoft Graph GET request.
