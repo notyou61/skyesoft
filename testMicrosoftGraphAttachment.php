@@ -337,6 +337,55 @@ $pdfDecodedBytes = strlen(
     $pdfDecodedContent
 );
 
+// Determine whether Exchange PDF download was requested
+$downloadRequested =
+    isset($_GET['download']) &&
+    $_GET['download'] === '1';
+
+if ($downloadRequested) {
+
+    // Sanitize Exchange attachment filename
+    $downloadFilename = preg_replace(
+        '/[^A-Za-z0-9._-]/',
+        '_',
+        $pdfFilename
+    );
+
+    if (
+        !is_string($downloadFilename) ||
+        $downloadFilename === ''
+    ) {
+        $downloadFilename =
+            'Skyesoft_Sentinel_Daily_Report.pdf';
+    }
+
+    // Clear active output buffers
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    // Return exact PDF retrieved from Microsoft Exchange
+    header('Content-Type: application/pdf');
+
+    header(
+        'Content-Disposition: inline; filename="' .
+        $downloadFilename .
+        '"'
+    );
+
+    header(
+        'Content-Length: ' .
+        strlen($pdfDecodedContent)
+    );
+
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+
+    echo $pdfDecodedContent;
+
+    exit;
+}
+
 $pdfHeader = substr(
     $pdfDecodedContent,
     0,
