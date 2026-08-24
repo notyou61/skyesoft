@@ -178,25 +178,69 @@ $state = [
     "constitutionalViolations" => $constitutional,
     "governanceStatus"         => $governanceStatus,
 
-    // Notifier layer
-    "dailyEmailLastRunUnix"    => null
+    // Midnight Sentinel Report layer
+    "midnightReport" => [
+        "lastAttemptUnix" => null,
+        "lastRunUnix"     => null,
+        "runCount"        => 0,
+        "lastStatus"      => null,
+        "lastError"       => null
+    ]
 ];
 
 /* ---- Merge with existing state ---- */
 if (file_exists($statePath)) {
-    $existing = json_decode(file_get_contents($statePath), true);
+
+    $existingRaw = file_get_contents($statePath);
+
+    $existing = is_string($existingRaw)
+        ? json_decode($existingRaw, true)
+        : null;
 
     if (is_array($existing)) {
+
+        // Preserve Sentinel lifecycle state
         $state["initialRunUnix"] =
             $existing["initialRunUnix"] ?? $now;
 
         $state["runCount"] =
-            ($existing["runCount"] ?? 0) + 1;
+            (int) ($existing["runCount"] ?? 0) + 1;
 
-        $state["dailyEmailLastRunUnix"] =
-            isset($existing["dailyEmailLastRunUnix"])
-                ? (int) $existing["dailyEmailLastRunUnix"]
-                : null;
+        // Preserve structured Midnight Sentinel Report state
+        if (
+            isset($existing["midnightReport"]) &&
+            is_array($existing["midnightReport"])
+        ) {
+            $state["midnightReport"]["lastAttemptUnix"] =
+                isset($existing["midnightReport"]["lastAttemptUnix"])
+                    ? (int) $existing["midnightReport"]["lastAttemptUnix"]
+                    : null;
+
+            $state["midnightReport"]["lastRunUnix"] =
+                isset($existing["midnightReport"]["lastRunUnix"])
+                    ? (int) $existing["midnightReport"]["lastRunUnix"]
+                    : null;
+
+            $state["midnightReport"]["runCount"] =
+                (int) (
+                    $existing["midnightReport"]["runCount"] ?? 0
+                );
+
+            $state["midnightReport"]["lastStatus"] =
+                $existing["midnightReport"]["lastStatus"] ?? null;
+
+            $state["midnightReport"]["lastError"] =
+                $existing["midnightReport"]["lastError"] ?? null;
+
+        } elseif (isset($existing["dailyEmailLastRunUnix"])) {
+
+            // Migrate legacy Daily Email state into Midnight Report state
+            $state["midnightReport"]["lastRunUnix"] =
+                (int) $existing["dailyEmailLastRunUnix"];
+
+            $state["midnightReport"]["lastStatus"] =
+                'success';
+        }
     }
 }
 
@@ -312,132 +356,263 @@ if (!empty($targets)) {
 
 #endregion
 
-#region SECTION III.B — Daily Sentinel Email Scheduler
+#region SECTION III.B — Midnight Sentinel Report Scheduler
 
-// Configure Sentinel Daily Email schedule (Phoenix local time)
-$dailyEmailHour = 6;
-$dailyEmailWindowMinutes = 15;
+// Configure Midnight Sentinel Report schedule (Phoenix local time)
+$midnightReportHour = 0;
+$midnightReportWindowMinutes = 15;
 
-// Resolve Sentinel Daily Email script & concurrency lock path
-$dailyEmailPath     = $scriptsDir . '/sentinelDailyEmail.php';
-$dailyEmailLockPath = $rootDir . '/data/runtimeEphemeral/dailyEmail.lock';
+// Resolve Midnight Sentinel Report script & concurrency lock path
+$midnightReportPath =
+    $scriptsDir . '/sentinelDailyEmail.php';
+
+$midnightReportLockPath =
+    $rootDir . '/data/runtimeEphemeral/dailyEmail.lock';
 
 // Initialize Phoenix timezone
-$dailyEmailTimezone = new DateTimeZone('America/Phoenix');
+$midnightReportTimezone =
+    new DateTimeZone('America/Phoenix');
 
 // Resolve current Phoenix date and time
-$dailyEmailNow = new DateTimeImmutable('now', $dailyEmailTimezone);
+$midnightReportNow =
+    new DateTimeImmutable(
+        'now',
+        $midnightReportTimezone
+    );
 
-$dailyEmailDateNow   = $dailyEmailNow->format('Y-m-d');
-$dailyEmailHourNow   = (int) $dailyEmailNow->format('G');
-$dailyEmailMinuteNow = (int) $dailyEmailNow->format('i');
+$midnightReportDateNow =
+    $midnightReportNow->format('Y-m-d');
+
+$midnightReportHourNow =
+    (int) $midnightReportNow->format('G');
+
+$midnightReportMinuteNow =
+    (int) $midnightReportNow->format('i');
 
 // Determine whether current execution is inside midnight window
-$isDailyEmailWindow =
-    $dailyEmailHourNow === $dailyEmailHour &&
-    $dailyEmailMinuteNow < $dailyEmailWindowMinutes;
+$isMidnightReportWindow =
+    $midnightReportHourNow === $midnightReportHour &&
+    $midnightReportMinuteNow < $midnightReportWindowMinutes;
 
-// Resolve date of last successful email execution from in-memory state
-$lastDailyEmailDate = null;
-if (is_int($state['dailyEmailLastRunUnix'])) {
-    $lastDailyEmailDateTime = (new DateTimeImmutable())
-        ->setTimestamp($state['dailyEmailLastRunUnix'])
-        ->setTimezone($dailyEmailTimezone);
+// Resolve date of last successful report from in-memory state
+$lastMidnightReportDate = null;
 
-    $lastDailyEmailDate = $lastDailyEmailDateTime->format('Y-m-d');
+if (
+    isset($state['midnightReport']['lastRunUnix']) &&
+    is_int($state['midnightReport']['lastRunUnix'])
+) {
+    $lastMidnightReportDateTime =
+        (new DateTimeImmutable())
+            ->setTimestamp(
+                $state['midnightReport']['lastRunUnix']
+            )
+            ->setTimezone(
+                $midnightReportTimezone
+            );
+
+    $lastMidnightReportDate =
+        $lastMidnightReportDateTime->format('Y-m-d');
 }
 
-// Preliminary check: determine whether today's report appears to require delivery
-$dailyEmailDue =
-    $isDailyEmailWindow &&
-    $lastDailyEmailDate !== $dailyEmailDateNow;
+// Preliminary check: determine whether today's report requires delivery
+$midnightReportDue =
+    $isMidnightReportWindow &&
+    $lastMidnightReportDate !== $midnightReportDateNow;
 
-if ($dailyEmailDue) {
+if ($midnightReportDue) {
 
-    // Confirm Daily Email script exists
-    if (!is_file($dailyEmailPath)) {
+    // Confirm Midnight Sentinel Report script exists
+    if (!is_file($midnightReportPath)) {
 
         error_log(
-            'SENTINEL DAILY EMAIL ERROR: Missing email script: ' .
-            $dailyEmailPath
+            'SENTINEL MIDNIGHT REPORT ERROR: Missing email script: ' .
+            $midnightReportPath
         );
 
     } else {
 
-        // Acquire process-level lock to prevent concurrent overlapping executions
-        $lockFp = @fopen($dailyEmailLockPath, 'c+');
+        // Acquire process-level lock to prevent overlapping executions
+        $lockFp = @fopen(
+            $midnightReportLockPath,
+            'c+'
+        );
 
-        if ($lockFp !== false && flock($lockFp, LOCK_EX | LOCK_NB)) {
+        if (
+            $lockFp !== false &&
+            flock(
+                $lockFp,
+                LOCK_EX | LOCK_NB
+            )
+        ) {
 
             try {
 
                 // Re-read authoritative state after acquiring execution lock
-                $lockedStateRaw = file_get_contents($statePath);
+                $lockedStateRaw =
+                    file_get_contents($statePath);
 
-                $lockedState = is_string($lockedStateRaw)
-                    ? json_decode($lockedStateRaw, true)
-                    : null;
+                $lockedState =
+                    is_string($lockedStateRaw)
+                        ? json_decode(
+                            $lockedStateRaw,
+                            true
+                        )
+                        : null;
 
                 if (!is_array($lockedState)) {
                     throw new RuntimeException(
-                        'Unable to read Sentinel runtime state after acquiring email lock.'
+                        'Unable to read Sentinel runtime state ' .
+                        'after acquiring Midnight Report lock.'
                     );
                 }
 
-                // Resolve last successful email execution inside lock
-                $lockedLastDailyEmailDate = null;
-
-                if (isset($lockedState['dailyEmailLastRunUnix'])) {
-
-                    $lockedLastDailyEmailDateTime = (new DateTimeImmutable())
-                        ->setTimestamp(
-                            (int) $lockedState['dailyEmailLastRunUnix']
-                        )
-                        ->setTimezone($dailyEmailTimezone);
-
-                    $lockedLastDailyEmailDate =
-                        $lockedLastDailyEmailDateTime->format('Y-m-d');
+                // Ensure Midnight Sentinel Report state exists
+                if (
+                    !isset($lockedState['midnightReport']) ||
+                    !is_array($lockedState['midnightReport'])
+                ) {
+                    $lockedState['midnightReport'] = [
+                        'lastAttemptUnix' => null,
+                        'lastRunUnix'     => null,
+                        'runCount'        => 0,
+                        'lastStatus'      => null,
+                        'lastError'       => null
+                    ];
                 }
 
-                // Confirm today's email still requires delivery
-                if ($lockedLastDailyEmailDate === $dailyEmailDateNow) {
+                // Resolve last successful report execution inside lock
+                $lockedLastMidnightReportDate = null;
 
+                if (
+                    isset(
+                        $lockedState['midnightReport']['lastRunUnix']
+                    ) &&
+                    is_int(
+                        $lockedState['midnightReport']['lastRunUnix']
+                    )
+                ) {
+                    $lockedLastMidnightReportDateTime =
+                        (new DateTimeImmutable())
+                            ->setTimestamp(
+                                $lockedState[
+                                    'midnightReport'
+                                ][
+                                    'lastRunUnix'
+                                ]
+                            )
+                            ->setTimezone(
+                                $midnightReportTimezone
+                            );
+
+                    $lockedLastMidnightReportDate =
+                        $lockedLastMidnightReportDateTime
+                            ->format('Y-m-d');
+                }
+
+                // Confirm today's report still requires delivery
+                if (
+                    $lockedLastMidnightReportDate ===
+                    $midnightReportDateNow
+                ) {
                     error_log(
-                        'SENTINEL DAILY EMAIL NOTICE: ' .
-                        'Daily report already delivered for ' .
-                        $dailyEmailDateNow .
+                        'SENTINEL MIDNIGHT REPORT NOTICE: ' .
+                        'Report already delivered for ' .
+                        $midnightReportDateNow .
                         '.'
                     );
 
                 } else {
 
+                    // Record report execution attempt
+                    $lockedState[
+                        'midnightReport'
+                    ][
+                        'lastAttemptUnix'
+                    ] = time();
+
                     // Resolve active PHP executable
                     $phpBinary = PHP_BINARY;
 
-                    // Build isolated Daily Email command
-                    $dailyEmailCommand =
+                    // Build isolated Midnight Report command
+                    $midnightReportCommand =
                         escapeshellarg($phpBinary) .
                         ' ' .
-                        escapeshellarg($dailyEmailPath) .
+                        escapeshellarg($midnightReportPath) .
                         ' 2>&1';
 
                     // Initialize child-process result
-                    $dailyEmailOutput   = [];
-                    $dailyEmailExitCode = 1;
+                    $midnightReportOutput   = [];
+                    $midnightReportExitCode = 1;
+                    $midnightReportError    = null;
 
-                    // Execute Daily Email as isolated child process
+                    // Execute Midnight Sentinel Report
                     exec(
-                        $dailyEmailCommand,
-                        $dailyEmailOutput,
-                        $dailyEmailExitCode
+                        $midnightReportCommand,
+                        $midnightReportOutput,
+                        $midnightReportExitCode
                     );
 
-                    // Record successful daily delivery
-                    if ($dailyEmailExitCode === 0) {
+                    // Record successful report delivery
+                    if ($midnightReportExitCode === 0) {
 
-                        $lockedState['dailyEmailLastRunUnix'] = time();
+                        $lockedState[
+                            'midnightReport'
+                        ][
+                            'lastRunUnix'
+                        ] = time();
 
-                        $dailyEmailStateWrite = file_put_contents(
+                        $lockedState[
+                            'midnightReport'
+                        ][
+                            'runCount'
+                        ] =
+                            (int) $lockedState[
+                                'midnightReport'
+                            ][
+                                'runCount'
+                            ] + 1;
+
+                        $lockedState[
+                            'midnightReport'
+                        ][
+                            'lastStatus'
+                        ] = 'success';
+
+                        $lockedState[
+                            'midnightReport'
+                        ][
+                            'lastError'
+                        ] = null;
+
+                    } else {
+
+                        // Build report execution error
+                        $midnightReportError =
+                            'Delivery failed with exit code ' .
+                            $midnightReportExitCode .
+                            '. Output: ' .
+                            implode(
+                                ' | ',
+                                $midnightReportOutput
+                            );
+
+                        // Record failed report attempt
+                        $lockedState[
+                            'midnightReport'
+                        ][
+                            'lastStatus'
+                        ] = 'failed';
+
+                        $lockedState[
+                            'midnightReport'
+                        ][
+                            'lastError'
+                        ] = $midnightReportError;
+                    }
+
+                    // Persist updated Midnight Report state
+                    $midnightReportStateWrite =
+                        file_put_contents(
                             $statePath,
                             json_encode(
                                 $lockedState,
@@ -447,46 +622,46 @@ if ($dailyEmailDue) {
                             LOCK_EX
                         );
 
-                        if ($dailyEmailStateWrite === false) {
+                    if ($midnightReportStateWrite === false) {
+
+                        error_log(
+                            'SENTINEL MIDNIGHT REPORT ERROR: ' .
+                            'Report execution completed, but updated state could not be ' .
+                            'written to sentinelState.json.'
+                        );
+
+                    } else {
+
+                        // Synchronize current process state in memory
+                        $state = $lockedState;
+
+                        if ($midnightReportExitCode === 0) {
 
                             error_log(
-                                'SENTINEL DAILY EMAIL ERROR: ' .
-                                'Unable to write updated state to sentinelState.json.'
+                                'SENTINEL MIDNIGHT REPORT SUCCESS: ' .
+                                'Report delivered for ' .
+                                $midnightReportDateNow .
+                                '.'
                             );
 
                         } else {
 
-                            // Synchronize current process state in memory
-                            $state = $lockedState;
-
                             error_log(
-                                'SENTINEL DAILY EMAIL SUCCESS: ' .
-                                'Daily report delivered for ' .
-                                $dailyEmailDateNow .
-                                '.'
+                                'SENTINEL MIDNIGHT REPORT ERROR: ' .
+                                $midnightReportError
                             );
                         }
-
-                    } else {
-
-                        // Record child-process failure for retry
-                        error_log(
-                            'SENTINEL DAILY EMAIL ERROR: ' .
-                            'Delivery failed with exit code ' .
-                            $dailyEmailExitCode .
-                            '. Output: ' .
-                            implode(
-                                ' | ',
-                                $dailyEmailOutput
-                            )
-                        );
                     }
                 }
 
             } finally {
 
                 // Release process lock
-                flock($lockFp, LOCK_UN);
+                flock(
+                    $lockFp,
+                    LOCK_UN
+                );
+
                 fclose($lockFp);
             }
 
@@ -497,8 +672,9 @@ if ($dailyEmailDue) {
             }
 
             error_log(
-                'SENTINEL DAILY EMAIL NOTICE: ' .
-                'Execution skipped; another daily email process is currently running.'
+                'SENTINEL MIDNIGHT REPORT NOTICE: ' .
+                'Execution skipped; another Midnight Report ' .
+                'process is currently running.'
             );
         }
     }
