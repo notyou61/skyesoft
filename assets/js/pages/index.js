@@ -9557,6 +9557,82 @@ window.SkyIndex = {
         };
     },
 
+    formatNewOrderUnixDate(unixValue) {
+        const unixTimestamp = Number(unixValue || 0);
+
+        if (!unixTimestamp) return '';
+
+        const parts = new Intl.DateTimeFormat(
+            'en-US',
+            {
+                timeZone: 'America/Phoenix',
+                year:     'numeric',
+                month:    '2-digit',
+                day:      '2-digit'
+            }
+        ).formatToParts(
+            new Date(unixTimestamp * 1000)
+        );
+
+        const dateParts = {};
+
+        parts.forEach(part => {
+            dateParts[part.type] = part.value;
+        });
+
+        return [
+            dateParts.year,
+            dateParts.month,
+            dateParts.day
+        ].join('-');
+    },
+
+    updateNewOrderField(fieldName, value) {
+        if (!this._newOrderDraft?.order) return;
+
+        // Normalize numeric foreign keys
+        if (
+            fieldName === 'typeID' ||
+            fieldName === 'statusID'
+        ) {
+            this._newOrderDraft.order[fieldName] =
+                Number(value || 0) || null;
+            return;
+        }
+
+        // Normalize Proposal state
+        if (fieldName === 'isProposal') {
+            this._newOrderDraft.order.isProposal =
+                Boolean(value);
+            return;
+        }
+
+        // Store text value
+        this._newOrderDraft.order[fieldName] =
+            String(value || '').trim() || null;
+    },
+
+    updateNewOrderDateField(fieldName, dateValue) {
+        if (!this._newOrderDraft?.order) return;
+
+        if (!dateValue) {
+            this._newOrderDraft.order[fieldName] = null;
+            return;
+        }
+
+        // Convert Phoenix calendar date to Unix
+        const unixTimestamp = Math.floor(
+            new Date(
+                `${dateValue}T00:00:00-07:00`
+            ).getTime() / 1000
+        );
+
+        this._newOrderDraft.order[fieldName] =
+            Number.isFinite(unixTimestamp)
+                ? unixTimestamp
+                : null;
+    },
+
     returnToNewOrderLocationStep() {
         window.SkyWorkspace.replace({
             pageType:   'order_create',
