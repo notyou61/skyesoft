@@ -1414,89 +1414,183 @@ error_log(
     '; sha256=' . $pdfHash
 );
 
-// Build Microsoft Graph email payload
-$mailPayload = [
-    'message' => [
-        'subject' => $subject,
-        'body' => [
-            'contentType' => 'HTML',
-            'content'     => $emailHtml,
-        ],
-        'toRecipients' => [
-            [
-                'emailAddress' => [
-                    'address' => $recipientEmail,
-                ],
-            ],
-        ],
-        'attachments' => [
-            [
-                '@odata.type' => '#microsoft.graph.fileAttachment',
-                'name'        => $pdfFilename,
-                'contentType' => 'application/pdf',
-                //'contentBytes'=> base64_encode($pdfContent),
-                'contentBytes'=> $pdfContentBase64,
+// Execute Microsoft Graph request
+$graphRequest = static function (
+    string $method,
+    string $url,
+    string $accessToken,
+    ?array $payload,
+    array $expectedHttpCodes
+): array {
+
+    // Initialize Graph request
+    $graphCurl = curl_init();
+
+    $headers = [
+        'Authorization: Bearer ' . $accessToken,
+        'Accept: application/json',
+    ];
+
+    $options = [
+        CURLOPT_URL            => $url,
+        CURLOPT_CUSTOMREQUEST  => strtoupper($method),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 30,
+    ];
+
+    // Add JSON payload when required
+    if ($payload !== null) {
+
+        $payloadJson = json_encode(
+            $payload,
+            JSON_UNESCAPED_SLASHES
+        );
+
+        if ($payloadJson === false) {
+            throw new RuntimeException(
+                'Unable to encode Microsoft Graph request payload.'
+            );
+        }
+
+        $headers[] = 'Content-Type: application/json';
+        $options[CURLOPT_POSTFIELDS] = $payloadJson;
+
+    } elseif (strtoupper($method) === 'POST') {
+
+        // Explicitly frame bodyless Graph POST requests
+        $headers[] = 'Content-Length: 0';
+        $options[CURLOPT_POSTFIELDS] = '';
+    }
+
+    $options[CURLOPT_HTTPHEADER] = $headers;
+
+    curl_setopt_array(
+        $graphCurl,
+        $options
+    );
+
+    // Execute Graph request
+    $graphResponse = curl_exec($graphCurl);
+    $graphError = curl_error($graphCurl);
+    $graphHttpCode = (int) curl_getinfo(
+        $graphCurl,
+        CURLINFO_HTTP_CODE
+    );
+
+    curl_close($graphCurl);
+
+    if ($graphResponse === false) {
+        throw new RuntimeException(
+            'Microsoft Graph request failed: ' .
+            $graphError
+        );
+    }
+
+    if (!in_array($graphHttpCode, $expectedHttpCodes, true)) {
+        throw new RuntimeException(
+            'Microsoft Graph request returned HTTP ' .
+            $graphHttpCode .
+            ': ' .
+            $graphResponse
+        );
+    }
+
+    return [
+        'httpCode' => $graphHttpCode,
+        'response' => $graphResponse,
+    ];
+};
+
+// Build Microsoft Graph mailbox endpoint
+$graphMailboxUrl =
+    'https://graph.microsoft.com/v1.0/users/' .
+    rawurlencode($msMailbox);
+
+// Build Sentinel draft payload
+$draftPayload = [
+    'subject' => $subject,
+    'body' => [
+        'contentType' => 'HTML',
+        'content'     => $emailHtml,
+    ],
+    'toRecipients' => [
+        [
+            'emailAddress' => [
+                'address' => $recipientEmail,
             ],
         ],
     ],
-    'saveToSentItems' => true,
 ];
 
-// Encode Microsoft Graph email payload
-$mailJson = json_encode($mailPayload);
-
-if ($mailJson === false) {
-    throw new RuntimeException(
-        'Unable to encode Microsoft Graph email payload.'
-    );
-}
-
-// Build Microsoft Graph sendMail endpoint
-$sendMailUrl =
-    'https://graph.microsoft.com/v1.0/users/' .
-    rawurlencode($msMailbox) .
-    '/sendMail';
-
-// Send Sentinel report through Microsoft Graph
-$mailCurl = curl_init();
-
-curl_setopt_array($mailCurl, [
-    CURLOPT_URL            => $sendMailUrl,
-    CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => $mailJson,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => [
-        'Authorization: Bearer ' . $accessToken,
-        'Content-Type: application/json',
-    ],
-    CURLOPT_TIMEOUT        => 30,
-]);
-
-$mailResponse = curl_exec($mailCurl);
-$mailError = curl_error($mailCurl);
-$mailHttpCode = (int) curl_getinfo(
-    $mailCurl,
-    CURLINFO_HTTP_CODE
+// Create Sentinel message draft
+$createMessageResult = $graphRequest(
+    'POST',
+    $graphMailboxUrl . '/messages',
+    $accessToken,
+    $draftPayload,
+    [201]
 );
 
-curl_close($mailCurl);
+// Decode created message
+$createdMessage = json_decode(
+    $createMessageResult['response'],
+    true
+);
 
-if ($mailResponse === false) {
+$messageId = is_array($createdMessage)
+    ? (string) ($createdMessage['id'] ?? '')
+    : '';
+
+if ($messageId === '') {
     throw new RuntimeException(
-        'Microsoft Graph sendMail request failed: ' .
-        $mailError
+        'Microsoft Graph created the Sentinel draft without returning a message ID.'
     );
 }
 
-// Microsoft Graph sendMail returns HTTP 202 when accepted
-if ($mailHttpCode !== 202) {
-    throw new RuntimeException(
-        'Microsoft Graph rejected the Sentinel email. HTTP ' .
-        $mailHttpCode .
-        ': ' .
-        $mailResponse
-    );
-}
+// Build PDF attachment payload
+$attachmentPayload = [
+    '@odata.type' => '#microsoft.graph.fileAttachment',
+    'name'        => $pdfFilename,
+    'contentType' => 'application/pdf',
+    'contentBytes'=> $pdfContentBase64,
+];
+
+// Attach PDF to Sentinel draft
+$attachmentResult = $graphRequest(
+    'POST',
+    $graphMailboxUrl .
+        '/messages/' .
+        rawurlencode($messageId) .
+        '/attachments',
+    $accessToken,
+    $attachmentPayload,
+    [201]
+);
+
+// Send completed Sentinel message
+$sendMessageResult = $graphRequest(
+    'POST',
+    $graphMailboxUrl .
+        '/messages/' .
+        rawurlencode($messageId) .
+        '/send',
+    $accessToken,
+    null,
+    [202]
+);
+
+// Preserve final Graph response for existing delivery diagnostics
+$mailHttpCode = (int) $sendMessageResult['httpCode'];
+$mailResponse = (string) $sendMessageResult['response'];
+
+error_log(
+    'SENTINEL GRAPH TRANSPORT SUCCESS: ' .
+    'createMessageHttp=' . $createMessageResult['httpCode'] .
+    '; attachPdfHttp=' . $attachmentResult['httpCode'] .
+    '; sendMessageHttp=' . $sendMessageResult['httpCode'] .
+    '; pdfBytes=' . $pdfByteLength .
+    '; sha256=' . $pdfHash
+);
 
 #endregion
 
