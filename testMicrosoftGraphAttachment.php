@@ -347,8 +347,13 @@ if ($sendTestRequested) {
 
 #region SECTION III — Locate Latest Sentinel Message
 
-// Configure Sentinel message subject
-$sentinelSubject = 'Skyesoft Sentinel Daily Report';
+// Configure message subject for Exchange attachment verification
+$sentinelSubject = (
+    isset($_GET['transportTest']) &&
+    $_GET['transportTest'] === '1'
+)
+    ? 'Skyesoft Sentinel Graph Attachment Transport Test'
+    : 'Skyesoft Sentinel Daily Report';
 
 // Build Sent Items message query
 $messageUrl =
@@ -537,7 +542,7 @@ if ($downloadRequested) {
         $downloadFilename === ''
     ) {
         $downloadFilename =
-            'Skyesoft_Sentinel_Daily_Report.pdf';
+            'Skyesoft_Graph_Attachment_Test.pdf';
     }
 
     // Clear active output buffers
@@ -597,6 +602,12 @@ $pdfTrailerValid =
 // Build diagnostic result
 $result = [
     'success' => true,
+    'inspectionMode' => (
+        isset($_GET['transportTest']) &&
+        $_GET['transportTest'] === '1'
+    )
+        ? 'three-step-transport-test'
+        : 'sentinel-daily-report',
 
     'message' => [
         'subject' => $sentinelMessage['subject'] ?? null,
