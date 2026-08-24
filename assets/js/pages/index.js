@@ -9226,6 +9226,18 @@ window.SkyIndex = {
             order.christyNumber || ''
         );
 
+        const purchaseOrder = this.escapeHtml(
+            order.purchaseOrder || ''
+        );
+
+        const scope = this.escapeHtml(
+            order.scope || ''
+        );
+
+        const note = this.escapeHtml(
+            order.note || ''
+        );
+
         const orderTypes = Array.isArray(
             draft.context?.orderTypes
         ) ? draft.context.orderTypes : [];
@@ -9233,6 +9245,10 @@ window.SkyIndex = {
         const orderStatuses = Array.isArray(
             draft.context?.orderStatuses
         ) ? draft.context.orderStatuses : [];
+
+        const jobsiteContacts = Array.isArray(
+            draft.context?.jobsiteContacts
+        ) ? draft.context.jobsiteContacts : [];
 
         // Format Unix values for date inputs
         const orderDate = this.formatNewOrderUnixDate(
@@ -9246,6 +9262,7 @@ window.SkyIndex = {
         // Build authoritative Order Type options
         const orderTypeOptions = orderTypes.map(type => {
             const typeId = Number(type.orderTypeID);
+
             const typeName = this.escapeHtml(
                 type.orderTypeName || 'Unnamed Type'
             );
@@ -9264,7 +9281,10 @@ window.SkyIndex = {
 
         // Build authoritative Order Status options
         const orderStatusOptions = orderStatuses.map(status => {
-            const statusId = Number(status.orderStatusID);
+            const statusId = Number(
+                status.orderStatusID
+            );
+
             const statusName = this.escapeHtml(
                 status.orderStatusName || 'Unnamed Status'
             );
@@ -9281,10 +9301,49 @@ window.SkyIndex = {
             `;
         }).join('');
 
+        // Build authoritative Jobsite Contact options
+        const jobsiteContactOptions = jobsiteContacts
+            .map(contact => {
+                const contactId = Number(
+                    contact.contactId
+                );
+
+                const contactName = this.escapeHtml(
+                    [
+                        contact.contactFirstName,
+                        contact.contactLastName
+                    ].filter(Boolean).join(' ') ||
+                    'Unnamed Contact'
+                );
+
+                const contactTitle = this.escapeHtml(
+                    contact.contactTitle || ''
+                );
+
+                const selected =
+                    Number(
+                        draft.jobsite?.jobsiteContactID
+                    ) === contactId
+                        ? ' selected'
+                        : '';
+
+                return `
+                    <option value="${contactId}"${selected}>
+                        ${contactName}${
+                            contactTitle
+                                ? ` — ${contactTitle}`
+                                : ''
+                        }
+                    </option>
+                `;
+            })
+            .join('');
+
         return {
             titleHtml: `
                 <div>
                     <strong>New Order</strong>
+
                     <div style="
                         margin-top:3px;
                         color:#777;
@@ -9310,7 +9369,10 @@ window.SkyIndex = {
                         ${locationName}
                     </div>
 
-                    <div style="margin-top:2px; color:#117a8b;">
+                    <div style="
+                        margin-top:2px;
+                        color:#117a8b;
+                    ">
                         Entity: ${entityName}
                     </div>
                 </div>
@@ -9516,8 +9578,162 @@ window.SkyIndex = {
                                     )
                                 "
                             >
+
                             Proposal
                         </label>
+                    </div>
+
+                    <div>
+                        <label
+                            for="newOrderJobsiteContact"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Jobsite Contact
+                        </label>
+
+                        <select
+                            id="newOrderJobsiteContact"
+                            onchange="
+                                SkyIndex.updateNewOrderJobsiteContact(
+                                    this.value
+                                )
+                            "
+                            ${
+                                jobsiteContacts.length
+                                    ? ''
+                                    : 'disabled'
+                            }
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:9px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                                background:#fff;
+                            "
+                        >
+                            ${
+                                jobsiteContacts.length
+                                    ? `
+                                        <option value="">
+                                            Select Jobsite Contact...
+                                        </option>
+
+                                        ${jobsiteContactOptions}
+                                    `
+                                    : `
+                                        <option value="">
+                                            No contacts available
+                                        </option>
+                                    `
+                            }
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            for="newOrderPurchaseOrder"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Customer PO
+                        </label>
+
+                        <input
+                            id="newOrderPurchaseOrder"
+                            type="text"
+                            value="${purchaseOrder}"
+                            oninput="
+                                SkyIndex.updateNewOrderField(
+                                    'purchaseOrder',
+                                    this.value
+                                )
+                            "
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:9px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                            "
+                        >
+                    </div>
+
+                    <div style="grid-column:1 / -1;">
+                        <label
+                            for="newOrderScope"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Scope of Work
+                        </label>
+
+                        <textarea
+                            id="newOrderScope"
+                            rows="4"
+                            oninput="
+                                SkyIndex.updateNewOrderField(
+                                    'scope',
+                                    this.value
+                                )
+                            "
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:9px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                                resize:vertical;
+                                font:inherit;
+                            "
+                        >${scope}</textarea>
+                    </div>
+
+                    <div style="grid-column:1 / -1;">
+                        <label
+                            for="newOrderNote"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Notes
+                        </label>
+
+                        <textarea
+                            id="newOrderNote"
+                            rows="3"
+                            oninput="
+                                SkyIndex.updateNewOrderField(
+                                    'note',
+                                    this.value
+                                )
+                            "
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:9px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                                resize:vertical;
+                                font:inherit;
+                            "
+                        >${note}</textarea>
                     </div>
                 </div>
             `,
@@ -9525,7 +9741,9 @@ window.SkyIndex = {
             actionsHtml: `
                 <button
                     type="button"
-                    onclick="SkyIndex.returnToNewOrderLocationStep()"
+                    onclick="
+                        SkyIndex.returnToNewOrderLocationStep()
+                    "
                     style="
                         padding:8px 16px;
                         border:1px solid #ccc;
