@@ -9469,21 +9469,34 @@ window.SkyIndex = {
         }
 
         try {
-            // Load authoritative Location context
-            const data = await this.getLocation(locationId);
+            // Load authoritative Order creation options
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: 'orderCreateOptions',
+                        locationID: locationId
+                    })
+                }
+            );
 
-            if (!data?.success || !data?.location) {
-                throw new Error(
-                    data?.error || 'Location could not be loaded.'
-                );
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
 
-            const location = data.location;
+            const options = await response.json();
 
-            // Default Order date to current Unix timestamp
-            const orderDate = Math.floor(
-                Date.now() / 1000
-            );
+            if (!options?.success) {
+                throw new Error(
+                    options?.error ||
+                    'Order creation options could not be loaded.'
+                );
+            }
 
             // Initialize unsaved Order payload
             this._newOrderDraft = {
@@ -9505,26 +9518,41 @@ window.SkyIndex = {
                     christyNumber: null,
                     typeID: null,
                     isProposal: true,
-                    statusID: 1,
-                    salespersonID: 1,
-                    date: orderDate,
+                    statusID: Number(
+                        options.defaults?.statusID || 0
+                    ) || null,
+                    salespersonID: Number(
+                        options.defaults?.salespersonID || 0
+                    ) || null,
+                    date: Number(
+                        options.defaults?.orderDateUnix || 0
+                    ) || null,
                     dueDate: null,
                     purchaseOrder: null,
                     scope: '',
                     note: ''
                 },
 
-                // Client-only authoritative context
+                // Client-only Step 2 options and context
                 context: {
-                    location: location,
+                    location: options.location,
                     fallbackEntityID: Number(
-                        location.locationEntityId || 0
-                    ) || null
+                        options.location?.locationEntityId || 0
+                    ) || null,
+                    orderTypes: Array.isArray(
+                        options.orderTypes
+                    ) ? options.orderTypes : [],
+                    orderStatuses: Array.isArray(
+                        options.orderStatuses
+                    ) ? options.orderStatuses : [],
+                    jobsiteContacts: Array.isArray(
+                        options.jobsiteContacts
+                    ) ? options.jobsiteContacts : []
                 }
             };
 
             console.log(
-                '[New Order] Draft initialized:',
+                '[New Order] Authoritative draft initialized:',
                 this._newOrderDraft
             );
 
