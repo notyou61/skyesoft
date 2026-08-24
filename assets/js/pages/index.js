@@ -9106,12 +9106,20 @@ window.SkyIndex = {
             objectId:   null,
             title:      'New Order',
             state: {
-                locationId: null
+                step:       'location',
+                locationID: null
             }
         });
     },
 
     async renderOrderCreatePage(page, ctx) {
+        // Render Order-details step
+        if (page.state?.step === 'details') {
+            return this.renderNewOrderDetailsPage(
+                page,
+                ctx
+            );
+        }
         return {
             titleHtml: `
                 <div>
@@ -9193,6 +9201,105 @@ window.SkyIndex = {
             `
         };
     },
+
+    async renderNewOrderDetailsPage(page, ctx) {
+        const draft = this._newOrderDraft;
+        const location = draft?.context?.location;
+
+        if (!draft || !location) {
+            throw new Error(
+                'New Order draft is not available.'
+            );
+        }
+
+        const locationName = this.escapeHtml(
+            location.locationName || 'Unnamed Location'
+        );
+
+        const entityName = this.escapeHtml(
+            location.entityName || 'No Entity'
+        );
+
+        return {
+            titleHtml: `
+                <div>
+                    <strong>New Order</strong>
+                    <div style="margin-top:3px; color:#777; font-size:0.82em;">
+                        Order Details
+                    </div>
+                </div>
+            `,
+
+            bodyHtml: `
+                <div style="
+                    padding:12px;
+                    border:1px solid #b7dfc4;
+                    border-radius:6px;
+                    background:#f1faf4;
+                ">
+                    <strong style="color:#20733a;">
+                        Jobsite confirmed
+                    </strong>
+
+                    <div style="margin-top:5px; color:#222;">
+                        ${locationName}
+                    </div>
+
+                    <div style="margin-top:2px; color:#117a8b;">
+                        Entity: ${entityName}
+                    </div>
+                </div>
+
+                <div style="margin-top:18px; color:#555;">
+                    Order-detail fields will be added here.
+                </div>
+            `,
+
+            actionsHtml: `
+                <button
+                    type="button"
+                    onclick="SkyIndex.returnToNewOrderLocationStep()"
+                    style="
+                        padding:8px 16px;
+                        border:1px solid #ccc;
+                        border-radius:6px;
+                        background:#fff;
+                        color:#333;
+                        cursor:pointer;
+                    "
+                >
+                    Back
+                </button>
+
+                <button
+                    type="button"
+                    disabled
+                    style="
+                        padding:8px 16px;
+                        border:0;
+                        border-radius:6px;
+                        background:#999;
+                        color:#fff;
+                        cursor:not-allowed;
+                    "
+                >
+                    Create Order
+                </button>
+            `
+        };
+    },
+
+    returnToNewOrderLocationStep() {
+        window.SkyWorkspace.replace({
+            pageType:   'order_create',
+            objectType: 'order',
+            objectId:   null,
+            title:      'New Order',
+            state: {
+                step: 'location'
+            }
+        });
+    },    
 
     handleNewOrderLocationInput(value) {
         const query = String(value || '').trim();
@@ -9451,6 +9558,7 @@ window.SkyIndex = {
             selectedLocation?.locationId || 0
         );
 
+        // Require authoritative Location
         if (!locationId) {
             this.appendSystemLine(
                 'Please select a valid jobsite Location.'
@@ -9462,6 +9570,7 @@ window.SkyIndex = {
             'newOrderContinueButton'
         );
 
+        // Set loading state
         if (continueButton) {
             continueButton.disabled = true;
             continueButton.textContent = 'Loading...';
@@ -9479,14 +9588,16 @@ window.SkyIndex = {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        type: 'orderCreateOptions',
+                        type:       'orderCreateOptions',
                         locationID: locationId
                     })
                 }
             );
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+                throw new Error(
+                    `HTTP ${response.status}`
+                );
             }
 
             const options = await response.json();
@@ -9506,7 +9617,7 @@ window.SkyIndex = {
                     this.getActivitySessionId(),
 
                 jobsite: {
-                    locationID: locationId,
+                    locationID:       locationId,
                     jobsiteContactID: null
                 },
 
@@ -9516,8 +9627,8 @@ window.SkyIndex = {
 
                 order: {
                     christyNumber: null,
-                    typeID: null,
-                    isProposal: true,
+                    typeID:         null,
+                    isProposal:     true,
                     statusID: Number(
                         options.defaults?.statusID || 0
                     ) || null,
@@ -9527,24 +9638,28 @@ window.SkyIndex = {
                     date: Number(
                         options.defaults?.orderDateUnix || 0
                     ) || null,
-                    dueDate: null,
+                    dueDate:       null,
                     purchaseOrder: null,
-                    scope: '',
-                    note: ''
+                    scope:         '',
+                    note:          ''
                 },
 
-                // Client-only Step 2 options and context
+                // Store client-only options and context
                 context: {
                     location: options.location,
+
                     fallbackEntityID: Number(
                         options.location?.locationEntityId || 0
                     ) || null,
+
                     orderTypes: Array.isArray(
                         options.orderTypes
                     ) ? options.orderTypes : [],
+
                     orderStatuses: Array.isArray(
                         options.orderStatuses
                     ) ? options.orderStatuses : [],
+
                     jobsiteContacts: Array.isArray(
                         options.jobsiteContacts
                     ) ? options.jobsiteContacts : []
@@ -9556,9 +9671,17 @@ window.SkyIndex = {
                 this._newOrderDraft
             );
 
-            if (continueButton) {
-                continueButton.textContent = 'Ready';
-            }
+            // Open Order-details step
+            window.SkyWorkspace.replace({
+                pageType:   'order_create',
+                objectType: 'order',
+                objectId:   null,
+                title:      'New Order',
+                state: {
+                    step:       'details',
+                    locationID: locationId
+                }
+            });
 
         } catch (error) {
             console.error(
@@ -9572,9 +9695,11 @@ window.SkyIndex = {
                 }`
             );
 
+            // Restore Continue button
             if (continueButton) {
                 continueButton.disabled = false;
                 continueButton.textContent = 'Continue';
+                continueButton.style.background = '#117a8b';
                 continueButton.style.cursor = 'pointer';
             }
         }
