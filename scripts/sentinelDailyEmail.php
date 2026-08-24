@@ -1212,6 +1212,24 @@ try {
         'S'
     );
 
+    // Validate generated PDF content
+    $pdfByteLength = strlen($pdfContent);
+    $pdfHash       = hash('sha256', $pdfContent);
+    $pdfHeader     = substr($pdfContent, 0, 5);
+
+    if ($pdfHeader !== '%PDF-') {
+        throw new RuntimeException(
+            'Generated Sentinel attachment does not contain a valid PDF header.'
+        );
+    }
+
+    error_log(
+        'SENTINEL PDF DIAGNOSTIC: ' .
+        'bytes=' . $pdfByteLength .
+        '; sha256=' . $pdfHash .
+        '; header=' . $pdfHeader
+    );
+
 } catch (\Throwable $throwable) {
 
     error_log(
@@ -1371,6 +1389,31 @@ if (
 
 $accessToken = $tokenData['access_token'];
 
+// Encode PDF attachment for Microsoft Graph
+$pdfContentBase64 = base64_encode($pdfContent);
+
+// Validate Base64 attachment round trip
+$pdfDecodedContent = base64_decode(
+    $pdfContentBase64,
+    true
+);
+
+if (
+    $pdfDecodedContent === false ||
+    hash('sha256', $pdfDecodedContent) !== $pdfHash
+) {
+    throw new RuntimeException(
+        'Sentinel PDF attachment failed Base64 integrity validation.'
+    );
+}
+
+error_log(
+    'SENTINEL GRAPH ATTACHMENT DIAGNOSTIC: ' .
+    'pdfBytes=' . $pdfByteLength .
+    '; base64Bytes=' . strlen($pdfContentBase64) .
+    '; sha256=' . $pdfHash
+);
+
 // Build Microsoft Graph email payload
 $mailPayload = [
     'message' => [
@@ -1391,7 +1434,8 @@ $mailPayload = [
                 '@odata.type' => '#microsoft.graph.fileAttachment',
                 'name'        => $pdfFilename,
                 'contentType' => 'application/pdf',
-                'contentBytes'=> base64_encode($pdfContent),
+                //'contentBytes'=> base64_encode($pdfContent),
+                'contentBytes'=> $pdfContentBase64,
             ],
         ],
     ],
