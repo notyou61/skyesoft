@@ -176,7 +176,10 @@ $state = [
     // Governance layer
     "unresolvedViolations"     => $unresolved,
     "constitutionalViolations" => $constitutional,
-    "governanceStatus"         => $governanceStatus
+    "governanceStatus"         => $governanceStatus,
+
+    // Notifier layer
+    "dailyEmailLastRunUnix"    => null
 ];
 
 /* ---- Merge with existing state ---- */
@@ -189,6 +192,11 @@ if (file_exists($statePath)) {
 
         $state["runCount"] =
             ($existing["runCount"] ?? 0) + 1;
+
+        $state["dailyEmailLastRunUnix"] =
+            isset($existing["dailyEmailLastRunUnix"])
+                ? (int) $existing["dailyEmailLastRunUnix"]
+                : null;
     }
 }
 
@@ -300,6 +308,200 @@ if (!empty($targets)) {
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
         )
     );
+}
+
+#endregion
+
+#region SECTION III.B — Daily Sentinel Email Scheduler
+
+// Configure Sentinel Daily Email schedule (Phoenix local time)
+$dailyEmailHour = 6;
+$dailyEmailWindowMinutes = 15;
+
+// Resolve Sentinel Daily Email script & concurrency lock path
+$dailyEmailPath     = $scriptsDir . '/sentinelDailyEmail.php';
+$dailyEmailLockPath = $rootDir . '/data/runtimeEphemeral/dailyEmail.lock';
+
+// Initialize Phoenix timezone
+$dailyEmailTimezone = new DateTimeZone('America/Phoenix');
+
+// Resolve current Phoenix date and time
+$dailyEmailNow = new DateTimeImmutable('now', $dailyEmailTimezone);
+
+$dailyEmailDateNow   = $dailyEmailNow->format('Y-m-d');
+$dailyEmailHourNow   = (int) $dailyEmailNow->format('G');
+$dailyEmailMinuteNow = (int) $dailyEmailNow->format('i');
+
+// Determine whether current execution is inside midnight window
+$isDailyEmailWindow =
+    $dailyEmailHourNow === $dailyEmailHour &&
+    $dailyEmailMinuteNow < $dailyEmailWindowMinutes;
+
+// Resolve date of last successful email execution from in-memory state
+$lastDailyEmailDate = null;
+if (is_int($state['dailyEmailLastRunUnix'])) {
+    $lastDailyEmailDateTime = (new DateTimeImmutable())
+        ->setTimestamp($state['dailyEmailLastRunUnix'])
+        ->setTimezone($dailyEmailTimezone);
+
+    $lastDailyEmailDate = $lastDailyEmailDateTime->format('Y-m-d');
+}
+
+// Preliminary check: determine whether today's report appears to require delivery
+$dailyEmailDue =
+    $isDailyEmailWindow &&
+    $lastDailyEmailDate !== $dailyEmailDateNow;
+
+if ($dailyEmailDue) {
+
+    // Confirm Daily Email script exists
+    if (!is_file($dailyEmailPath)) {
+
+        error_log(
+            'SENTINEL DAILY EMAIL ERROR: Missing email script: ' .
+            $dailyEmailPath
+        );
+
+    } else {
+
+        // Acquire process-level lock to prevent concurrent overlapping executions
+        $lockFp = @fopen($dailyEmailLockPath, 'c+');
+
+        if ($lockFp !== false && flock($lockFp, LOCK_EX | LOCK_NB)) {
+
+            try {
+
+                // Re-read authoritative state after acquiring execution lock
+                $lockedStateRaw = file_get_contents($statePath);
+
+                $lockedState = is_string($lockedStateRaw)
+                    ? json_decode($lockedStateRaw, true)
+                    : null;
+
+                if (!is_array($lockedState)) {
+                    throw new RuntimeException(
+                        'Unable to read Sentinel runtime state after acquiring email lock.'
+                    );
+                }
+
+                // Resolve last successful email execution inside lock
+                $lockedLastDailyEmailDate = null;
+
+                if (isset($lockedState['dailyEmailLastRunUnix'])) {
+
+                    $lockedLastDailyEmailDateTime = (new DateTimeImmutable())
+                        ->setTimestamp(
+                            (int) $lockedState['dailyEmailLastRunUnix']
+                        )
+                        ->setTimezone($dailyEmailTimezone);
+
+                    $lockedLastDailyEmailDate =
+                        $lockedLastDailyEmailDateTime->format('Y-m-d');
+                }
+
+                // Confirm today's email still requires delivery
+                if ($lockedLastDailyEmailDate === $dailyEmailDateNow) {
+
+                    error_log(
+                        'SENTINEL DAILY EMAIL NOTICE: ' .
+                        'Daily report already delivered for ' .
+                        $dailyEmailDateNow .
+                        '.'
+                    );
+
+                } else {
+
+                    // Resolve active PHP executable
+                    $phpBinary = PHP_BINARY;
+
+                    // Build isolated Daily Email command
+                    $dailyEmailCommand =
+                        escapeshellarg($phpBinary) .
+                        ' ' .
+                        escapeshellarg($dailyEmailPath) .
+                        ' 2>&1';
+
+                    // Initialize child-process result
+                    $dailyEmailOutput   = [];
+                    $dailyEmailExitCode = 1;
+
+                    // Execute Daily Email as isolated child process
+                    exec(
+                        $dailyEmailCommand,
+                        $dailyEmailOutput,
+                        $dailyEmailExitCode
+                    );
+
+                    // Record successful daily delivery
+                    if ($dailyEmailExitCode === 0) {
+
+                        $lockedState['dailyEmailLastRunUnix'] = time();
+
+                        $dailyEmailStateWrite = file_put_contents(
+                            $statePath,
+                            json_encode(
+                                $lockedState,
+                                JSON_PRETTY_PRINT |
+                                JSON_UNESCAPED_SLASHES
+                            ),
+                            LOCK_EX
+                        );
+
+                        if ($dailyEmailStateWrite === false) {
+
+                            error_log(
+                                'SENTINEL DAILY EMAIL ERROR: ' .
+                                'Unable to write updated state to sentinelState.json.'
+                            );
+
+                        } else {
+
+                            // Synchronize current process state in memory
+                            $state = $lockedState;
+
+                            error_log(
+                                'SENTINEL DAILY EMAIL SUCCESS: ' .
+                                'Daily report delivered for ' .
+                                $dailyEmailDateNow .
+                                '.'
+                            );
+                        }
+
+                    } else {
+
+                        // Record child-process failure for retry
+                        error_log(
+                            'SENTINEL DAILY EMAIL ERROR: ' .
+                            'Delivery failed with exit code ' .
+                            $dailyEmailExitCode .
+                            '. Output: ' .
+                            implode(
+                                ' | ',
+                                $dailyEmailOutput
+                            )
+                        );
+                    }
+                }
+
+            } finally {
+
+                // Release process lock
+                flock($lockFp, LOCK_UN);
+                fclose($lockFp);
+            }
+
+        } else {
+
+            if ($lockFp !== false) {
+                fclose($lockFp);
+            }
+
+            error_log(
+                'SENTINEL DAILY EMAIL NOTICE: ' .
+                'Execution skipped; another daily email process is currently running.'
+            );
+        }
+    }
 }
 
 #endregion
