@@ -9587,7 +9587,6 @@ window.SkyIndex = {
             : 'not-allowed';
     },
    
-
     // #endregion
 
     // #region 🔎 AI Query Information Card
