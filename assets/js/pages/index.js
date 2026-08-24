@@ -9177,6 +9177,7 @@ window.SkyIndex = {
                 <button
                     type="button"
                     id="newOrderContinueButton"
+                    onclick="SkyIndex.continueNewOrderCreation()"
                     disabled
                     style="
                         padding:8px 16px;
@@ -9440,6 +9441,134 @@ window.SkyIndex = {
         }
 
         this.setNewOrderContinueEnabled(true);
+    },
+
+    async continueNewOrderCreation() {
+        const selectedLocation =
+            this._newOrderSelectedLocation;
+
+        const locationId = Number(
+            selectedLocation?.locationId || 0
+        );
+
+        if (!locationId) {
+            this.appendSystemLine(
+                'Please select a valid jobsite Location.'
+            );
+            return;
+        }
+
+        const continueButton = document.getElementById(
+            'newOrderContinueButton'
+        );
+
+        if (continueButton) {
+            continueButton.disabled = true;
+            continueButton.textContent = 'Loading...';
+            continueButton.style.cursor = 'wait';
+        }
+
+        try {
+            // Load authoritative Location context
+            const data = await this.getLocation(locationId);
+
+            if (!data?.success || !data?.location) {
+                throw new Error(
+                    data?.error || 'Location could not be loaded.'
+                );
+            }
+
+            const location = data.location;
+
+            // Resolve today in Phoenix
+            const orderDate = new Intl.DateTimeFormat(
+                'en-CA',
+                {
+                    timeZone: 'America/Phoenix',
+                    year:  'numeric',
+                    month: '2-digit',
+                    day:   '2-digit'
+                }
+            ).format(new Date());
+
+            // Initialize unsaved Order payload
+            this._newOrderDraft = {
+                type: 'orderCreate',
+
+                activitySessionId:
+                    this.getActivitySessionId(),
+
+                jobsite: {
+                    locationID: locationId,
+                    jobsiteContactID: null
+                },
+
+                billing: {
+                    billToContactID: null
+                },
+
+                order: {
+                    christyNumber: null,
+                    typeID: null,
+                    isProposal: true,
+                    statusID: 1,
+                    salespersonID: 1,
+                    date: orderDate,
+                    dueDate: null,
+                    purchaseOrder: null,
+                    scope: '',
+                    note: ''
+                },
+
+                progress: {
+                    designComplete: false,
+                    estimateComplete: false,
+                    sold: false,
+                    requiresPermit: false,
+                    permitComplete: false,
+                    fulfillmentComplete: false,
+                    completed: false,
+                    requiresInspection: false,
+                    inspectionComplete: false,
+                    collected: false,
+                    closedOut: false
+                },
+
+                context: {
+                    location: location,
+                    fallbackEntityID: Number(
+                        location.locationEntityId || 0
+                    ) || null
+                }
+            };
+
+            console.log(
+                '[New Order] Draft initialized:',
+                this._newOrderDraft
+            );
+
+            if (continueButton) {
+                continueButton.textContent = 'Ready';
+            }
+
+        } catch (error) {
+            console.error(
+                '[New Order] Initialization failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to initialize Order: ${
+                    error?.message || 'Unknown error'
+                }`
+            );
+
+            if (continueButton) {
+                continueButton.disabled = false;
+                continueButton.textContent = 'Continue';
+                continueButton.style.cursor = 'pointer';
+            }
+        }
     },
 
     setNewOrderContinueEnabled(enabled) {
