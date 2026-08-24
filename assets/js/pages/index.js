@@ -9205,8 +9205,10 @@ window.SkyIndex = {
     async renderNewOrderDetailsPage(page, ctx) {
         const draft = this._newOrderDraft;
         const location = draft?.context?.location;
+        const order = draft?.order;
 
-        if (!draft || !location) {
+        // Require initialized authoritative draft
+        if (!draft || !location || !order) {
             throw new Error(
                 'New Order draft is not available.'
             );
@@ -9220,11 +9222,74 @@ window.SkyIndex = {
             location.entityName || 'No Entity'
         );
 
+        const christyNumber = this.escapeHtml(
+            order.christyNumber || ''
+        );
+
+        const orderTypes = Array.isArray(
+            draft.context?.orderTypes
+        ) ? draft.context.orderTypes : [];
+
+        const orderStatuses = Array.isArray(
+            draft.context?.orderStatuses
+        ) ? draft.context.orderStatuses : [];
+
+        // Format Unix values for date inputs
+        const orderDate = this.formatNewOrderUnixDate(
+            order.date
+        );
+
+        const dueDate = this.formatNewOrderUnixDate(
+            order.dueDate
+        );
+
+        // Build authoritative Order Type options
+        const orderTypeOptions = orderTypes.map(type => {
+            const typeId = Number(type.orderTypeID);
+            const typeName = this.escapeHtml(
+                type.orderTypeName || 'Unnamed Type'
+            );
+
+            const selected =
+                Number(order.typeID) === typeId
+                    ? ' selected'
+                    : '';
+
+            return `
+                <option value="${typeId}"${selected}>
+                    ${typeName}
+                </option>
+            `;
+        }).join('');
+
+        // Build authoritative Order Status options
+        const orderStatusOptions = orderStatuses.map(status => {
+            const statusId = Number(status.orderStatusID);
+            const statusName = this.escapeHtml(
+                status.orderStatusName || 'Unnamed Status'
+            );
+
+            const selected =
+                Number(order.statusID) === statusId
+                    ? ' selected'
+                    : '';
+
+            return `
+                <option value="${statusId}"${selected}>
+                    ${statusName}
+                </option>
+            `;
+        }).join('');
+
         return {
             titleHtml: `
                 <div>
                     <strong>New Order</strong>
-                    <div style="margin-top:3px; color:#777; font-size:0.82em;">
+                    <div style="
+                        margin-top:3px;
+                        color:#777;
+                        font-size:0.82em;
+                    ">
                         Order Details
                     </div>
                 </div>
@@ -9250,8 +9315,210 @@ window.SkyIndex = {
                     </div>
                 </div>
 
-                <div style="margin-top:18px; color:#555;">
-                    Order-detail fields will be added here.
+                <div style="
+                    display:grid;
+                    grid-template-columns:1fr 1fr;
+                    gap:14px;
+                    margin-top:18px;
+                ">
+                    <div>
+                        <label
+                            for="newOrderChristyNumber"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Christy Work Order #
+                        </label>
+
+                        <input
+                            id="newOrderChristyNumber"
+                            type="text"
+                            value="${christyNumber}"
+                            oninput="
+                                SkyIndex.updateNewOrderField(
+                                    'christyNumber',
+                                    this.value
+                                )
+                            "
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:9px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                            "
+                        >
+                    </div>
+
+                    <div>
+                        <label
+                            for="newOrderType"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Order Type
+                        </label>
+
+                        <select
+                            id="newOrderType"
+                            onchange="
+                                SkyIndex.updateNewOrderField(
+                                    'typeID',
+                                    this.value
+                                )
+                            "
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:9px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                                background:#fff;
+                            "
+                        >
+                            <option value="">
+                                Select Order Type...
+                            </option>
+
+                            ${orderTypeOptions}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            for="newOrderStatus"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Order Status
+                        </label>
+
+                        <select
+                            id="newOrderStatus"
+                            onchange="
+                                SkyIndex.updateNewOrderField(
+                                    'statusID',
+                                    this.value
+                                )
+                            "
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:9px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                                background:#fff;
+                            "
+                        >
+                            ${orderStatusOptions}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            for="newOrderDate"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Order Date
+                        </label>
+
+                        <input
+                            id="newOrderDate"
+                            type="date"
+                            value="${orderDate}"
+                            onchange="
+                                SkyIndex.updateNewOrderDateField(
+                                    'date',
+                                    this.value
+                                )
+                            "
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:8px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                            "
+                        >
+                    </div>
+
+                    <div>
+                        <label
+                            for="newOrderDueDate"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Due Date
+                        </label>
+
+                        <input
+                            id="newOrderDueDate"
+                            type="date"
+                            value="${dueDate}"
+                            onchange="
+                                SkyIndex.updateNewOrderDateField(
+                                    'dueDate',
+                                    this.value
+                                )
+                            "
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:8px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                            "
+                        >
+                    </div>
+
+                    <div style="
+                        display:flex;
+                        align-items:flex-end;
+                        padding-bottom:8px;
+                    ">
+                        <label style="
+                            display:flex;
+                            align-items:center;
+                            gap:8px;
+                            color:#333;
+                            font-weight:600;
+                            cursor:pointer;
+                        ">
+                            <input
+                                id="newOrderIsProposal"
+                                type="checkbox"
+                                ${order.isProposal ? 'checked' : ''}
+                                onchange="
+                                    SkyIndex.updateNewOrderField(
+                                        'isProposal',
+                                        this.checked
+                                    )
+                                "
+                            >
+                            Proposal
+                        </label>
+                    </div>
                 </div>
             `,
 
@@ -9273,6 +9540,7 @@ window.SkyIndex = {
 
                 <button
                     type="button"
+                    id="newOrderCreateButton"
                     disabled
                     style="
                         padding:8px 16px;
