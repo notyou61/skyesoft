@@ -9250,6 +9250,10 @@ window.SkyIndex = {
             draft.context?.jobsiteContacts
         ) ? draft.context.jobsiteContacts : [];
 
+        const billingContacts = Array.isArray(
+            draft.context?.billingContacts
+        ) ? draft.context.billingContacts : [];
+
         // Format Unix values for date inputs
         const orderDate = this.formatNewOrderUnixDate(
             order.date
@@ -9300,6 +9304,49 @@ window.SkyIndex = {
                 </option>
             `;
         }).join('');
+
+        // Build authoritative Billing Contact options
+        const billingContactOptions = billingContacts
+            .map(contact => {
+                const contactId = Number(
+                    contact.contactId
+                );
+
+                const contactName = this.escapeHtml(
+                    [
+                        contact.contactFirstName,
+                        contact.contactLastName
+                    ].filter(Boolean).join(' ') ||
+                    'Unnamed Contact'
+                );
+
+                const contactTitle = this.escapeHtml(
+                    contact.contactTitle || ''
+                );
+
+                const billingLocationName = this.escapeHtml(
+                    contact.billingLocationName ||
+                    'No Billing Location'
+                );
+
+                const selected =
+                    Number(
+                        draft.billing?.billToContactID
+                    ) === contactId
+                        ? ' selected'
+                        : '';
+
+                return `
+                    <option value="${contactId}"${selected}>
+                        ${contactName}${
+                            contactTitle
+                                ? ` — ${contactTitle}`
+                                : ''
+                        } — ${billingLocationName}
+                    </option>
+                `;
+            })
+            .join('');
 
         // Build authoritative Jobsite Contact options
         const jobsiteContactOptions = jobsiteContacts
@@ -9635,6 +9682,61 @@ window.SkyIndex = {
                         </select>
                     </div>
 
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            for="newOrderBillToContact"
+                            style="
+                                display:block;
+                                margin-bottom:5px;
+                                color:#333;
+                                font-weight:600;
+                            "
+                        >
+                            Bill-To Contact
+                        </label>
+
+                        <select
+                            id="newOrderBillToContact"
+                            onchange="
+                                SkyIndex.updateNewOrderBillingContact(
+                                    this.value
+                                )
+                            "
+                            ${
+                                billingContacts.length
+                                    ? ''
+                                    : 'disabled'
+                            }
+                            style="
+                                box-sizing:border-box;
+                                width:100%;
+                                padding:9px 10px;
+                                border:1px solid #ccc;
+                                border-radius:6px;
+                                background:#fff;
+                            "
+                        >
+                            ${
+                                billingContacts.length
+                                    ? `
+                                        <option value="">
+                                            Select Bill-To Contact...
+                                        </option>
+
+                                        ${billingContactOptions}
+                                    `
+                                    : `
+                                        <option value="">
+                                            No Billing Contact available
+                                        </option>
+                                    `
+                            }
+                        </select>
+                    </div>
+
                     <div>
                         <label
                             for="newOrderPurchaseOrder"
@@ -9856,6 +9958,14 @@ window.SkyIndex = {
 
         // Store authoritative Jobsite Contact ID
         this._newOrderDraft.jobsite.jobsiteContactID =
+            Number(contactId || 0) || null;
+    },
+
+    updateNewOrderBillingContact(contactId) {
+        if (!this._newOrderDraft?.billing) return;
+
+        // Store authoritative Bill-To Contact ID
+        this._newOrderDraft.billing.billToContactID =
             Number(contactId || 0) || null;
     },
 
@@ -10232,7 +10342,11 @@ window.SkyIndex = {
 
                     jobsiteContacts: Array.isArray(
                         options.jobsiteContacts
-                    ) ? options.jobsiteContacts : []
+                    ) ? options.jobsiteContacts : [],
+
+                    billingContacts: Array.isArray(
+                        options.billingContacts
+                    ) ? options.billingContacts : []
                 }
             };
 
