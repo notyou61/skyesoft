@@ -3902,7 +3902,7 @@ if ($type === 'orderCreateOptions') {
     }
 
     try {
-        // Confirm authoritative Location
+        // Confirm authoritative Location and Entity
         $locationStmt = $db->prepare("
             SELECT
                 l.locationId,
@@ -3935,6 +3935,19 @@ if ($type === 'orderCreateOptions') {
                 'success' => false,
                 'type'    => 'order_create_options',
                 'error'   => 'Jobsite Location was not found.'
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $entityId = (int)(
+            $location['locationEntityId'] ?? 0
+        );
+
+        if ($entityId <= 0) {
+            echo json_encode([
+                'success' => false,
+                'type'    => 'order_create_options',
+                'error'   => 'Jobsite Location has no valid Entity.'
             ], JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -3983,8 +3996,8 @@ if ($type === 'orderCreateOptions') {
             }
         }
 
-        // Load active contacts at the selected jobsite
-        $contactStmt = $db->prepare("
+        // Load active Contacts at selected jobsite
+        $jobsiteContactStmt = $db->prepare("
             SELECT
                 c.contactId,
                 c.contactEntityId,
@@ -4009,11 +4022,55 @@ if ($type === 'orderCreateOptions') {
                 c.contactId ASC
         ");
 
-        $contactStmt->execute([
+        $jobsiteContactStmt->execute([
             'locationId' => $locationId
         ]);
 
-        $jobsiteContacts = $contactStmt->fetchAll(
+        $jobsiteContacts = $jobsiteContactStmt->fetchAll(
+            PDO::FETCH_ASSOC
+        );
+
+        // Load active Billing Contacts for selected Entity
+        $billingContactStmt = $db->prepare("
+            SELECT
+                c.contactId,
+                c.contactEntityId,
+                c.contactLocationId,
+                c.contactSalutation,
+                c.contactFirstName,
+                c.contactLastName,
+                c.contactTitle,
+                c.contactPrimaryPhone,
+                c.contactEmail,
+                c.contactIsBilling,
+                e.entityName,
+                bl.locationName AS billingLocationName,
+                bl.locationAddress AS billingLocationAddress,
+                bl.locationAddressSuite AS billingLocationAddressSuite,
+                bl.locationCity AS billingLocationCity,
+                bl.locationState AS billingLocationState,
+                bl.locationZip AS billingLocationZip
+            FROM tblContacts c
+            LEFT JOIN tblEntities e
+                ON e.entityId = c.contactEntityId
+            LEFT JOIN tblLocations bl
+                ON bl.locationId = c.contactLocationId
+               AND COALESCE(bl.locationIsNotValid, 0) = 0
+            WHERE c.contactEntityId = :entityId
+              AND COALESCE(c.contactIsBilling, 0) = 1
+              AND COALESCE(c.contactIsNotValid, 0) = 0
+              AND COALESCE(c.isActive, 1) = 1
+            ORDER BY
+                c.contactLastName ASC,
+                c.contactFirstName ASC,
+                c.contactId ASC
+        ");
+
+        $billingContactStmt->execute([
+            'entityId' => $entityId
+        ]);
+
+        $billingContacts = $billingContactStmt->fetchAll(
             PDO::FETCH_ASSOC
         );
 
@@ -4028,7 +4085,7 @@ if ($type === 'orderCreateOptions') {
             $salespersonID = 1;
         }
 
-        // Normalize numeric identifiers
+        // Normalize Location identifiers
         $location['locationId'] = (int)$location[
             'locationId'
         ];
@@ -4037,6 +4094,7 @@ if ($type === 'orderCreateOptions') {
             'locationEntityId'
         ];
 
+        // Normalize Order Type identifiers
         foreach ($orderTypes as &$orderType) {
             $orderType['orderTypeID'] = (int)$orderType[
                 'orderTypeID'
@@ -4044,6 +4102,7 @@ if ($type === 'orderCreateOptions') {
         }
         unset($orderType);
 
+        // Normalize Order Status identifiers
         foreach ($orderStatuses as &$orderStatus) {
             $orderStatus['orderStatusID'] = (int)$orderStatus[
                 'orderStatusID'
@@ -4051,24 +4110,55 @@ if ($type === 'orderCreateOptions') {
         }
         unset($orderStatus);
 
-        foreach ($jobsiteContacts as &$contact) {
-            $contact['contactId'] = (int)$contact[
+        // Normalize Jobsite Contact identifiers
+        foreach ($jobsiteContacts as &$jobsiteContact) {
+            $jobsiteContact['contactId'] = (int)$jobsiteContact[
                 'contactId'
             ];
 
-            $contact['contactEntityId'] = (int)$contact[
-                'contactEntityId'
-            ];
+            $jobsiteContact['contactEntityId'] =
+                (int)$jobsiteContact[
+                    'contactEntityId'
+                ];
 
-            $contact['contactLocationId'] = (int)$contact[
-                'contactLocationId'
-            ];
+            $jobsiteContact['contactLocationId'] =
+                $jobsiteContact['contactLocationId'] !== null
+                    ? (int)$jobsiteContact[
+                        'contactLocationId'
+                    ]
+                    : null;
 
-            $contact['contactIsBilling'] = (int)$contact[
-                'contactIsBilling'
-            ];
+            $jobsiteContact['contactIsBilling'] =
+                (int)$jobsiteContact[
+                    'contactIsBilling'
+                ];
         }
-        unset($contact);
+        unset($jobsiteContact);
+
+        // Normalize Billing Contact identifiers
+        foreach ($billingContacts as &$billingContact) {
+            $billingContact['contactId'] = (int)$billingContact[
+                'contactId'
+            ];
+
+            $billingContact['contactEntityId'] =
+                (int)$billingContact[
+                    'contactEntityId'
+                ];
+
+            $billingContact['contactLocationId'] =
+                $billingContact['contactLocationId'] !== null
+                    ? (int)$billingContact[
+                        'contactLocationId'
+                    ]
+                    : null;
+
+            $billingContact['contactIsBilling'] =
+                (int)$billingContact[
+                    'contactIsBilling'
+                ];
+        }
+        unset($billingContact);
 
         echo json_encode([
             'success'         => true,
@@ -4077,10 +4167,11 @@ if ($type === 'orderCreateOptions') {
             'orderTypes'      => $orderTypes,
             'orderStatuses'   => $orderStatuses,
             'jobsiteContacts' => $jobsiteContacts,
+            'billingContacts' => $billingContacts,
             'defaults'        => [
-                'statusID'       => $activeStatusID,
-                'salespersonID'  => $salespersonID,
-                'orderDateUnix'  => time()
+                'statusID'      => $activeStatusID,
+                'salespersonID' => $salespersonID,
+                'orderDateUnix' => time()
             ]
         ], JSON_UNESCAPED_SLASHES);
 
