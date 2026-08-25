@@ -9861,6 +9861,7 @@ window.SkyIndex = {
                 <button
                     type="button"
                     id="newOrderCreateButton"
+                    onclick="SkyIndex.submitNewOrderCreation()"
                     disabled
                     style="
                         padding:8px 16px;
@@ -10388,6 +10389,296 @@ window.SkyIndex = {
             }
         }
     },
+
+    async submitNewOrderCreation() {
+        // Prevent duplicate submissions
+        if (this._newOrderCreationSubmitting) return;
+
+        const draft = this._newOrderDraft;
+
+        // Require initialized draft
+        if (
+            !draft?.jobsite ||
+            !draft?.billing ||
+            !draft?.order
+        ) {
+            this.appendSystemLine(
+                'New Order information is not available.'
+            );
+            return;
+        }
+
+        const locationId = Number(
+            draft.jobsite.locationID || 0
+        );
+
+        const jobsiteContactId = Number(
+            draft.jobsite.jobsiteContactID || 0
+        ) || null;
+
+        const billToContactId = Number(
+            draft.billing.billToContactID || 0
+        );
+
+        const orderTypeId = Number(
+            draft.order.typeID || 0
+        );
+
+        const orderStatusId = Number(
+            draft.order.statusID || 0
+        );
+
+        const orderDate = Number(
+            draft.order.date || 0
+        );
+
+        // Validate required Order data
+        if (!locationId) {
+            this.appendSystemLine(
+                'A valid jobsite Location is required.'
+            );
+            return;
+        }
+
+        if (!billToContactId) {
+            this.appendSystemLine(
+                'Please select a Bill-To Contact.'
+            );
+            return;
+        }
+
+        if (!orderTypeId) {
+            this.appendSystemLine(
+                'Please select an Order Type.'
+            );
+            return;
+        }
+
+        if (!orderStatusId) {
+            this.appendSystemLine(
+                'Please select an Order Status.'
+            );
+            return;
+        }
+
+        if (!orderDate) {
+            this.appendSystemLine(
+                'Please enter a valid Order Date.'
+            );
+            return;
+        }
+
+        const createButton = document.getElementById(
+            'newOrderCreateButton'
+        );
+
+        // Set submitting state
+        this._newOrderCreationSubmitting = true;
+
+        if (createButton) {
+            createButton.disabled = true;
+            createButton.textContent = 'Creating...';
+            createButton.style.background = '#999';
+            createButton.style.cursor = 'wait';
+        }
+
+        try {
+            // Initialize optional Action coordinates
+            let actionLocation = {
+                latitude:  null,
+                longitude: null
+            };
+
+            try {
+                actionLocation =
+                    await this.getLocationSafe();
+
+                // Cache valid browser coordinates
+                if (
+                    actionLocation?.latitude !== null &&
+                    actionLocation?.longitude !== null
+                ) {
+                    this.lastLocation = actionLocation;
+
+                } else if (this.lastLocation) {
+                    actionLocation = this.lastLocation;
+                }
+
+            } catch (locationError) {
+                console.warn(
+                    '[New Order] Action location unavailable:',
+                    locationError
+                );
+
+                if (this.lastLocation) {
+                    actionLocation = this.lastLocation;
+                }
+            }
+
+            // Build governed server payload
+            const payload = {
+                type: 'orderCreate',
+
+                latitude:
+                    actionLocation?.latitude ?? null,
+
+                longitude:
+                    actionLocation?.longitude ?? null,
+
+                jobsite: {
+                    locationID: locationId,
+
+                    jobsiteContactID:
+                        jobsiteContactId
+                },
+
+                billing: {
+                    billToContactID:
+                        billToContactId
+                },
+
+                order: {
+                    christyNumber:
+                        String(
+                            draft.order.christyNumber || ''
+                        ).trim() || null,
+
+                    typeID:
+                        orderTypeId,
+
+                    isProposal:
+                        Boolean(draft.order.isProposal),
+
+                    statusID:
+                        orderStatusId,
+
+                    date:
+                        orderDate,
+
+                    dueDate:
+                        Number(
+                            draft.order.dueDate || 0
+                        ) || null,
+
+                    purchaseOrder:
+                        String(
+                            draft.order.purchaseOrder || ''
+                        ).trim() || null,
+
+                    scope:
+                        String(
+                            draft.order.scope || ''
+                        ).trim() || null,
+
+                    note:
+                        String(
+                            draft.order.note || ''
+                        ).trim() || null
+                }
+            };
+
+            console.log(
+                '[New Order] Submitting governed payload:',
+                payload
+            );
+
+            // Submit authoritative Order creation
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }
+            );
+
+            const responseText =
+                await response.text();
+
+            if (!response.ok) {
+                throw new Error(
+                    `HTTP ${response.status}: ${
+                        responseText.substring(0, 200)
+                    }`
+                );
+            }
+
+            let result;
+
+            try {
+                result = JSON.parse(responseText);
+
+            } catch (parseError) {
+                throw new Error(
+                    'The server returned invalid JSON.'
+                );
+            }
+
+            if (!result?.success || !result?.order) {
+                throw new Error(
+                    result?.error ||
+                    'The Order could not be created.'
+                );
+            }
+
+            // Preserve created result for subsequent workflow
+            this._newOrderCreatedOrder =
+                result.order;
+
+            console.log(
+                '[New Order] Order created:',
+                result
+            );
+
+            const createdReference =
+                result.order.orderChristyNumber
+                    ? `Christy Work Order ${
+                        result.order.orderChristyNumber
+                    }`
+                    : `Order #${
+                        result.order.orderID
+                    }`;
+
+            // Clear unsaved creation state
+            this._newOrderDraft = null;
+            this._newOrderSelectedLocation = null;
+            this._newOrderLocationResults = [];
+
+            // Close creation workspace
+            window.SkyWorkspace.close();
+
+            // Confirm successful creation
+            this.appendSystemLine(
+                `${createdReference} was created successfully.`
+            );
+
+        } catch (error) {
+            console.error(
+                '[New Order] Creation failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to create Order: ${
+                    error?.message || 'Unknown error'
+                }`
+            );
+
+            // Restore Create Order button
+            if (createButton) {
+                createButton.disabled = false;
+                createButton.textContent = 'Create Order';
+                createButton.style.background = '#117a8b';
+                createButton.style.cursor = 'pointer';
+            }
+
+        } finally {
+            this._newOrderCreationSubmitting = false;
+        }
+    },    
 
     setNewOrderContinueEnabled(enabled) {
         const button = document.getElementById(
