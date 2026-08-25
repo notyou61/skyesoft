@@ -10183,8 +10183,8 @@ window.SkyIndex = {
             this._newOrderDraft = {
                 type: 'orderCreate',
 
-                activitySessionId:
-                    this.getActivitySessionId(),
+                // Resolved authoritatively by the server during creation
+                activitySessionId: null,
 
                 jobsite: {
                     locationID:       locationId,
