@@ -9851,6 +9851,14 @@ window.SkyIndex = {
                 : null;
     },
 
+    updateNewOrderJobsiteContact(contactId) {
+        if (!this._newOrderDraft?.jobsite) return;
+
+        // Store authoritative Jobsite Contact ID
+        this._newOrderDraft.jobsite.jobsiteContactID =
+            Number(contactId || 0) || null;
+    },
+
     returnToNewOrderLocationStep() {
         window.SkyWorkspace.replace({
             pageType:   'order_create',
