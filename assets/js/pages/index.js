@@ -10787,6 +10787,349 @@ window.SkyIndex = {
         );
     },
 
+    /**
+     * Retrieve and display an authoritative Order card
+     * on the command-output surface.
+     */
+    async renderOrderCard(identifier) {
+        try {
+            const data = await this.getOrder(
+                identifier
+            );
+
+            if (!data?.success || !data?.order) {
+                throw new Error(
+                    data?.error ||
+                    'Order was not found.'
+                );
+            }
+
+            this.appendOrderCard(
+                data.order
+            );
+
+            return data.order;
+
+        } catch (error) {
+            console.error(
+                '[Order Card] Rendering failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to display Order: ${
+                    error?.message ||
+                    'Unknown error'
+                }`
+            );
+
+            return null;
+        }
+    },
+
+    /**
+     * Append an Order summary card to the command surface.
+     */
+    appendOrderCard(order) {
+        const orderId = Number(
+            order?.orderID || 0
+        );
+
+        if (!Number.isInteger(orderId) || orderId <= 0) {
+            this.appendSystemLine(
+                'A valid Order is required.'
+            );
+            return;
+        }
+
+        // Format Unix timestamp
+        const formatDate = unixValue => {
+            const unixTimestamp = Number(
+                unixValue || 0
+            );
+
+            if (!unixTimestamp) return '—';
+
+            const date = new Date(
+                unixTimestamp * 1000
+            );
+
+            if (Number.isNaN(date.getTime())) {
+                return '—';
+            }
+
+            return date.toLocaleDateString(
+                'en-US',
+                {
+                    timeZone: 'America/Phoenix',
+                    month:    'short',
+                    day:      'numeric',
+                    year:     'numeric'
+                }
+            );
+        };
+
+        // Resolve safe display values
+        const christyNumber = this.escapeHtml(
+            order.orderChristyNumber ||
+            `Order #${orderId}`
+        );
+
+        const entityName = this.escapeHtml(
+            order.entityName || 'No Customer'
+        );
+
+        const locationName = this.escapeHtml(
+            order.locationName || 'Unnamed Location'
+        );
+
+        const orderType = this.escapeHtml(
+            order.orderTypeName || '—'
+        );
+
+        const orderStatus = this.escapeHtml(
+            order.orderStatusName || '—'
+        );
+
+        const salesperson = this.escapeHtml(
+            order.orderSalespersonName || '—'
+        );
+
+        const purchaseOrder = this.escapeHtml(
+            order.orderPurchaseOrder || '—'
+        );
+
+        const scope = this.escapeHtml(
+            order.orderScope || 'No scope entered.'
+        );
+
+        const lifecycleLabel =
+            Number(order.orderIsProposal) === 1
+                ? 'Proposal'
+                : 'Order';
+
+        // Build completed progress labels
+        const progress = order.progress || {};
+
+        const completedProgress = [
+            ['Design', progress.designComplete],
+            ['Estimating', progress.estimateComplete],
+            ['Sold', progress.sold],
+            ['Permit', progress.permitComplete],
+            [
+                'Fulfillment',
+                progress.fulfillmentComplete
+            ],
+            ['Completed', progress.completed],
+            [
+                'Inspection',
+                progress.inspectionComplete
+            ],
+            ['Collected', progress.collected],
+            ['Closed Out', progress.closedOut]
+        ]
+            .filter(([, complete]) => Boolean(complete))
+            .map(([label]) => `
+                <span style="
+                    display:inline-block;
+                    margin:2px 4px 2px 0;
+                    padding:3px 8px;
+                    border-radius:999px;
+                    background:#e6f4ea;
+                    color:#20733a;
+                    font-size:0.76em;
+                    font-weight:600;
+                ">
+                    ${label}
+                </span>
+            `)
+            .join('');
+
+        const html = `
+            <div
+                class="result-card order-card"
+                data-order-id="${orderId}"
+                style="
+                    margin:10px 0;
+                    padding:14px 16px;
+                    border:1px solid #d9d9d9;
+                    border-left:4px solid #117a8b;
+                    border-radius:8px;
+                    background:#fff;
+                    color:#222;
+                "
+            >
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    gap:14px;
+                    align-items:flex-start;
+                ">
+                    <div style="min-width:0;">
+                        <div style="
+                            display:flex;
+                            flex-wrap:wrap;
+                            align-items:center;
+                            gap:7px;
+                        ">
+                            <strong style="font-size:1.02em;">
+                                Work Order ${christyNumber}
+                            </strong>
+
+                            <span style="
+                                padding:2px 7px;
+                                border-radius:999px;
+                                background:#e8f4f6;
+                                color:#117a8b;
+                                font-size:0.72em;
+                                font-weight:700;
+                            ">
+                                ${orderStatus}
+                            </span>
+
+                            <span style="
+                                padding:2px 7px;
+                                border-radius:999px;
+                                background:#f0f0f0;
+                                color:#555;
+                                font-size:0.72em;
+                                font-weight:600;
+                            ">
+                                ${lifecycleLabel}
+                            </span>
+                        </div>
+
+                        <div style="
+                            margin-top:5px;
+                            color:#444;
+                            font-size:0.92em;
+                            font-weight:600;
+                        ">
+                            ${entityName}
+                        </div>
+
+                        <div style="
+                            margin-top:2px;
+                            color:#666;
+                            font-size:0.86em;
+                        ">
+                            ${locationName}
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        onclick="
+                            SkyIndex.openOrderWorkspace(
+                                ${orderId}
+                            )
+                        "
+                        style="
+                            flex:0 0 auto;
+                            padding:7px 12px;
+                            border:0;
+                            border-radius:6px;
+                            background:#117a8b;
+                            color:#fff;
+                            cursor:pointer;
+                            font-size:0.84em;
+                            font-weight:600;
+                        "
+                    >
+                        Open Order
+                    </button>
+                </div>
+
+                <div style="
+                    display:grid;
+                    grid-template-columns:
+                        repeat(2, minmax(0, 1fr));
+                    gap:7px 18px;
+                    margin-top:13px;
+                    padding-top:11px;
+                    border-top:1px solid #eee;
+                    font-size:0.85em;
+                ">
+                    <div>
+                        <span style="color:#888;">
+                            Type:
+                        </span>
+                        ${orderType}
+                    </div>
+
+                    <div>
+                        <span style="color:#888;">
+                            Salesperson:
+                        </span>
+                        ${salesperson}
+                    </div>
+
+                    <div>
+                        <span style="color:#888;">
+                            Order Date:
+                        </span>
+                        ${formatDate(order.orderDate)}
+                    </div>
+
+                    <div>
+                        <span style="color:#888;">
+                            Due Date:
+                        </span>
+                        ${formatDate(order.orderDueDate)}
+                    </div>
+
+                    <div>
+                        <span style="color:#888;">
+                            Customer PO:
+                        </span>
+                        ${purchaseOrder}
+                    </div>
+                </div>
+
+                <div style="
+                    margin-top:11px;
+                    padding-top:10px;
+                    border-top:1px solid #eee;
+                ">
+                    <div style="
+                        margin-bottom:3px;
+                        color:#888;
+                        font-size:0.72em;
+                        font-weight:700;
+                        text-transform:uppercase;
+                    ">
+                        Scope of Work
+                    </div>
+
+                    <div style="
+                        color:#333;
+                        font-size:0.86em;
+                        line-height:1.45;
+                        white-space:pre-wrap;
+                    ">${scope}</div>
+                </div>
+
+                <div style="margin-top:10px;">
+                    ${
+                        completedProgress ||
+                        `
+                            <span style="
+                                color:#888;
+                                font-size:0.8em;
+                            ">
+                                No Order Progress recorded.
+                            </span>
+                        `
+                    }
+                </div>
+            </div>
+        `;
+
+        this.appendSystemHtml(
+            html
+        );
+    },
+
     async renderOrderPage(page, ctx) {
         const orderId = Number(
             page.objectId || 0
@@ -11437,8 +11780,8 @@ window.SkyIndex = {
             const objectCommands = {
                 entity:   (id) => this.renderEntityCard(id),
                 location: (id) => this.renderLocationCard(id),
-                // contact: (id) => this.renderContactCard?.(id),
-                // order:   (id) => this.renderOrderCard?.(id),
+                contact: (id) => this.renderContactCard?.(id),
+                order:   (id) => this.renderOrderCard?.(id),
                 // application: (id) => this.renderApplicationCard?.(id),
             };
 
