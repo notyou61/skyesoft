@@ -9918,19 +9918,19 @@ window.SkyIndex = {
         ) {
             this._newOrderDraft.order[fieldName] =
                 Number(value || 0) || null;
-            return;
-        }
 
         // Normalize Proposal state
-        if (fieldName === 'isProposal') {
+        } else if (fieldName === 'isProposal') {
             this._newOrderDraft.order.isProposal =
                 Boolean(value);
-            return;
-        }
 
         // Store text value
-        this._newOrderDraft.order[fieldName] =
-            String(value || '').trim() || null;
+        } else {
+            this._newOrderDraft.order[fieldName] =
+                String(value || '').trim() || null;
+        }
+
+        this.refreshNewOrderCreateButton();
     },
 
     updateNewOrderDateField(fieldName, dateValue) {
@@ -9952,6 +9952,8 @@ window.SkyIndex = {
             Number.isFinite(unixTimestamp)
                 ? unixTimestamp
                 : null;
+
+        this.refreshNewOrderCreateButton();
     },
 
     updateNewOrderJobsiteContact(contactId) {
@@ -9968,6 +9970,8 @@ window.SkyIndex = {
         // Store authoritative Bill-To Contact ID
         this._newOrderDraft.billing.billToContactID =
             Number(contactId || 0) || null;
+
+        this.refreshNewOrderCreateButton();
     },
 
     returnToNewOrderLocationStep() {
@@ -10678,7 +10682,47 @@ window.SkyIndex = {
         } finally {
             this._newOrderCreationSubmitting = false;
         }
-    },    
+    },
+
+    isNewOrderDraftValid() {
+        const draft = this._newOrderDraft;
+
+        if (
+            !draft?.jobsite ||
+            !draft?.billing ||
+            !draft?.order
+        ) {
+            return false;
+        }
+
+        return Boolean(
+            Number(draft.jobsite.locationID || 0) &&
+            Number(draft.billing.billToContactID || 0) &&
+            Number(draft.order.typeID || 0) &&
+            Number(draft.order.statusID || 0) &&
+            Number(draft.order.date || 0)
+        );
+    },
+
+    refreshNewOrderCreateButton() {
+        const button = document.getElementById(
+            'newOrderCreateButton'
+        );
+
+        if (!button) return;
+
+        const enabled =
+            this.isNewOrderDraftValid();
+
+        button.disabled = !enabled;
+        button.style.background = enabled
+            ? '#117a8b'
+            : '#999';
+
+        button.style.cursor = enabled
+            ? 'pointer'
+            : 'not-allowed';
+    },
 
     setNewOrderContinueEnabled(enabled) {
         const button = document.getElementById(
