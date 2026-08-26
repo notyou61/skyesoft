@@ -10744,6 +10744,512 @@ window.SkyIndex = {
 
     // #region 📦 Order Detail Workspace
 
+    openOrderWorkspace(
+        orderId,
+        replaceCurrent = false
+    ) {
+        const resolvedOrderId =
+            Number(orderId || 0);
+
+        if (!resolvedOrderId) {
+            this.appendSystemLine(
+                'A valid Order ID is required.'
+            );
+            return;
+        }
+
+        if (!window.SkyWorkspace) {
+            this.appendSystemLine(
+                'Workspace is not available.'
+            );
+            return;
+        }
+
+        const workspacePage = {
+            pageType:   'order',
+            objectType: 'order',
+            objectId:   resolvedOrderId,
+            title:      'Order',
+            state: {
+                edit: false
+            }
+        };
+
+        if (replaceCurrent) {
+            window.SkyWorkspace.replace(
+                workspacePage
+            );
+            return;
+        }
+
+        window.SkyWorkspace.open(
+            workspacePage
+        );
+    },
+
+    async renderOrderPage(page, ctx) {
+        const orderId = Number(
+            page.objectId || 0
+        );
+
+        if (!Number.isInteger(orderId) || orderId <= 0) {
+            throw new Error(
+                'Order was not found.'
+            );
+        }
+
+        // Load authoritative Order
+        const data = await this.getOrder(
+            orderId
+        );
+
+        const order = data?.order;
+
+        if (!order?.orderID) {
+            throw new Error(
+                data?.error || 'Order was not found.'
+            );
+        }
+
+        // Preserve current authoritative Order
+        this._currentOrderWorkspaceData = {
+            order: order,
+            orderId: orderId
+        };
+
+        // Format Unix timestamp for display
+        const formatDate = unixValue => {
+            const unixTimestamp = Number(
+                unixValue || 0
+            );
+
+            if (!unixTimestamp) return '—';
+
+            const date = new Date(
+                unixTimestamp * 1000
+            );
+
+            if (Number.isNaN(date.getTime())) {
+                return '—';
+            }
+
+            return date.toLocaleDateString(
+                'en-US',
+                {
+                    timeZone: 'America/Phoenix',
+                    month:    'short',
+                    day:      'numeric',
+                    year:     'numeric'
+                }
+            );
+        };
+
+        // Format Contact name
+        const formatContactName = contact => {
+            if (!contact) return '—';
+
+            return this.escapeHtml(
+                [
+                    contact.contactFirstName,
+                    contact.contactLastName
+                ].filter(Boolean).join(' ') ||
+                'Unnamed Contact'
+            );
+        };
+
+        // Format Location address
+        const formatAddress = location => {
+            if (!location) return '';
+
+            return this.escapeHtml(
+                [
+                    location.locationAddress,
+                    location.locationAddressSuite,
+                    location.locationCity,
+                    location.locationState,
+                    location.locationZip
+                ].filter(Boolean).join(', ')
+            );
+        };
+
+        // Build reusable attribute row
+        const attrRow = (label, value) => {
+            if (
+                value === null ||
+                value === undefined ||
+                value === ''
+            ) {
+                return '';
+            }
+
+            return `
+                <div style="
+                    display:grid;
+                    grid-template-columns:130px 1fr;
+                    gap:10px;
+                    padding:5px 0;
+                    align-items:baseline;
+                ">
+                    <div style="
+                        color:#888;
+                        font-size:0.72em;
+                        font-weight:600;
+                        letter-spacing:0.03em;
+                        text-transform:uppercase;
+                    ">
+                        ${label}
+                    </div>
+
+                    <div style="
+                        min-width:0;
+                        color:#222;
+                        font-size:0.9em;
+                        line-height:1.4;
+                    ">
+                        ${value}
+                    </div>
+                </div>
+            `;
+        };
+
+        // Build reusable card section
+        const section = (
+            title,
+            content
+        ) => `
+            <div style="
+                margin-bottom:10px;
+                padding:10px 13px;
+                border:1px solid #e6e6e6;
+                border-radius:8px;
+                background:#fafafa;
+            ">
+                <div style="
+                    margin-bottom:6px;
+                    padding-bottom:6px;
+                    border-bottom:1px solid #e6e6e6;
+                    color:#777;
+                    font-size:0.7em;
+                    font-weight:700;
+                    letter-spacing:0.04em;
+                    text-transform:uppercase;
+                ">
+                    ${title}
+                </div>
+
+                ${content}
+            </div>
+        `;
+
+        const christyNumber = this.escapeHtml(
+            order.orderChristyNumber ||
+            `Order #${order.orderID}`
+        );
+
+        const entityName = this.escapeHtml(
+            order.entityName || 'No Entity'
+        );
+
+        const locationName = this.escapeHtml(
+            order.locationName ||
+            'Unnamed Location'
+        );
+
+        const jobsiteAddress = formatAddress({
+            locationAddress:
+                order.locationAddress,
+
+            locationAddressSuite:
+                order.locationAddressSuite,
+
+            locationCity:
+                order.locationCity,
+
+            locationState:
+                order.locationState,
+
+            locationZip:
+                order.locationZip
+        });
+
+        const billingLocation =
+            order.billingLocation || null;
+
+        const billingLocationName =
+            this.escapeHtml(
+                billingLocation?.locationName || '—'
+            );
+
+        const billingAddress =
+            formatAddress(billingLocation);
+
+        const jobsiteContactName =
+            formatContactName(
+                order.jobsiteContact
+            );
+
+        const billToContactName =
+            formatContactName(
+                order.billToContact
+            );
+
+        const orderTypeName = this.escapeHtml(
+            order.orderTypeName || '—'
+        );
+
+        const orderStatusName = this.escapeHtml(
+            order.orderStatusName || '—'
+        );
+
+        const salespersonName = this.escapeHtml(
+            order.orderSalespersonName || '—'
+        );
+
+        const purchaseOrder = this.escapeHtml(
+            order.orderPurchaseOrder || '—'
+        );
+
+        const scope = this.escapeHtml(
+            order.orderScope || '—'
+        );
+
+        const note = this.escapeHtml(
+            order.orderNote || '—'
+        );
+
+        const progress = order.progress || {};
+
+        const progressItems = [
+            ['Design', progress.designComplete],
+            ['Estimating', progress.estimateComplete],
+            ['Sold', progress.sold],
+            ['Permit Required', progress.requiresPermit],
+            ['Permit Complete', progress.permitComplete],
+            [
+                'Fulfillment Complete',
+                progress.fulfillmentComplete
+            ],
+            ['Completed', progress.completed],
+            [
+                'Inspection Required',
+                progress.requiresInspection
+            ],
+            [
+                'Inspection Complete',
+                progress.inspectionComplete
+            ],
+            ['Collected', progress.collected],
+            ['Closed Out', progress.closedOut]
+        ];
+
+        const progressHtml = progressItems
+            .map(([label, complete]) => `
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:7px;
+                    padding:4px 0;
+                    color:${complete ? '#20733a' : '#888'};
+                    font-size:0.86em;
+                ">
+                    <span style="
+                        display:inline-flex;
+                        align-items:center;
+                        justify-content:center;
+                        width:17px;
+                        height:17px;
+                        border-radius:50%;
+                        background:${
+                            complete
+                                ? '#dff3e5'
+                                : '#eee'
+                        };
+                        color:${
+                            complete
+                                ? '#20733a'
+                                : '#999'
+                        };
+                        font-size:0.75em;
+                        font-weight:700;
+                    ">
+                        ${complete ? '✓' : '–'}
+                    </span>
+
+                    <span>${label}</span>
+                </div>
+            `)
+            .join('');
+
+        const titleHtml = `
+            <div>
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:8px;
+                ">
+                    <strong>
+                        Work Order ${christyNumber}
+                    </strong>
+
+                    <span style="
+                        padding:2px 7px;
+                        border-radius:999px;
+                        background:#e8f4f6;
+                        color:#117a8b;
+                        font-size:0.7em;
+                        font-weight:700;
+                    ">
+                        ${orderStatusName}
+                    </span>
+                </div>
+
+                <div style="
+                    margin-top:3px;
+                    color:#777;
+                    font-size:0.82em;
+                ">
+                    ${
+                        Number(order.orderIsProposal) === 1
+                            ? 'Proposal'
+                            : 'Order'
+                    }
+                    · ${orderTypeName}
+                </div>
+            </div>
+        `;
+
+        const bodyHtml = `
+            ${section(
+                'Order',
+                `
+                    ${attrRow(
+                        'Work Order',
+                        christyNumber
+                    )}
+
+                    ${attrRow(
+                        'Customer',
+                        entityName
+                    )}
+
+                    ${attrRow(
+                        'Type',
+                        orderTypeName
+                    )}
+
+                    ${attrRow(
+                        'Status',
+                        orderStatusName
+                    )}
+
+                    ${attrRow(
+                        'Salesperson',
+                        salespersonName
+                    )}
+
+                    ${attrRow(
+                        'Order Date',
+                        formatDate(order.orderDate)
+                    )}
+
+                    ${attrRow(
+                        'Due Date',
+                        formatDate(order.orderDueDate)
+                    )}
+
+                    ${attrRow(
+                        'Customer PO',
+                        purchaseOrder
+                    )}
+                `
+            )}
+
+            ${section(
+                'Jobsite',
+                `
+                    ${attrRow(
+                        'Location',
+                        locationName
+                    )}
+
+                    ${attrRow(
+                        'Address',
+                        jobsiteAddress || '—'
+                    )}
+
+                    ${attrRow(
+                        'Contact',
+                        jobsiteContactName
+                    )}
+                `
+            )}
+
+            ${section(
+                'Billing',
+                `
+                    ${attrRow(
+                        'Bill-To Contact',
+                        billToContactName
+                    )}
+
+                    ${attrRow(
+                        'Location',
+                        billingLocationName
+                    )}
+
+                    ${attrRow(
+                        'Address',
+                        billingAddress || '—'
+                    )}
+                `
+            )}
+
+            ${section(
+                'Scope of Work',
+                `
+                    <div style="
+                        color:#222;
+                        font-size:0.9em;
+                        line-height:1.5;
+                        white-space:pre-wrap;
+                    ">${scope}</div>
+                `
+            )}
+
+            ${section(
+                'Order Progress',
+                `
+                    <div style="
+                        display:grid;
+                        grid-template-columns:
+                            repeat(2, minmax(0, 1fr));
+                        column-gap:18px;
+                    ">
+                        ${progressHtml}
+                    </div>
+                `
+            )}
+
+            ${section(
+                'Notes',
+                `
+                    <div style="
+                        color:#222;
+                        font-size:0.9em;
+                        line-height:1.5;
+                        white-space:pre-wrap;
+                    ">${note}</div>
+                `
+            )}
+        `;
+
+        return {
+            titleHtml: titleHtml,
+            bodyHtml: bodyHtml,
+            actionsHtml: ''
+        };
+    },
+
     /**
      * Retrieve one authoritative Order.
      *
