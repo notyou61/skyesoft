@@ -10742,6 +10742,132 @@ window.SkyIndex = {
    
     // #endregion
 
+    // #region 📦 Order Detail Workspace
+
+    /**
+     * Retrieve one authoritative Order.
+     *
+     * A numeric value represents orderID.
+     * A string represents the Christy Work Order number.
+     */
+    async getOrder(identifier) {
+        const isOrderId =
+            typeof identifier === 'number' &&
+            Number.isInteger(identifier) &&
+            identifier > 0;
+
+        const christyNumber = !isOrderId
+            ? String(identifier || '').trim()
+            : '';
+
+        if (!isOrderId && !christyNumber) {
+            throw new Error(
+                'A valid Order identifier is required.'
+            );
+        }
+
+        // Initialize optional Action coordinates
+        let actionLocation = {
+            latitude:  null,
+            longitude: null
+        };
+
+        try {
+            actionLocation =
+                await this.getLocationSafe();
+
+            // Cache valid browser coordinates
+            if (
+                actionLocation?.latitude !== null &&
+                actionLocation?.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+
+            } else if (this.lastLocation) {
+                actionLocation = this.lastLocation;
+            }
+
+        } catch (locationError) {
+            console.warn(
+                '[Order Detail] Action location unavailable:',
+                locationError
+            );
+
+            if (this.lastLocation) {
+                actionLocation = this.lastLocation;
+            }
+        }
+
+        // Build governed Order-read request
+        const payload = {
+            type: 'orderDetail',
+
+            latitude:
+                actionLocation?.latitude ?? null,
+
+            longitude:
+                actionLocation?.longitude ?? null
+        };
+
+        if (isOrderId) {
+            payload.orderID = identifier;
+
+        } else {
+            payload.christyNumber =
+                christyNumber;
+        }
+
+        const response = await fetch(
+            '/skyesoft/api/askOpenAI.php',
+            {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            }
+        );
+
+        const responseText =
+            await response.text();
+
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}: ${
+                    responseText.substring(0, 200)
+                }`
+            );
+        }
+
+        let result;
+
+        try {
+            result = JSON.parse(responseText);
+
+        } catch (parseError) {
+            throw new Error(
+                'The server returned invalid Order JSON.'
+            );
+        }
+
+        if (!result?.success || !result?.order) {
+            throw new Error(
+                result?.error ||
+                'Order was not found.'
+            );
+        }
+
+        console.log(
+            '[Order Detail] Authoritative Order loaded:',
+            result
+        );
+
+        return result;
+    },
+
+    // #endregion
+
     // #region 🔎 AI Query Information Card
     renderAIQueryCard(data = {}) {
 
@@ -18261,18 +18387,51 @@ if (window.SkyWorkspace) {
     if (typeof SkyIndex.renderOrderCreatePage === 'function') {
         SkyWorkspace.registerPage(
             'order_create',
-            SkyIndex.renderOrderCreatePage.bind(SkyIndex)
+            SkyIndex.renderOrderCreatePage.bind(
+                SkyIndex
+            )
+        );
+    }
+    if (typeof SkyIndex.renderOrderPage === 'function') {
+        SkyWorkspace.registerPage(
+            'order',
+            SkyIndex.renderOrderPage.bind(
+                SkyIndex
+            )
         );
     }
 
-    console.log('[SkyWorkspace] registered:', Object.keys(SkyWorkspace._registry));
-    console.log('[SkyWorkspace] renderers:', {
-        entity:    typeof SkyIndex.renderEntityPage,
-        locations: typeof SkyIndex.renderLocationsPage,
-        location:  typeof SkyIndex.renderLocationPage,
-        contacts:  typeof SkyIndex.renderContactsPage,
-        contact:   typeof SkyIndex.renderContactPage
-    });
+    console.log(
+        '[SkyWorkspace] registered:',
+        Object.keys(SkyWorkspace._registry)
+    );
+
+    console.log(
+        '[SkyWorkspace] renderers:',
+        {
+            entity:
+                typeof SkyIndex.renderEntityPage,
+
+            locations:
+                typeof SkyIndex.renderLocationsPage,
+
+            location:
+                typeof SkyIndex.renderLocationPage,
+
+            contacts:
+                typeof SkyIndex.renderContactsPage,
+
+            contact:
+                typeof SkyIndex.renderContactPage,
+
+            order_create:
+                typeof SkyIndex.renderOrderCreatePage,
+
+            order:
+                typeof SkyIndex.renderOrderPage
+        }
+    );
+
 }
 // #endregion
 
