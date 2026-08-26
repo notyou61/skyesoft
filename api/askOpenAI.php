@@ -4194,6 +4194,535 @@ if ($type === 'orderCreateOptions') {
 }
 
 // =====================================================
+// READ-ONLY ORDER DETAIL
+// =====================================================
+
+if ($type === 'orderDetail') {
+
+    // Resolve requested Order identifier
+    $orderId = (int)(
+        $input['orderID'] ?? 0
+    );
+
+    $christyNumber = trim((string)(
+        $input['christyNumber']
+        ?? $input['identifier']
+        ?? ''
+    ));
+
+    if (
+        $orderId <= 0 &&
+        $christyNumber === ''
+    ) {
+        echo json_encode([
+            'success' => false,
+            'type'    => 'order_detail',
+            'order'   => null,
+            'error'   => 'orderID or Christy Work Order number is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Resolve authoritative Action context
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+
+    $latitude = is_numeric(
+        $input['latitude'] ?? null
+    )
+        ? (float)$input['latitude']
+        : null;
+
+    $longitude = is_numeric(
+        $input['longitude'] ?? null
+    )
+        ? (float)$input['longitude']
+        : null;
+
+    try {
+        // Select identifier condition
+        if ($orderId > 0) {
+            $identifierCondition =
+                'o.orderID = :identifier';
+
+            $identifierValue = $orderId;
+
+        } else {
+            $identifierCondition =
+                'o.orderChristyNumber = :identifier';
+
+            $identifierValue = $christyNumber;
+        }
+
+        // Load authoritative Order workspace
+        $orderStmt = $db->prepare("
+            SELECT
+                o.*,
+
+                ot.orderTypeName,
+                ot.orderTypeDescription,
+
+                os.orderStatusName,
+                os.orderStatusDescription,
+
+                e.entityName,
+
+                jl.locationName,
+                jl.locationAddress,
+                jl.locationAddressSuite,
+                jl.locationCity,
+                jl.locationState,
+                jl.locationZip,
+
+                bc.contactFirstName
+                    AS billToFirstName,
+                bc.contactLastName
+                    AS billToLastName,
+                bc.contactTitle
+                    AS billToTitle,
+                bc.contactPrimaryPhone
+                    AS billToPrimaryPhone,
+                bc.contactEmail
+                    AS billToEmail,
+                bc.contactLocationId
+                    AS billingLocationID,
+
+                bl.locationName
+                    AS billingLocationName,
+                bl.locationAddress
+                    AS billingLocationAddress,
+                bl.locationAddressSuite
+                    AS billingLocationAddressSuite,
+                bl.locationCity
+                    AS billingLocationCity,
+                bl.locationState
+                    AS billingLocationState,
+                bl.locationZip
+                    AS billingLocationZip,
+
+                jc.contactFirstName
+                    AS jobsiteFirstName,
+                jc.contactLastName
+                    AS jobsiteLastName,
+                jc.contactTitle
+                    AS jobsiteTitle,
+                jc.contactPrimaryPhone
+                    AS jobsitePrimaryPhone,
+                jc.contactEmail
+                    AS jobsiteEmail
+
+            FROM tblOrders o
+
+            LEFT JOIN tblOrderTypes ot
+                ON ot.orderTypeID = o.orderTypeID
+
+            LEFT JOIN tblOrderStatuses os
+                ON os.orderStatusID = o.orderStatusID
+
+            LEFT JOIN tblEntities e
+                ON e.entityId = o.orderEntityID
+
+            LEFT JOIN tblLocations jl
+                ON jl.locationId = o.orderLocationID
+
+            LEFT JOIN tblContacts bc
+                ON bc.contactId = o.orderBillToContactID
+
+            LEFT JOIN tblLocations bl
+                ON bl.locationId = bc.contactLocationId
+
+            LEFT JOIN tblContacts jc
+                ON jc.contactId = o.orderJobsiteContactID
+
+            WHERE {$identifierCondition}
+              AND COALESCE(o.orderIsNotValid, 0) = 0
+
+            LIMIT 1
+        ");
+
+        $orderStmt->execute([
+            'identifier' => $identifierValue
+        ]);
+
+        $row = $orderStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+        if (!is_array($row)) {
+            echo json_encode([
+                'success' => false,
+                'type'    => 'order_detail',
+                'order'   => null,
+                'error'   => 'Order was not found.'
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        // Normalize authoritative identifiers
+        $resolvedOrderId = (int)$row[
+            'orderID'
+        ];
+
+        $billToContactId =
+            $row['orderBillToContactID'] !== null
+                ? (int)$row['orderBillToContactID']
+                : null;
+
+        $jobsiteContactId =
+            $row['orderJobsiteContactID'] !== null
+                ? (int)$row['orderJobsiteContactID']
+                : null;
+
+        $billingLocationId =
+            $row['billingLocationID'] !== null
+                ? (int)$row['billingLocationID']
+                : null;
+
+        // Build authoritative Order response
+        $order = [
+            'orderID' => $resolvedOrderId,
+
+            'orderChristyNumber' =>
+                $row['orderChristyNumber'],
+
+            'orderTypeID' =>
+                $row['orderTypeID'] !== null
+                    ? (int)$row['orderTypeID']
+                    : null,
+
+            'orderTypeName' =>
+                $row['orderTypeName'],
+
+            'orderTypeDescription' =>
+                $row['orderTypeDescription'],
+
+            'orderIsProposal' =>
+                (int)$row['orderIsProposal'],
+
+            'orderEntityID' =>
+                (int)$row['orderEntityID'],
+
+            'entityName' =>
+                $row['entityName'],
+
+            'orderLocationID' =>
+                (int)$row['orderLocationID'],
+
+            'locationName' =>
+                $row['locationName'],
+
+            'locationAddress' =>
+                $row['locationAddress'],
+
+            'locationAddressSuite' =>
+                $row['locationAddressSuite'],
+
+            'locationCity' =>
+                $row['locationCity'],
+
+            'locationState' =>
+                $row['locationState'],
+
+            'locationZip' =>
+                $row['locationZip'],
+
+            'orderBillToContactID' =>
+                $billToContactId,
+
+            'billToContact' =>
+                $billToContactId !== null
+                    ? [
+                        'contactId' =>
+                            $billToContactId,
+
+                        'contactFirstName' =>
+                            $row['billToFirstName'],
+
+                        'contactLastName' =>
+                            $row['billToLastName'],
+
+                        'contactTitle' =>
+                            $row['billToTitle'],
+
+                        'contactPrimaryPhone' =>
+                            $row['billToPrimaryPhone'],
+
+                        'contactEmail' =>
+                            $row['billToEmail']
+                    ]
+                    : null,
+
+            'billingLocationID' =>
+                $billingLocationId,
+
+            'billingLocation' =>
+                $billingLocationId !== null
+                    ? [
+                        'locationId' =>
+                            $billingLocationId,
+
+                        'locationName' =>
+                            $row['billingLocationName'],
+
+                        'locationAddress' =>
+                            $row['billingLocationAddress'],
+
+                        'locationAddressSuite' =>
+                            $row['billingLocationAddressSuite'],
+
+                        'locationCity' =>
+                            $row['billingLocationCity'],
+
+                        'locationState' =>
+                            $row['billingLocationState'],
+
+                        'locationZip' =>
+                            $row['billingLocationZip']
+                    ]
+                    : null,
+
+            'orderJobsiteContactID' =>
+                $jobsiteContactId,
+
+            'jobsiteContact' =>
+                $jobsiteContactId !== null
+                    ? [
+                        'contactId' =>
+                            $jobsiteContactId,
+
+                        'contactFirstName' =>
+                            $row['jobsiteFirstName'],
+
+                        'contactLastName' =>
+                            $row['jobsiteLastName'],
+
+                        'contactTitle' =>
+                            $row['jobsiteTitle'],
+
+                        'contactPrimaryPhone' =>
+                            $row['jobsitePrimaryPhone'],
+
+                        'contactEmail' =>
+                            $row['jobsiteEmail']
+                    ]
+                    : null,
+
+            'orderSalespersonID' =>
+                $row['orderSalespersonID'] !== null
+                    ? (int)$row['orderSalespersonID']
+                    : null,
+
+            'orderSalespersonName' =>
+                $row['orderSalespersonName'],
+
+            'orderDate' =>
+                (int)$row['orderDate'],
+
+            'orderDueDate' =>
+                $row['orderDueDate'] !== null
+                    ? (int)$row['orderDueDate']
+                    : null,
+
+            'orderPurchaseOrder' =>
+                $row['orderPurchaseOrder'],
+
+            'orderScope' =>
+                $row['orderScope'],
+
+            'orderStatusID' =>
+                $row['orderStatusID'] !== null
+                    ? (int)$row['orderStatusID']
+                    : null,
+
+            'orderStatusName' =>
+                $row['orderStatusName'],
+
+            'orderStatusDescription' =>
+                $row['orderStatusDescription'],
+
+            'progress' => [
+                'designComplete' =>
+                    (bool)$row['orderIsDesignComplete'],
+
+                'estimateComplete' =>
+                    (bool)$row['orderIsEstimateComplete'],
+
+                'sold' =>
+                    (bool)$row['orderIsSold'],
+
+                'requiresPermit' =>
+                    (bool)$row['orderRequiresPermit'],
+
+                'permitComplete' =>
+                    (bool)$row['orderIsPermitComplete'],
+
+                'fulfillmentComplete' =>
+                    (bool)$row['orderIsFulfillmentComplete'],
+
+                'completed' =>
+                    (bool)$row['orderIsCompleted'],
+
+                'requiresInspection' =>
+                    (bool)$row['orderRequiresInspection'],
+
+                'inspectionComplete' =>
+                    (bool)$row['orderIsInspectionComplete'],
+
+                'collected' =>
+                    (bool)$row['orderIsCollected'],
+
+                'closedOut' =>
+                    (bool)$row['orderIsClosedOut']
+            ],
+
+            'orderNote' =>
+                $row['orderNote'],
+
+            'orderCreatedAt' =>
+                (int)$row['orderCreatedAt'],
+
+            'orderUpdatedAt' =>
+                $row['orderUpdatedAt'] !== null
+                    ? (int)$row['orderUpdatedAt']
+                    : null,
+
+            'orderIsNotValid' =>
+                (int)$row['orderIsNotValid']
+        ];
+
+        // Resolve order.read Action Type
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = 'order.read'
+              AND crud_class = 'read'
+            LIMIT 1
+        ");
+
+        $actionTypeStmt->execute();
+
+        $orderReadActionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?: 0
+        );
+
+        $actionId = null;
+
+        // Record successful Order read
+        if (
+            $actorContactId > 0 &&
+            $orderReadActionTypeId > 0
+        ) {
+            $actionId = insertActionPrompt([
+                'actionTypeId' =>
+                    $orderReadActionTypeId,
+
+                'contactId' =>
+                    $actorContactId,
+
+                'origin' =>
+                    ACTION_ORIGIN_USER,
+
+                'activitySessionId' =>
+                    $activitySessionId,
+
+                'promptText' =>
+                    'Open Order',
+
+                'responseText' =>
+                    sprintf(
+                        'Opened Order #%d%s.',
+                        $resolvedOrderId,
+                        !empty($row['orderChristyNumber'])
+                            ? ' — Christy Work Order ' .
+                                $row['orderChristyNumber']
+                            : ''
+                    ),
+
+                'intent' =>
+                    'order.read',
+
+                'intentConfidence' =>
+                    1.00,
+
+                'latitude' =>
+                    $latitude,
+
+                'longitude' =>
+                    $longitude,
+
+                'actionPayloadData' => [
+                    'operation' =>
+                        'order.read',
+
+                    'requestedOrderID' =>
+                        $orderId > 0
+                            ? $orderId
+                            : null,
+
+                    'requestedChristyNumber' =>
+                        $christyNumber !== ''
+                            ? $christyNumber
+                            : null
+                ],
+
+                'actionResponseData' => [
+                    'success' =>
+                        true,
+
+                    'orderID' =>
+                        $resolvedOrderId,
+
+                    'christyNumber' =>
+                        $row['orderChristyNumber']
+                ]
+            ], $db);
+
+            if ($actionId <= 0) {
+                error_log(
+                    '[askOpenAI] Order-read Action logging failed.'
+                );
+
+                $actionId = null;
+            }
+        }
+
+        // Return authoritative Order
+        echo json_encode([
+            'success'  => true,
+            'type'     => 'order_detail',
+            'order'    => $order,
+            'actionID' => $actionId,
+            'error'    => null
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[askOpenAI] orderDetail failed: ' .
+            $e->getMessage()
+        );
+
+        echo json_encode([
+            'success' => false,
+            'type'    => 'order_detail',
+            'order'   => null,
+            'error'   => 'Unable to load Order.'
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+    }
+}
+
+// =====================================================
 // ORDER CREATE (mutation) — Order Creation v1.0
 // =====================================================
 
