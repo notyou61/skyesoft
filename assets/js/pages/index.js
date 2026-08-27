@@ -10793,6 +10793,151 @@ window.SkyIndex = {
     },
 
     /**
+     * Switch the current Order workspace into edit mode.
+     */
+    editOrderWorkspace(orderId) {
+        const resolvedOrderId = Number(
+            orderId || 0
+        );
+
+        if (
+            !Number.isInteger(resolvedOrderId) ||
+            resolvedOrderId <= 0
+        ) {
+            this.appendSystemLine(
+                'A valid Order ID is required.'
+            );
+            return;
+        }
+
+        if (!window.SkyWorkspace) {
+            this.appendSystemLine(
+                'Workspace is not available.'
+            );
+            return;
+        }
+
+        window.SkyWorkspace.replace({
+            pageType:   'order',
+            objectType: 'order',
+            objectId:   resolvedOrderId,
+            title:      'Order',
+            state: {
+                edit: true
+            }
+        });
+    },
+
+    /**
+     * Cancel Order editing and restore authoritative view mode.
+     */
+    cancelOrderEditWorkspace(orderId) {
+        const resolvedOrderId = Number(
+            orderId || 0
+        );
+
+        if (
+            !Number.isInteger(resolvedOrderId) ||
+            resolvedOrderId <= 0
+        ) {
+            return;
+        }
+
+        window.SkyWorkspace.replace({
+            pageType:   'order',
+            objectType: 'order',
+            objectId:   resolvedOrderId,
+            title:      'Order',
+            state: {
+                edit: false
+            }
+        });
+    },
+
+    /**
+     * Load authoritative options required to edit an Order.
+     */
+    async getOrderEditOptions(locationId) {
+        const resolvedLocationId = Number(
+            locationId || 0
+        );
+
+        if (
+            !Number.isInteger(resolvedLocationId) ||
+            resolvedLocationId <= 0
+        ) {
+            throw new Error(
+                'A valid Order Location is required.'
+            );
+        }
+
+        const response = await fetch(
+            '/skyesoft/api/askOpenAI.php',
+            {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
+                body: JSON.stringify({
+                    type:       'orderCreateOptions',
+                    locationID: resolvedLocationId
+                })
+            }
+        );
+
+        const responseText =
+            await response.text();
+
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}: ${
+                    responseText.substring(0, 200)
+                }`
+            );
+        }
+
+        let result;
+
+        try {
+            result = JSON.parse(
+                responseText
+            );
+
+        } catch (parseError) {
+            throw new Error(
+                'The server returned invalid Order option JSON.'
+            );
+        }
+
+        if (!result?.success) {
+            throw new Error(
+                result?.error ||
+                'Order edit options could not be loaded.'
+            );
+        }
+
+        return {
+            orderTypes: Array.isArray(
+                result.orderTypes
+            ) ? result.orderTypes : [],
+
+            orderStatuses: Array.isArray(
+                result.orderStatuses
+            ) ? result.orderStatuses : [],
+
+            jobsiteContacts: Array.isArray(
+                result.jobsiteContacts
+            ) ? result.jobsiteContacts : [],
+
+            billingContacts: Array.isArray(
+                result.billingContacts
+            ) ? result.billingContacts : []
+        };
+    },
+
+    /**
      * Retrieve and display an authoritative Order card
      * on the command-output surface.
      */
@@ -11159,10 +11304,22 @@ window.SkyIndex = {
             );
         }
 
-        // Preserve current authoritative Order
+        // Resolve workspace mode
+        const isEditing =
+            page.state?.edit === true;
+
+        // Load authoritative edit options only when needed
+        const editOptions = isEditing
+            ? await this.getOrderEditOptions(
+                order.orderLocationID
+            )
+            : null;
+
+        // Preserve authoritative Order and edit context
         this._currentOrderWorkspaceData = {
-            order: order,
-            orderId: orderId
+            order:       order,
+            orderId:     orderId,
+            editOptions: editOptions
         };
 
         // Format Unix timestamp for display
@@ -11591,10 +11748,79 @@ window.SkyIndex = {
             )}
         `;
 
+        // Build view/edit actions
+        const actionsHtml = isEditing
+            ? `
+                <button
+                    type="button"
+                    onclick="
+                        SkyIndex.cancelOrderEditWorkspace(
+                            ${orderId}
+                        )
+                    "
+                    style="
+                        padding:5px 12px;
+                        border:1px solid #d1d5db;
+                        border-radius:6px;
+                        background:#fff;
+                        color:#374151;
+                        font-size:0.85em;
+                        font-weight:500;
+                        cursor:pointer;
+                    "
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="button"
+                    id="orderEditSaveButton"
+                    onclick="
+                        SkyIndex.saveOrderEditWorkspace(
+                            ${orderId}
+                        )
+                    "
+                    style="
+                        padding:5px 14px;
+                        border:1px solid #0d9488;
+                        border-radius:6px;
+                        background:#0d9488;
+                        color:#fff;
+                        font-size:0.85em;
+                        font-weight:550;
+                        cursor:pointer;
+                    "
+                >
+                    Save
+                </button>
+            `
+            : `
+                <button
+                    type="button"
+                    onclick="
+                        SkyIndex.editOrderWorkspace(
+                            ${orderId}
+                        )
+                    "
+                    style="
+                        padding:5px 12px;
+                        border:1px solid #d1d5db;
+                        border-radius:6px;
+                        background:#fff;
+                        color:#374151;
+                        font-size:0.85em;
+                        font-weight:500;
+                        cursor:pointer;
+                    "
+                >
+                    Edit
+                </button>
+            `;
+
         return {
-            titleHtml: titleHtml,
-            bodyHtml: bodyHtml,
-            actionsHtml: ''
+            titleHtml:   titleHtml,
+            bodyHtml:    bodyHtml,
+            actionsHtml: actionsHtml
         };
     },
 
