@@ -10659,6 +10659,11 @@ window.SkyIndex = {
                 `${createdReference} was created successfully.`
             );
 
+            // Display canonical Order card
+            await this.renderOrderCard(
+                result.order.orderID
+            );
+
         } catch (error) {
             console.error(
                 '[New Order] Creation failed:',
