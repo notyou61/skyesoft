@@ -11784,45 +11784,39 @@ window.SkyIndex = {
         // Build editable textarea
         const editTextarea = (
             label,
-            fieldName,
+            id,
             value
         ) => `
             <div>
-                <label
-                    for="${fieldName}"
-                    style="
-                        display:block;
-                        margin-bottom:6px;
-                        color:#777;
-                        font-size:0.72em;
-                        font-weight:700;
-                        letter-spacing:0.04em;
-                        text-transform:uppercase;
-                    "
-                >
-                    ${label}
-                </label>
+                ${label ? `
+                    <label
+                        for="${id}"
+                        style="
+                            display:block;
+                            margin-bottom:5px;
+                            color:#777;
+                            font-size:0.78em;
+                            font-weight:600;
+                            text-transform:uppercase;
+                        "
+                    >
+                        ${this.escapeHtml(label)}
+                    </label>
+                ` : ''}
 
                 <textarea
-                    id="${fieldName}"
-                    name="${fieldName}"
-                    rows="4"
+                    id="${id}"
                     style="
                         box-sizing:border-box;
                         width:100%;
-                        padding:8px 10px;
+                        min-height:100px;
+                        padding:9px 10px;
                         border:1px solid #d1d5db;
                         border-radius:6px;
-                        background:#fff;
-                        color:#222;
-                        font-family:inherit;
-                        font-size:0.9em;
-                        line-height:1.45;
                         resize:vertical;
+                        font:inherit;
                     "
-                >${this.escapeHtml(
-                    String(value ?? '')
-                )}</textarea>
+                >${this.escapeHtml(value || '')}</textarea>
             </div>
         `;
 
@@ -12289,7 +12283,7 @@ window.SkyIndex = {
         // Build view/edit Scope section
         const scopeSectionContent = isEditing
             ? editTextarea(
-                'Scope',
+                '',
                 'orderEditScope',
                 order.orderScope || ''
             )
@@ -12305,7 +12299,7 @@ window.SkyIndex = {
         // Build view/edit Notes section
         const noteSectionContent = isEditing
             ? editTextarea(
-                'Notes',
+                '',
                 'orderEditNote',
                 order.orderNote || ''
             )
