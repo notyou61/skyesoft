@@ -10938,6 +10938,228 @@ window.SkyIndex = {
     },
 
     /**
+     * Build a governed payload from the Order edit controls.
+     * Does not submit or modify the database.
+     */
+    buildOrderEditPayload(orderId) {
+        const resolvedOrderId = Number(
+            orderId || 0
+        );
+
+        if (
+            !Number.isInteger(resolvedOrderId) ||
+            resolvedOrderId <= 0
+        ) {
+            throw new Error(
+                'A valid Order ID is required.'
+            );
+        }
+
+        const workspaceData =
+            this._currentOrderWorkspaceData;
+
+        if (
+            !workspaceData?.order ||
+            Number(workspaceData.orderId) !==
+                resolvedOrderId
+        ) {
+            throw new Error(
+                'Authoritative Order edit data is unavailable.'
+            );
+        }
+
+        // Read required edit controls
+        const christyNumberInput =
+            document.getElementById(
+                'orderEditChristyNumber'
+            );
+
+        const typeInput =
+            document.getElementById(
+                'orderEditTypeID'
+            );
+
+        const statusInput =
+            document.getElementById(
+                'orderEditStatusID'
+            );
+
+        const orderDateInput =
+            document.getElementById(
+                'orderEditDate'
+            );
+
+        const dueDateInput =
+            document.getElementById(
+                'orderEditDueDate'
+            );
+
+        const purchaseOrderInput =
+            document.getElementById(
+                'orderEditPurchaseOrder'
+            );
+
+        const proposalInput =
+            document.getElementById(
+                'orderEditIsProposal'
+            );
+
+        const jobsiteContactInput =
+            document.getElementById(
+                'orderEditJobsiteContactID'
+            );
+
+        const billToContactInput =
+            document.getElementById(
+                'orderEditBillToContactID'
+            );
+
+        const scopeInput =
+            document.getElementById(
+                'orderEditScope'
+            );
+
+        const noteInput =
+            document.getElementById(
+                'orderEditNote'
+            );
+
+        if (
+            !christyNumberInput ||
+            !typeInput ||
+            !statusInput ||
+            !orderDateInput ||
+            !proposalInput ||
+            !jobsiteContactInput ||
+            !billToContactInput ||
+            !scopeInput ||
+            !noteInput
+        ) {
+            throw new Error(
+                'The Order edit form is incomplete.'
+            );
+        }
+
+        // Convert Phoenix calendar date to Unix
+        const dateToUnix = dateValue => {
+            const normalizedDate =
+                String(dateValue || '').trim();
+
+            if (!normalizedDate) return null;
+
+            const unixTimestamp = Math.floor(
+                new Date(
+                    `${normalizedDate}T00:00:00-07:00`
+                ).getTime() / 1000
+            );
+
+            return Number.isFinite(unixTimestamp)
+                ? unixTimestamp
+                : null;
+        };
+
+        const typeID = Number(
+            typeInput.value || 0
+        );
+
+        const statusID = Number(
+            statusInput.value || 0
+        );
+
+        const orderDate = dateToUnix(
+            orderDateInput.value
+        );
+
+        const dueDate = dateToUnix(
+            dueDateInput?.value
+        );
+
+        const billToContactID = Number(
+            billToContactInput.value || 0
+        );
+
+        // Validate required Order values
+        if (!typeID) {
+            throw new Error(
+                'Order Type is required.'
+            );
+        }
+
+        if (!statusID) {
+            throw new Error(
+                'Order Status is required.'
+            );
+        }
+
+        if (!orderDate) {
+            throw new Error(
+                'Order Date is required.'
+            );
+        }
+
+        if (!billToContactID) {
+            throw new Error(
+                'Bill-To Contact is required.'
+            );
+        }
+
+        const normalizeText = value =>
+            String(value || '').trim() || null;
+
+        return {
+            type:    'orderUpdate',
+            orderID: resolvedOrderId,
+
+            jobsite: {
+                jobsiteContactID:
+                    Number(
+                        jobsiteContactInput.value || 0
+                    ) || null
+            },
+
+            billing: {
+                billToContactID:
+                    billToContactID
+            },
+
+            order: {
+                christyNumber:
+                    normalizeText(
+                        christyNumberInput.value
+                    ),
+
+                typeID: typeID,
+
+                isProposal:
+                    Boolean(
+                        proposalInput.checked
+                    ),
+
+                statusID: statusID,
+
+                date: orderDate,
+
+                dueDate: dueDate,
+
+                purchaseOrder:
+                    normalizeText(
+                        purchaseOrderInput?.value
+                    ),
+
+                scope:
+                    normalizeText(
+                        scopeInput.value
+                    ),
+
+                note:
+                    normalizeText(
+                        noteInput.value
+                    )
+            }
+        };
+    },
+
+    /**
      * Retrieve and display an authoritative Order card
      * on the command-output surface.
      */
@@ -11280,7 +11502,7 @@ window.SkyIndex = {
         );
     },
 
-async renderOrderPage(page, ctx) {
+    async renderOrderPage(page, ctx) {
         const orderId = Number(
             page.objectId || 0
         );
@@ -11777,69 +11999,6 @@ async renderOrderPage(page, ctx) {
             order.orderNote || '—'
         );
 
-        const progress = order.progress || {};
-
-        const progressItems = [
-            ['Design', progress.designComplete],
-            ['Estimating', progress.estimateComplete],
-            ['Sold', progress.sold],
-            ['Permit Required', progress.requiresPermit],
-            ['Permit Complete', progress.permitComplete],
-            [
-                'Fulfillment Complete',
-                progress.fulfillmentComplete
-            ],
-            ['Completed', progress.completed],
-            [
-                'Inspection Required',
-                progress.requiresInspection
-            ],
-            [
-                'Inspection Complete',
-                progress.inspectionComplete
-            ],
-            ['Collected', progress.collected],
-            ['Closed Out', progress.closedOut]
-        ];
-
-        const progressHtml = progressItems
-            .map(([label, complete]) => `
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:7px;
-                    padding:4px 0;
-                    color:${complete ? '#20733a' : '#888'};
-                    font-size:0.86em;
-                ">
-                    <span style="
-                        display:inline-flex;
-                        align-items:center;
-                        justify-content:center;
-                        width:17px;
-                        height:17px;
-                        border-radius:50%;
-                        background:${
-                            complete
-                                ? '#dff3e5'
-                                : '#eee'
-                        };
-                        color:${
-                            complete
-                                ? '#20733a'
-                                : '#999'
-                        };
-                        font-size:0.75em;
-                        font-weight:700;
-                    ">
-                        ${complete ? '✓' : '–'}
-                    </span>
-
-                    <span>${label}</span>
-                </div>
-            `)
-            .join('');
-
         const titleHtml = `
             <div>
                 <div style="
@@ -11901,6 +12060,49 @@ async renderOrderPage(page, ctx) {
                 orderStatus.orderStatusName ||
                 'Unnamed Status'
         }));
+
+        // Build authoritative Jobsite Contact options
+        const jobsiteContactOptions = (
+            editOptions?.jobsiteContacts || []
+        ).map(contact => {
+            const contactName = [
+                contact.contactFirstName,
+                contact.contactLastName
+            ].filter(Boolean).join(' ') ||
+            'Unnamed Contact';
+
+            return {
+                value: Number(
+                    contact.contactId
+                ),
+                label: contact.contactTitle
+                    ? `${contactName} — ${contact.contactTitle}`
+                    : contactName
+            };
+        });
+
+        // Build authoritative Billing Contact options
+        const billingContactOptions = (
+            editOptions?.billingContacts || []
+        ).map(contact => {
+            const contactName = [
+                contact.contactFirstName,
+                contact.contactLastName
+            ].filter(Boolean).join(' ') ||
+            'Unnamed Contact';
+
+            const billingLocation =
+                contact.billingLocationName ||
+                'No Billing Location';
+
+            return {
+                value: Number(
+                    contact.contactId
+                ),
+                label:
+                    `${contactName} — ${billingLocation}`
+            };
+        });
 
         // Build view/edit Order section
         const orderSectionContent = isEditing
@@ -12008,9 +12210,115 @@ async renderOrderPage(page, ctx) {
                     purchaseOrder
                 )}
             `;
-        
-        
-        // Body HTML
+
+        // Build view/edit Jobsite section
+        const jobsiteSectionContent = isEditing
+            ? `
+                ${attrRow(
+                    'Location',
+                    locationName
+                )}
+
+                ${attrRow(
+                    'Address',
+                    jobsiteAddress || '—'
+                )}
+
+                ${editSelect(
+                    'Contact',
+                    'orderEditJobsiteContactID',
+                    order.orderJobsiteContactID,
+                    jobsiteContactOptions,
+                    true
+                )}
+            `
+            : `
+                ${attrRow(
+                    'Location',
+                    locationName
+                )}
+
+                ${attrRow(
+                    'Address',
+                    jobsiteAddress || '—'
+                )}
+
+                ${attrRow(
+                    'Contact',
+                    jobsiteContactName
+                )}
+            `;
+
+        // Build view/edit Billing section
+        const billingSectionContent = isEditing
+            ? `
+                ${editSelect(
+                    'Bill-To Contact',
+                    'orderEditBillToContactID',
+                    order.orderBillToContactID,
+                    billingContactOptions
+                )}
+
+                ${attrRow(
+                    'Current Location',
+                    billingLocationName
+                )}
+
+                ${attrRow(
+                    'Current Address',
+                    billingAddress || '—'
+                )}
+            `
+            : `
+                ${attrRow(
+                    'Bill-To Contact',
+                    billToContactName
+                )}
+
+                ${attrRow(
+                    'Location',
+                    billingLocationName
+                )}
+
+                ${attrRow(
+                    'Address',
+                    billingAddress || '—'
+                )}
+            `;
+
+        // Build view/edit Scope section
+        const scopeSectionContent = isEditing
+            ? editTextarea(
+                'Scope',
+                'orderEditScope',
+                order.orderScope || ''
+            )
+            : `
+                <div style="
+                    color:#222;
+                    font-size:0.9em;
+                    line-height:1.5;
+                    white-space:pre-wrap;
+                ">${scope}</div>
+            `;
+
+        // Build view/edit Notes section
+        const noteSectionContent = isEditing
+            ? editTextarea(
+                'Notes',
+                'orderEditNote',
+                order.orderNote || ''
+            )
+            : `
+                <div style="
+                    color:#222;
+                    font-size:0.9em;
+                    line-height:1.5;
+                    white-space:pre-wrap;
+                ">${note}</div>
+            `;
+
+        // Build modal body
         const bodyHtml = `
             ${section(
                 'Order',
@@ -12019,80 +12327,22 @@ async renderOrderPage(page, ctx) {
 
             ${section(
                 'Jobsite',
-                `
-                    ${attrRow(
-                        'Location',
-                        locationName
-                    )}
-
-                    ${attrRow(
-                        'Address',
-                        jobsiteAddress || '—'
-                    )}
-
-                    ${attrRow(
-                        'Contact',
-                        jobsiteContactName
-                    )}
-                `
+                jobsiteSectionContent
             )}
 
             ${section(
                 'Billing',
-                `
-                    ${attrRow(
-                        'Bill-To Contact',
-                        billToContactName
-                    )}
-
-                    ${attrRow(
-                        'Location',
-                        billingLocationName
-                    )}
-
-                    ${attrRow(
-                        'Address',
-                        billingAddress || '—'
-                    )}
-                `
+                billingSectionContent
             )}
 
             ${section(
                 'Scope of Work',
-                `
-                    <div style="
-                        color:#222;
-                        font-size:0.9em;
-                        line-height:1.5;
-                        white-space:pre-wrap;
-                    ">${scope}</div>
-                `
-            )}
-
-            ${section(
-                'Order Progress',
-                `
-                    <div style="
-                        display:grid;
-                        grid-template-columns:
-                            repeat(2, minmax(0, 1fr));
-                        column-gap:18px;
-                    ">
-                        ${progressHtml}
-                    </div>
-                `
+                scopeSectionContent
             )}
 
             ${section(
                 'Notes',
-                `
-                    <div style="
-                        color:#222;
-                        font-size:0.9em;
-                        line-height:1.5;
-                        white-space:pre-wrap;
-                    ">${note}</div>
-                `
+                noteSectionContent
             )}
         `;
 
@@ -12123,6 +12373,7 @@ async renderOrderPage(page, ctx) {
                 <button
                     type="button"
                     id="orderEditSaveButton"
+                    disabled
                     onclick="
                         SkyIndex.saveOrderEditWorkspace(
                             ${orderId}
@@ -12132,11 +12383,12 @@ async renderOrderPage(page, ctx) {
                         padding:5px 14px;
                         border:1px solid #0d9488;
                         border-radius:6px;
-                        background:#0d9488;
+                        background:#999;
                         color:#fff;
                         font-size:0.85em;
                         font-weight:550;
-                        cursor:pointer;
+                        border-color:#999;
+                        cursor:not-allowed;
                     "
                 >
                     Save
