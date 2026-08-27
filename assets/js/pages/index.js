@@ -11280,7 +11280,7 @@ window.SkyIndex = {
         );
     },
 
-    async renderOrderPage(page, ctx) {
+async renderOrderPage(page, ctx) {
         const orderId = Number(
             page.objectId || 0
         );
@@ -11348,6 +11348,261 @@ window.SkyIndex = {
                 }
             );
         };
+
+        // Format Unix timestamp for date input
+        const formatDateInput = unixValue => {
+            const unixTimestamp = Number(
+                unixValue || 0
+            );
+
+            if (!unixTimestamp) return '';
+
+            const date = new Date(
+                unixTimestamp * 1000
+            );
+
+            if (Number.isNaN(date.getTime())) {
+                return '';
+            }
+
+            const dateParts =
+                new Intl.DateTimeFormat(
+                    'en-US',
+                    {
+                        timeZone: 'America/Phoenix',
+                        year:     'numeric',
+                        month:    '2-digit',
+                        day:      '2-digit'
+                    }
+                ).formatToParts(date);
+
+            const getPart = type =>
+                dateParts.find(
+                    part => part.type === type
+                )?.value || '';
+
+            return [
+                getPart('year'),
+                getPart('month'),
+                getPart('day')
+            ].join('-');
+        };
+
+        // Build editable input row
+        const editField = (
+            label,
+            fieldName,
+            value,
+            type = 'text'
+        ) => `
+            <div style="
+                display:grid;
+                grid-template-columns:130px 1fr;
+                gap:10px;
+                padding:5px 0;
+                align-items:center;
+            ">
+                <label
+                    for="${fieldName}"
+                    style="
+                        color:#888;
+                        font-size:0.72em;
+                        font-weight:600;
+                        letter-spacing:0.03em;
+                        text-transform:uppercase;
+                    "
+                >
+                    ${label}
+                </label>
+
+                <input
+                    id="${fieldName}"
+                    name="${fieldName}"
+                    type="${type}"
+                    value="${this.escapeHtml(
+                        String(value ?? '')
+                    )}"
+                    style="
+                        box-sizing:border-box;
+                        width:100%;
+                        padding:7px 9px;
+                        border:1px solid #d1d5db;
+                        border-radius:6px;
+                        background:#fff;
+                        color:#222;
+                        font-size:0.9em;
+                    "
+                >
+            </div>
+        `;
+
+        // Build editable select row
+        const editSelect = (
+            label,
+            fieldName,
+            currentValue,
+            options,
+            allowEmpty = false
+        ) => {
+            const optionHtml = options
+                .map(option => {
+                    const selected =
+                        String(currentValue ?? '') ===
+                        String(option.value ?? '')
+                            ? ' selected'
+                            : '';
+
+                    return `
+                        <option
+                            value="${this.escapeHtml(
+                                String(option.value ?? '')
+                            )}"${selected}
+                        >
+                            ${this.escapeHtml(
+                                option.label || ''
+                            )}
+                        </option>
+                    `;
+                })
+                .join('');
+
+            return `
+                <div style="
+                    display:grid;
+                    grid-template-columns:130px 1fr;
+                    gap:10px;
+                    padding:5px 0;
+                    align-items:center;
+                ">
+                    <label
+                        for="${fieldName}"
+                        style="
+                            color:#888;
+                            font-size:0.72em;
+                            font-weight:600;
+                            letter-spacing:0.03em;
+                            text-transform:uppercase;
+                        "
+                    >
+                        ${label}
+                    </label>
+
+                    <select
+                        id="${fieldName}"
+                        name="${fieldName}"
+                        style="
+                            box-sizing:border-box;
+                            width:100%;
+                            padding:7px 9px;
+                            border:1px solid #d1d5db;
+                            border-radius:6px;
+                            background:#fff;
+                            color:#222;
+                            font-size:0.9em;
+                        "
+                    >
+                        ${
+                            allowEmpty
+                                ? `
+                                    <option value="">
+                                        None
+                                    </option>
+                                `
+                                : ''
+                        }
+
+                        ${optionHtml}
+                    </select>
+                </div>
+            `;
+        };
+
+        // Build editable checkbox row
+        const editCheckbox = (
+            label,
+            fieldName,
+            checked
+        ) => `
+            <div style="
+                display:grid;
+                grid-template-columns:130px 1fr;
+                gap:10px;
+                padding:5px 0;
+                align-items:center;
+            ">
+                <div style="
+                    color:#888;
+                    font-size:0.72em;
+                    font-weight:600;
+                    letter-spacing:0.03em;
+                    text-transform:uppercase;
+                ">
+                    ${label}
+                </div>
+
+                <label style="
+                    display:inline-flex;
+                    align-items:center;
+                    gap:7px;
+                    color:#333;
+                    cursor:pointer;
+                ">
+                    <input
+                        id="${fieldName}"
+                        name="${fieldName}"
+                        type="checkbox"
+                        ${checked ? 'checked' : ''}
+                    >
+
+                    <span>Yes</span>
+                </label>
+            </div>
+        `;
+
+        // Build editable textarea
+        const editTextarea = (
+            label,
+            fieldName,
+            value
+        ) => `
+            <div>
+                <label
+                    for="${fieldName}"
+                    style="
+                        display:block;
+                        margin-bottom:6px;
+                        color:#777;
+                        font-size:0.72em;
+                        font-weight:700;
+                        letter-spacing:0.04em;
+                        text-transform:uppercase;
+                    "
+                >
+                    ${label}
+                </label>
+
+                <textarea
+                    id="${fieldName}"
+                    name="${fieldName}"
+                    rows="4"
+                    style="
+                        box-sizing:border-box;
+                        width:100%;
+                        padding:8px 10px;
+                        border:1px solid #d1d5db;
+                        border-radius:6px;
+                        background:#fff;
+                        color:#222;
+                        font-family:inherit;
+                        font-size:0.9em;
+                        line-height:1.45;
+                        resize:vertical;
+                    "
+                >${this.escapeHtml(
+                    String(value ?? '')
+                )}</textarea>
+            </div>
+        `;
 
         // Format Contact name
         const formatContactName = contact => {
@@ -11623,50 +11878,143 @@ window.SkyIndex = {
             </div>
         `;
 
+        // Build authoritative Order Type options
+        const orderTypeOptions = (
+            editOptions?.orderTypes || []
+        ).map(orderType => ({
+            value: Number(
+                orderType.orderTypeID
+            ),
+            label:
+                orderType.orderTypeName ||
+                'Unnamed Type'
+        }));
+
+        // Build authoritative Order Status options
+        const orderStatusOptions = (
+            editOptions?.orderStatuses || []
+        ).map(orderStatus => ({
+            value: Number(
+                orderStatus.orderStatusID
+            ),
+            label:
+                orderStatus.orderStatusName ||
+                'Unnamed Status'
+        }));
+
+        // Build view/edit Order section
+        const orderSectionContent = isEditing
+            ? `
+                ${editField(
+                    'Work Order',
+                    'orderEditChristyNumber',
+                    order.orderChristyNumber
+                )}
+
+                ${attrRow(
+                    'Customer',
+                    entityName
+                )}
+
+                ${editSelect(
+                    'Type',
+                    'orderEditTypeID',
+                    order.orderTypeID,
+                    orderTypeOptions
+                )}
+
+                ${editSelect(
+                    'Status',
+                    'orderEditStatusID',
+                    order.orderStatusID,
+                    orderStatusOptions
+                )}
+
+                ${attrRow(
+                    'Salesperson',
+                    salespersonName
+                )}
+
+                ${editField(
+                    'Order Date',
+                    'orderEditDate',
+                    formatDateInput(
+                        order.orderDate
+                    ),
+                    'date'
+                )}
+
+                ${editField(
+                    'Due Date',
+                    'orderEditDueDate',
+                    formatDateInput(
+                        order.orderDueDate
+                    ),
+                    'date'
+                )}
+
+                ${editField(
+                    'Customer PO',
+                    'orderEditPurchaseOrder',
+                    order.orderPurchaseOrder || ''
+                )}
+
+                ${editCheckbox(
+                    'Proposal',
+                    'orderEditIsProposal',
+                    Number(
+                        order.orderIsProposal
+                    ) === 1
+                )}
+            `
+            : `
+                ${attrRow(
+                    'Work Order',
+                    christyNumber
+                )}
+
+                ${attrRow(
+                    'Customer',
+                    entityName
+                )}
+
+                ${attrRow(
+                    'Type',
+                    orderTypeName
+                )}
+
+                ${attrRow(
+                    'Status',
+                    orderStatusName
+                )}
+
+                ${attrRow(
+                    'Salesperson',
+                    salespersonName
+                )}
+
+                ${attrRow(
+                    'Order Date',
+                    formatDate(order.orderDate)
+                )}
+
+                ${attrRow(
+                    'Due Date',
+                    formatDate(order.orderDueDate)
+                )}
+
+                ${attrRow(
+                    'Customer PO',
+                    purchaseOrder
+                )}
+            `;
+        
+        
+        // Body HTML
         const bodyHtml = `
             ${section(
                 'Order',
-                `
-                    ${attrRow(
-                        'Work Order',
-                        christyNumber
-                    )}
-
-                    ${attrRow(
-                        'Customer',
-                        entityName
-                    )}
-
-                    ${attrRow(
-                        'Type',
-                        orderTypeName
-                    )}
-
-                    ${attrRow(
-                        'Status',
-                        orderStatusName
-                    )}
-
-                    ${attrRow(
-                        'Salesperson',
-                        salespersonName
-                    )}
-
-                    ${attrRow(
-                        'Order Date',
-                        formatDate(order.orderDate)
-                    )}
-
-                    ${attrRow(
-                        'Due Date',
-                        formatDate(order.orderDueDate)
-                    )}
-
-                    ${attrRow(
-                        'Customer PO',
-                        purchaseOrder
-                    )}
-                `
+                orderSectionContent
             )}
 
             ${section(
