@@ -12591,16 +12591,71 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🤖 AI Command Execution
-    async executeAICommand(prompt, incomingActivitySessionId = null) {
-
+    async executeAICommand(
+        prompt,
+        incomingActivitySessionId = null
+    ) {
         this.setThinking(true);
 
         try {
             // Normalize command
-            const trimmed = String(prompt || '').trim();
-            const firstWord = trimmed.split(/\s+/)[0]?.toLowerCase();
+            const trimmed = String(
+                prompt || ''
+            ).trim();
+
+            const firstWord = trimmed
+                .split(/\s+/)[0]
+                ?.toLowerCase();
 
             // =====================================================
+            // 📦 Direct Order Workspace Command
+            // Open by Christy Work Order number.
+            // =====================================================
+            const openOrderMatch = trimmed.match(
+                /^open\s+order\s+(\d+)$/i
+            );
+
+            if (openOrderMatch) {
+                const christyNumber =
+                    openOrderMatch[1];
+
+                try {
+                    // Resolve Order by Christy Work Order number
+                    const data = await this.getOrder(
+                        String(christyNumber)
+                    );
+
+                    const orderId = Number(
+                        data?.order?.orderID || 0
+                    );
+
+                    if (!orderId) {
+                        throw new Error(
+                            'Order was not found.'
+                        );
+                    }
+
+                    // Open authoritative Order workspace
+                    await this.openOrderWorkspace(
+                        orderId
+                    );
+
+                } catch (error) {
+                    console.error(
+                        '[Order Command] Unable to open Order:',
+                        error
+                    );
+
+                    this.appendSystemLine(
+                        `Unable to open Order: ${
+                            error?.message ||
+                            'Unknown error'
+                        }`
+                    );
+                }
+
+                return;
+            }
 
             // =====================================================
             // 📦 Object Keyword Dispatcher (Entity / Location / …)
