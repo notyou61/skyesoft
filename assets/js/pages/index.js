@@ -12612,7 +12612,10 @@ window.SkyIndex = {
                 entity:   (id) => this.renderEntityCard(id),
                 location: (id) => this.renderLocationCard(id),
                 contact: (id) => this.renderContactCard?.(id),
-                order:   (id) => this.renderOrderCard?.(id),
+                // Render Order card by database Order ID
+                order: (id) => this.renderOrderCard?.(
+                    Number(id)
+                ),
                 // application: (id) => this.renderApplicationCard?.(id),
             };
 
