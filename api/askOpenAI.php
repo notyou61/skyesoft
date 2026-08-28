@@ -2481,6 +2481,328 @@ function loadLocationPage(?PDO $db, int $page = 1, int $pageSize = 5): array
 }
 
 /**
+ * Paginated authoritative Order list.
+ * Read-only and does not create an Action.
+ *
+ * @param PDO|null $db
+ * @param int      $page
+ * @param int      $pageSize
+ * @return array
+ */
+function loadOrderPage(
+    ?PDO $db,
+    int $page = 1,
+    int $pageSize = 5
+): array {
+    // Normalize pagination
+    $page = max(
+        1,
+        $page
+    );
+
+    // Match existing surface-list standard
+    $pageSize = 5;
+
+    $offset =
+        ($page - 1) *
+        $pageSize;
+
+    $result = [
+        'type'       => 'orders',
+        'page'       => $page,
+        'pageSize'   => $pageSize,
+        'total'      => 0,
+        'totalPages' => 0,
+        'rows'       => [],
+        'source'     => 'database',
+        'asOf'       => date('c')
+    ];
+
+    if (!$db instanceof PDO) {
+        return $result;
+    }
+
+    try {
+        // Count valid Orders
+        $total = (int)$db->query("
+            SELECT COUNT(*)
+            FROM tblOrders
+            WHERE COALESCE(
+                orderIsNotValid,
+                0
+            ) = 0
+        ")->fetchColumn();
+
+        $result['total'] = $total;
+
+        $result['totalPages'] =
+            $total > 0
+                ? (int)ceil(
+                    $total /
+                    $pageSize
+                )
+                : 0;
+
+        if ($total === 0) {
+            return $result;
+        }
+
+        // Clamp request to final page
+        if (
+            $page >
+            $result['totalPages']
+        ) {
+            $page =
+                $result['totalPages'];
+
+            $offset =
+                ($page - 1) *
+                $pageSize;
+
+            $result['page'] =
+                $page;
+        }
+
+        // Load card-compatible Order summaries
+        $orderStmt = $db->prepare("
+            SELECT
+                o.orderID,
+                o.orderChristyNumber,
+                o.orderTypeID,
+                o.orderIsProposal,
+                o.orderEntityID,
+                o.orderLocationID,
+                o.orderSalespersonID,
+                o.orderSalespersonName,
+                o.orderDate,
+                o.orderDueDate,
+                o.orderPurchaseOrder,
+                o.orderScope,
+                o.orderStatusID,
+                o.orderCreatedAt,
+                o.orderUpdatedAt,
+                o.orderIsNotValid,
+
+                o.orderIsDesignComplete,
+                o.orderIsEstimateComplete,
+                o.orderIsSold,
+                o.orderRequiresPermit,
+                o.orderIsPermitComplete,
+                o.orderIsFulfillmentComplete,
+                o.orderIsCompleted,
+                o.orderRequiresInspection,
+                o.orderIsInspectionComplete,
+                o.orderIsCollected,
+                o.orderIsClosedOut,
+
+                ot.orderTypeName,
+                os.orderStatusName,
+                e.entityName,
+                l.locationName
+
+            FROM tblOrders o
+
+            LEFT JOIN tblOrderTypes ot
+                ON ot.orderTypeID =
+                    o.orderTypeID
+
+            LEFT JOIN tblOrderStatuses os
+                ON os.orderStatusID =
+                    o.orderStatusID
+
+            LEFT JOIN tblEntities e
+                ON e.entityId =
+                    o.orderEntityID
+
+            LEFT JOIN tblLocations l
+                ON l.locationId =
+                    o.orderLocationID
+
+            WHERE COALESCE(
+                o.orderIsNotValid,
+                0
+            ) = 0
+
+            ORDER BY
+                o.orderCreatedAt DESC,
+                o.orderID DESC
+
+            LIMIT :limit
+            OFFSET :offset
+        ");
+
+        $orderStmt->bindValue(
+            ':limit',
+            $pageSize,
+            PDO::PARAM_INT
+        );
+
+        $orderStmt->bindValue(
+            ':offset',
+            $offset,
+            PDO::PARAM_INT
+        );
+
+        $orderStmt->execute();
+
+        $rows = [];
+
+        foreach (
+            $orderStmt->fetchAll(
+                PDO::FETCH_ASSOC
+            ) as $row
+        ) {
+            $rows[] = [
+                'orderID' =>
+                    (int)$row['orderID'],
+
+                'orderChristyNumber' =>
+                    $row['orderChristyNumber'],
+
+                'orderTypeID' =>
+                    $row['orderTypeID'] !== null
+                        ? (int)$row['orderTypeID']
+                        : null,
+
+                'orderTypeName' =>
+                    $row['orderTypeName'],
+
+                'orderIsProposal' =>
+                    (int)$row['orderIsProposal'],
+
+                'orderEntityID' =>
+                    (int)$row['orderEntityID'],
+
+                'entityName' =>
+                    $row['entityName'],
+
+                'orderLocationID' =>
+                    (int)$row['orderLocationID'],
+
+                'locationName' =>
+                    $row['locationName'],
+
+                'orderSalespersonID' =>
+                    $row['orderSalespersonID'] !== null
+                        ? (int)$row[
+                            'orderSalespersonID'
+                        ]
+                        : null,
+
+                'orderSalespersonName' =>
+                    $row['orderSalespersonName'],
+
+                'orderDate' =>
+                    (int)$row['orderDate'],
+
+                'orderDueDate' =>
+                    $row['orderDueDate'] !== null
+                        ? (int)$row[
+                            'orderDueDate'
+                        ]
+                        : null,
+
+                'orderPurchaseOrder' =>
+                    $row['orderPurchaseOrder'],
+
+                'orderScope' =>
+                    $row['orderScope'],
+
+                'orderStatusID' =>
+                    $row['orderStatusID'] !== null
+                        ? (int)$row['orderStatusID']
+                        : null,
+
+                'orderStatusName' =>
+                    $row['orderStatusName'],
+
+                'progress' => [
+                    'designComplete' =>
+                        (bool)$row[
+                            'orderIsDesignComplete'
+                        ],
+
+                    'estimateComplete' =>
+                        (bool)$row[
+                            'orderIsEstimateComplete'
+                        ],
+
+                    'sold' =>
+                        (bool)$row[
+                            'orderIsSold'
+                        ],
+
+                    'requiresPermit' =>
+                        (bool)$row[
+                            'orderRequiresPermit'
+                        ],
+
+                    'permitComplete' =>
+                        (bool)$row[
+                            'orderIsPermitComplete'
+                        ],
+
+                    'fulfillmentComplete' =>
+                        (bool)$row[
+                            'orderIsFulfillmentComplete'
+                        ],
+
+                    'completed' =>
+                        (bool)$row[
+                            'orderIsCompleted'
+                        ],
+
+                    'requiresInspection' =>
+                        (bool)$row[
+                            'orderRequiresInspection'
+                        ],
+
+                    'inspectionComplete' =>
+                        (bool)$row[
+                            'orderIsInspectionComplete'
+                        ],
+
+                    'collected' =>
+                        (bool)$row[
+                            'orderIsCollected'
+                        ],
+
+                    'closedOut' =>
+                        (bool)$row[
+                            'orderIsClosedOut'
+                        ]
+                ],
+
+                'orderCreatedAt' =>
+                    (int)$row['orderCreatedAt'],
+
+                'orderUpdatedAt' =>
+                    $row['orderUpdatedAt'] !== null
+                        ? (int)$row[
+                            'orderUpdatedAt'
+                        ]
+                        : null,
+
+                'orderIsNotValid' =>
+                    (int)$row[
+                        'orderIsNotValid'
+                    ]
+            ];
+        }
+
+        $result['rows'] = $rows;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[skyebot] loadOrderPage failed: ' .
+            $e->getMessage()
+        );
+    }
+
+    return $result;
+}
+
+/**
  * Search authoritative Locations by Location name for autocomplete.
  *
  * @param PDO|null $db
@@ -7495,6 +7817,309 @@ if ($type === "skyebot") {
         echo json_encode($searchResponse, JSON_UNESCAPED_SLASHES);
         exit;
     }
+
+    // =====================================================================
+    // 📦 Operational Order List
+    // =====================================================================
+
+    // Detect explicit Order-list request
+    $isOrderList =
+        preg_match(
+            '/\b(view|list|show|display)\b.*\borders?\b/',
+            $lowerQuery
+        ) ||
+        preg_match(
+            '/\borders?\b.*\b(view|list|page)\b/',
+            $lowerQuery
+        );
+
+    // Detect Order-list navigation
+    $isOrderListNavigation =
+        (
+            $_SESSION['lastList']['type']
+            ?? null
+        ) === 'orders' &&
+        (bool)preg_match(
+            '/\b(next|previous|prev)\s+page\b/',
+            $lowerQuery
+        );
+
+    if (
+        $isOrderList ||
+        $isOrderListNavigation
+    ) {
+        // Set default page
+        $page = 1;
+
+        // Resolve explicit page
+        if (
+            preg_match(
+                '/\bpage\s+(\d+)\b/',
+                $lowerQuery,
+                $pageMatch
+            )
+        ) {
+            $page = max(
+                1,
+                (int)$pageMatch[1]
+            );
+
+        // Resolve next page
+        } elseif (
+            preg_match(
+                '/\bnext\s+page\b/',
+                $lowerQuery
+            )
+        ) {
+            $page =
+                (int)(
+                    $_SESSION['lastList']['page']
+                    ?? 1
+                ) + 1;
+
+        // Resolve previous page
+        } elseif (
+            preg_match(
+                '/\b(prev|previous)\s+page\b/',
+                $lowerQuery
+            )
+        ) {
+            $page = max(
+                1,
+                (int)(
+                    $_SESSION['lastList']['page']
+                    ?? 2
+                ) - 1
+            );
+        }
+
+        // Load authoritative Order page
+        $operationalList =
+            loadOrderPage(
+                $db,
+                $page,
+                5
+            );
+
+        // Preserve list-navigation context
+        $_SESSION['lastList'] = [
+            'type' =>
+                'orders',
+
+            'page' =>
+                $operationalList['page']
+                ?? $page
+        ];
+
+        error_log(
+            '[skyebot] order list page=' .
+            (
+                $operationalList['page']
+                ?? $page
+            ) .
+            ' rows=' .
+            count(
+                $operationalList['rows']
+                ?? []
+            )
+        );
+
+        if (
+            is_array($operationalList) &&
+            isset($operationalList['rows'])
+        ) {
+            // Resolve authenticated actor
+            $actorContactId = (int)(
+                $_SESSION['SKYESOFT_contactId']
+                ?? $_SESSION['contactId']
+                ?? 0
+            );
+
+            // Resolve Activity Session
+            $activitySessionId = trim(
+                (string)(
+                    $_SESSION['activitySessionId']
+                    ?? session_id()
+                )
+            );
+
+            $activitySessionId =
+                $activitySessionId !== ''
+                    ? $activitySessionId
+                    : null;
+
+            // Resolve response details
+            $page = (int)(
+                $operationalList['page']
+                ?? 1
+            );
+
+            $pageSize = (int)(
+                $operationalList['pageSize']
+                ?? 5
+            );
+
+            $total = (int)(
+                $operationalList['total']
+                ?? 0
+            );
+
+            $totalPages = (int)(
+                $operationalList['totalPages']
+                ?? 0
+            );
+
+            $rowCount = count(
+                $operationalList['rows']
+            );
+
+            // Resolve order.read Action Type
+            $actionTypeStmt = $db->prepare("
+                SELECT actionTypeId
+                FROM tblActionTypes
+                WHERE actionName = 'order.read'
+                AND crud_class = 'read'
+                LIMIT 1
+            ");
+
+            $actionTypeStmt->execute();
+
+            $orderReadActionTypeId = (int)(
+                $actionTypeStmt->fetchColumn()
+                ?: 0
+            );
+
+            $actionId = null;
+
+            // Record one user-generated list read
+            if (
+                $actorContactId > 0 &&
+                $orderReadActionTypeId > 0
+            ) {
+                try {
+                    $actionId = insertActionPrompt([
+                        'actionTypeId' =>
+                            $orderReadActionTypeId,
+
+                        'contactId' =>
+                            $actorContactId,
+
+                        'origin' =>
+                            ACTION_ORIGIN_USER,
+
+                        'activitySessionId' =>
+                            $activitySessionId,
+
+                        'promptText' =>
+                            $query,
+
+                        'responseText' =>
+                            sprintf(
+                                'Displayed Orders page %d of %d (%d Orders shown; %d total).',
+                                $page,
+                                max(
+                                    1,
+                                    $totalPages
+                                ),
+                                $rowCount,
+                                $total
+                            ),
+
+                        'intent' =>
+                            'order.read',
+
+                        'intentConfidence' =>
+                            1.00,
+
+                        'latitude' =>
+                            $latitude,
+
+                        'longitude' =>
+                            $longitude,
+
+                        'actionPayloadData' => [
+                            'operation' =>
+                                'orders.list',
+
+                            'page' =>
+                                $page,
+
+                            'pageSize' =>
+                                $pageSize
+                        ],
+
+                        'actionResponseData' => [
+                            'success' =>
+                                true,
+
+                            'page' =>
+                                $page,
+
+                            'totalPages' =>
+                                $totalPages,
+
+                            'rowCount' =>
+                                $rowCount,
+
+                            'total' =>
+                                $total,
+
+                            'orderIDs' =>
+                                array_values(
+                                    array_map(
+                                        static function (
+                                            array $order
+                                        ): int {
+                                            return (int)(
+                                                $order['orderID']
+                                                ?? 0
+                                            );
+                                        },
+                                        $operationalList[
+                                            'rows'
+                                        ]
+                                    )
+                                )
+                        ]
+                    ], $db);
+
+                } catch (Throwable $e) {
+                    // Preserve list if audit logging fails
+                    error_log(
+                        '[askOpenAI] Order-list Action logging failed: ' .
+                        $e->getMessage()
+                    );
+                }
+            }
+
+            // Return authoritative list response
+            header(
+                'Content-Type: application/json'
+            );
+
+            echo json_encode([
+                'success' =>
+                    true,
+
+                'type' =>
+                    'order_list',
+
+                'list' =>
+                    $operationalList,
+
+                'actionID' =>
+                    $actionId,
+
+                'activitySessionId' =>
+                    $activitySessionId,
+
+                'error' =>
+                    null
+            ], JSON_UNESCAPED_SLASHES);
+
+            exit;
+        }
+    }    
 
     // Operational contact list
     $isContactList =
