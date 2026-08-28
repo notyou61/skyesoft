@@ -11160,6 +11160,151 @@ window.SkyIndex = {
     },
 
     /**
+     * Submit governed Order edits to the authoritative server.
+     *
+     * @param {number} orderId
+     * @return {Promise<void>}
+     */
+    async saveOrderEditWorkspace(orderId) {
+        const resolvedOrderId = Number(
+            orderId || 0
+        );
+
+        const saveButton = document.getElementById(
+            'orderEditSaveButton'
+        );
+
+        try {
+            // Build and validate edit payload
+            const payload = this.buildOrderEditPayload(
+                resolvedOrderId
+            );
+
+            // Set saving state
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.textContent = 'Saving...';
+                saveButton.style.background = '#999';
+                saveButton.style.borderColor = '#999';
+                saveButton.style.cursor = 'wait';
+            }
+
+            // Resolve browser coordinates for Action audit
+            let actionLocation =
+                await this.getLocationSafe();
+
+            // Cache valid coordinates
+            if (
+                actionLocation?.latitude !== null &&
+                actionLocation?.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+
+            } else if (this.lastLocation) {
+                actionLocation = this.lastLocation;
+            }
+
+            // Add Action audit coordinates
+            payload.latitude =
+                actionLocation?.latitude ?? null;
+
+            payload.longitude =
+                actionLocation?.longitude ?? null;
+
+            console.log(
+                '[Order Edit] Submitting governed payload:',
+                payload
+            );
+
+            // Submit authoritative Order update
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }
+            );
+
+            const responseText =
+                await response.text();
+
+            if (!response.ok) {
+                throw new Error(
+                    `HTTP ${response.status}: ${
+                        responseText ||
+                        'No response body'
+                    }`
+                );
+            }
+
+            let data;
+
+            try {
+                data = JSON.parse(responseText);
+
+            } catch (error) {
+                throw new Error(
+                    'The server returned invalid JSON.'
+                );
+            }
+
+            if (!data?.success || !data?.order) {
+                throw new Error(
+                    data?.error ||
+                    'The Order could not be updated.'
+                );
+            }
+
+            console.log(
+                '[Order Edit] Order updated:',
+                data
+            );
+
+            // Discard stale workspace data
+            this._currentOrderWorkspaceData = null;
+
+            // Display success message
+            this.appendSystemLine(
+                `Christy Work Order ${
+                    data.order.orderChristyNumber ||
+                    resolvedOrderId
+                } was updated successfully.`
+            );
+
+            // Reload authoritative Order in view mode
+            await this.cancelOrderEditWorkspace(
+                resolvedOrderId
+            );
+
+        } catch (error) {
+            console.error(
+                '[Order Edit] Update failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to update Order: ${
+                    error?.message ||
+                    'Unknown error'
+                }`
+            );
+
+            // Restore Save button
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save';
+                saveButton.style.background = '#0d9488';
+                saveButton.style.borderColor = '#0d9488';
+                saveButton.style.cursor = 'pointer';
+            }
+        }
+    },
+
+    /**
      * Retrieve and display an authoritative Order card
      * on the command-output surface.
      */
@@ -12339,7 +12484,6 @@ window.SkyIndex = {
                 noteSectionContent
             )}
         `;
-
         // Build view/edit actions
         const actionsHtml = isEditing
             ? `
@@ -12367,7 +12511,6 @@ window.SkyIndex = {
                 <button
                     type="button"
                     id="orderEditSaveButton"
-                    disabled
                     onclick="
                         SkyIndex.saveOrderEditWorkspace(
                             ${orderId}
@@ -12377,12 +12520,11 @@ window.SkyIndex = {
                         padding:5px 14px;
                         border:1px solid #0d9488;
                         border-radius:6px;
-                        background:#999;
+                        background:#0d9488;
                         color:#fff;
                         font-size:0.85em;
                         font-weight:550;
-                        border-color:#999;
-                        cursor:not-allowed;
+                        cursor:pointer;
                     "
                 >
                     Save

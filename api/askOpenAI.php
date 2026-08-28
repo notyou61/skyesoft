@@ -4723,6 +4723,694 @@ if ($type === 'orderDetail') {
 }
 
 // =====================================================
+// ORDER UPDATE (mutation) — Order Edit v1.0
+// =====================================================
+
+if ($type === 'orderUpdate') {
+
+    // Return governed Order-update error
+    $returnOrderUpdateError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type'    => 'order_update',
+            'error'   => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    // Resolve authenticated actor
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    if ($actorContactId <= 0) {
+        $returnOrderUpdateError(
+            'An authenticated Contact is required.'
+        );
+    }
+
+    // Resolve authoritative activity session
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+
+    $activitySessionId = $activitySessionId !== ''
+        ? $activitySessionId
+        : null;
+
+    // Resolve Action audit coordinates
+    $latitude = is_numeric(
+        $input['latitude'] ?? null
+    )
+        ? (float)$input['latitude']
+        : null;
+
+    $longitude = is_numeric(
+        $input['longitude'] ?? null
+    )
+        ? (float)$input['longitude']
+        : null;
+
+    // Resolve payload sections
+    $jobsite = is_array(
+        $input['jobsite'] ?? null
+    )
+        ? $input['jobsite']
+        : [];
+
+    $billing = is_array(
+        $input['billing'] ?? null
+    )
+        ? $input['billing']
+        : [];
+
+    $orderInput = is_array(
+        $input['order'] ?? null
+    )
+        ? $input['order']
+        : [];
+
+    // Resolve submitted identifiers
+    $orderId = (int)(
+        $input['orderID'] ?? 0
+    );
+
+    $jobsiteContactId = (int)(
+        $jobsite['jobsiteContactID'] ?? 0
+    );
+
+    $billToContactId = (int)(
+        $billing['billToContactID'] ?? 0
+    );
+
+    $orderTypeId = (int)(
+        $orderInput['typeID'] ?? 0
+    );
+
+    $orderStatusId = (int)(
+        $orderInput['statusID'] ?? 0
+    );
+
+    // Resolve submitted Order values
+    $christyNumber = trim((string)(
+        $orderInput['christyNumber'] ?? ''
+    ));
+
+    $isProposal = !empty(
+        $orderInput['isProposal']
+    ) ? 1 : 0;
+
+    $orderDate = (int)(
+        $orderInput['date'] ?? 0
+    );
+
+    $orderDueDate = (int)(
+        $orderInput['dueDate'] ?? 0
+    );
+
+    $purchaseOrder = trim((string)(
+        $orderInput['purchaseOrder'] ?? ''
+    ));
+
+    $orderScope = trim((string)(
+        $orderInput['scope'] ?? ''
+    ));
+
+    $orderNote = trim((string)(
+        $orderInput['note'] ?? ''
+    ));
+
+    // Validate required submitted values
+    if ($orderId <= 0) {
+        $returnOrderUpdateError(
+            'A valid Order ID is required.'
+        );
+    }
+
+    if ($billToContactId <= 0) {
+        $returnOrderUpdateError(
+            'A valid Bill-To Contact is required.'
+        );
+    }
+
+    if ($orderTypeId <= 0) {
+        $returnOrderUpdateError(
+            'A valid Order Type is required.'
+        );
+    }
+
+    if ($orderStatusId <= 0) {
+        $returnOrderUpdateError(
+            'A valid Order Status is required.'
+        );
+    }
+
+    if ($orderDate <= 0) {
+        $returnOrderUpdateError(
+            'A valid Unix Order Date is required.'
+        );
+    }
+
+    // Enforce database field lengths
+    $christyNumber = mb_substr(
+        $christyNumber,
+        0,
+        20
+    );
+
+    $purchaseOrder = mb_substr(
+        $purchaseOrder,
+        0,
+        100
+    );
+
+    // Normalize nullable values
+    $christyNumber = $christyNumber !== ''
+        ? $christyNumber
+        : null;
+
+    $jobsiteContactId = $jobsiteContactId > 0
+        ? $jobsiteContactId
+        : null;
+
+    $orderDueDate = $orderDueDate > 0
+        ? $orderDueDate
+        : null;
+
+    $purchaseOrder = $purchaseOrder !== ''
+        ? $purchaseOrder
+        : null;
+
+    $orderScope = $orderScope !== ''
+        ? $orderScope
+        : null;
+
+    $orderNote = $orderNote !== ''
+        ? $orderNote
+        : null;
+
+    try {
+        // Confirm authenticated actor
+        $actorStmt = $db->prepare("
+            SELECT contactId
+            FROM tblContacts
+            WHERE contactId = :contactId
+              AND COALESCE(contactIsNotValid, 0) = 0
+              AND COALESCE(isActive, 1) = 1
+            LIMIT 1
+        ");
+
+        $actorStmt->execute([
+            'contactId' => $actorContactId
+        ]);
+
+        if (!$actorStmt->fetchColumn()) {
+            $returnOrderUpdateError(
+                'Authenticated Contact was not found.'
+            );
+        }
+
+        // Load existing authoritative Order
+        $existingStmt = $db->prepare("
+            SELECT
+                orderID,
+                orderChristyNumber,
+                orderTypeID,
+                orderIsProposal,
+                orderEntityID,
+                orderLocationID,
+                orderBillToContactID,
+                orderJobsiteContactID,
+                orderSalespersonID,
+                orderSalespersonName,
+                orderDate,
+                orderDueDate,
+                orderPurchaseOrder,
+                orderScope,
+                orderStatusID,
+                orderNote,
+                orderCreatedAt,
+                orderUpdatedAt
+            FROM tblOrders
+            WHERE orderID = :orderId
+              AND COALESCE(orderIsNotValid, 0) = 0
+            LIMIT 1
+        ");
+
+        $existingStmt->execute([
+            'orderId' => $orderId
+        ]);
+
+        $existingOrder = $existingStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+        if (!is_array($existingOrder)) {
+            $returnOrderUpdateError(
+                'Order was not found.'
+            );
+        }
+
+        // Preserve immutable Order relationships
+        $orderEntityId = (int)(
+            $existingOrder['orderEntityID'] ?? 0
+        );
+
+        $locationId = (int)(
+            $existingOrder['orderLocationID'] ?? 0
+        );
+
+        if (
+            $orderEntityId <= 0 ||
+            $locationId <= 0
+        ) {
+            $returnOrderUpdateError(
+                'Order customer or jobsite data is invalid.'
+            );
+        }
+
+        // Confirm authoritative Order Type
+        $typeStmt = $db->prepare("
+            SELECT
+                orderTypeID,
+                orderTypeName
+            FROM tblOrderTypes
+            WHERE orderTypeID = :orderTypeId
+            LIMIT 1
+        ");
+
+        $typeStmt->execute([
+            'orderTypeId' => $orderTypeId
+        ]);
+
+        $orderType = $typeStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+        if (!is_array($orderType)) {
+            $returnOrderUpdateError(
+                'Order Type was not found.'
+            );
+        }
+
+        // Confirm authoritative Order Status
+        $statusStmt = $db->prepare("
+            SELECT
+                orderStatusID,
+                orderStatusName
+            FROM tblOrderStatuses
+            WHERE orderStatusID = :orderStatusId
+            LIMIT 1
+        ");
+
+        $statusStmt->execute([
+            'orderStatusId' => $orderStatusId
+        ]);
+
+        $orderStatus = $statusStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+        if (!is_array($orderStatus)) {
+            $returnOrderUpdateError(
+                'Order Status was not found.'
+            );
+        }
+
+        // Confirm authoritative Billing Contact
+        $billingStmt = $db->prepare("
+            SELECT
+                c.contactId,
+                c.contactEntityId,
+                c.contactLocationId
+            FROM tblContacts c
+            INNER JOIN tblLocations bl
+                ON bl.locationId = c.contactLocationId
+               AND COALESCE(
+                    bl.locationIsNotValid,
+                    0
+               ) = 0
+            WHERE c.contactId = :contactId
+              AND c.contactEntityId = :entityId
+              AND COALESCE(c.contactIsBilling, 0) = 1
+              AND COALESCE(c.contactIsNotValid, 0) = 0
+              AND COALESCE(c.isActive, 1) = 1
+            LIMIT 1
+        ");
+
+        $billingStmt->execute([
+            'contactId' => $billToContactId,
+            'entityId'  => $orderEntityId
+        ]);
+
+        $billingContact = $billingStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+        if (!is_array($billingContact)) {
+            $returnOrderUpdateError(
+                'The selected Bill-To Contact is not valid for this Entity.'
+            );
+        }
+
+        $billingLocationId = (int)(
+            $billingContact['contactLocationId'] ?? 0
+        );
+
+        if ($billingLocationId <= 0) {
+            $returnOrderUpdateError(
+                'Bill-To Contact has no valid Billing Location.'
+            );
+        }
+
+        // Confirm optional Jobsite Contact
+        if ($jobsiteContactId !== null) {
+            $jobsiteContactStmt = $db->prepare("
+                SELECT contactId
+                FROM tblContacts
+                WHERE contactId = :contactId
+                  AND contactLocationId = :locationId
+                  AND contactEntityId = :entityId
+                  AND COALESCE(
+                        contactIsNotValid,
+                        0
+                  ) = 0
+                  AND COALESCE(isActive, 1) = 1
+                LIMIT 1
+            ");
+
+            $jobsiteContactStmt->execute([
+                'contactId'  => $jobsiteContactId,
+                'locationId' => $locationId,
+                'entityId'   => $orderEntityId
+            ]);
+
+            if (!$jobsiteContactStmt->fetchColumn()) {
+                $returnOrderUpdateError(
+                    'The selected Jobsite Contact is not valid.'
+                );
+            }
+        }
+
+        // Confirm unique Christy Work Order number
+        if ($christyNumber !== null) {
+            $numberStmt = $db->prepare("
+                SELECT orderID
+                FROM tblOrders
+                WHERE orderChristyNumber = :christyNumber
+                  AND orderID <> :orderId
+                LIMIT 1
+            ");
+
+            $numberStmt->execute([
+                'christyNumber' => $christyNumber,
+                'orderId'       => $orderId
+            ]);
+
+            if ($numberStmt->fetchColumn()) {
+                $returnOrderUpdateError(
+                    'That Christy Work Order number already exists.'
+                );
+            }
+        }
+
+        // Resolve authoritative order.update Action Type
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = :actionName
+              AND crud_class = 'update'
+            LIMIT 1
+        ");
+
+        $actionTypeStmt->execute([
+            'actionName' => 'order.update'
+        ]);
+
+        $orderUpdateActionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?: 0
+        );
+
+        if ($orderUpdateActionTypeId <= 0) {
+            $returnOrderUpdateError(
+                'Order update Action Type is not configured.'
+            );
+        }
+
+        // Initialize authoritative timestamp
+        $updatedUnix = time();
+
+        // Build normalized before state
+        $beforeState = [
+            'christyNumber' => $existingOrder[
+                'orderChristyNumber'
+            ],
+            'typeID' => (int)$existingOrder[
+                'orderTypeID'
+            ],
+            'isProposal' => (bool)$existingOrder[
+                'orderIsProposal'
+            ],
+            'statusID' => (int)$existingOrder[
+                'orderStatusID'
+            ],
+            'jobsiteContactID' =>
+                $existingOrder['orderJobsiteContactID']
+                    !== null
+                        ? (int)$existingOrder[
+                            'orderJobsiteContactID'
+                        ]
+                        : null,
+            'billToContactID' => (int)$existingOrder[
+                'orderBillToContactID'
+            ],
+            'date' => (int)$existingOrder[
+                'orderDate'
+            ],
+            'dueDate' =>
+                $existingOrder['orderDueDate'] !== null
+                    ? (int)$existingOrder[
+                        'orderDueDate'
+                    ]
+                    : null,
+            'purchaseOrder' => $existingOrder[
+                'orderPurchaseOrder'
+            ],
+            'scope' => $existingOrder[
+                'orderScope'
+            ],
+            'note' => $existingOrder[
+                'orderNote'
+            ]
+        ];
+
+        // Build normalized after state
+        $afterState = [
+            'christyNumber' => $christyNumber,
+            'typeID'        => $orderTypeId,
+            'isProposal'    => (bool)$isProposal,
+            'statusID'      => $orderStatusId,
+            'jobsiteContactID' =>
+                $jobsiteContactId,
+            'billToContactID' =>
+                $billToContactId,
+            'date'          => $orderDate,
+            'dueDate'       => $orderDueDate,
+            'purchaseOrder' => $purchaseOrder,
+            'scope'         => $orderScope,
+            'note'          => $orderNote
+        ];
+
+        // Begin atomic Order and Action update
+        $db->beginTransaction();
+
+        // Update authoritative Order
+        $updateStmt = $db->prepare("
+            UPDATE tblOrders
+            SET
+                orderChristyNumber = :christyNumber,
+                orderTypeID = :orderTypeId,
+                orderIsProposal = :isProposal,
+                orderBillToContactID = :billToContactId,
+                orderJobsiteContactID = :jobsiteContactId,
+                orderDate = :orderDate,
+                orderDueDate = :orderDueDate,
+                orderPurchaseOrder = :purchaseOrder,
+                orderScope = :orderScope,
+                orderStatusID = :orderStatusId,
+                orderNote = :orderNote,
+                orderUpdatedAt = :updatedUnix
+            WHERE orderID = :orderId
+              AND COALESCE(orderIsNotValid, 0) = 0
+        ");
+
+        $updateStmt->execute([
+            'christyNumber'   => $christyNumber,
+            'orderTypeId'     => $orderTypeId,
+            'isProposal'      => $isProposal,
+            'billToContactId' => $billToContactId,
+            'jobsiteContactId'=> $jobsiteContactId,
+            'orderDate'       => $orderDate,
+            'orderDueDate'    => $orderDueDate,
+            'purchaseOrder'   => $purchaseOrder,
+            'orderScope'      => $orderScope,
+            'orderStatusId'   => $orderStatusId,
+            'orderNote'       => $orderNote,
+            'updatedUnix'     => $updatedUnix,
+            'orderId'         => $orderId
+        ]);
+
+        // Build governed Action payload
+        $actionPayloadData = [
+            'operation' => 'order.update',
+            'orderID'   => $orderId,
+            'before'    => $beforeState,
+            'after'     => $afterState
+        ];
+
+        // Insert required Order update Action
+        $actionId = insertActionPrompt([
+            'actionTypeId'      =>
+                $orderUpdateActionTypeId,
+            'contactId'         =>
+                $actorContactId,
+            'origin'            =>
+                ACTION_ORIGIN_USER,
+            'createdUnixTime'   =>
+                $updatedUnix,
+            'activitySessionId' =>
+                $activitySessionId,
+            'promptText'        =>
+                'Update Order',
+            'responseText'      => sprintf(
+                'Updated Order #%d%s.',
+                $orderId,
+                $christyNumber !== null
+                    ? ' — Christy Work Order ' .
+                        $christyNumber
+                    : ''
+            ),
+            'intent'            =>
+                'order.update',
+            'intentConfidence'  =>
+                1.00,
+            'latitude'          =>
+                $latitude,
+            'longitude'         =>
+                $longitude,
+            'actionPayloadData' =>
+                $actionPayloadData,
+            'actionResponseData'=> [
+                'success'       => true,
+                'orderID'       => $orderId,
+                'christyNumber' => $christyNumber
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Order update Action history could not be created.'
+            );
+        }
+
+        // Commit Order and Action together
+        $db->commit();
+
+        // Return updated authoritative Order
+        echo json_encode([
+            'success' => true,
+            'type'    => 'order_update',
+            'order'   => [
+                'orderID' =>
+                    $orderId,
+                'orderChristyNumber' =>
+                    $christyNumber,
+                'orderTypeID' =>
+                    $orderTypeId,
+                'orderTypeName' =>
+                    $orderType['orderTypeName'],
+                'orderIsProposal' =>
+                    $isProposal,
+                'orderEntityID' =>
+                    $orderEntityId,
+                'orderLocationID' =>
+                    $locationId,
+                'orderBillToContactID' =>
+                    $billToContactId,
+                'billingLocationID' =>
+                    $billingLocationId,
+                'orderJobsiteContactID' =>
+                    $jobsiteContactId,
+                'orderSalespersonID' =>
+                    (int)$existingOrder[
+                        'orderSalespersonID'
+                    ],
+                'orderSalespersonName' =>
+                    $existingOrder[
+                        'orderSalespersonName'
+                    ],
+                'orderDate' =>
+                    $orderDate,
+                'orderDueDate' =>
+                    $orderDueDate,
+                'orderPurchaseOrder' =>
+                    $purchaseOrder,
+                'orderScope' =>
+                    $orderScope,
+                'orderStatusID' =>
+                    $orderStatusId,
+                'orderStatusName' =>
+                    $orderStatus['orderStatusName'],
+                'orderNote' =>
+                    $orderNote,
+                'orderCreatedAt' =>
+                    (int)$existingOrder[
+                        'orderCreatedAt'
+                    ],
+                'orderUpdatedAt' =>
+                    $updatedUnix,
+                'orderIsNotValid' =>
+                    0
+            ],
+            'actionID' => $actionId,
+            'error'    => null
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+
+    } catch (Throwable $e) {
+        // Roll back partial Order update
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        error_log(
+            '[askOpenAI] orderUpdate failed: ' .
+            $e->getMessage()
+        );
+
+        // Return duplicate-number conflict
+        if (
+            $e instanceof PDOException &&
+            (string)$e->getCode() === '23000'
+        ) {
+            $returnOrderUpdateError(
+                'That Christy Work Order number already exists.'
+            );
+        }
+
+        $returnOrderUpdateError(
+            'Unable to update the Order.'
+        );
+    }
+}
+
+// =====================================================
 // ORDER CREATE (mutation) — Order Creation v1.0
 // =====================================================
 
