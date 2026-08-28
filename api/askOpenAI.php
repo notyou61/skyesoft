@@ -2624,8 +2624,8 @@ function loadOrderPage(
             ) = 0
 
             ORDER BY
-                o.orderCreatedAt ASC,
-                o.orderID ASC
+                o.orderDate DESC,
+                o.orderID DESC
 
             LIMIT :limit
             OFFSET :offset
