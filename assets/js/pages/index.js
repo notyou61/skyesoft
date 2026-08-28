@@ -11434,11 +11434,11 @@ window.SkyIndex = {
             );
         };
 
-        // Resolve safe display values
-        const christyNumber = this.escapeHtml(
-            order.orderChristyNumber ||
-            `Order #${orderId}`
-        );
+        const christyNumber =
+            this.escapeHtml(
+                order?.orderChristyNumber ||
+                String(orderId)
+            );
 
         const entityName = this.escapeHtml(
             order.entityName || 'No Customer'
@@ -12157,10 +12157,11 @@ window.SkyIndex = {
             </div>
         `;
 
-        const christyNumber = this.escapeHtml(
-            order.orderChristyNumber ||
-            `Order #${order.orderID}`
-        );
+        const christyNumber =
+            this.escapeHtml(
+                order?.orderChristyNumber ||
+                String(orderId)
+            );
 
         const entityName = this.escapeHtml(
             order.entityName || 'No Entity'
@@ -12779,6 +12780,515 @@ window.SkyIndex = {
 
     // #endregion
 
+    // #region 📦 Order List Pagination
+
+    /**
+     * Load an authoritative Order-list page.
+     *
+     * @param {number} page
+     * @return {Promise<void>}
+     */
+    async loadOrderPage(page = 1) {
+        // Normalize requested page
+        const requestedPage = Math.max(
+            1,
+            Number(page) || 1
+        );
+
+        // Request authoritative page
+        await this.executeAICommand(
+            `show orders page ${requestedPage}`
+        );
+    },
+
+    /**
+     * Display an Order selected from the current list.
+     * Does not perform another server read.
+     *
+     * @param {number} orderId
+     */
+    showOrderFromList(orderId) {
+        const resolvedOrderId = Number(
+            orderId || 0
+        );
+
+        if (
+            !Number.isInteger(resolvedOrderId) ||
+            resolvedOrderId <= 0
+        ) {
+            this.appendSystemLine(
+                'A valid Order ID is required.'
+            );
+            return;
+        }
+
+        const order = (
+            this._currentOrderListRows || []
+        ).find(row =>
+            Number(row?.orderID || 0) ===
+            resolvedOrderId
+        );
+
+        if (!order) {
+            this.appendSystemLine(
+                'The selected Order is no longer available.'
+            );
+            return;
+        }
+
+        // Render existing Order surface card
+        this.appendOrderCard(
+            order
+        );
+    },
+
+    // #endregion
+
+    // #region 📦 Order List Card (paginated)
+
+    /**
+     * Render an authoritative paginated Order list.
+     *
+     * @param {Object} list
+     */
+    renderOrderListCard(list) {
+        if (
+            !list ||
+            !Array.isArray(list.rows)
+        ) {
+            this.appendSystemLine(
+                'No Orders to display.'
+            );
+            return;
+        }
+
+        // Resolve pagination values
+        const page = Math.max(
+            1,
+            Number(list.page) || 1
+        );
+
+        const pageSize = Math.max(
+            1,
+            Number(list.pageSize) || 25
+        );
+
+        const totalPages = Math.max(
+            1,
+            Number(list.totalPages) || 1
+        );
+
+        const total =
+            Number(list.total) ||
+            list.rows.length;
+
+        const rows = list.rows;
+
+        // Preserve current authoritative list rows
+        this._currentOrderListRows = rows;
+
+        // Format Phoenix Order date
+        const formatDate = unixValue => {
+            const unixTimestamp = Number(
+                unixValue || 0
+            );
+
+            if (!unixTimestamp) return '—';
+
+            const date = new Date(
+                unixTimestamp * 1000
+            );
+
+            if (Number.isNaN(date.getTime())) {
+                return '—';
+            }
+
+            return date.toLocaleDateString(
+                'en-US',
+                {
+                    timeZone: 'America/Phoenix',
+                    month:    'short',
+                    day:      'numeric',
+                    year:     'numeric'
+                }
+            );
+        };
+
+        // Build Order rows
+        const rowsHtml = rows
+            .map((order, index) => {
+                const orderId = Number(
+                    order?.orderID || 0
+                );
+
+                const christyNumber =
+                    this.escapeHtml(
+                        order?.orderChristyNumber ||
+                        String(orderId)
+                    );
+
+                const entityName =
+                    this.escapeHtml(
+                        order?.entityName ||
+                        'No Customer'
+                    );
+
+                const locationName =
+                    this.escapeHtml(
+                        order?.locationName ||
+                        'Unnamed Location'
+                    );
+
+                const orderType =
+                    this.escapeHtml(
+                        order?.orderTypeName ||
+                        '—'
+                    );
+
+                const orderStatus =
+                    this.escapeHtml(
+                        order?.orderStatusName ||
+                        '—'
+                    );
+
+                const lifecycleLabel =
+                    Number(
+                        order?.orderIsProposal
+                    ) === 1
+                        ? 'Proposal'
+                        : 'Order';
+
+                const rowNumber =
+                    index +
+                    1 +
+                    (
+                        (page - 1) *
+                        pageSize
+                    );
+
+                const workOrderHtml =
+                    orderId > 0
+                        ? `
+                            <a
+                                href="#"
+                                onclick="
+                                    event.preventDefault();
+                                    SkyIndex.showOrderFromList(
+                                        ${orderId}
+                                    );
+                                "
+                                style="
+                                    color:#117a8b;
+                                    font-weight:650;
+                                    text-decoration:none;
+                                "
+                            >
+                                Work Order ${christyNumber}
+                            </a>
+                        `
+                        : `
+                            <span style="
+                                color:#222;
+                                font-weight:650;
+                            ">
+                                Work Order ${christyNumber}
+                            </span>
+                        `;
+
+                return `
+                    <div style="
+                        padding:10px 0;
+                        ${
+                            index < rows.length - 1
+                                ? 'border-bottom:1px solid #f0f0f0;'
+                                : ''
+                        }
+                    ">
+                        <div style="
+                            display:flex;
+                            flex-wrap:wrap;
+                            align-items:center;
+                            gap:7px;
+                            color:#222;
+                        ">
+                            <span>
+                                ${rowNumber}.
+                            </span>
+
+                            ${workOrderHtml}
+
+                            <span style="
+                                padding:2px 7px;
+                                border-radius:999px;
+                                background:#e8f4f6;
+                                color:#117a8b;
+                                font-size:0.72em;
+                                font-weight:700;
+                            ">
+                                ${orderStatus}
+                            </span>
+
+                            <span style="
+                                padding:2px 7px;
+                                border-radius:999px;
+                                background:#f0f0f0;
+                                color:#555;
+                                font-size:0.72em;
+                                font-weight:600;
+                            ">
+                                ${lifecycleLabel}
+                            </span>
+                        </div>
+
+                        <div style="
+                            margin-top:4px;
+                            color:#444;
+                            font-size:0.86em;
+                            font-weight:600;
+                        ">
+                            ${entityName}
+                        </div>
+
+                        <div style="
+                            margin-top:2px;
+                            color:#666;
+                            font-size:0.84em;
+                        ">
+                            ${locationName}
+                        </div>
+
+                        <div style="
+                            display:flex;
+                            flex-wrap:wrap;
+                            gap:5px 16px;
+                            margin-top:4px;
+                            color:#666;
+                            font-size:0.82em;
+                        ">
+                            <span>
+                                Type: ${orderType}
+                            </span>
+
+                            <span>
+                                Order Date:
+                                ${formatDate(
+                                    order?.orderDate
+                                )}
+                            </span>
+
+                            <span>
+                                Due Date:
+                                ${formatDate(
+                                    order?.orderDueDate
+                                )}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            })
+            .join('');
+
+        // Resolve pagination states
+        const hasPrevious = page > 1;
+        const hasNext = page < totalPages;
+
+        const previousHtml = hasPrevious
+            ? `
+                <a
+                    href="#"
+                    onclick="
+                        event.preventDefault();
+                        SkyIndex.loadOrderPage(
+                            ${page - 1}
+                        );
+                    "
+                    style="
+                        color:#117a8b;
+                        font-weight:600;
+                        text-decoration:none;
+                    "
+                >
+                    ← Back
+                </a>
+            `
+            : `
+                <span style="color:#aaa;">
+                    ← Back
+                </span>
+            `;
+
+        const nextHtml = hasNext
+            ? `
+                <a
+                    href="#"
+                    onclick="
+                        event.preventDefault();
+                        SkyIndex.loadOrderPage(
+                            ${page + 1}
+                        );
+                    "
+                    style="
+                        color:#117a8b;
+                        font-weight:600;
+                        text-decoration:none;
+                    "
+                >
+                    Next →
+                </a>
+            `
+            : `
+                <span style="color:#aaa;">
+                    Next →
+                </span>
+            `;
+
+        // Build stable Order list card
+        const html = `
+            <div
+                id="skyOrderListCard"
+                class="commandLine system html"
+            >
+                <div
+                    class="result-card"
+                    style="
+                        border-left:5px solid #117a8b;
+                        background:#fff;
+                        width:100%;
+                        max-width:100%;
+                    "
+                >
+                    <div
+                        class="result-header"
+                        style="
+                            display:flex;
+                            justify-content:space-between;
+                            align-items:center;
+                            gap:8px;
+                            padding:12px 16px;
+                        "
+                    >
+                        <div style="
+                            display:flex;
+                            align-items:center;
+                            gap:8px;
+                        ">
+                            <span class="result-icon">
+                                📦
+                            </span>
+
+                            <div style="
+                                display:flex;
+                                flex-direction:column;
+                            ">
+                                <strong
+                                    class="result-title"
+                                    style="color:#222;"
+                                >
+                                    Orders
+                                </strong>
+
+                                <small style="
+                                    margin-top:1px;
+                                    color:#666;
+                                    font-size:0.78em;
+                                    line-height:1.2;
+                                ">
+                                    Page ${page} of ${totalPages}
+                                    · showing ${rows.length} of ${total}
+                                </small>
+                            </div>
+                        </div>
+
+                        <span style="
+                            padding:3px 8px;
+                            border:1px solid
+                                rgba(17,122,139,0.25);
+                            border-radius:4px;
+                            background:
+                                rgba(17,122,139,0.12);
+                            color:#117a8b;
+                            font-family:monospace;
+                            font-size:0.85em;
+                            font-weight:bold;
+                        ">
+                            LIST
+                        </span>
+                    </div>
+
+                    <div
+                        class="result-body"
+                        style="padding:4px 16px 12px;"
+                    >
+                        ${
+                            rowsHtml ||
+                            `
+                                <div style="
+                                    padding:12px 0;
+                                    color:#666;
+                                ">
+                                    No Orders found.
+                                </div>
+                            `
+                        }
+                    </div>
+
+                    <div style="
+                        display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        gap:12px;
+                        padding:10px 16px;
+                        border-top:1px solid #eee;
+                        background:#fafafa;
+                        font-size:0.85em;
+                    ">
+                        <div>
+                            ${previousHtml}
+                        </div>
+
+                        <div style="color:#666;">
+                            Page ${page} of ${totalPages}
+                        </div>
+
+                        <div>
+                            ${nextHtml}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Replace existing list page or append first page
+        const existingCard =
+            document.getElementById(
+                'skyOrderListCard'
+            );
+
+        if (existingCard) {
+            const wrapper =
+                document.createElement('div');
+
+            wrapper.innerHTML = html.trim();
+
+            const replacementCard =
+                wrapper.firstElementChild;
+
+            if (replacementCard) {
+                existingCard.replaceWith(
+                    replacementCard
+                );
+            }
+
+            return;
+        }
+
+        this.appendSystemHtml(
+            html
+        );
+    },
+
+    // #endregion
+
     // #region 🔎 AI Query Information Card
     renderAIQueryCard(data = {}) {
 
@@ -13058,6 +13568,16 @@ window.SkyIndex = {
             // --------------------------------------------------
             if (data?.type === 'location_detail' && data?.location) {
                 this.appendLocationCard(data.location);
+                return;
+            }
+
+            // --------------------------------------------------
+            // 📦 ORDER LIST CARD
+            // --------------------------------------------------
+            if (data?.type === 'order_list' && data?.list) {
+                this.renderOrderListCard(
+                    data.list
+                );
                 return;
             }
 
