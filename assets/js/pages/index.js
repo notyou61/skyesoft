@@ -11200,23 +11200,29 @@ window.SkyIndex = {
             orderId || 0
         );
 
-        const saveButton = document.getElementById(
-            'orderEditSaveButton'
-        );
+        const saveButton =
+            document.getElementById(
+                'orderEditSaveButton'
+            );
 
         try {
             // Build and validate edit payload
-            const payload = this.buildOrderEditPayload(
-                resolvedOrderId
-            );
+            const payload =
+                this.buildOrderEditPayload(
+                    resolvedOrderId
+                );
 
             // Set saving state
             if (saveButton) {
                 saveButton.disabled = true;
-                saveButton.textContent = 'Saving...';
-                saveButton.style.background = '#999';
-                saveButton.style.borderColor = '#999';
-                saveButton.style.cursor = 'wait';
+                saveButton.textContent =
+                    'Saving...';
+                saveButton.style.background =
+                    '#999';
+                saveButton.style.borderColor =
+                    '#999';
+                saveButton.style.cursor =
+                    'wait';
             }
 
             // Resolve browser coordinates for Action audit
@@ -11225,21 +11231,27 @@ window.SkyIndex = {
 
             // Cache valid coordinates
             if (
-                actionLocation?.latitude !== null &&
-                actionLocation?.longitude !== null
+                actionLocation?.latitude !==
+                    null &&
+                actionLocation?.longitude !==
+                    null
             ) {
-                this.lastLocation = actionLocation;
+                this.lastLocation =
+                    actionLocation;
 
             } else if (this.lastLocation) {
-                actionLocation = this.lastLocation;
+                actionLocation =
+                    this.lastLocation;
             }
 
             // Add Action audit coordinates
             payload.latitude =
-                actionLocation?.latitude ?? null;
+                actionLocation?.latitude ??
+                null;
 
             payload.longitude =
-                actionLocation?.longitude ?? null;
+                actionLocation?.longitude ??
+                null;
 
             console.log(
                 '[Order Edit] Submitting governed payload:',
@@ -11253,9 +11265,12 @@ window.SkyIndex = {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type':
+                            'application/json'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(
+                        payload
+                    )
                 }
             );
 
@@ -11284,7 +11299,10 @@ window.SkyIndex = {
                 );
             }
 
-            if (!data?.success || !data?.order) {
+            if (
+                !data?.success ||
+                !data?.order
+            ) {
                 throw new Error(
                     data?.error ||
                     'The Order could not be updated.'
@@ -11296,7 +11314,7 @@ window.SkyIndex = {
                 data
             );
 
-            // Cache complete authoritative update response
+            // Cache authoritative update response
             this._currentOrderWorkspaceData = {
                 order:       data.order,
                 orderId:     resolvedOrderId,
@@ -11306,15 +11324,103 @@ window.SkyIndex = {
             // Display successful update
             this.appendSystemLine(
                 `Christy Work Order ${
-                    data.order.orderChristyNumber ||
+                    data.order
+                        .orderChristyNumber ||
                     resolvedOrderId
                 } was updated successfully.`
             );
 
-            // Refresh or append authoritative surface card
-            this.appendOrderCard(
-                data.order
-            );
+            // Resolve active Orders-list surface
+            const orderListCard =
+                document.getElementById(
+                    'skyOrderListCard'
+                );
+
+            const orderListData =
+                this._currentOrderListData;
+
+            // Synchronize active Orders list
+            if (
+                orderListCard &&
+                orderListData &&
+                Array.isArray(
+                    orderListData.rows
+                )
+            ) {
+                const listOrderIndex =
+                    orderListData.rows
+                        .findIndex(
+                            order =>
+                                Number(
+                                    order
+                                        ?.orderID ||
+                                    0
+                                ) ===
+                                resolvedOrderId
+                        );
+
+                // Replace cached list row
+                if (listOrderIndex >= 0) {
+                    orderListData.rows[
+                        listOrderIndex
+                    ] = {
+                        ...orderListData.rows[
+                            listOrderIndex
+                        ],
+                        ...data.order
+                    };
+
+                    // Maintain newest Order Date first
+                    orderListData.rows.sort(
+                        (
+                            firstOrder,
+                            secondOrder
+                        ) => {
+                            const dateDifference =
+                                Number(
+                                    secondOrder
+                                        ?.orderDate ||
+                                    0
+                                ) -
+                                Number(
+                                    firstOrder
+                                        ?.orderDate ||
+                                    0
+                                );
+
+                            if (
+                                dateDifference !== 0
+                            ) {
+                                return dateDifference;
+                            }
+
+                            return (
+                                Number(
+                                    secondOrder
+                                        ?.orderID ||
+                                    0
+                                ) -
+                                Number(
+                                    firstOrder
+                                        ?.orderID ||
+                                    0
+                                )
+                            );
+                        }
+                    );
+
+                    // Rerender list without a read
+                    this.renderOrderListCard(
+                        orderListData
+                    );
+                }
+
+            // Preserve standalone card behavior
+            } else {
+                this.appendOrderCard(
+                    data.order
+                );
+            }
 
             // Return to view mode without another read
             window.SkyWorkspace.replace({
@@ -11344,10 +11450,14 @@ window.SkyIndex = {
             // Restore Save button
             if (saveButton) {
                 saveButton.disabled = false;
-                saveButton.textContent = 'Save';
-                saveButton.style.background = '#0d9488';
-                saveButton.style.borderColor = '#0d9488';
-                saveButton.style.cursor = 'pointer';
+                saveButton.textContent =
+                    'Save';
+                saveButton.style.background =
+                    '#0d9488';
+                saveButton.style.borderColor =
+                    '#0d9488';
+                saveButton.style.cursor =
+                    'pointer';
             }
         }
     },
@@ -12843,8 +12953,13 @@ window.SkyIndex = {
 
         const rows = list.rows;
 
-        // Preserve current authoritative list rows
-        this._currentOrderListRows = rows;
+        // Preserve authoritative pagination and rows
+        this._currentOrderListData = {
+            ...list,
+            rows: rows.map(order => ({
+                ...order
+            }))
+        };
 
         // Format Phoenix Order date
         const formatDate = unixValue => {
