@@ -10749,14 +10749,26 @@ window.SkyIndex = {
 
     // #region 📦 Order Detail Workspace
 
+    /**
+     * Open an Order workspace.
+     *
+     * @param {number}      orderId
+     * @param {boolean}     replaceCurrent
+     * @param {object|null} authoritativeOrder
+     */
     openOrderWorkspace(
         orderId,
-        replaceCurrent = false
+        replaceCurrent = false,
+        authoritativeOrder = null
     ) {
-        const resolvedOrderId =
-            Number(orderId || 0);
+        const resolvedOrderId = Number(
+            orderId || 0
+        );
 
-        if (!resolvedOrderId) {
+        if (
+            !Number.isInteger(resolvedOrderId) ||
+            resolvedOrderId <= 0
+        ) {
             this.appendSystemLine(
                 'A valid Order ID is required.'
             );
@@ -10770,13 +10782,29 @@ window.SkyIndex = {
             return;
         }
 
+        // Confirm supplied Order matches requested Order
+        const useCachedOrder =
+            Number(
+                authoritativeOrder?.orderID || 0
+            ) === resolvedOrderId;
+
+        // Cache supplied authoritative Order
+        if (useCachedOrder) {
+            this._currentOrderWorkspaceData = {
+                order:       authoritativeOrder,
+                orderId:     resolvedOrderId,
+                editOptions: null
+            };
+        }
+
         const workspacePage = {
             pageType:   'order',
             objectType: 'order',
             objectId:   resolvedOrderId,
             title:      'Order',
             state: {
-                edit: false
+                edit:           false,
+                useCachedOrder: useCachedOrder
             }
         };
 
@@ -12811,9 +12839,11 @@ window.SkyIndex = {
                         );
                     }
 
-                    // Open authoritative Order workspace
-                    await this.openOrderWorkspace(
-                        orderId
+                    // Open workspace using resolved authoritative Order
+                    this.openOrderWorkspace(
+                        orderId,
+                        false,
+                        data.order
                     );
 
                 } catch (error) {
