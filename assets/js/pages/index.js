@@ -12801,47 +12801,6 @@ window.SkyIndex = {
         );
     },
 
-    /**
-     * Display an Order selected from the current list.
-     * Does not perform another server read.
-     *
-     * @param {number} orderId
-     */
-    showOrderFromList(orderId) {
-        const resolvedOrderId = Number(
-            orderId || 0
-        );
-
-        if (
-            !Number.isInteger(resolvedOrderId) ||
-            resolvedOrderId <= 0
-        ) {
-            this.appendSystemLine(
-                'A valid Order ID is required.'
-            );
-            return;
-        }
-
-        const order = (
-            this._currentOrderListRows || []
-        ).find(row =>
-            Number(row?.orderID || 0) ===
-            resolvedOrderId
-        );
-
-        if (!order) {
-            this.appendSystemLine(
-                'The selected Order is no longer available.'
-            );
-            return;
-        }
-
-        // Render existing Order surface card
-        this.appendOrderCard(
-            order
-        );
-    },
-
     // #endregion
 
     // #region 📦 Order List Card (paginated)
@@ -12973,7 +12932,7 @@ window.SkyIndex = {
                                 href="#"
                                 onclick="
                                     event.preventDefault();
-                                    SkyIndex.showOrderFromList(
+                                    SkyIndex.openOrderWorkspace(
                                         ${orderId}
                                     );
                                 "
