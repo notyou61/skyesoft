@@ -10823,7 +10823,8 @@ window.SkyIndex = {
             objectId:   resolvedOrderId,
             title:      'Order',
             state: {
-                edit: true
+                edit:           true,
+                useCachedOrder: true
             }
         });
     },
@@ -10849,7 +10850,8 @@ window.SkyIndex = {
             objectId:   resolvedOrderId,
             title:      'Order',
             state: {
-                edit: false
+                edit:           false,
+                useCachedOrder: true
             }
         });
     },
@@ -11264,8 +11266,12 @@ window.SkyIndex = {
                 data
             );
 
-            // Discard stale workspace data
-            this._currentOrderWorkspaceData = null;
+            // Cache complete authoritative update response
+            this._currentOrderWorkspaceData = {
+                order:       data.order,
+                orderId:     resolvedOrderId,
+                editOptions: null
+            };
 
             // Display success message
             this.appendSystemLine(
@@ -11275,10 +11281,17 @@ window.SkyIndex = {
                 } was updated successfully.`
             );
 
-            // Reload authoritative Order in view mode
-            await this.cancelOrderEditWorkspace(
-                resolvedOrderId
-            );
+            // Return to view mode without another read
+            window.SkyWorkspace.replace({
+                pageType:   'order',
+                objectType: 'order',
+                objectId:   resolvedOrderId,
+                title:      'Order',
+                state: {
+                    edit:           false,
+                    useCachedOrder: true
+                }
+            });
 
         } catch (error) {
             console.error(
@@ -11652,16 +11665,42 @@ window.SkyIndex = {
             page.objectId || 0
         );
 
-        if (!Number.isInteger(orderId) || orderId <= 0) {
+        if (
+            !Number.isInteger(orderId) ||
+            orderId <= 0
+        ) {
             throw new Error(
                 'Order was not found.'
             );
         }
 
-        // Load authoritative Order
-        const data = await this.getOrder(
-            orderId
-        );
+        // Resolve workspace mode
+        const isEditing =
+            page.state?.edit === true;
+
+        // Resolve existing authoritative workspace cache
+        const cachedWorkspaceData =
+            this._currentOrderWorkspaceData;
+
+        // Allow cache only for an intentional internal rerender
+        const useCachedOrder =
+            page.state?.useCachedOrder === true &&
+            Number(
+                cachedWorkspaceData?.orderId || 0
+            ) === orderId &&
+            Number(
+                cachedWorkspaceData?.order?.orderID || 0
+            ) === orderId;
+
+        // Load Order or reuse authoritative cached response
+        const data = useCachedOrder
+            ? {
+                success: true,
+                order: cachedWorkspaceData.order
+            }
+            : await this.getOrder(
+                orderId
+            );
 
         const order = data?.order;
 
@@ -11671,14 +11710,15 @@ window.SkyIndex = {
             );
         }
 
-        // Resolve workspace mode
-        const isEditing =
-            page.state?.edit === true;
-
-        // Load authoritative edit options only when needed
+        // Reuse or load authoritative edit options
         const editOptions = isEditing
-            ? await this.getOrderEditOptions(
-                order.orderLocationID
+            ? (
+                useCachedOrder &&
+                cachedWorkspaceData?.editOptions
+                    ? cachedWorkspaceData.editOptions
+                    : await this.getOrderEditOptions(
+                        order.orderLocationID
+                    )
             )
             : null;
 
