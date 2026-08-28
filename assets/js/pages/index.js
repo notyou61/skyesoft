@@ -11274,7 +11274,9 @@ window.SkyIndex = {
             let data;
 
             try {
-                data = JSON.parse(responseText);
+                data = JSON.parse(
+                    responseText
+                );
 
             } catch (error) {
                 throw new Error(
@@ -11301,12 +11303,17 @@ window.SkyIndex = {
                 editOptions: null
             };
 
-            // Display success message
+            // Display successful update
             this.appendSystemLine(
                 `Christy Work Order ${
                     data.order.orderChristyNumber ||
                     resolvedOrderId
                 } was updated successfully.`
+            );
+
+            // Refresh or append authoritative surface card
+            this.appendOrderCard(
+                data.order
             );
 
             // Return to view mode without another read
@@ -11683,6 +11690,26 @@ window.SkyIndex = {
             </div>
         `;
 
+        // Find existing surface cards for this Order
+        const existingCards = Array.from(
+            document.querySelectorAll(
+                `.order-card[data-order-id="${orderId}"]`
+            )
+        );
+
+        if (existingCards.length) {
+            // Replace the first matching card
+            existingCards[0].outerHTML = html;
+
+            // Remove any earlier duplicate cards
+            existingCards
+                .slice(1)
+                .forEach(card => card.remove());
+
+            return;
+        }
+
+        // Append card when it is not already displayed
         this.appendSystemHtml(
             html
         );
