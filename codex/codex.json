@@ -6447,11 +6447,11 @@
                 ]
             },
             "permitApplicationWorkflow": {
-                "version": "1.0.0",
+                "version": "1.0.1",
                 "status": "draft",
                 "binding": false,
                 "scope": "global",
-                "description": "Defines the canonical Skyesoft workflow architecture for sign permit applications. The standard governs the relationship between an order and its permit application, application stages and statuses, completeness checks, jurisdiction review cycles, fees, inspections, lifecycle events, and finalization.",
+                "description": "Defines the canonical Skyesoft workflow architecture for sign permit applications. The standard governs the relationship between an order and its permit application, application stages and statuses, internal Pre-Submittal completeness checks, jurisdiction intake and review cycles, fees, inspections, lifecycle events, and finalization.",
                 "rules": [
                     {
                         "id": "order_application_relationship",
@@ -6470,13 +6470,13 @@
                     },
                     {
                         "id": "internal_completeness",
-                        "title": "Internal Completeness Check",
-                        "description": "Prior to permit submission, Skyesoft must support an internal completeness determination confirming that the application package is sufficiently complete for submission. Internal completeness is a workflow control and does not represent jurisdiction acceptance or approval."
+                        "title": "Internal Pre-Submittal Completeness Check",
+                        "description": "During the Pre-Submittal stage and before submission, Skyesoft must perform an internal completeness check to determine whether the application package contains the documents, information, coordination, and supporting materials necessary for submission and jurisdiction review. Deficiencies may result in repeatable internal correction and recheck cycles within the Pre-Submittal stage. Passing the internal completeness check means the package is considered capable of submission and does not represent jurisdiction acceptance, code compliance, approval, or permit issuance."
                     },
                     {
                         "id": "jurisdiction_completeness",
                         "title": "Jurisdiction Completeness Check",
-                        "description": "After submission, a jurisdiction may perform its own completeness or intake review. Jurisdiction completeness must remain distinct from Skyesoft's internal completeness determination and from substantive permit review."
+                        "description": "After submission, a jurisdiction may perform its own completeness or intake review to determine whether the submitted package will be accepted for substantive review. Jurisdiction completeness must remain distinct from Skyesoft's internal Pre-Submittal completeness check and from substantive jurisdiction review. Jurisdiction completeness deficiencies, responses, and resubmittals must be preserved as lifecycle events without creating a new permit application."
                     },
                     {
                         "id": "review_correction_cycle",
@@ -6486,7 +6486,7 @@
                     {
                         "id": "lifecycle_events",
                         "title": "Permit Lifecycle Events",
-                        "description": "Significant occurrences in the permit process must be represented as lifecycle events rather than being inferred exclusively from the current application status. Lifecycle events may include submission, jurisdiction acceptance, correction issuance, resubmittal, approval, fee payment, permit issuance, inspection requests, inspection results, and finalization."
+                        "description": "Significant occurrences in the permit process must be represented as lifecycle events rather than being inferred exclusively from the current application status. Lifecycle events may include internal completeness checks, internal deficiencies, internal rechecks, submission, jurisdiction acceptance, jurisdiction completeness deficiencies, correction issuance, resubmittal, approval, fee assessment, fee payment, permit issuance, inspection requests, inspection results, and finalization."
                     },
                     {
                         "id": "current_state_history_separation",
