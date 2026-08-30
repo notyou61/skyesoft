@@ -323,15 +323,6 @@ ob_start();
         Application #<?= (int)$application['applicationID'] ?> Status Report
     </title>
     <style>
-        @page {
-            size: letter portrait;
-            margin: 0.38in;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
         html,
         body {
             margin: 0;
@@ -343,14 +334,9 @@ ob_start();
             line-height: 1.22;
         }
 
-        body {
-            padding: 28px 24px;
-        }
-
         .report {
             width: 100%;
-            max-width: 1000px;
-            margin: 0 auto;
+            margin: 0;
         }
 
         .header-table {
@@ -405,7 +391,6 @@ ob_start();
 
         .section {
             margin-top: 8px;
-            page-break-inside: avoid;
         }
 
         .section-heading {
