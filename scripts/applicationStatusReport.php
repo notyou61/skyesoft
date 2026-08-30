@@ -7,7 +7,7 @@ declare(strict_types=1);
  *  Codex-Governed Module • PHP 8.3
  * ===================================================================== */
 
-#region SECTION I — Environment & Authentication
+// #region SECTION I — Environment & Authentication
 
 date_default_timezone_set('America/Phoenix');
 
@@ -85,9 +85,9 @@ if (!is_array($actor)) {
     );
 }
 
-#endregion
+// #endregion
 
-#region SECTION II — Report Helpers
+// #region SECTION II — Report Helpers
 
 function escapeApplicationReportValue(mixed $value): string
 {
@@ -140,9 +140,9 @@ function buildApplicationStatusSummary(string $stageName): string
     }
 }
 
-#endregion
+// #endregion
 
-#region SECTION III — Authoritative Application Data
+// #region SECTION III — Authoritative Application Data
 
 $applicationId = (int)(
     $_POST['applicationID']
@@ -219,9 +219,9 @@ $statusSummary = buildApplicationStatusSummary(
     (string)$application['applicationStageName']
 );
 
-#endregion
+// #endregion
 
-#region SECTION IV — Explicit Report Action
+// #region SECTION IV — Explicit Report Action
 
 $actionTypeStmt = $db->prepare("
     SELECT actionTypeId
@@ -296,9 +296,9 @@ $recordReportAction = static function () use (
     ], $db);
 };
 
-#endregion
+// #endregion
 
-#region SECTION V — Report Rendering
+// #region SECTION V — Report Rendering
 
 $rootDir = realpath(__DIR__ . '/../');
 $logoPath = $rootDir !== false
@@ -693,4 +693,4 @@ header('Cache-Control: private, no-store, max-age=0');
 echo $pdfContent;
 exit;
 
-#endregion
+// #endregion

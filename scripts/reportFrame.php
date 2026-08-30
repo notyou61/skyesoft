@@ -49,7 +49,6 @@ function getSkyesoftReportFrameStyles(): string
             width: 100%;
             margin: 0;
             border-collapse: collapse;
-            border-bottom: 3px solid #14377c;
         }
 
         .skyesoft-report-header td {
@@ -107,6 +106,14 @@ function getSkyesoftReportFrameStyles(): string
             font-size: 10px;
             line-height: 1.05;
         }
+
+        .skyesoft-report-header-divider {
+            width: 100%;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            border-top: 3px solid #14377c;
+        }
 CSS;
 }
 
@@ -150,7 +157,8 @@ function renderSkyesoftReportHeader(array $context): string
         '</div>' .
         '</td>' .
         '</tr>' .
-        '</table>';
+        '</table>' .
+        '<div class="skyesoft-report-header-divider"></div>';
 }
 
 #endregion
