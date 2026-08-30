@@ -313,7 +313,7 @@ header('Content-Type: text/html; charset=UTF-8');
     <style>
         @page {
             size: letter portrait;
-            margin: 0.35in 0.45in;
+            margin: 0.38in;
         }
 
         * {
@@ -327,17 +327,17 @@ header('Content-Type: text/html; charset=UTF-8');
             color: #222;
             background: #fff;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            line-height: 1.3;
+            font-size: 10px;
+            line-height: 1.22;
         }
 
         body {
-            padding: 22px;
+            padding: 28px 24px;
         }
 
         .report {
             width: 100%;
-            max-width: 8in;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -345,11 +345,11 @@ header('Content-Type: text/html; charset=UTF-8');
             display: flex;
             justify-content: flex-end;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         .print-button {
-            padding: 8px 13px;
+            padding: 6px 10px;
             color: #fff;
             background: #14377c;
             border: 1px solid #14377c;
@@ -362,11 +362,11 @@ header('Content-Type: text/html; charset=UTF-8');
         .header-table {
             width: 100%;
             border-collapse: collapse;
-            border-bottom: 3px solid #14377c;
+            border-bottom: 2px solid #14377c;
         }
 
         .header-table td {
-            padding: 0 0 8px;
+            padding: 0 0 6px;
             border: 0;
             vertical-align: middle;
         }
@@ -380,7 +380,7 @@ header('Content-Type: text/html; charset=UTF-8');
         .header-logo {
             display: block;
             width: auto;
-            height: 66px;
+            height: 58px;
         }
 
         .logo-fallback {
@@ -391,7 +391,7 @@ header('Content-Type: text/html; charset=UTF-8');
 
         .header-title {
             color: #14377c;
-            font-size: 23px;
+            font-size: 20px;
             font-weight: bold;
             line-height: 1;
         }
@@ -399,127 +399,72 @@ header('Content-Type: text/html; charset=UTF-8');
         .header-subtitle {
             margin-top: 3px;
             color: #333;
-            font-size: 15px;
+            font-size: 12px;
             font-weight: bold;
         }
 
         .header-date {
             margin-top: 2px;
             color: #666;
-            font-size: 10px;
-        }
-
-        .status-banner {
-            display: table;
-            width: 100%;
-            margin-top: 14px;
-            padding: 11px 13px;
-            background: #f0f4f9;
-            border: 1px solid #b8cbe5;
-            border-left: 5px solid #14377c;
-        }
-
-        .status-label {
-            color: #666;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .status-value {
-            margin-top: 2px;
-            color: #14377c;
-            font-size: 17px;
-            font-weight: bold;
-        }
-
-        .status-detail {
-            margin-top: 3px;
-            color: #333;
-            font-size: 11px;
+            font-size: 9px;
         }
 
         .section {
-            margin-top: 14px;
+            margin-top: 8px;
             page-break-inside: avoid;
         }
 
         .section-heading {
-            margin-bottom: 6px;
-            padding-bottom: 3px;
+            margin-bottom: 3px;
+            padding-bottom: 2px;
             color: #14377c;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
             border-bottom: 2px solid #14377c;
         }
 
-        .two-column-table,
         .data-table,
-        .milestone-table,
         .footer-table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        .two-column-table > tbody > tr > td {
-            width: 50%;
-            padding: 0;
-            border: 0;
-            vertical-align: top;
-        }
-
-        .two-column-table > tbody > tr > td:first-child {
-            padding-right: 5px;
-        }
-
-        .two-column-table > tbody > tr > td:last-child {
-            padding-left: 5px;
-        }
-
         .data-table th,
         .data-table td {
-            padding: 6px 8px;
+            padding: 3px 5px;
             border: 1px solid #ccc;
             text-align: left;
             vertical-align: top;
         }
 
         .data-table th {
-            width: 36%;
-            color: #333;
-            background: #f8f9fa;
-        }
-
-        .milestone-table th,
-        .milestone-table td {
-            width: 25%;
-            padding: 6px 7px;
-            border: 1px solid #ccc;
-            text-align: center;
-        }
-
-        .milestone-table th {
+            width: 38%;
             color: #333;
             background: #f8f9fa;
         }
 
         .scope-box,
         .summary-box {
-            padding: 9px 11px;
-            white-space: pre-wrap;
+            padding: 6px 8px;
+            white-space: normal;
             background: #fff;
             border: 1px solid #ccc;
         }
 
         .summary-box {
-            background: #f8f9fa;
+            background: #f0f4f9;
+            border-color: #b8cbe5;
+            border-left: 4px solid #14377c;
         }
 
         .report-footer {
-            margin-top: 17px;
-            padding-top: 6px;
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            padding-top: 5px;
             color: #666;
-            font-size: 10px;
+            font-size: 9px;
             border-top: 1px solid #ccc;
         }
 
@@ -588,72 +533,68 @@ header('Content-Type: text/html; charset=UTF-8');
         </tr>
     </table>
 
-    <div class="status-banner">
-        <div class="status-label">Current Permit Status</div>
-        <div class="status-value">
-            <?= escapeApplicationReportValue(
-                $application['applicationStageName']
-            ) ?>
-            —
-            <?= escapeApplicationReportValue(
-                $application['applicationStatusName']
-            ) ?>
-        </div>
-        <div class="status-detail">
-            <?= escapeApplicationReportValue($statusSummary) ?>
-        </div>
+    <div class="section">
+        <div class="section-heading">Application Status</div>
+        <table class="data-table">
+            <tr>
+                <th>Application Stage</th>
+                <td><strong><?= escapeApplicationReportValue(
+                    $application['applicationStageName']
+                ) ?></strong></td>
+            </tr>
+            <tr>
+                <th>Application Status</th>
+                <td><strong><?= escapeApplicationReportValue(
+                    $application['applicationStatusName']
+                ) ?></strong></td>
+            </tr>
+            <tr>
+                <th>Status Description</th>
+                <td><?= escapeApplicationReportValue(
+                    $statusSummary
+                ) ?></td>
+            </tr>
+        </table>
     </div>
 
     <div class="section">
         <div class="section-heading">Project Information</div>
-        <table class="two-column-table">
+        <table class="data-table">
             <tr>
-                <td>
-                    <table class="data-table">
-                        <tr>
-                            <th>Work Order</th>
-                            <td><?= escapeApplicationReportValue(
-                                formatApplicationReportValue(
-                                    $application['orderChristyNumber']
-                                )
-                            ) ?></td>
-                        </tr>
-                        <tr>
-                            <th>Customer</th>
-                            <td><?= escapeApplicationReportValue(
-                                $application['entityName']
-                            ) ?></td>
-                        </tr>
-                        <tr>
-                            <th>Jurisdiction</th>
-                            <td><?= escapeApplicationReportValue(
-                                $application['applicationJurisdiction']
-                            ) ?></td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="data-table">
-                        <tr>
-                            <th>Location</th>
-                            <td><?= escapeApplicationReportValue(
-                                $application['locationName']
-                            ) ?></td>
-                        </tr>
-                        <tr>
-                            <th>Address</th>
-                            <td><?= escapeApplicationReportValue(
-                                formatApplicationReportValue(
-                                    $locationAddress
-                                )
-                            ) ?></td>
-                        </tr>
-                        <tr>
-                            <th>Application ID</th>
-                            <td>#<?= (int)$application['applicationID'] ?></td>
-                        </tr>
-                    </table>
-                </td>
+                <th>Application ID</th>
+                <td>#<?= (int)$application['applicationID'] ?></td>
+            </tr>
+            <tr>
+                <th>Christy Signs Work Order</th>
+                <td><?= escapeApplicationReportValue(
+                    formatApplicationReportValue(
+                        $application['orderChristyNumber']
+                    )
+                ) ?></td>
+            </tr>
+            <tr>
+                <th>Customer</th>
+                <td><?= escapeApplicationReportValue(
+                    $application['entityName']
+                ) ?></td>
+            </tr>
+            <tr>
+                <th>Location</th>
+                <td><?= escapeApplicationReportValue(
+                    $application['locationName']
+                ) ?></td>
+            </tr>
+            <tr>
+                <th>Address</th>
+                <td><?= escapeApplicationReportValue(
+                    formatApplicationReportValue($locationAddress)
+                ) ?></td>
+            </tr>
+            <tr>
+                <th>Jurisdiction</th>
+                <td><?= escapeApplicationReportValue(
+                    $application['applicationJurisdiction']
+                ) ?></td>
             </tr>
         </table>
     </div>
@@ -682,14 +623,9 @@ header('Content-Type: text/html; charset=UTF-8');
 
     <div class="section">
         <div class="section-heading">Permit Milestones</div>
-        <table class="milestone-table">
+        <table class="data-table">
             <tr>
                 <th>Submitted</th>
-                <th>Approved</th>
-                <th>Issued</th>
-                <th>Finaled</th>
-            </tr>
-            <tr>
                 <td><?= escapeApplicationReportValue(
                     formatApplicationReportDate(
                         $application['applicationSubmittedUnix'] !== null
@@ -697,6 +633,9 @@ header('Content-Type: text/html; charset=UTF-8');
                             : null
                     )
                 ) ?></td>
+            </tr>
+            <tr>
+                <th>Approved</th>
                 <td><?= escapeApplicationReportValue(
                     formatApplicationReportDate(
                         $application['applicationApprovedUnix'] !== null
@@ -704,6 +643,9 @@ header('Content-Type: text/html; charset=UTF-8');
                             : null
                     )
                 ) ?></td>
+            </tr>
+            <tr>
+                <th>Issued</th>
                 <td><?= escapeApplicationReportValue(
                     formatApplicationReportDate(
                         $application['applicationIssuedUnix'] !== null
@@ -711,6 +653,9 @@ header('Content-Type: text/html; charset=UTF-8');
                             : null
                     )
                 ) ?></td>
+            </tr>
+            <tr>
+                <th>Finaled</th>
                 <td><?= escapeApplicationReportValue(
                     formatApplicationReportDate(
                         $application['applicationFinaledUnix'] !== null
@@ -733,15 +678,11 @@ header('Content-Type: text/html; charset=UTF-8');
 
     <div class="section">
         <div class="section-heading">Status Summary</div>
-        <div class="summary-box">
-            This report reflects the permit application status recorded by
-            Christy Signs as of
+        <div class="summary-box"><strong>Application Status</strong><br>
+            This report reflects the permit application status recorded by Christy Signs as of
             <?= escapeApplicationReportValue(
                 formatApplicationReportDate($reportGeneratedUnix)
-            ) ?>.
-            Jurisdiction processing times and requirements may change during
-            review. Christy Signs will continue coordinating the application
-            through the applicable permit process.
+            ) ?>. Jurisdiction processing times and requirements may change during review. Christy Signs will continue coordinating the application through the applicable permit process.
         </div>
     </div>
 
@@ -754,7 +695,7 @@ header('Content-Type: text/html; charset=UTF-8');
                     | Christy Signs
                 </td>
                 <td class="footer-right">
-                    External Application Status Report
+                    Skyesoft Application Status | Page 1 of 1
                 </td>
             </tr>
         </table>
