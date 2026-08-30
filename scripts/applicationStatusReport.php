@@ -352,15 +352,20 @@ ob_start();
         }
 
         .header-logo-cell {
-            width: 1%;
-            padding-right: 12px !important;
-            white-space: nowrap;
+            width: 28%;
+            padding-right: 6mm !important;
+            text-align: left;
         }
 
         .header-logo {
             display: block;
-            width: auto;
-            height: 58px;
+            width: 38mm;
+            height: auto;
+        }
+
+        .header-details-cell {
+            width: 72%;
+            text-align: left;
         }
 
         .logo-fallback {
@@ -443,7 +448,7 @@ ob_start();
 <div class="report">
     <table class="header-table">
         <tr>
-            <td class="header-logo-cell">
+            <td class="header-logo-cell" style="width: 28%;">
                 <?php if ($logoAvailable): ?>
                     <img
                         src="<?= escapeApplicationReportValue($logoSource) ?>"
@@ -454,7 +459,7 @@ ob_start();
                     <div class="logo-fallback">Christy Signs</div>
                 <?php endif; ?>
             </td>
-            <td>
+            <td class="header-details-cell" style="width: 72%;">
                 <div class="header-title">
                     Permit Application Status Report
                 </div>
@@ -473,30 +478,6 @@ ob_start();
             </td>
         </tr>
     </table>
-
-    <div class="section">
-        <div class="section-heading">Application Status</div>
-        <table class="data-table">
-            <tr>
-                <th>Application Stage</th>
-                <td><strong><?= escapeApplicationReportValue(
-                    $application['applicationStageName']
-                ) ?></strong></td>
-            </tr>
-            <tr>
-                <th>Application Status</th>
-                <td><strong><?= escapeApplicationReportValue(
-                    $application['applicationStatusName']
-                ) ?></strong></td>
-            </tr>
-            <tr>
-                <th>Status Description</th>
-                <td><?= escapeApplicationReportValue(
-                    $statusSummary
-                ) ?></td>
-            </tr>
-        </table>
-    </div>
 
     <div class="section">
         <div class="section-heading">Project Information</div>
@@ -535,6 +516,30 @@ ob_start();
                 <th>Jurisdiction</th>
                 <td><?= escapeApplicationReportValue(
                     $application['applicationJurisdiction']
+                ) ?></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-heading">Application Status</div>
+        <table class="data-table">
+            <tr>
+                <th>Application Stage</th>
+                <td><strong><?= escapeApplicationReportValue(
+                    $application['applicationStageName']
+                ) ?></strong></td>
+            </tr>
+            <tr>
+                <th>Application Status</th>
+                <td><strong><?= escapeApplicationReportValue(
+                    $application['applicationStatusName']
+                ) ?></strong></td>
+            </tr>
+            <tr>
+                <th>Status Description</th>
+                <td><?= escapeApplicationReportValue(
+                    $statusSummary
                 ) ?></td>
             </tr>
         </table>
