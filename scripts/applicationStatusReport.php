@@ -330,8 +330,8 @@ ob_start();
             color: #222;
             background: #fff;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 10px;
-            line-height: 1.22;
+            font-size: 14px;
+            line-height: 1.35;
         }
 
         .report {
@@ -341,31 +341,36 @@ ob_start();
 
         .header-table {
             width: 100%;
+            margin: 0;
             border-collapse: collapse;
-            border-bottom: 2px solid #14377c;
+            border-bottom: 3px solid #14377c;
         }
 
         .header-table td {
-            padding: 0 0 6px;
             border: 0;
             vertical-align: middle;
         }
 
         .header-logo-cell {
-            width: 28%;
-            padding-right: 6mm !important;
+            width: 18%;
+            padding: 0 4mm 8px 0;
             text-align: left;
+            vertical-align: middle;
         }
 
         .header-logo {
             display: block;
-            width: 38mm;
+            width: 30mm;
             height: auto;
+            margin: 0;
+            border: 0;
         }
 
         .header-details-cell {
-            width: 72%;
+            width: 82%;
+            padding: 0 0 8px;
             text-align: left;
+            vertical-align: middle;
         }
 
         .logo-fallback {
@@ -375,34 +380,37 @@ ob_start();
         }
 
         .header-title {
+            margin: 0;
             color: #14377c;
-            font-size: 20px;
+            font-size: 25px;
             font-weight: bold;
             line-height: 1;
         }
 
         .header-subtitle {
-            margin-top: 3px;
+            margin: 2px 0 0;
             color: #333;
-            font-size: 12px;
+            font-size: 17px;
             font-weight: bold;
+            line-height: 1.05;
         }
 
         .header-date {
-            margin-top: 2px;
+            margin: 1px 0 0;
             color: #666;
-            font-size: 9px;
+            font-size: 12px;
+            line-height: 1.05;
         }
 
         .section {
-            margin-top: 8px;
+            margin-top: 24px;
         }
 
         .section-heading {
-            margin-bottom: 3px;
-            padding-bottom: 2px;
+            margin-bottom: 7px;
+            padding-bottom: 4px;
             color: #14377c;
-            font-size: 12px;
+            font-size: 17px;
             font-weight: bold;
             border-bottom: 2px solid #14377c;
         }
@@ -415,21 +423,28 @@ ob_start();
 
         .data-table th,
         .data-table td {
-            padding: 3px 5px;
+            padding: 8px 10px;
             border: 1px solid #ccc;
             text-align: left;
             vertical-align: top;
         }
 
         .data-table th {
-            width: 38%;
+            width: 32%;
             color: #333;
+            font-weight: bold;
             background: #f8f9fa;
+        }
+
+        .data-table td {
+            width: 68%;
+            color: #111;
+            background: #fff;
         }
 
         .scope-box,
         .summary-box {
-            padding: 6px 8px;
+            padding: 9px 12px;
             white-space: normal;
             background: #fff;
             border: 1px solid #ccc;
@@ -441,6 +456,19 @@ ob_start();
             border-left: 4px solid #14377c;
         }
 
+        .summary-title {
+            margin-bottom: 4px;
+            color: #14377c;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .summary-body {
+            color: #333;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
     </style>
 </head>
 <body>
@@ -448,7 +476,7 @@ ob_start();
 <div class="report">
     <table class="header-table">
         <tr>
-            <td class="header-logo-cell" style="width: 28%;">
+            <td class="header-logo-cell" style="width: 18%;">
                 <?php if ($logoAvailable): ?>
                     <img
                         src="<?= escapeApplicationReportValue($logoSource) ?>"
@@ -459,7 +487,7 @@ ob_start();
                     <div class="logo-fallback">Christy Signs</div>
                 <?php endif; ?>
             </td>
-            <td class="header-details-cell" style="width: 72%;">
+            <td class="header-details-cell" style="width: 82%;">
                 <div class="header-title">
                     Permit Application Status Report
                 </div>
@@ -624,11 +652,14 @@ ob_start();
 
     <div class="section">
         <div class="section-heading">Status Summary</div>
-        <div class="summary-box"><strong>Application Status</strong><br>
-            This report reflects the permit application status recorded by Christy Signs as of
-            <?= escapeApplicationReportValue(
-                formatApplicationReportDate($reportGeneratedUnix)
-            ) ?>. Jurisdiction processing times and requirements may change during review. Christy Signs will continue coordinating the application through the applicable permit process.
+        <div class="summary-box">
+            <div class="summary-title">Application Status</div>
+            <div class="summary-body">
+                This report reflects the permit application status recorded by Christy Signs as of
+                <?= escapeApplicationReportValue(
+                    formatApplicationReportDate($reportGeneratedUnix)
+                ) ?>. Jurisdiction processing times and requirements may change during review. Christy Signs will continue coordinating the application through the applicable permit process.
+            </div>
         </div>
     </div>
 
