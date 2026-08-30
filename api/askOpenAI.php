@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — askOpenAI.php
-//  Version: 1.3.4
-//  Last Updated: 2026-08-30
+//  Version: 1.3.3
+//  Last Updated: 2026-04-30
 //  Codex Tier: 3 — AI Augmentation / Prompt Orchestration
 //
 //  Role:
