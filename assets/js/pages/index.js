@@ -770,7 +770,8 @@ window.SkyIndex = {
         "?": "help",
         help: "help",
 
-        "create order": "create_order"
+        "create order": "create_order",
+        "create application": "create_application"
     },
 
     // Command Registry (Authoritative)
@@ -831,7 +832,12 @@ window.SkyIndex = {
         // 📦 Create Order
         create_order() {
             this.openNewOrderWorkspace();
-        },        
+        },
+
+        // 📄 Create Application
+        create_application() {
+            this.openNewApplicationWorkspace();
+        },
         
         // 🧹 Clear Session Surface
         clear_screen() {
@@ -9088,6 +9094,648 @@ window.SkyIndex = {
         } else {
             this.appendSystemLine('Workspace is not available.');
         }
+    },
+
+    // #endregion
+
+    // #region 📄 Application Creation Workspace
+
+    openNewApplicationWorkspace() {
+        if (!window.SkyWorkspace) {
+            this.appendSystemLine('Workspace is not available.');
+            return;
+        }
+
+        this._newApplicationSelectedOrder = null;
+        this._newApplicationOrderResults = [];
+        this._newApplicationDraft = null;
+
+        window.SkyWorkspace.open({
+            pageType:   'application_create',
+            objectType: 'application',
+            objectId:   null,
+            title:      'New Application',
+            state: {
+                step:    'order',
+                orderID: null
+            }
+        });
+    },
+
+    async renderApplicationCreatePage(page, ctx) {
+        if (page.state?.step === 'details') {
+            return this.renderNewApplicationDetailsPage(
+                page,
+                ctx
+            );
+        }
+
+        return {
+            titleHtml: `
+                <div>
+                    <strong>New Application</strong>
+                    <div style="margin-top:3px; color:#777; font-size:0.82em;">
+                        Select the current Order
+                    </div>
+                </div>
+            `,
+
+            bodyHtml: `
+                <div style="padding:4px 0;">
+                    <label
+                        for="newApplicationOrderSearch"
+                        style="display:block; margin-bottom:6px; color:#333; font-weight:600;"
+                    >
+                        Current Order
+                    </label>
+
+                    <input
+                        id="newApplicationOrderSearch"
+                        type="text"
+                        placeholder="Search Work Order, customer, location, or address..."
+                        autocomplete="off"
+                        oninput="SkyIndex.handleNewApplicationOrderInput(this.value)"
+                        style="
+                            box-sizing:border-box;
+                            width:100%;
+                            padding:10px 12px;
+                            border:1px solid #ccc;
+                            border-radius:6px;
+                            font-size:0.95em;
+                        "
+                    >
+
+                    <div
+                        id="newApplicationOrderResults"
+                        style="
+                            box-sizing:border-box;
+                            height:220px;
+                            margin-top:8px;
+                            overflow-y:auto;
+                            border-radius:4px;
+                        "
+                    ></div>
+                </div>
+            `,
+
+            actionsHtml: `
+                <button
+                    type="button"
+                    onclick="SkyWorkspace.close()"
+                    style="
+                        padding:8px 16px;
+                        border:1px solid #ccc;
+                        border-radius:6px;
+                        background:#fff;
+                        color:#333;
+                        cursor:pointer;
+                    "
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="button"
+                    id="newApplicationContinueButton"
+                    onclick="SkyIndex.continueNewApplicationCreation()"
+                    disabled
+                    style="
+                        padding:8px 16px;
+                        border:0;
+                        border-radius:6px;
+                        background:#999;
+                        color:#fff;
+                        cursor:not-allowed;
+                    "
+                >
+                    Continue
+                </button>
+            `
+        };
+    },
+
+    async renderNewApplicationDetailsPage(page, ctx) {
+        const draft = this._newApplicationDraft;
+        const order = draft?.context?.order;
+
+        if (!draft || !order) {
+            throw new Error(
+                'New Application draft is not available.'
+            );
+        }
+
+        const contactOptions = (
+            draft.context.assignedContacts || []
+        ).map(contact => {
+            const contactId = Number(contact.contactId || 0);
+            const contactName = this.escapeHtml(
+                [
+                    contact.contactFirstName,
+                    contact.contactLastName
+                ].filter(Boolean).join(' ') ||
+                'Unnamed Contact'
+            );
+            const contactTitle = this.escapeHtml(
+                contact.contactTitle || ''
+            );
+            const selected =
+                Number(draft.application.assignedContactID) === contactId
+                    ? ' selected'
+                    : '';
+
+            return `
+                <option value="${contactId}"${selected}>
+                    ${contactName}${
+                        contactTitle
+                            ? ` — ${contactTitle}`
+                            : ''
+                    }
+                </option>
+            `;
+        }).join('');
+
+        return {
+            titleHtml: `
+                <div>
+                    <strong>New Application</strong>
+                    <div style="margin-top:3px; color:#777; font-size:0.82em;">
+                        Application Details
+                    </div>
+                </div>
+            `,
+
+            bodyHtml: `
+                <div style="
+                    padding:12px;
+                    border:1px solid #b7dfc4;
+                    border-radius:6px;
+                    background:#f1faf4;
+                ">
+                    <strong style="color:#20733a;">
+                        Current Order confirmed
+                    </strong>
+                    <div style="margin-top:5px; color:#222; font-weight:600;">
+                        Work Order ${this.escapeHtml(
+                            order.orderChristyNumber ||
+                            String(order.orderID)
+                        )}
+                    </div>
+                    <div style="margin-top:2px; color:#444;">
+                        ${this.escapeHtml(order.entityName || 'No Customer')}
+                    </div>
+                    <div style="margin-top:2px; color:#666;">
+                        ${this.escapeHtml(order.locationName || 'Unnamed Location')}
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px;">
+                    <div style="grid-column:1 / -1;">
+                        <label for="newApplicationTitle" style="display:block; margin-bottom:5px; font-weight:600;">
+                            Application Title
+                        </label>
+                        <input
+                            id="newApplicationTitle"
+                            type="text"
+                            value="${this.escapeHtml(draft.application.title || '')}"
+                            oninput="SkyIndex.updateNewApplicationField('title', this.value)"
+                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ccc; border-radius:6px;"
+                        >
+                    </div>
+
+                    <div>
+                        <label style="display:block; margin-bottom:5px; font-weight:600;">
+                            Stage
+                        </label>
+                        <input
+                            type="text"
+                            value="${this.escapeHtml(draft.context.stageName || '')}"
+                            readonly
+                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ddd; border-radius:6px; background:#f5f5f5;"
+                        >
+                    </div>
+
+                    <div>
+                        <label style="display:block; margin-bottom:5px; font-weight:600;">
+                            Status
+                        </label>
+                        <input
+                            type="text"
+                            value="${this.escapeHtml(draft.context.statusName || '')}"
+                            readonly
+                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ddd; border-radius:6px; background:#f5f5f5;"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="newApplicationAssignedContact" style="display:block; margin-bottom:5px; font-weight:600;">
+                            Assigned Permit Specialist
+                        </label>
+                        <select
+                            id="newApplicationAssignedContact"
+                            onchange="SkyIndex.updateNewApplicationField('assignedContactID', this.value)"
+                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ccc; border-radius:6px; background:#fff;"
+                        >
+                            <option value="">Select Contact...</option>
+                            ${contactOptions}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display:block; margin-bottom:5px; font-weight:600;">
+                            Jurisdiction
+                        </label>
+                        <input
+                            type="text"
+                            value="${this.escapeHtml(draft.application.jurisdiction || '')}"
+                            readonly
+                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ddd; border-radius:6px; background:#f5f5f5;"
+                        >
+                    </div>
+
+                    <div style="grid-column:1 / -1;">
+                        <label for="newApplicationScope" style="display:block; margin-bottom:5px; font-weight:600;">
+                            Application Scope
+                        </label>
+                        <textarea
+                            id="newApplicationScope"
+                            rows="4"
+                            oninput="SkyIndex.updateNewApplicationField('scope', this.value)"
+                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ccc; border-radius:6px; resize:vertical;"
+                        >${this.escapeHtml(draft.application.scope || '')}</textarea>
+                    </div>
+
+                    <div style="grid-column:1 / -1;">
+                        <label for="newApplicationNote" style="display:block; margin-bottom:5px; font-weight:600;">
+                            Notes
+                        </label>
+                        <textarea
+                            id="newApplicationNote"
+                            rows="3"
+                            oninput="SkyIndex.updateNewApplicationField('note', this.value)"
+                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ccc; border-radius:6px; resize:vertical;"
+                        >${this.escapeHtml(draft.application.note || '')}</textarea>
+                    </div>
+                </div>
+
+                <div style="margin-top:12px; color:#777; font-size:0.82em;">
+                    Application creation will be enabled after the governed mutation route is installed.
+                </div>
+            `,
+
+            actionsHtml: `
+                <button
+                    type="button"
+                    onclick="SkyIndex.returnToNewApplicationOrderStep()"
+                    style="padding:8px 16px; border:1px solid #ccc; border-radius:6px; background:#fff; color:#333; cursor:pointer;"
+                >
+                    Back
+                </button>
+
+                <button
+                    type="button"
+                    disabled
+                    style="padding:8px 16px; border:0; border-radius:6px; background:#999; color:#fff; cursor:not-allowed;"
+                >
+                    Create Application
+                </button>
+            `
+        };
+    },
+
+    handleNewApplicationOrderInput(value) {
+        const query = String(value || '').trim();
+
+        this._newApplicationSelectedOrder = null;
+        this.setNewApplicationContinueEnabled(false);
+
+        clearTimeout(this._newApplicationOrderSearchTimer);
+
+        if (query.length < 2) {
+            this._newApplicationOrderResults = [];
+            this.renderNewApplicationOrderResults([]);
+            return;
+        }
+
+        this._newApplicationOrderSearchTimer = setTimeout(
+            () => this.searchCurrentOrdersForApplication(query),
+            250
+        );
+    },
+
+    async searchCurrentOrdersForApplication(query) {
+        const results = document.getElementById(
+            'newApplicationOrderResults'
+        );
+
+        if (results) {
+            results.innerHTML = '<div style="padding:10px; color:#777;">Searching...</div>';
+        }
+
+        try {
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type:  'currentOrderSearch',
+                        query: query,
+                        limit: 10
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok || !data?.success) {
+                throw new Error(
+                    data?.error || 'Order search failed.'
+                );
+            }
+
+            this._newApplicationOrderResults =
+                Array.isArray(data.orders)
+                    ? data.orders
+                    : [];
+
+            this.renderNewApplicationOrderResults(
+                this._newApplicationOrderResults
+            );
+
+        } catch (error) {
+            console.error(
+                '[New Application] Order search failed:',
+                error
+            );
+
+            if (results) {
+                results.innerHTML = `
+                    <div style="padding:10px; color:#b42318;">
+                        ${this.escapeHtml(error?.message || 'Order search failed.')}
+                    </div>
+                `;
+            }
+        }
+    },
+
+    renderNewApplicationOrderResults(orders) {
+        const results = document.getElementById(
+            'newApplicationOrderResults'
+        );
+
+        if (!results) return;
+
+        if (!Array.isArray(orders) || !orders.length) {
+            results.innerHTML = `
+                <div style="padding:10px; color:#777;">
+                    No current Orders found.
+                </div>
+            `;
+            return;
+        }
+
+        results.innerHTML = orders.map(order => {
+            const orderId = Number(order.orderID || 0);
+            const workOrder = this.escapeHtml(
+                order.orderChristyNumber || String(orderId)
+            );
+            const entityName = this.escapeHtml(
+                order.entityName || 'No Customer'
+            );
+            const locationName = this.escapeHtml(
+                order.locationName || 'Unnamed Location'
+            );
+            const address = this.escapeHtml(
+                [
+                    order.locationAddress,
+                    order.locationAddressSuite,
+                    order.locationCity,
+                    order.locationState,
+                    order.locationZip
+                ].filter(Boolean).join(', ')
+            );
+
+            return `
+                <button
+                    type="button"
+                    onclick="SkyIndex.selectNewApplicationOrder(${orderId})"
+                    style="display:block; width:100%; padding:10px 12px; border:0; border-bottom:1px solid #ddd; background:#fff; text-align:left; cursor:pointer;"
+                >
+                    <div style="color:#222; font-weight:650;">
+                        Work Order ${workOrder} — ${entityName}
+                    </div>
+                    <div style="margin-top:2px; color:#444; font-size:0.88em;">
+                        ${locationName}
+                    </div>
+                    ${address ? `
+                        <div style="margin-top:2px; color:#666; font-size:0.82em;">
+                            ${address}
+                        </div>
+                    ` : ''}
+                </button>
+            `;
+        }).join('');
+    },
+
+    selectNewApplicationOrder(orderId) {
+        const resolvedOrderId = Number(orderId || 0);
+
+        const order = this._newApplicationOrderResults.find(
+            item => Number(item?.orderID || 0) === resolvedOrderId
+        );
+
+        if (!order) {
+            this.appendSystemLine('Current Order was not found.');
+            return;
+        }
+
+        this._newApplicationSelectedOrder = order;
+
+        const input = document.getElementById(
+            'newApplicationOrderSearch'
+        );
+
+        if (input) {
+            input.value = `Work Order ${
+                order.orderChristyNumber || order.orderID
+            } — ${order.entityName || 'No Customer'}`;
+        }
+
+        this.renderNewApplicationOrderResults([order]);
+        this.setNewApplicationContinueEnabled(true);
+    },
+
+    setNewApplicationContinueEnabled(enabled) {
+        const button = document.getElementById(
+            'newApplicationContinueButton'
+        );
+
+        if (!button) return;
+
+        button.disabled = !enabled;
+        button.style.background = enabled ? '#117a8b' : '#999';
+        button.style.cursor = enabled ? 'pointer' : 'not-allowed';
+    },
+
+    async continueNewApplicationCreation() {
+        const orderId = Number(
+            this._newApplicationSelectedOrder?.orderID || 0
+        );
+
+        if (!orderId) {
+            this.appendSystemLine(
+                'Please select a valid current Order.'
+            );
+            return;
+        }
+
+        const button = document.getElementById(
+            'newApplicationContinueButton'
+        );
+
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Loading...';
+            button.style.cursor = 'wait';
+        }
+
+        try {
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type:    'applicationCreateOptions',
+                        orderID: orderId
+                    })
+                }
+            );
+
+            const options = await response.json();
+
+            if (!response.ok || !options?.success) {
+                throw new Error(
+                    options?.error ||
+                    'Application creation options could not be loaded.'
+                );
+            }
+
+            const defaultStageId = Number(
+                options.defaults?.stageID || 0
+            );
+            const defaultStatusId = Number(
+                options.defaults?.statusID || 0
+            );
+
+            const defaultStage = (
+                options.applicationStages || []
+            ).find(stage =>
+                Number(stage.applicationStageID) === defaultStageId
+            );
+
+            const defaultStatus = (
+                options.applicationStatuses || []
+            ).find(status =>
+                Number(status.applicationStatusID) === defaultStatusId
+            );
+
+            this._newApplicationDraft = {
+                type: 'applicationCreate',
+                application: {
+                    orderID:           Number(options.order.orderID),
+                    entityID:          Number(options.order.orderEntityID),
+                    locationID:        Number(options.order.orderLocationID),
+                    stageID:           defaultStageId,
+                    statusID:          defaultStatusId,
+                    assignedContactID: Number(
+                        options.defaults?.assignedContactID || 0
+                    ) || null,
+                    title:             'Sign Permit Application',
+                    jurisdiction:      String(
+                        options.order.locationJurisdiction || ''
+                    ).trim(),
+                    applicationNumber: null,
+                    permitNumber:      null,
+                    scope:             String(
+                        options.order.orderScope || ''
+                    ),
+                    note:              ''
+                },
+                context: {
+                    order:               options.order,
+                    applicationStages:   options.applicationStages || [],
+                    applicationStatuses: options.applicationStatuses || [],
+                    assignedContacts:    options.assignedContacts || [],
+                    stageName:           defaultStage?.applicationStageName || '',
+                    statusName:          defaultStatus?.applicationStatusName || ''
+                }
+            };
+
+            window.SkyWorkspace.replace({
+                pageType:   'application_create',
+                objectType: 'application',
+                objectId:   null,
+                title:      'New Application',
+                state: {
+                    step:    'details',
+                    orderID: orderId
+                }
+            });
+
+        } catch (error) {
+            console.error(
+                '[New Application] Initialization failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to initialize Application: ${
+                    error?.message || 'Unknown error'
+                }`
+            );
+
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Continue';
+                button.style.background = '#117a8b';
+                button.style.cursor = 'pointer';
+            }
+        }
+    },
+
+    updateNewApplicationField(fieldName, value) {
+        if (!this._newApplicationDraft?.application) return;
+
+        if (fieldName === 'assignedContactID') {
+            this._newApplicationDraft.application[fieldName] =
+                Number(value || 0) || null;
+            return;
+        }
+
+        this._newApplicationDraft.application[fieldName] =
+            String(value ?? '');
+    },
+
+    returnToNewApplicationOrderStep() {
+        this._newApplicationDraft = null;
+
+        window.SkyWorkspace.replace({
+            pageType:   'application_create',
+            objectType: 'application',
+            objectId:   null,
+            title:      'New Application',
+            state: {
+                step:    'order',
+                orderID: null
+            }
+        });
     },
 
     // #endregion
@@ -20957,6 +21605,14 @@ if (window.SkyWorkspace) {
             )
         );
     }
+    if (typeof SkyIndex.renderApplicationCreatePage === 'function') {
+        SkyWorkspace.registerPage(
+            'application_create',
+            SkyIndex.renderApplicationCreatePage.bind(
+                SkyIndex
+            )
+        );
+    }
     if (typeof SkyIndex.renderOrderPage === 'function') {
         SkyWorkspace.registerPage(
             'order',
@@ -20991,6 +21647,9 @@ if (window.SkyWorkspace) {
 
             order_create:
                 typeof SkyIndex.renderOrderCreatePage,
+
+            application_create:
+                typeof SkyIndex.renderApplicationCreatePage,
 
             order:
                 typeof SkyIndex.renderOrderPage

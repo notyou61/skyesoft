@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — askOpenAI.php
-//  Version: 1.3.3
-//  Last Updated: 2026-04-30
+//  Version: 1.3.4
+//  Last Updated: 2026-08-29
 //  Codex Tier: 3 — AI Augmentation / Prompt Orchestration
 //
 //  Role:
@@ -2803,6 +2803,141 @@ function loadOrderPage(
 }
 
 /**
+ * Search current authoritative Orders for Application creation.
+ *
+ * Current Orders are valid Orders whose authoritative Status is Active.
+ * This helper performs no Action logging.
+ *
+ * @param PDO|null $db
+ * @param string   $query
+ * @param int      $limit
+ * @return array
+ */
+function searchCurrentOrders(
+    ?PDO $db,
+    string $query,
+    int $limit = 10
+): array {
+    if (!$db instanceof PDO) {
+        return [];
+    }
+
+    $query = trim($query);
+    $limit = max(1, min(10, $limit));
+
+    if (strlen($query) < 2) {
+        return [];
+    }
+
+    try {
+        $searchValue = '%' . $query . '%';
+
+        $orderStmt = $db->prepare("
+            SELECT
+                o.orderID,
+                o.orderChristyNumber,
+                o.orderDate,
+                o.orderScope,
+                o.orderStatusID,
+                os.orderStatusName,
+                o.orderEntityID,
+                e.entityName,
+                o.orderLocationID,
+                l.locationName,
+                l.locationAddress,
+                l.locationAddressSuite,
+                l.locationCity,
+                l.locationState,
+                l.locationZip,
+                l.locationJurisdiction
+            FROM tblOrders o
+            INNER JOIN tblOrderStatuses os
+                ON os.orderStatusID = o.orderStatusID
+            INNER JOIN tblEntities e
+                ON e.entityId = o.orderEntityID
+            INNER JOIN tblLocations l
+                ON l.locationId = o.orderLocationID
+            WHERE COALESCE(o.orderIsNotValid, 0) = 0
+              AND COALESCE(e.entityIsNotValid, 0) = 0
+              AND COALESCE(l.locationIsNotValid, 0) = 0
+              AND LOWER(TRIM(os.orderStatusName)) = 'active'
+              AND (
+                    o.orderChristyNumber LIKE :numberQuery
+                 OR e.entityName LIKE :entityQuery
+                 OR l.locationName LIKE :locationQuery
+                 OR l.locationAddress LIKE :addressQuery
+                 OR CONCAT_WS(
+                        ' ',
+                        l.locationAddress,
+                        l.locationAddressSuite,
+                        l.locationCity,
+                        l.locationState,
+                        l.locationZip
+                    ) LIKE :fullAddressQuery
+              )
+            ORDER BY
+                o.orderDate DESC,
+                o.orderID DESC
+            LIMIT :limit
+        ");
+
+        $orderStmt->bindValue(
+            ':numberQuery',
+            $searchValue,
+            PDO::PARAM_STR
+        );
+        $orderStmt->bindValue(
+            ':entityQuery',
+            $searchValue,
+            PDO::PARAM_STR
+        );
+        $orderStmt->bindValue(
+            ':locationQuery',
+            $searchValue,
+            PDO::PARAM_STR
+        );
+        $orderStmt->bindValue(
+            ':addressQuery',
+            $searchValue,
+            PDO::PARAM_STR
+        );
+        $orderStmt->bindValue(
+            ':fullAddressQuery',
+            $searchValue,
+            PDO::PARAM_STR
+        );
+        $orderStmt->bindValue(
+            ':limit',
+            $limit,
+            PDO::PARAM_INT
+        );
+
+        $orderStmt->execute();
+
+        $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($orders as &$order) {
+            $order['orderID'] = (int)$order['orderID'];
+            $order['orderDate'] = (int)$order['orderDate'];
+            $order['orderStatusID'] = (int)$order['orderStatusID'];
+            $order['orderEntityID'] = (int)$order['orderEntityID'];
+            $order['orderLocationID'] = (int)$order['orderLocationID'];
+        }
+        unset($order);
+
+        return $orders;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[searchCurrentOrders] Search failed: ' .
+            $e->getMessage()
+        );
+
+        return [];
+    }
+}
+
+/**
  * Search authoritative Locations by Location name for autocomplete.
  *
  * @param PDO|null $db
@@ -4203,6 +4338,277 @@ if ($type === 'locationDetail') {
     ], JSON_UNESCAPED_SLASHES);
 
     exit;
+}
+
+// =====================================================
+// READ-ONLY CURRENT ORDER SEARCH (Application autocomplete)
+// =====================================================
+
+if ($type === 'currentOrderSearch') {
+    // Resolve search request
+    $query = trim((string)($input['query'] ?? ''));
+    $limit = max(1, min(10, (int)($input['limit'] ?? 10)));
+
+    // Require enough input for a useful search
+    if (strlen($query) < 2) {
+        echo json_encode([
+            'success' => true,
+            'type'    => 'current_order_search',
+            'query'   => $query,
+            'orders'  => []
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    $orders = searchCurrentOrders(
+        $db,
+        $query,
+        $limit
+    );
+
+    echo json_encode([
+        'success' => true,
+        'type'    => 'current_order_search',
+        'query'   => $query,
+        'orders'  => $orders
+    ], JSON_UNESCAPED_SLASHES);
+
+    exit;
+}
+
+// =====================================================
+// READ-ONLY APPLICATION CREATE OPTIONS
+// =====================================================
+
+if ($type === 'applicationCreateOptions') {
+    $orderId = (int)($input['orderID'] ?? 0);
+
+    if ($orderId <= 0) {
+        echo json_encode([
+            'success' => false,
+            'type'    => 'application_create_options',
+            'error'   => 'Valid orderID is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    try {
+        // Load selected current Order and authoritative relationships
+        $orderStmt = $db->prepare("
+            SELECT
+                o.orderID,
+                o.orderChristyNumber,
+                o.orderDate,
+                o.orderScope,
+                o.orderStatusID,
+                os.orderStatusName,
+                o.orderEntityID,
+                e.entityName,
+                o.orderLocationID,
+                l.locationName,
+                l.locationAddress,
+                l.locationAddressSuite,
+                l.locationCity,
+                l.locationState,
+                l.locationZip,
+                l.locationJurisdiction
+            FROM tblOrders o
+            INNER JOIN tblOrderStatuses os
+                ON os.orderStatusID = o.orderStatusID
+            INNER JOIN tblEntities e
+                ON e.entityId = o.orderEntityID
+            INNER JOIN tblLocations l
+                ON l.locationId = o.orderLocationID
+            WHERE o.orderID = :orderId
+              AND COALESCE(o.orderIsNotValid, 0) = 0
+              AND COALESCE(e.entityIsNotValid, 0) = 0
+              AND COALESCE(l.locationIsNotValid, 0) = 0
+              AND LOWER(TRIM(os.orderStatusName)) = 'active'
+            LIMIT 1
+        ");
+
+        $orderStmt->execute([
+            'orderId' => $orderId
+        ]);
+
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($order)) {
+            echo json_encode([
+                'success' => false,
+                'type'    => 'application_create_options',
+                'error'   => 'Current Order was not found.'
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $jurisdiction = trim(
+            (string)($order['locationJurisdiction'] ?? '')
+        );
+
+        if ($jurisdiction === '') {
+            echo json_encode([
+                'success' => false,
+                'type'    => 'application_create_options',
+                'error'   => 'The selected Order Location has no jurisdiction.'
+            ], JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        // Load active Application stages
+        $stageStmt = $db->query("
+            SELECT
+                applicationStageID,
+                applicationStageName,
+                applicationStageDescription,
+                applicationStageSortOrder
+            FROM tblApplicationStages
+            WHERE applicationStageIsActive = 1
+            ORDER BY applicationStageSortOrder ASC
+        ");
+
+        $applicationStages = $stageStmt
+            ? $stageStmt->fetchAll(PDO::FETCH_ASSOC)
+            : [];
+
+        // Load active Application statuses
+        $statusStmt = $db->query("
+            SELECT
+                applicationStatusID,
+                applicationStageID,
+                applicationStatusName,
+                applicationStatusDescription,
+                applicationStatusSortOrder
+            FROM tblApplicationStatuses
+            WHERE applicationStatusIsActive = 1
+            ORDER BY
+                applicationStageID ASC,
+                applicationStatusSortOrder ASC
+        ");
+
+        $applicationStatuses = $statusStmt
+            ? $statusStmt->fetchAll(PDO::FETCH_ASSOC)
+            : [];
+
+        // Load active Contacts eligible for assignment
+        $contactStmt = $db->query("
+            SELECT
+                contactId,
+                contactFirstName,
+                contactLastName,
+                contactTitle
+            FROM tblContacts
+            WHERE COALESCE(contactIsNotValid, 0) = 0
+              AND COALESCE(isActive, 1) = 1
+            ORDER BY
+                contactLastName ASC,
+                contactFirstName ASC,
+                contactId ASC
+        ");
+
+        $assignedContacts = $contactStmt
+            ? $contactStmt->fetchAll(PDO::FETCH_ASSOC)
+            : [];
+
+        // Resolve governed initial stage and status by name
+        $defaultStageId = null;
+        $defaultStatusId = null;
+
+        foreach ($applicationStages as &$stage) {
+            $stage['applicationStageID'] = (int)$stage[
+                'applicationStageID'
+            ];
+            $stage['applicationStageSortOrder'] = (int)$stage[
+                'applicationStageSortOrder'
+            ];
+
+            if (
+                strtolower(trim((string)$stage['applicationStageName'])) ===
+                'pre-submittal'
+            ) {
+                $defaultStageId = $stage['applicationStageID'];
+            }
+        }
+        unset($stage);
+
+        foreach ($applicationStatuses as &$status) {
+            $status['applicationStatusID'] = (int)$status[
+                'applicationStatusID'
+            ];
+            $status['applicationStageID'] = (int)$status[
+                'applicationStageID'
+            ];
+            $status['applicationStatusSortOrder'] = (int)$status[
+                'applicationStatusSortOrder'
+            ];
+
+            if (
+                strtolower(trim((string)$status['applicationStatusName'])) ===
+                'application preparation' &&
+                $status['applicationStageID'] === $defaultStageId
+            ) {
+                $defaultStatusId = $status['applicationStatusID'];
+            }
+        }
+        unset($status);
+
+        foreach ($assignedContacts as &$contact) {
+            $contact['contactId'] = (int)$contact['contactId'];
+        }
+        unset($contact);
+
+        if ($defaultStageId === null || $defaultStatusId === null) {
+            throw new RuntimeException(
+                'Initial Application stage or status is not configured.'
+            );
+        }
+
+        $assignedContactId = (int)(
+            $_SESSION['SKYESOFT_contactId']
+            ?? $_SESSION['contactId']
+            ?? 0
+        );
+
+        // Normalize authoritative identifiers
+        $order['orderID'] = (int)$order['orderID'];
+        $order['orderDate'] = (int)$order['orderDate'];
+        $order['orderStatusID'] = (int)$order['orderStatusID'];
+        $order['orderEntityID'] = (int)$order['orderEntityID'];
+        $order['orderLocationID'] = (int)$order['orderLocationID'];
+
+        echo json_encode([
+            'success'             => true,
+            'type'                => 'application_create_options',
+            'order'               => $order,
+            'applicationStages'   => $applicationStages,
+            'applicationStatuses' => $applicationStatuses,
+            'assignedContacts'    => $assignedContacts,
+            'defaults'            => [
+                'stageID'          => $defaultStageId,
+                'statusID'         => $defaultStatusId,
+                'assignedContactID'=> $assignedContactId > 0
+                    ? $assignedContactId
+                    : null,
+                'createdUnix'      => time()
+            ]
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[askOpenAI] applicationCreateOptions failed: ' .
+            $e->getMessage()
+        );
+
+        echo json_encode([
+            'success' => false,
+            'type'    => 'application_create_options',
+            'error'   => 'Unable to load Application creation options.'
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+    }
 }
 
 // =====================================================
