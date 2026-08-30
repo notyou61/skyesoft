@@ -10486,7 +10486,10 @@ window.SkyIndex = {
                     <button type="button" onclick="SkyIndex.cancelApplicationEditWorkspace(${applicationId})" style="padding:6px 12px; border:1px solid #d1d5db; border-radius:6px; background:#fff; cursor:pointer;">Cancel</button>
                     <button type="button" id="applicationEditSaveButton" onclick="SkyIndex.saveApplicationEditWorkspace(${applicationId})" style="padding:6px 14px; border:1px solid #0d9488; border-radius:6px; background:#0d9488; color:#fff; cursor:pointer;">Save</button>
                 `
-                : `<button type="button" onclick="SkyIndex.editApplicationWorkspace(${applicationId})" style="padding:6px 12px; border:1px solid #d1d5db; border-radius:6px; background:#fff; cursor:pointer;">Edit</button>`
+                : `
+                    <button type="button" onclick="SkyIndex.openApplicationStatusReport(${applicationId})" style="padding:6px 12px; border:1px solid #14377c; border-radius:6px; background:#fff; color:#14377c; cursor:pointer;">Status PDF</button>
+                    <button type="button" onclick="SkyIndex.editApplicationWorkspace(${applicationId})" style="padding:6px 12px; border:1px solid #d1d5db; border-radius:6px; background:#fff; cursor:pointer;">Edit</button>
+                `
         };
     },
 
@@ -10624,6 +10627,93 @@ window.SkyIndex = {
             }
         }
     },
+
+    // #region External Application Status Report
+
+    async openApplicationStatusReport(applicationId) {
+        const resolvedApplicationId = Number(applicationId || 0);
+
+        if (resolvedApplicationId <= 0) {
+            this.appendSystemLine(
+                'A valid Application is required for the status report.'
+            );
+            return;
+        }
+
+        const reportWindow = window.open('', '_blank');
+
+        if (!reportWindow) {
+            this.appendSystemLine(
+                'The report window was blocked. Allow pop-ups and try again.'
+            );
+            return;
+        }
+
+        reportWindow.document.write(
+            '<!DOCTYPE html><html><head><title>Preparing Application Status Report</title></head><body style="font-family:Arial,sans-serif;padding:24px;">Preparing Application Status Report...</body></html>'
+        );
+        reportWindow.document.close();
+
+        try {
+            let actionLocation = await this.getLocationSafe();
+
+            if (
+                actionLocation?.latitude !== null &&
+                actionLocation?.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+            } else if (this.lastLocation) {
+                actionLocation = this.lastLocation;
+            }
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/skyesoft/scripts/applicationStatusReport.php';
+            form.target = reportWindow.name || 'applicationStatusReport';
+            form.style.display = 'none';
+
+            if (!reportWindow.name) {
+                reportWindow.name = 'applicationStatusReport';
+                form.target = reportWindow.name;
+            }
+
+            const addField = (name, value) => {
+                const field = document.createElement('input');
+                field.type = 'hidden';
+                field.name = name;
+                field.value = value === null || value === undefined
+                    ? ''
+                    : String(value);
+                form.appendChild(field);
+            };
+
+            addField('applicationID', resolvedApplicationId);
+            addField(
+                'latitude',
+                actionLocation?.latitude ?? null
+            );
+            addField(
+                'longitude',
+                actionLocation?.longitude ?? null
+            );
+
+            document.body.appendChild(form);
+            form.submit();
+            form.remove();
+
+        } catch (error) {
+            console.error(
+                '[Application Status Report] Open failed:',
+                error
+            );
+            reportWindow.close();
+            this.appendSystemLine(
+                `Unable to open Application Status Report: ${error?.message || 'Unknown error'}`
+            );
+        }
+    },
+
+    // #endregion
 
     // #region Application Notes
 
