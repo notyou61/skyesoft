@@ -9224,35 +9224,15 @@ window.SkyIndex = {
             );
         }
 
-        const contactOptions = (
-            draft.context.assignedContacts || []
-        ).map(contact => {
-            const contactId = Number(contact.contactId || 0);
-            const contactName = this.escapeHtml(
-                [
-                    contact.contactFirstName,
-                    contact.contactLastName
-                ].filter(Boolean).join(' ') ||
-                'Unnamed Contact'
-            );
-            const contactTitle = this.escapeHtml(
-                contact.contactTitle || ''
-            );
-            const selected =
-                Number(draft.application.assignedContactID) === contactId
-                    ? ' selected'
-                    : '';
-
-            return `
-                <option value="${contactId}"${selected}>
-                    ${contactName}${
-                        contactTitle
-                            ? ` — ${contactTitle}`
-                            : ''
-                    }
-                </option>
-            `;
-        }).join('');
+        const creator = draft.context.creator || {};
+        const creatorName = [
+            creator.contactFirstName,
+            creator.contactLastName
+        ].filter(Boolean).join(' ') || 'Authenticated Company Contact';
+        const creatorDisplay = [
+            creatorName,
+            creator.contactTitle
+        ].filter(Boolean).join(' — ');
 
         return {
             titleHtml: `
@@ -9327,17 +9307,16 @@ window.SkyIndex = {
                     </div>
 
                     <div>
-                        <label for="newApplicationAssignedContact" style="display:block; margin-bottom:5px; font-weight:600;">
-                            Assigned Permit Specialist
+                        <label for="newApplicationCreator" style="display:block; margin-bottom:5px; font-weight:600;">
+                            Application Creator
                         </label>
-                        <select
-                            id="newApplicationAssignedContact"
-                            onchange="SkyIndex.updateNewApplicationField('assignedContactID', this.value)"
-                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ccc; border-radius:6px; background:#fff;"
+                        <input
+                            id="newApplicationCreator"
+                            type="text"
+                            value="${this.escapeHtml(creatorDisplay)}"
+                            readonly
+                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ddd; border-radius:6px; background:#f5f5f5;"
                         >
-                            <option value="">Select Contact...</option>
-                            ${contactOptions}
-                        </select>
                     </div>
 
                     <div>
@@ -9654,9 +9633,6 @@ window.SkyIndex = {
                     locationID:        Number(options.order.orderLocationID),
                     stageID:           defaultStageId,
                     statusID:          defaultStatusId,
-                    assignedContactID: Number(
-                        options.defaults?.assignedContactID || 0
-                    ) || null,
                     title:             'Sign Permit Application',
                     jurisdiction:      String(
                         options.order.locationJurisdiction || ''
@@ -9672,7 +9648,7 @@ window.SkyIndex = {
                     order:               options.order,
                     applicationStages:   options.applicationStages || [],
                     applicationStatuses: options.applicationStatuses || [],
-                    assignedContacts:    options.assignedContacts || [],
+                    creator:             options.creator || null,
                     stageName:           defaultStage?.applicationStageName || '',
                     statusName:          defaultStatus?.applicationStatusName || ''
                 }
@@ -9712,12 +9688,6 @@ window.SkyIndex = {
 
     updateNewApplicationField(fieldName, value) {
         if (!this._newApplicationDraft?.application) return;
-
-        if (fieldName === 'assignedContactID') {
-            this._newApplicationDraft.application[fieldName] =
-                Number(value || 0) || null;
-            return;
-        }
 
         this._newApplicationDraft.application[fieldName] =
             String(value ?? '');

@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — askOpenAI.php
-//  Version: 1.3.4
-//  Last Updated: 2026-08-29
+//  Version: 1.3.5
+//  Last Updated: 2026-04-30
 //  Codex Tier: 3 — AI Augmentation / Prompt Orchestration
 //
 //  Role:
@@ -4490,25 +4490,59 @@ if ($type === 'applicationCreateOptions') {
             ? $statusStmt->fetchAll(PDO::FETCH_ASSOC)
             : [];
 
-        // Load active Contacts eligible for assignment
-        $contactStmt = $db->query("
+        // Resolve authenticated Company Contact as Application creator
+        $creatorContactId = (int)(
+            $_SESSION['SKYESOFT_contactId']
+            ?? $_SESSION['contactId']
+            ?? 0
+        );
+
+        if ($creatorContactId <= 0) {
+            throw new RuntimeException(
+                'An authenticated Contact is required.'
+            );
+        }
+
+        $actorStmt = $db->prepare("
             SELECT
-                contactId,
-                contactFirstName,
-                contactLastName,
-                contactTitle
-            FROM tblContacts
-            WHERE COALESCE(contactIsNotValid, 0) = 0
-              AND COALESCE(isActive, 1) = 1
-            ORDER BY
-                contactLastName ASC,
-                contactFirstName ASC,
-                contactId ASC
+                c.contactId,
+                c.contactFirstName,
+                c.contactLastName,
+                c.contactTitle,
+                c.contactEntityId,
+                e.entityName,
+                e.entityType
+            FROM tblContacts c
+            INNER JOIN tblEntities e
+                ON e.entityId = c.contactEntityId
+            WHERE c.contactId = :contactId
+              AND COALESCE(c.contactIsNotValid, 0) = 0
+              AND COALESCE(c.isActive, 1) = 1
+              AND COALESCE(e.entityIsNotValid, 0) = 0
+              AND LOWER(TRIM(e.entityType)) = 'company'
+            LIMIT 1
         ");
 
-        $assignedContacts = $contactStmt
-            ? $contactStmt->fetchAll(PDO::FETCH_ASSOC)
-            : [];
+        $actorStmt->execute([
+            'contactId' => $creatorContactId
+        ]);
+
+        $actor = $actorStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($actor)) {
+            throw new RuntimeException(
+                'Authenticated Company Contact was not found.'
+            );
+        }
+
+        $creator = [
+            'contactId'       => (int)$actor['contactId'],
+            'contactFirstName'=> trim((string)$actor['contactFirstName']),
+            'contactLastName' => trim((string)$actor['contactLastName']),
+            'contactTitle'    => trim((string)$actor['contactTitle']),
+            'entityId'        => (int)$actor['contactEntityId'],
+            'entityName'      => trim((string)$actor['entityName'])
+        ];
 
         // Resolve governed initial stage and status by name
         $defaultStageId = null;
@@ -4552,22 +4586,11 @@ if ($type === 'applicationCreateOptions') {
         }
         unset($status);
 
-        foreach ($assignedContacts as &$contact) {
-            $contact['contactId'] = (int)$contact['contactId'];
-        }
-        unset($contact);
-
         if ($defaultStageId === null || $defaultStatusId === null) {
             throw new RuntimeException(
                 'Initial Application stage or status is not configured.'
             );
         }
-
-        $assignedContactId = (int)(
-            $_SESSION['SKYESOFT_contactId']
-            ?? $_SESSION['contactId']
-            ?? 0
-        );
 
         // Normalize authoritative identifiers
         $order['orderID'] = (int)$order['orderID'];
@@ -4582,14 +4605,11 @@ if ($type === 'applicationCreateOptions') {
             'order'               => $order,
             'applicationStages'   => $applicationStages,
             'applicationStatuses' => $applicationStatuses,
-            'assignedContacts'    => $assignedContacts,
+            'creator'             => $creator,
             'defaults'            => [
-                'stageID'          => $defaultStageId,
-                'statusID'         => $defaultStatusId,
-                'assignedContactID'=> $assignedContactId > 0
-                    ? $assignedContactId
-                    : null,
-                'createdUnix'      => time()
+                'stageID'    => $defaultStageId,
+                'statusID'   => $defaultStatusId,
+                'createdUnix'=> time()
             ]
         ], JSON_UNESCAPED_SLASHES);
 
