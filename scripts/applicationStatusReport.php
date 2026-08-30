@@ -21,6 +21,10 @@ function failApplicationStatusReport(
     string $message,
     int $statusCode = 400
 ): never {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
     http_response_code($statusCode);
     header('Content-Type: text/html; charset=UTF-8');
 
@@ -249,41 +253,47 @@ $activitySessionId = $activitySessionId !== ''
     ? $activitySessionId
     : null;
 
-$actionId = insertActionPrompt([
-    'actionTypeId' => $actionTypeId,
-    'contactId' => $contactId,
-    'origin' => ACTION_ORIGIN_USER,
-    'activitySessionId' => $activitySessionId,
-    'promptText' => 'Open Application Status Report',
-    'responseText' => sprintf(
-        'Opened external status report for Application #%d — %s.',
-        $applicationId,
-        (string)$application['applicationTitle']
-    ),
-    'intent' => 'report.document.read',
-    'intentConfidence' => 1.00,
-    'latitude' => $latitude,
-    'longitude' => $longitude,
-    'actionPayloadData' => [
-        'operation' => 'application.status_report',
-        'applicationID' => $applicationId,
-        'audience' => 'external',
-        'internalNotesIncluded' => false
-    ],
-    'actionResponseData' => [
-        'success' => true,
-        'applicationID' => $applicationId,
-        'reportType' => 'application_status',
-        'audience' => 'external'
-    ]
-], $db);
-
-if ($actionId <= 0) {
-    failApplicationStatusReport(
-        'The report Action could not be recorded.',
-        500
-    );
-}
+$recordReportAction = static function () use (
+    $db,
+    $actionTypeId,
+    $contactId,
+    $activitySessionId,
+    $applicationId,
+    $application,
+    $latitude,
+    $longitude
+): int {
+    return insertActionPrompt([
+        'actionTypeId' => $actionTypeId,
+        'contactId' => $contactId,
+        'origin' => ACTION_ORIGIN_USER,
+        'activitySessionId' => $activitySessionId,
+        'promptText' => 'Generate Application Status PDF',
+        'responseText' => sprintf(
+            'Generated external status PDF for Application #%d — %s.',
+            $applicationId,
+            (string)$application['applicationTitle']
+        ),
+        'intent' => 'report.document.read',
+        'intentConfidence' => 1.00,
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'actionPayloadData' => [
+            'operation' => 'application.status_report',
+            'applicationID' => $applicationId,
+            'audience' => 'external',
+            'outputFormat' => 'pdf',
+            'internalNotesIncluded' => false
+        ],
+        'actionResponseData' => [
+            'success' => true,
+            'applicationID' => $applicationId,
+            'reportType' => 'application_status',
+            'audience' => 'external',
+            'outputFormat' => 'pdf'
+        ]
+    ], $db);
+};
 
 #endregion
 
@@ -294,13 +304,15 @@ $logoPath = $rootDir !== false
     ? $rootDir . '/assets/images/christyLogo.png'
     : '';
 $logoAvailable = $logoPath !== '' && is_file($logoPath);
-$logoUrl = '../assets/images/christyLogo.png';
+$logoSource = $logoAvailable
+    ? 'file://' . $logoPath
+    : '';
 $preparedBy = trim(
     (string)$actor['contactFirstName'] . ' ' .
     (string)$actor['contactLastName']
 );
 
-header('Content-Type: text/html; charset=UTF-8');
+ob_start();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -339,24 +351,6 @@ header('Content-Type: text/html; charset=UTF-8');
             width: 100%;
             max-width: 1000px;
             margin: 0 auto;
-        }
-
-        .print-controls {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
-        .print-button {
-            padding: 6px 10px;
-            color: #fff;
-            background: #14377c;
-            border: 1px solid #14377c;
-            border-radius: 5px;
-            font: inherit;
-            font-weight: bold;
-            cursor: pointer;
         }
 
         .header-table {
@@ -457,55 +451,17 @@ header('Content-Type: text/html; charset=UTF-8');
             border-left: 4px solid #14377c;
         }
 
-        .report-footer {
-            position: fixed;
-            right: 0;
-            bottom: 0;
-            left: 0;
-            padding-top: 5px;
-            color: #666;
-            font-size: 9px;
-            border-top: 1px solid #ccc;
-        }
-
-        .footer-right {
-            text-align: right;
-        }
-
-        @media print {
-            body {
-                padding: 0;
-            }
-
-            .print-controls {
-                display: none !important;
-            }
-
-            .report {
-                max-width: none;
-            }
-        }
     </style>
 </head>
 <body>
 
 <div class="report">
-    <div class="print-controls">
-        <button
-            type="button"
-            class="print-button"
-            onclick="window.print()"
-        >
-            Print / Save as PDF
-        </button>
-    </div>
-
     <table class="header-table">
         <tr>
             <td class="header-logo-cell">
                 <?php if ($logoAvailable): ?>
                     <img
-                        src="<?= escapeApplicationReportValue($logoUrl) ?>"
+                        src="<?= escapeApplicationReportValue($logoSource) ?>"
                         class="header-logo"
                         alt="Christy Signs"
                     >
@@ -686,24 +642,122 @@ header('Content-Type: text/html; charset=UTF-8');
         </div>
     </div>
 
-    <div class="report-footer">
-        <table class="footer-table">
-            <tr>
-                <td>
-                    Prepared by
-                    <?= escapeApplicationReportValue($preparedBy) ?>
-                    | Christy Signs
-                </td>
-                <td class="footer-right">
-                    Skyesoft Application Status | Page 1 of 1
-                </td>
-            </tr>
-        </table>
-    </div>
 </div>
 
 </body>
 </html>
 <?php
+
+$reportHtml = (string)ob_get_clean();
+
+// Resolve Composer autoloader (canonical root first)
+$autoloadCandidates = array_filter([
+    $rootDir !== false ? $rootDir . '/vendor/autoload.php' : null,
+    $rootDir !== false ? $rootDir . '/api/vendor/autoload.php' : null,
+    __DIR__ . '/vendor/autoload.php',
+    $rootDir !== false
+        ? dirname($rootDir) . '/vendor/autoload.php'
+        : null
+]);
+$autoloadPath = null;
+
+foreach ($autoloadCandidates as $autoloadCandidate) {
+    if (is_file($autoloadCandidate)) {
+        $autoloadPath = $autoloadCandidate;
+        break;
+    }
+}
+
+if ($autoloadPath === null) {
+    failApplicationStatusReport(
+        'The Skyesoft PDF rendering engine is unavailable.',
+        500
+    );
+}
+
+require_once $autoloadPath;
+
+if (!class_exists('Mpdf\\Mpdf')) {
+    failApplicationStatusReport(
+        'The Skyesoft PDF rendering engine is not installed.',
+        500
+    );
+}
+
+// Prepare writable mPDF runtime directory
+$mpdfTempDir = sys_get_temp_dir() . '/skyesoft-mpdf';
+
+if (!is_dir($mpdfTempDir) && !mkdir($mpdfTempDir, 0775, true)) {
+    failApplicationStatusReport(
+        'The PDF runtime directory could not be prepared.',
+        500
+    );
+}
+
+try {
+    $pdf = new \Mpdf\Mpdf([
+        'mode' => 'utf-8',
+        'format' => 'Letter',
+        'orientation' => 'P',
+        'margin_left' => 9.65,
+        'margin_right' => 9.65,
+        'margin_top' => 9.65,
+        'margin_bottom' => 15,
+        'tempDir' => $mpdfTempDir
+    ]);
+
+    $pdf->SetTitle(sprintf(
+        'Application #%d Status Report',
+        $applicationId
+    ));
+    $pdf->SetAuthor($preparedBy);
+    $pdf->SetCreator('Skyesoft');
+    $pdf->SetHTMLFooter(
+        '<table style="width:100%; border-top:1px solid #ccc; color:#666; font-family:Arial,Helvetica,sans-serif; font-size:9px;">' .
+        '<tr><td style="padding-top:5px; text-align:left;">Prepared by ' .
+        escapeApplicationReportValue($preparedBy) .
+        ' | Christy Signs</td>' .
+        '<td style="padding-top:5px; text-align:right;">Skyesoft Application Status | Page {PAGENO} of {nbpg}</td></tr>' .
+        '</table>'
+    );
+    $pdf->WriteHTML($reportHtml);
+
+    $pdfFilename = sprintf(
+        'Application-%d-Status-Report.pdf',
+        $applicationId
+    );
+
+    $pdfContent = $pdf->Output(
+        '',
+        \Mpdf\Output\Destination::STRING_RETURN
+    );
+} catch (Throwable $exception) {
+    failApplicationStatusReport(
+        'The Application Status PDF could not be generated.',
+        500
+    );
+}
+
+// Record one explicit read only after successful PDF generation
+$actionId = $recordReportAction();
+
+if ($actionId <= 0) {
+    failApplicationStatusReport(
+        'The report Action could not be recorded.',
+        500
+    );
+}
+
+header('Content-Type: application/pdf');
+header(
+    'Content-Disposition: inline; filename="' .
+    $pdfFilename .
+    '"'
+);
+header('Content-Length: ' . strlen($pdfContent));
+header('Cache-Control: private, no-store, max-age=0');
+
+echo $pdfContent;
+exit;
 
 #endregion
