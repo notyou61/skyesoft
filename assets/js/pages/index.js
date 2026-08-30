@@ -1,6 +1,6 @@
 // ======================================================================
 // Skyesoft — index.js
-// Version: 1.0.2
+// Version: 1.1.0
 // Command / Portal Interface Controller
 // ======================================================================
 //
@@ -10013,6 +10013,160 @@ window.SkyIndex = {
         });
     },
 
+    async searchApplications(query) {
+        const searchValue = String(query || '').trim();
+
+        if (!searchValue) {
+            this.appendSystemLine(
+                'Enter an Application name, job name, or Work Order number.'
+            );
+            return;
+        }
+
+        let actionLocation = await this.getLocationSafe();
+
+        if (
+            actionLocation?.latitude !== null &&
+            actionLocation?.longitude !== null
+        ) {
+            this.lastLocation = actionLocation;
+        } else if (this.lastLocation) {
+            actionLocation = this.lastLocation;
+        }
+
+        try {
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: 'applicationSearch',
+                        query: searchValue,
+                        limit: 10,
+                        latitude: actionLocation?.latitude ?? null,
+                        longitude: actionLocation?.longitude ?? null
+                    })
+                }
+            );
+
+            const responseText = await response.text();
+
+            if (!response.ok) {
+                throw new Error(
+                    `HTTP ${response.status}: ${responseText.substring(0, 200)}`
+                );
+            }
+
+            const data = JSON.parse(responseText);
+
+            if (!data?.success || !Array.isArray(data.applications)) {
+                throw new Error(
+                    data?.error || 'Applications could not be searched.'
+                );
+            }
+
+            this._currentApplicationSearchData = data;
+            this.renderApplicationSearchCard(data);
+
+        } catch (error) {
+            console.error('[Application Search] Failed:', error);
+            this.appendSystemLine(
+                `Unable to search Applications: ${
+                    error?.message || 'Unknown error'
+                }`
+            );
+        }
+    },
+
+    renderApplicationSearchCard(data) {
+        const applications = Array.isArray(data?.applications)
+            ? data.applications
+            : [];
+        const count = applications.length;
+        const escape = value => this.escapeHtml(String(value ?? ''));
+
+        const rowsHtml = count
+            ? applications.map((application, index) => {
+                const applicationId = Number(
+                    application.applicationID || 0
+                );
+                const creatorName = [
+                    application.creator?.contactFirstName,
+                    application.creator?.contactLastName
+                ].filter(Boolean).join(' ');
+
+                return `
+                    <div style="padding:10px 0; ${
+                        index < count - 1
+                            ? 'border-bottom:1px solid #f0f0f0;'
+                            : ''
+                    }">
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:7px;">
+                            ${count > 1 ? `<span style="color:#777;">${index + 1}.</span>` : ''}
+                            <a href="#"
+                            onclick="event.preventDefault(); SkyIndex.openApplicationWorkspace(${applicationId});"
+                            style="color:#117a8b; font-weight:700; text-decoration:none;">
+                                ${escape(application.applicationTitle || 'Application')}
+                            </a>
+                            <span style="padding:2px 7px; border-radius:999px; background:#e8f4f6; color:#117a8b; font-size:0.72em; font-weight:700;">
+                                ${escape(application.applicationStatusName || '—')}
+                            </span>
+                        </div>
+
+                        <div style="margin-top:4px; color:#555; font-size:0.85em;">
+                            Application #${applicationId} · Work Order ${escape(application.orderChristyNumber || '—')}
+                        </div>
+
+                        <div style="margin-top:3px; color:#666; font-size:0.85em;">
+                            ${escape(application.entityName || 'No Customer')} · ${escape(application.locationName || 'Unnamed Location')}
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:4px; color:#666; font-size:0.82em;">
+                            <span>${escape(application.applicationStageName || '—')}</span>
+                            <span>${escape(application.applicationJurisdiction || '—')}</span>
+                            <span>Created by ${escape(creatorName || 'Company Contact')}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('')
+            : '<div style="padding:10px 0; color:#777;">No matching Applications were found.</div>';
+
+        const badgeLabel = count > 0 ? 'FOUND' : 'NOT FOUND';
+        const subtitle = count === 1
+            ? '1 matching Application'
+            : `${count} matching Applications`;
+
+        this.appendSystemHtml(`
+            <div class="result-card application-search-card"
+            style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
+                <div class="result-header"
+                style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="result-icon">📋</span>
+                        <div style="display:flex; flex-direction:column;">
+                            <strong class="result-title" style="color:#222;">
+                                ${count === 1 ? 'Application' : 'Applications'}
+                            </strong>
+                            <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
+                                ${subtitle}
+                            </small>
+                        </div>
+                    </div>
+                    <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
+                        ${badgeLabel}
+                    </span>
+                </div>
+                <div class="result-body" style="padding:4px 16px 12px;">
+                    ${rowsHtml}
+                </div>
+            </div>
+        `);
+    },
+
     editApplicationWorkspace(applicationId) {
         window.SkyWorkspace.replace({
             pageType:   'application',
@@ -14772,6 +14926,21 @@ window.SkyIndex = {
             if (openApplicationMatch) {
                 this.openApplicationWorkspace(
                     Number(openApplicationMatch[1])
+                );
+                return;
+            }
+
+            // =====================================================
+            // 📋 Application Search Command
+            // Search by ID, name, job, Work Order, or permit number.
+            // =====================================================
+            const applicationSearchMatch = trimmed.match(
+                /^(?:find\s+|search\s+|show\s+)?applications?\s+(.+)$/i
+            );
+
+            if (applicationSearchMatch) {
+                await this.searchApplications(
+                    applicationSearchMatch[1]
                 );
                 return;
             }

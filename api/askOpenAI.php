@@ -5325,6 +5325,204 @@ if ($type === 'applicationCreate') {
 }
 
 // =====================================================
+// AUTHORITATIVE APPLICATION SEARCH
+// =====================================================
+
+if ($type === 'applicationSearch') {
+    $query = trim((string)($input['query'] ?? ''));
+    $limit = max(1, min(25, (int)($input['limit'] ?? 10)));
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    if ($query === '' || $actorContactId <= 0) {
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_search',
+            'error' => 'A search value and authenticated Contact are required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+    $activitySessionId = $activitySessionId !== ''
+        ? $activitySessionId
+        : null;
+    $latitude = is_numeric($input['latitude'] ?? null)
+        ? (float)$input['latitude']
+        : null;
+    $longitude = is_numeric($input['longitude'] ?? null)
+        ? (float)$input['longitude']
+        : null;
+
+    try {
+        $searchStmt = $db->prepare("
+            SELECT a.applicationID
+            FROM tblApplications a
+            INNER JOIN tblOrders o
+                ON o.orderID = a.applicationOrderID
+            INNER JOIN tblEntities e
+                ON e.entityId = a.applicationEntityID
+            INNER JOIN tblLocations l
+                ON l.locationId = a.applicationLocationID
+            CROSS JOIN (
+                SELECT
+                    :containsQuery AS containsQuery,
+                    :exactQuery AS exactQuery,
+                    :prefixQuery AS prefixQuery
+            ) searchValues
+            WHERE a.applicationIsNotValid = 0
+              AND (
+                    CAST(a.applicationID AS CHAR) = searchValues.exactQuery
+                 OR a.applicationTitle LIKE searchValues.containsQuery
+                 OR COALESCE(a.applicationNumber, '') LIKE searchValues.containsQuery
+                 OR COALESCE(a.applicationPermitNumber, '') LIKE searchValues.containsQuery
+                 OR COALESCE(o.orderChristyNumber, '') LIKE searchValues.containsQuery
+                 OR e.entityName LIKE searchValues.containsQuery
+                 OR l.locationName LIKE searchValues.containsQuery
+              )
+            ORDER BY
+                CASE
+                    WHEN CAST(a.applicationID AS CHAR) = searchValues.exactQuery THEN 1
+                    WHEN COALESCE(o.orderChristyNumber, '') = searchValues.exactQuery THEN 2
+                    WHEN a.applicationTitle = searchValues.exactQuery THEN 3
+                    WHEN l.locationName = searchValues.exactQuery THEN 4
+                    WHEN e.entityName = searchValues.exactQuery THEN 5
+                    WHEN a.applicationTitle LIKE searchValues.prefixQuery THEN 6
+                    WHEN l.locationName LIKE searchValues.prefixQuery THEN 7
+                    WHEN e.entityName LIKE searchValues.prefixQuery THEN 8
+                    ELSE 9
+                END ASC,
+                a.applicationCreatedUnix DESC,
+                a.applicationID DESC
+            LIMIT :resultLimit
+        ");
+
+        $searchStmt->bindValue(
+            ':containsQuery',
+            '%' . $query . '%',
+            PDO::PARAM_STR
+        );
+        $searchStmt->bindValue(
+            ':exactQuery',
+            $query,
+            PDO::PARAM_STR
+        );
+        $searchStmt->bindValue(
+            ':prefixQuery',
+            $query . '%',
+            PDO::PARAM_STR
+        );
+        $searchStmt->bindValue(
+            ':resultLimit',
+            $limit,
+            PDO::PARAM_INT
+        );
+        $searchStmt->execute();
+
+        $applicationIds = $searchStmt->fetchAll(PDO::FETCH_COLUMN);
+        $applications = [];
+
+        foreach ($applicationIds as $applicationId) {
+            $application = loadAuthoritativeApplicationDetail(
+                $db,
+                (int)$applicationId
+            );
+
+            if (is_array($application)) {
+                $applications[] = $application;
+            }
+        }
+
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = 'application.read'
+              AND crud_class = 'read'
+            LIMIT 1
+        ");
+        $actionTypeStmt->execute();
+        $actionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?: 0
+        );
+
+        if ($actionTypeId <= 0) {
+            throw new RuntimeException(
+                'Application read Action Type is not configured.'
+            );
+        }
+
+        $actionId = insertActionPrompt([
+            'actionTypeId' => $actionTypeId,
+            'contactId' => $actorContactId,
+            'origin' => ACTION_ORIGIN_USER,
+            'activitySessionId' => $activitySessionId,
+            'promptText' => 'Search Applications',
+            'responseText' => sprintf(
+                'Found %d Application%s for "%s".',
+                count($applications),
+                count($applications) === 1 ? '' : 's',
+                $query
+            ),
+            'intent' => 'application.read',
+            'intentConfidence' => 1.00,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'actionPayloadData' => [
+                'operation' => 'applications.search',
+                'query' => $query,
+                'limit' => $limit
+            ],
+            'actionResponseData' => [
+                'success' => true,
+                'rowCount' => count($applications),
+                'applicationIDs' => array_map(
+                    static function ($application) {
+                        return (int)$application['applicationID'];
+                    },
+                    $applications
+                )
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Application search Action could not be created.'
+            );
+        }
+
+        echo json_encode([
+            'success' => true,
+            'type' => 'application_search',
+            'query' => $query,
+            'applications' => $applications,
+            'rowCount' => count($applications),
+            'actionID' => $actionId,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[askOpenAI] applicationSearch failed: ' .
+            $e->getMessage()
+        );
+
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_search',
+            'error' => 'Unable to search Applications.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
+// =====================================================
 // EXPLICIT APPLICATION READ
 // =====================================================
 
