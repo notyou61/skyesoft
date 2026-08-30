@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 //  Skyesoft — askOpenAI.php
 //  Version: 1.3.3
-//  Last Updated: 2026-04-30
+//  Last Updated: 2026-08-30
 //  Codex Tier: 3 — AI Augmentation / Prompt Orchestration
 //
 //  Role:
@@ -4828,6 +4828,115 @@ function loadAuthoritativeApplicationEvents(
     return $events;
 }
 
+// =====================================================
+// AUTHORITATIVE APPLICATION NOTES
+// =====================================================
+
+function requireAuthenticatedCompanyContact(
+    PDO $db,
+    int $contactId
+): array {
+    if ($contactId <= 0) {
+        throw new RuntimeException(
+            'An authenticated Company Contact is required.'
+        );
+    }
+
+    $contactStmt = $db->prepare("
+        SELECT
+            c.contactId,
+            c.contactFirstName,
+            c.contactLastName,
+            c.contactTitle,
+            c.contactEntityId,
+            e.entityName
+        FROM tblContacts c
+        INNER JOIN tblEntities e
+            ON e.entityId = c.contactEntityId
+        WHERE c.contactId = :contactId
+          AND COALESCE(c.contactIsNotValid, 0) = 0
+          AND COALESCE(c.isActive, 1) = 1
+          AND COALESCE(e.entityIsNotValid, 0) = 0
+          AND LOWER(TRIM(e.entityType)) = 'company'
+        LIMIT 1
+    ");
+    $contactStmt->execute([
+        'contactId' => $contactId
+    ]);
+
+    $contact = $contactStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!is_array($contact)) {
+        throw new RuntimeException(
+            'Authenticated Company Contact was not found.'
+        );
+    }
+
+    $contact['contactId'] = (int)$contact['contactId'];
+    $contact['contactEntityId'] = (int)$contact['contactEntityId'];
+
+    return $contact;
+}
+
+function loadAuthoritativeApplicationNotes(
+    PDO $db,
+    int $applicationId
+): array {
+    if ($applicationId <= 0) {
+        return [];
+    }
+
+    $noteStmt = $db->prepare("
+        SELECT
+            n.noteID,
+            n.noteApplicationID,
+            n.noteAuthorContactID,
+            n.noteText,
+            n.noteCreatedUnix,
+            n.noteUpdatedByContactID,
+            n.noteUpdatedUnix,
+            ac.contactFirstName AS authorFirstName,
+            ac.contactLastName AS authorLastName,
+            uc.contactFirstName AS updaterFirstName,
+            uc.contactLastName AS updaterLastName
+        FROM tblNotes n
+        INNER JOIN tblContacts ac
+            ON ac.contactId = n.noteAuthorContactID
+        LEFT JOIN tblContacts uc
+            ON uc.contactId = n.noteUpdatedByContactID
+        WHERE n.noteApplicationID = :applicationId
+          AND n.noteIsNotValid = 0
+        ORDER BY
+            n.noteCreatedUnix DESC,
+            n.noteID DESC
+    ");
+    $noteStmt->execute([
+        'applicationId' => $applicationId
+    ]);
+
+    $notes = $noteStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($notes as &$note) {
+        $note['noteID'] = (int)$note['noteID'];
+        $note['noteApplicationID'] = (int)$note['noteApplicationID'];
+        $note['noteAuthorContactID'] = (int)$note[
+            'noteAuthorContactID'
+        ];
+        $note['noteCreatedUnix'] = (int)$note['noteCreatedUnix'];
+        $note['noteUpdatedByContactID'] =
+            $note['noteUpdatedByContactID'] !== null
+                ? (int)$note['noteUpdatedByContactID']
+                : null;
+        $note['noteUpdatedUnix'] =
+            $note['noteUpdatedUnix'] !== null
+                ? (int)$note['noteUpdatedUnix']
+                : null;
+    }
+    unset($note);
+
+    return $notes;
+}
+
 function loadApplicationWorkflowOptions(PDO $db): array {
     $stageStmt = $db->query("
         SELECT
@@ -5558,6 +5667,12 @@ if ($type === 'applicationDetail') {
         : null;
 
     try {
+        // Restrict Application and Note data to Company Contacts
+        requireAuthenticatedCompanyContact(
+            $db,
+            $actorContactId
+        );
+
         $application = loadAuthoritativeApplicationDetail(
             $db,
             $applicationId
@@ -5568,6 +5683,10 @@ if ($type === 'applicationDetail') {
         }
 
         $events = loadAuthoritativeApplicationEvents(
+            $db,
+            $applicationId
+        );
+        $notes = loadAuthoritativeApplicationNotes(
             $db,
             $applicationId
         );
@@ -5613,7 +5732,8 @@ if ($type === 'applicationDetail') {
             'actionResponseData' => [
                 'success' => true,
                 'applicationID' => $applicationId,
-                'eventCount' => count($events)
+                'eventCount' => count($events),
+                'noteCount' => count($notes)
             ]
         ], $db);
 
@@ -5628,6 +5748,7 @@ if ($type === 'applicationDetail') {
             'type' => 'application_detail',
             'application' => $application,
             'events' => $events,
+            'notes' => $notes,
             'applicationStages' =>
                 $workflowOptions['applicationStages'],
             'applicationStatuses' =>
@@ -6033,6 +6154,525 @@ if ($type === 'applicationUpdate') {
         $returnApplicationUpdateError(
             'Unable to update the Application.'
         );
+    }
+}
+
+// =====================================================
+// GOVERNED APPLICATION NOTE CREATE MUTATION
+// =====================================================
+
+if ($type === 'applicationNoteCreate') {
+    $applicationId = (int)($input['applicationID'] ?? 0);
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+    $noteText = trim((string)($input['noteText'] ?? ''));
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+    $activitySessionId = $activitySessionId !== ''
+        ? $activitySessionId
+        : null;
+    $latitude = is_numeric($input['latitude'] ?? null)
+        ? (float)$input['latitude']
+        : null;
+    $longitude = is_numeric($input['longitude'] ?? null)
+        ? (float)$input['longitude']
+        : null;
+
+    $returnNoteCreateError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_note_create',
+            'error' => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    if ($applicationId <= 0 || $actorContactId <= 0) {
+        $returnNoteCreateError(
+            'A valid Application and authenticated Company Contact are required.'
+        );
+    }
+    if ($noteText === '') {
+        $returnNoteCreateError('Note text is required.');
+    }
+    if (strlen($noteText) > 65535) {
+        $returnNoteCreateError('Note text is too long.');
+    }
+
+    try {
+        requireAuthenticatedCompanyContact($db, $actorContactId);
+
+        $application = loadAuthoritativeApplicationDetail(
+            $db,
+            $applicationId
+        );
+        if (!is_array($application)) {
+            $returnNoteCreateError('Application was not found.');
+        }
+
+        $db->beginTransaction();
+        $createdUnix = time();
+
+        $insertStmt = $db->prepare("
+            INSERT INTO tblNotes (
+                noteApplicationID,
+                noteAuthorContactID,
+                noteText,
+                noteCreatedUnix,
+                noteIsNotValid
+            ) VALUES (
+                :applicationId,
+                :authorContactId,
+                :noteText,
+                :createdUnix,
+                0
+            )
+        ");
+        $insertStmt->execute([
+            'applicationId' => $applicationId,
+            'authorContactId' => $actorContactId,
+            'noteText' => $noteText,
+            'createdUnix' => $createdUnix
+        ]);
+        $noteId = (int)$db->lastInsertId();
+
+        if ($noteId <= 0) {
+            throw new RuntimeException('Note could not be created.');
+        }
+
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = 'note.create'
+              AND crud_class = 'create'
+            LIMIT 1
+        ");
+        $actionTypeStmt->execute();
+        $actionTypeId = (int)($actionTypeStmt->fetchColumn() ?: 0);
+
+        if ($actionTypeId <= 0) {
+            throw new RuntimeException(
+                'Note create Action Type is not configured.'
+            );
+        }
+
+        $actionId = insertActionPrompt([
+            'actionTypeId' => $actionTypeId,
+            'contactId' => $actorContactId,
+            'origin' => ACTION_ORIGIN_USER,
+            'activitySessionId' => $activitySessionId,
+            'promptText' => 'Add Application Note',
+            'responseText' => sprintf(
+                'Added Note #%d to Application #%d.',
+                $noteId,
+                $applicationId
+            ),
+            'intent' => 'note.create',
+            'intentConfidence' => 1.00,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'actionPayloadData' => [
+                'operation' => 'note.create',
+                'noteID' => $noteId,
+                'subjectType' => 'application',
+                'applicationID' => $applicationId,
+                'noteText' => $noteText
+            ],
+            'actionResponseData' => [
+                'success' => true,
+                'noteID' => $noteId,
+                'applicationID' => $applicationId
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Note create Action could not be created.'
+            );
+        }
+
+        $notes = loadAuthoritativeApplicationNotes(
+            $db,
+            $applicationId
+        );
+        $db->commit();
+
+        echo json_encode([
+            'success' => true,
+            'type' => 'application_note_create',
+            'applicationID' => $applicationId,
+            'noteID' => $noteId,
+            'notes' => $notes,
+            'actionID' => $actionId,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        error_log(
+            '[askOpenAI] applicationNoteCreate failed: ' .
+            $e->getMessage()
+        );
+        $returnNoteCreateError('Unable to add the Note.');
+    }
+}
+
+// =====================================================
+// GOVERNED APPLICATION NOTE UPDATE MUTATION
+// =====================================================
+
+if ($type === 'applicationNoteUpdate') {
+    $applicationId = (int)($input['applicationID'] ?? 0);
+    $noteId = (int)($input['noteID'] ?? 0);
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+    $noteText = trim((string)($input['noteText'] ?? ''));
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+    $activitySessionId = $activitySessionId !== ''
+        ? $activitySessionId
+        : null;
+    $latitude = is_numeric($input['latitude'] ?? null)
+        ? (float)$input['latitude']
+        : null;
+    $longitude = is_numeric($input['longitude'] ?? null)
+        ? (float)$input['longitude']
+        : null;
+
+    $returnNoteUpdateError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_note_update',
+            'error' => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    if (
+        $applicationId <= 0 ||
+        $noteId <= 0 ||
+        $actorContactId <= 0
+    ) {
+        $returnNoteUpdateError(
+            'A valid Application, Note, and Company Contact are required.'
+        );
+    }
+    if ($noteText === '') {
+        $returnNoteUpdateError('Note text is required.');
+    }
+    if (strlen($noteText) > 65535) {
+        $returnNoteUpdateError('Note text is too long.');
+    }
+
+    try {
+        requireAuthenticatedCompanyContact($db, $actorContactId);
+        $db->beginTransaction();
+
+        $noteStmt = $db->prepare("
+            SELECT noteText
+            FROM tblNotes
+            WHERE noteID = :noteId
+              AND noteApplicationID = :applicationId
+              AND noteIsNotValid = 0
+            LIMIT 1
+            FOR UPDATE
+        ");
+        $noteStmt->execute([
+            'noteId' => $noteId,
+            'applicationId' => $applicationId
+        ]);
+        $beforeText = $noteStmt->fetchColumn();
+
+        if ($beforeText === false) {
+            throw new RuntimeException('Active Note was not found.');
+        }
+
+        $updatedUnix = time();
+        $updateStmt = $db->prepare("
+            UPDATE tblNotes
+            SET
+                noteText = :noteText,
+                noteUpdatedByContactID = :updatedByContactId,
+                noteUpdatedUnix = :updatedUnix
+            WHERE noteID = :noteId
+              AND noteApplicationID = :applicationId
+              AND noteIsNotValid = 0
+        ");
+        $updateStmt->execute([
+            'noteText' => $noteText,
+            'updatedByContactId' => $actorContactId,
+            'updatedUnix' => $updatedUnix,
+            'noteId' => $noteId,
+            'applicationId' => $applicationId
+        ]);
+
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = 'note.update'
+              AND crud_class = 'update'
+            LIMIT 1
+        ");
+        $actionTypeStmt->execute();
+        $actionTypeId = (int)($actionTypeStmt->fetchColumn() ?: 0);
+
+        if ($actionTypeId <= 0) {
+            throw new RuntimeException(
+                'Note update Action Type is not configured.'
+            );
+        }
+
+        $actionId = insertActionPrompt([
+            'actionTypeId' => $actionTypeId,
+            'contactId' => $actorContactId,
+            'origin' => ACTION_ORIGIN_USER,
+            'activitySessionId' => $activitySessionId,
+            'promptText' => 'Update Application Note',
+            'responseText' => sprintf(
+                'Updated Note #%d on Application #%d.',
+                $noteId,
+                $applicationId
+            ),
+            'intent' => 'note.update',
+            'intentConfidence' => 1.00,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'actionPayloadData' => [
+                'operation' => 'note.update',
+                'noteID' => $noteId,
+                'subjectType' => 'application',
+                'applicationID' => $applicationId,
+                'before' => ['noteText' => (string)$beforeText],
+                'after' => ['noteText' => $noteText]
+            ],
+            'actionResponseData' => [
+                'success' => true,
+                'noteID' => $noteId,
+                'applicationID' => $applicationId
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Note update Action could not be created.'
+            );
+        }
+
+        $notes = loadAuthoritativeApplicationNotes(
+            $db,
+            $applicationId
+        );
+        $db->commit();
+
+        echo json_encode([
+            'success' => true,
+            'type' => 'application_note_update',
+            'applicationID' => $applicationId,
+            'noteID' => $noteId,
+            'notes' => $notes,
+            'actionID' => $actionId,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        error_log(
+            '[askOpenAI] applicationNoteUpdate failed: ' .
+            $e->getMessage()
+        );
+        $returnNoteUpdateError('Unable to update the Note.');
+    }
+}
+
+// =====================================================
+// GOVERNED APPLICATION NOTE INVALIDATE MUTATION
+// =====================================================
+
+if ($type === 'applicationNoteInvalidate') {
+    $applicationId = (int)($input['applicationID'] ?? 0);
+    $noteId = (int)($input['noteID'] ?? 0);
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+    $activitySessionId = $activitySessionId !== ''
+        ? $activitySessionId
+        : null;
+    $latitude = is_numeric($input['latitude'] ?? null)
+        ? (float)$input['latitude']
+        : null;
+    $longitude = is_numeric($input['longitude'] ?? null)
+        ? (float)$input['longitude']
+        : null;
+
+    $returnNoteInvalidateError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_note_invalidate',
+            'error' => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    if (
+        $applicationId <= 0 ||
+        $noteId <= 0 ||
+        $actorContactId <= 0
+    ) {
+        $returnNoteInvalidateError(
+            'A valid Application, Note, and Company Contact are required.'
+        );
+    }
+
+    try {
+        requireAuthenticatedCompanyContact($db, $actorContactId);
+        $db->beginTransaction();
+
+        $noteStmt = $db->prepare("
+            SELECT noteText
+            FROM tblNotes
+            WHERE noteID = :noteId
+              AND noteApplicationID = :applicationId
+              AND noteIsNotValid = 0
+            LIMIT 1
+            FOR UPDATE
+        ");
+        $noteStmt->execute([
+            'noteId' => $noteId,
+            'applicationId' => $applicationId
+        ]);
+        $noteText = $noteStmt->fetchColumn();
+
+        if ($noteText === false) {
+            throw new RuntimeException('Active Note was not found.');
+        }
+
+        $invalidatedUnix = time();
+        $invalidateStmt = $db->prepare("
+            UPDATE tblNotes
+            SET
+                noteInvalidatedByContactID = :invalidatedByContactId,
+                noteInvalidatedUnix = :invalidatedUnix,
+                noteIsNotValid = 1
+            WHERE noteID = :noteId
+              AND noteApplicationID = :applicationId
+              AND noteIsNotValid = 0
+        ");
+        $invalidateStmt->execute([
+            'invalidatedByContactId' => $actorContactId,
+            'invalidatedUnix' => $invalidatedUnix,
+            'noteId' => $noteId,
+            'applicationId' => $applicationId
+        ]);
+
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = 'note.invalidate'
+              AND crud_class = 'delete'
+            LIMIT 1
+        ");
+        $actionTypeStmt->execute();
+        $actionTypeId = (int)($actionTypeStmt->fetchColumn() ?: 0);
+
+        if ($actionTypeId <= 0) {
+            throw new RuntimeException(
+                'Note invalidate Action Type is not configured.'
+            );
+        }
+
+        $actionId = insertActionPrompt([
+            'actionTypeId' => $actionTypeId,
+            'contactId' => $actorContactId,
+            'origin' => ACTION_ORIGIN_USER,
+            'activitySessionId' => $activitySessionId,
+            'promptText' => 'Invalidate Application Note',
+            'responseText' => sprintf(
+                'Invalidated Note #%d on Application #%d.',
+                $noteId,
+                $applicationId
+            ),
+            'intent' => 'note.invalidate',
+            'intentConfidence' => 1.00,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'actionPayloadData' => [
+                'operation' => 'note.invalidate',
+                'noteID' => $noteId,
+                'subjectType' => 'application',
+                'applicationID' => $applicationId,
+                'before' => [
+                    'noteText' => (string)$noteText,
+                    'noteIsNotValid' => 0
+                ],
+                'after' => ['noteIsNotValid' => 1]
+            ],
+            'actionResponseData' => [
+                'success' => true,
+                'noteID' => $noteId,
+                'applicationID' => $applicationId
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Note invalidate Action could not be created.'
+            );
+        }
+
+        $notes = loadAuthoritativeApplicationNotes(
+            $db,
+            $applicationId
+        );
+        $db->commit();
+
+        echo json_encode([
+            'success' => true,
+            'type' => 'application_note_invalidate',
+            'applicationID' => $applicationId,
+            'noteID' => $noteId,
+            'notes' => $notes,
+            'actionID' => $actionId,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        error_log(
+            '[askOpenAI] applicationNoteInvalidate failed: ' .
+            $e->getMessage()
+        );
+        $returnNoteInvalidateError('Unable to invalidate the Note.');
     }
 }
 
