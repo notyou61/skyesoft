@@ -9100,6 +9100,8 @@ window.SkyIndex = {
 
     // #region 📄 Application Creation Workspace
 
+    _newApplicationCreatedApplication: null,
+
     openNewApplicationWorkspace() {
         if (!window.SkyWorkspace) {
             this.appendSystemLine('Workspace is not available.');
@@ -9343,21 +9345,6 @@ window.SkyIndex = {
                         >${this.escapeHtml(draft.application.scope || '')}</textarea>
                     </div>
 
-                    <div style="grid-column:1 / -1;">
-                        <label for="newApplicationNote" style="display:block; margin-bottom:5px; font-weight:600;">
-                            Notes
-                        </label>
-                        <textarea
-                            id="newApplicationNote"
-                            rows="3"
-                            oninput="SkyIndex.updateNewApplicationField('note', this.value)"
-                            style="box-sizing:border-box; width:100%; padding:9px 10px; border:1px solid #ccc; border-radius:6px; resize:vertical;"
-                        >${this.escapeHtml(draft.application.note || '')}</textarea>
-                    </div>
-                </div>
-
-                <div style="margin-top:12px; color:#777; font-size:0.82em;">
-                    Application creation will be enabled after the governed mutation route is installed.
                 </div>
             `,
 
@@ -9372,8 +9359,9 @@ window.SkyIndex = {
 
                 <button
                     type="button"
-                    disabled
-                    style="padding:8px 16px; border:0; border-radius:6px; background:#999; color:#fff; cursor:not-allowed;"
+                    id="newApplicationCreateButton"
+                    onclick="SkyIndex.submitNewApplicationCreation()"
+                    style="padding:8px 16px; border:0; border-radius:6px; background:#117a8b; color:#fff; cursor:pointer;"
                 >
                     Create Application
                 </button>
@@ -9642,7 +9630,6 @@ window.SkyIndex = {
                     scope:             String(
                         options.order.orderScope || ''
                     ),
-                    note:              ''
                 },
                 context: {
                     order:               options.order,
@@ -9691,6 +9678,231 @@ window.SkyIndex = {
 
         this._newApplicationDraft.application[fieldName] =
             String(value ?? '');
+
+        this.refreshNewApplicationCreateButton();
+    },
+
+    async submitNewApplicationCreation() {
+        if (this._newApplicationCreationSubmitting) return;
+
+        const draft = this._newApplicationDraft;
+        const orderId = Number(
+            draft?.application?.orderID || 0
+        );
+        const title = String(
+            draft?.application?.title || ''
+        ).trim();
+
+        if (!orderId) {
+            this.appendSystemLine(
+                'A valid current Order is required.'
+            );
+            return;
+        }
+
+        if (!title) {
+            this.appendSystemLine(
+                'Application Title is required.'
+            );
+            return;
+        }
+
+        const createButton = document.getElementById(
+            'newApplicationCreateButton'
+        );
+
+        this._newApplicationCreationSubmitting = true;
+
+        if (createButton) {
+            createButton.disabled = true;
+            createButton.textContent = 'Creating...';
+            createButton.style.background = '#999';
+            createButton.style.cursor = 'wait';
+        }
+
+        try {
+            let actionLocation = {
+                latitude:  null,
+                longitude: null
+            };
+
+            try {
+                actionLocation = await this.getLocationSafe();
+
+                if (
+                    actionLocation?.latitude !== null &&
+                    actionLocation?.longitude !== null
+                ) {
+                    this.lastLocation = actionLocation;
+
+                } else if (this.lastLocation) {
+                    actionLocation = this.lastLocation;
+                }
+
+            } catch (locationError) {
+                console.warn(
+                    '[New Application] Action location unavailable:',
+                    locationError
+                );
+
+                if (this.lastLocation) {
+                    actionLocation = this.lastLocation;
+                }
+            }
+
+            // Submit only user-controlled Application values
+            const payload = {
+                type: 'applicationCreate',
+                latitude: actionLocation?.latitude ?? null,
+                longitude: actionLocation?.longitude ?? null,
+                application: {
+                    orderID: orderId,
+                    title: title,
+                    scope: String(
+                        draft.application.scope || ''
+                    ).trim() || null
+                }
+            };
+
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }
+            );
+
+            const responseText = await response.text();
+
+            if (!response.ok) {
+                throw new Error(
+                    `HTTP ${response.status}: ${
+                        responseText.substring(0, 200)
+                    }`
+                );
+            }
+
+            let result;
+
+            try {
+                result = JSON.parse(responseText);
+
+            } catch (parseError) {
+                throw new Error(
+                    'The server returned invalid Application JSON.'
+                );
+            }
+
+            if (!result?.success || !result?.application) {
+                throw new Error(
+                    result?.error ||
+                    'The Application could not be created.'
+                );
+            }
+
+            const application = result.application;
+
+            // Cache authoritative mutation response for later rendering
+            this._newApplicationCreatedApplication = application;
+
+            this._newApplicationDraft = null;
+            this._newApplicationSelectedOrder = null;
+            this._newApplicationOrderResults = [];
+
+            window.SkyWorkspace.close();
+
+            this.appendSystemLine(
+                `Application #${application.applicationID} — ${
+                    application.applicationTitle
+                } was created successfully.`
+            );
+
+            this.renderCreatedApplicationSummary(application);
+
+        } catch (error) {
+            console.error(
+                '[New Application] Creation failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to create Application: ${
+                    error?.message || 'Unknown error'
+                }`
+            );
+
+            if (createButton) {
+                createButton.disabled = false;
+                createButton.textContent = 'Create Application';
+                createButton.style.background = '#117a8b';
+                createButton.style.cursor = 'pointer';
+            }
+
+        } finally {
+            this._newApplicationCreationSubmitting = false;
+        }
+    },
+
+    refreshNewApplicationCreateButton() {
+        const button = document.getElementById(
+            'newApplicationCreateButton'
+        );
+
+        if (!button) return;
+
+        const enabled = Boolean(
+            Number(
+                this._newApplicationDraft?.application?.orderID || 0
+            ) &&
+            String(
+                this._newApplicationDraft?.application?.title || ''
+            ).trim()
+        );
+
+        button.disabled = !enabled;
+        button.style.background = enabled
+            ? '#117a8b'
+            : '#999';
+        button.style.cursor = enabled
+            ? 'pointer'
+            : 'not-allowed';
+    },
+
+    renderCreatedApplicationSummary(application) {
+        if (!application) return;
+
+        const creatorName = [
+            application.creator?.contactFirstName,
+            application.creator?.contactLastName
+        ].filter(Boolean).join(' ');
+
+        this.appendSystemHtml(`
+            <div class="sky-card application-summary-card" style="margin-top:8px; padding:12px; border:1px solid #cfd8dc; border-radius:7px; background:#fff;">
+                <div style="font-weight:700; color:#117a8b;">
+                    ${this.escapeHtml(application.applicationTitle || 'Application')}
+                </div>
+                <div style="margin-top:5px; color:#333;">
+                    Application #${Number(application.applicationID || 0)}
+                    · Work Order ${this.escapeHtml(application.orderChristyNumber || '')}
+                </div>
+                <div style="margin-top:3px; color:#555;">
+                    ${this.escapeHtml(application.entityName || '')}
+                    · ${this.escapeHtml(application.locationName || '')}
+                </div>
+                <div style="margin-top:3px; color:#555;">
+                    ${this.escapeHtml(application.applicationStageName || '')}
+                    · ${this.escapeHtml(application.applicationStatusName || '')}
+                    · ${this.escapeHtml(application.applicationJurisdiction || '')}
+                </div>
+                <div style="margin-top:3px; color:#777; font-size:0.86em;">
+                    Created by ${this.escapeHtml(creatorName || 'Company Contact')}
+                </div>
+            </div>
+        `);
     },
 
     returnToNewApplicationOrderStep() {

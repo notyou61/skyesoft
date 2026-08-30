@@ -4632,6 +4632,558 @@ if ($type === 'applicationCreateOptions') {
 }
 
 // =====================================================
+// AUTHORITATIVE APPLICATION DETAIL LOADER
+// =====================================================
+
+function loadAuthoritativeApplicationDetail(
+    PDO $db,
+    int $applicationId
+): ?array {
+    if ($applicationId <= 0) {
+        return null;
+    }
+
+    // Load complete Application without creating an Action
+    $applicationStmt = $db->prepare("
+        SELECT
+            a.*,
+            o.orderChristyNumber,
+            e.entityName,
+            l.locationName,
+            l.locationAddress,
+            l.locationAddressSuite,
+            l.locationCity,
+            l.locationState,
+            l.locationZip,
+            s.applicationStageName,
+            s.applicationStageDescription,
+            st.applicationStatusName,
+            st.applicationStatusDescription,
+            c.contactFirstName AS creatorFirstName,
+            c.contactLastName AS creatorLastName,
+            c.contactTitle AS creatorTitle
+        FROM tblApplications a
+        INNER JOIN tblOrders o
+            ON o.orderID = a.applicationOrderID
+        INNER JOIN tblEntities e
+            ON e.entityId = a.applicationEntityID
+        INNER JOIN tblLocations l
+            ON l.locationId = a.applicationLocationID
+        INNER JOIN tblApplicationStages s
+            ON s.applicationStageID = a.applicationStageID
+        INNER JOIN tblApplicationStatuses st
+            ON st.applicationStageID = a.applicationStageID
+           AND st.applicationStatusID = a.applicationStatusID
+        INNER JOIN tblContacts c
+            ON c.contactId = a.applicationCreatedByContactID
+        WHERE a.applicationID = :applicationId
+        LIMIT 1
+    ");
+
+    $applicationStmt->execute([
+        'applicationId' => $applicationId
+    ]);
+
+    $row = $applicationStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!is_array($row)) {
+        return null;
+    }
+
+    return [
+        'applicationID' => (int)$row['applicationID'],
+        'applicationOrderID' => (int)$row['applicationOrderID'],
+        'orderChristyNumber' => $row['orderChristyNumber'],
+        'applicationEntityID' => (int)$row['applicationEntityID'],
+        'entityName' => $row['entityName'],
+        'applicationLocationID' => (int)$row['applicationLocationID'],
+        'locationName' => $row['locationName'],
+        'locationAddress' => $row['locationAddress'],
+        'locationAddressSuite' => $row['locationAddressSuite'],
+        'locationCity' => $row['locationCity'],
+        'locationState' => $row['locationState'],
+        'locationZip' => $row['locationZip'],
+        'applicationStageID' => (int)$row['applicationStageID'],
+        'applicationStageName' => $row['applicationStageName'],
+        'applicationStageDescription' =>
+            $row['applicationStageDescription'],
+        'applicationStatusID' => (int)$row['applicationStatusID'],
+        'applicationStatusName' => $row['applicationStatusName'],
+        'applicationStatusDescription' =>
+            $row['applicationStatusDescription'],
+        'applicationCreatedByContactID' =>
+            (int)$row['applicationCreatedByContactID'],
+        'creator' => [
+            'contactId' => (int)$row['applicationCreatedByContactID'],
+            'contactFirstName' => $row['creatorFirstName'],
+            'contactLastName' => $row['creatorLastName'],
+            'contactTitle' => $row['creatorTitle']
+        ],
+        'applicationTitle' => $row['applicationTitle'],
+        'applicationJurisdiction' => $row['applicationJurisdiction'],
+        'applicationNumber' => $row['applicationNumber'],
+        'applicationPermitNumber' => $row['applicationPermitNumber'],
+        'applicationScope' => $row['applicationScope'],
+        'applicationSubmittedUnix' =>
+            $row['applicationSubmittedUnix'] !== null
+                ? (int)$row['applicationSubmittedUnix']
+                : null,
+        'applicationApprovedUnix' =>
+            $row['applicationApprovedUnix'] !== null
+                ? (int)$row['applicationApprovedUnix']
+                : null,
+        'applicationIssuedUnix' =>
+            $row['applicationIssuedUnix'] !== null
+                ? (int)$row['applicationIssuedUnix']
+                : null,
+        'applicationFinaledUnix' =>
+            $row['applicationFinaledUnix'] !== null
+                ? (int)$row['applicationFinaledUnix']
+                : null,
+        'applicationCreatedUnix' => (int)$row['applicationCreatedUnix'],
+        'applicationUpdatedUnix' =>
+            $row['applicationUpdatedUnix'] !== null
+                ? (int)$row['applicationUpdatedUnix']
+                : null,
+        'applicationIsNotValid' => (int)$row['applicationIsNotValid']
+    ];
+}
+
+// =====================================================
+// GOVERNED APPLICATION CREATE MUTATION
+// =====================================================
+
+if ($type === 'applicationCreate') {
+    // Return governed Application-creation error
+    $returnApplicationCreateError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type'    => 'application_create',
+            'error'   => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    // Resolve authenticated creator
+    $creatorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    if ($creatorContactId <= 0) {
+        $returnApplicationCreateError(
+            'An authenticated Company Contact is required.'
+        );
+    }
+
+    // Resolve submitted Application values
+    $applicationInput = is_array($input['application'] ?? null)
+        ? $input['application']
+        : [];
+
+    $orderId = (int)($applicationInput['orderID'] ?? 0);
+    $applicationTitle = trim((string)(
+        $applicationInput['title'] ?? ''
+    ));
+    $applicationScope = trim((string)(
+        $applicationInput['scope'] ?? ''
+    ));
+
+    if ($orderId <= 0) {
+        $returnApplicationCreateError(
+            'A valid current Order is required.'
+        );
+    }
+
+    if ($applicationTitle === '') {
+        $returnApplicationCreateError(
+            'Application Title is required.'
+        );
+    }
+
+    // Enforce database field lengths
+    $applicationTitle = mb_substr($applicationTitle, 0, 255);
+    $applicationScope = $applicationScope !== ''
+        ? $applicationScope
+        : null;
+
+    // Resolve Action context
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+    $activitySessionId = $activitySessionId !== ''
+        ? $activitySessionId
+        : null;
+
+    $latitude = is_numeric($input['latitude'] ?? null)
+        ? (float)$input['latitude']
+        : null;
+    $longitude = is_numeric($input['longitude'] ?? null)
+        ? (float)$input['longitude']
+        : null;
+
+    try {
+        // Confirm authenticated creator belongs to Company
+        $creatorStmt = $db->prepare("
+            SELECT
+                c.contactId,
+                c.contactFirstName,
+                c.contactLastName,
+                c.contactTitle,
+                c.contactEntityId,
+                ce.entityName
+            FROM tblContacts c
+            INNER JOIN tblEntities ce
+                ON ce.entityId = c.contactEntityId
+            WHERE c.contactId = :contactId
+              AND COALESCE(c.contactIsNotValid, 0) = 0
+              AND COALESCE(c.isActive, 1) = 1
+              AND COALESCE(ce.entityIsNotValid, 0) = 0
+              AND LOWER(TRIM(ce.entityType)) = 'company'
+            LIMIT 1
+        ");
+
+        $creatorStmt->execute([
+            'contactId' => $creatorContactId
+        ]);
+
+        $creator = $creatorStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($creator)) {
+            $returnApplicationCreateError(
+                'Authenticated Company Contact was not found.'
+            );
+        }
+
+        // Re-resolve the current Order and its relationships
+        $orderStmt = $db->prepare("
+            SELECT
+                o.orderID,
+                o.orderChristyNumber,
+                o.orderEntityID,
+                o.orderLocationID,
+                e.entityName,
+                l.locationName,
+                l.locationJurisdiction
+            FROM tblOrders o
+            INNER JOIN tblOrderStatuses os
+                ON os.orderStatusID = o.orderStatusID
+            INNER JOIN tblEntities e
+                ON e.entityId = o.orderEntityID
+            INNER JOIN tblLocations l
+                ON l.locationId = o.orderLocationID
+            WHERE o.orderID = :orderId
+              AND COALESCE(o.orderIsNotValid, 0) = 0
+              AND COALESCE(e.entityIsNotValid, 0) = 0
+              AND COALESCE(l.locationIsNotValid, 0) = 0
+              AND LOWER(TRIM(os.orderStatusName)) = 'active'
+            LIMIT 1
+        ");
+
+        $orderStmt->execute([
+            'orderId' => $orderId
+        ]);
+
+        $order = $orderStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($order)) {
+            $returnApplicationCreateError(
+                'Current Order was not found.'
+            );
+        }
+
+        $applicationEntityId = (int)$order['orderEntityID'];
+        $applicationLocationId = (int)$order['orderLocationID'];
+        $applicationJurisdiction = trim((string)(
+            $order['locationJurisdiction'] ?? ''
+        ));
+
+        if ($applicationJurisdiction === '') {
+            $returnApplicationCreateError(
+                'The Order Location has no jurisdiction.'
+            );
+        }
+
+        $applicationJurisdiction = mb_substr(
+            $applicationJurisdiction,
+            0,
+            100
+        );
+
+        // Resolve governed initial stage and status
+        $stateStmt = $db->prepare("
+            SELECT
+                s.applicationStageID,
+                s.applicationStageName,
+                st.applicationStatusID,
+                st.applicationStatusName
+            FROM tblApplicationStages s
+            INNER JOIN tblApplicationStatuses st
+                ON st.applicationStageID = s.applicationStageID
+            WHERE LOWER(TRIM(s.applicationStageName)) = 'pre-submittal'
+              AND LOWER(TRIM(st.applicationStatusName)) =
+                  'application preparation'
+              AND s.applicationStageIsActive = 1
+              AND st.applicationStatusIsActive = 1
+            LIMIT 1
+        ");
+
+        $stateStmt->execute();
+        $initialState = $stateStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($initialState)) {
+            $returnApplicationCreateError(
+                'Initial Application stage or status is not configured.'
+            );
+        }
+
+        $applicationStageId = (int)(
+            $initialState['applicationStageID'] ?? 0
+        );
+        $applicationStatusId = (int)(
+            $initialState['applicationStatusID'] ?? 0
+        );
+
+        // Resolve authoritative application.create Action Type
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = 'application.create'
+              AND crud_class = 'create'
+            LIMIT 1
+        ");
+        $actionTypeStmt->execute();
+
+        $applicationCreateActionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?: 0
+        );
+
+        if ($applicationCreateActionTypeId <= 0) {
+            $returnApplicationCreateError(
+                'Application creation Action Type is not configured.'
+            );
+        }
+
+        $createdUnix = time();
+
+        // Begin atomic Application, Event, and Action creation
+        $db->beginTransaction();
+
+        // Insert authoritative Application
+        $insertApplicationStmt = $db->prepare("
+            INSERT INTO tblApplications (
+                applicationOrderID,
+                applicationEntityID,
+                applicationLocationID,
+                applicationStageID,
+                applicationStatusID,
+                applicationCreatedByContactID,
+                applicationTitle,
+                applicationJurisdiction,
+                applicationNumber,
+                applicationPermitNumber,
+                applicationScope,
+                applicationSubmittedUnix,
+                applicationApprovedUnix,
+                applicationIssuedUnix,
+                applicationFinaledUnix,
+                applicationNote,
+                applicationCreatedUnix,
+                applicationUpdatedUnix,
+                applicationIsNotValid
+            ) VALUES (
+                :applicationOrderID,
+                :applicationEntityID,
+                :applicationLocationID,
+                :applicationStageID,
+                :applicationStatusID,
+                :applicationCreatedByContactID,
+                :applicationTitle,
+                :applicationJurisdiction,
+                NULL,
+                NULL,
+                :applicationScope,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                :applicationCreatedUnix,
+                NULL,
+                0
+            )
+        ");
+
+        $insertApplicationStmt->execute([
+            'applicationOrderID' => $orderId,
+            'applicationEntityID' => $applicationEntityId,
+            'applicationLocationID' => $applicationLocationId,
+            'applicationStageID' => $applicationStageId,
+            'applicationStatusID' => $applicationStatusId,
+            'applicationCreatedByContactID' => $creatorContactId,
+            'applicationTitle' => $applicationTitle,
+            'applicationJurisdiction' => $applicationJurisdiction,
+            'applicationScope' => $applicationScope,
+            'applicationCreatedUnix' => $createdUnix
+        ]);
+
+        $applicationId = (int)$db->lastInsertId();
+
+        if ($applicationId <= 0) {
+            throw new RuntimeException(
+                'Application record could not be created.'
+            );
+        }
+
+        // Insert initial append-only lifecycle event
+        $eventData = json_encode([
+            'operation' => 'application.create',
+            'orderID' => $orderId,
+            'title' => $applicationTitle
+        ], JSON_UNESCAPED_SLASHES);
+
+        $insertEventStmt = $db->prepare("
+            INSERT INTO tblApplicationEvents (
+                applicationID,
+                applicationEventType,
+                applicationCycleType,
+                applicationCycleNumber,
+                applicationEventStageID,
+                applicationEventStatusID,
+                applicationEventUnix,
+                applicationEventResult,
+                applicationEventNote,
+                applicationEventData,
+                applicationEventContactID,
+                applicationEventCreatedUnix
+            ) VALUES (
+                :applicationID,
+                'application.created',
+                'none',
+                NULL,
+                :applicationEventStageID,
+                :applicationEventStatusID,
+                :applicationEventUnix,
+                'created',
+                NULL,
+                :applicationEventData,
+                :applicationEventContactID,
+                :applicationEventCreatedUnix
+            )
+        ");
+
+        $insertEventStmt->execute([
+            'applicationID' => $applicationId,
+            'applicationEventStageID' => $applicationStageId,
+            'applicationEventStatusID' => $applicationStatusId,
+            'applicationEventUnix' => $createdUnix,
+            'applicationEventData' => $eventData,
+            'applicationEventContactID' => $creatorContactId,
+            'applicationEventCreatedUnix' => $createdUnix
+        ]);
+
+        $applicationEventId = (int)$db->lastInsertId();
+
+        if ($applicationEventId <= 0) {
+            throw new RuntimeException(
+                'Application lifecycle event could not be created.'
+            );
+        }
+
+        // Load complete authoritative Application without a read Action
+        $application = loadAuthoritativeApplicationDetail(
+            $db,
+            $applicationId
+        );
+
+        if (!is_array($application)) {
+            throw new RuntimeException(
+                'Created Application could not be reloaded.'
+            );
+        }
+
+        // Insert exactly one explicit Application Action
+        $actionId = insertActionPrompt([
+            'actionTypeId' => $applicationCreateActionTypeId,
+            'contactId' => $creatorContactId,
+            'origin' => ACTION_ORIGIN_USER,
+            'createdUnixTime' => $createdUnix,
+            'activitySessionId' => $activitySessionId,
+            'promptText' => 'Create Application',
+            'responseText' => sprintf(
+                'Created Application #%d — %s%s.',
+                $applicationId,
+                $applicationTitle,
+                !empty($order['orderChristyNumber'])
+                    ? ' for Christy Work Order ' .
+                        $order['orderChristyNumber']
+                    : ''
+            ),
+            'intent' => 'application.create',
+            'intentConfidence' => 1.00,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'actionPayloadData' => [
+                'operation' => 'application.create',
+                'applicationID' => $applicationId,
+                'orderID' => $orderId,
+                'entityID' => $applicationEntityId,
+                'locationID' => $applicationLocationId,
+                'stageID' => $applicationStageId,
+                'statusID' => $applicationStatusId,
+                'createdByContactID' => $creatorContactId,
+                'title' => $applicationTitle,
+                'jurisdiction' => $applicationJurisdiction,
+                'scope' => $applicationScope,
+                'applicationEventID' => $applicationEventId
+            ],
+            'actionResponseData' => [
+                'success' => true,
+                'applicationID' => $applicationId,
+                'applicationEventID' => $applicationEventId
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Application Action history could not be created.'
+            );
+        }
+
+        // Commit Application, Event, and Action together
+        $db->commit();
+
+        echo json_encode([
+            'success' => true,
+            'type' => 'application_create',
+            'application' => $application,
+            'applicationEventID' => $applicationEventId,
+            'actionID' => $actionId,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        error_log(
+            '[askOpenAI] applicationCreate failed: ' .
+            $e->getMessage()
+        );
+
+        $returnApplicationCreateError(
+            'Unable to create the Application.'
+        );
+    }
+}
+
+// =====================================================
 // READ-ONLY ORDER CREATE OPTIONS
 // =====================================================
 
