@@ -10258,6 +10258,7 @@ window.SkyIndex = {
             : await this.getApplication(applicationId);
         const application = data.application;
         const events = Array.isArray(data.events) ? data.events : [];
+        const notes = Array.isArray(data.notes) ? data.notes : [];
         const stages = Array.isArray(data.applicationStages)
             ? data.applicationStages
             : [];
@@ -10269,6 +10270,7 @@ window.SkyIndex = {
             applicationId: applicationId,
             application: application,
             events: events,
+            notes: notes,
             applicationStages: stages,
             applicationStatuses: statuses
         };
@@ -10403,6 +10405,60 @@ window.SkyIndex = {
             }).join('')
             : '<div style="color:#888; font-size:0.86em;">No lifecycle events.</div>';
 
+        const noteHtml = notes.length
+            ? notes.map(note => {
+                const authorName = [
+                    note.authorFirstName,
+                    note.authorLastName
+                ].filter(Boolean).join(' ');
+                const updaterName = [
+                    note.updaterFirstName,
+                    note.updaterLastName
+                ].filter(Boolean).join(' ');
+                const noteId = Number(note.noteID || 0);
+                const updatedDetail = note.noteUpdatedUnix
+                    ? ` · Updated ${formatDate(note.noteUpdatedUnix)}${
+                        updaterName ? ` by ${escape(updaterName)}` : ''
+                    }`
+                    : '';
+
+                return `
+                    <div id="applicationNoteRow${noteId}" style="padding:9px 0; border-bottom:1px solid #e5e7eb;">
+                        <div id="applicationNoteDisplay${noteId}">
+                            <div style="white-space:pre-wrap; color:#222; font-size:0.9em; line-height:1.45;">${escape(note.noteText)}</div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:5px;">
+                                <div style="color:#888; font-size:0.75em;">
+                                    ${escape(authorName || 'Unknown')} · ${formatDate(note.noteCreatedUnix)}${updatedDetail}
+                                </div>
+                                <div style="display:flex; gap:6px;">
+                                    <button type="button" onclick="SkyIndex.editApplicationNote(${noteId})" style="padding:3px 8px; border:1px solid #d1d5db; border-radius:5px; background:#fff; font-size:0.75em; cursor:pointer;">Edit</button>
+                                    <button type="button" onclick="SkyIndex.invalidateApplicationNote(${applicationId}, ${noteId})" style="padding:3px 8px; border:1px solid #ef4444; border-radius:5px; background:#fff; color:#b91c1c; font-size:0.75em; cursor:pointer;">Invalidate</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="applicationNoteEdit${noteId}" style="display:none;">
+                            <textarea id="applicationNoteEditText${noteId}" style="box-sizing:border-box; width:100%; min-height:78px; padding:8px 9px; border:1px solid #d1d5db; border-radius:6px; resize:vertical;">${escape(note.noteText)}</textarea>
+                            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
+                                <button type="button" onclick="SkyIndex.cancelApplicationNoteEdit(${noteId})" style="padding:5px 10px; border:1px solid #d1d5db; border-radius:5px; background:#fff; cursor:pointer;">Cancel</button>
+                                <button type="button" id="applicationNoteSaveButton${noteId}" onclick="SkyIndex.saveApplicationNote(${applicationId}, ${noteId})" style="padding:5px 10px; border:1px solid #0d9488; border-radius:5px; background:#0d9488; color:#fff; cursor:pointer;">Save Note</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')
+            : '<div style="padding:3px 0 9px; color:#888; font-size:0.86em;">No internal Notes.</div>';
+
+        const notesContent = `
+            <div style="margin-bottom:10px; color:#666; font-size:0.78em;">Internal Company Notes</div>
+            ${noteHtml}
+            <div style="margin-top:10px;">
+                <textarea id="applicationNewNoteText" placeholder="Add an internal Note..." style="box-sizing:border-box; width:100%; min-height:78px; padding:8px 9px; border:1px solid #d1d5db; border-radius:6px; resize:vertical;"></textarea>
+                <div style="display:flex; justify-content:flex-end; margin-top:6px;">
+                    <button type="button" id="applicationNoteAddButton" onclick="SkyIndex.addApplicationNote(${applicationId})" style="padding:6px 12px; border:1px solid #0d9488; border-radius:6px; background:#0d9488; color:#fff; cursor:pointer;">Add Note</button>
+                </div>
+            </div>
+        `;
+
         const immutableContent = `
             ${row('Work Order', escape(application.orderChristyNumber || application.applicationOrderID))}
             ${row('Customer', escape(application.entityName))}
@@ -10422,6 +10478,7 @@ window.SkyIndex = {
                 ${section('Authoritative Relationships', immutableContent)}
                 ${section('Milestones', milestoneContent)}
                 ${section('Scope', scopeContent)}
+                ${section('Notes', notesContent)}
                 ${section('Lifecycle History', eventHtml)}
             `,
             actionsHtml: isEditing
@@ -10567,6 +10624,234 @@ window.SkyIndex = {
             }
         }
     },
+
+    // #region Application Notes
+
+    editApplicationNote(noteId) {
+        const display = document.getElementById(
+            `applicationNoteDisplay${Number(noteId)}`
+        );
+        const editor = document.getElementById(
+            `applicationNoteEdit${Number(noteId)}`
+        );
+        const textarea = document.getElementById(
+            `applicationNoteEditText${Number(noteId)}`
+        );
+
+        if (display) display.style.display = 'none';
+        if (editor) editor.style.display = 'block';
+        if (textarea) textarea.focus();
+    },
+
+    cancelApplicationNoteEdit(noteId) {
+        const display = document.getElementById(
+            `applicationNoteDisplay${Number(noteId)}`
+        );
+        const editor = document.getElementById(
+            `applicationNoteEdit${Number(noteId)}`
+        );
+        const textarea = document.getElementById(
+            `applicationNoteEditText${Number(noteId)}`
+        );
+        const cachedNotes = Array.isArray(
+            this._currentApplicationWorkspaceData?.notes
+        )
+            ? this._currentApplicationWorkspaceData.notes
+            : [];
+        const note = cachedNotes.find(
+            item => Number(item.noteID) === Number(noteId)
+        );
+
+        if (textarea && note) textarea.value = note.noteText || '';
+        if (display) display.style.display = 'block';
+        if (editor) editor.style.display = 'none';
+    },
+
+    async requestApplicationNoteMutation(payload) {
+        let actionLocation = await this.getLocationSafe();
+
+        if (
+            actionLocation?.latitude !== null &&
+            actionLocation?.longitude !== null
+        ) {
+            this.lastLocation = actionLocation;
+        } else if (this.lastLocation) {
+            actionLocation = this.lastLocation;
+        }
+
+        payload.latitude = actionLocation?.latitude ?? null;
+        payload.longitude = actionLocation?.longitude ?? null;
+
+        const response = await fetch(
+            '/skyesoft/api/askOpenAI.php',
+            {
+                method: 'POST',
+                credentials: 'include',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            }
+        );
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}: ${responseText.substring(0, 200)}`
+            );
+        }
+
+        let data;
+
+        try {
+            data = JSON.parse(responseText);
+        } catch (error) {
+            throw new Error('The server returned invalid Note JSON.');
+        }
+
+        if (!data?.success || !Array.isArray(data.notes)) {
+            throw new Error(data?.error || 'The Note operation failed.');
+        }
+
+        return data;
+    },
+
+    cacheApplicationNotes(applicationId, notes) {
+        const cached = this._currentApplicationWorkspaceData || {};
+
+        this._currentApplicationWorkspaceData = {
+            ...cached,
+            applicationId: Number(applicationId),
+            notes: Array.isArray(notes) ? notes : []
+        };
+
+        window.SkyWorkspace.replace({
+            pageType: 'application',
+            objectType: 'application',
+            objectId: Number(applicationId),
+            title: 'Application',
+            state: {
+                edit: false,
+                useCachedApplication: true
+            }
+        });
+    },
+
+    async addApplicationNote(applicationId) {
+        const textarea = document.getElementById(
+            'applicationNewNoteText'
+        );
+        const addButton = document.getElementById(
+            'applicationNoteAddButton'
+        );
+        const noteText = String(textarea?.value || '').trim();
+
+        if (!noteText) {
+            this.appendSystemLine('Note text is required.');
+            if (textarea) textarea.focus();
+            return;
+        }
+
+        try {
+            if (addButton) {
+                addButton.disabled = true;
+                addButton.textContent = 'Adding...';
+            }
+
+            const data = await this.requestApplicationNoteMutation({
+                type: 'applicationNoteCreate',
+                applicationID: Number(applicationId),
+                noteText: noteText
+            });
+
+            this.cacheApplicationNotes(applicationId, data.notes);
+            this.appendSystemLine(
+                `Note #${Number(data.noteID)} was added to Application #${Number(applicationId)}.`
+            );
+
+        } catch (error) {
+            console.error('[Application Note] Create failed:', error);
+            this.appendSystemLine(
+                `Unable to add Note: ${error?.message || 'Unknown error'}`
+            );
+            if (addButton) {
+                addButton.disabled = false;
+                addButton.textContent = 'Add Note';
+            }
+        }
+    },
+
+    async saveApplicationNote(applicationId, noteId) {
+        const textarea = document.getElementById(
+            `applicationNoteEditText${Number(noteId)}`
+        );
+        const saveButton = document.getElementById(
+            `applicationNoteSaveButton${Number(noteId)}`
+        );
+        const noteText = String(textarea?.value || '').trim();
+
+        if (!noteText) {
+            this.appendSystemLine('Note text is required.');
+            if (textarea) textarea.focus();
+            return;
+        }
+
+        try {
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.textContent = 'Saving...';
+            }
+
+            const data = await this.requestApplicationNoteMutation({
+                type: 'applicationNoteUpdate',
+                applicationID: Number(applicationId),
+                noteID: Number(noteId),
+                noteText: noteText
+            });
+
+            this.cacheApplicationNotes(applicationId, data.notes);
+            this.appendSystemLine(
+                `Note #${Number(noteId)} was updated successfully.`
+            );
+
+        } catch (error) {
+            console.error('[Application Note] Update failed:', error);
+            this.appendSystemLine(
+                `Unable to update Note: ${error?.message || 'Unknown error'}`
+            );
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Note';
+            }
+        }
+    },
+
+    async invalidateApplicationNote(applicationId, noteId) {
+        if (!window.confirm(
+            'Invalidate this Note? It will be removed from the active Notes list but retained in history.'
+        )) {
+            return;
+        }
+
+        try {
+            const data = await this.requestApplicationNoteMutation({
+                type: 'applicationNoteInvalidate',
+                applicationID: Number(applicationId),
+                noteID: Number(noteId)
+            });
+
+            this.cacheApplicationNotes(applicationId, data.notes);
+            this.appendSystemLine(
+                `Note #${Number(noteId)} was invalidated successfully.`
+            );
+
+        } catch (error) {
+            console.error('[Application Note] Invalidate failed:', error);
+            this.appendSystemLine(
+                `Unable to invalidate Note: ${error?.message || 'Unknown error'}`
+            );
+        }
+    },
+
+    // #endregion
 
     returnToNewApplicationOrderStep() {
         this._newApplicationDraft = null;
