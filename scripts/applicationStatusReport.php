@@ -14,6 +14,7 @@ date_default_timezone_set('America/Phoenix');
 require_once __DIR__ . '/../api/sessionBootstrap.php';
 require_once __DIR__ . '/../api/dbConnect.php';
 require_once __DIR__ . '/../api/utils/actions.php';
+require_once __DIR__ . '/reportFrame.php';
 
 const ACTION_ORIGIN_USER = 1;
 
@@ -311,6 +312,11 @@ $preparedBy = trim(
     (string)$actor['contactFirstName'] . ' ' .
     (string)$actor['contactLastName']
 );
+$reportLine = sprintf(
+    'Report Date: %s · Application #%d',
+    formatApplicationReportDate($reportGeneratedUnix),
+    (int)$application['applicationID']
+);
 
 ob_start();
 ?>
@@ -323,6 +329,8 @@ ob_start();
         Application #<?= (int)$application['applicationID'] ?> Status Report
     </title>
     <style>
+        <?= getSkyesoftReportFrameStyles() ?>
+
         html,
         body {
             margin: 0;
@@ -337,69 +345,6 @@ ob_start();
         .report {
             width: 100%;
             margin: 0;
-        }
-
-        .header-table {
-            width: 100%;
-            margin: 0;
-            border-collapse: collapse;
-            border-bottom: 3px solid #14377c;
-        }
-
-        .header-table td {
-            border: 0;
-            vertical-align: middle;
-        }
-
-        .header-logo-cell {
-            width: 18%;
-            padding: 0 4mm 8px 0;
-            text-align: left;
-            vertical-align: middle;
-        }
-
-        .header-logo {
-            display: block;
-            width: 30mm;
-            height: auto;
-            margin: 0;
-            border: 0;
-        }
-
-        .header-details-cell {
-            width: 82%;
-            padding: 0 0 8px;
-            text-align: left;
-            vertical-align: middle;
-        }
-
-        .logo-fallback {
-            color: #14377c;
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        .header-title {
-            margin: 0;
-            color: #14377c;
-            font-size: 25px;
-            font-weight: bold;
-            line-height: 1;
-        }
-
-        .header-subtitle {
-            margin: 2px 0 0;
-            color: #333;
-            font-size: 17px;
-            font-weight: bold;
-            line-height: 1.05;
-        }
-
-        .header-date {
-            margin: 1px 0 0;
-            color: #666;
-            font-size: 12px;
-            line-height: 1.05;
         }
 
         .section {
@@ -474,38 +419,13 @@ ob_start();
 <body>
 
 <div class="report">
-    <table class="header-table">
-        <tr>
-            <td class="header-logo-cell" style="width: 18%;">
-                <?php if ($logoAvailable): ?>
-                    <img
-                        src="<?= escapeApplicationReportValue($logoSource) ?>"
-                        class="header-logo"
-                        alt="Christy Signs"
-                    >
-                <?php else: ?>
-                    <div class="logo-fallback">Christy Signs</div>
-                <?php endif; ?>
-            </td>
-            <td class="header-details-cell" style="width: 82%;">
-                <div class="header-title">
-                    Permit Application Status Report
-                </div>
-                <div class="header-subtitle">
-                    <?= escapeApplicationReportValue(
-                        $application['applicationTitle']
-                    ) ?>
-                </div>
-                <div class="header-date">
-                    Report Date:
-                    <?= escapeApplicationReportValue(
-                        formatApplicationReportDate($reportGeneratedUnix)
-                    ) ?>
-                    · Application #<?= (int)$application['applicationID'] ?>
-                </div>
-            </td>
-        </tr>
-    </table>
+    <?= renderSkyesoftReportHeader([
+        'title' => 'Permit Application Status Report',
+        'subtitle' => $application['applicationTitle'],
+        'reportLine' => $reportLine,
+        'logoSource' => $logoSource,
+        'logoAvailable' => $logoAvailable
+    ]) ?>
 
     <div class="section">
         <div class="section-heading">Project Information</div>
@@ -716,16 +636,9 @@ if (!is_dir($mpdfTempDir) && !mkdir($mpdfTempDir, 0775, true)) {
 }
 
 try {
-    $pdf = new \Mpdf\Mpdf([
-        'mode' => 'utf-8',
-        'format' => 'Letter',
-        'orientation' => 'P',
-        'margin_left' => 9.65,
-        'margin_right' => 9.65,
-        'margin_top' => 9.65,
-        'margin_bottom' => 15,
-        'tempDir' => $mpdfTempDir
-    ]);
+    $pdf = new \Mpdf\Mpdf(
+        getSkyesoftReportMpdfConfig($mpdfTempDir)
+    );
 
     $pdf->SetTitle(sprintf(
         'Application #%d Status Report',
@@ -733,14 +646,10 @@ try {
     ));
     $pdf->SetAuthor($preparedBy);
     $pdf->SetCreator('Skyesoft');
-    $pdf->SetHTMLFooter(
-        '<table style="width:100%; border-top:1px solid #ccc; color:#666; font-family:Arial,Helvetica,sans-serif; font-size:9px;">' .
-        '<tr><td style="padding-top:5px; text-align:left;">Prepared by ' .
-        escapeApplicationReportValue($preparedBy) .
-        ' | Christy Signs</td>' .
-        '<td style="padding-top:5px; text-align:right;">Skyesoft Application Status | Page {PAGENO} of {nbpg}</td></tr>' .
-        '</table>'
-    );
+    $pdf->SetHTMLFooter(renderSkyesoftReportFooter([
+        'preparedBy' => $preparedBy,
+        'reportName' => 'Skyesoft Application Status'
+    ]));
     $pdf->WriteHTML($reportHtml);
 
     $pdfFilename = sprintf(
