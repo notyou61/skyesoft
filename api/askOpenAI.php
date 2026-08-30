@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — askOpenAI.php
-//  Version: 1.3.5
-//  Last Updated: 2026-04-30
+//  Version: 1.3.4
+//  Last Updated: 2026-08-30
 //  Codex Tier: 3 — AI Augmentation / Prompt Orchestration
 //
 //  Role:
@@ -4749,6 +4749,147 @@ function loadAuthoritativeApplicationDetail(
     ];
 }
 
+function loadAuthoritativeApplicationEvents(
+    PDO $db,
+    int $applicationId
+): array {
+    if ($applicationId <= 0) {
+        return [];
+    }
+
+    $eventStmt = $db->prepare("
+        SELECT
+            ev.applicationEventID,
+            ev.applicationID,
+            ev.applicationEventType,
+            ev.applicationCycleType,
+            ev.applicationCycleNumber,
+            ev.applicationEventStageID,
+            ev.applicationEventStatusID,
+            ev.applicationEventUnix,
+            ev.applicationEventResult,
+            ev.applicationEventNote,
+            ev.applicationEventData,
+            ev.applicationEventContactID,
+            ev.applicationEventCreatedUnix,
+            s.applicationStageName,
+            st.applicationStatusName,
+            c.contactFirstName,
+            c.contactLastName
+        FROM tblApplicationEvents ev
+        LEFT JOIN tblApplicationStages s
+            ON s.applicationStageID = ev.applicationEventStageID
+        LEFT JOIN tblApplicationStatuses st
+            ON st.applicationStageID = ev.applicationEventStageID
+           AND st.applicationStatusID = ev.applicationEventStatusID
+        INNER JOIN tblContacts c
+            ON c.contactId = ev.applicationEventContactID
+        WHERE ev.applicationID = :applicationId
+        ORDER BY
+            ev.applicationEventUnix ASC,
+            ev.applicationEventID ASC
+    ");
+
+    $eventStmt->execute([
+        'applicationId' => $applicationId
+    ]);
+
+    $events = $eventStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($events as &$event) {
+        $event['applicationEventID'] = (int)$event[
+            'applicationEventID'
+        ];
+        $event['applicationID'] = (int)$event['applicationID'];
+        $event['applicationCycleNumber'] =
+            $event['applicationCycleNumber'] !== null
+                ? (int)$event['applicationCycleNumber']
+                : null;
+        $event['applicationEventStageID'] =
+            $event['applicationEventStageID'] !== null
+                ? (int)$event['applicationEventStageID']
+                : null;
+        $event['applicationEventStatusID'] =
+            $event['applicationEventStatusID'] !== null
+                ? (int)$event['applicationEventStatusID']
+                : null;
+        $event['applicationEventUnix'] = (int)$event[
+            'applicationEventUnix'
+        ];
+        $event['applicationEventContactID'] = (int)$event[
+            'applicationEventContactID'
+        ];
+        $event['applicationEventCreatedUnix'] = (int)$event[
+            'applicationEventCreatedUnix'
+        ];
+    }
+    unset($event);
+
+    return $events;
+}
+
+function loadApplicationWorkflowOptions(PDO $db): array {
+    $stageStmt = $db->query("
+        SELECT
+            applicationStageID,
+            applicationStageName,
+            applicationStageDescription,
+            applicationStageSortOrder
+        FROM tblApplicationStages
+        WHERE applicationStageIsActive = 1
+        ORDER BY applicationStageSortOrder ASC
+    ");
+
+    $statusStmt = $db->query("
+        SELECT
+            applicationStatusID,
+            applicationStageID,
+            applicationStatusName,
+            applicationStatusDescription,
+            applicationStatusSortOrder
+        FROM tblApplicationStatuses
+        WHERE applicationStatusIsActive = 1
+        ORDER BY
+            applicationStageID ASC,
+            applicationStatusSortOrder ASC
+    ");
+
+    $stages = $stageStmt
+        ? $stageStmt->fetchAll(PDO::FETCH_ASSOC)
+        : [];
+    $statuses = $statusStmt
+        ? $statusStmt->fetchAll(PDO::FETCH_ASSOC)
+        : [];
+
+    foreach ($stages as &$stage) {
+        $stage['applicationStageID'] = (int)$stage[
+            'applicationStageID'
+        ];
+        $stage['applicationStageSortOrder'] = (int)$stage[
+            'applicationStageSortOrder'
+        ];
+    }
+    unset($stage);
+
+    foreach ($statuses as &$status) {
+        $status['applicationStatusID'] = (int)$status[
+            'applicationStatusID'
+        ];
+        $status['applicationStageID'] = (int)$status[
+            'applicationStageID'
+        ];
+        $status['applicationStatusSortOrder'] = (int)$status[
+            'applicationStatusSortOrder'
+        ];
+    }
+    unset($status);
+
+    return [
+        'applicationStages' => $stages,
+        'applicationStatuses' => $statuses
+    ];
+}
+
 // =====================================================
 // GOVERNED APPLICATION CREATE MUTATION
 // =====================================================
@@ -5179,6 +5320,520 @@ if ($type === 'applicationCreate') {
 
         $returnApplicationCreateError(
             'Unable to create the Application.'
+        );
+    }
+}
+
+// =====================================================
+// EXPLICIT APPLICATION READ
+// =====================================================
+
+if ($type === 'applicationDetail') {
+    $applicationId = (int)($input['applicationID'] ?? 0);
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    if ($applicationId <= 0 || $actorContactId <= 0) {
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_detail',
+            'error' => 'A valid Application and authenticated Contact are required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+    $activitySessionId = $activitySessionId !== ''
+        ? $activitySessionId
+        : null;
+    $latitude = is_numeric($input['latitude'] ?? null)
+        ? (float)$input['latitude']
+        : null;
+    $longitude = is_numeric($input['longitude'] ?? null)
+        ? (float)$input['longitude']
+        : null;
+
+    try {
+        $application = loadAuthoritativeApplicationDetail(
+            $db,
+            $applicationId
+        );
+
+        if (!is_array($application)) {
+            throw new RuntimeException('Application was not found.');
+        }
+
+        $events = loadAuthoritativeApplicationEvents(
+            $db,
+            $applicationId
+        );
+        $workflowOptions = loadApplicationWorkflowOptions($db);
+
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = 'application.read'
+              AND crud_class = 'read'
+            LIMIT 1
+        ");
+        $actionTypeStmt->execute();
+        $actionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?: 0
+        );
+
+        if ($actionTypeId <= 0) {
+            throw new RuntimeException(
+                'Application read Action Type is not configured.'
+            );
+        }
+
+        $actionId = insertActionPrompt([
+            'actionTypeId' => $actionTypeId,
+            'contactId' => $actorContactId,
+            'origin' => ACTION_ORIGIN_USER,
+            'activitySessionId' => $activitySessionId,
+            'promptText' => 'Open Application',
+            'responseText' => sprintf(
+                'Opened Application #%d — %s.',
+                $applicationId,
+                $application['applicationTitle']
+            ),
+            'intent' => 'application.read',
+            'intentConfidence' => 1.00,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'actionPayloadData' => [
+                'operation' => 'application.read',
+                'requestedApplicationID' => $applicationId
+            ],
+            'actionResponseData' => [
+                'success' => true,
+                'applicationID' => $applicationId,
+                'eventCount' => count($events)
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Application read Action could not be created.'
+            );
+        }
+
+        echo json_encode([
+            'success' => true,
+            'type' => 'application_detail',
+            'application' => $application,
+            'events' => $events,
+            'applicationStages' =>
+                $workflowOptions['applicationStages'],
+            'applicationStatuses' =>
+                $workflowOptions['applicationStatuses'],
+            'actionID' => $actionId,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[askOpenAI] applicationDetail failed: ' .
+            $e->getMessage()
+        );
+
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_detail',
+            'error' => $e->getMessage() === 'Application was not found.'
+                ? 'Application was not found.'
+                : 'Unable to open the Application.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
+// =====================================================
+// GOVERNED APPLICATION UPDATE MUTATION
+// =====================================================
+
+if ($type === 'applicationUpdate') {
+    $applicationId = (int)($input['applicationID'] ?? 0);
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+    $applicationInput = is_array($input['application'] ?? null)
+        ? $input['application']
+        : [];
+
+    $returnApplicationUpdateError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_update',
+            'error' => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    if ($applicationId <= 0 || $actorContactId <= 0) {
+        $returnApplicationUpdateError(
+            'A valid Application and authenticated Contact are required.'
+        );
+    }
+
+    $title = trim((string)($applicationInput['title'] ?? ''));
+    $scope = trim((string)($applicationInput['scope'] ?? ''));
+    $applicationNumber = trim((string)(
+        $applicationInput['applicationNumber'] ?? ''
+    ));
+    $permitNumber = trim((string)(
+        $applicationInput['permitNumber'] ?? ''
+    ));
+    $stageId = (int)($applicationInput['stageID'] ?? 0);
+    $statusId = (int)($applicationInput['statusID'] ?? 0);
+
+    if ($title === '' || $stageId <= 0 || $statusId <= 0) {
+        $returnApplicationUpdateError(
+            'Title, Stage, and Status are required.'
+        );
+    }
+
+    $title = mb_substr($title, 0, 255);
+    $applicationNumber = mb_substr($applicationNumber, 0, 100);
+    $permitNumber = mb_substr($permitNumber, 0, 100);
+    $scope = $scope !== '' ? $scope : null;
+    $applicationNumber = $applicationNumber !== ''
+        ? $applicationNumber
+        : null;
+    $permitNumber = $permitNumber !== ''
+        ? $permitNumber
+        : null;
+
+    $normalizeUnix = static function ($value): ?int {
+        $unix = (int)$value;
+        return $unix > 0 ? $unix : null;
+    };
+
+    $submittedUnix = $normalizeUnix(
+        $applicationInput['submittedUnix'] ?? null
+    );
+    $approvedUnix = $normalizeUnix(
+        $applicationInput['approvedUnix'] ?? null
+    );
+    $issuedUnix = $normalizeUnix(
+        $applicationInput['issuedUnix'] ?? null
+    );
+    $finaledUnix = $normalizeUnix(
+        $applicationInput['finaledUnix'] ?? null
+    );
+
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+    $activitySessionId = $activitySessionId !== ''
+        ? $activitySessionId
+        : null;
+    $latitude = is_numeric($input['latitude'] ?? null)
+        ? (float)$input['latitude']
+        : null;
+    $longitude = is_numeric($input['longitude'] ?? null)
+        ? (float)$input['longitude']
+        : null;
+
+    try {
+        // Require an active Company Contact for mutation
+        $actorStmt = $db->prepare("
+            SELECT c.contactId
+            FROM tblContacts c
+            INNER JOIN tblEntities e
+                ON e.entityId = c.contactEntityId
+            WHERE c.contactId = :contactId
+              AND COALESCE(c.contactIsNotValid, 0) = 0
+              AND COALESCE(c.isActive, 1) = 1
+              AND COALESCE(e.entityIsNotValid, 0) = 0
+              AND LOWER(TRIM(e.entityType)) = 'company'
+            LIMIT 1
+        ");
+        $actorStmt->execute(['contactId' => $actorContactId]);
+
+        if (!$actorStmt->fetchColumn()) {
+            $returnApplicationUpdateError(
+                'Authenticated Company Contact was not found.'
+            );
+        }
+
+        $before = loadAuthoritativeApplicationDetail(
+            $db,
+            $applicationId
+        );
+
+        if (!is_array($before)) {
+            $returnApplicationUpdateError(
+                'Application was not found.'
+            );
+        }
+
+        // Enforce an active compatible Stage and Status pair
+        $stateStmt = $db->prepare("
+            SELECT
+                s.applicationStageName,
+                st.applicationStatusName
+            FROM tblApplicationStages s
+            INNER JOIN tblApplicationStatuses st
+                ON st.applicationStageID = s.applicationStageID
+            WHERE s.applicationStageID = :stageId
+              AND st.applicationStatusID = :statusId
+              AND s.applicationStageIsActive = 1
+              AND st.applicationStatusIsActive = 1
+            LIMIT 1
+        ");
+        $stateStmt->execute([
+            'stageId' => $stageId,
+            'statusId' => $statusId
+        ]);
+        $state = $stateStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($state)) {
+            $returnApplicationUpdateError(
+                'The selected Application Stage and Status are incompatible.'
+            );
+        }
+
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = 'application.update'
+              AND crud_class = 'update'
+            LIMIT 1
+        ");
+        $actionTypeStmt->execute();
+        $actionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?: 0
+        );
+
+        if ($actionTypeId <= 0) {
+            $returnApplicationUpdateError(
+                'Application update Action Type is not configured.'
+            );
+        }
+
+        $updatedUnix = time();
+        $stateChanged =
+            (int)$before['applicationStageID'] !== $stageId ||
+            (int)$before['applicationStatusID'] !== $statusId;
+
+        $db->beginTransaction();
+
+        $updateStmt = $db->prepare("
+            UPDATE tblApplications
+            SET
+                applicationStageID = :stageId,
+                applicationStatusID = :statusId,
+                applicationTitle = :title,
+                applicationNumber = :applicationNumber,
+                applicationPermitNumber = :permitNumber,
+                applicationScope = :scope,
+                applicationSubmittedUnix = :submittedUnix,
+                applicationApprovedUnix = :approvedUnix,
+                applicationIssuedUnix = :issuedUnix,
+                applicationFinaledUnix = :finaledUnix,
+                applicationUpdatedUnix = :updatedUnix
+            WHERE applicationID = :applicationId
+              AND applicationIsNotValid = 0
+        ");
+        $updateStmt->execute([
+            'stageId' => $stageId,
+            'statusId' => $statusId,
+            'title' => $title,
+            'applicationNumber' => $applicationNumber,
+            'permitNumber' => $permitNumber,
+            'scope' => $scope,
+            'submittedUnix' => $submittedUnix,
+            'approvedUnix' => $approvedUnix,
+            'issuedUnix' => $issuedUnix,
+            'finaledUnix' => $finaledUnix,
+            'updatedUnix' => $updatedUnix,
+            'applicationId' => $applicationId
+        ]);
+
+        $applicationEventId = null;
+
+        if ($stateChanged) {
+            $eventData = json_encode([
+                'before' => [
+                    'stageID' => $before['applicationStageID'],
+                    'statusID' => $before['applicationStatusID']
+                ],
+                'after' => [
+                    'stageID' => $stageId,
+                    'statusID' => $statusId
+                ]
+            ], JSON_UNESCAPED_SLASHES);
+
+            $eventStmt = $db->prepare("
+                INSERT INTO tblApplicationEvents (
+                    applicationID,
+                    applicationEventType,
+                    applicationCycleType,
+                    applicationCycleNumber,
+                    applicationEventStageID,
+                    applicationEventStatusID,
+                    applicationEventUnix,
+                    applicationEventResult,
+                    applicationEventNote,
+                    applicationEventData,
+                    applicationEventContactID,
+                    applicationEventCreatedUnix
+                ) VALUES (
+                    :applicationId,
+                    'application.state_changed',
+                    'none',
+                    NULL,
+                    :stageId,
+                    :statusId,
+                    :eventUnix,
+                    :eventResult,
+                    NULL,
+                    :eventData,
+                    :contactId,
+                    :createdUnix
+                )
+            ");
+            $eventStmt->execute([
+                'applicationId' => $applicationId,
+                'stageId' => $stageId,
+                'statusId' => $statusId,
+                'eventUnix' => $updatedUnix,
+                'eventResult' => $state['applicationStatusName'],
+                'eventData' => $eventData,
+                'contactId' => $actorContactId,
+                'createdUnix' => $updatedUnix
+            ]);
+            $applicationEventId = (int)$db->lastInsertId();
+
+            if ($applicationEventId <= 0) {
+                throw new RuntimeException(
+                    'Application state event could not be created.'
+                );
+            }
+        }
+
+        $after = loadAuthoritativeApplicationDetail(
+            $db,
+            $applicationId
+        );
+
+        if (!is_array($after)) {
+            throw new RuntimeException(
+                'Updated Application could not be reloaded.'
+            );
+        }
+
+        $events = loadAuthoritativeApplicationEvents(
+            $db,
+            $applicationId
+        );
+
+        $actionId = insertActionPrompt([
+            'actionTypeId' => $actionTypeId,
+            'contactId' => $actorContactId,
+            'origin' => ACTION_ORIGIN_USER,
+            'createdUnixTime' => $updatedUnix,
+            'activitySessionId' => $activitySessionId,
+            'promptText' => 'Update Application',
+            'responseText' => sprintf(
+                'Updated Application #%d — %s.',
+                $applicationId,
+                $after['applicationTitle']
+            ),
+            'intent' => 'application.update',
+            'intentConfidence' => 1.00,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'actionPayloadData' => [
+                'operation' => 'application.update',
+                'applicationID' => $applicationId,
+                'before' => [
+                    'title' => $before['applicationTitle'],
+                    'stageID' => $before['applicationStageID'],
+                    'statusID' => $before['applicationStatusID'],
+                    'applicationNumber' => $before['applicationNumber'],
+                    'permitNumber' => $before['applicationPermitNumber'],
+                    'scope' => $before['applicationScope'],
+                    'submittedUnix' => $before['applicationSubmittedUnix'],
+                    'approvedUnix' => $before['applicationApprovedUnix'],
+                    'issuedUnix' => $before['applicationIssuedUnix'],
+                    'finaledUnix' => $before['applicationFinaledUnix']
+                ],
+                'after' => [
+                    'title' => $after['applicationTitle'],
+                    'stageID' => $after['applicationStageID'],
+                    'statusID' => $after['applicationStatusID'],
+                    'applicationNumber' => $after['applicationNumber'],
+                    'permitNumber' => $after['applicationPermitNumber'],
+                    'scope' => $after['applicationScope'],
+                    'submittedUnix' => $after['applicationSubmittedUnix'],
+                    'approvedUnix' => $after['applicationApprovedUnix'],
+                    'issuedUnix' => $after['applicationIssuedUnix'],
+                    'finaledUnix' => $after['applicationFinaledUnix']
+                ],
+                'applicationEventID' => $applicationEventId
+            ],
+            'actionResponseData' => [
+                'success' => true,
+                'applicationID' => $applicationId,
+                'applicationEventID' => $applicationEventId
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Application update Action could not be created.'
+            );
+        }
+
+        $db->commit();
+
+        echo json_encode([
+            'success' => true,
+            'type' => 'application_update',
+            'application' => $after,
+            'events' => $events,
+            'applicationEventID' => $applicationEventId,
+            'actionID' => $actionId,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        error_log(
+            '[askOpenAI] applicationUpdate failed: ' .
+            $e->getMessage()
+        );
+
+        if (
+            $e instanceof PDOException &&
+            (string)$e->getCode() === '23000'
+        ) {
+            $returnApplicationUpdateError(
+                'That Application or Permit number already exists for this jurisdiction.'
+            );
+        }
+
+        $returnApplicationUpdateError(
+            'Unable to update the Application.'
         );
     }
 }

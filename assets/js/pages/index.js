@@ -1,6 +1,6 @@
 // ======================================================================
 // Skyesoft — index.js
-// Version: 1.0.1
+// Version: 1.0.2
 // Command / Portal Interface Controller
 // ======================================================================
 //
@@ -9872,8 +9872,13 @@ window.SkyIndex = {
             : 'not-allowed';
     },
 
-    renderCreatedApplicationSummary(application) {
+    renderCreatedApplicationSummary(application, resultMode = 'created') {
         if (!application) return;
+
+        const normalizedMode = resultMode === 'updated'
+            ? 'updated'
+            : 'created';
+        const resultLabel = normalizedMode.toUpperCase();
 
         const applicationId = Number(
             application.applicationID || 0
@@ -9910,7 +9915,7 @@ window.SkyIndex = {
             creatorName || 'Company Contact'
         );
 
-        this.appendSystemHtml(`
+        const html = `
             <div class="result-card application-summary-card"
             data-application-id="${applicationId}"
             style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
@@ -9927,22 +9932,24 @@ window.SkyIndex = {
                             </strong>
 
                             <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
-                                1 Application created
+                                1 Application ${normalizedMode}
                             </small>
                         </div>
                     </div>
 
                     <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
-                        CREATED
+                        ${resultLabel}
                     </span>
                 </div>
 
                 <div class="result-body" style="padding:4px 16px 12px;">
                     <div style="padding:10px 0;">
                         <div style="display:flex; flex-wrap:wrap; align-items:center; gap:7px; color:#222;">
-                            <strong style="color:#117a8b;">
+                            <a href="#"
+                            onclick="event.preventDefault(); SkyIndex.openApplicationWorkspace(${applicationId});"
+                            style="color:#117a8b; font-weight:700; text-decoration:none;">
                                 ${applicationTitle}
-                            </strong>
+                            </a>
 
                             <span style="padding:2px 7px; border-radius:999px; background:#e8f4f6; color:#117a8b; font-size:0.72em; font-weight:700;">
                                 ${statusName}
@@ -9969,7 +9976,442 @@ window.SkyIndex = {
                     </div>
                 </div>
             </div>
-        `);
+        `;
+
+        const existingCards = Array.from(
+            document.querySelectorAll(
+                `.application-summary-card[data-application-id="${applicationId}"]`
+            )
+        );
+
+        if (existingCards.length) {
+            existingCards[0].outerHTML = html;
+            existingCards.slice(1).forEach(card => card.remove());
+            return;
+        }
+
+        this.appendSystemHtml(html);
+    },
+
+    openApplicationWorkspace(applicationId) {
+        const resolvedId = Number(applicationId || 0);
+
+        if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
+            this.appendSystemLine('A valid Application ID is required.');
+            return;
+        }
+
+        window.SkyWorkspace.open({
+            pageType:   'application',
+            objectType: 'application',
+            objectId:   resolvedId,
+            title:      'Application',
+            state: {
+                edit: false,
+                useCachedApplication: false
+            }
+        });
+    },
+
+    editApplicationWorkspace(applicationId) {
+        window.SkyWorkspace.replace({
+            pageType:   'application',
+            objectType: 'application',
+            objectId:   Number(applicationId),
+            title:      'Application',
+            state: {
+                edit: true,
+                useCachedApplication: true
+            }
+        });
+    },
+
+    cancelApplicationEditWorkspace(applicationId) {
+        window.SkyWorkspace.replace({
+            pageType:   'application',
+            objectType: 'application',
+            objectId:   Number(applicationId),
+            title:      'Application',
+            state: {
+                edit: false,
+                useCachedApplication: true
+            }
+        });
+    },
+
+    async getApplication(applicationId) {
+        let actionLocation = await this.getLocationSafe();
+
+        if (
+            actionLocation?.latitude !== null &&
+            actionLocation?.longitude !== null
+        ) {
+            this.lastLocation = actionLocation;
+        } else if (this.lastLocation) {
+            actionLocation = this.lastLocation;
+        }
+
+        const response = await fetch(
+            '/skyesoft/api/askOpenAI.php',
+            {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: 'applicationDetail',
+                    applicationID: Number(applicationId),
+                    latitude: actionLocation?.latitude ?? null,
+                    longitude: actionLocation?.longitude ?? null
+                })
+            }
+        );
+
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}: ${responseText.substring(0, 200)}`
+            );
+        }
+
+        let data;
+
+        try {
+            data = JSON.parse(responseText);
+        } catch (error) {
+            throw new Error('The server returned invalid Application JSON.');
+        }
+
+        if (!data?.success || !data?.application) {
+            throw new Error(data?.error || 'Application was not found.');
+        }
+
+        return data;
+    },
+
+    async renderApplicationPage(page) {
+        const applicationId = Number(page.objectId || 0);
+        const isEditing = page.state?.edit === true;
+        const cached = this._currentApplicationWorkspaceData;
+        const useCached =
+            page.state?.useCachedApplication === true &&
+            Number(cached?.applicationId || 0) === applicationId;
+
+        const data = useCached
+            ? cached
+            : await this.getApplication(applicationId);
+        const application = data.application;
+        const events = Array.isArray(data.events) ? data.events : [];
+        const stages = Array.isArray(data.applicationStages)
+            ? data.applicationStages
+            : [];
+        const statuses = Array.isArray(data.applicationStatuses)
+            ? data.applicationStatuses
+            : [];
+
+        this._currentApplicationWorkspaceData = {
+            applicationId: applicationId,
+            application: application,
+            events: events,
+            applicationStages: stages,
+            applicationStatuses: statuses
+        };
+
+        const escape = value => this.escapeHtml(String(value ?? ''));
+        const formatDate = unixValue => {
+            const unix = Number(unixValue || 0);
+            if (!unix) return '—';
+            return new Date(unix * 1000).toLocaleDateString(
+                'en-US',
+                {
+                    timeZone: 'America/Phoenix',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                }
+            );
+        };
+        const formatDateInput = unixValue => {
+            const unix = Number(unixValue || 0);
+            if (!unix) return '';
+            const parts = new Intl.DateTimeFormat(
+                'en-US',
+                {
+                    timeZone: 'America/Phoenix',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }
+            ).formatToParts(new Date(unix * 1000));
+            const part = type =>
+                parts.find(item => item.type === type)?.value || '';
+            return `${part('year')}-${part('month')}-${part('day')}`;
+        };
+        const row = (label, value) => `
+            <div style="display:grid; grid-template-columns:145px 1fr; gap:10px; padding:5px 0; align-items:baseline;">
+                <div style="color:#888; font-size:0.72em; font-weight:650; text-transform:uppercase;">${label}</div>
+                <div style="color:#222; font-size:0.9em;">${value || '—'}</div>
+            </div>
+        `;
+        const field = (label, id, value, type = 'text') => `
+            <div style="display:grid; grid-template-columns:145px 1fr; gap:10px; padding:5px 0; align-items:center;">
+                <label for="${id}" style="color:#888; font-size:0.72em; font-weight:650; text-transform:uppercase;">${label}</label>
+                <input id="${id}" type="${type}" value="${escape(value)}" style="box-sizing:border-box; width:100%; padding:7px 9px; border:1px solid #d1d5db; border-radius:6px;">
+            </div>
+        `;
+        const section = (title, content) => `
+            <div style="margin-bottom:10px; padding:10px 13px; border:1px solid #e6e6e6; border-radius:8px; background:#fafafa;">
+                <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #e6e6e6; color:#777; font-size:0.7em; font-weight:700; text-transform:uppercase;">${title}</div>
+                ${content}
+            </div>
+        `;
+
+        const stageOptions = stages.map(stage => `
+            <option value="${Number(stage.applicationStageID)}"${
+                Number(stage.applicationStageID) ===
+                Number(application.applicationStageID)
+                    ? ' selected'
+                    : ''
+            }>${escape(stage.applicationStageName)}</option>
+        `).join('');
+        const statusOptions = statuses.map(status => `
+            <option value="${Number(status.applicationStatusID)}"
+            data-stage-id="${Number(status.applicationStageID)}"${
+                Number(status.applicationStatusID) ===
+                Number(application.applicationStatusID)
+                    ? ' selected'
+                    : ''
+            }${
+                Number(status.applicationStageID) !==
+                Number(application.applicationStageID)
+                    ? ' hidden disabled'
+                    : ''
+            }>${escape(status.applicationStatusName)}</option>
+        `).join('');
+        const creatorName = [
+            application.creator?.contactFirstName,
+            application.creator?.contactLastName
+        ].filter(Boolean).join(' ');
+
+        const applicationContent = isEditing
+            ? `
+                ${field('Title', 'applicationEditTitle', application.applicationTitle)}
+                ${field('Application No.', 'applicationEditNumber', application.applicationNumber)}
+                ${field('Permit No.', 'applicationEditPermitNumber', application.applicationPermitNumber)}
+                <div style="display:grid; grid-template-columns:145px 1fr; gap:10px; padding:5px 0; align-items:center;">
+                    <label for="applicationEditStageID" style="color:#888; font-size:0.72em; font-weight:650; text-transform:uppercase;">Stage</label>
+                    <select id="applicationEditStageID" onchange="SkyIndex.updateApplicationStatusChoices(this.value)" style="padding:7px 9px; border:1px solid #d1d5db; border-radius:6px;">${stageOptions}</select>
+                </div>
+                <div style="display:grid; grid-template-columns:145px 1fr; gap:10px; padding:5px 0; align-items:center;">
+                    <label for="applicationEditStatusID" style="color:#888; font-size:0.72em; font-weight:650; text-transform:uppercase;">Status</label>
+                    <select id="applicationEditStatusID" style="padding:7px 9px; border:1px solid #d1d5db; border-radius:6px;">${statusOptions}</select>
+                </div>
+            `
+            : `
+                ${row('Title', escape(application.applicationTitle))}
+                ${row('Application No.', escape(application.applicationNumber || '—'))}
+                ${row('Permit No.', escape(application.applicationPermitNumber || '—'))}
+                ${row('Stage', escape(application.applicationStageName))}
+                ${row('Status', escape(application.applicationStatusName))}
+            `;
+
+        const milestoneContent = isEditing
+            ? `
+                ${field('Submitted', 'applicationEditSubmittedUnix', formatDateInput(application.applicationSubmittedUnix), 'date')}
+                ${field('Approved', 'applicationEditApprovedUnix', formatDateInput(application.applicationApprovedUnix), 'date')}
+                ${field('Issued', 'applicationEditIssuedUnix', formatDateInput(application.applicationIssuedUnix), 'date')}
+                ${field('Finaled', 'applicationEditFinaledUnix', formatDateInput(application.applicationFinaledUnix), 'date')}
+            `
+            : `
+                ${row('Submitted', formatDate(application.applicationSubmittedUnix))}
+                ${row('Approved', formatDate(application.applicationApprovedUnix))}
+                ${row('Issued', formatDate(application.applicationIssuedUnix))}
+                ${row('Finaled', formatDate(application.applicationFinaledUnix))}
+            `;
+
+        const eventHtml = events.length
+            ? events.map(event => {
+                const eventContact = [
+                    event.contactFirstName,
+                    event.contactLastName
+                ].filter(Boolean).join(' ');
+                return `
+                    <div style="padding:7px 0; border-bottom:1px solid #eee; font-size:0.86em;">
+                        <strong>${escape(event.applicationEventType)}</strong>
+                        <div style="margin-top:2px; color:#666;">
+                            ${escape(event.applicationStageName || '—')} · ${escape(event.applicationStatusName || '—')} · ${formatDate(event.applicationEventUnix)}
+                        </div>
+                        <div style="margin-top:2px; color:#888;">${escape(eventContact)}</div>
+                    </div>
+                `;
+            }).join('')
+            : '<div style="color:#888; font-size:0.86em;">No lifecycle events.</div>';
+
+        const immutableContent = `
+            ${row('Work Order', escape(application.orderChristyNumber || application.applicationOrderID))}
+            ${row('Customer', escape(application.entityName))}
+            ${row('Location', escape(application.locationName))}
+            ${row('Jurisdiction', escape(application.applicationJurisdiction))}
+            ${row('Creator', escape(creatorName))}
+            ${row('Created', formatDate(application.applicationCreatedUnix))}
+        `;
+        const scopeContent = isEditing
+            ? `<textarea id="applicationEditScope" style="box-sizing:border-box; width:100%; min-height:100px; padding:9px 10px; border:1px solid #d1d5db; border-radius:6px; resize:vertical;">${escape(application.applicationScope || '')}</textarea>`
+            : `<div style="white-space:pre-wrap; font-size:0.9em; line-height:1.5;">${escape(application.applicationScope || 'No scope entered.')}</div>`;
+
+        return {
+            titleHtml: `<div><strong>${escape(application.applicationTitle)}</strong><div style="margin-top:3px; color:#777; font-size:0.82em;">Application #${applicationId}</div></div>`,
+            bodyHtml: `
+                ${section('Application', applicationContent)}
+                ${section('Authoritative Relationships', immutableContent)}
+                ${section('Milestones', milestoneContent)}
+                ${section('Scope', scopeContent)}
+                ${section('Lifecycle History', eventHtml)}
+            `,
+            actionsHtml: isEditing
+                ? `
+                    <button type="button" onclick="SkyIndex.cancelApplicationEditWorkspace(${applicationId})" style="padding:6px 12px; border:1px solid #d1d5db; border-radius:6px; background:#fff; cursor:pointer;">Cancel</button>
+                    <button type="button" id="applicationEditSaveButton" onclick="SkyIndex.saveApplicationEditWorkspace(${applicationId})" style="padding:6px 14px; border:1px solid #0d9488; border-radius:6px; background:#0d9488; color:#fff; cursor:pointer;">Save</button>
+                `
+                : `<button type="button" onclick="SkyIndex.editApplicationWorkspace(${applicationId})" style="padding:6px 12px; border:1px solid #d1d5db; border-radius:6px; background:#fff; cursor:pointer;">Edit</button>`
+        };
+    },
+
+    updateApplicationStatusChoices(stageId) {
+        const statusSelect = document.getElementById(
+            'applicationEditStatusID'
+        );
+        if (!statusSelect) return;
+
+        const resolvedStageId = Number(stageId || 0);
+        let selectedAvailable = false;
+        let firstAvailable = null;
+
+        Array.from(statusSelect.options).forEach(option => {
+            const available =
+                Number(option.dataset.stageId || 0) ===
+                resolvedStageId;
+            option.hidden = !available;
+            option.disabled = !available;
+            if (available && firstAvailable === null) {
+                firstAvailable = option;
+            }
+            if (available && option.selected) {
+                selectedAvailable = true;
+            }
+        });
+
+        if (!selectedAvailable && firstAvailable) {
+            firstAvailable.selected = true;
+        }
+    },
+
+    async saveApplicationEditWorkspace(applicationId) {
+        const input = id => document.getElementById(id);
+        const dateToUnix = value => {
+            if (!value) return null;
+            const date = new Date(`${value}T12:00:00-07:00`);
+            const unix = Math.floor(date.getTime() / 1000);
+            return Number.isFinite(unix) && unix > 0 ? unix : null;
+        };
+        const normalize = value => String(value || '').trim() || null;
+        const title = normalize(input('applicationEditTitle')?.value);
+
+        if (!title) {
+            this.appendSystemLine('Application Title is required.');
+            return;
+        }
+
+        const payload = {
+            type: 'applicationUpdate',
+            applicationID: Number(applicationId),
+            application: {
+                title: title,
+                applicationNumber: normalize(input('applicationEditNumber')?.value),
+                permitNumber: normalize(input('applicationEditPermitNumber')?.value),
+                stageID: Number(input('applicationEditStageID')?.value || 0),
+                statusID: Number(input('applicationEditStatusID')?.value || 0),
+                scope: normalize(input('applicationEditScope')?.value),
+                submittedUnix: dateToUnix(input('applicationEditSubmittedUnix')?.value),
+                approvedUnix: dateToUnix(input('applicationEditApprovedUnix')?.value),
+                issuedUnix: dateToUnix(input('applicationEditIssuedUnix')?.value),
+                finaledUnix: dateToUnix(input('applicationEditFinaledUnix')?.value)
+            }
+        };
+
+        const saveButton = input('applicationEditSaveButton');
+
+        try {
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.textContent = 'Saving...';
+            }
+
+            let actionLocation = await this.getLocationSafe();
+            if (
+                actionLocation?.latitude !== null &&
+                actionLocation?.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+            } else if (this.lastLocation) {
+                actionLocation = this.lastLocation;
+            }
+            payload.latitude = actionLocation?.latitude ?? null;
+            payload.longitude = actionLocation?.longitude ?? null;
+
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                }
+            );
+            const responseText = await response.text();
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${responseText.substring(0, 200)}`);
+            }
+            const data = JSON.parse(responseText);
+            if (!data?.success || !data?.application) {
+                throw new Error(data?.error || 'Application could not be updated.');
+            }
+
+            const cached = this._currentApplicationWorkspaceData || {};
+            this._currentApplicationWorkspaceData = {
+                ...cached,
+                applicationId: Number(applicationId),
+                application: data.application,
+                events: Array.isArray(data.events) ? data.events : []
+            };
+
+            this.renderCreatedApplicationSummary(
+                data.application,
+                'updated'
+            );
+            this.appendSystemLine(`Application #${applicationId} was updated successfully.`);
+
+            window.SkyWorkspace.replace({
+                pageType: 'application',
+                objectType: 'application',
+                objectId: Number(applicationId),
+                title: 'Application',
+                state: {
+                    edit: false,
+                    useCachedApplication: true
+                }
+            });
+
+        } catch (error) {
+            console.error('[Application Edit] Update failed:', error);
+            this.appendSystemLine(`Unable to update Application: ${error?.message || 'Unknown error'}`);
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save';
+            }
+        }
     },
 
     returnToNewApplicationOrderStep() {
@@ -14320,6 +14762,21 @@ window.SkyIndex = {
                 ?.toLowerCase();
 
             // =====================================================
+            // 📋 Direct Application Workspace Command
+            // Open by database Application ID.
+            // =====================================================
+            const openApplicationMatch = trimmed.match(
+                /^open\s+application\s+(\d+)$/i
+            );
+
+            if (openApplicationMatch) {
+                this.openApplicationWorkspace(
+                    Number(openApplicationMatch[1])
+                );
+                return;
+            }
+
+            // =====================================================
             // 📦 Direct Order Workspace Command
             // Open by Christy Work Order number.
             // =====================================================
@@ -14385,7 +14842,10 @@ window.SkyIndex = {
                 order: (id) => this.renderOrderCard?.(
                     Number(id)
                 ),
-                // application: (id) => this.renderApplicationCard?.(id),
+                application: (id) =>
+                    this.openApplicationWorkspace(
+                        Number(id)
+                    ),
             };
 
             if (firstWord && objectCommands[firstWord]) {
@@ -21858,6 +22318,14 @@ if (window.SkyWorkspace) {
         SkyWorkspace.registerPage(
             'application_create',
             SkyIndex.renderApplicationCreatePage.bind(
+                SkyIndex
+            )
+        );
+    }
+    if (typeof SkyIndex.renderApplicationPage === 'function') {
+        SkyWorkspace.registerPage(
+            'application',
+            SkyIndex.renderApplicationPage.bind(
                 SkyIndex
             )
         );
