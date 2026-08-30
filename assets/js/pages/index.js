@@ -9875,31 +9875,98 @@ window.SkyIndex = {
     renderCreatedApplicationSummary(application) {
         if (!application) return;
 
+        const applicationId = Number(
+            application.applicationID || 0
+        );
+        const applicationTitle = this.escapeHtml(
+            application.applicationTitle || 'Application'
+        );
+        const workOrderNumber = this.escapeHtml(
+            application.orderChristyNumber || '—'
+        );
+        const entityName = this.escapeHtml(
+            application.entityName || 'No Customer'
+        );
+        const locationName = this.escapeHtml(
+            application.locationName || 'Unnamed Location'
+        );
+        const stageName = this.escapeHtml(
+            application.applicationStageName || '—'
+        );
+        const statusName = this.escapeHtml(
+            application.applicationStatusName || '—'
+        );
+        const jurisdiction = this.escapeHtml(
+            application.applicationJurisdiction || '—'
+        );
+        const scope = this.escapeHtml(
+            application.applicationScope || 'No scope entered.'
+        );
         const creatorName = [
             application.creator?.contactFirstName,
             application.creator?.contactLastName
         ].filter(Boolean).join(' ');
+        const creatorDisplay = this.escapeHtml(
+            creatorName || 'Company Contact'
+        );
 
         this.appendSystemHtml(`
-            <div class="sky-card application-summary-card" style="margin-top:8px; padding:12px; border:1px solid #cfd8dc; border-radius:7px; background:#fff;">
-                <div style="font-weight:700; color:#117a8b;">
-                    ${this.escapeHtml(application.applicationTitle || 'Application')}
+            <div class="result-card application-summary-card"
+            data-application-id="${applicationId}"
+            style="border-left:5px solid #17a2b8; background:#fff; width:100%; max-width:100%;">
+
+                <div class="result-header"
+                style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 16px;">
+
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="result-icon">📋</span>
+
+                        <div style="display:flex; flex-direction:column;">
+                            <strong class="result-title" style="color:#222;">
+                                Application
+                            </strong>
+
+                            <small style="color:#666; font-size:0.78em; line-height:1.2; margin-top:1px;">
+                                1 Application created
+                            </small>
+                        </div>
+                    </div>
+
+                    <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
+                        CREATED
+                    </span>
                 </div>
-                <div style="margin-top:5px; color:#333;">
-                    Application #${Number(application.applicationID || 0)}
-                    · Work Order ${this.escapeHtml(application.orderChristyNumber || '')}
-                </div>
-                <div style="margin-top:3px; color:#555;">
-                    ${this.escapeHtml(application.entityName || '')}
-                    · ${this.escapeHtml(application.locationName || '')}
-                </div>
-                <div style="margin-top:3px; color:#555;">
-                    ${this.escapeHtml(application.applicationStageName || '')}
-                    · ${this.escapeHtml(application.applicationStatusName || '')}
-                    · ${this.escapeHtml(application.applicationJurisdiction || '')}
-                </div>
-                <div style="margin-top:3px; color:#777; font-size:0.86em;">
-                    Created by ${this.escapeHtml(creatorName || 'Company Contact')}
+
+                <div class="result-body" style="padding:4px 16px 12px;">
+                    <div style="padding:10px 0;">
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:7px; color:#222;">
+                            <strong style="color:#117a8b;">
+                                ${applicationTitle}
+                            </strong>
+
+                            <span style="padding:2px 7px; border-radius:999px; background:#e8f4f6; color:#117a8b; font-size:0.72em; font-weight:700;">
+                                ${statusName}
+                            </span>
+                        </div>
+
+                        <div style="font-size:0.85em; color:#555; margin-top:4px;">
+                            Application #${applicationId} · Work Order ${workOrderNumber}
+                        </div>
+
+                        <div style="font-size:0.85em; color:#666; margin-top:3px;">
+                            ${entityName} · ${locationName}
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:6px 14px; font-size:0.85em; margin-top:5px; color:#555;">
+                            <span>Stage: ${stageName}</span>
+                            <span>Jurisdiction: ${jurisdiction}</span>
+                            <span>Created by: ${creatorDisplay}</span>
+                        </div>
+
+                        <div style="font-size:0.85em; color:#666; margin-top:7px; padding-top:7px; border-top:1px solid #f0f0f0;">
+                            ${scope}
+                        </div>
+                    </div>
                 </div>
             </div>
         `);
