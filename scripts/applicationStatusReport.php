@@ -317,6 +317,13 @@ $reportLine = sprintf(
     formatApplicationReportDate($reportGeneratedUnix),
     (int)$application['applicationID']
 );
+$reportHeaderHtml = renderSkyesoftReportHeader([
+    'title' => 'Permit Application Status Report',
+    'subtitle' => $application['applicationTitle'],
+    'reportLine' => $reportLine,
+    'logoSource' => $logoSource,
+    'logoAvailable' => $logoAvailable
+]);
 
 ob_start();
 ?>
@@ -329,8 +336,6 @@ ob_start();
         Application #<?= (int)$application['applicationID'] ?> Status Report
     </title>
     <style>
-        <?= getSkyesoftReportFrameStyles() ?>
-
         html,
         body {
             margin: 0;
@@ -338,8 +343,8 @@ ob_start();
             color: #222;
             background: #fff;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 14px;
-            line-height: 1.35;
+            font-size: 10px;
+            line-height: 1.22;
         }
 
         .report {
@@ -348,14 +353,14 @@ ob_start();
         }
 
         .section {
-            margin-top: 24px;
+            margin-top: 8px;
         }
 
         .section-heading {
-            margin-bottom: 7px;
-            padding-bottom: 4px;
+            margin-bottom: 3px;
+            padding-bottom: 2px;
             color: #14377c;
-            font-size: 17px;
+            font-size: 12px;
             font-weight: bold;
             border-bottom: 2px solid #14377c;
         }
@@ -368,28 +373,29 @@ ob_start();
 
         .data-table th,
         .data-table td {
-            padding: 8px 10px;
+            padding: 3px 5px;
             border: 1px solid #ccc;
             text-align: left;
             vertical-align: top;
         }
 
         .data-table th {
-            width: 32%;
+            width: 40%;
             color: #333;
             font-weight: bold;
+            white-space: nowrap;
             background: #f8f9fa;
         }
 
         .data-table td {
-            width: 68%;
+            width: 60%;
             color: #111;
             background: #fff;
         }
 
         .scope-box,
         .summary-box {
-            padding: 9px 12px;
+            padding: 6px 8px;
             white-space: normal;
             background: #fff;
             border: 1px solid #ccc;
@@ -402,16 +408,16 @@ ob_start();
         }
 
         .summary-title {
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             color: #14377c;
-            font-size: 14px;
+            font-size: 10px;
             font-weight: bold;
         }
 
         .summary-body {
             color: #333;
-            font-size: 13px;
-            line-height: 1.4;
+            font-size: 9px;
+            line-height: 1.3;
         }
 
     </style>
@@ -419,14 +425,6 @@ ob_start();
 <body>
 
 <div class="report">
-    <?= renderSkyesoftReportHeader([
-        'title' => 'Permit Application Status Report',
-        'subtitle' => $application['applicationTitle'],
-        'reportLine' => $reportLine,
-        'logoSource' => $logoSource,
-        'logoAvailable' => $logoAvailable
-    ]) ?>
-
     <div class="section">
         <div class="section-heading">Project Information</div>
         <table class="data-table">
@@ -646,6 +644,11 @@ try {
     ));
     $pdf->SetAuthor($preparedBy);
     $pdf->SetCreator('Skyesoft');
+    $pdf->WriteHTML(
+        getSkyesoftReportFrameStyles(),
+        \Mpdf\HTMLParserMode::HEADER_CSS
+    );
+    $pdf->SetHTMLHeader($reportHeaderHtml);
     $pdf->SetHTMLFooter(renderSkyesoftReportFooter([
         'preparedBy' => $preparedBy,
         'reportName' => 'Skyesoft Application Status'

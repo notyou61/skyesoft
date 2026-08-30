@@ -30,8 +30,10 @@ function getSkyesoftReportMpdfConfig(string $tempDir): array
         'orientation' => 'P',
         'margin_left' => 9.65,
         'margin_right' => 9.65,
-        'margin_top' => 4,
+        'margin_top' => 27,
         'margin_bottom' => 15,
+        'margin_header' => 4,
+        'margin_footer' => 5,
         'tempDir' => $tempDir
     ];
 }
