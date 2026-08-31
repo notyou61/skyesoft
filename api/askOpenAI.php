@@ -4,7 +4,7 @@ declare(strict_types=1);
 // ======================================================================
 //  Skyesoft — askOpenAI.php
 //  Version: 1.3.3
-//  Last Updated: 2026-08-30
+//  Last Updated: 2026-08-31
 //  Codex Tier: 3 — AI Augmentation / Prompt Orchestration
 //
 //  Role:
@@ -3630,6 +3630,150 @@ $type = $input['type']
      ?? ($argv[1] ?? "skyebot");
 
 $isStructured = ($type === 'structured');
+
+// =====================================================
+// OPEN APPLICATIONS REPORT SUMMARY
+// =====================================================
+
+if ($type === 'openApplicationsReportSummary') {
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    if ($actorContactId <= 0) {
+        echo json_encode([
+            'success' => false,
+            'type' => 'open_applications_report_summary',
+            'error' => 'An authenticated Company Contact is required.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    try {
+        // Load report-specific dependencies only for this request type
+        $reportHelperPath = __DIR__ .
+            '/utils/openApplicationsReportData.php';
+
+        if (!is_file($reportHelperPath) || !is_readable($reportHelperPath)) {
+            throw new RuntimeException(
+                'Open Applications report helper is unavailable.'
+            );
+        }
+
+        require_once $reportHelperPath;
+
+        if (
+            !function_exists('loadOpenApplicationsReportData') ||
+            !function_exists('buildOpenApplicationsReportPayload') ||
+            !function_exists('fingerprintOpenApplicationsReportPayload') ||
+            !function_exists('buildOpenApplicationsFallbackSummary')
+        ) {
+            throw new RuntimeException(
+                'Open Applications report helper is incomplete.'
+            );
+        }
+
+        $applications = loadOpenApplicationsReportData($db);
+        $generatedUnix = time();
+        $reportPayload = buildOpenApplicationsReportPayload(
+            $applications,
+            $generatedUnix
+        );
+        $reportFingerprint = fingerprintOpenApplicationsReportPayload(
+            $reportPayload
+        );
+        $fallbackSummary = buildOpenApplicationsFallbackSummary(
+            $reportPayload
+        );
+        $promptPath = $root .
+            '/codex/prompts/openApplicationsReportSummary.prompt.md';
+        $summaryNarrative = null;
+        $summarySource = 'deterministic_fallback';
+
+        if (is_file($promptPath) && is_readable($promptPath)) {
+            $promptTemplate = file_get_contents($promptPath);
+            $reportJson = json_encode(
+                $reportPayload,
+                JSON_PRETTY_PRINT |
+                JSON_UNESCAPED_SLASHES |
+                JSON_INVALID_UTF8_SUBSTITUTE
+            );
+
+            if (
+                is_string($promptTemplate) &&
+                trim($promptTemplate) !== '' &&
+                is_string($reportJson)
+            ) {
+                $fullPrompt = str_replace(
+                    '{{REPORT_JSON}}',
+                    $reportJson,
+                    $promptTemplate
+                );
+                $aiSummary = callOpenAI(
+                    $fullPrompt,
+                    $apiKey,
+                    'gpt-4o-mini'
+                );
+
+                if (is_string($aiSummary) && trim($aiSummary) !== '') {
+                    $summaryNarrative = preg_replace(
+                        '/\s+/u',
+                        ' ',
+                        strip_tags(trim($aiSummary))
+                    );
+                    $summaryNarrative = trim((string)$summaryNarrative);
+
+                    if ($summaryNarrative !== '') {
+                        $summaryNarrative = substr(
+                            $summaryNarrative,
+                            0,
+                            2000
+                        );
+                        $summarySource = 'askOpenAI.php';
+                    }
+                }
+            }
+        }
+
+        if ($summaryNarrative === null || $summaryNarrative === '') {
+            $summaryNarrative = $fallbackSummary;
+        }
+
+        // Cache one fingerprinted narrative for PDF and Sentinel reuse
+        $_SESSION['openApplicationsReportSummary'] = [
+            'fingerprint' => $reportFingerprint,
+            'summaryNarrative' => $summaryNarrative,
+            'summarySource' => $summarySource,
+            'generatedUnix' => $generatedUnix
+        ];
+
+        echo json_encode([
+            'success' => true,
+            'type' => 'open_applications_report_summary',
+            'summaryNarrative' => $summaryNarrative,
+            'summarySource' => $summarySource,
+            'applicationCount' => count($applications),
+            'reportFingerprint' => $reportFingerprint,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[askOpenAI] openApplicationsReportSummary failed: ' .
+            $e->getMessage()
+        );
+
+        echo json_encode([
+            'success' => false,
+            'type' => 'open_applications_report_summary',
+            'error' => 'Unable to prepare the Application report summary.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
 
 // =====================================================
 // READ-ONLY CONTACT DETAIL

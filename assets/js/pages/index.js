@@ -10174,11 +10174,41 @@ window.SkyIndex = {
         `);
     },
 
-    openApplicationsStatusReport() {
-        window.open(
-            '/skyesoft/scripts/openApplicationsStatusReport.php',
-            '_blank',
-            'noopener,noreferrer'
+    async openApplicationsStatusReport() {
+        const reportWindow = window.open('', '_blank');
+
+        if (!reportWindow) {
+            this.appendSystemLine(
+                'Allow pop-ups to open the Applications report.'
+            );
+            return;
+        }
+
+        reportWindow.opener = null;
+        reportWindow.document.title = 'Preparing Applications Report';
+        reportWindow.document.body.innerHTML =
+            '<div style="font-family:Arial,sans-serif;padding:24px;color:#444;">Preparing the Applications report summary...</div>';
+
+        try {
+            await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: 'openApplicationsReportSummary'
+                })
+            });
+        } catch (error) {
+            console.warn(
+                '[Open Applications Report] Summary unavailable:',
+                error
+            );
+        }
+
+        reportWindow.location.replace(
+            '/skyesoft/scripts/openApplicationsStatusReport.php'
         );
     },
 
