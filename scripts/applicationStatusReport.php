@@ -107,6 +107,15 @@ function formatApplicationReportDate(?int $unix): string
     return date('F j, Y', $unix);
 }
 
+function formatApplicationReportDateTime(?int $unix): string
+{
+    if ($unix === null || $unix <= 0) {
+        return 'Not Available';
+    }
+
+    return date('F j, Y · g:i A T', $unix);
+}
+
 function formatApplicationReportValue(mixed $value): string
 {
     $resolved = trim((string)($value ?? ''));
@@ -312,14 +321,17 @@ $preparedBy = trim(
     (string)$actor['contactFirstName'] . ' ' .
     (string)$actor['contactLastName']
 );
-$reportLine = sprintf(
-    'Report Date: %s · Application #%d',
-    formatApplicationReportDate($reportGeneratedUnix),
-    (int)$application['applicationID']
+$reportSubject = sprintf(
+    '%s (%s)',
+    formatApplicationReportValue($application['locationName']),
+    formatApplicationReportValue($application['orderChristyNumber'])
+);
+$reportLine = 'Report Date: ' . formatApplicationReportDateTime(
+    $reportGeneratedUnix
 );
 $reportHeaderHtml = renderSkyesoftReportHeader([
     'title' => 'Permit Application Status Report',
-    'subtitle' => $application['applicationTitle'],
+    'subtitle' => $reportSubject,
     'reportLine' => $reportLine,
     'logoSource' => $logoSource,
     'logoAvailable' => $logoAvailable
@@ -468,6 +480,37 @@ ob_start();
     </div>
 
     <div class="section">
+        <div class="section-heading">Permit Identification</div>
+        <table class="data-table">
+            <tr>
+                <th>Jurisdiction Application Number</th>
+                <td><?= escapeApplicationReportValue(
+                    formatApplicationReportValue(
+                        $application['applicationNumber']
+                    )
+                ) ?></td>
+            </tr>
+            <tr>
+                <th>Permit Number</th>
+                <td><?= escapeApplicationReportValue(
+                    formatApplicationReportValue(
+                        $application['applicationPermitNumber']
+                    )
+                ) ?></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-heading">Application Scope</div>
+        <div class="scope-box"><?= escapeApplicationReportValue(
+            formatApplicationReportValue(
+                $application['applicationScope']
+            )
+        ) ?></div>
+    </div>
+
+    <div class="section">
         <div class="section-heading">Application Status</div>
         <table class="data-table">
             <tr>
@@ -486,28 +529,6 @@ ob_start();
                 <th>Status Description</th>
                 <td><?= escapeApplicationReportValue(
                     $statusSummary
-                ) ?></td>
-            </tr>
-        </table>
-    </div>
-
-    <div class="section">
-        <div class="section-heading">Permit Identification</div>
-        <table class="data-table">
-            <tr>
-                <th>Jurisdiction Application Number</th>
-                <td><?= escapeApplicationReportValue(
-                    formatApplicationReportValue(
-                        $application['applicationNumber']
-                    )
-                ) ?></td>
-            </tr>
-            <tr>
-                <th>Permit Number</th>
-                <td><?= escapeApplicationReportValue(
-                    formatApplicationReportValue(
-                        $application['applicationPermitNumber']
-                    )
                 ) ?></td>
             </tr>
         </table>
@@ -557,15 +578,6 @@ ob_start();
                 ) ?></td>
             </tr>
         </table>
-    </div>
-
-    <div class="section">
-        <div class="section-heading">Application Scope</div>
-        <div class="scope-box"><?= escapeApplicationReportValue(
-            formatApplicationReportValue(
-                $application['applicationScope']
-            )
-        ) ?></div>
     </div>
 
     <div class="section">
