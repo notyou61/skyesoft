@@ -285,7 +285,7 @@ $clipboardPath = $rootDir !== false
 $clipboardAvailable = $clipboardPath !== '' && is_file($clipboardPath);
 $clipboardSource = $clipboardAvailable
     ? 'file://' . $clipboardPath
-    : 'assets/images/icons/clipboard.png';
+    : '';
 
 $preparedBy = trim(
     (string)$actor['contactFirstName'] . ' ' .
@@ -359,7 +359,7 @@ ob_start();
             background: #fff;
             border: 1px solid #ccc;
         }
-
+        
         .application-block {
             margin: 0 0 9px;
         }
@@ -422,7 +422,12 @@ ob_start();
 
 <div class="report">
     <div class="report-summary">
-        <div class="report-summary-heading"><img src="<?= htmlspecialchars($clipboardSource, ENT_QUOTES, 'UTF-8') ?>" class="section-icon" alt="Clipboard icon">Report Summary</div>
+        <div class="report-summary-heading">
+            <?php if ($clipboardAvailable): ?>
+                <img src="<?= htmlspecialchars($clipboardSource, ENT_QUOTES, 'UTF-8') ?>" class="section-icon" alt="Clipboard icon">
+            <?php endif; ?>
+            Report Summary
+        </div>
         <div class="report-summary-body">
             <?= escapeOpenApplicationsReportValue($reportSummary) ?>
         </div>
@@ -551,104 +556,6 @@ ob_start();
 </body>
 </html>
 <?php
-
-$reportHtml = (string)ob_get_clean();
-
-$autoloadCandidates = array_filter([
-    $rootDir !== false ? $rootDir . '/vendor/autoload.php' : null,
-    $rootDir !== false ? $rootDir . '/api/vendor/autoload.php' : null,
-    __DIR__ . '/vendor/autoload.php',
-    $rootDir !== false
-        ? dirname($rootDir) . '/vendor/autoload.php'
-        : null
-]);
-$autoloadPath = null;
-
-foreach ($autoloadCandidates as $autoloadCandidate) {
-    if (is_file($autoloadCandidate)) {
-        $autoloadPath = $autoloadCandidate;
-        break;
-    }
-}
-
-if ($autoloadPath === null) {
-    failOpenApplicationsStatusReport(
-        'The Skyesoft PDF rendering engine is unavailable.',
-        500
-    );
-}
-
-require_once $autoloadPath;
-
-if (!class_exists('Mpdf\\Mpdf')) {
-    failOpenApplicationsStatusReport(
-        'The Skyesoft PDF rendering engine is not installed.',
-        500
-    );
-}
-
-$mpdfTempDir = sys_get_temp_dir() . '/skyesoft-mpdf';
-
-if (!is_dir($mpdfTempDir) && !mkdir($mpdfTempDir, 0775, true)) {
-    failOpenApplicationsStatusReport(
-        'The PDF runtime directory could not be prepared.',
-        500
-    );
-}
-
-try {
-    $pdf = new \Mpdf\Mpdf(
-        getSkyesoftReportMpdfConfig($mpdfTempDir)
-    );
-
-    $pdf->SetTitle('Open Permit Applications Status Report');
-    $pdf->SetAuthor($preparedBy);
-    $pdf->SetCreator('Skyesoft');
-    $pdf->WriteHTML(
-        getSkyesoftReportFrameStyles(),
-        \Mpdf\HTMLParserMode::HEADER_CSS
-    );
-    $pdf->SetHTMLHeader($reportHeaderHtml);
-    $pdf->SetHTMLFooter(renderSkyesoftReportFooter([
-        'preparedBy' => $preparedBy,
-        'reportName' => 'Skyesoft Open Applications Status'
-    ]));
-    $pdf->WriteHTML($reportHtml);
-
-    $pdfFilename = 'Open-Permit-Applications-Status-Report.pdf';
-    $pdfContent = $pdf->Output(
-        '',
-        \Mpdf\Output\Destination::STRING_RETURN
-    );
-} catch (Throwable $exception) {
-    failOpenApplicationsStatusReport(
-        'The Open Permit Applications Status PDF could not be generated.',
-        500
-    );
-}
-
-$actionId = $recordReportAction();
-
-if ($actionId <= 0) {
-    failOpenApplicationsStatusReport(
-        'The report Action could not be recorded.',
-        500
-    );
-}
-
-header('Content-Type: application/pdf');
-header(
-    'Content-Disposition: inline; filename="' .
-    $pdfFilename .
-    '"'
-);
-header('Content-Length: ' . strlen($pdfContent));
-header('Cache-Control: private, no-store, max-age=0');
-
-echo $pdfContent;
-exit;
-
-// #endregion
 
 $reportHtml = (string)ob_get_clean();
 
