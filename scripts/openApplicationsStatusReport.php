@@ -278,15 +278,6 @@ $logoAvailable = $logoPath !== '' && is_file($logoPath);
 $logoSource = $logoAvailable
     ? 'file://' . $logoPath
     : '';
-
-$clipboardPath = $rootDir !== false
-    ? $rootDir . '/assets/images/icons/clipboard.png'
-    : '';
-$clipboardAvailable = $clipboardPath !== '' && is_file($clipboardPath);
-$clipboardSource = $clipboardAvailable
-    ? 'file://' . $clipboardPath
-    : '';
-
 $preparedBy = trim(
     (string)$actor['contactFirstName'] . ' ' .
     (string)$actor['contactLastName']
@@ -345,12 +336,6 @@ ob_start();
             border-bottom: 2px solid #14377c;
         }
 
-        .section-icon {
-            width: 13px;
-            vertical-align: -2px;
-            margin-right: 5px;
-        }
-
         .report-summary-body {
             padding: 6px 8px;
             color: #333;
@@ -359,7 +344,7 @@ ob_start();
             background: #fff;
             border: 1px solid #ccc;
         }
-        
+
         .application-block {
             margin: 0 0 9px;
         }
@@ -422,12 +407,7 @@ ob_start();
 
 <div class="report">
     <div class="report-summary">
-        <div class="report-summary-heading">
-            <?php if ($clipboardAvailable): ?>
-                <img src="<?= htmlspecialchars($clipboardSource, ENT_QUOTES, 'UTF-8') ?>" class="section-icon" alt="Clipboard icon">
-            <?php endif; ?>
-            Report Summary
-        </div>
+        <div class="report-summary-heading">Report Summary</div>
         <div class="report-summary-body">
             <?= escapeOpenApplicationsReportValue($reportSummary) ?>
         </div>
