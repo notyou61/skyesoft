@@ -14,6 +14,7 @@ date_default_timezone_set('America/Phoenix');
 require_once __DIR__ . '/../api/sessionBootstrap.php';
 require_once __DIR__ . '/../api/dbConnect.php';
 require_once __DIR__ . '/../api/utils/actions.php';
+require_once __DIR__ . '/../api/utils/openApplicationsReportData.php';
 require_once __DIR__ . '/reportFrame.php';
 
 const ACTION_ORIGIN_USER = 1;
@@ -156,59 +157,35 @@ function renderOpenApplicationsDateRow(
 
 // #region SECTION III — Authoritative Open Application Data
 
-$applicationsStmt = $db->prepare("
-    SELECT
-        a.applicationID,
-        a.applicationTitle,
-        a.applicationJurisdiction,
-        a.applicationNumber,
-        a.applicationPermitNumber,
-        a.applicationScope,
-        a.applicationSubmittedUnix,
-        a.applicationApprovedUnix,
-        a.applicationIssuedUnix,
-        a.applicationFinaledUnix,
-        a.applicationCreatedUnix,
-        a.applicationUpdatedUnix,
-        o.orderID,
-        o.orderChristyNumber,
-        e.entityName,
-        l.locationName,
-        l.locationAddress,
-        l.locationAddressSuite,
-        l.locationCity,
-        l.locationState,
-        l.locationZip,
-        s.applicationStageName,
-        st.applicationStatusName,
-        st.applicationStatusDescription
-    FROM tblApplications a
-    INNER JOIN tblOrders o
-        ON o.orderID = a.applicationOrderID
-    INNER JOIN tblEntities e
-        ON e.entityId = a.applicationEntityID
-    INNER JOIN tblLocations l
-        ON l.locationId = a.applicationLocationID
-    INNER JOIN tblApplicationStages s
-        ON s.applicationStageID = a.applicationStageID
-    INNER JOIN tblApplicationStatuses st
-        ON st.applicationStageID = a.applicationStageID
-       AND st.applicationStatusID = a.applicationStatusID
-    WHERE a.applicationIsNotValid = 0
-      AND a.applicationStageID <> 6
-    ORDER BY
-        a.applicationCreatedUnix ASC,
-        a.applicationID ASC
-");
-$applicationsStmt->execute();
-$applications = $applicationsStmt->fetchAll(PDO::FETCH_ASSOC);
-
-if (!is_array($applications)) {
-    $applications = [];
-}
-
+$applications = loadOpenApplicationsReportData($db);
 $reportGeneratedUnix = time();
 $applicationCount = count($applications);
+$reportPayload = buildOpenApplicationsReportPayload(
+    $applications,
+    $reportGeneratedUnix
+);
+$reportFingerprint = fingerprintOpenApplicationsReportPayload(
+    $reportPayload
+);
+$storedSummary = $_SESSION['openApplicationsReportSummary'] ?? null;
+$storedSummaryAge = is_array($storedSummary)
+    ? $reportGeneratedUnix - (int)($storedSummary['generatedUnix'] ?? 0)
+    : PHP_INT_MAX;
+$storedSummaryMatches =
+    is_array($storedSummary) &&
+    hash_equals(
+        $reportFingerprint,
+        (string)($storedSummary['fingerprint'] ?? '')
+    ) &&
+    $storedSummaryAge >= 0 &&
+    $storedSummaryAge <= 900 &&
+    trim((string)($storedSummary['summaryNarrative'] ?? '')) !== '';
+$reportSummary = $storedSummaryMatches
+    ? trim((string)$storedSummary['summaryNarrative'])
+    : buildOpenApplicationsFallbackSummary($reportPayload);
+$reportSummarySource = $storedSummaryMatches
+    ? trim((string)($storedSummary['summarySource'] ?? 'askOpenAI.php'))
+    : 'deterministic_fallback';
 
 // #endregion
 
@@ -245,7 +222,9 @@ $recordReportAction = static function () use (
     $contactId,
     $activitySessionId,
     $applications,
-    $applicationCount
+    $applicationCount,
+    $reportFingerprint,
+    $reportSummarySource
 ): int {
     $applicationIds = array_map(
         static function ($application): int {
@@ -271,7 +250,9 @@ $recordReportAction = static function () use (
             'operation' => 'applications.open_status_report',
             'audience' => 'internal',
             'outputFormat' => 'pdf',
-            'sort' => 'applicationCreatedUnix.asc'
+            'sort' => 'applicationCreatedUnix.asc',
+            'reportFingerprint' => $reportFingerprint,
+            'summarySource' => $reportSummarySource
         ],
         'actionResponseData' => [
             'success' => true,
@@ -279,7 +260,8 @@ $recordReportAction = static function () use (
             'applicationIDs' => $applicationIds,
             'reportType' => 'open_applications_status',
             'audience' => 'internal',
-            'outputFormat' => 'pdf'
+            'outputFormat' => 'pdf',
+            'summarySource' => $reportSummarySource
         ]
     ], $db);
 };
@@ -412,7 +394,7 @@ ob_start();
 
 <div class="report">
     <div class="report-introduction">
-        Internal operations report of all valid Applications that have not reached the Finaled stage. Applications are ordered by creation date, oldest first.
+        <?= escapeOpenApplicationsReportValue($reportSummary) ?>
     </div>
 
     <?php if ($applicationCount === 0): ?>
