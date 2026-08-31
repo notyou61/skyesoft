@@ -10156,15 +10156,30 @@ window.SkyIndex = {
                             </small>
                         </div>
                     </div>
-                    <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
-                        ${badgeLabel}
-                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button type="button"
+                        onclick="SkyIndex.openApplicationsStatusReport()"
+                        style="border:1px solid #14377c; border-radius:4px; padding:5px 9px; color:#fff; background:#14377c; cursor:pointer; font-size:0.78em; font-weight:700;">
+                            Open Applications PDF
+                        </button>
+                        <span style="background:rgba(23,162,184,0.12); color:#117a8b; border:1px solid rgba(23,162,184,0.25); padding:3px 8px; border-radius:4px; font-family:monospace; font-size:0.85em; font-weight:bold;">
+                            ${badgeLabel}
+                        </span>
+                    </div>
                 </div>
                 <div class="result-body" style="padding:4px 16px 12px;">
                     ${rowsHtml}
                 </div>
             </div>
         `);
+    },
+
+    openApplicationsStatusReport() {
+        window.open(
+            '/skyesoft/scripts/openApplicationsStatusReport.php',
+            '_blank',
+            'noopener,noreferrer'
+        );
     },
 
     editApplicationWorkspace(applicationId) {
