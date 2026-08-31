@@ -323,13 +323,26 @@ ob_start();
             margin: 0;
         }
 
-        .report-introduction {
-            margin: 0 0 7px;
-            padding: 5px 7px;
+        .report-summary {
+            margin: 0 0 8px;
+        }
+
+        .report-summary-heading {
+            margin: 0 0 3px;
+            padding: 0 0 2px;
+            color: #14377c;
+            font-size: 12px;
+            font-weight: bold;
+            border-bottom: 2px solid #14377c;
+        }
+
+        .report-summary-body {
+            padding: 6px 8px;
             color: #333;
             font-size: 8.5px;
-            background: #f0f4f9;
-            border-left: 4px solid #14377c;
+            line-height: 1.3;
+            background: #fff;
+            border: 1px solid #ccc;
         }
 
         .application-block {
@@ -393,8 +406,11 @@ ob_start();
 <body>
 
 <div class="report">
-    <div class="report-introduction">
-        <?= escapeOpenApplicationsReportValue($reportSummary) ?>
+    <div class="report-summary">
+        <div class="report-summary-heading">Report Summary</div>
+        <div class="report-summary-body">
+            <?= escapeOpenApplicationsReportValue($reportSummary) ?>
+        </div>
     </div>
 
     <?php if ($applicationCount === 0): ?>
