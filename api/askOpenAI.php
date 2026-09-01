@@ -2803,6 +2803,274 @@ function loadOrderPage(
 }
 
 /**
+ * Paginated authoritative Application list.
+ * Read-only and does not create an Action.
+ *
+ * @param PDO|null $db
+ * @param int      $page
+ * @param int      $pageSize
+ * @return array
+ */
+function loadApplicationPage(
+    ?PDO $db,
+    int $page = 1,
+    int $pageSize = 5
+): array {
+    // Normalize pagination
+    $page = max(
+        1,
+        $page
+    );
+
+    // Match existing surface-list standard
+    $pageSize = 5;
+
+    $offset =
+        ($page - 1) *
+        $pageSize;
+
+    $result = [
+        'type'       => 'applications',
+        'page'       => $page,
+        'pageSize'   => $pageSize,
+        'total'      => 0,
+        'totalPages' => 0,
+        'rows'       => [],
+        'source'     => 'database',
+        'asOf'       => date('c')
+    ];
+
+    if (!$db instanceof PDO) {
+        return $result;
+    }
+
+    try {
+        // Count valid Applications
+        $total = (int)$db->query("
+            SELECT COUNT(*)
+            FROM tblApplications
+            WHERE COALESCE(
+                applicationIsNotValid,
+                0
+            ) = 0
+        ")->fetchColumn();
+
+        $result['total'] = $total;
+
+        $result['totalPages'] =
+            $total > 0
+                ? (int)ceil(
+                    $total /
+                    $pageSize
+                )
+                : 0;
+
+        if ($total === 0) {
+            return $result;
+        }
+
+        // Clamp request to final page
+        if (
+            $page >
+            $result['totalPages']
+        ) {
+            $page =
+                $result['totalPages'];
+
+            $offset =
+                ($page - 1) *
+                $pageSize;
+
+            $result['page'] =
+                $page;
+        }
+
+        // Load Application summaries
+        $applicationStmt = $db->prepare("
+            SELECT
+                a.applicationID,
+                a.applicationOrderID,
+                a.applicationEntityID,
+                a.applicationLocationID,
+                a.applicationStageID,
+                a.applicationStatusID,
+                a.applicationCreatedByContactID,
+                a.applicationTitle,
+                a.applicationJurisdiction,
+                a.applicationNumber,
+                a.applicationPermitNumber,
+                a.applicationSubmittedUnix,
+                a.applicationCreatedUnix,
+                a.applicationUpdatedUnix,
+
+                o.orderChristyNumber,
+                e.entityName,
+                l.locationName,
+
+                s.applicationStageName,
+                st.applicationStatusName,
+
+                c.contactFirstName AS creatorFirstName,
+                c.contactLastName AS creatorLastName
+
+            FROM tblApplications a
+
+            INNER JOIN tblOrders o
+                ON o.orderID =
+                    a.applicationOrderID
+
+            INNER JOIN tblEntities e
+                ON e.entityId =
+                    a.applicationEntityID
+
+            INNER JOIN tblLocations l
+                ON l.locationId =
+                    a.applicationLocationID
+
+            INNER JOIN tblApplicationStages s
+                ON s.applicationStageID =
+                    a.applicationStageID
+
+            INNER JOIN tblApplicationStatuses st
+                ON st.applicationStageID =
+                    a.applicationStageID
+               AND st.applicationStatusID =
+                    a.applicationStatusID
+
+            INNER JOIN tblContacts c
+                ON c.contactId =
+                    a.applicationCreatedByContactID
+
+            WHERE COALESCE(
+                a.applicationIsNotValid,
+                0
+            ) = 0
+
+            ORDER BY
+                a.applicationCreatedUnix DESC,
+                a.applicationID DESC
+
+            LIMIT :limit
+            OFFSET :offset
+        ");
+
+        $applicationStmt->bindValue(
+            ':limit',
+            $pageSize,
+            PDO::PARAM_INT
+        );
+
+        $applicationStmt->bindValue(
+            ':offset',
+            $offset,
+            PDO::PARAM_INT
+        );
+
+        $applicationStmt->execute();
+
+        $rows = [];
+
+        foreach (
+            $applicationStmt->fetchAll(
+                PDO::FETCH_ASSOC
+            ) as $row
+        ) {
+            $rows[] = [
+                'applicationID' =>
+                    (int)$row['applicationID'],
+
+                'applicationOrderID' =>
+                    (int)$row['applicationOrderID'],
+
+                'orderChristyNumber' =>
+                    $row['orderChristyNumber'],
+
+                'applicationEntityID' =>
+                    (int)$row['applicationEntityID'],
+
+                'entityName' =>
+                    $row['entityName'],
+
+                'applicationLocationID' =>
+                    (int)$row['applicationLocationID'],
+
+                'locationName' =>
+                    $row['locationName'],
+
+                'applicationStageID' =>
+                    (int)$row['applicationStageID'],
+
+                'applicationStageName' =>
+                    $row['applicationStageName'],
+
+                'applicationStatusID' =>
+                    (int)$row['applicationStatusID'],
+
+                'applicationStatusName' =>
+                    $row['applicationStatusName'],
+
+                'applicationCreatedByContactID' =>
+                    (int)$row[
+                        'applicationCreatedByContactID'
+                    ],
+
+                'creator' => [
+                    'contactId' =>
+                        (int)$row[
+                            'applicationCreatedByContactID'
+                        ],
+
+                    'contactFirstName' =>
+                        $row['creatorFirstName'],
+
+                    'contactLastName' =>
+                        $row['creatorLastName']
+                ],
+
+                'applicationTitle' =>
+                    $row['applicationTitle'],
+
+                'applicationJurisdiction' =>
+                    $row['applicationJurisdiction'],
+
+                'applicationNumber' =>
+                    $row['applicationNumber'],
+
+                'applicationPermitNumber' =>
+                    $row['applicationPermitNumber'],
+
+                'applicationSubmittedUnix' =>
+                    $row['applicationSubmittedUnix'] !== null
+                        ? (int)$row[
+                            'applicationSubmittedUnix'
+                        ]
+                        : null,
+
+                'applicationCreatedUnix' =>
+                    (int)$row['applicationCreatedUnix'],
+
+                'applicationUpdatedUnix' =>
+                    $row['applicationUpdatedUnix'] !== null
+                        ? (int)$row[
+                            'applicationUpdatedUnix'
+                        ]
+                        : null
+            ];
+        }
+
+        $result['rows'] = $rows;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[skyebot] loadApplicationPage failed: ' .
+            $e->getMessage()
+        );
+    }
+
+    return $result;
+}
+
+/**
  * Search current authoritative Orders for Application creation.
  *
  * Current Orders are valid Orders whose authoritative Status is Active.
@@ -10534,6 +10802,298 @@ if ($type === "skyebot") {
         header('Content-Type: application/json');
         echo json_encode($searchResponse, JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    // =====================================================================
+    // 📋 Operational Application List
+    // =====================================================================
+
+    // Detect explicit Application-list request
+    $isApplicationList =
+        preg_match(
+            '/\b(view|list|show|display)\b.*\bapplications?\b/',
+            $lowerQuery
+        ) ||
+        preg_match(
+            '/\bapplications?\b.*\b(view|list|page)\b/',
+            $lowerQuery
+        );
+
+    // Detect Application-list navigation
+    $isApplicationListNavigation =
+        (
+            $_SESSION['lastList']['type']
+            ?? null
+        ) === 'applications' &&
+        (bool)preg_match(
+            '/\b(next|previous|prev)\s+page\b/',
+            $lowerQuery
+        );
+
+    if (
+        $isApplicationList ||
+        $isApplicationListNavigation
+    ) {
+        // Set default page
+        $page = 1;
+
+        // Resolve explicit page
+        if (
+            preg_match(
+                '/\bpage\s+(\d+)\b/',
+                $lowerQuery,
+                $pageMatch
+            )
+        ) {
+            $page = max(
+                1,
+                (int)$pageMatch[1]
+            );
+
+        // Resolve next page
+        } elseif (
+            preg_match(
+                '/\bnext\s+page\b/',
+                $lowerQuery
+            )
+        ) {
+            $page =
+                (int)(
+                    $_SESSION['lastList']['page']
+                    ?? 1
+                ) + 1;
+
+        // Resolve previous page
+        } elseif (
+            preg_match(
+                '/\b(prev|previous)\s+page\b/',
+                $lowerQuery
+            )
+        ) {
+            $page = max(
+                1,
+                (int)(
+                    $_SESSION['lastList']['page']
+                    ?? 2
+                ) - 1
+            );
+        }
+
+        // Load authoritative Application page
+        $operationalList =
+            loadApplicationPage(
+                $db,
+                $page,
+                5
+            );
+
+        // Preserve list-navigation context
+        $_SESSION['lastList'] = [
+            'type' =>
+                'applications',
+
+            'page' =>
+                $operationalList['page']
+                ?? $page
+        ];
+
+        if (
+            is_array($operationalList) &&
+            isset($operationalList['rows'])
+        ) {
+            // Resolve authenticated actor
+            $actorContactId = (int)(
+                $_SESSION['SKYESOFT_contactId']
+                ?? $_SESSION['contactId']
+                ?? 0
+            );
+
+            // Resolve Activity Session
+            $activitySessionId = trim(
+                (string)(
+                    $_SESSION['activitySessionId']
+                    ?? session_id()
+                )
+            );
+
+            $activitySessionId =
+                $activitySessionId !== ''
+                    ? $activitySessionId
+                    : null;
+
+            // Resolve response details
+            $page = (int)(
+                $operationalList['page']
+                ?? 1
+            );
+
+            $pageSize = (int)(
+                $operationalList['pageSize']
+                ?? 5
+            );
+
+            $total = (int)(
+                $operationalList['total']
+                ?? 0
+            );
+
+            $totalPages = (int)(
+                $operationalList['totalPages']
+                ?? 0
+            );
+
+            $rowCount = count(
+                $operationalList['rows']
+            );
+
+            // Resolve application.read Action Type
+            $actionTypeStmt = $db->prepare("
+                SELECT actionTypeId
+                FROM tblActionTypes
+                WHERE actionName = 'application.read'
+                AND crud_class = 'read'
+                LIMIT 1
+            ");
+
+            $actionTypeStmt->execute();
+
+            $applicationReadActionTypeId = (int)(
+                $actionTypeStmt->fetchColumn()
+                ?: 0
+            );
+
+            $actionId = null;
+
+            // Record one user-generated list read
+            if (
+                $actorContactId > 0 &&
+                $applicationReadActionTypeId > 0
+            ) {
+                try {
+                    $actionId = insertActionPrompt([
+                        'actionTypeId' =>
+                            $applicationReadActionTypeId,
+
+                        'contactId' =>
+                            $actorContactId,
+
+                        'origin' =>
+                            ACTION_ORIGIN_USER,
+
+                        'activitySessionId' =>
+                            $activitySessionId,
+
+                        'promptText' =>
+                            $query,
+
+                        'responseText' =>
+                            sprintf(
+                                'Displayed Applications page %d of %d (%d Applications shown; %d total).',
+                                $page,
+                                max(
+                                    1,
+                                    $totalPages
+                                ),
+                                $rowCount,
+                                $total
+                            ),
+
+                        'intent' =>
+                            'application.read',
+
+                        'intentConfidence' =>
+                            1.00,
+
+                        'latitude' =>
+                            $latitude,
+
+                        'longitude' =>
+                            $longitude,
+
+                        'actionPayloadData' => [
+                            'operation' =>
+                                'applications.list',
+
+                            'page' =>
+                                $page,
+
+                            'pageSize' =>
+                                $pageSize
+                        ],
+
+                        'actionResponseData' => [
+                            'success' =>
+                                true,
+
+                            'page' =>
+                                $page,
+
+                            'totalPages' =>
+                                $totalPages,
+
+                            'rowCount' =>
+                                $rowCount,
+
+                            'total' =>
+                                $total,
+
+                            'applicationIDs' =>
+                                array_values(
+                                    array_map(
+                                        static function (
+                                            array $application
+                                        ): int {
+                                            return (int)(
+                                                $application[
+                                                    'applicationID'
+                                                ]
+                                                ?? 0
+                                            );
+                                        },
+                                        $operationalList[
+                                            'rows'
+                                        ]
+                                    )
+                                )
+                        ]
+                    ], $db);
+
+                } catch (Throwable $e) {
+                    // Preserve list if audit logging fails
+                    error_log(
+                        '[askOpenAI] Application-list Action logging failed: ' .
+                        $e->getMessage()
+                    );
+                }
+            }
+
+            // Return authoritative list response
+            header(
+                'Content-Type: application/json'
+            );
+
+            echo json_encode([
+                'success' =>
+                    true,
+
+                'type' =>
+                    'application_list',
+
+                'list' =>
+                    $operationalList,
+
+                'actionID' =>
+                    $actionId,
+
+                'activitySessionId' =>
+                    $activitySessionId,
+
+                'error' =>
+                    null
+            ], JSON_UNESCAPED_SLASHES);
+
+            exit;
+        }
     }
 
     // =====================================================================

@@ -10013,6 +10013,410 @@ window.SkyIndex = {
         });
     },
 
+    /**
+     * Load an authoritative Application-list page.
+     *
+     * @param {number} page
+     * @return {Promise<void>}
+     */
+    async loadApplicationPage(page = 1) {
+        const requestedPage = Math.max(
+            1,
+            Number(page) || 1
+        );
+
+        await this.executeAICommand(
+            `show applications page ${requestedPage}`
+        );
+    },
+
+    /**
+     * Render an authoritative paginated Application list.
+     *
+     * @param {Object} list
+     */
+    renderApplicationListCard(list) {
+        if (
+            !list ||
+            !Array.isArray(list.rows)
+        ) {
+            this.appendSystemLine(
+                'No Applications to display.'
+            );
+            return;
+        }
+
+        // Resolve pagination
+        const page = Math.max(
+            1,
+            Number(list.page) || 1
+        );
+
+        const pageSize = Math.max(
+            1,
+            Number(list.pageSize) || 5
+        );
+
+        const totalPages = Math.max(
+            1,
+            Number(list.totalPages) || 1
+        );
+
+        const total =
+            Number(list.total) ||
+            list.rows.length;
+
+        const rows = list.rows;
+
+        // Preserve authoritative list state
+        this._currentApplicationListData = {
+            ...list,
+            rows: rows.map(application => ({
+                ...application
+            }))
+        };
+
+        // Format Phoenix date
+        const formatDate = unixValue => {
+            const unixTimestamp = Number(
+                unixValue || 0
+            );
+
+            if (!unixTimestamp) return '—';
+
+            const date = new Date(
+                unixTimestamp * 1000
+            );
+
+            if (Number.isNaN(date.getTime())) {
+                return '—';
+            }
+
+            return date.toLocaleDateString(
+                'en-US',
+                {
+                    timeZone: 'America/Phoenix',
+                    month:    'short',
+                    day:      'numeric',
+                    year:     'numeric'
+                }
+            );
+        };
+
+        // Build Application rows
+        const rowsHtml = rows
+            .map((application, index) => {
+                const applicationId = Number(
+                    application?.applicationID || 0
+                );
+
+                const title = this.escapeHtml(
+                    application?.applicationTitle ||
+                    `Application #${applicationId}`
+                );
+
+                const status = this.escapeHtml(
+                    application?.applicationStatusName ||
+                    '—'
+                );
+
+                const stage = this.escapeHtml(
+                    application?.applicationStageName ||
+                    '—'
+                );
+
+                const entityName = this.escapeHtml(
+                    application?.entityName ||
+                    'No Customer'
+                );
+
+                const locationName = this.escapeHtml(
+                    application?.locationName ||
+                    'Unnamed Location'
+                );
+
+                const jurisdiction = this.escapeHtml(
+                    application?.applicationJurisdiction ||
+                    '—'
+                );
+
+                const workOrderNumber = this.escapeHtml(
+                    application?.orderChristyNumber ||
+                    '—'
+                );
+
+                const rowNumber =
+                    index +
+                    1 +
+                    (
+                        (page - 1) *
+                        pageSize
+                    );
+
+                return `
+                    <div style="
+                        padding:10px 0;
+                        ${
+                            index < rows.length - 1
+                                ? 'border-bottom:1px solid #f0f0f0;'
+                                : ''
+                        }
+                    ">
+                        <div style="
+                            display:flex;
+                            flex-wrap:wrap;
+                            align-items:center;
+                            gap:7px;
+                        ">
+                            <span>
+                                ${rowNumber}.
+                            </span>
+
+                            <a
+                                href="#"
+                                onclick="
+                                    event.preventDefault();
+                                    SkyIndex.openApplicationWorkspace(
+                                        ${applicationId}
+                                    );
+                                "
+                                style="
+                                    color:#117a8b;
+                                    font-weight:700;
+                                    text-decoration:none;
+                                "
+                            >
+                                ${title}
+                            </a>
+
+                            <span style="
+                                padding:2px 7px;
+                                border-radius:999px;
+                                background:#e8f4f6;
+                                color:#117a8b;
+                                font-size:0.72em;
+                                font-weight:700;
+                            ">
+                                ${status}
+                            </span>
+                        </div>
+
+                        <div style="
+                            margin-top:4px;
+                            color:#444;
+                            font-size:0.86em;
+                            font-weight:600;
+                        ">
+                            ${entityName}
+                        </div>
+
+                        <div style="
+                            margin-top:2px;
+                            color:#666;
+                            font-size:0.84em;
+                        ">
+                            ${locationName}
+                        </div>
+
+                        <div style="
+                            display:flex;
+                            flex-wrap:wrap;
+                            gap:5px 16px;
+                            margin-top:4px;
+                            color:#666;
+                            font-size:0.82em;
+                        ">
+                            <span>
+                                Application #${applicationId}
+                            </span>
+
+                            <span>
+                                Work Order ${workOrderNumber}
+                            </span>
+
+                            <span>
+                                Stage: ${stage}
+                            </span>
+
+                            <span>
+                                Jurisdiction: ${jurisdiction}
+                            </span>
+
+                            <span>
+                                Created:
+                                ${formatDate(
+                                    application?.applicationCreatedUnix
+                                )}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            })
+            .join('');
+
+        // Resolve pagination controls
+        const previousHtml = page > 1
+            ? `
+                <a
+                    href="#"
+                    onclick="
+                        event.preventDefault();
+                        SkyIndex.loadApplicationPage(
+                            ${page - 1}
+                        );
+                    "
+                    style="
+                        color:#117a8b;
+                        font-weight:600;
+                        text-decoration:none;
+                    "
+                >
+                    ← Back
+                </a>
+            `
+            : '<span style="color:#aaa;">← Back</span>';
+
+        const nextHtml = page < totalPages
+            ? `
+                <a
+                    href="#"
+                    onclick="
+                        event.preventDefault();
+                        SkyIndex.loadApplicationPage(
+                            ${page + 1}
+                        );
+                    "
+                    style="
+                        color:#117a8b;
+                        font-weight:600;
+                        text-decoration:none;
+                    "
+                >
+                    Next →
+                </a>
+            `
+            : '<span style="color:#aaa;">Next →</span>';
+
+        // Build stable Application list card
+        const html = `
+            <div
+                id="skyApplicationListCard"
+                class="commandLine system html"
+            >
+                <div
+                    class="result-card"
+                    style="
+                        border-left:5px solid #117a8b;
+                        background:#fff;
+                        width:100%;
+                        max-width:100%;
+                    "
+                >
+                    <div
+                        class="result-header"
+                        style="
+                            display:flex;
+                            justify-content:space-between;
+                            align-items:center;
+                            gap:8px;
+                            padding:12px 16px;
+                        "
+                    >
+                        <div style="
+                            display:flex;
+                            align-items:center;
+                            gap:8px;
+                        ">
+                            <span class="result-icon">
+                                📋
+                            </span>
+
+                            <div>
+                                <strong style="color:#222;">
+                                    Applications
+                                </strong>
+
+                                <small style="
+                                    display:block;
+                                    margin-top:1px;
+                                    color:#666;
+                                ">
+                                    Page ${page} of ${totalPages}
+                                    · showing ${rows.length} of ${total}
+                                </small>
+                            </div>
+                        </div>
+
+                        <span style="
+                            padding:3px 8px;
+                            border:1px solid rgba(17,122,139,0.25);
+                            border-radius:4px;
+                            background:rgba(17,122,139,0.12);
+                            color:#117a8b;
+                            font-family:monospace;
+                            font-weight:bold;
+                        ">
+                            LIST
+                        </span>
+                    </div>
+
+                    <div
+                        class="result-body"
+                        style="padding:4px 16px 12px;"
+                    >
+                        ${
+                            rowsHtml ||
+                            '<div style="padding:12px 0; color:#666;">No Applications found.</div>'
+                        }
+                    </div>
+
+                    <div style="
+                        display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        padding:10px 16px;
+                        border-top:1px solid #eee;
+                        background:#fafafa;
+                        font-size:0.85em;
+                    ">
+                        <div>${previousHtml}</div>
+
+                        <div style="color:#666;">
+                            Page ${page} of ${totalPages}
+                        </div>
+
+                        <div>${nextHtml}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Replace current page or append first page
+        const existingCard =
+            document.getElementById(
+                'skyApplicationListCard'
+            );
+
+        if (existingCard) {
+            const wrapper =
+                document.createElement('div');
+
+            wrapper.innerHTML = html.trim();
+
+            if (wrapper.firstElementChild) {
+                existingCard.replaceWith(
+                    wrapper.firstElementChild
+                );
+            }
+
+            return;
+        }
+
+        this.appendSystemHtml(
+            html
+        );
+    },
+
     async searchApplications(query) {
         const searchValue = String(query || '').trim();
 
@@ -15355,7 +15759,7 @@ window.SkyIndex = {
             // Search by ID, name, job, Work Order, or permit number.
             // =====================================================
             const applicationSearchMatch = trimmed.match(
-                /^(?:find\s+|search\s+|show\s+)?applications?\s+(.+)$/i
+                /^(?:find\s+|search\s+)?applications?\s+(.+)$/i
             );
 
             if (applicationSearchMatch) {
@@ -15588,6 +15992,19 @@ window.SkyIndex = {
             // --------------------------------------------------
             if (data?.type === 'location_detail' && data?.location) {
                 this.appendLocationCard(data.location);
+                return;
+            }
+
+            // --------------------------------------------------
+            // 📋 APPLICATION LIST CARD
+            // --------------------------------------------------
+            if (
+                data?.type === 'application_list' &&
+                data?.list
+            ) {
+                this.renderApplicationListCard(
+                    data.list
+                );
                 return;
             }
 
