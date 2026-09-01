@@ -4776,6 +4776,100 @@ if ($type === 'applicationCreateOptions') {
 }
 
 // =====================================================
+// AUTHORITATIVE APPLICATION FEES
+// =====================================================
+
+function loadAuthoritativeApplicationFees(
+    PDO $db,
+    int $applicationId
+): array {
+    // Return an empty governed structure for invalid identifiers
+    if ($applicationId <= 0) {
+        return [
+            'rows' => [],
+            'totalAssessed' => 0.00,
+            'totalPaid' => 0.00,
+            'totalOutstanding' => 0.00
+        ];
+    }
+
+    // Load Application fees without creating an Action
+    $feeStmt = $db->prepare("
+        SELECT
+            feeID,
+            applicationID,
+            feeCategory,
+            feeAmount,
+            feeNote,
+            feeAssessedUnix,
+            feePaidUnix,
+            feeCreatedUnix
+        FROM tblApplicationFees
+        WHERE applicationID = :applicationId
+        ORDER BY
+            COALESCE(feeAssessedUnix, feeCreatedUnix) ASC,
+            feeID ASC
+    ");
+
+    $feeStmt->execute([
+        'applicationId' => $applicationId
+    ]);
+
+    $fees = $feeStmt->fetchAll(
+        PDO::FETCH_ASSOC
+    );
+
+    $totalAssessed = 0.00;
+    $totalPaid = 0.00;
+
+    // Normalize fee records and calculate totals
+    foreach ($fees as &$fee) {
+        $fee['feeID'] = (int)$fee['feeID'];
+        $fee['applicationID'] =
+            (int)$fee['applicationID'];
+        $fee['feeAmount'] =
+            round((float)$fee['feeAmount'], 2);
+        $fee['feeAssessedUnix'] =
+            $fee['feeAssessedUnix'] !== null
+                ? (int)$fee['feeAssessedUnix']
+                : null;
+        $fee['feePaidUnix'] =
+            $fee['feePaidUnix'] !== null
+                ? (int)$fee['feePaidUnix']
+                : null;
+        $fee['feeCreatedUnix'] =
+            (int)$fee['feeCreatedUnix'];
+
+        $totalAssessed += $fee['feeAmount'];
+
+        if ($fee['feePaidUnix'] !== null) {
+            $totalPaid += $fee['feeAmount'];
+        }
+    }
+    unset($fee);
+
+    $totalAssessed = round(
+        $totalAssessed,
+        2
+    );
+
+    $totalPaid = round(
+        $totalPaid,
+        2
+    );
+
+    return [
+        'rows' => $fees,
+        'totalAssessed' => $totalAssessed,
+        'totalPaid' => $totalPaid,
+        'totalOutstanding' => round(
+            $totalAssessed - $totalPaid,
+            2
+        )
+    ];
+}
+
+// =====================================================
 // AUTHORITATIVE APPLICATION DETAIL LOADER
 // =====================================================
 
@@ -4868,6 +4962,15 @@ function loadAuthoritativeApplicationDetail(
         'applicationNumber' => $row['applicationNumber'],
         'applicationPermitNumber' => $row['applicationPermitNumber'],
         'applicationScope' => $row['applicationScope'],
+        'applicationNote' => $row['applicationNote'],
+
+        // Include authoritative Application fees and totals
+        'applicationFees' =>
+            loadAuthoritativeApplicationFees(
+                $db,
+                $applicationId
+            ),
+
         'applicationSubmittedUnix' =>
             $row['applicationSubmittedUnix'] !== null
                 ? (int)$row['applicationSubmittedUnix']
