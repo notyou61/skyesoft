@@ -7565,6 +7565,491 @@ if ($type === 'applicationSpecialRequirementUpdate') {
 }
 
 // =====================================================
+// GOVERNED APPLICATION FEE CREATE MUTATION
+// =====================================================
+
+if ($type === 'applicationFeeCreate') {
+    // Resolve governed identifiers
+    $applicationId = (int)(
+        $input['applicationID'] ??
+        0
+    );
+
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId'] ??
+        $_SESSION['contactId'] ??
+        0
+    );
+
+    // Resolve submitted Fee values
+    $feeCategory = trim((string)(
+        $input['feeCategory'] ??
+        ''
+    ));
+
+    $feeAmountInput =
+        $input['feeAmount'] ??
+        null;
+
+    $feeNote = trim((string)(
+        $input['feeNote'] ??
+        ''
+    ));
+
+    $feeAssessedUnix = is_numeric(
+        $input['feeAssessedUnix'] ??
+        null
+    )
+        ? (int)$input['feeAssessedUnix']
+        : time();
+
+    // Resolve Action context
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId'] ??
+        session_id()
+    ));
+
+    $activitySessionId =
+        $activitySessionId !== ''
+            ? $activitySessionId
+            : null;
+
+    $latitude = is_numeric(
+        $input['latitude'] ??
+        null
+    )
+        ? (float)$input['latitude']
+        : null;
+
+    $longitude = is_numeric(
+        $input['longitude'] ??
+        null
+    )
+        ? (float)$input['longitude']
+        : null;
+
+    // Return governed Fee creation errors
+    $returnFeeCreateError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_fee_create',
+            'error' => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    // Validate Application and authenticated actor
+    if (
+        $applicationId <= 0 ||
+        $actorContactId <= 0
+    ) {
+        $returnFeeCreateError(
+            'A valid Application and authenticated Company Contact are required.'
+        );
+    }
+
+    // Validate Fee category
+    $allowedFeeCategories = [
+        'Application',
+        'Review',
+        'Permit'
+    ];
+
+    if (
+        !in_array(
+            $feeCategory,
+            $allowedFeeCategories,
+            true
+        )
+    ) {
+        $returnFeeCreateError(
+            'Fee Category must be Application, Review, or Permit.'
+        );
+    }
+
+    // Validate Fee amount
+    if (!is_numeric($feeAmountInput)) {
+        $returnFeeCreateError(
+            'A valid Fee Amount is required.'
+        );
+    }
+
+    $feeAmount = round(
+        (float)$feeAmountInput,
+        2
+    );
+
+    if ($feeAmount <= 0) {
+        $returnFeeCreateError(
+            'Fee Amount must be greater than zero.'
+        );
+    }
+
+    if ($feeAmount > 99999999.99) {
+        $returnFeeCreateError(
+            'Fee Amount exceeds the supported limit.'
+        );
+    }
+
+    // Validate Fee note
+    if ($feeNote === '') {
+        $returnFeeCreateError(
+            'A Fee Note is required.'
+        );
+    }
+
+    if (strlen($feeNote) > 255) {
+        $returnFeeCreateError(
+            'Fee Note cannot exceed 255 characters.'
+        );
+    }
+
+    // Validate assessed timestamp
+    if ($feeAssessedUnix <= 0) {
+        $returnFeeCreateError(
+            'A valid Fee Assessed date is required.'
+        );
+    }
+
+    try {
+        // Restrict Fee mutation to Company Contacts
+        requireAuthenticatedCompanyContact(
+            $db,
+            $actorContactId
+        );
+
+        // Load authoritative Application
+        $application =
+            loadAuthoritativeApplicationDetail(
+                $db,
+                $applicationId
+            );
+
+        if (!is_array($application)) {
+            $returnFeeCreateError(
+                'Application was not found.'
+            );
+        }
+
+        // Begin governed Fee transaction
+        $db->beginTransaction();
+
+        $createdUnix = time();
+
+        // Insert authoritative Application Fee
+        $insertFeeStmt = $db->prepare("
+            INSERT INTO tblApplicationFees (
+                applicationID,
+                feeCategory,
+                feeAmount,
+                feeNote,
+                feeAssessedUnix,
+                feePaidUnix,
+                feeCreatedUnix
+            ) VALUES (
+                :applicationId,
+                :feeCategory,
+                :feeAmount,
+                :feeNote,
+                :feeAssessedUnix,
+                NULL,
+                :feeCreatedUnix
+            )
+        ");
+
+        $insertFeeStmt->execute([
+            'applicationId' =>
+                $applicationId,
+            'feeCategory' =>
+                $feeCategory,
+            'feeAmount' =>
+                number_format(
+                    $feeAmount,
+                    2,
+                    '.',
+                    ''
+                ),
+            'feeNote' =>
+                $feeNote,
+            'feeAssessedUnix' =>
+                $feeAssessedUnix,
+            'feeCreatedUnix' =>
+                $createdUnix
+        ]);
+
+        $feeId = (int)$db->lastInsertId();
+
+        if ($feeId <= 0) {
+            throw new RuntimeException(
+                'Application Fee could not be created.'
+            );
+        }
+
+        // Build authoritative Event data
+        $eventData = json_encode([
+            'operation' =>
+                'application.fee.create',
+            'feeID' =>
+                $feeId,
+            'feeCategory' =>
+                $feeCategory,
+            'feeAmount' =>
+                $feeAmount,
+            'feeNote' =>
+                $feeNote,
+            'feeAssessedUnix' =>
+                $feeAssessedUnix
+        ], JSON_UNESCAPED_SLASHES);
+
+        if ($eventData === false) {
+            throw new RuntimeException(
+                'Application Fee Event data could not be encoded.'
+            );
+        }
+
+        // Insert Application lifecycle Event
+        $insertEventStmt = $db->prepare("
+            INSERT INTO tblApplicationEvents (
+                applicationID,
+                applicationSpecialRequirementID,
+                applicationEventType,
+                applicationCycleType,
+                applicationCycleNumber,
+                applicationEventStageID,
+                applicationEventStatusID,
+                applicationEventUnix,
+                applicationEventResult,
+                applicationEventNote,
+                applicationEventData,
+                applicationEventContactID,
+                applicationEventCreatedUnix
+            ) VALUES (
+                :applicationId,
+                NULL,
+                'application.fee.created',
+                'none',
+                NULL,
+                :stageId,
+                :statusId,
+                :eventUnix,
+                :eventResult,
+                :eventNote,
+                :eventData,
+                :contactId,
+                :createdUnix
+            )
+        ");
+
+        $insertEventStmt->execute([
+            'applicationId' =>
+                $applicationId,
+            'stageId' =>
+                (int)$application[
+                    'applicationStageID'
+                ],
+            'statusId' =>
+                (int)$application[
+                    'applicationStatusID'
+                ],
+            'eventUnix' =>
+                $createdUnix,
+            'eventResult' =>
+                $feeCategory,
+            'eventNote' =>
+                $feeNote,
+            'eventData' =>
+                $eventData,
+            'contactId' =>
+                $actorContactId,
+            'createdUnix' =>
+                $createdUnix
+        ]);
+
+        $applicationEventId =
+            (int)$db->lastInsertId();
+
+        if ($applicationEventId <= 0) {
+            throw new RuntimeException(
+                'Application Fee Event could not be created.'
+            );
+        }
+
+        // Update authoritative Application timestamp
+        $updateApplicationStmt = $db->prepare("
+            UPDATE tblApplications
+            SET applicationUpdatedUnix =
+                :updatedUnix
+            WHERE applicationID =
+                :applicationId
+            LIMIT 1
+        ");
+
+        $updateApplicationStmt->execute([
+            'updatedUnix' =>
+                $createdUnix,
+            'applicationId' =>
+                $applicationId
+        ]);
+
+        // Resolve governed Application update Action Type
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName =
+                'application.update'
+              AND crud_class =
+                'update'
+            LIMIT 1
+        ");
+
+        $actionTypeStmt->execute();
+
+        $actionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?:
+            0
+        );
+
+        if ($actionTypeId <= 0) {
+            throw new RuntimeException(
+                'Application update Action Type is not configured.'
+            );
+        }
+
+        // Insert governed Action record
+        $actionId = insertActionPrompt([
+            'actionTypeId' =>
+                $actionTypeId,
+            'contactId' =>
+                $actorContactId,
+            'origin' =>
+                ACTION_ORIGIN_USER,
+            'activitySessionId' =>
+                $activitySessionId,
+            'promptText' =>
+                'Create Application Fee',
+            'responseText' =>
+                sprintf(
+                    'Created %s Fee #%d of $%s for Application #%d.',
+                    $feeCategory,
+                    $feeId,
+                    number_format(
+                        $feeAmount,
+                        2,
+                        '.',
+                        ','
+                    ),
+                    $applicationId
+                ),
+            'intent' =>
+                'application.update',
+            'intentConfidence' =>
+                1.00,
+            'latitude' =>
+                $latitude,
+            'longitude' =>
+                $longitude,
+            'actionPayloadData' => [
+                'operation' =>
+                    'application.fee.create',
+                'applicationID' =>
+                    $applicationId,
+                'feeID' =>
+                    $feeId,
+                'feeCategory' =>
+                    $feeCategory,
+                'feeAmount' =>
+                    $feeAmount,
+                'feeNote' =>
+                    $feeNote,
+                'feeAssessedUnix' =>
+                    $feeAssessedUnix,
+                'applicationEventID' =>
+                    $applicationEventId
+            ],
+            'actionResponseData' => [
+                'success' =>
+                    true,
+                'applicationID' =>
+                    $applicationId,
+                'feeID' =>
+                    $feeId,
+                'applicationEventID' =>
+                    $applicationEventId
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Application Fee Action could not be created.'
+            );
+        }
+
+        // Reload authoritative Application workspace data
+        $application =
+            loadAuthoritativeApplicationDetail(
+                $db,
+                $applicationId
+            );
+
+        $events =
+            loadAuthoritativeApplicationEvents(
+                $db,
+                $applicationId
+            );
+
+        $notes =
+            loadAuthoritativeApplicationNotes(
+                $db,
+                $applicationId
+            );
+
+        // Commit governed Fee transaction
+        $db->commit();
+
+        echo json_encode([
+            'success' =>
+                true,
+            'type' =>
+                'application_fee_create',
+            'application' =>
+                $application,
+            'events' =>
+                $events,
+            'notes' =>
+                $notes,
+            'applicationID' =>
+                $applicationId,
+            'feeID' =>
+                $feeId,
+            'applicationEventID' =>
+                $applicationEventId,
+            'actionID' =>
+                $actionId,
+            'error' =>
+                null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        // Roll back incomplete Fee mutation
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        error_log(
+            '[askOpenAI] applicationFeeCreate failed: ' .
+            $e->getMessage()
+        );
+
+        $returnFeeCreateError(
+            'Unable to create the Application Fee.'
+        );
+    }
+}
+
+// =====================================================
 // GOVERNED APPLICATION UPDATE MUTATION
 // =====================================================
 
