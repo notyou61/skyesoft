@@ -11298,12 +11298,19 @@ window.SkyIndex = {
                                 </div>
                             </div>
 
-                            <div style="text-align:right;">
+                            <div style="
+                                min-width:105px;
+                                text-align:right;
+                            ">
                                 <strong style="
                                     color:#222;
                                     font-size:0.92em;
                                 ">
-                                    ${formatCurrency(fee.feeAmount)}
+                                    ${
+                                        formatCurrency(
+                                            fee.feeAmount
+                                        )
+                                    }
                                 </strong>
 
                                 <div style="
@@ -11316,8 +11323,45 @@ window.SkyIndex = {
                                     font-size:0.72em;
                                     font-weight:700;
                                 ">
-                                    ${isPaid ? 'Paid' : 'Outstanding'}
+                                    ${
+                                        isPaid
+                                            ? 'Paid'
+                                            : 'Outstanding'
+                                    }
                                 </div>
+
+                                ${
+                                    !isPaid &&
+                                    !isEditing
+                                        ? `
+                                            <button
+                                                type="button"
+                                                id="applicationFeePaidButton${
+                                                    feeId
+                                                }"
+                                                onclick="
+                                                    SkyIndex
+                                                        .markApplicationFeePaid(
+                                                            ${applicationId},
+                                                            ${feeId}
+                                                        )
+                                                "
+                                                style="
+                                                    margin-top:6px;
+                                                    padding:4px 8px;
+                                                    border:1px solid #20733a;
+                                                    border-radius:5px;
+                                                    background:#fff;
+                                                    color:#20733a;
+                                                    font-size:0.73em;
+                                                    cursor:pointer;
+                                                "
+                                            >
+                                                Mark Paid
+                                            </button>
+                                        `
+                                        : ''
+                                }
                             </div>
                         </div>
 
