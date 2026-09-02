@@ -726,6 +726,16 @@ ob_start();
         <div class="section-heading">Permit Milestones</div>
         <table class="data-table">
             <tr>
+                <th>Received</th>
+                <td><?= escapeApplicationReportValue(
+                    formatApplicationReportDate(
+                        $application['applicationCreatedUnix'] !== null
+                            ? (int)$application['applicationCreatedUnix']
+                            : null
+                    )
+                ) ?></td>
+            </tr>
+            <tr>
                 <th>Submitted</th>
                 <td><?= escapeApplicationReportValue(
                     formatApplicationReportDate(
