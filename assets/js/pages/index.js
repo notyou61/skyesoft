@@ -10921,94 +10921,352 @@ window.SkyIndex = {
                             0
                         );
 
+                        const currentStatusId = Number(
+                            requirement
+                                .applicationSpecialRequirementStatusID ||
+                            0
+                        );
+
                         const isClosed = Number(
                             requirement
                                 .applicationSpecialRequirementStatusIsClosed ||
                             0
                         ) === 1;
 
+                        // Build selected status options
+                        const editStatusOptions =
+                            specialRequirementStatuses
+                                .map(requirementStatus => {
+                                    const optionStatusId =
+                                        Number(
+                                            requirementStatus
+                                                .applicationSpecialRequirementStatusID
+                                        );
+
+                                    const selected =
+                                        optionStatusId ===
+                                        currentStatusId
+                                            ? ' selected'
+                                            : '';
+
+                                    return `
+                                        <option
+                                            value="${optionStatusId}"
+                                            ${selected}
+                                        >
+                                            ${
+                                                escape(
+                                                    requirementStatus
+                                                        .applicationSpecialRequirementStatusName
+                                                )
+                                            }
+                                        </option>
+                                    `;
+                                })
+                                .join('');
+
                         return `
-                            <div style="
-                                padding:9px 0;
-                                border-bottom:1px solid #e5e7eb;
-                            ">
-                                <div style="
-                                    display:flex;
-                                    justify-content:space-between;
-                                    gap:10px;
-                                    align-items:flex-start;
-                                ">
-                                    <strong style="
-                                        color:#222;
-                                        font-size:0.9em;
+                            <div
+                                id="applicationSpecialRequirementRow${
+                                    requirementId
+                                }"
+                                style="
+                                    padding:9px 0;
+                                    border-bottom:1px solid #e5e7eb;
+                                "
+                            >
+                                <div
+                                    id="applicationSpecialRequirementDisplay${
+                                        requirementId
+                                    }"
+                                >
+                                    <div style="
+                                        display:flex;
+                                        justify-content:space-between;
+                                        gap:10px;
+                                        align-items:flex-start;
                                     ">
-                                        Special Requirement #${
-                                            requirementId
-                                        }
-                                    </strong>
+                                        <strong style="
+                                            color:#222;
+                                            font-size:0.9em;
+                                        ">
+                                            Special Requirement #${
+                                                requirementId
+                                            }
+                                        </strong>
 
-                                    <span style="
-                                        padding:2px 7px;
-                                        border-radius:999px;
-                                        background:${
-                                            isClosed
-                                                ? '#e6f4ea'
-                                                : '#e8f4f6'
-                                        };
-                                        color:${
-                                            isClosed
-                                                ? '#20733a'
-                                                : '#117a8b'
-                                        };
-                                        font-size:0.72em;
-                                        font-weight:700;
-                                    ">
-                                        ${
-                                            escape(
-                                                requirement
-                                                    .applicationSpecialRequirementStatusName
-                                            )
-                                        }
-                                    </span>
-                                </div>
+                                        <div style="
+                                            display:flex;
+                                            align-items:center;
+                                            gap:6px;
+                                        ">
+                                            <span style="
+                                                padding:2px 7px;
+                                                border-radius:999px;
+                                                background:${
+                                                    isClosed
+                                                        ? '#e6f4ea'
+                                                        : '#e8f4f6'
+                                                };
+                                                color:${
+                                                    isClosed
+                                                        ? '#20733a'
+                                                        : '#117a8b'
+                                                };
+                                                font-size:0.72em;
+                                                font-weight:700;
+                                            ">
+                                                ${
+                                                    escape(
+                                                        requirement
+                                                            .applicationSpecialRequirementStatusName
+                                                    )
+                                                }
+                                            </span>
 
-                                <div style="
-                                    margin-top:5px;
-                                    white-space:pre-wrap;
-                                    color:#333;
-                                    font-size:0.88em;
-                                    line-height:1.45;
-                                ">${
-                                    escape(
-                                        requirement
-                                            .applicationSpecialRequirementDescription
-                                    )
-                                }</div>
+                                            ${
+                                                !isEditing
+                                                    ? `
+                                                        <button
+                                                            type="button"
+                                                            onclick="
+                                                                SkyIndex
+                                                                    .editApplicationSpecialRequirement(
+                                                                        ${requirementId}
+                                                                    )
+                                                            "
+                                                            style="
+                                                                padding:3px 8px;
+                                                                border:1px solid #d1d5db;
+                                                                border-radius:5px;
+                                                                background:#fff;
+                                                                font-size:0.75em;
+                                                                cursor:pointer;
+                                                            "
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    `
+                                                    : ''
+                                            }
+                                        </div>
+                                    </div>
 
-                                <div style="
-                                    margin-top:5px;
-                                    color:#777;
-                                    font-size:0.76em;
-                                ">
-                                    Responsible Party: ${
+                                    <div style="
+                                        margin-top:5px;
+                                        white-space:pre-wrap;
+                                        color:#333;
+                                        font-size:0.88em;
+                                        line-height:1.45;
+                                    ">${
                                         escape(
                                             requirement
-                                                .applicationSpecialRequirementResponsibleParty ||
-                                            '—'
+                                                .applicationSpecialRequirementDescription
                                         )
-                                    }
-                                    · Required: ${
-                                        formatDate(
+                                    }</div>
+
+                                    <div style="
+                                        margin-top:5px;
+                                        color:#777;
+                                        font-size:0.76em;
+                                    ">
+                                        Responsible Party: ${
+                                            escape(
+                                                requirement
+                                                    .applicationSpecialRequirementResponsibleParty ||
+                                                '—'
+                                            )
+                                        }
+                                        · Required: ${
+                                            formatDate(
+                                                requirement
+                                                    .applicationSpecialRequirementRequiredUnix
+                                            )
+                                        }
+                                        · Due: ${
+                                            formatDate(
+                                                requirement
+                                                    .applicationSpecialRequirementDueUnix
+                                            )
+                                        }
+                                        ${
                                             requirement
-                                                .applicationSpecialRequirementRequiredUnix
-                                        )
-                                    }
-                                    · Due: ${
-                                        formatDate(
+                                                .applicationSpecialRequirementCompletedUnix
+                                                ? ` · Completed: ${
+                                                    formatDate(
+                                                        requirement
+                                                            .applicationSpecialRequirementCompletedUnix
+                                                    )
+                                                }`
+                                                : ''
+                                        }
+                                    </div>
+                                </div>
+
+                                <div
+                                    id="applicationSpecialRequirementEdit${
+                                        requirementId
+                                    }"
+                                    style="
+                                        display:none;
+                                        padding-top:2px;
+                                    "
+                                >
+                                    <textarea
+                                        id="applicationSpecialRequirementEditDescription${
+                                            requirementId
+                                        }"
+                                        style="
+                                            box-sizing:border-box;
+                                            width:100%;
+                                            min-height:78px;
+                                            padding:8px 9px;
+                                            border:1px solid #d1d5db;
+                                            border-radius:6px;
+                                            resize:vertical;
+                                        "
+                                    >${
+                                        escape(
                                             requirement
-                                                .applicationSpecialRequirementDueUnix
+                                                .applicationSpecialRequirementDescription
                                         )
-                                    }
+                                    }</textarea>
+
+                                    <div style="
+                                        display:grid;
+                                        grid-template-columns:
+                                            repeat(2, minmax(0, 1fr));
+                                        gap:8px;
+                                        margin-top:8px;
+                                    ">
+                                        <select
+                                            id="applicationSpecialRequirementEditStatusID${
+                                                requirementId
+                                            }"
+                                            style="
+                                                padding:7px 9px;
+                                                border:1px solid #d1d5db;
+                                                border-radius:6px;
+                                            "
+                                        >
+                                            ${editStatusOptions}
+                                        </select>
+
+                                        <input
+                                            id="applicationSpecialRequirementEditResponsibleParty${
+                                                requirementId
+                                            }"
+                                            type="text"
+                                            maxlength="150"
+                                            value="${
+                                                escape(
+                                                    requirement
+                                                        .applicationSpecialRequirementResponsibleParty ||
+                                                    ''
+                                                )
+                                            }"
+                                            placeholder="Responsible party"
+                                            style="
+                                                box-sizing:border-box;
+                                                width:100%;
+                                                padding:7px 9px;
+                                                border:1px solid #d1d5db;
+                                                border-radius:6px;
+                                            "
+                                        >
+
+                                        <input
+                                            id="applicationSpecialRequirementEditRequiredUnix${
+                                                requirementId
+                                            }"
+                                            type="date"
+                                            value="${
+                                                formatDateInput(
+                                                    requirement
+                                                        .applicationSpecialRequirementRequiredUnix
+                                                )
+                                            }"
+                                            title="Required date"
+                                            style="
+                                                box-sizing:border-box;
+                                                width:100%;
+                                                padding:7px 9px;
+                                                border:1px solid #d1d5db;
+                                                border-radius:6px;
+                                            "
+                                        >
+
+                                        <input
+                                            id="applicationSpecialRequirementEditDueUnix${
+                                                requirementId
+                                            }"
+                                            type="date"
+                                            value="${
+                                                formatDateInput(
+                                                    requirement
+                                                        .applicationSpecialRequirementDueUnix
+                                                )
+                                            }"
+                                            title="Due date"
+                                            style="
+                                                box-sizing:border-box;
+                                                width:100%;
+                                                padding:7px 9px;
+                                                border:1px solid #d1d5db;
+                                                border-radius:6px;
+                                            "
+                                        >
+                                    </div>
+
+                                    <div style="
+                                        display:flex;
+                                        justify-content:flex-end;
+                                        gap:6px;
+                                        margin-top:8px;
+                                    ">
+                                        <button
+                                            type="button"
+                                            onclick="
+                                                SkyIndex
+                                                    .cancelApplicationSpecialRequirementEdit(
+                                                        ${requirementId}
+                                                    )
+                                            "
+                                            style="
+                                                padding:5px 10px;
+                                                border:1px solid #d1d5db;
+                                                border-radius:5px;
+                                                background:#fff;
+                                                cursor:pointer;
+                                            "
+                                        >
+                                            Cancel
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            id="applicationSpecialRequirementSaveButton${
+                                                requirementId
+                                            }"
+                                            onclick="
+                                                SkyIndex
+                                                    .saveApplicationSpecialRequirement(
+                                                        ${applicationId},
+                                                        ${requirementId}
+                                                    )
+                                            "
+                                            style="
+                                                padding:5px 10px;
+                                                border:1px solid #0d9488;
+                                                border-radius:5px;
+                                                background:#0d9488;
+                                                color:#fff;
+                                                cursor:pointer;
+                                            "
+                                        >
+                                            Save Requirement
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         `;
