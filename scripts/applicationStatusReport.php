@@ -358,6 +358,63 @@ $statusSummary = buildApplicationStatusSummary(
     (string)$application['applicationStageName']
 );
 
+// Resolve cached Application Status summary
+$storedSummaries = is_array(
+    $_SESSION['applicationStatusReportSummaries']
+    ?? null
+)
+    ? $_SESSION['applicationStatusReportSummaries']
+    : [];
+
+$storedSummary = is_array(
+    $storedSummaries[(string)$applicationId]
+    ?? null
+)
+    ? $storedSummaries[(string)$applicationId]
+    : null;
+
+$storedSummaryAge = is_array($storedSummary)
+    ? $reportGeneratedUnix -
+        (int)($storedSummary['generatedUnix'] ?? 0)
+    : PHP_INT_MAX;
+
+$currentUpdatedUnix = $application[
+    'applicationUpdatedUnix'
+] !== null
+    ? (int)$application['applicationUpdatedUnix']
+    : 0;
+
+$storedUpdatedUnix = is_array($storedSummary)
+    ? (int)($storedSummary[
+        'applicationUpdatedUnix'
+    ] ?? 0)
+    : -1;
+
+$storedSummaryMatches =
+    is_array($storedSummary) &&
+    (int)($storedSummary['applicationID'] ?? 0) ===
+        $applicationId &&
+    $storedUpdatedUnix === $currentUpdatedUnix &&
+    $storedSummaryAge >= 0 &&
+    $storedSummaryAge <= 900 &&
+    trim((string)(
+        $storedSummary['summaryNarrative']
+        ?? ''
+    )) !== '';
+
+$reportSummary = $storedSummaryMatches
+    ? trim((string)$storedSummary[
+        'summaryNarrative'
+    ])
+    : $statusSummary;
+
+$reportSummarySource = $storedSummaryMatches
+    ? trim((string)(
+        $storedSummary['summarySource']
+        ?? 'askOpenAI.php'
+    ))
+    : 'deterministic_fallback';
+
 // #endregion
 
 // #region SECTION IV — Explicit Report Action
