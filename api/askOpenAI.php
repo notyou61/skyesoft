@@ -5436,7 +5436,6 @@ function loadAuthoritativeApplicationSpecialRequirements(
     return $requirements;
 }
 
-
 function loadAuthoritativeApplicationEvents(
     PDO $db,
     int $applicationId
@@ -5445,10 +5444,12 @@ function loadAuthoritativeApplicationEvents(
         return [];
     }
 
+    // Load chronological Application events
     $eventStmt = $db->prepare("
         SELECT
             ev.applicationEventID,
             ev.applicationID,
+            ev.applicationSpecialRequirementID,
             ev.applicationEventType,
             ev.applicationCycleType,
             ev.applicationCycleNumber,
@@ -5466,12 +5467,16 @@ function loadAuthoritativeApplicationEvents(
             c.contactLastName
         FROM tblApplicationEvents ev
         LEFT JOIN tblApplicationStages s
-            ON s.applicationStageID = ev.applicationEventStageID
+            ON s.applicationStageID =
+               ev.applicationEventStageID
         LEFT JOIN tblApplicationStatuses st
-            ON st.applicationStageID = ev.applicationEventStageID
-           AND st.applicationStatusID = ev.applicationEventStatusID
+            ON st.applicationStageID =
+               ev.applicationEventStageID
+           AND st.applicationStatusID =
+               ev.applicationEventStatusID
         INNER JOIN tblContacts c
-            ON c.contactId = ev.applicationEventContactID
+            ON c.contactId =
+               ev.applicationEventContactID
         WHERE ev.applicationID = :applicationId
         ORDER BY
             ev.applicationEventUnix ASC,
@@ -5482,34 +5487,50 @@ function loadAuthoritativeApplicationEvents(
         'applicationId' => $applicationId
     ]);
 
-    $events = $eventStmt->fetchAll(PDO::FETCH_ASSOC);
+    $events = $eventStmt->fetchAll(
+        PDO::FETCH_ASSOC
+    );
 
+    // Normalize authoritative value types
     foreach ($events as &$event) {
-        $event['applicationEventID'] = (int)$event[
-            'applicationEventID'
-        ];
-        $event['applicationID'] = (int)$event['applicationID'];
+        $event['applicationEventID'] =
+            (int)$event['applicationEventID'];
+
+        $event['applicationID'] =
+            (int)$event['applicationID'];
+
+        $event['applicationSpecialRequirementID'] =
+            $event[
+                'applicationSpecialRequirementID'
+            ] !== null
+                ? (int)$event[
+                    'applicationSpecialRequirementID'
+                ]
+                : null;
+
         $event['applicationCycleNumber'] =
             $event['applicationCycleNumber'] !== null
                 ? (int)$event['applicationCycleNumber']
                 : null;
+
         $event['applicationEventStageID'] =
             $event['applicationEventStageID'] !== null
                 ? (int)$event['applicationEventStageID']
                 : null;
+
         $event['applicationEventStatusID'] =
             $event['applicationEventStatusID'] !== null
                 ? (int)$event['applicationEventStatusID']
                 : null;
-        $event['applicationEventUnix'] = (int)$event[
-            'applicationEventUnix'
-        ];
-        $event['applicationEventContactID'] = (int)$event[
-            'applicationEventContactID'
-        ];
-        $event['applicationEventCreatedUnix'] = (int)$event[
-            'applicationEventCreatedUnix'
-        ];
+
+        $event['applicationEventUnix'] =
+            (int)$event['applicationEventUnix'];
+
+        $event['applicationEventContactID'] =
+            (int)$event['applicationEventContactID'];
+
+        $event['applicationEventCreatedUnix'] =
+            (int)$event['applicationEventCreatedUnix'];
     }
     unset($event);
 
@@ -5574,10 +5595,12 @@ function loadAuthoritativeApplicationNotes(
         return [];
     }
 
+    // Load active Application and Special Requirement Notes
     $noteStmt = $db->prepare("
         SELECT
             n.noteID,
             n.noteApplicationID,
+            n.noteApplicationSpecialRequirementID,
             n.noteAuthorContactID,
             n.noteText,
             n.noteCreatedUnix,
@@ -5598,23 +5621,43 @@ function loadAuthoritativeApplicationNotes(
             n.noteCreatedUnix DESC,
             n.noteID DESC
     ");
+
     $noteStmt->execute([
         'applicationId' => $applicationId
     ]);
 
-    $notes = $noteStmt->fetchAll(PDO::FETCH_ASSOC);
+    $notes = $noteStmt->fetchAll(
+        PDO::FETCH_ASSOC
+    );
 
+    // Normalize authoritative value types
     foreach ($notes as &$note) {
-        $note['noteID'] = (int)$note['noteID'];
-        $note['noteApplicationID'] = (int)$note['noteApplicationID'];
-        $note['noteAuthorContactID'] = (int)$note[
-            'noteAuthorContactID'
-        ];
-        $note['noteCreatedUnix'] = (int)$note['noteCreatedUnix'];
+        $note['noteID'] =
+            (int)$note['noteID'];
+
+        $note['noteApplicationID'] =
+            (int)$note['noteApplicationID'];
+
+        $note['noteApplicationSpecialRequirementID'] =
+            $note[
+                'noteApplicationSpecialRequirementID'
+            ] !== null
+                ? (int)$note[
+                    'noteApplicationSpecialRequirementID'
+                ]
+                : null;
+
+        $note['noteAuthorContactID'] =
+            (int)$note['noteAuthorContactID'];
+
+        $note['noteCreatedUnix'] =
+            (int)$note['noteCreatedUnix'];
+
         $note['noteUpdatedByContactID'] =
             $note['noteUpdatedByContactID'] !== null
                 ? (int)$note['noteUpdatedByContactID']
                 : null;
+
         $note['noteUpdatedUnix'] =
             $note['noteUpdatedUnix'] !== null
                 ? (int)$note['noteUpdatedUnix']
