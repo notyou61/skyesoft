@@ -7025,6 +7025,546 @@ if ($type === 'applicationSpecialRequirementCreate') {
 }
 
 // =====================================================
+// GOVERNED SPECIAL REQUIREMENT UPDATE MUTATION
+// =====================================================
+
+if ($type === 'applicationSpecialRequirementUpdate') {
+    // Resolve authoritative identifiers
+    $applicationId = (int)(
+        $input['applicationID'] ?? 0
+    );
+
+    $requirementId = (int)(
+        $input['applicationSpecialRequirementID'] ?? 0
+    );
+
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    $requirementInput = is_array(
+        $input['specialRequirement'] ?? null
+    )
+        ? $input['specialRequirement']
+        : [];
+
+    // Return governed mutation error
+    $returnRequirementUpdateError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type' =>
+                'application_special_requirement_update',
+            'error' => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    // Validate identifiers
+    if (
+        $applicationId <= 0 ||
+        $requirementId <= 0 ||
+        $actorContactId <= 0
+    ) {
+        $returnRequirementUpdateError(
+            'A valid Application, Special Requirement, and authenticated Contact are required.'
+        );
+    }
+
+    // Resolve submitted values
+    $statusId = (int)(
+        $requirementInput['statusID'] ?? 0
+    );
+
+    $description = trim((string)(
+        $requirementInput['description'] ?? ''
+    ));
+
+    $responsibleParty = trim((string)(
+        $requirementInput['responsibleParty'] ?? ''
+    ));
+
+    // Validate required values
+    if ($statusId <= 0 || $description === '') {
+        $returnRequirementUpdateError(
+            'Status and Description are required.'
+        );
+    }
+
+    // Restrict field lengths
+    $responsibleParty = mb_substr(
+        $responsibleParty,
+        0,
+        150
+    );
+
+    $responsibleParty = $responsibleParty !== ''
+        ? $responsibleParty
+        : null;
+
+    // Normalize optional Unix values
+    $normalizeUnix = static function ($value): ?int {
+        $unix = (int)$value;
+
+        return $unix > 0
+            ? $unix
+            : null;
+    };
+
+    $requiredUnix = $normalizeUnix(
+        $requirementInput['requiredUnix'] ?? null
+    );
+
+    $dueUnix = $normalizeUnix(
+        $requirementInput['dueUnix'] ?? null
+    );
+
+    // Validate chronological requirement dates
+    if (
+        $requiredUnix !== null &&
+        $dueUnix !== null &&
+        $dueUnix < $requiredUnix
+    ) {
+        $returnRequirementUpdateError(
+            'The due date cannot be before the required date.'
+        );
+    }
+
+    // Resolve Action audit context
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId']
+        ?? session_id()
+    ));
+
+    $activitySessionId = $activitySessionId !== ''
+        ? $activitySessionId
+        : null;
+
+    $latitude = is_numeric(
+        $input['latitude'] ?? null
+    )
+        ? (float)$input['latitude']
+        : null;
+
+    $longitude = is_numeric(
+        $input['longitude'] ?? null
+    )
+        ? (float)$input['longitude']
+        : null;
+
+    try {
+        // Require an authenticated Company Contact
+        requireAuthenticatedCompanyContact(
+            $db,
+            $actorContactId
+        );
+
+        // Load authoritative parent Application
+        $applicationBefore =
+            loadAuthoritativeApplicationDetail(
+                $db,
+                $applicationId
+            );
+
+        if (
+            !is_array($applicationBefore) ||
+            (int)$applicationBefore[
+                'applicationIsNotValid'
+            ] !== 0
+        ) {
+            $returnRequirementUpdateError(
+                'Application was not found.'
+            );
+        }
+
+        // Load authoritative Special Requirement
+        $requirementStmt = $db->prepare("
+            SELECT
+                r.*,
+                s.applicationSpecialRequirementStatusName,
+                s.applicationSpecialRequirementStatusIsClosed
+            FROM tblApplicationSpecialRequirements r
+            INNER JOIN tblApplicationSpecialRequirementStatuses s
+                ON s.applicationSpecialRequirementStatusID =
+                   r.applicationSpecialRequirementStatusID
+            WHERE r.applicationSpecialRequirementID =
+                :requirementId
+              AND r.applicationID = :applicationId
+              AND r.applicationSpecialRequirementIsNotValid = 0
+            LIMIT 1
+        ");
+
+        $requirementStmt->execute([
+            'requirementId' => $requirementId,
+            'applicationId' => $applicationId
+        ]);
+
+        $requirementBefore = $requirementStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+        if (!is_array($requirementBefore)) {
+            $returnRequirementUpdateError(
+                'Special Requirement was not found.'
+            );
+        }
+
+        // Validate active destination status
+        $statusStmt = $db->prepare("
+            SELECT
+                applicationSpecialRequirementStatusID,
+                applicationSpecialRequirementStatusName,
+                applicationSpecialRequirementStatusIsClosed
+            FROM tblApplicationSpecialRequirementStatuses
+            WHERE applicationSpecialRequirementStatusID =
+                :statusId
+              AND applicationSpecialRequirementStatusIsActive = 1
+            LIMIT 1
+        ");
+
+        $statusStmt->execute([
+            'statusId' => $statusId
+        ]);
+
+        $requirementStatus = $statusStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+        if (!is_array($requirementStatus)) {
+            $returnRequirementUpdateError(
+                'The selected Special Requirement Status is invalid.'
+            );
+        }
+
+        // Resolve Application update Action Type
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName = 'application.update'
+              AND crud_class = 'update'
+            LIMIT 1
+        ");
+
+        $actionTypeStmt->execute();
+
+        $actionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?: 0
+        );
+
+        if ($actionTypeId <= 0) {
+            $returnRequirementUpdateError(
+                'Application update Action Type is not configured.'
+            );
+        }
+
+        $updatedUnix = time();
+
+        // Resolve authoritative completion timestamp
+        $isSatisfied = strcasecmp(
+            (string)$requirementStatus[
+                'applicationSpecialRequirementStatusName'
+            ],
+            'Satisfied'
+        ) === 0;
+
+        $completedUnix = $isSatisfied
+            ? (
+                $requirementBefore[
+                    'applicationSpecialRequirementCompletedUnix'
+                ] !== null
+                    ? (int)$requirementBefore[
+                        'applicationSpecialRequirementCompletedUnix'
+                    ]
+                    : $updatedUnix
+            )
+            : null;
+
+        // Resolve whether status changed
+        $statusChanged =
+            (int)$requirementBefore[
+                'applicationSpecialRequirementStatusID'
+            ] !== $statusId;
+
+        $eventType = $statusChanged
+            ? 'application.special_requirement.status_changed'
+            : 'application.special_requirement.updated';
+
+        // Begin atomic governed mutation
+        $db->beginTransaction();
+
+        // Update authoritative Special Requirement
+        $updateStmt = $db->prepare("
+            UPDATE tblApplicationSpecialRequirements
+            SET
+                applicationSpecialRequirementStatusID =
+                    :statusId,
+                applicationSpecialRequirementDescription =
+                    :description,
+                applicationSpecialRequirementResponsibleParty =
+                    :responsibleParty,
+                applicationSpecialRequirementRequiredUnix =
+                    :requiredUnix,
+                applicationSpecialRequirementDueUnix =
+                    :dueUnix,
+                applicationSpecialRequirementCompletedUnix =
+                    :completedUnix,
+                applicationSpecialRequirementUpdatedUnix =
+                    :updatedUnix
+            WHERE applicationSpecialRequirementID =
+                :requirementId
+              AND applicationID = :applicationId
+              AND applicationSpecialRequirementIsNotValid = 0
+        ");
+
+        $updateStmt->execute([
+            'statusId' => $statusId,
+            'description' => $description,
+            'responsibleParty' => $responsibleParty,
+            'requiredUnix' => $requiredUnix,
+            'dueUnixUnix' => $dueUnix,
+            'completedUnix' => $completedUnix,
+            'updatedUnix' => $updatedUnix,
+            'requirementId' => $requirementId,
+            'applicationId' => $applicationId
+        ]);
+
+        // Build authoritative before-and-after Event data
+        $eventData = json_encode([
+            'operation' =>
+                'application.special_requirement.update',
+            'applicationSpecialRequirementID' =>
+                $requirementId,
+            'before' => [
+                'statusID' => (int)$requirementBefore[
+                    'applicationSpecialRequirementStatusID'
+                ],
+                'statusName' => $requirementBefore[
+                    'applicationSpecialRequirementStatusName'
+                ],
+                'description' => $requirementBefore[
+                    'applicationSpecialRequirementDescription'
+                ],
+                'responsibleParty' => $requirementBefore[
+                    'applicationSpecialRequirementResponsibleParty'
+                ],
+                'requiredUnix' => $normalizeUnix(
+                    $requirementBefore[
+                        'applicationSpecialRequirementRequiredUnix'
+                    ]
+                ),
+                'dueUnix' => $normalizeUnix(
+                    $requirementBefore[
+                        'applicationSpecialRequirementDueUnix'
+                    ]
+                ),
+                'completedUnix' => $normalizeUnix(
+                    $requirementBefore[
+                        'applicationSpecialRequirementCompletedUnix'
+                    ]
+                )
+            ],
+            'after' => [
+                'statusID' => $statusId,
+                'statusName' => $requirementStatus[
+                    'applicationSpecialRequirementStatusName'
+                ],
+                'description' => $description,
+                'responsibleParty' => $responsibleParty,
+                'requiredUnix' => $requiredUnix,
+                'dueUnix' => $dueUnix,
+                'completedUnix' => $completedUnix
+            ]
+        ], JSON_UNESCAPED_SLASHES);
+
+        // Create linked chronological Event
+        $eventStmt = $db->prepare("
+            INSERT INTO tblApplicationEvents (
+                applicationID,
+                applicationSpecialRequirementID,
+                applicationEventType,
+                applicationCycleType,
+                applicationCycleNumber,
+                applicationEventStageID,
+                applicationEventStatusID,
+                applicationEventUnix,
+                applicationEventResult,
+                applicationEventNote,
+                applicationEventData,
+                applicationEventContactID,
+                applicationEventCreatedUnix
+            ) VALUES (
+                :applicationId,
+                :requirementId,
+                :eventType,
+                'none',
+                NULL,
+                :stageId,
+                :applicationStatusId,
+                :eventUnix,
+                :eventResult,
+                :eventNote,
+                :eventData,
+                :contactId,
+                :createdUnix
+            )
+        ");
+
+        $eventStmt->execute([
+            'applicationId' => $applicationId,
+            'requirementId' => $requirementId,
+            'eventType' => $eventType,
+            'stageId' =>
+                $applicationBefore['applicationStageID'],
+            'applicationStatusId' =>
+                $applicationBefore['applicationStatusID'],
+            'eventUnix' => $updatedUnix,
+            'eventResult' => $requirementStatus[
+                'applicationSpecialRequirementStatusName'
+            ],
+            'eventNote' => $description,
+            'eventData' => $eventData,
+            'contactId' => $actorContactId,
+            'createdUnix' => $updatedUnix
+        ]);
+
+        $applicationEventId = (int)$db->lastInsertId();
+
+        if ($applicationEventId <= 0) {
+            throw new RuntimeException(
+                'Special Requirement Event could not be created.'
+            );
+        }
+
+        // Mark parent Application as updated
+        $applicationStmt = $db->prepare("
+            UPDATE tblApplications
+            SET applicationUpdatedUnix = :updatedUnix
+            WHERE applicationID = :applicationId
+              AND applicationIsNotValid = 0
+        ");
+
+        $applicationStmt->execute([
+            'updatedUnix' => $updatedUnix,
+            'applicationId' => $applicationId
+        ]);
+
+        // Reload authoritative Application
+        $applicationAfter =
+            loadAuthoritativeApplicationDetail(
+                $db,
+                $applicationId
+            );
+
+        if (!is_array($applicationAfter)) {
+            throw new RuntimeException(
+                'Updated Application could not be reloaded.'
+            );
+        }
+
+        // Create one governed Action
+        $actionId = insertActionPrompt([
+            'actionTypeId' => $actionTypeId,
+            'contactId' => $actorContactId,
+            'origin' => ACTION_ORIGIN_USER,
+            'createdUnixTime' => $updatedUnix,
+            'activitySessionId' => $activitySessionId,
+            'promptText' =>
+                'Update Application Special Requirement',
+            'responseText' => sprintf(
+                'Updated Special Requirement #%d for Application #%d.',
+                $requirementId,
+                $applicationId
+            ),
+            'intent' => 'application.update',
+            'intentConfidence' => 1.00,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'actionPayloadData' => [
+                'operation' =>
+                    'application.special_requirement.update',
+                'applicationID' => $applicationId,
+                'applicationSpecialRequirementID' =>
+                    $requirementId,
+                'before' => json_decode(
+                    $eventData,
+                    true
+                )['before'],
+                'after' => json_decode(
+                    $eventData,
+                    true
+                )['after'],
+                'applicationEventID' =>
+                    $applicationEventId
+            ],
+            'actionResponseData' => [
+                'success' => true,
+                'applicationID' => $applicationId,
+                'applicationSpecialRequirementID' =>
+                    $requirementId,
+                'applicationEventID' =>
+                    $applicationEventId
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Special Requirement Action could not be created.'
+            );
+        }
+
+        // Commit complete governed mutation
+        $db->commit();
+
+        echo json_encode([
+            'success' => true,
+            'type' =>
+                'application_special_requirement_update',
+            'application' => $applicationAfter,
+            'events' =>
+                loadAuthoritativeApplicationEvents(
+                    $db,
+                    $applicationId
+                ),
+            'notes' =>
+                loadAuthoritativeApplicationNotes(
+                    $db,
+                    $applicationId
+                ),
+            'applicationSpecialRequirementID' =>
+                $requirementId,
+            'applicationEventID' =>
+                $applicationEventId,
+            'actionID' => $actionId,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        // Roll back incomplete governed mutation
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        error_log(
+            '[askOpenAI] Special Requirement update failed: ' .
+            $e->getMessage()
+        );
+
+        echo json_encode([
+            'success' => false,
+            'type' =>
+                'application_special_requirement_update',
+            'error' =>
+                'Unable to update the Special Requirement.'
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
+// =====================================================
 // GOVERNED APPLICATION UPDATE MUTATION
 // =====================================================
 
