@@ -120,7 +120,7 @@ function buildApplicationStatusReportPayload(
     );
 
     return [
-        'schemaVersion' => '1.0.0',
+        'schemaVersion' => '1.1.0',
         'reportType' => 'application_status',
         'audience' => 'external',
         'generatedDate' =>
