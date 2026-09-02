@@ -11397,6 +11397,268 @@ window.SkyIndex = {
         }
     },
 
+    /**
+     * Create a governed Application Special Requirement.
+     *
+     * @param {number} applicationId
+     * @return {Promise<void>}
+     */
+    async addApplicationSpecialRequirement(applicationId) {
+        // Resolve form controls
+        const input = id =>
+            document.getElementById(id);
+
+        const resolvedApplicationId = Number(
+            applicationId || 0
+        );
+
+        const description = String(
+            input(
+                'applicationSpecialRequirementDescription'
+            )?.value || ''
+        ).trim();
+
+        const statusId = Number(
+            input(
+                'applicationSpecialRequirementStatusID'
+            )?.value || 0
+        );
+
+        const responsibleParty = String(
+            input(
+                'applicationSpecialRequirementResponsibleParty'
+            )?.value || ''
+        ).trim();
+
+        // Convert Phoenix date to Unix
+        const dateToUnix = value => {
+            if (!value) return null;
+
+            const date = new Date(
+                `${value}T12:00:00-07:00`
+            );
+
+            const unix = Math.floor(
+                date.getTime() / 1000
+            );
+
+            return Number.isFinite(unix) && unix > 0
+                ? unix
+                : null;
+        };
+
+        const requiredUnix = dateToUnix(
+            input(
+                'applicationSpecialRequirementRequiredUnix'
+            )?.value
+        );
+
+        const dueUnix = dateToUnix(
+            input(
+                'applicationSpecialRequirementDueUnix'
+            )?.value
+        );
+
+        // Validate required values
+        if (
+            !Number.isInteger(resolvedApplicationId) ||
+            resolvedApplicationId <= 0
+        ) {
+            this.appendSystemLine(
+                'A valid Application is required.'
+            );
+            return;
+        }
+
+        if (!description || statusId <= 0) {
+            this.appendSystemLine(
+                'Special Requirement Status and Description are required.'
+            );
+            return;
+        }
+
+        if (
+            requiredUnix !== null &&
+            dueUnix !== null &&
+            dueUnix < requiredUnix
+        ) {
+            this.appendSystemLine(
+                'The due date cannot be before the required date.'
+            );
+            return;
+        }
+
+        const addButton = input(
+            'applicationSpecialRequirementAddButton'
+        );
+
+        // Build governed payload
+        const payload = {
+            type:
+                'applicationSpecialRequirementCreate',
+            applicationID:
+                resolvedApplicationId,
+            specialRequirement: {
+                statusID:
+                    statusId,
+                description:
+                    description,
+                responsibleParty:
+                    responsibleParty || null,
+                requiredUnix:
+                    requiredUnix,
+                dueUnix:
+                    dueUnix
+            }
+        };
+
+        try {
+            // Set submitting state
+            if (addButton) {
+                addButton.disabled = true;
+                addButton.textContent = 'Adding...';
+                addButton.style.cursor = 'wait';
+            }
+
+            // Resolve Action audit coordinates
+            let actionLocation =
+                await this.getLocationSafe();
+
+            if (
+                actionLocation?.latitude !== null &&
+                actionLocation?.longitude !== null
+            ) {
+                this.lastLocation = actionLocation;
+
+            } else if (this.lastLocation) {
+                actionLocation = this.lastLocation;
+            }
+
+            payload.latitude =
+                actionLocation?.latitude ?? null;
+
+            payload.longitude =
+                actionLocation?.longitude ?? null;
+
+            // Submit governed mutation
+            const response = await fetch(
+                '/skyesoft/api/askOpenAI.php',
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type':
+                            'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }
+            );
+
+            const responseText =
+                await response.text();
+
+            if (!response.ok) {
+                throw new Error(
+                    `HTTP ${response.status}: ${
+                        responseText.substring(0, 200)
+                    }`
+                );
+            }
+
+            let data;
+
+            try {
+                data = JSON.parse(responseText);
+
+            } catch (error) {
+                throw new Error(
+                    'The server returned invalid JSON.'
+                );
+            }
+
+            if (
+                !data?.success ||
+                !data?.application
+            ) {
+                throw new Error(
+                    data?.error ||
+                    'Special Requirement could not be created.'
+                );
+            }
+
+            // Cache authoritative mutation response
+            const cached =
+                this._currentApplicationWorkspaceData ||
+                {};
+
+            this._currentApplicationWorkspaceData = {
+                ...cached,
+                applicationId:
+                    resolvedApplicationId,
+                application:
+                    data.application,
+                events:
+                    Array.isArray(data.events)
+                        ? data.events
+                        : [],
+                notes:
+                    Array.isArray(data.notes)
+                        ? data.notes
+                        : [],
+                applicationSpecialRequirements:
+                    Array.isArray(
+                        data.application
+                            .applicationSpecialRequirements
+                    )
+                        ? data.application
+                            .applicationSpecialRequirements
+                        : []
+            };
+
+            // Display successful mutation
+            this.appendSystemLine(
+                `Special Requirement #${
+                    data.applicationSpecialRequirementID
+                } was created successfully.`
+            );
+
+            // Refresh modal without another server read
+            window.SkyWorkspace.replace({
+                pageType: 'application',
+                objectType: 'application',
+                objectId:
+                    resolvedApplicationId,
+                title: 'Application',
+                state: {
+                    edit: false,
+                    useCachedApplication: true
+                }
+            });
+
+        } catch (error) {
+            console.error(
+                '[Special Requirement] Create failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to create Special Requirement: ${
+                    error?.message ||
+                    'Unknown error'
+                }`
+            );
+
+            // Restore Add button
+            if (addButton) {
+                addButton.disabled = false;
+                addButton.textContent =
+                    'Add Requirement';
+                addButton.style.cursor =
+                    'pointer';
+            }
+        }
+    },
+
     // #region External Application Status Report
 
     async openApplicationStatusReport(applicationId) {
