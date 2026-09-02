@@ -10758,6 +10758,24 @@ window.SkyIndex = {
             ? data.applicationSpecialRequirementStatuses
             : [];
 
+        // Resolve authoritative Application Fees
+        const applicationFees =
+            application?.applicationFees &&
+            typeof application.applicationFees === 'object'
+                ? application.applicationFees
+                : {
+                    rows: [],
+                    totalAssessed: 0,
+                    totalPaid: 0,
+                    totalOutstanding: 0
+                };
+
+        const feeRows = Array.isArray(
+            applicationFees.rows
+        )
+            ? applicationFees.rows
+            : [];
+
         // Cache complete Application workspace data
         this._currentApplicationWorkspaceData = {
             applicationId: applicationId,
@@ -10766,6 +10784,7 @@ window.SkyIndex = {
             notes: notes,
             applicationStages: stages,
             applicationStatuses: statuses,
+            applicationFees: applicationFees,
             applicationSpecialRequirements:
                 specialRequirements,
             applicationSpecialRequirementStatuses:
