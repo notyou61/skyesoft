@@ -4246,15 +4246,6 @@ if ($type === 'applicationStatusReportSummary') {
                 'application_status_report_summary',
             'applicationID' =>
                 $applicationId,
-
-            // Temporary payload-date diagnostics
-            'summaryReceivedDate' =>
-                $reportPayload['application']['receivedDate']
-                ?? null,
-            'summaryReceivedUnix' =>
-                $reportPayload['application']['receivedUnix']
-                ?? null,
-
             'summaryNarrative' =>
                 $summaryNarrative,
             'summarySource' =>
