@@ -11081,6 +11081,271 @@ window.SkyIndex = {
                     'Mark Paid';
             }
         }
+    },
+    
+    editApplicationFee(feeId) {
+        const display =
+            document.getElementById(
+                `applicationFeeDisplay${
+                    Number(feeId)
+                }`
+            );
+
+        const editor =
+            document.getElementById(
+                `applicationFeeEdit${
+                    Number(feeId)
+                }`
+            );
+
+        if (!display || !editor) {
+            this.appendSystemLine(
+                'Application Fee editor is unavailable.'
+            );
+            return;
+        }
+
+        // Open inline Fee editor
+        display.style.display = 'none';
+        editor.style.display = 'block';
+
+        document.getElementById(
+            `applicationFeeEditAmount${
+                Number(feeId)
+            }`
+        )?.focus();
+    },
+
+    cancelApplicationFeeEdit(feeId) {
+        const display =
+            document.getElementById(
+                `applicationFeeDisplay${
+                    Number(feeId)
+                }`
+            );
+
+        const editor =
+            document.getElementById(
+                `applicationFeeEdit${
+                    Number(feeId)
+                }`
+            );
+
+        if (!display || !editor) {
+            return;
+        }
+
+        // Close editor without saving changes
+        editor.style.display = 'none';
+        display.style.display = 'block';
+    },
+
+    async saveApplicationFee(
+        applicationId,
+        feeId
+    ) {
+        const input = id =>
+            document.getElementById(id);
+
+        // Convert Phoenix date input to Unix
+        const dateToUnix = value => {
+            if (!value) {
+                return null;
+            }
+
+            const date = new Date(
+                `${value}T12:00:00-07:00`
+            );
+
+            const unix = Math.floor(
+                date.getTime() / 1000
+            );
+
+            return (
+                Number.isFinite(unix) &&
+                unix > 0
+            )
+                ? unix
+                : null;
+        };
+
+        const normalizedFeeId =
+            Number(feeId);
+
+        // Resolve submitted Fee values
+        const feeCategory = String(
+            input(
+                `applicationFeeEditCategory${
+                    normalizedFeeId
+                }`
+            )?.value ||
+            ''
+        ).trim();
+
+        const feeAmount = Number(
+            input(
+                `applicationFeeEditAmount${
+                    normalizedFeeId
+                }`
+            )?.value ||
+            0
+        );
+
+        const feeNote = String(
+            input(
+                `applicationFeeEditNote${
+                    normalizedFeeId
+                }`
+            )?.value ||
+            ''
+        ).trim();
+
+        const feeAssessedUnix =
+            dateToUnix(
+                input(
+                    `applicationFeeEditAssessedUnix${
+                        normalizedFeeId
+                    }`
+                )?.value
+            );
+
+        const allowedCategories = [
+            'Application',
+            'Review',
+            'Permit'
+        ];
+
+        // Validate Fee category
+        if (
+            !allowedCategories.includes(
+                feeCategory
+            )
+        ) {
+            this.appendSystemLine(
+                'Select a valid Fee Category.'
+            );
+            return;
+        }
+
+        // Validate Fee amount
+        if (
+            !Number.isFinite(feeAmount) ||
+            feeAmount <= 0 ||
+            feeAmount > 99999999.99
+        ) {
+            this.appendSystemLine(
+                'Enter a valid Fee Amount greater than zero.'
+            );
+
+            input(
+                `applicationFeeEditAmount${
+                    normalizedFeeId
+                }`
+            )?.focus();
+
+            return;
+        }
+
+        // Validate Fee description
+        if (!feeNote) {
+            this.appendSystemLine(
+                'A Fee description is required.'
+            );
+
+            input(
+                `applicationFeeEditNote${
+                    normalizedFeeId
+                }`
+            )?.focus();
+
+            return;
+        }
+
+        if (feeNote.length > 255) {
+            this.appendSystemLine(
+                'Fee description cannot exceed 255 characters.'
+            );
+            return;
+        }
+
+        // Validate assessed date
+        if (!feeAssessedUnix) {
+            this.appendSystemLine(
+                'A valid Fee Assessed date is required.'
+            );
+
+            input(
+                `applicationFeeEditAssessedUnix${
+                    normalizedFeeId
+                }`
+            )?.focus();
+
+            return;
+        }
+
+        const saveButton = input(
+            `applicationFeeSaveButton${
+                normalizedFeeId
+            }`
+        );
+
+        try {
+            // Prevent duplicate submissions
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.textContent =
+                    'Saving...';
+            }
+
+            // Submit governed Fee update
+            const data =
+                await this
+                    .requestApplicationFeeMutation({
+                        type:
+                            'applicationFeeUpdate',
+                        applicationID:
+                            Number(applicationId),
+                        feeID:
+                            normalizedFeeId,
+                        feeCategory:
+                            feeCategory,
+                        feeAmount:
+                            feeAmount,
+                        feeNote:
+                            feeNote,
+                        feeAssessedUnix:
+                            feeAssessedUnix
+                    });
+
+            // Refresh authoritative workspace
+            this.cacheApplicationFeeMutation(
+                applicationId,
+                data
+            );
+
+            this.appendSystemLine(
+                `Fee #${normalizedFeeId} was updated successfully.`
+            );
+
+        } catch (error) {
+            console.error(
+                '[Application Fee] Update failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to update Application Fee: ${
+                    error?.message ||
+                    'Unknown error'
+                }`
+            );
+
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.textContent =
+                    'Save Fee';
+            }
+        }
     },    
 
     async renderApplicationPage(page) {
@@ -11347,12 +11612,15 @@ window.SkyIndex = {
                             border-bottom:1px solid #e5e7eb;
                         "
                     >
-                        <div style="
-                            display:flex;
-                            justify-content:space-between;
-                            align-items:flex-start;
-                            gap:10px;
-                        ">
+                        <div
+                            id="applicationFeeDisplay${feeId}"
+                        >
+                            <div style="
+                                display:flex;
+                                justify-content:space-between;
+                                align-items:flex-start;
+                                gap:10px;
+                            ">
                             <div>
                                 <strong style="
                                     color:#222;
@@ -11406,6 +11674,33 @@ window.SkyIndex = {
                                     !isPaid &&
                                     !isEditing
                                         ? `
+                                            <div style="
+                                                display:flex;
+                                                justify-content:flex-end;
+                                                gap:6px;
+                                                margin-top:6px;
+                                            ">
+                                                <button
+                                                    type="button"
+                                                    onclick="
+                                                        SkyIndex
+                                                            .editApplicationFee(
+                                                                ${feeId}
+                                                            )
+                                                    "
+                                                    style="
+                                                        padding:4px 8px;
+                                                        border:1px solid #d1d5db;
+                                                        border-radius:5px;
+                                                        background:#fff;
+                                                        color:#333;
+                                                        font-size:0.73em;
+                                                        cursor:pointer;
+                                                    "
+                                                >
+                                                    Edit
+                                                </button>
+
                                             <button
                                                 type="button"
                                                 id="applicationFeePaidButton${
@@ -11419,7 +11714,6 @@ window.SkyIndex = {
                                                         )
                                                 "
                                                 style="
-                                                    margin-top:6px;
                                                     padding:4px 8px;
                                                     border:1px solid #20733a;
                                                     border-radius:5px;
@@ -11431,29 +11725,154 @@ window.SkyIndex = {
                                             >
                                                 Mark Paid
                                             </button>
+                                            </div>
                                         `
+                                        : ''
+                                }
+                            </div>
+                            </div>
+
+                            <div style="
+                                margin-top:5px;
+                                color:#888;
+                                font-size:0.75em;
+                            ">
+                                Assessed:
+                                ${formatDate(fee.feeAssessedUnix)}
+                                ${
+                                    isPaid
+                                        ? ` · Paid: ${
+                                            formatDate(
+                                                fee.feePaidUnix
+                                            )
+                                        }`
                                         : ''
                                 }
                             </div>
                         </div>
 
-                        <div style="
-                            margin-top:5px;
-                            color:#888;
-                            font-size:0.75em;
-                        ">
-                            Assessed:
-                            ${formatDate(fee.feeAssessedUnix)}
-                            ${
-                                isPaid
-                                    ? ` · Paid: ${
-                                        formatDate(
-                                            fee.feePaidUnix
-                                        )
-                                    }`
-                                    : ''
-                            }
-                        </div>
+                        ${
+                            !isPaid
+                                ? `
+                                    <div
+                                        id="applicationFeeEdit${feeId}"
+                                        style="display:none;"
+                                    >
+                                        <div style="
+                                            display:grid;
+                                            grid-template-columns:
+                                                repeat(2, minmax(0, 1fr));
+                                            gap:8px;
+                                        ">
+                                            <select
+                                                id="applicationFeeEditCategory${feeId}"
+                                                style="padding:7px 9px; border:1px solid #d1d5db; border-radius:6px;"
+                                            >
+                                                <option
+                                                    value="Application"${
+                                                        fee.feeCategory ===
+                                                        'Application'
+                                                            ? ' selected'
+                                                            : ''
+                                                    }
+                                                >
+                                                    Application
+                                                </option>
+                                                <option
+                                                    value="Review"${
+                                                        fee.feeCategory ===
+                                                        'Review'
+                                                            ? ' selected'
+                                                            : ''
+                                                    }
+                                                >
+                                                    Review
+                                                </option>
+                                                <option
+                                                    value="Permit"${
+                                                        fee.feeCategory ===
+                                                        'Permit'
+                                                            ? ' selected'
+                                                            : ''
+                                                    }
+                                                >
+                                                    Permit
+                                                </option>
+                                            </select>
+
+                                            <input
+                                                id="applicationFeeEditAmount${feeId}"
+                                                type="number"
+                                                min="0.01"
+                                                max="99999999.99"
+                                                step="0.01"
+                                                inputmode="decimal"
+                                                value="${
+                                                    Number(
+                                                        fee.feeAmount ||
+                                                        0
+                                                    ).toFixed(2)
+                                                }"
+                                                style="box-sizing:border-box; width:100%; padding:7px 9px; border:1px solid #d1d5db; border-radius:6px;"
+                                            >
+
+                                            <input
+                                                id="applicationFeeEditAssessedUnix${feeId}"
+                                                type="date"
+                                                value="${
+                                                    formatDateInput(
+                                                        fee.feeAssessedUnix
+                                                    )
+                                                }"
+                                                title="Assessed date"
+                                                style="box-sizing:border-box; width:100%; padding:7px 9px; border:1px solid #d1d5db; border-radius:6px;"
+                                            >
+                                        </div>
+
+                                        <textarea
+                                            id="applicationFeeEditNote${feeId}"
+                                            maxlength="255"
+                                            style="box-sizing:border-box; width:100%; min-height:68px; margin-top:8px; padding:8px 9px; border:1px solid #d1d5db; border-radius:6px; resize:vertical;"
+                                        >${escape(fee.feeNote)}</textarea>
+
+                                        <div style="
+                                            display:flex;
+                                            justify-content:flex-end;
+                                            gap:6px;
+                                            margin-top:6px;
+                                        ">
+                                            <button
+                                                type="button"
+                                                onclick="
+                                                    SkyIndex
+                                                        .cancelApplicationFeeEdit(
+                                                            ${feeId}
+                                                        )
+                                                "
+                                                style="padding:5px 10px; border:1px solid #d1d5db; border-radius:5px; background:#fff; cursor:pointer;"
+                                            >
+                                                Cancel
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                id="applicationFeeSaveButton${feeId}"
+                                                onclick="
+                                                    SkyIndex
+                                                        .saveApplicationFee(
+                                                            ${applicationId},
+                                                            ${feeId}
+                                                        )
+                                                "
+                                                style="padding:5px 10px; border:1px solid #0d9488; border-radius:5px; background:#0d9488; color:#fff; cursor:pointer;"
+                                            >
+                                                Save Fee
+                                            </button>
+                                        </div>
+                                    </div>
+                                `
+                                : ''
+                        }
                     </div>
                 `;
             }).join('')
