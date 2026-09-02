@@ -733,6 +733,22 @@ ob_start();
 
 <div class="report">
     <div class="section">
+        <?= renderApplicationReportSectionHeading(
+            'Report Summary',
+            'memo.png',
+            $rootDir
+        ) ?>
+
+        <div class="summary-box">
+            <div class="summary-body">
+                <?= escapeApplicationReportValue(
+                    $reportSummary
+                ) ?>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
         <div class="section-heading">Project Information</div>
         <table class="data-table">
             <tr>
