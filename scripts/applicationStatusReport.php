@@ -123,6 +123,17 @@ function formatApplicationReportValue(mixed $value): string
     return $resolved !== '' ? $resolved : 'Not Available';
 }
 
+function formatApplicationReportMoney(
+    float|int|string|null $amount
+): string {
+    return '$' . number_format(
+        round((float)$amount, 2),
+        2,
+        '.',
+        ','
+    );
+}
+
 function buildApplicationStatusSummary(string $stageName): string
 {
     switch (strtolower(trim($stageName))) {
@@ -212,6 +223,89 @@ $application = $applicationStmt->fetch(PDO::FETCH_ASSOC);
 if (!is_array($application)) {
     failApplicationStatusReport('Application was not found.', 404);
 }
+
+// Load authoritative Application Fees
+$feeStmt = $db->prepare("
+    SELECT
+        f.feeID,
+        f.feeCategory,
+        f.feeAmount,
+        f.feeNote,
+        f.feeAssessedUnix,
+        f.feePaidUnix,
+        f.feeVoidedUnix,
+        f.feeVoidReason,
+        f.feeCreatedUnix
+    FROM tblApplicationFees f
+    WHERE f.applicationID = :applicationId
+    ORDER BY
+        COALESCE(
+            f.feeAssessedUnix,
+            f.feeCreatedUnix
+        ) ASC,
+        f.feeID ASC
+");
+
+$feeStmt->execute([
+    'applicationId' => $applicationId
+]);
+
+$applicationFees = $feeStmt->fetchAll(
+    PDO::FETCH_ASSOC
+);
+
+$totalAssessed = 0.00;
+$totalPaid = 0.00;
+$totalOutstanding = 0.00;
+$totalVoided = 0.00;
+
+// Normalize Fees and calculate authoritative totals
+foreach ($applicationFees as &$fee) {
+    $fee['feeID'] = (int)$fee['feeID'];
+    $fee['feeAmount'] = round(
+        (float)$fee['feeAmount'],
+        2
+    );
+
+    $fee['feeAssessedUnix'] =
+        $fee['feeAssessedUnix'] !== null
+            ? (int)$fee['feeAssessedUnix']
+            : null;
+
+    $fee['feePaidUnix'] =
+        $fee['feePaidUnix'] !== null
+            ? (int)$fee['feePaidUnix']
+            : null;
+
+    $fee['feeVoidedUnix'] =
+        $fee['feeVoidedUnix'] !== null
+            ? (int)$fee['feeVoidedUnix']
+            : null;
+
+    $fee['feeCreatedUnix'] =
+        (int)$fee['feeCreatedUnix'];
+
+    // Exclude voided Fees from active totals
+    if ($fee['feeVoidedUnix'] !== null) {
+        $totalVoided += $fee['feeAmount'];
+        continue;
+    }
+
+    $totalAssessed += $fee['feeAmount'];
+
+    if ($fee['feePaidUnix'] !== null) {
+        $totalPaid += $fee['feeAmount'];
+    }
+}
+unset($fee);
+
+$totalAssessed = round($totalAssessed, 2);
+$totalPaid = round($totalPaid, 2);
+$totalOutstanding = round(
+    $totalAssessed - $totalPaid,
+    2
+);
+$totalVoided = round($totalVoided, 2);
 
 $addressParts = array_filter([
     trim((string)$application['locationAddress']),
@@ -432,6 +526,100 @@ ob_start();
             line-height: 1.3;
         }
 
+        .fee-summary-table {
+            width: 100%;
+            margin-bottom: 4px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .fee-summary-table td {
+            width: 25%;
+            padding: 5px 6px;
+            border: 1px solid #ccc;
+            background: #f8f9fa;
+        }
+
+        .fee-summary-label {
+            display: block;
+            color: #666;
+            font-size: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .fee-summary-value {
+            display: block;
+            margin-top: 1px;
+            color: #111;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .fee-summary-paid {
+            color: #18743a;
+        }
+
+        .fee-summary-outstanding {
+            color: #b45309;
+        }
+
+        .fee-summary-voided {
+            color: #b91c1c;
+        }
+
+        .fee-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .fee-table th,
+        .fee-table td {
+            padding: 3px 4px;
+            border: 1px solid #ccc;
+            vertical-align: top;
+        }
+
+        .fee-table th {
+            color: #333;
+            font-size: 8px;
+            text-align: left;
+            background: #f8f9fa;
+        }
+
+        .fee-table td {
+            color: #111;
+            font-size: 8px;
+            background: #fff;
+        }
+
+        .fee-amount {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .fee-status-paid {
+            color: #18743a;
+            font-weight: bold;
+        }
+
+        .fee-status-outstanding {
+            color: #b45309;
+            font-weight: bold;
+        }
+
+        .fee-status-voided {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+
+        .fee-empty {
+            padding: 6px 8px;
+            color: #666;
+            border: 1px solid #ccc;
+            background: #f8f9fa;
+        }
+
     </style>
 </head>
 <body>
@@ -578,6 +766,165 @@ ob_start();
                 ) ?></td>
             </tr>
         </table>
+    </div>
+
+    <div class="section">
+        <div class="section-heading">Application Fees</div>
+
+        <table class="fee-summary-table">
+            <tr>
+                <td>
+                    <span class="fee-summary-label">Assessed</span>
+                    <span class="fee-summary-value">
+                        <?= escapeApplicationReportValue(
+                            formatApplicationReportMoney(
+                                $totalAssessed
+                            )
+                        ) ?>
+                    </span>
+                </td>
+                <td>
+                    <span class="fee-summary-label">Paid</span>
+                    <span class="fee-summary-value fee-summary-paid">
+                        <?= escapeApplicationReportValue(
+                            formatApplicationReportMoney(
+                                $totalPaid
+                            )
+                        ) ?>
+                    </span>
+                </td>
+                <td>
+                    <span class="fee-summary-label">Outstanding</span>
+                    <span class="fee-summary-value fee-summary-outstanding">
+                        <?= escapeApplicationReportValue(
+                            formatApplicationReportMoney(
+                                $totalOutstanding
+                            )
+                        ) ?>
+                    </span>
+                </td>
+                <td>
+                    <span class="fee-summary-label">Voided</span>
+                    <span class="fee-summary-value fee-summary-voided">
+                        <?= escapeApplicationReportValue(
+                            formatApplicationReportMoney(
+                                $totalVoided
+                            )
+                        ) ?>
+                    </span>
+                </td>
+            </tr>
+        </table>
+
+        <?php if ($applicationFees !== []): ?>
+            <table class="fee-table">
+                <thead>
+                    <tr>
+                        <th style="width:14%;">Category</th>
+                        <th style="width:38%;">Description</th>
+                        <th style="width:16%;">Assessed</th>
+                        <th style="width:17%;">Status</th>
+                        <th style="width:15%; text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($applicationFees as $fee): ?>
+                        <?php
+                        $feeIsVoided =
+                            $fee['feeVoidedUnix'] !== null;
+
+                        $feeIsPaid =
+                            !$feeIsVoided &&
+                            $fee['feePaidUnix'] !== null;
+
+                        if ($feeIsVoided) {
+                            $feeStatus = 'Voided';
+                            $feeStatusClass =
+                                'fee-status-voided';
+                            $feeStatusDate =
+                                $fee['feeVoidedUnix'];
+                        } elseif ($feeIsPaid) {
+                            $feeStatus = 'Paid';
+                            $feeStatusClass =
+                                'fee-status-paid';
+                            $feeStatusDate =
+                                $fee['feePaidUnix'];
+                        } else {
+                            $feeStatus = 'Outstanding';
+                            $feeStatusClass =
+                                'fee-status-outstanding';
+                            $feeStatusDate = null;
+                        }
+
+                        $feeAssessedUnix =
+                            $fee['feeAssessedUnix']
+                            ?? $fee['feeCreatedUnix'];
+                        ?>
+                        <tr>
+                            <td>
+                                <?= escapeApplicationReportValue(
+                                    $fee['feeCategory']
+                                ) ?>
+                            </td>
+                            <td>
+                                <?= escapeApplicationReportValue(
+                                    formatApplicationReportValue(
+                                        $fee['feeNote']
+                                    )
+                                ) ?>
+
+                                <?php if (
+                                    $feeIsVoided &&
+                                    trim((string)$fee['feeVoidReason']) !== ''
+                                ): ?>
+                                    <br>
+                                    <span class="fee-status-voided">
+                                        Void reason:
+                                        <?= escapeApplicationReportValue(
+                                            $fee['feeVoidReason']
+                                        ) ?>
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?= escapeApplicationReportValue(
+                                    formatApplicationReportDate(
+                                        (int)$feeAssessedUnix
+                                    )
+                                ) ?>
+                            </td>
+                            <td>
+                                <span class="<?= $feeStatusClass ?>">
+                                    <?= escapeApplicationReportValue(
+                                        $feeStatus
+                                    ) ?>
+                                </span>
+
+                                <?php if ($feeStatusDate !== null): ?>
+                                    <br>
+                                    <?= escapeApplicationReportValue(
+                                        formatApplicationReportDate(
+                                            (int)$feeStatusDate
+                                        )
+                                    ) ?>
+                                <?php endif; ?>
+                            </td>
+                            <td class="fee-amount">
+                                <?= escapeApplicationReportValue(
+                                    formatApplicationReportMoney(
+                                        $fee['feeAmount']
+                                    )
+                                ) ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <div class="fee-empty">
+                No Application Fees have been recorded.
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="section">
