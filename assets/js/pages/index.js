@@ -11011,6 +11011,81 @@ window.SkyIndex = {
         }
     },
 
+    async markApplicationFeePaid(
+        applicationId,
+        feeId
+    ) {
+        // Confirm governed Payment mutation
+        const confirmed = window.confirm(
+            `Mark Fee #${Number(feeId)} as paid?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        const paidButton =
+            document.getElementById(
+                `applicationFeePaidButton${
+                    Number(feeId)
+                }`
+            );
+
+        try {
+            // Prevent duplicate submissions
+            if (paidButton) {
+                paidButton.disabled = true;
+                paidButton.textContent =
+                    'Updating...';
+            }
+
+            // Submit governed Payment mutation
+            const data =
+                await this
+                    .requestApplicationFeeMutation({
+                        type:
+                            'applicationFeeMarkPaid',
+                        applicationID:
+                            Number(applicationId),
+                        feeID:
+                            Number(feeId),
+                        feePaidUnix:
+                            Math.floor(
+                                Date.now() / 1000
+                            )
+                    });
+
+            // Refresh authoritative workspace
+            this.cacheApplicationFeeMutation(
+                applicationId,
+                data
+            );
+
+            this.appendSystemLine(
+                `Fee #${Number(feeId)} was marked paid.`
+            );
+
+        } catch (error) {
+            console.error(
+                '[Application Fee] Payment failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to mark Application Fee paid: ${
+                    error?.message ||
+                    'Unknown error'
+                }`
+            );
+
+            if (paidButton) {
+                paidButton.disabled = false;
+                paidButton.textContent =
+                    'Mark Paid';
+            }
+        }
+    },    
+
     async renderApplicationPage(page) {
         // Resolve Application workspace state
         const applicationId = Number(
