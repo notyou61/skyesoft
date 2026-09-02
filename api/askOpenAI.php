@@ -5051,32 +5051,45 @@ function loadAuthoritativeApplicationFees(
     PDO $db,
     int $applicationId
 ): array {
-    // Return an empty governed structure for invalid identifiers
+    // Return empty governed totals
     if ($applicationId <= 0) {
         return [
             'rows' => [],
             'totalAssessed' => 0.00,
             'totalPaid' => 0.00,
-            'totalOutstanding' => 0.00
+            'totalOutstanding' => 0.00,
+            'totalVoided' => 0.00
         ];
     }
 
-    // Load Application fees without creating an Action
+    // Load authoritative Application Fees
     $feeStmt = $db->prepare("
         SELECT
-            feeID,
-            applicationID,
-            feeCategory,
-            feeAmount,
-            feeNote,
-            feeAssessedUnix,
-            feePaidUnix,
-            feeCreatedUnix
-        FROM tblApplicationFees
-        WHERE applicationID = :applicationId
+            f.feeID,
+            f.applicationID,
+            f.feeCategory,
+            f.feeAmount,
+            f.feeNote,
+            f.feeAssessedUnix,
+            f.feePaidUnix,
+            f.feeVoidedUnix,
+            f.feeVoidedByContactID,
+            f.feeVoidReason,
+            f.feeCreatedUnix,
+            vc.contactFirstName AS voiderFirstName,
+            vc.contactLastName AS voiderLastName
+        FROM tblApplicationFees f
+        LEFT JOIN tblContacts vc
+            ON vc.contactId =
+                f.feeVoidedByContactID
+        WHERE f.applicationID =
+            :applicationId
         ORDER BY
-            COALESCE(feeAssessedUnix, feeCreatedUnix) ASC,
-            feeID ASC
+            COALESCE(
+                f.feeAssessedUnix,
+                f.feeCreatedUnix
+            ) ASC,
+            f.feeID ASC
     ");
 
     $feeStmt->execute([
@@ -5089,29 +5102,70 @@ function loadAuthoritativeApplicationFees(
 
     $totalAssessed = 0.00;
     $totalPaid = 0.00;
+    $totalVoided = 0.00;
 
-    // Normalize fee records and calculate totals
+    // Normalize Fees and calculate active totals
     foreach ($fees as &$fee) {
-        $fee['feeID'] = (int)$fee['feeID'];
+        $fee['feeID'] =
+            (int)$fee['feeID'];
+
         $fee['applicationID'] =
             (int)$fee['applicationID'];
+
         $fee['feeAmount'] =
-            round((float)$fee['feeAmount'], 2);
+            round(
+                (float)$fee['feeAmount'],
+                2
+            );
+
         $fee['feeAssessedUnix'] =
             $fee['feeAssessedUnix'] !== null
-                ? (int)$fee['feeAssessedUnix']
+                ? (int)$fee[
+                    'feeAssessedUnix'
+                ]
                 : null;
+
         $fee['feePaidUnix'] =
             $fee['feePaidUnix'] !== null
-                ? (int)$fee['feePaidUnix']
+                ? (int)$fee[
+                    'feePaidUnix'
+                ]
                 : null;
+
+        $fee['feeVoidedUnix'] =
+            $fee['feeVoidedUnix'] !== null
+                ? (int)$fee[
+                    'feeVoidedUnix'
+                ]
+                : null;
+
+        $fee['feeVoidedByContactID'] =
+            $fee[
+                'feeVoidedByContactID'
+            ] !== null
+                ? (int)$fee[
+                    'feeVoidedByContactID'
+                ]
+                : null;
+
         $fee['feeCreatedUnix'] =
             (int)$fee['feeCreatedUnix'];
 
-        $totalAssessed += $fee['feeAmount'];
+        $isVoided =
+            $fee['feeVoidedUnix'] !== null;
+
+        if ($isVoided) {
+            $totalVoided +=
+                $fee['feeAmount'];
+            continue;
+        }
+
+        $totalAssessed +=
+            $fee['feeAmount'];
 
         if ($fee['feePaidUnix'] !== null) {
-            $totalPaid += $fee['feeAmount'];
+            $totalPaid +=
+                $fee['feeAmount'];
         }
     }
     unset($fee);
@@ -5126,14 +5180,24 @@ function loadAuthoritativeApplicationFees(
         2
     );
 
+    $totalVoided = round(
+        $totalVoided,
+        2
+    );
+
     return [
         'rows' => $fees,
-        'totalAssessed' => $totalAssessed,
-        'totalPaid' => $totalPaid,
+        'totalAssessed' =>
+            $totalAssessed,
+        'totalPaid' =>
+            $totalPaid,
         'totalOutstanding' => round(
-            $totalAssessed - $totalPaid,
+            $totalAssessed -
+            $totalPaid,
             2
-        )
+        ),
+        'totalVoided' =>
+            $totalVoided
     ];
 }
 
@@ -8620,6 +8684,490 @@ if ($type === 'applicationFeeUpdate') {
 
         $returnFeeUpdateError(
             'Unable to update the Application Fee.'
+        );
+    }
+}
+
+// =====================================================
+// GOVERNED APPLICATION FEE VOID MUTATION
+// =====================================================
+
+if ($type === 'applicationFeeVoid') {
+    // Resolve governed identifiers
+    $applicationId = (int)(
+        $input['applicationID'] ??
+        0
+    );
+
+    $feeId = (int)(
+        $input['feeID'] ??
+        0
+    );
+
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId'] ??
+        $_SESSION['contactId'] ??
+        0
+    );
+
+    $feeVoidReason = trim((string)(
+        $input['feeVoidReason'] ??
+        ''
+    ));
+
+    // Resolve Action context
+    $activitySessionId = trim((string)(
+        $_SESSION['activitySessionId'] ??
+        session_id()
+    ));
+
+    $activitySessionId =
+        $activitySessionId !== ''
+            ? $activitySessionId
+            : null;
+
+    $latitude = is_numeric(
+        $input['latitude'] ??
+        null
+    )
+        ? (float)$input['latitude']
+        : null;
+
+    $longitude = is_numeric(
+        $input['longitude'] ??
+        null
+    )
+        ? (float)$input['longitude']
+        : null;
+
+    // Return governed Void errors
+    $returnFeeVoidError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_fee_void',
+            'error' => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    // Validate identifiers and actor
+    if (
+        $applicationId <= 0 ||
+        $feeId <= 0 ||
+        $actorContactId <= 0
+    ) {
+        $returnFeeVoidError(
+            'A valid Application, Fee, and authenticated Company Contact are required.'
+        );
+    }
+
+    // Require an authoritative Void reason
+    if ($feeVoidReason === '') {
+        $returnFeeVoidError(
+            'A Fee Void reason is required.'
+        );
+    }
+
+    if (strlen($feeVoidReason) > 255) {
+        $returnFeeVoidError(
+            'Fee Void reason cannot exceed 255 characters.'
+        );
+    }
+
+    try {
+        // Restrict mutation to Company Contacts
+        requireAuthenticatedCompanyContact(
+            $db,
+            $actorContactId
+        );
+
+        // Load authoritative Application
+        $application =
+            loadAuthoritativeApplicationDetail(
+                $db,
+                $applicationId
+            );
+
+        if (!is_array($application)) {
+            $returnFeeVoidError(
+                'Application was not found.'
+            );
+        }
+
+        // Load authoritative Fee
+        $feeStmt = $db->prepare("
+            SELECT
+                feeID,
+                applicationID,
+                feeCategory,
+                feeAmount,
+                feeNote,
+                feeAssessedUnix,
+                feePaidUnix,
+                feeVoidedUnix,
+                feeVoidedByContactID,
+                feeVoidReason,
+                feeCreatedUnix
+            FROM tblApplicationFees
+            WHERE feeID = :feeId
+              AND applicationID = :applicationId
+            LIMIT 1
+        ");
+
+        $feeStmt->execute([
+            'feeId' => $feeId,
+            'applicationId' => $applicationId
+        ]);
+
+        $fee = $feeStmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+        if (!is_array($fee)) {
+            $returnFeeVoidError(
+                'Application Fee was not found.'
+            );
+        }
+
+        // Prevent duplicate Void mutations
+        if ($fee['feeVoidedUnix'] !== null) {
+            $returnFeeVoidError(
+                'Application Fee is already voided.'
+            );
+        }
+
+        // Protect completed Payment history
+        if ($fee['feePaidUnix'] !== null) {
+            $returnFeeVoidError(
+                'A paid Application Fee cannot be voided.'
+            );
+        }
+
+        $feeAmount = round(
+            (float)$fee['feeAmount'],
+            2
+        );
+
+        $feeCategory = (string)(
+            $fee['feeCategory'] ??
+            ''
+        );
+
+        // Begin governed Void transaction
+        $db->beginTransaction();
+
+        $voidedUnix = time();
+
+        // Void outstanding authoritative Fee
+        $voidFeeStmt = $db->prepare("
+            UPDATE tblApplicationFees
+            SET
+                feeVoidedUnix =
+                    :feeVoidedUnix,
+                feeVoidedByContactID =
+                    :feeVoidedByContactId,
+                feeVoidReason =
+                    :feeVoidReason
+            WHERE feeID =
+                    :feeId
+              AND applicationID =
+                    :applicationId
+              AND feePaidUnix IS NULL
+              AND feeVoidedUnix IS NULL
+            LIMIT 1
+        ");
+
+        $voidFeeStmt->execute([
+            'feeVoidedUnix' =>
+                $voidedUnix,
+            'feeVoidedByContactId' =>
+                $actorContactId,
+            'feeVoidReason' =>
+                $feeVoidReason,
+            'feeId' =>
+                $feeId,
+            'applicationId' =>
+                $applicationId
+        ]);
+
+        if ($voidFeeStmt->rowCount() !== 1) {
+            throw new RuntimeException(
+                'Application Fee could not be voided.'
+            );
+        }
+
+        // Build authoritative Void Event data
+        $eventData = json_encode([
+            'operation' =>
+                'application.fee.void',
+            'feeID' =>
+                $feeId,
+                       'feeCategory' =>
+                $feeCategory,
+            'feeAmount' =>
+                $feeAmount,
+            'feeNote' =>
+                (string)$fee['feeNote'],
+            'feeAssessedUnix' =>
+                $fee['feeAssessedUnix'] !== null
+                    ? (int)$fee[
+                        'feeAssessedUnix'
+                    ]
+                    : null,
+            'feeVoidReason' =>
+                $feeVoidReason,
+            'feeVoidedUnix' =>
+                $voidedUnix,
+            'feeVoidedByContactID' =>
+                $actorContactId
+        ], JSON_UNESCAPED_SLASHES);
+
+        if ($eventData === false) {
+            throw new RuntimeException(
+                'Application Fee Void Event data could not be encoded.'
+            );
+        }
+
+        // Insert Application lifecycle Event
+        $insertEventStmt = $db->prepare("
+            INSERT INTO tblApplicationEvents (
+                applicationID,
+                applicationSpecialRequirementID,
+                applicationEventType,
+                applicationCycleType,
+                applicationCycleNumber,
+                applicationEventStageID,
+                applicationEventStatusID,
+                applicationEventUnix,
+                applicationEventResult,
+                applicationEventNote,
+                applicationEventData,
+                applicationEventContactID,
+                applicationEventCreatedUnix
+            ) VALUES (
+                :applicationId,
+                NULL,
+                'application.fee.voided',
+                'none',
+                NULL,
+                :stageId,
+                :statusId,
+                :eventUnix,
+                'voided',
+                :eventNote,
+                :eventData,
+                :contactId,
+                :createdUnix
+            )
+        ");
+
+        $insertEventStmt->execute([
+            'applicationId' =>
+                $applicationId,
+            'stageId' =>
+                (int)$application[
+                    'applicationStageID'
+                ],
+            'statusId' =>
+                (int)$application[
+                    'applicationStatusID'
+                ],
+            'eventUnix' =>
+                $voidedUnix,
+            'eventNote' =>
+                $feeVoidReason,
+            'eventData' =>
+                $eventData,
+            'contactId' =>
+                $actorContactId,
+            'createdUnix' =>
+                $voidedUnix
+        ]);
+
+        $applicationEventId =
+            (int)$db->lastInsertId();
+
+        if ($applicationEventId <= 0) {
+            throw new RuntimeException(
+                'Application Fee Void Event could not be created.'
+            );
+        }
+
+        // Update authoritative Application timestamp
+        $updateApplicationStmt = $db->prepare("
+            UPDATE tblApplications
+            SET applicationUpdatedUnix =
+                :updatedUnix
+            WHERE applicationID =
+                :applicationId
+            LIMIT 1
+        ");
+
+        $updateApplicationStmt->execute([
+            'updatedUnix' =>
+                $voidedUnix,
+            'applicationId' =>
+                $applicationId
+        ]);
+
+        // Resolve governed Application update Action Type
+        $actionTypeStmt = $db->prepare("
+            SELECT actionTypeId
+            FROM tblActionTypes
+            WHERE actionName =
+                'application.update'
+              AND crud_class =
+                'update'
+            LIMIT 1
+        ");
+
+        $actionTypeStmt->execute();
+
+        $actionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?:
+            0
+        );
+
+        if ($actionTypeId <= 0) {
+            throw new RuntimeException(
+                'Application update Action Type is not configured.'
+            );
+        }
+
+        // Insert governed Action record
+        $actionId = insertActionPrompt([
+            'actionTypeId' =>
+                $actionTypeId,
+            'contactId' =>
+                $actorContactId,
+            'origin' =>
+                ACTION_ORIGIN_USER,
+            'activitySessionId' =>
+                $activitySessionId,
+            'promptText' =>
+                'Void Application Fee',
+            'responseText' =>
+                sprintf(
+                    'Voided %s Fee #%d of $%s for Application #%d.',
+                    $feeCategory,
+                    $feeId,
+                    number_format(
+                        $feeAmount,
+                        2,
+                        '.',
+                        ','
+                    ),
+                    $applicationId
+                ),
+            'intent' =>
+                'application.update',
+            'intentConfidence' =>
+                1.00,
+            'latitude' =>
+                $latitude,
+            'longitude' =>
+                $longitude,
+            'actionPayloadData' => [
+                'operation' =>
+                    'application.fee.void',
+                'applicationID' =>
+                    $applicationId,
+                'feeID' =>
+                    $feeId,
+                'feeCategory' =>
+                    $feeCategory,
+                'feeAmount' =>
+                    $feeAmount,
+                'feeVoidReason' =>
+                    $feeVoidReason,
+                'feeVoidedUnix' =>
+                    $voidedUnix,
+                'applicationEventID' =>
+                    $applicationEventId
+            ],
+            'actionResponseData' => [
+                'success' =>
+                    true,
+                'applicationID' =>
+                    $applicationId,
+                'feeID' =>
+                    $feeId,
+                'feeVoidedUnix' =>
+                    $voidedUnix,
+                'applicationEventID' =>
+                    $applicationEventId
+            ]
+        ], $db);
+
+        if ($actionId <= 0) {
+            throw new RuntimeException(
+                'Application Fee Void Action could not be created.'
+            );
+        }
+
+        // Reload authoritative workspace data
+        $application =
+            loadAuthoritativeApplicationDetail(
+                $db,
+                $applicationId
+            );
+
+        $events =
+            loadAuthoritativeApplicationEvents(
+                $db,
+                $applicationId
+            );
+
+        $notes =
+            loadAuthoritativeApplicationNotes(
+                $db,
+                $applicationId
+            );
+
+        // Commit governed Void transaction
+        $db->commit();
+
+        echo json_encode([
+            'success' =>
+                true,
+            'type' =>
+                'application_fee_void',
+            'application' =>
+                $application,
+            'events' =>
+                $events,
+            'notes' =>
+                $notes,
+            'applicationID' =>
+                $applicationId,
+            'feeID' =>
+                $feeId,
+            'feeVoidedUnix' =>
+                $voidedUnix,
+            'applicationEventID' =>
+                $applicationEventId,
+            'actionID' =>
+                $actionId,
+            'error' =>
+                null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        // Roll back incomplete Void mutation
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        error_log(
+            '[askOpenAI] applicationFeeVoid failed: ' .
+            $e->getMessage()
+        );
+
+        $returnFeeVoidError(
+            'Unable to void the Application Fee.'
         );
     }
 }

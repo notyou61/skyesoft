@@ -10794,7 +10794,8 @@ window.SkyIndex = {
                     rows: [],
                     totalAssessed: 0,
                     totalPaid: 0,
-                    totalOutstanding: 0
+                    totalOutstanding: 0,
+                    totalVoided: 0
                 },
             events:
                 Array.isArray(data?.events)
@@ -11346,7 +11347,110 @@ window.SkyIndex = {
                     'Save Fee';
             }
         }
-    },    
+    },
+    
+    async voidApplicationFee(
+        applicationId,
+        feeId
+    ) {
+        const normalizedFeeId =
+            Number(feeId);
+
+        // Require an authoritative Void reason
+        const submittedReason = window.prompt(
+            `Enter the reason for voiding Fee #${normalizedFeeId}:`
+        );
+
+        if (submittedReason === null) {
+            return;
+        }
+
+        const feeVoidReason =
+            String(submittedReason).trim();
+
+        if (!feeVoidReason) {
+            this.appendSystemLine(
+                'A Fee Void reason is required.'
+            );
+            return;
+        }
+
+        if (feeVoidReason.length > 255) {
+            this.appendSystemLine(
+                'Fee Void reason cannot exceed 255 characters.'
+            );
+            return;
+        }
+
+        // Confirm financial record mutation
+        const confirmed = window.confirm(
+            `Void Fee #${normalizedFeeId}? ` +
+            'The Fee will remain in the record but will be excluded from totals.'
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        const voidButton =
+            document.getElementById(
+                `applicationFeeVoidButton${
+                    normalizedFeeId
+                }`
+            );
+
+        try {
+            // Prevent duplicate submissions
+            if (voidButton) {
+                voidButton.disabled = true;
+                voidButton.textContent =
+                    'Voiding...';
+            }
+
+            // Submit governed Void mutation
+            const data =
+                await this
+                    .requestApplicationFeeMutation({
+                        type:
+                            'applicationFeeVoid',
+                        applicationID:
+                            Number(applicationId),
+                        feeID:
+                            normalizedFeeId,
+                        feeVoidReason:
+                            feeVoidReason
+                    });
+
+            // Refresh authoritative workspace
+            this.cacheApplicationFeeMutation(
+                applicationId,
+                data
+            );
+
+            this.appendSystemLine(
+                `Fee #${normalizedFeeId} was voided.`
+            );
+
+        } catch (error) {
+            console.error(
+                '[Application Fee] Void failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to void Application Fee: ${
+                    error?.message ||
+                    'Unknown error'
+                }`
+            );
+
+            if (voidButton) {
+                voidButton.disabled = false;
+                voidButton.textContent =
+                    'Void';
+            }
+        }
+    },
 
     async renderApplicationPage(page) {
         // Resolve Application workspace state
@@ -11421,7 +11525,8 @@ window.SkyIndex = {
                     rows: [],
                     totalAssessed: 0,
                     totalPaid: 0,
-                    totalOutstanding: 0
+                    totalOutstanding: 0,
+                    totalVoided: 0
                 };
 
         const feeRows = Array.isArray(
@@ -11604,6 +11709,15 @@ window.SkyIndex = {
                     fee.feePaidUnix !== null &&
                     Number(fee.feePaidUnix || 0) > 0;
 
+                const isVoided =
+                    fee.feeVoidedUnix !== null &&
+                    Number(fee.feeVoidedUnix || 0) > 0;
+
+                const voiderName = [
+                    fee.voiderFirstName,
+                    fee.voiderLastName
+                ].filter(Boolean).join(' ');
+
                 return `
                     <div
                         id="applicationFeeRow${feeId}"
@@ -11656,22 +11770,31 @@ window.SkyIndex = {
                                 <div style="
                                     margin-top:4px;
                                     color:${
-                                        isPaid
-                                            ? '#20733a'
-                                            : '#b45309'
+                                        isVoided
+                                            ? '#b91c1c'
+                                            : (
+                                                isPaid
+                                                    ? '#20733a'
+                                                    : '#b45309'
+                                            )
                                     };
                                     font-size:0.72em;
                                     font-weight:700;
                                 ">
                                     ${
-                                        isPaid
-                                            ? 'Paid'
-                                            : 'Outstanding'
+                                        isVoided
+                                            ? 'Voided'
+                                            : (
+                                                isPaid
+                                                    ? 'Paid'
+                                                    : 'Outstanding'
+                                            )
                                     }
                                 </div>
 
                                 ${
                                     !isPaid &&
+                                    !isVoided &&
                                     !isEditing
                                         ? `
                                             <div style="
@@ -11725,6 +11848,31 @@ window.SkyIndex = {
                                             >
                                                 Mark Paid
                                             </button>
+
+                                                <button
+                                                    type="button"
+                                                    id="applicationFeeVoidButton${
+                                                        feeId
+                                                    }"
+                                                    onclick="
+                                                        SkyIndex
+                                                            .voidApplicationFee(
+                                                                ${applicationId},
+                                                                ${feeId}
+                                                            )
+                                                    "
+                                                    style="
+                                                        padding:4px 8px;
+                                                        border:1px solid #ef4444;
+                                                        border-radius:5px;
+                                                        background:#fff;
+                                                        color:#b91c1c;
+                                                        font-size:0.73em;
+                                                        cursor:pointer;
+                                                    "
+                                                >
+                                                    Void
+                                                </button>
                                             </div>
                                         `
                                         : ''
@@ -11748,11 +11896,48 @@ window.SkyIndex = {
                                         }`
                                         : ''
                                 }
+                                ${
+                                    isVoided
+                                        ? ` · Voided: ${
+                                            formatDate(
+                                                fee.feeVoidedUnix
+                                            )
+                                        }${
+                                            voiderName
+                                                ? ` by ${
+                                                    escape(
+                                                        voiderName
+                                                    )
+                                                }`
+                                                : ''
+                                        }`
+                                        : ''
+                                }
                             </div>
+
+                            ${
+                                isVoided
+                                    ? `
+                                        <div style="
+                                            margin-top:5px;
+                                            color:#b91c1c;
+                                            font-size:0.78em;
+                                        ">
+                                            Void Reason: ${
+                                                escape(
+                                                    fee.feeVoidReason ||
+                                                    'No reason recorded.'
+                                                )
+                                            }
+                                        </div>
+                                    `
+                                    : ''
+                            }
                         </div>
 
                         ${
-                            !isPaid
+                            !isPaid &&
+                            !isVoided
                                 ? `
                                     <div
                                         id="applicationFeeEdit${feeId}"
@@ -11890,7 +12075,7 @@ window.SkyIndex = {
         const feeContent = `
             <div style="
                 display:grid;
-                grid-template-columns:repeat(3, minmax(0, 1fr));
+                grid-template-columns:repeat(2, minmax(0, 1fr));
                 gap:8px;
                 margin-bottom:10px;
             ">
@@ -11955,6 +12140,28 @@ window.SkyIndex = {
                         ${
                             formatCurrency(
                                 applicationFees.totalOutstanding
+                            )
+                        }
+                    </strong>
+                </div>
+
+                <div style="
+                    padding:8px;
+                    border:1px solid #e5e7eb;
+                    border-radius:6px;
+                    background:#fff;
+                ">
+                    <div style="
+                        color:#888;
+                        font-size:0.68em;
+                        text-transform:uppercase;
+                    ">
+                        Voided
+                    </div>
+                    <strong style="color:#b91c1c;">
+                        ${
+                            formatCurrency(
+                                applicationFees.totalVoided
                             )
                         }
                     </strong>
