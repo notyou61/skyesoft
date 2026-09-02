@@ -10695,36 +10695,87 @@ window.SkyIndex = {
     },
 
     async renderApplicationPage(page) {
-        const applicationId = Number(page.objectId || 0);
-        const isEditing = page.state?.edit === true;
-        const cached = this._currentApplicationWorkspaceData;
+        // Resolve Application workspace state
+        const applicationId = Number(
+            page.objectId || 0
+        );
+
+        const isEditing =
+            page.state?.edit === true;
+
+        const cached =
+            this._currentApplicationWorkspaceData;
+
         const useCached =
             page.state?.useCachedApplication === true &&
-            Number(cached?.applicationId || 0) === applicationId;
+            Number(cached?.applicationId || 0) ===
+                applicationId;
 
+        // Load cached or authoritative workspace data
         const data = useCached
             ? cached
-            : await this.getApplication(applicationId);
-        const application = data.application;
-        const events = Array.isArray(data.events) ? data.events : [];
-        const notes = Array.isArray(data.notes) ? data.notes : [];
-        const stages = Array.isArray(data.applicationStages)
+            : await this.getApplication(
+                applicationId
+            );
+
+        const application =
+            data.application;
+
+        const events = Array.isArray(
+            data.events
+        )
+            ? data.events
+            : [];
+
+        const notes = Array.isArray(
+            data.notes
+        )
+            ? data.notes
+            : [];
+
+        const stages = Array.isArray(
+            data.applicationStages
+        )
             ? data.applicationStages
             : [];
-        const statuses = Array.isArray(data.applicationStatuses)
+
+        const statuses = Array.isArray(
+            data.applicationStatuses
+        )
             ? data.applicationStatuses
             : [];
 
+        // Resolve authoritative Special Requirements
+        const specialRequirements = Array.isArray(
+            application?.applicationSpecialRequirements
+        )
+            ? application.applicationSpecialRequirements
+            : [];
+
+        const specialRequirementStatuses = Array.isArray(
+            data.applicationSpecialRequirementStatuses
+        )
+            ? data.applicationSpecialRequirementStatuses
+            : [];
+
+        // Cache complete Application workspace data
         this._currentApplicationWorkspaceData = {
             applicationId: applicationId,
             application: application,
             events: events,
             notes: notes,
             applicationStages: stages,
-            applicationStatuses: statuses
+            applicationStatuses: statuses,
+            applicationSpecialRequirements:
+                specialRequirements,
+            applicationSpecialRequirementStatuses:
+                specialRequirementStatuses
         };
 
-        const escape = value => this.escapeHtml(String(value ?? ''));
+        const escape = value =>
+            this.escapeHtml(
+                String(value ?? '')
+            );
         const formatDate = unixValue => {
             const unix = Number(unixValue || 0);
             if (!unix) return '—';
@@ -10795,6 +10846,29 @@ window.SkyIndex = {
                     : ''
             }>${escape(status.applicationStatusName)}</option>
         `).join('');
+
+        // Build Special Requirement status options
+        const specialRequirementStatusOptions =
+            specialRequirementStatuses
+                .map(requirementStatus => `
+                    <option
+                        value="${
+                            Number(
+                                requirementStatus
+                                    .applicationSpecialRequirementStatusID
+                            )
+                        }"
+                    >
+                        ${
+                            escape(
+                                requirementStatus
+                                    .applicationSpecialRequirementStatusName
+                            )
+                        }
+                    </option>
+                `)
+                .join('');
+
         const creatorName = [
             application.creator?.contactFirstName,
             application.creator?.contactLastName
@@ -10836,6 +10910,245 @@ window.SkyIndex = {
                 ${row('Finaled', formatDate(application.applicationFinaledUnix))}
             `;
 
+        // Render authoritative Special Requirements
+        const specialRequirementHtml =
+            specialRequirements.length
+                ? specialRequirements
+                    .map(requirement => {
+                        const requirementId = Number(
+                            requirement
+                                .applicationSpecialRequirementID ||
+                            0
+                        );
+
+                        const isClosed = Number(
+                            requirement
+                                .applicationSpecialRequirementStatusIsClosed ||
+                            0
+                        ) === 1;
+
+                        return `
+                            <div style="
+                                padding:9px 0;
+                                border-bottom:1px solid #e5e7eb;
+                            ">
+                                <div style="
+                                    display:flex;
+                                    justify-content:space-between;
+                                    gap:10px;
+                                    align-items:flex-start;
+                                ">
+                                    <strong style="
+                                        color:#222;
+                                        font-size:0.9em;
+                                    ">
+                                        Special Requirement #${
+                                            requirementId
+                                        }
+                                    </strong>
+
+                                    <span style="
+                                        padding:2px 7px;
+                                        border-radius:999px;
+                                        background:${
+                                            isClosed
+                                                ? '#e6f4ea'
+                                                : '#e8f4f6'
+                                        };
+                                        color:${
+                                            isClosed
+                                                ? '#20733a'
+                                                : '#117a8b'
+                                        };
+                                        font-size:0.72em;
+                                        font-weight:700;
+                                    ">
+                                        ${
+                                            escape(
+                                                requirement
+                                                    .applicationSpecialRequirementStatusName
+                                            )
+                                        }
+                                    </span>
+                                </div>
+
+                                <div style="
+                                    margin-top:5px;
+                                    white-space:pre-wrap;
+                                    color:#333;
+                                    font-size:0.88em;
+                                    line-height:1.45;
+                                ">${
+                                    escape(
+                                        requirement
+                                            .applicationSpecialRequirementDescription
+                                    )
+                                }</div>
+
+                                <div style="
+                                    margin-top:5px;
+                                    color:#777;
+                                    font-size:0.76em;
+                                ">
+                                    Responsible Party: ${
+                                        escape(
+                                            requirement
+                                                .applicationSpecialRequirementResponsibleParty ||
+                                            '—'
+                                        )
+                                    }
+                                    · Required: ${
+                                        formatDate(
+                                            requirement
+                                                .applicationSpecialRequirementRequiredUnix
+                                        )
+                                    }
+                                    · Due: ${
+                                        formatDate(
+                                            requirement
+                                                .applicationSpecialRequirementDueUnix
+                                        )
+                                    }
+                                </div>
+                            </div>
+                        `;
+                    })
+                    .join('')
+                : `
+                    <div style="
+                        padding:3px 0 9px;
+                        color:#888;
+                        font-size:0.86em;
+                    ">
+                        No Special Requirements recorded.
+                    </div>
+                `;
+
+        // Build Special Requirement entry form
+        const specialRequirementContent = `
+            ${specialRequirementHtml}
+
+            ${
+                !isEditing
+                    ? `
+                        <div style="
+                            margin-top:12px;
+                            padding-top:10px;
+                            border-top:1px solid #e5e7eb;
+                        ">
+                            <div style="
+                                margin-bottom:7px;
+                                color:#666;
+                                font-size:0.78em;
+                                font-weight:600;
+                            ">
+                                Add Special Requirement
+                            </div>
+
+                            <textarea
+                                id="applicationSpecialRequirementDescription"
+                                placeholder="Describe the requirement..."
+                                style="
+                                    box-sizing:border-box;
+                                    width:100%;
+                                    min-height:78px;
+                                    padding:8px 9px;
+                                    border:1px solid #d1d5db;
+                                    border-radius:6px;
+                                    resize:vertical;
+                                "
+                            ></textarea>
+
+                            <div style="
+                                display:grid;
+                                grid-template-columns:
+                                    repeat(2, minmax(0, 1fr));
+                                gap:8px;
+                                margin-top:8px;
+                            ">
+                                <select
+                                    id="applicationSpecialRequirementStatusID"
+                                    style="
+                                        padding:7px 9px;
+                                        border:1px solid #d1d5db;
+                                        border-radius:6px;
+                                    "
+                                >
+                                    ${specialRequirementStatusOptions}
+                                </select>
+
+                                <input
+                                    id="applicationSpecialRequirementResponsibleParty"
+                                    type="text"
+                                    maxlength="150"
+                                    placeholder="Responsible party"
+                                    style="
+                                        box-sizing:border-box;
+                                        width:100%;
+                                        padding:7px 9px;
+                                        border:1px solid #d1d5db;
+                                        border-radius:6px;
+                                    "
+                                >
+
+                                <input
+                                    id="applicationSpecialRequirementRequiredUnix"
+                                    type="date"
+                                    title="Required date"
+                                    style="
+                                        box-sizing:border-box;
+                                        width:100%;
+                                        padding:7px 9px;
+                                        border:1px solid #d1d5db;
+                                        border-radius:6px;
+                                    "
+                                >
+
+                                <input
+                                    id="applicationSpecialRequirementDueUnix"
+                                    type="date"
+                                    title="Due date"
+                                    style="
+                                        box-sizing:border-box;
+                                        width:100%;
+                                        padding:7px 9px;
+                                        border:1px solid #d1d5db;
+                                        border-radius:6px;
+                                    "
+                                >
+                            </div>
+
+                            <div style="
+                                display:flex;
+                                justify-content:flex-end;
+                                margin-top:8px;
+                            ">
+                                <button
+                                    type="button"
+                                    id="applicationSpecialRequirementAddButton"
+                                    onclick="
+                                        SkyIndex
+                                            .addApplicationSpecialRequirement(
+                                                ${applicationId}
+                                            )
+                                    "
+                                    style="
+                                        padding:6px 12px;
+                                        border:1px solid #0d9488;
+                                        border-radius:6px;
+                                        background:#0d9488;
+                                        color:#fff;
+                                        cursor:pointer;
+                                    "
+                                >
+                                    Add Requirement
+                                </button>
+                            </div>
+                        </div>
+                    `
+                    : ''
+            }
+        `;
         const eventHtml = events.length
             ? events.map(event => {
                 const eventContact = [
@@ -10924,9 +11237,16 @@ window.SkyIndex = {
             titleHtml: `<div><strong>${escape(application.applicationTitle)}</strong><div style="margin-top:3px; color:#777; font-size:0.82em;">Application #${applicationId}</div></div>`,
             bodyHtml: `
                 ${section('Application', applicationContent)}
-                ${section('Authoritative Relationships', immutableContent)}
+                ${section(
+                    'Authoritative Relationships',
+                    immutableContent
+                )}
                 ${section('Milestones', milestoneContent)}
                 ${section('Scope', scopeContent)}
+                ${section(
+                    'Special Requirements',
+                    specialRequirementContent
+                )}
                 ${section('Notes', notesContent)}
                 ${section('Lifecycle History', eventHtml)}
             `,
