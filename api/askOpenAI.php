@@ -6655,6 +6655,17 @@ if ($type === 'applicationSpecialRequirementCreate') {
         $requirementInput['dueUnix'] ?? null
     );
 
+    // Validate chronological requirement dates
+    if (
+        $requiredUnix !== null &&
+        $dueUnix !== null &&
+        $dueUnix < $requiredUnix
+    ) {
+        $returnRequirementCreateError(
+            'The due date cannot be before the required date.'
+        );
+    }
+
     // Resolve Action audit context
     $activitySessionId = trim((string)(
         $_SESSION['activitySessionId']
