@@ -5219,22 +5219,42 @@ function loadAuthoritativeApplicationDetail(
             $row['applicationStatusDescription'],
         'applicationCreatedByContactID' =>
             (int)$row['applicationCreatedByContactID'],
+
+        // Include authoritative creator
         'creator' => [
-            'contactId' => (int)$row['applicationCreatedByContactID'],
-            'contactFirstName' => $row['creatorFirstName'],
-            'contactLastName' => $row['creatorLastName'],
-            'contactTitle' => $row['creatorTitle']
+            'contactId' =>
+                (int)$row['applicationCreatedByContactID'],
+            'contactFirstName' =>
+                $row['creatorFirstName'],
+            'contactLastName' =>
+                $row['creatorLastName'],
+            'contactTitle' =>
+                $row['creatorTitle']
         ],
-        'applicationTitle' => $row['applicationTitle'],
-        'applicationJurisdiction' => $row['applicationJurisdiction'],
-        'applicationNumber' => $row['applicationNumber'],
-        'applicationPermitNumber' => $row['applicationPermitNumber'],
-        'applicationScope' => $row['applicationScope'],
-        'applicationNote' => $row['applicationNote'],
+
+        'applicationTitle' =>
+            $row['applicationTitle'],
+        'applicationJurisdiction' =>
+            $row['applicationJurisdiction'],
+        'applicationNumber' =>
+            $row['applicationNumber'],
+        'applicationPermitNumber' =>
+            $row['applicationPermitNumber'],
+        'applicationScope' =>
+            $row['applicationScope'],
+        'applicationNote' =>
+            $row['applicationNote'],
 
         // Include authoritative Application fees and totals
         'applicationFees' =>
             loadAuthoritativeApplicationFees(
+                $db,
+                $applicationId
+            ),
+
+        // Include authoritative Special Requirements
+        'applicationSpecialRequirements' =>
+            loadAuthoritativeApplicationSpecialRequirements(
                 $db,
                 $applicationId
             ),
@@ -5255,14 +5275,167 @@ function loadAuthoritativeApplicationDetail(
             $row['applicationFinaledUnix'] !== null
                 ? (int)$row['applicationFinaledUnix']
                 : null,
-        'applicationCreatedUnix' => (int)$row['applicationCreatedUnix'],
+        'applicationCreatedUnix' =>
+            (int)$row['applicationCreatedUnix'],
         'applicationUpdatedUnix' =>
             $row['applicationUpdatedUnix'] !== null
                 ? (int)$row['applicationUpdatedUnix']
                 : null,
-        'applicationIsNotValid' => (int)$row['applicationIsNotValid']
+        'applicationIsNotValid' =>
+            (int)$row['applicationIsNotValid']
     ];
 }
+
+// =====================================================
+// AUTHORITATIVE APPLICATION SPECIAL REQUIREMENTS
+// =====================================================
+
+function loadAuthoritativeApplicationSpecialRequirements(
+    PDO $db,
+    int $applicationId
+): array {
+    if ($applicationId <= 0) {
+        return [];
+    }
+
+    // Load active Special Requirements
+    $requirementStmt = $db->prepare("
+        SELECT
+            r.applicationSpecialRequirementID,
+            r.applicationID,
+            r.applicationSpecialRequirementStatusID,
+            r.applicationSpecialRequirementDescription,
+            r.applicationSpecialRequirementResponsibleParty,
+            r.applicationSpecialRequirementRequiredUnix,
+            r.applicationSpecialRequirementDueUnix,
+            r.applicationSpecialRequirementCompletedUnix,
+            r.applicationSpecialRequirementCreatedByContactID,
+            r.applicationSpecialRequirementCreatedUnix,
+            r.applicationSpecialRequirementUpdatedUnix,
+            r.applicationSpecialRequirementIsNotValid,
+            s.applicationSpecialRequirementStatusName,
+            s.applicationSpecialRequirementStatusDescription,
+            s.applicationSpecialRequirementStatusSortOrder,
+            s.applicationSpecialRequirementStatusIsClosed,
+            c.contactFirstName AS creatorFirstName,
+            c.contactLastName AS creatorLastName
+        FROM tblApplicationSpecialRequirements r
+        INNER JOIN tblApplicationSpecialRequirementStatuses s
+            ON s.applicationSpecialRequirementStatusID =
+               r.applicationSpecialRequirementStatusID
+        INNER JOIN tblContacts c
+            ON c.contactId =
+               r.applicationSpecialRequirementCreatedByContactID
+        WHERE r.applicationID = :applicationId
+          AND r.applicationSpecialRequirementIsNotValid = 0
+        ORDER BY
+            s.applicationSpecialRequirementStatusIsClosed ASC,
+            r.applicationSpecialRequirementDueUnix IS NULL ASC,
+            r.applicationSpecialRequirementDueUnix ASC,
+            r.applicationSpecialRequirementID ASC
+    ");
+
+    $requirementStmt->execute([
+        'applicationId' => $applicationId
+    ]);
+
+    $requirements = $requirementStmt->fetchAll(
+        PDO::FETCH_ASSOC
+    );
+
+    // Normalize authoritative value types
+    foreach ($requirements as &$requirement) {
+        $requirement[
+            'applicationSpecialRequirementID'
+        ] = (int)$requirement[
+            'applicationSpecialRequirementID'
+        ];
+
+        $requirement['applicationID'] = (int)$requirement[
+            'applicationID'
+        ];
+
+        $requirement[
+            'applicationSpecialRequirementStatusID'
+        ] = (int)$requirement[
+            'applicationSpecialRequirementStatusID'
+        ];
+
+        $requirement[
+            'applicationSpecialRequirementRequiredUnix'
+        ] = $requirement[
+            'applicationSpecialRequirementRequiredUnix'
+        ] !== null
+            ? (int)$requirement[
+                'applicationSpecialRequirementRequiredUnix'
+            ]
+            : null;
+
+        $requirement[
+            'applicationSpecialRequirementDueUnix'
+        ] = $requirement[
+            'applicationSpecialRequirementDueUnix'
+        ] !== null
+            ? (int)$requirement[
+                'applicationSpecialRequirementDueUnix'
+            ]
+            : null;
+
+        $requirement[
+            'applicationSpecialRequirementCompletedUnix'
+        ] = $requirement[
+            'applicationSpecialRequirementCompletedUnix'
+        ] !== null
+            ? (int)$requirement[
+                'applicationSpecialRequirementCompletedUnix'
+            ]
+            : null;
+
+        $requirement[
+            'applicationSpecialRequirementCreatedByContactID'
+        ] = (int)$requirement[
+            'applicationSpecialRequirementCreatedByContactID'
+        ];
+
+        $requirement[
+            'applicationSpecialRequirementCreatedUnix'
+        ] = (int)$requirement[
+            'applicationSpecialRequirementCreatedUnix'
+        ];
+
+        $requirement[
+            'applicationSpecialRequirementUpdatedUnix'
+        ] = $requirement[
+            'applicationSpecialRequirementUpdatedUnix'
+        ] !== null
+            ? (int)$requirement[
+                'applicationSpecialRequirementUpdatedUnix'
+            ]
+            : null;
+
+        $requirement[
+            'applicationSpecialRequirementStatusSortOrder'
+        ] = (int)$requirement[
+            'applicationSpecialRequirementStatusSortOrder'
+        ];
+
+        $requirement[
+            'applicationSpecialRequirementStatusIsClosed'
+        ] = (int)$requirement[
+            'applicationSpecialRequirementStatusIsClosed'
+        ];
+
+        $requirement[
+            'applicationSpecialRequirementIsNotValid'
+        ] = (int)$requirement[
+            'applicationSpecialRequirementIsNotValid'
+        ];
+    }
+    unset($requirement);
+
+    return $requirements;
+}
+
 
 function loadAuthoritativeApplicationEvents(
     PDO $db,
