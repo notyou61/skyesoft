@@ -7324,7 +7324,7 @@ if ($type === 'applicationSpecialRequirementUpdate') {
             'description' => $description,
             'responsibleParty' => $responsibleParty,
             'requiredUnix' => $requiredUnix,
-            'dueUnixUnix' => $dueUnix,
+            'dueUnix' => $dueUnix,
             'completedUnix' => $completedUnix,
             'updatedUnix' => $updatedUnix,
             'requirementId' => $requirementId,
