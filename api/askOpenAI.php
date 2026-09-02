@@ -5669,6 +5669,7 @@ function loadAuthoritativeApplicationNotes(
 }
 
 function loadApplicationWorkflowOptions(PDO $db): array {
+    // Load active Application stages
     $stageStmt = $db->query("
         SELECT
             applicationStageID,
@@ -5680,6 +5681,7 @@ function loadApplicationWorkflowOptions(PDO $db): array {
         ORDER BY applicationStageSortOrder ASC
     ");
 
+    // Load active Application statuses
     $statusStmt = $db->query("
         SELECT
             applicationStatusID,
@@ -5694,39 +5696,88 @@ function loadApplicationWorkflowOptions(PDO $db): array {
             applicationStatusSortOrder ASC
     ");
 
+    // Load active Special Requirement statuses
+    $requirementStatusStmt = $db->query("
+        SELECT
+            applicationSpecialRequirementStatusID,
+            applicationSpecialRequirementStatusName,
+            applicationSpecialRequirementStatusDescription,
+            applicationSpecialRequirementStatusSortOrder,
+            applicationSpecialRequirementStatusIsClosed
+        FROM tblApplicationSpecialRequirementStatuses
+        WHERE applicationSpecialRequirementStatusIsActive = 1
+        ORDER BY
+            applicationSpecialRequirementStatusSortOrder ASC
+    ");
+
+    // Resolve query results
     $stages = $stageStmt
         ? $stageStmt->fetchAll(PDO::FETCH_ASSOC)
         : [];
+
     $statuses = $statusStmt
         ? $statusStmt->fetchAll(PDO::FETCH_ASSOC)
         : [];
 
+    $requirementStatuses = $requirementStatusStmt
+        ? $requirementStatusStmt->fetchAll(PDO::FETCH_ASSOC)
+        : [];
+
+    // Normalize Application stages
     foreach ($stages as &$stage) {
-        $stage['applicationStageID'] = (int)$stage[
-            'applicationStageID'
-        ];
-        $stage['applicationStageSortOrder'] = (int)$stage[
-            'applicationStageSortOrder'
-        ];
+        $stage['applicationStageID'] =
+            (int)$stage['applicationStageID'];
+
+        $stage['applicationStageSortOrder'] =
+            (int)$stage['applicationStageSortOrder'];
     }
     unset($stage);
 
+    // Normalize Application statuses
     foreach ($statuses as &$status) {
-        $status['applicationStatusID'] = (int)$status[
-            'applicationStatusID'
-        ];
-        $status['applicationStageID'] = (int)$status[
-            'applicationStageID'
-        ];
-        $status['applicationStatusSortOrder'] = (int)$status[
-            'applicationStatusSortOrder'
-        ];
+        $status['applicationStatusID'] =
+            (int)$status['applicationStatusID'];
+
+        $status['applicationStageID'] =
+            (int)$status['applicationStageID'];
+
+        $status['applicationStatusSortOrder'] =
+            (int)$status['applicationStatusSortOrder'];
     }
     unset($status);
 
+    // Normalize Special Requirement statuses
+    foreach (
+        $requirementStatuses as
+        &$requirementStatus
+    ) {
+        $requirementStatus[
+            'applicationSpecialRequirementStatusID'
+        ] = (int)$requirementStatus[
+            'applicationSpecialRequirementStatusID'
+        ];
+
+        $requirementStatus[
+            'applicationSpecialRequirementStatusSortOrder'
+        ] = (int)$requirementStatus[
+            'applicationSpecialRequirementStatusSortOrder'
+        ];
+
+        $requirementStatus[
+            'applicationSpecialRequirementStatusIsClosed'
+        ] = (int)$requirementStatus[
+            'applicationSpecialRequirementStatusIsClosed'
+        ];
+    }
+    unset($requirementStatus);
+
     return [
-        'applicationStages' => $stages,
-        'applicationStatuses' => $statuses
+        'applicationStages' =>
+            $stages,
+        'applicationStatuses' =>
+            $statuses,
+        'applicationSpecialRequirementStatuses' =>
+            $requirementStatuses
     ];
 }
 
@@ -6481,9 +6532,17 @@ if ($type === 'applicationDetail') {
             'events' => $events,
             'notes' => $notes,
             'applicationStages' =>
-                $workflowOptions['applicationStages'],
+                $workflowOptions[
+                    'applicationStages'
+                ],
             'applicationStatuses' =>
-                $workflowOptions['applicationStatuses'],
+                $workflowOptions[
+                    'applicationStatuses'
+                ],
+            'applicationSpecialRequirementStatuses' =>
+                $workflowOptions[
+                    'applicationSpecialRequirementStatuses'
+                ],
             'actionID' => $actionId,
             'error' => null
         ], JSON_UNESCAPED_SLASHES);
