@@ -7951,24 +7951,44 @@ if ($type === 'applicationUpdate') {
 // =====================================================
 
 if ($type === 'applicationNoteCreate') {
-    $applicationId = (int)($input['applicationID'] ?? 0);
+    // Resolve authoritative identifiers
+    $applicationId = (int)(
+        $input['applicationID'] ?? 0
+    );
+
+    $requirementId = (int)(
+        $input['applicationSpecialRequirementID'] ?? 0
+    );
+
     $actorContactId = (int)(
         $_SESSION['SKYESOFT_contactId']
         ?? $_SESSION['contactId']
         ?? 0
     );
-    $noteText = trim((string)($input['noteText'] ?? ''));
+
+    $noteText = trim((string)(
+        $input['noteText'] ?? ''
+    ));
+
+    // Resolve Action audit context
     $activitySessionId = trim((string)(
         $_SESSION['activitySessionId']
         ?? session_id()
     ));
+
     $activitySessionId = $activitySessionId !== ''
         ? $activitySessionId
         : null;
-    $latitude = is_numeric($input['latitude'] ?? null)
+
+    $latitude = is_numeric(
+        $input['latitude'] ?? null
+    )
         ? (float)$input['latitude']
         : null;
-    $longitude = is_numeric($input['longitude'] ?? null)
+
+    $longitude = is_numeric(
+        $input['longitude'] ?? null
+    )
         ? (float)$input['longitude']
         : null;
 
@@ -7983,59 +8003,119 @@ if ($type === 'applicationNoteCreate') {
         exit;
     };
 
+    // Validate required values
     if ($applicationId <= 0 || $actorContactId <= 0) {
         $returnNoteCreateError(
             'A valid Application and authenticated Company Contact are required.'
         );
     }
+
     if ($noteText === '') {
-        $returnNoteCreateError('Note text is required.');
+        $returnNoteCreateError(
+            'Note text is required.'
+        );
     }
+
     if (strlen($noteText) > 65535) {
-        $returnNoteCreateError('Note text is too long.');
+        $returnNoteCreateError(
+            'Note text is too long.'
+        );
     }
 
     try {
-        requireAuthenticatedCompanyContact($db, $actorContactId);
-
-        $application = loadAuthoritativeApplicationDetail(
+        // Require authenticated Company Contact
+        requireAuthenticatedCompanyContact(
             $db,
-            $applicationId
+            $actorContactId
         );
+
+        // Validate authoritative Application
+        $application =
+            loadAuthoritativeApplicationDetail(
+                $db,
+                $applicationId
+            );
+
         if (!is_array($application)) {
-            $returnNoteCreateError('Application was not found.');
+            $returnNoteCreateError(
+                'Application was not found.'
+            );
         }
 
-        $db->beginTransaction();
+        // Validate optional Requirement relationship
+        if ($requirementId > 0) {
+            $requirementStmt = $db->prepare("
+                SELECT
+                    applicationSpecialRequirementID
+                FROM tblApplicationSpecialRequirements
+                WHERE applicationSpecialRequirementID =
+                    :requirementId
+                  AND applicationID =
+                    :applicationId
+                  AND applicationSpecialRequirementIsNotValid = 0
+                LIMIT 1
+            ");
+
+            $requirementStmt->execute([
+                'requirementId' => $requirementId,
+                'applicationId' => $applicationId
+            ]);
+
+            if (!$requirementStmt->fetchColumn()) {
+                $returnNoteCreateError(
+                    'Special Requirement was not found for this Application.'
+                );
+            }
+        }
+
+        // Resolve authoritative Note subject
+        $subjectType = $requirementId > 0
+            ? 'application_special_requirement'
+            : 'application';
+
         $createdUnix = time();
 
+        // Begin atomic governed mutation
+        $db->beginTransaction();
+
+        // Create Application or Requirement Note
         $insertStmt = $db->prepare("
             INSERT INTO tblNotes (
                 noteApplicationID,
+                noteApplicationSpecialRequirementID,
                 noteAuthorContactID,
                 noteText,
                 noteCreatedUnix,
                 noteIsNotValid
             ) VALUES (
                 :applicationId,
+                :requirementId,
                 :authorContactId,
                 :noteText,
                 :createdUnix,
                 0
             )
         ");
+
         $insertStmt->execute([
             'applicationId' => $applicationId,
+            'requirementId' => $requirementId > 0
+                ? $requirementId
+                : null,
             'authorContactId' => $actorContactId,
             'noteText' => $noteText,
             'createdUnix' => $createdUnix
         ]);
+
         $noteId = (int)$db->lastInsertId();
 
         if ($noteId <= 0) {
-            throw new RuntimeException('Note could not be created.');
+            throw new RuntimeException(
+                'Note could not be created.'
+            );
         }
 
+        // Resolve Note create Action Type
         $actionTypeStmt = $db->prepare("
             SELECT actionTypeId
             FROM tblActionTypes
@@ -8043,8 +8123,12 @@ if ($type === 'applicationNoteCreate') {
               AND crud_class = 'create'
             LIMIT 1
         ");
+
         $actionTypeStmt->execute();
-        $actionTypeId = (int)($actionTypeStmt->fetchColumn() ?: 0);
+
+        $actionTypeId = (int)(
+            $actionTypeStmt->fetchColumn() ?: 0
+        );
 
         if ($actionTypeId <= 0) {
             throw new RuntimeException(
@@ -8052,17 +8136,28 @@ if ($type === 'applicationNoteCreate') {
             );
         }
 
+        // Create one governed Action
         $actionId = insertActionPrompt([
             'actionTypeId' => $actionTypeId,
             'contactId' => $actorContactId,
             'origin' => ACTION_ORIGIN_USER,
+            'createdUnixTime' => $createdUnix,
             'activitySessionId' => $activitySessionId,
-            'promptText' => 'Add Application Note',
-            'responseText' => sprintf(
-                'Added Note #%d to Application #%d.',
-                $noteId,
-                $applicationId
-            ),
+            'promptText' => $requirementId > 0
+                ? 'Add Special Requirement Note'
+                : 'Add Application Note',
+            'responseText' => $requirementId > 0
+                ? sprintf(
+                    'Added Note #%d to Special Requirement #%d for Application #%d.',
+                    $noteId,
+                    $requirementId,
+                    $applicationId
+                )
+                : sprintf(
+                    'Added Note #%d to Application #%d.',
+                    $noteId,
+                    $applicationId
+                ),
             'intent' => 'note.create',
             'intentConfidence' => 1.00,
             'latitude' => $latitude,
@@ -8070,14 +8165,22 @@ if ($type === 'applicationNoteCreate') {
             'actionPayloadData' => [
                 'operation' => 'note.create',
                 'noteID' => $noteId,
-                'subjectType' => 'application',
+                'subjectType' => $subjectType,
                 'applicationID' => $applicationId,
+                'applicationSpecialRequirementID' =>
+                    $requirementId > 0
+                        ? $requirementId
+                        : null,
                 'noteText' => $noteText
             ],
             'actionResponseData' => [
                 'success' => true,
                 'noteID' => $noteId,
-                'applicationID' => $applicationId
+                'applicationID' => $applicationId,
+                'applicationSpecialRequirementID' =>
+                    $requirementId > 0
+                        ? $requirementId
+                        : null
             ]
         ], $db);
 
@@ -8087,16 +8190,22 @@ if ($type === 'applicationNoteCreate') {
             );
         }
 
+        // Reload authoritative Application Notes
         $notes = loadAuthoritativeApplicationNotes(
             $db,
             $applicationId
         );
+
         $db->commit();
 
         echo json_encode([
             'success' => true,
             'type' => 'application_note_create',
             'applicationID' => $applicationId,
+            'applicationSpecialRequirementID' =>
+                $requirementId > 0
+                    ? $requirementId
+                    : null,
             'noteID' => $noteId,
             'notes' => $notes,
             'actionID' => $actionId,
@@ -8108,11 +8217,15 @@ if ($type === 'applicationNoteCreate') {
         if ($db->inTransaction()) {
             $db->rollBack();
         }
+
         error_log(
             '[askOpenAI] applicationNoteCreate failed: ' .
             $e->getMessage()
         );
-        $returnNoteCreateError('Unable to add the Note.');
+
+        $returnNoteCreateError(
+            'Unable to add the Note.'
+        );
     }
 }
 

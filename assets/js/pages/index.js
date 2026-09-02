@@ -11425,8 +11425,17 @@ window.SkyIndex = {
             }).join('')
             : '<div style="color:#888; font-size:0.86em;">No lifecycle events.</div>';
 
-        const noteHtml = notes.length
-            ? notes.map(note => {
+        // Resolve Application-level Notes only
+        const applicationNotes = notes.filter(note =>
+            Number(
+                note
+                    ?.noteApplicationSpecialRequirementID ||
+                0
+            ) <= 0
+        );
+
+        const noteHtml = applicationNotes.length
+            ? applicationNotes.map(note => {
                 const authorName = [
                     note.authorFirstName,
                     note.authorLastName
