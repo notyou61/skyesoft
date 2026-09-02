@@ -9,24 +9,6 @@ declare(strict_types=1);
 
 // #region SECTION I — Structured AI Context
 
-function formatApplicationStatusPayloadDate(
-    mixed $unix
-): ?string {
-    if (!is_numeric($unix) || (int)$unix <= 0) {
-        return null;
-    }
-
-    $date = new DateTimeImmutable(
-        '@' . (int)$unix
-    );
-
-    $date = $date->setTimezone(
-        new DateTimeZone('America/Phoenix')
-    );
-
-    return $date->format('F j, Y');
-}
-
 function buildApplicationStatusReportPayload(
     array $application,
     int $generatedUnix
