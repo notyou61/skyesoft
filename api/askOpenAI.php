@@ -47,6 +47,8 @@ header("Content-Type: application/json; charset=UTF-8");
 // ─────────────────────────────────────────
 require_once __DIR__ . '/sessionBootstrap.php';
 
+require_once __DIR__ . '/utils/applicationStatusReportData.php';
+
 // ─────────────────────────────────────────
 // 🌍 Load environment
 // ─────────────────────────────────────────
@@ -4040,6 +4042,230 @@ if ($type === 'openApplicationsReportSummary') {
             'error' => 'Unable to prepare the Application report summary.'
         ], JSON_UNESCAPED_SLASHES);
         exit;
+    }
+}
+
+// =====================================================
+// APPLICATION STATUS REPORT SUMMARY
+// =====================================================
+
+if ($type === 'applicationStatusReportSummary') {
+    $applicationId = (int)(
+        $input['applicationID']
+        ?? 0
+    );
+    $actorContactId = (int)(
+        $_SESSION['SKYESOFT_contactId']
+        ?? $_SESSION['contactId']
+        ?? 0
+    );
+
+    $returnApplicationSummaryError = static function (
+        string $message
+    ): never {
+        echo json_encode([
+            'success' => false,
+            'type' => 'application_status_report_summary',
+            'error' => $message
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    };
+
+    if ($applicationId <= 0) {
+        $returnApplicationSummaryError(
+            'A valid Application is required.'
+        );
+    }
+
+    if ($actorContactId <= 0) {
+        $returnApplicationSummaryError(
+            'An authenticated Company Contact is required.'
+        );
+    }
+
+    try {
+        requireAuthenticatedCompanyContact(
+            $db,
+            $actorContactId
+        );
+
+        $application = loadAuthoritativeApplicationDetail(
+            $db,
+            $applicationId
+        );
+
+        if (
+            !is_array($application) ||
+            (int)($application[
+                'applicationIsNotValid'
+            ] ?? 1) !== 0
+        ) {
+            $returnApplicationSummaryError(
+                'Application was not found.'
+            );
+        }
+
+        $generatedUnix = time();
+
+        $reportPayload =
+            buildApplicationStatusReportPayload(
+                $application,
+                $generatedUnix
+            );
+
+        $reportFingerprint =
+            fingerprintApplicationStatusReportPayload(
+                $reportPayload
+            );
+
+        $fallbackSummary =
+            buildApplicationStatusFallbackSummary(
+                $reportPayload
+            );
+
+        $promptPath = $root .
+            '/codex/prompts/' .
+            'applicationStatusReportSummary.prompt.md';
+
+        $summaryNarrative = null;
+        $summarySource =
+            'det codes_fallback';
+
+        // Generate AI summary when the prompt is available
+        if (
+            is_file($promptPath) &&
+            is_readable($promptPath)
+        ) {
+            $promptTemplate = file_get_contents(
+                $promptPath
+            );
+
+            $applicationJson = json_encode(
+                $reportPayload,
+                JSON_PRETTY_PRINT |
+                JSON_UNESCAPED_SLASHES |
+                JSON_INVALID_UTF8_SUBSTITUTE
+            );
+
+            if (
+                is_string($promptTemplate) &&
+                trim($promptTemplate) !== '' &&
+                is_string($applicationJson)
+            ) {
+                $fullPrompt = str_replace(
+                    '{{APPLICATION_JSON}}',
+                    $applicationJson,
+                    $promptTemplate
+                );
+
+                $aiSummary = callOpenAI(
+                    $fullPrompt,
+                    $apiKey,
+                    'gpt-4o-mini'
+                );
+
+                if (
+                    is_string($aiSummary) &&
+                    trim($aiSummary) !== ''
+                ) {
+                    $summaryNarrative = preg_replace(
+                        '/\s+/u',
+                        ' ',
+                        strip_tags(
+                            trim($aiSummary)
+                        )
+                    );
+
+                    $summaryNarrative = trim(
+                        (string)$summaryNarrative
+                    );
+
+                    if ($summaryNarrative !== '') {
+                        $summaryNarrative = substr(
+                            $summaryNarrative,
+                            0,
+                            2000
+                        );
+
+                        $summarySource =
+                            'askOpenAI.php';
+                    }
+                }
+            }
+        }
+
+        // Use deterministic narrative when AI is unavailable
+        if (
+            $summaryNarrative === null ||
+            $summaryNarrative === ''
+        ) {
+            $summaryNarrative =
+                $fallbackSummary;
+        }
+
+        // Cache summary by Application
+        if (
+            !isset(
+                $_SESSION[
+                    'applicationStatusReportSummaries'
+                ]
+            ) ||
+            !is_array(
+                $_SESSION[
+                    'applicationStatusReportSummaries'
+                ]
+            )
+        ) {
+            $_SESSION[
+                'applicationStatusReportSummaries'
+            ] = [];
+        }
+
+        $_SESSION[
+            'applicationStatusReportSummaries'
+        ][(string)$applicationId] = [
+            'applicationID' =>
+                $applicationId,
+            'applicationUpdatedUnix' =>
+                $application[
+                    'applicationUpdatedUnix'
+                ],
+            'fingerprint' =>
+                $reportFingerprint,
+            'summaryNarrative' =>
+                $summaryNarrative,
+            'summarySource' =>
+                $summarySource,
+            'generatedUnix' =>
+                $generatedUnix
+        ];
+
+        echo json_encode([
+            'success' => true,
+            'type' =>
+                'application_status_report_summary',
+            'applicationID' =>
+                $applicationId,
+            'summaryNarrative' =>
+                $summaryNarrative,
+            'summarySource' =>
+                $summarySource,
+            'reportFingerprint' =>
+                $reportFingerprint,
+            'error' => null
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+
+    } catch (Throwable $e) {
+        error_log(
+            '[askOpenAI] ' .
+            'applicationStatusReportSummary failed: ' .
+            $e->getMessage()
+        );
+
+        $returnApplicationSummaryError(
+            'Unable to prepare the Application status summary.'
+        );
     }
 }
 

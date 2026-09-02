@@ -134,6 +134,42 @@ function formatApplicationReportMoney(
     );
 }
 
+function renderApplicationReportSectionHeading(
+    string $title,
+    string $iconFile,
+    string|false $rootDir
+): string {
+    // Restrict icon resolution to one safe filename
+    $resolvedIconFile = basename($iconFile);
+    $iconPath = $rootDir !== false
+        ? $rootDir .
+            '/assets/images/icons/' .
+            $resolvedIconFile
+        : '';
+
+    $iconHtml = '';
+
+    // Render local report icon when available
+    if ($iconPath !== '' && is_file($iconPath)) {
+        $iconSource = 'file://' . $iconPath;
+
+        $iconHtml = sprintf(
+            '<img class="section-icon" src="%s" alt="">',
+            htmlspecialchars(
+                $iconSource,
+                ENT_QUOTES,
+                'UTF-8'
+            )
+        );
+    }
+
+    return sprintf(
+        '<div class="section-heading">%s<span>%s</span></div>',
+        $iconHtml,
+        escapeApplicationReportValue($title)
+    );
+}
+
 function buildApplicationStatusSummary(string $stageName): string
 {
     switch (strtolower(trim($stageName))) {
@@ -461,14 +497,28 @@ ob_start();
         .section {
             margin-top: 8px;
         }
-
         .section-heading {
             margin-bottom: 3px;
             padding-bottom: 2px;
             color: #14377c;
             font-size: 12px;
             font-weight: bold;
+            line-height: 14px;
             border-bottom: 2px solid #14377c;
+        }
+
+        .section-heading span {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .section-icon {
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            margin-right: 5px;
+            vertical-align: middle;
+            object-fit: contain;
         }
 
         .data-table,
