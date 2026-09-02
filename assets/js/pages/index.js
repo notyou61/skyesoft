@@ -14001,7 +14001,8 @@ window.SkyIndex = {
     // #region External Application Status Report
 
     async openApplicationStatusReport(applicationId) {
-        const resolvedApplicationId = Number(applicationId || 0);
+        const resolvedApplicationId =
+            Number(applicationId || 0);
 
         if (resolvedApplicationId <= 0) {
             this.appendSystemLine(
@@ -14010,7 +14011,10 @@ window.SkyIndex = {
             return;
         }
 
-        const reportWindow = window.open('', '_blank');
+        const reportWindow = window.open(
+            '',
+            '_blank'
+        );
 
         if (!reportWindow) {
             this.appendSystemLine(
@@ -14019,49 +14023,138 @@ window.SkyIndex = {
             return;
         }
 
+        reportWindow.opener = null;
+
         reportWindow.document.write(
-            '<!DOCTYPE html><html><head><title>Preparing Application Status Report</title></head><body style="font-family:Arial,sans-serif;padding:24px;">Preparing Application Status Report...</body></html>'
+            '<!DOCTYPE html>' +
+            '<html>' +
+            '<head>' +
+            '<title>Preparing Application Status Report</title>' +
+            '</head>' +
+            '<body style="font-family:Arial,sans-serif;padding:24px;color:#444;">' +
+            'Preparing the Application Status Report summary...' +
+            '</body>' +
+            '</html>'
         );
+
         reportWindow.document.close();
 
         try {
-            let actionLocation = await this.getLocationSafe();
+            let actionLocation =
+                await this.getLocationSafe();
 
             if (
                 actionLocation?.latitude !== null &&
                 actionLocation?.longitude !== null
             ) {
-                this.lastLocation = actionLocation;
+                this.lastLocation =
+                    actionLocation;
             } else if (this.lastLocation) {
-                actionLocation = this.lastLocation;
+                actionLocation =
+                    this.lastLocation;
             }
 
-            const form = document.createElement('form');
+            // Prepare governed Application Status summary
+            try {
+                const summaryResponse = await fetch(
+                    '/skyesoft/api/askOpenAI.php',
+                    {
+                        method: 'POST',
+                        credentials: 'include',
+                        cache: 'no-store',
+                        headers: {
+                            'Content-Type':
+                                'application/json'
+                        },
+                        body: JSON.stringify({
+                            type:
+                                'applicationStatusReportSummary',
+                            applicationID:
+                                resolvedApplicationId
+                        })
+                    }
+                );
+
+                const summaryText =
+                    await summaryResponse.text();
+
+                let summaryData;
+
+                try {
+                    summaryData =
+                        JSON.parse(summaryText);
+                } catch (parseError) {
+                    throw new Error(
+                        'The server returned invalid summary JSON.'
+                    );
+                }
+
+                if (
+                    !summaryResponse.ok ||
+                    !summaryData?.success
+                ) {
+                    throw new Error(
+                        summaryData?.error ||
+                        'The report summary was unavailable.'
+                    );
+                }
+            } catch (summaryError) {
+                // Continue PDF with deterministic fallback
+                console.warn(
+                    '[Application Status Report] ' +
+                    'Summary unavailable:',
+                    summaryError
+                );
+            }
+
+            // Submit governed PDF request
+            const form =
+                document.createElement('form');
+
             form.method = 'POST';
-            form.action = '/skyesoft/scripts/applicationStatusReport.php';
-            form.target = reportWindow.name || 'applicationStatusReport';
+            form.action =
+                '/skyesoft/scripts/applicationStatusReport.php';
+            form.target =
+                reportWindow.name ||
+                'applicationStatusReport';
             form.style.display = 'none';
 
             if (!reportWindow.name) {
-                reportWindow.name = 'applicationStatusReport';
-                form.target = reportWindow.name;
+                reportWindow.name =
+                    'applicationStatusReport';
+                form.target =
+                    reportWindow.name;
             }
 
-            const addField = (name, value) => {
-                const field = document.createElement('input');
+            // Add report request field
+            const addField = (
+                name,
+                value
+            ) => {
+                const field =
+                    document.createElement('input');
+
                 field.type = 'hidden';
                 field.name = name;
-                field.value = value === null || value === undefined
-                    ? ''
-                    : String(value);
+                field.value =
+                    value === null ||
+                    value === undefined
+                        ? ''
+                        : String(value);
+
                 form.appendChild(field);
             };
 
-            addField('applicationID', resolvedApplicationId);
+            addField(
+                'applicationID',
+                resolvedApplicationId
+            );
+
             addField(
                 'latitude',
                 actionLocation?.latitude ?? null
             );
+
             addField(
                 'longitude',
                 actionLocation?.longitude ?? null
@@ -14076,9 +14169,14 @@ window.SkyIndex = {
                 '[Application Status Report] Open failed:',
                 error
             );
+
             reportWindow.close();
+
             this.appendSystemLine(
-                `Unable to open Application Status Report: ${error?.message || 'Unknown error'}`
+                `Unable to open Application Status Report: ${
+                    error?.message ||
+                    'Unknown error'
+                }`
             );
         }
     },
