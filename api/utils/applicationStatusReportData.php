@@ -73,20 +73,16 @@ function buildApplicationStatusReportPayload(
                 'responsibleParty' => trim((string)($requirement[
                     'applicationSpecialRequirementResponsibleParty'
                 ] ?? '')),
-                'requiredUnix' => is_numeric($requirement[
-                    'applicationSpecialRequirementRequiredUnix'
-                ] ?? null)
-                    ? (int)$requirement[
+                'requiredDate' => formatApplicationStatusPayloadDate(
+                    $requirement[
                         'applicationSpecialRequirementRequiredUnix'
-                    ]
-                    : null,
-                'dueUnix' => is_numeric($requirement[
-                    'applicationSpecialRequirementDueUnix'
-                ] ?? null)
-                    ? (int)$requirement[
+                    ] ?? null
+                ),
+                'dueDate' => formatApplicationStatusPayloadDate(
+                    $requirement[
                         'applicationSpecialRequirementDueUnix'
-                    ]
-                    : null
+                    ] ?? null
+                )
             ];
         },
         $activeRequirements
@@ -103,21 +99,19 @@ function buildApplicationStatusReportPayload(
 
     $normalizedFeeRows = array_map(
         static function (array $fee): array {
-            $paidUnix = is_numeric($fee['feePaidUnix'] ?? null)
-                ? (int)$fee['feePaidUnix']
-                : null;
+            $paidDate = formatApplicationStatusPayloadDate(
+                $fee['feePaidUnix'] ?? null
+            );
 
             return [
                 'category' => trim((string)($fee['feeCategory'] ?? '')),
                 'amount' => round((float)($fee['feeAmount'] ?? 0), 2),
                 'description' => trim((string)($fee['feeNote'] ?? '')),
-                'assessedUnix' => is_numeric(
+                'assessedDate' => formatApplicationStatusPayloadDate(
                     $fee['feeAssessedUnix'] ?? null
-                )
-                    ? (int)$fee['feeAssessedUnix']
-                    : null,
-                'paidUnix' => $paidUnix,
-                'status' => $paidUnix !== null
+                ),
+                'paidDate' => $paidDate,
+                'status' => $paidDate !== null
                     ? 'Paid'
                     : 'Outstanding'
             ];
@@ -177,36 +171,24 @@ function buildApplicationStatusReportPayload(
             'statusDescription' => trim((string)(
                 $application['applicationStatusDescription'] ?? ''
             )),
-            'receivedUnix' => is_numeric(
+            'receivedDate' => formatApplicationStatusPayloadDate(
                 $application['applicationCreatedUnix'] ?? null
-            )
-                ? (int)$application['applicationCreatedUnix']
-                : null,
-            'submittedUnix' => is_numeric(
+            ),
+            'submittedDate' => formatApplicationStatusPayloadDate(
                 $application['applicationSubmittedUnix'] ?? null
-            )
-                ? (int)$application['applicationSubmittedUnix']
-                : null,
-            'approvedUnix' => is_numeric(
+            ),
+            'approvedDate' => formatApplicationStatusPayloadDate(
                 $application['applicationApprovedUnix'] ?? null
-            )
-                ? (int)$application['applicationApprovedUnix']
-                : null,
-            'issuedUnix' => is_numeric(
+            ),
+            'issuedDate' => formatApplicationStatusPayloadDate(
                 $application['applicationIssuedUnix'] ?? null
-            )
-                ? (int)$application['applicationIssuedUnix']
-                : null,
-            'finaledUnix' => is_numeric(
+            ),
+            'finaledDate' => formatApplicationStatusPayloadDate(
                 $application['applicationFinaledUnix'] ?? null
-            )
-                ? (int)$application['applicationFinaledUnix']
-                : null,
-            'updatedUnix' => is_numeric(
+            ),
+            'updatedDate' => formatApplicationStatusPayloadDate(
                 $application['applicationUpdatedUnix'] ?? null
             )
-                ? (int)$application['applicationUpdatedUnix']
-                : null
         ],
         'specialRequirements' => [
             'activeCount' => count($requirementRows),
@@ -270,21 +252,17 @@ function buildApplicationStatusFallbackSummary(array $payload): string
     $subject = $location !== ''
         ? $location
         : ($customer !== '' ? $customer : 'This permit application');
-    $receivedUnix = is_numeric($application['receivedUnix'] ?? null)
-        ? (int)$application['receivedUnix']
-        : null;
-    $submittedUnix = is_numeric($application['submittedUnix'] ?? null)
-        ? (int)$application['submittedUnix']
-        : null;
+    $receivedDate = trim((string)($application['receivedDate'] ?? ''));
+    $submittedDate = trim((string)($application['submittedDate'] ?? ''));
     $stage = trim((string)($application['stage'] ?? ''));
     $status = trim((string)($application['status'] ?? ''));
     $sentences = [];
 
-    $sentences[] = $receivedUnix !== null
+    $sentences[] = $receivedDate !== ''
         ? sprintf(
             'The permit application for %s was received by Christy Signs on %s.',
             $subject,
-            date('F j, Y', $receivedUnix)
+            $receivedDate
         )
         : sprintf(
             'Christy Signs is coordinating the permit application for %s.',
@@ -299,10 +277,10 @@ function buildApplicationStatusFallbackSummary(array $payload): string
         );
     }
 
-    $sentences[] = $submittedUnix !== null
+    $sentences[] = $submittedDate !== ''
         ? sprintf(
             'It was submitted to the jurisdiction on %s.',
-            date('F j, Y', $submittedUnix)
+            $submittedDate
         )
         : 'It has not yet been submitted to the jurisdiction.';
 
