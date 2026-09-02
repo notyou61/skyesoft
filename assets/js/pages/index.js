@@ -10965,6 +10965,168 @@ window.SkyIndex = {
                                 })
                                 .join('');
 
+                        // Render Notes linked only to this Special Requirement
+                        const requirementNotes = notes.filter(note =>
+                            Number(
+                                note
+                                    ?.noteApplicationSpecialRequirementID ||
+                                0
+                            ) === requirementId
+                        );
+
+                        const requirementNoteHtml =
+                            requirementNotes.length
+                                ? requirementNotes
+                                    .map(note => {
+                                        const noteId = Number(
+                                            note.noteID || 0
+                                        );
+                                        const authorName = [
+                                            note.authorFirstName,
+                                            note.authorLastName
+                                        ].filter(Boolean).join(' ');
+                                        const updaterName = [
+                                            note.updaterFirstName,
+                                            note.updaterLastName
+                                        ].filter(Boolean).join(' ');
+                                        const updatedDetail =
+                                            note.noteUpdatedUnix
+                                                ? ` · Updated ${
+                                                    formatDate(
+                                                        note.noteUpdatedUnix
+                                                    )
+                                                }${
+                                                    updaterName
+                                                        ? ` by ${
+                                                            escape(
+                                                                updaterName
+                                                            )
+                                                        }`
+                                                        : ''
+                                                }`
+                                                : '';
+
+                                        return `
+                                            <div
+                                                id="applicationNoteRow${
+                                                    noteId
+                                                }"
+                                                style="
+                                                    padding:8px 0;
+                                                    border-bottom:1px solid #e5e7eb;
+                                                "
+                                            >
+                                                <div
+                                                    id="applicationNoteDisplay${
+                                                        noteId
+                                                    }"
+                                                >
+                                                    <div style="
+                                                        white-space:pre-wrap;
+                                                        color:#333;
+                                                        font-size:0.84em;
+                                                        line-height:1.45;
+                                                    ">${
+                                                        escape(note.noteText)
+                                                    }</div>
+
+                                                    <div style="
+                                                        display:flex;
+                                                        justify-content:space-between;
+                                                        align-items:center;
+                                                        gap:10px;
+                                                        margin-top:5px;
+                                                    ">
+                                                        <div style="
+                                                            color:#888;
+                                                            font-size:0.73em;
+                                                        ">
+                                                            ${
+                                                                escape(
+                                                                    authorName ||
+                                                                    'Unknown'
+                                                                )
+                                                            }
+                                                            · ${
+                                                                formatDate(
+                                                                    note.noteCreatedUnix
+                                                                )
+                                                            }${updatedDetail}
+                                                        </div>
+
+                                                        ${
+                                                            !isEditing
+                                                                ? `
+                                                                    <div style="display:flex; gap:6px;">
+                                                                        <button
+                                                                            type="button"
+                                                                            onclick="SkyIndex.editApplicationNote(${noteId})"
+                                                                            style="padding:3px 8px; border:1px solid #d1d5db; border-radius:5px; background:#fff; font-size:0.73em; cursor:pointer;"
+                                                                        >
+                                                                            Edit
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onclick="SkyIndex.invalidateApplicationNote(${applicationId}, ${noteId})"
+                                                                            style="padding:3px 8px; border:1px solid #ef4444; border-radius:5px; background:#fff; color:#b91c1c; font-size:0.73em; cursor:pointer;"
+                                                                        >
+                                                                            Invalidate
+                                                                        </button>
+                                                                    </div>
+                                                                `
+                                                                : ''
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    id="applicationNoteEdit${
+                                                        noteId
+                                                    }"
+                                                    style="display:none;"
+                                                >
+                                                    <textarea
+                                                        id="applicationNoteEditText${
+                                                            noteId
+                                                        }"
+                                                        style="box-sizing:border-box; width:100%; min-height:70px; padding:8px 9px; border:1px solid #d1d5db; border-radius:6px; resize:vertical;"
+                                                    >${
+                                                        escape(note.noteText)
+                                                    }</textarea>
+                                                    <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
+                                                        <button
+                                                            type="button"
+                                                            onclick="SkyIndex.cancelApplicationNoteEdit(${noteId})"
+                                                            style="padding:5px 10px; border:1px solid #d1d5db; border-radius:5px; background:#fff; cursor:pointer;"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            id="applicationNoteSaveButton${
+                                                                noteId
+                                                            }"
+                                                            onclick="SkyIndex.saveApplicationNote(${applicationId}, ${noteId})"
+                                                            style="padding:5px 10px; border:1px solid #0d9488; border-radius:5px; background:#0d9488; color:#fff; cursor:pointer;"
+                                                        >
+                                                            Save Note
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    })
+                                    .join('')
+                                : `
+                                    <div style="
+                                        padding:3px 0 7px;
+                                        color:#888;
+                                        font-size:0.8em;
+                                    ">
+                                        No Notes for this requirement.
+                                    </div>
+                                `;
+
                         return `
                             <div
                                 id="applicationSpecialRequirementRow${
@@ -11267,6 +11429,52 @@ window.SkyIndex = {
                                             Save Requirement
                                         </button>
                                     </div>
+                                </div>
+
+                                <div style="
+                                    margin-top:10px;
+                                    padding-top:9px;
+                                    border-top:1px solid #e5e7eb;
+                                ">
+                                    <div style="
+                                        margin-bottom:4px;
+                                        color:#777;
+                                        font-size:0.72em;
+                                        font-weight:700;
+                                        text-transform:uppercase;
+                                    ">
+                                        Requirement Notes
+                                    </div>
+
+                                    ${requirementNoteHtml}
+
+                                    ${
+                                        !isEditing
+                                            ? `
+                                                <div style="margin-top:8px;">
+                                                    <textarea
+                                                        id="applicationSpecialRequirementNewNoteText${
+                                                            requirementId
+                                                        }"
+                                                        placeholder="Add a Note for this requirement..."
+                                                        style="box-sizing:border-box; width:100%; min-height:68px; padding:8px 9px; border:1px solid #d1d5db; border-radius:6px; resize:vertical;"
+                                                    ></textarea>
+                                                    <div style="display:flex; justify-content:flex-end; margin-top:6px;">
+                                                        <button
+                                                            type="button"
+                                                            id="applicationSpecialRequirementNoteAddButton${
+                                                                requirementId
+                                                            }"
+                                                            onclick="SkyIndex.addApplicationSpecialRequirementNote(${applicationId}, ${requirementId})"
+                                                            style="padding:6px 12px; border:1px solid #0d9488; border-radius:6px; background:#0d9488; color:#fff; cursor:pointer;"
+                                                        >
+                                                            Add Note
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `
+                                            : ''
+                                    }
                                 </div>
                             </div>
                         `;
@@ -12598,6 +12806,119 @@ window.SkyIndex = {
             }
         });
     },
+
+    /**
+     * Add a Note to an Application Special Requirement.
+     *
+     * @param {number} applicationId
+     * @param {number} requirementId
+     * @return {Promise<void>}
+     */
+    async addApplicationSpecialRequirementNote(
+        applicationId,
+        requirementId
+    ) {
+        // Resolve authoritative identifiers
+        const resolvedApplicationId = Number(
+            applicationId || 0
+        );
+
+        const resolvedRequirementId = Number(
+            requirementId || 0
+        );
+
+        const textarea = document.getElementById(
+            `applicationSpecialRequirementNewNoteText${
+                resolvedRequirementId
+            }`
+        );
+
+        const addButton = document.getElementById(
+            `applicationSpecialRequirementNoteAddButton${
+                resolvedRequirementId
+            }`
+        );
+
+        const noteText = String(
+            textarea?.value || ''
+        ).trim();
+
+        // Validate submitted values
+        if (
+            resolvedApplicationId <= 0 ||
+            resolvedRequirementId <= 0
+        ) {
+            this.appendSystemLine(
+                'A valid Application and Special Requirement are required.'
+            );
+            return;
+        }
+
+        if (!noteText) {
+            this.appendSystemLine(
+                'Note text is required.'
+            );
+
+            if (textarea) {
+                textarea.focus();
+            }
+
+            return;
+        }
+
+        try {
+            // Set submitting state
+            if (addButton) {
+                addButton.disabled = true;
+                addButton.textContent = 'Adding...';
+            }
+
+            // Submit governed Note mutation
+            const data =
+                await this.requestApplicationNoteMutation({
+                    type: 'applicationNoteCreate',
+                    applicationID:
+                        resolvedApplicationId,
+                    applicationSpecialRequirementID:
+                        resolvedRequirementId,
+                    noteText:
+                        noteText
+                });
+
+            // Cache authoritative Note collection
+            this.cacheApplicationNotes(
+                resolvedApplicationId,
+                data.notes
+            );
+
+            this.appendSystemLine(
+                `Note #${
+                    Number(data.noteID)
+                } was added to Special Requirement #${
+                    resolvedRequirementId
+                }.`
+            );
+
+        } catch (error) {
+            console.error(
+                '[Special Requirement Note] Create failed:',
+                error
+            );
+
+            this.appendSystemLine(
+                `Unable to add Requirement Note: ${
+                    error?.message ||
+                    'Unknown error'
+                }`
+            );
+
+            // Restore Add button
+            if (addButton) {
+                addButton.disabled = false;
+                addButton.textContent = 'Add Note';
+            }
+        }
+    },    
 
     async addApplicationNote(applicationId) {
         const textarea = document.getElementById(
