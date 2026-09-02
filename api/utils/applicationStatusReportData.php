@@ -9,6 +9,29 @@ declare(strict_types=1);
 
 // #region SECTION I — Structured AI Context
 
+function formatApplicationStatusPayloadDate(
+    mixed $unix
+): ?string {
+    if (!is_numeric($unix) || (int)$unix <= 0) {
+        return null;
+    }
+
+    // Format authoritative date in Phoenix time
+    $date = new DateTimeImmutable(
+        '@' . (int)$unix
+    );
+
+    $date = $date->setTimezone(
+        new DateTimeZone(
+            'America/Phoenix'
+        )
+    );
+
+    return $date->format(
+        'F j, Y'
+    );
+}
+
 function buildApplicationStatusReportPayload(
     array $application,
     int $generatedUnix
@@ -106,7 +129,10 @@ function buildApplicationStatusReportPayload(
         'schemaVersion' => '1.0.0',
         'reportType' => 'application_status',
         'audience' => 'external',
-        'generatedUnix' => $generatedUnix,
+        'generatedDate' =>
+        formatApplicationStatusPayloadDate(
+            $generatedUnix
+        ),
         'application' => [
             'title' => trim((string)(
                 $application['applicationTitle'] ?? ''
