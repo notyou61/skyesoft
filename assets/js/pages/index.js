@@ -11655,6 +11655,197 @@ window.SkyIndex = {
         }
     },
 
+        /**
+     * Display a Special Requirement edit form.
+     *
+     * @param {number} requirementId
+     */
+    editApplicationSpecialRequirement(requirementId) {
+        const resolvedRequirementId = Number(
+            requirementId || 0
+        );
+
+        const display = document.getElementById(
+            `applicationSpecialRequirementDisplay${
+                resolvedRequirementId
+            }`
+        );
+
+        const editor = document.getElementById(
+            `applicationSpecialRequirementEdit${
+                resolvedRequirementId
+            }`
+        );
+
+        if (!display || !editor) {
+            this.appendSystemLine(
+                'Special Requirement editor is unavailable.'
+            );
+            return;
+        }
+
+        display.style.display = 'none';
+        editor.style.display = 'block';
+
+        document.getElementById(
+            `applicationSpecialRequirementEditDescription${
+                resolvedRequirementId
+            }`
+        )?.focus();
+    },
+
+    /**
+     * Cancel a Special Requirement edit and restore
+     * authoritative cached values.
+     *
+     * @param {number} requirementId
+     */
+    cancelApplicationSpecialRequirementEdit(
+        requirementId
+    ) {
+        const resolvedRequirementId = Number(
+            requirementId || 0
+        );
+
+        const cached =
+            this._currentApplicationWorkspaceData;
+
+        const requirements = Array.isArray(
+            cached?.application
+                ?.applicationSpecialRequirements
+        )
+            ? cached.application
+                .applicationSpecialRequirements
+            : [];
+
+        const requirement = requirements.find(item =>
+            Number(
+                item?.applicationSpecialRequirementID ||
+                0
+            ) === resolvedRequirementId
+        );
+
+        const display = document.getElementById(
+            `applicationSpecialRequirementDisplay${
+                resolvedRequirementId
+            }`
+        );
+
+        const editor = document.getElementById(
+            `applicationSpecialRequirementEdit${
+                resolvedRequirementId
+            }`
+        );
+
+        if (!requirement || !display || !editor) {
+            return;
+        }
+
+        // Convert authoritative Unix value to date input
+        const unixToDateInput = unixValue => {
+            const unix = Number(unixValue || 0);
+
+            if (!unix) return '';
+
+            const parts = new Intl.DateTimeFormat(
+                'en-US',
+                {
+                    timeZone: 'America/Phoenix',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }
+            ).formatToParts(
+                new Date(unix * 1000)
+            );
+
+            const part = type =>
+                parts.find(item =>
+                    item.type === type
+                )?.value || '';
+
+            return `${
+                part('year')
+            }-${
+                part('month')
+            }-${
+                part('day')
+            }`;
+        };
+
+        // Restore authoritative form values
+        const description = document.getElementById(
+            `applicationSpecialRequirementEditDescription${
+                resolvedRequirementId
+            }`
+        );
+
+        const status = document.getElementById(
+            `applicationSpecialRequirementEditStatusID${
+                resolvedRequirementId
+            }`
+        );
+
+        const responsibleParty =
+            document.getElementById(
+                `applicationSpecialRequirementEditResponsibleParty${
+                    resolvedRequirementId
+                }`
+            );
+
+        const requiredDate =
+            document.getElementById(
+                `applicationSpecialRequirementEditRequiredUnix${
+                    resolvedRequirementId
+                }`
+            );
+
+        const dueDate = document.getElementById(
+            `applicationSpecialRequirementEditDueUnix${
+                resolvedRequirementId
+            }`
+        );
+
+        if (description) {
+            description.value =
+                requirement
+                    .applicationSpecialRequirementDescription ||
+                '';
+        }
+
+        if (status) {
+            status.value = String(
+                requirement
+                    .applicationSpecialRequirementStatusID ||
+                ''
+            );
+        }
+
+        if (responsibleParty) {
+            responsibleParty.value =
+                requirement
+                    .applicationSpecialRequirementResponsibleParty ||
+                '';
+        }
+
+        if (requiredDate) {
+            requiredDate.value = unixToDateInput(
+                requirement
+                    .applicationSpecialRequirementRequiredUnix
+            );
+        }
+
+        if (dueDate) {
+            dueDate.value = unixToDateInput(
+                requirement
+                    .applicationSpecialRequirementDueUnix
+            );
+        }
+
+        editor.style.display = 'none';
+        display.style.display = 'block';
+    },
+
     /**
      * Create a governed Application Special Requirement.
      *
