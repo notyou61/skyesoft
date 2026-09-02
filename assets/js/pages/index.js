@@ -10929,6 +10929,315 @@ window.SkyIndex = {
                 ${row('Finaled', formatDate(application.applicationFinaledUnix))}
             `;
 
+        // Format authoritative currency values
+        const formatCurrency = value =>
+            new Intl.NumberFormat(
+                'en-US',
+                {
+                    style: 'currency',
+                    currency: 'USD'
+                }
+            ).format(Number(value || 0));
+
+        // Render authoritative Application Fees
+        const feeHtml = feeRows.length
+            ? feeRows.map(fee => {
+                const feeId = Number(
+                    fee.feeID || 0
+                );
+
+                const isPaid =
+                    fee.feePaidUnix !== null &&
+                    Number(fee.feePaidUnix || 0) > 0;
+
+                return `
+                    <div
+                        id="applicationFeeRow${feeId}"
+                        style="
+                            padding:9px 0;
+                            border-bottom:1px solid #e5e7eb;
+                        "
+                    >
+                        <div style="
+                            display:flex;
+                            justify-content:space-between;
+                            align-items:flex-start;
+                            gap:10px;
+                        ">
+                            <div>
+                                <strong style="
+                                    color:#222;
+                                    font-size:0.9em;
+                                ">
+                                    ${escape(fee.feeCategory)} Fee
+                                </strong>
+
+                                <div style="
+                                    margin-top:4px;
+                                    color:#444;
+                                    font-size:0.86em;
+                                ">
+                                    ${escape(fee.feeNote)}
+                                </div>
+                            </div>
+
+                            <div style="text-align:right;">
+                                <strong style="
+                                    color:#222;
+                                    font-size:0.92em;
+                                ">
+                                    ${formatCurrency(fee.feeAmount)}
+                                </strong>
+
+                                <div style="
+                                    margin-top:4px;
+                                    color:${
+                                        isPaid
+                                            ? '#20733a'
+                                            : '#b45309'
+                                    };
+                                    font-size:0.72em;
+                                    font-weight:700;
+                                ">
+                                    ${isPaid ? 'Paid' : 'Outstanding'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="
+                            margin-top:5px;
+                            color:#888;
+                            font-size:0.75em;
+                        ">
+                            Assessed:
+                            ${formatDate(fee.feeAssessedUnix)}
+                            ${
+                                isPaid
+                                    ? ` · Paid: ${
+                                        formatDate(
+                                            fee.feePaidUnix
+                                        )
+                                    }`
+                                    : ''
+                            }
+                        </div>
+                    </div>
+                `;
+            }).join('')
+            : `
+                <div style="
+                    padding:3px 0 9px;
+                    color:#888;
+                    font-size:0.86em;
+                ">
+                    No Application Fees recorded.
+                </div>
+            `;
+
+        // Build Application Fee workspace section
+        const feeContent = `
+            <div style="
+                display:grid;
+                grid-template-columns:repeat(3, minmax(0, 1fr));
+                gap:8px;
+                margin-bottom:10px;
+            ">
+                <div style="
+                    padding:8px;
+                    border:1px solid #e5e7eb;
+                    border-radius:6px;
+                    background:#fff;
+                ">
+                    <div style="
+                        color:#888;
+                        font-size:0.68em;
+                        text-transform:uppercase;
+                    ">
+                        Assessed
+                    </div>
+                    <strong>
+                        ${
+                            formatCurrency(
+                                applicationFees.totalAssessed
+                            )
+                        }
+                    </strong>
+                </div>
+
+                <div style="
+                    padding:8px;
+                    border:1px solid #e5e7eb;
+                    border-radius:6px;
+                    background:#fff;
+                ">
+                    <div style="
+                        color:#888;
+                        font-size:0.68em;
+                        text-transform:uppercase;
+                    ">
+                        Paid
+                    </div>
+                    <strong style="color:#20733a;">
+                        ${
+                            formatCurrency(
+                                applicationFees.totalPaid
+                            )
+                        }
+                    </strong>
+                </div>
+
+                <div style="
+                    padding:8px;
+                    border:1px solid #e5e7eb;
+                    border-radius:6px;
+                    background:#fff;
+                ">
+                    <div style="
+                        color:#888;
+                        font-size:0.68em;
+                        text-transform:uppercase;
+                    ">
+                        Outstanding
+                    </div>
+                    <strong style="color:#b45309;">
+                        ${
+                            formatCurrency(
+                                applicationFees.totalOutstanding
+                            )
+                        }
+                    </strong>
+                </div>
+            </div>
+
+            ${feeHtml}
+
+            ${
+                !isEditing
+                    ? `
+                        <div style="
+                            margin-top:12px;
+                            padding-top:10px;
+                            border-top:1px solid #e5e7eb;
+                        ">
+                            <div style="
+                                margin-bottom:7px;
+                                color:#666;
+                                font-size:0.78em;
+                                font-weight:600;
+                            ">
+                                Add Application Fee
+                            </div>
+
+                            <div style="
+                                display:grid;
+                                grid-template-columns:
+                                    repeat(2, minmax(0, 1fr));
+                                gap:8px;
+                            ">
+                                <select
+                                    id="applicationFeeCategory"
+                                    style="
+                                        padding:7px 9px;
+                                        border:1px solid #d1d5db;
+                                        border-radius:6px;
+                                    "
+                                >
+                                    <option value="Application">
+                                        Application
+                                    </option>
+                                    <option value="Review">
+                                        Review
+                                    </option>
+                                    <option value="Permit" selected>
+                                        Permit
+                                    </option>
+                                </select>
+
+                                <input
+                                    id="applicationFeeAmount"
+                                    type="number"
+                                    min="0.01"
+                                    max="99999999.99"
+                                    step="0.01"
+                                    inputmode="decimal"
+                                    placeholder="Fee amount"
+                                    style="
+                                        box-sizing:border-box;
+                                        width:100%;
+                                        padding:7px 9px;
+                                        border:1px solid #d1d5db;
+                                        border-radius:6px;
+                                    "
+                                >
+
+                                <input
+                                    id="applicationFeeAssessedUnix"
+                                    type="date"
+                                    value="${
+                                        formatDateInput(
+                                            Math.floor(
+                                                Date.now() / 1000
+                                            )
+                                        )
+                                    }"
+                                    title="Assessed date"
+                                    style="
+                                        box-sizing:border-box;
+                                        width:100%;
+                                        padding:7px 9px;
+                                        border:1px solid #d1d5db;
+                                        border-radius:6px;
+                                    "
+                                >
+                            </div>
+
+                            <textarea
+                                id="applicationFeeNote"
+                                maxlength="255"
+                                placeholder="Describe the fee..."
+                                style="
+                                    box-sizing:border-box;
+                                    width:100%;
+                                    min-height:68px;
+                                    margin-top:8px;
+                                    padding:8px 9px;
+                                    border:1px solid #d1d5db;
+                                    border-radius:6px;
+                                    resize:vertical;
+                                "
+                            ></textarea>
+
+                            <div style="
+                                display:flex;
+                                justify-content:flex-end;
+                                margin-top:6px;
+                            ">
+                                <button
+                                    type="button"
+                                    id="applicationFeeAddButton"
+                                    onclick="
+                                        SkyIndex.addApplicationFee(
+                                            ${applicationId}
+                                        )
+                                    "
+                                    style="
+                                        padding:6px 12px;
+                                        border:1px solid #0d9488;
+                                        border-radius:6px;
+                                        background:#0d9488;
+                                        color:#fff;
+                                        cursor:pointer;
+                                    "
+                                >
+                                    Add Fee
+                                </button>
+                            </div>
+                        </div>
+                    `
+                    : ''
+            }
+        `;
+
         // Render authoritative Special Requirements
         const specialRequirementHtml =
             specialRequirements.length
@@ -11736,6 +12045,7 @@ window.SkyIndex = {
                     immutableContent
                 )}
                 ${section('Milestones', milestoneContent)}
+                ${section('Application Fees', feeContent)}
                 ${section('Scope', scopeContent)}
                 ${section(
                     'Special Requirements',
