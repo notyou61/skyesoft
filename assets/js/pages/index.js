@@ -12088,7 +12088,7 @@ window.SkyIndex = {
             };
 
             // Display successful mutation
-            this.append.appendSystemLine(
+            this.appendSystemLine(
                 `Special Requirement #${
                     resolvedRequirementId
                 } was updated successfully.`
