@@ -11040,6 +11040,7 @@ window.SkyIndex = {
             }
 
             // Submit governed Payment mutation
+            // Server assigns the authoritative Payment timestamp
             const data =
                 await this
                     .requestApplicationFeeMutation({
@@ -11048,11 +11049,7 @@ window.SkyIndex = {
                         applicationID:
                             Number(applicationId),
                         feeID:
-                            Number(feeId),
-                        feePaidUnix:
-                            Math.floor(
-                                Date.now() / 1000
-                            )
+                            Number(feeId)
                     });
 
             // Refresh authoritative workspace
