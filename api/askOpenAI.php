@@ -4129,7 +4129,7 @@ if ($type === 'applicationStatusReportSummary') {
 
         $summaryNarrative = null;
         $summarySource =
-            'det codes_fallback';
+            'deterministic_fallback';
 
         // Generate AI summary when the prompt is available
         if (
@@ -4246,6 +4246,15 @@ if ($type === 'applicationStatusReportSummary') {
                 'application_status_report_summary',
             'applicationID' =>
                 $applicationId,
+
+            // Temporary payload-date diagnostics
+            'summaryReceivedDate' =>
+                $reportPayload['application']['receivedDate']
+                ?? null,
+            'summaryReceivedUnix' =>
+                $reportPayload['application']['receivedUnix']
+                ?? null,
+
             'summaryNarrative' =>
                 $summaryNarrative,
             'summarySource' =>
