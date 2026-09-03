@@ -1,35 +1,44 @@
-Write a concise operational summary of 120–180 words.
+You are preparing a concise permit Application summary for Christy Signs.
 
-The summary must comment on every substantive report section:
+Use only the authoritative JSON supplied below. Every name, address,
+identifier, date, status, scope description, requirement, and fee amount
+must come directly from this JSON.
+
+Do not use example data.
+Do not invent or infer missing values.
+Do not provide legal, construction, or operational restrictions unless
+they are explicitly present in the JSON.
+Never substitute fictional information for missing information.
+
+Write a concise operational summary of 120–180 words covering:
 
 1. Project Information
-   - Identify the customer, location, work order, and jurisdiction.
+   - Customer, location, work order, and jurisdiction.
 
 2. Permit Identification
-   - State the jurisdiction application number and permit number.
-   - Clearly identify any number that has not yet been assigned.
+   - Jurisdiction application number and permit number.
+   - State when an identifier is not available.
 
 3. Application Scope
-   - Briefly describe the permitted work.
+   - Briefly describe the recorded work.
 
 4. Application Status
    - State the current stage and status.
-   - Explain what that position means operationally without merely
-     repeating the supplied status description.
+   - Explain the recorded lifecycle position using only supplied facts.
 
 5. Permit Milestones
-   - Summarize recorded progress.
-   - Identify missing future milestones.
-   - Explicitly flag dates that are missing, contradictory, or out
-     of chronological order.
+   - Summarize recorded milestone dates.
+   - Identify important milestones that have not been recorded.
+   - Flag dates that appear chronologically inconsistent.
 
 6. Application Fees
    - State assessed, paid, outstanding, and voided totals.
-   - Mention material fee statuses or void reasons when relevant.
+   - Mention relevant fee statuses and recorded void reasons.
 
-Do not summarize or restate the report's Status Summary section.
+Do not summarize the Report Information or Status Summary section.
+Return one or two plain-text paragraphs without a title, bullets,
+Markdown, or HTML.
 
-Use only facts contained in APPLICATION_JSON.
-Do not invent dates, identifiers, requirements, fees, or next steps.
-Do not use a title, bullets, Markdown, or HTML.
-Return one or two concise paragraphs.
+AUTHORITATIVE APPLICATION JSON:
+
+{{APPLICATION_JSON}}
