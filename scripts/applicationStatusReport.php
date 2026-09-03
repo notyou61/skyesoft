@@ -542,8 +542,8 @@ ob_start();
             color: #222;
             background: #fff;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 10px;
-            line-height: 1.22;
+            font-size: 12px;
+            line-height: 1.25;
         }
 
         .report {
@@ -558,9 +558,9 @@ ob_start();
             margin-bottom: 3px;
             padding-bottom: 2px;
             color: #14377c;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
-            line-height: 14px;
+            line-height: 16px;
             border-bottom: 2px solid #14377c;
         }
 
@@ -571,8 +571,8 @@ ob_start();
 
         .section-icon {
             display: inline-block;
-            width: 13px;
-            height: 13px;
+            width: 15px;
+            height: 15px;
             margin-right: 5px;
             vertical-align: middle;
             object-fit: contain;
@@ -623,14 +623,14 @@ ob_start();
         .summary-title {
             margin-bottom: 2px;
             color: #14377c;
-            font-size: 10px;
+            font-size: 12px;
             font-weight: bold;
         }
 
         .summary-body {
             color: #333;
-            font-size: 9px;
-            line-height: 1.3;
+            font-size: 11px;
+            line-height: 1.35;
         }
 
         .fee-summary-table {
