@@ -1,27 +1,35 @@
-You are preparing a concise external Permit Application Status Report summary for Christy Signs.
+Write a concise operational summary of 120–180 words.
 
-Review the authoritative Application JSON supplied below and write one professional paragraph summarizing the current permit application status.
+The summary must comment on every substantive report section:
 
-Requirements:
+1. Project Information
+   - Identify the customer, location, work order, and jurisdiction.
 
-- Write for the customer or project stakeholder.
-- Use only facts explicitly contained in the JSON.
-- Do not infer, estimate, predict, or invent information.
-- Do not mention database fields, JSON, internal systems, IDs, Actions, or implementation details.
-- State the current Application Stage and Application Status.
-- Distinguish the date received by Christy Signs from the date submitted to the jurisdiction.
-- If the application has not been submitted, clearly state that it remains in preparation and has not yet been submitted.
-- Include the jurisdiction application number or permit number only when available.
-- Mention meaningful open Special Requirements when present.
-- Do not describe cancelled or invalid Special Requirements as active.
-- Briefly state assessed, paid, and outstanding fees when Application Fees exist.
-- Do not include voided fees in the active assessed or outstanding totals.
-- If there are no Application Fees, omit financial information.
-- Use absolute dates rather than relative terms such as today, yesterday, or recently.
-- Keep the summary between 60 and 110 words.
-- Return plain text only.
-- Do not include a title, heading, bullets, Markdown, quotation marks, or introductory wording.
+2. Permit Identification
+   - State the jurisdiction application number and permit number.
+   - Clearly identify any number that has not yet been assigned.
 
-Authoritative Application JSON:
+3. Application Scope
+   - Briefly describe the permitted work.
 
-{{APPLICATION_JSON}}
+4. Application Status
+   - State the current stage and status.
+   - Explain what that position means operationally without merely
+     repeating the supplied status description.
+
+5. Permit Milestones
+   - Summarize recorded progress.
+   - Identify missing future milestones.
+   - Explicitly flag dates that are missing, contradictory, or out
+     of chronological order.
+
+6. Application Fees
+   - State assessed, paid, outstanding, and voided totals.
+   - Mention material fee statuses or void reasons when relevant.
+
+Do not summarize or restate the report's Status Summary section.
+
+Use only facts contained in APPLICATION_JSON.
+Do not invent dates, identifiers, requirements, fees, or next steps.
+Do not use a title, bullets, Markdown, or HTML.
+Return one or two concise paragraphs.
