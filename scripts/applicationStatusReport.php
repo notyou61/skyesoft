@@ -749,7 +749,11 @@ ob_start();
     </div>
 
     <div class="section">
-        <div class="section-heading">Project Information</div>
+        <?= renderApplicationReportSectionHeading(
+            'Project Information',
+            'property.png',
+            $rootDir
+        ) ?>
         <table class="data-table">
             <tr>
                 <th>Application ID</th>
@@ -791,7 +795,11 @@ ob_start();
     </div>
 
     <div class="section">
-        <div class="section-heading">Permit Identification</div>
+        <?= renderApplicationReportSectionHeading(
+            'Permit Identification',
+            'temple.png',
+            $rootDir
+        ) ?>
         <table class="data-table">
             <tr>
                 <th>Jurisdiction Application Number</th>
@@ -813,7 +821,11 @@ ob_start();
     </div>
 
     <div class="section">
-        <div class="section-heading">Application Scope</div>
+        <?= renderApplicationReportSectionHeading(
+            'Application Scope',
+            'clipboard.png',
+            $rootDir
+        ) ?>
         <div class="scope-box"><?= escapeApplicationReportValue(
             formatApplicationReportValue(
                 $application['applicationScope']
@@ -822,7 +834,11 @@ ob_start();
     </div>
 
     <div class="section">
-        <div class="section-heading">Application Status</div>
+        <?= renderApplicationReportSectionHeading(
+            'Application Status',
+            'inProgress.png',
+            $rootDir
+        ) ?>
         <table class="data-table">
             <tr>
                 <th>Application Stage</th>
@@ -846,7 +862,11 @@ ob_start();
     </div>
 
     <div class="section">
-        <div class="section-heading">Permit Milestones</div>
+        <?= renderApplicationReportSectionHeading(
+            'Permit Milestones',
+            'calendar.png',
+            $rootDir
+        ) ?>
         <table class="data-table">
             <tr>
                 <th>Received</th>
@@ -902,7 +922,11 @@ ob_start();
     </div>
 
     <div class="section">
-        <div class="section-heading">Application Fees</div>
+        <?= renderApplicationReportSectionHeading(
+            'Application Fees',
+            'receipt.png',
+            $rootDir
+        ) ?>
 
         <table class="fee-summary-table">
             <tr>
@@ -1061,7 +1085,11 @@ ob_start();
     </div>
 
     <div class="section">
-        <div class="section-heading">Status Summary</div>
+        <?= renderApplicationReportSectionHeading(
+            'Status Summary',
+            'information.png',
+            $rootDir
+        ) ?>
         <div class="summary-box">
             <div class="summary-title">Application Status</div>
             <div class="summary-body">
