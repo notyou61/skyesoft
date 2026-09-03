@@ -1,43 +1,26 @@
-You are preparing a concise permit Application summary for Christy Signs.
+Write a concise operational summary of 60–90 words.
 
-Use only the authoritative JSON supplied below. Every name, address,
-identifier, date, status, scope description, requirement, and fee amount
-must come directly from this JSON.
+Synthesize the Application’s overall position instead of restating every
+report section or listing information the reader can easily see below.
 
-Do not use example data.
-Do not invent or infer missing values.
-Do not provide legal, construction, or operational restrictions unless
-they are explicitly present in the JSON.
-Never substitute fictional information for missing information.
+Prioritize:
 
-Write a concise operational summary of 120–180 words covering:
+- The project and current lifecycle position.
+- The most important completed or pending milestone.
+- Missing information, chronological inconsistencies, or operational concerns.
+- Outstanding fees, active requirements, or other items requiring attention.
 
-1. Project Information
-   - Customer, location, work order, and jurisdiction.
+Mention identifiers, addresses, scope details, paid fees, and voided fees only
+when they materially clarify the Application’s status or identify an issue.
 
-2. Permit Identification
-   - Jurisdiction application number and permit number.
-   - State when an identifier is not available.
-
-3. Application Scope
-   - Briefly describe the recorded work.
-
-4. Application Status
-   - State the current stage and status.
-   - Explain the recorded lifecycle position using only supplied facts.
-
-5. Permit Milestones
-   - Summarize recorded milestone dates.
-   - Identify important milestones that have not been recorded.
-   - Flag dates that appear chronologically inconsistent.
-
-6. Application Fees
-   - State assessed, paid, outstanding, and voided totals.
-   - Mention relevant fee statuses and recorded void reasons.
-
-Do not summarize the Report Information or Status Summary section.
-Return one or two plain-text paragraphs without a title, bullets,
-Markdown, or HTML.
+Do not introduce the response as a permit application summary.
+Do not enumerate the report sections.
+Do not repeat all displayed fields or totals.
+Do not claim that dates are consistent without comparing them.
+Use only facts contained in APPLICATION_JSON.
+Do not invent facts, conclusions, restrictions, or next steps.
+Return one short plain-text paragraph without a title, bullets, Markdown,
+or HTML.
 
 AUTHORITATIVE APPLICATION JSON:
 

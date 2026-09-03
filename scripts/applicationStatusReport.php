@@ -551,9 +551,13 @@ ob_start();
             margin: 0;
         }
 
+        /* Keep each report section together */
         .section {
             margin-top: 8px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
+
         .section-heading {
             margin-bottom: 3px;
             padding-bottom: 2px;
@@ -576,6 +580,23 @@ ob_start();
             margin-right: 5px;
             vertical-align: middle;
             object-fit: contain;
+        }
+
+        /* Prevent internal content from splitting */
+        .data-table,
+        .fee-summary-table,
+        .fee-table,
+        .scope-box,
+        .summary-box {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .data-table tr,
+        .fee-summary-table tr,
+        .fee-table tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .data-table,
@@ -650,7 +671,7 @@ ob_start();
         .fee-summary-label {
             display: block;
             color: #666;
-            font-size: 8px;
+            font-size: 9px;
             font-weight: bold;
             text-transform: uppercase;
         }
@@ -680,6 +701,7 @@ ob_start();
             border-collapse: collapse;
             table-layout: fixed;
         }
+
         .fee-table th,
         .fee-table td {
             padding: 3px 4px;
@@ -689,14 +711,14 @@ ob_start();
 
         .fee-table th {
             color: #333;
-            font-size: 8px;
+            font-size: 9px;
             text-align: left;
             background: #f8f9fa;
         }
 
         .fee-table td {
             color: #111;
-            font-size: 8px;
+            font-size: 10px;
             background: #fff;
         }
 
@@ -726,7 +748,6 @@ ob_start();
             border: 1px solid #ccc;
             background: #f8f9fa;
         }
-
     </style>
 </head>
 <body>
