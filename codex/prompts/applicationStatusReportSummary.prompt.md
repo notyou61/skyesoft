@@ -20,10 +20,13 @@ Compare recorded milestone dates in this expected chronological order:
 Received -> Submitted -> Approved -> Issued -> Finaled
 
 If a later lifecycle event is dated earlier than a preceding event, explicitly
-identify the inconsistency.
+identify the recorded chronological inconsistency.
 
-Never state that no inconsistencies exist unless every recorded milestone
-date has been compared.
+Describe chronological inconsistencies neutrally. Do not characterize them as
+significant, serious, minor, or inconsequential.
+
+Never state that no inconsistencies exist unless every recorded milestone date
+has been compared.
 
 If the current stage or status conflicts with a recorded milestone, describe
 both records without attempting to reconcile them.
@@ -31,8 +34,15 @@ both records without attempting to reconcile them.
 Do not use phrases such as "since submission" when the current stage is
 Pre-Submittal or the current status indicates Application Preparation.
 
-Describe an unavailable milestone as "not recorded." Do not characterize it
-as pending, overdue, completed, or required unless the JSON explicitly does so.
+Describe an unavailable milestone date as "not recorded." Do not state that
+the Application has not reached that milestone or characterize it as pending,
+overdue, completed, or required unless the JSON explicitly does so.
+
+When voided fees exist, distinguish them from active fees. Never describe a
+voided fee as assessed, paid, outstanding, or currently due.
+
+Use "all active fees are paid" only when totalOutstanding is zero and
+totalAssessed equals totalPaid.
 
 Mention identifiers, addresses, scope details, paid fees, and voided fees only
 when they materially clarify the Application’s status or identify an issue.
@@ -40,7 +50,7 @@ when they materially clarify the Application’s status or identify an issue.
 Do not introduce the response as a permit application summary.
 Do not enumerate the report sections.
 Do not repeat all displayed fields or totals.
-Do not infer that construction may or may not begin.
+Do not infer whether construction may begin.
 Do not invent facts, conclusions, restrictions, deadlines, or next steps.
 Use only facts contained in APPLICATION_JSON.
 
