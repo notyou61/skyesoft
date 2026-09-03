@@ -377,58 +377,77 @@ function fingerprintApplicationStatusReportPayload(array $payload): string
 
 // #region SECTION II — Deterministic Summary Fallback
 
-function buildApplicationStatusFallbackSummary(array $payload): string
-{
-    $application = is_array($payload['application'] ?? null)
+function buildApplicationStatusFallbackSummary(
+    array $payload
+): string {
+    $application = is_array(
+        $payload['application'] ?? null
+    )
         ? $payload['application']
         : [];
-    $requirements = is_array($payload['specialRequirements'] ?? null)
+
+    $requirements = is_array(
+        $payload['specialRequirements'] ?? null
+    )
         ? $payload['specialRequirements']
         : [];
-    $fees = is_array($payload['fees'] ?? null)
+
+    $fees = is_array(
+        $payload['fees'] ?? null
+    )
         ? $payload['fees']
         : [];
+
     $milestoneReview = is_array(
         $payload['milestoneReview'] ?? null
     )
         ? $payload['milestoneReview']
         : [];
-    $location = trim((string)($application['location'] ?? ''));
-    $customer = trim((string)($application['customer'] ?? ''));
+
+    $location = trim((string)(
+        $application['location'] ?? ''
+    ));
+
+    $customer = trim((string)(
+        $application['customer'] ?? ''
+    ));
+
     $subject = $location !== ''
         ? $location
-        : ($customer !== '' ? $customer : 'This permit application');
-    $receivedDate = trim((string)($application['receivedDate'] ?? ''));
-    $submittedDate = trim((string)($application['submittedDate'] ?? ''));
-    $stage = trim((string)($application['stage'] ?? ''));
-    $status = trim((string)($application['status'] ?? ''));
+        : (
+            $customer !== ''
+                ? $customer
+                : 'This permit application'
+        );
+
+    $stage = trim((string)(
+        $application['stage'] ?? ''
+    ));
+
+    $status = trim((string)(
+        $application['status'] ?? ''
+    ));
+
     $sentences = [];
 
-    $sentences[] = $receivedDate !== ''
-        ? sprintf(
-            'The permit application for %s was received by Christy Signs on %s.',
+    // Summarize current Application position
+    if ($stage !== '' || $status !== '') {
+        $sentences[] = sprintf(
+            '%s is currently in %s with %s status.',
             $subject,
-            $receivedDate
-        )
-        : sprintf(
+            $stage !== ''
+                ? $stage
+                : 'an unspecified stage',
+            $status !== ''
+                ? $status
+                : 'an unspecified'
+        );
+    } else {
+        $sentences[] = sprintf(
             'Christy Signs is coordinating the permit application for %s.',
             $subject
         );
-
-    if ($stage !== '' || $status !== '') {
-        $sentences[] = sprintf(
-            'The application is currently in %s with a status of %s.',
-            $stage !== '' ? $stage : 'an unspecified stage',
-            $status !== '' ? $status : 'Not Available'
-        );
     }
-
-    $sentences[] = $submittedDate !== ''
-        ? sprintf(
-            'It was submitted to the jurisdiction on %s.',
-            $submittedDate
-        )
-        : 'It has not yet been submitted to the jurisdiction.';
 
     $milestoneIssues = is_array(
         $milestoneReview['issues'] ?? null
@@ -438,46 +457,153 @@ function buildApplicationStatusFallbackSummary(array $payload): string
 
     // Report authoritative milestone inconsistencies
     foreach ($milestoneIssues as $milestoneIssue) {
-        $resolvedIssue = trim((string)$milestoneIssue);
+        $resolvedIssue = trim(
+            (string)$milestoneIssue
+        );
 
         if ($resolvedIssue !== '') {
-            $sentences[] = $resolvedIssue;
+            $sentences[] = sprintf(
+                'A recorded chronological inconsistency exists: %s',
+                $resolvedIssue
+            );
         }
+    }
+
+    // Report missing later lifecycle dates
+    $missingMilestones = [];
+
+    if (
+        trim((string)(
+            $application['approvedDate'] ?? ''
+        )) === ''
+    ) {
+        $missingMilestones[] = 'approval';
+    }
+
+    if (
+        trim((string)(
+            $application['issuedDate'] ?? ''
+        )) === ''
+    ) {
+        $missingMilestones[] = 'issuance';
+    }
+
+    if (
+        trim((string)(
+            $application['finaledDate'] ?? ''
+        )) === ''
+    ) {
+        $missingMilestones[] = 'finalization';
+    }
+
+    if (count($missingMilestones) > 0) {
+        $lastMilestone = array_pop(
+            $missingMilestones
+        );
+
+        $milestoneList = count(
+            $missingMilestones
+        ) > 0
+            ? implode(
+                ', ',
+                $missingMilestones
+            ) . ' or ' . $lastMilestone
+            : $lastMilestone;
+
+        $sentences[] = sprintf(
+            'No %s date%s recorded.',
+            $milestoneList,
+            str_contains(
+                $milestoneList,
+                ' or '
+            )
+                ? 's are'
+                : ' is'
+        );
     }
 
     $activeRequirementCount = (int)(
         $requirements['activeCount'] ?? 0
     );
 
-    if ($activeRequirementCount > 0) {
-        $sentences[] = sprintf(
-            '%d active Special Requirement%s remain recorded for coordination.',
+    // Summarize active Special Requirements
+    $sentences[] = $activeRequirementCount > 0
+        ? sprintf(
+            '%d active Special Requirement%s remain recorded.',
             $activeRequirementCount,
-            $activeRequirementCount === 1 ? '' : 's'
-        );
-    }
+            $activeRequirementCount === 1
+                ? ''
+                : 's'
+        )
+        : 'No active Special Requirements are recorded.';
 
-    if ((bool)($fees['hasFeeRecords'] ?? false)) {
-        $sentences[] = sprintf(
-            'Active fees total $%s assessed, $%s paid, and $%s outstanding.',
-            number_format((float)($fees['totalAssessed'] ?? 0), 2),
-            number_format((float)($fees['totalPaid'] ?? 0), 2),
-            number_format((float)($fees['totalOutstanding'] ?? 0), 2)
-        );
+    if ((bool)(
+        $fees['hasFeeRecords'] ?? false
+    )) {
+        $totalAssessed = round((float)(
+            $fees['totalAssessed'] ?? 0
+        ), 2);
+
+        $totalPaid = round((float)(
+            $fees['totalPaid'] ?? 0
+        ), 2);
+
+        $totalOutstanding = round((float)(
+            $fees['totalOutstanding'] ?? 0
+        ), 2);
 
         $totalVoided = round((float)(
             $fees['totalVoided'] ?? 0
         ), 2);
 
-        if ($totalVoided > 0) {
+        // Summarize active Fee position
+        if (
+            $totalOutstanding === 0.00 &&
+            $totalAssessed === $totalPaid
+        ) {
             $sentences[] = sprintf(
-                'Voided fees total $%s.',
-                number_format($totalVoided, 2)
+                'Active fees total $%s and are paid in full, with no outstanding balance.',
+                number_format(
+                    $totalAssessed,
+                    2
+                )
+            );
+        } else {
+            $sentences[] = sprintf(
+                'Active fees total $%s assessed, $%s paid, and $%s outstanding.',
+                number_format(
+                    $totalAssessed,
+                    2
+                ),
+                number_format(
+                    $totalPaid,
+                    2
+                ),
+                number_format(
+                    $totalOutstanding,
+                    2
+                )
             );
         }
+
+        if ($totalVoided > 0) {
+            $sentences[] = sprintf(
+                'A separate $%s in fees was voided.',
+                number_format(
+                    $totalVoided,
+                    2
+                )
+            );
+        }
+    } else {
+        $sentences[] =
+            'No Application Fees are recorded.';
     }
 
-    return implode(' ', $sentences);
+    return implode(
+        ' ',
+        $sentences
+    );
 }
 
 // #endregion
