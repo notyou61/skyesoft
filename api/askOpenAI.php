@@ -4168,7 +4168,8 @@ if ($type === 'applicationStatusReportSummary') {
                     is_string($aiSummary) &&
                     trim($aiSummary) !== ''
                 ) {
-                    $summaryNarrative = preg_replace(
+                    // Normalize proposed AI narrative
+                    $candidateSummary = preg_replace(
                         '/\s+/u',
                         ' ',
                         strip_tags(
@@ -4176,19 +4177,84 @@ if ($type === 'applicationStatusReportSummary') {
                         )
                     );
 
-                    $summaryNarrative = trim(
-                        (string)$summaryNarrative
+                    $candidateSummary = trim(
+                        (string)$candidateSummary
                     );
 
-                    if ($summaryNarrative !== '') {
+                    $milestoneReview = is_array(
+                        $reportPayload[
+                            'milestoneReview'
+                        ] ?? null
+                    )
+                        ? $reportPayload[
+                            'milestoneReview'
+                        ]
+                        : [];
+
+                    $fees = is_array(
+                        $reportPayload['fees'] ?? null
+                    )
+                        ? $reportPayload['fees']
+                        : [];
+
+                    $hasMilestoneInconsistency =
+                        (bool)($milestoneReview[
+                            'hasChronologicalInconsistency'
+                        ] ?? false);
+
+                    $voidedFeeCount = (int)(
+                        $fees['voidedRecordCount'] ?? 0
+                    );
+
+                    // Reject Fee activity described as a milestone
+                    $usesFeeAsMilestone =
+                        preg_match(
+                            '/(?:milestone.{0,100}\b(?:fee|payment)\b|\b(?:fee|payment)\b.{0,100}milestone)/iu',
+                            $candidateSummary
+                        ) === 1;
+
+                    // Reject false chronological consistency claims
+                    $claimsChronologicalConsistency =
+                        preg_match(
+                            '/(?:no\s+(?:recorded\s+)?inconsistenc|all\s+records.{0,50}consistent|chronologically\s+consistent)/iu',
+                            $candidateSummary
+                        ) === 1;
+
+                    // Reject denial of authoritative voided Fees
+                    $deniesVoidedFees =
+                        preg_match(
+                            '/(?:no\s+(?:recorded\s+)?voided\s+fees?|no\s+fees?.{0,30}voided|there\s+are\s+no\s+voided)/iu',
+                            $candidateSummary
+                        ) === 1;
+
+                    $summaryRejected =
+                        $usesFeeAsMilestone ||
+                        (
+                            $hasMilestoneInconsistency &&
+                            $claimsChronologicalConsistency
+                        ) ||
+                        (
+                            $voidedFeeCount > 0 &&
+                            $deniesVoidedFees
+                        );
+
+                    if (
+                        $candidateSummary !== '' &&
+                        !$summaryRejected
+                    ) {
                         $summaryNarrative = substr(
-                            $summaryNarrative,
+                            $candidateSummary,
                             0,
                             2000
                         );
 
                         $summarySource =
                             'askOpenAI.php';
+                    } elseif ($summaryRejected) {
+                        error_log(
+                            '[askOpenAI] Application Status ' .
+                            'summary rejected by factual guard.'
+                        );
                     }
                 }
             }
