@@ -191,6 +191,46 @@ function renderOpenApplicationsSummaryHeading(
     );
 }
 
+function formatOpenApplicationsFeeStatus(
+    array $application
+): string {
+    $feeStatus = trim((string)(
+        $application['applicationFeeStatus'] ?? 'No Fees'
+    ));
+
+    $totalPaid = round((float)(
+        $application['applicationFeeTotalPaid'] ?? 0
+    ), 2);
+
+    $totalOutstanding = round((float)(
+        $application['applicationFeeTotalOutstanding'] ?? 0
+    ), 2);
+
+    if ($feeStatus === 'Paid') {
+        return sprintf(
+            'Paid — $%s',
+            number_format($totalPaid, 2)
+        );
+    }
+
+    if ($feeStatus === 'Partially Paid') {
+        return sprintf(
+            'Partially Paid — $%s paid; $%s awaiting payment',
+            number_format($totalPaid, 2),
+            number_format($totalOutstanding, 2)
+        );
+    }
+
+    if ($feeStatus === 'Awaiting Payment') {
+        return sprintf(
+            'Awaiting Payment — $%s',
+            number_format($totalOutstanding, 2)
+        );
+    }
+
+    return 'No Fees';
+}
+
 // #endregion
 
 // #region SECTION III — Authoritative Open Application Data
@@ -607,6 +647,16 @@ ob_start();
                     <td class="status-value"><?= escapeOpenApplicationsReportValue(
                         $application['applicationStatusName']
                     ) ?></td>
+                </tr>
+                <tr>
+                    <th>Fee Status</th>
+                    <td class="status-value">
+                        <?= escapeOpenApplicationsReportValue(
+                            formatOpenApplicationsFeeStatus(
+                                $application
+                            )
+                        ) ?>
+                    </td>
                 </tr>
                 <tr>
                     <th>Status Description</th>

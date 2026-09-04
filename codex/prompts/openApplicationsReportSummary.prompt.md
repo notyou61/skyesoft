@@ -18,6 +18,8 @@ A recorded milestone that conflicts with the current stage or status.
 
 Missing scope or an identifier expected from the recorded lifecycle.
 
+A Fee Status showing an amount awaiting payment.
+
 A specific Application awaiting jurisdiction action when that distinction is
 operationally useful.
 

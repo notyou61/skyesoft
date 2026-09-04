@@ -36,7 +36,36 @@ function loadOpenApplicationsReportData(PDO $db): array
             l.locationZip,
             s.applicationStageName,
             st.applicationStatusName,
-            st.applicationStatusDescription
+            st.applicationStatusDescription,
+            (
+                SELECT COUNT(*)
+                FROM tblApplicationFees f
+                WHERE f.applicationID = a.applicationID
+                  AND (
+                      f.feeVoidedUnix IS NULL OR
+                      f.feeVoidedUnix <= 0
+                  )
+            ) AS applicationFeeCount,
+            COALESCE((
+                SELECT SUM(f.feeAmount)
+                FROM tblApplicationFees f
+                WHERE f.applicationID = a.applicationID
+                  AND (
+                      f.feeVoidedUnix IS NULL OR
+                      f.feeVoidedUnix <= 0
+                  )
+            ), 0) AS applicationFeeTotalAssessed,
+            COALESCE((
+                SELECT SUM(f.feeAmount)
+                FROM tblApplicationFees f
+                WHERE f.applicationID = a.applicationID
+                  AND f.feePaidUnix IS NOT NULL
+                  AND f.feePaidUnix > 0
+                  AND (
+                      f.feeVoidedUnix IS NULL OR
+                      f.feeVoidedUnix <= 0
+                  )
+            ), 0) AS applicationFeeTotalPaid
         FROM tblApplications a
         INNER JOIN tblOrders o
             ON o.orderID = a.applicationOrderID
@@ -57,6 +86,46 @@ function loadOpenApplicationsReportData(PDO $db): array
     ");
     $applicationsStmt->execute();
     $applications = $applicationsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Normalize authoritative Fee totals and status
+    foreach ($applications as &$application) {
+        $feeCount = (int)(
+            $application['applicationFeeCount'] ?? 0
+        );
+
+        $totalAssessed = round((float)(
+            $application['applicationFeeTotalAssessed'] ?? 0
+        ), 2);
+
+        $totalPaid = round((float)(
+            $application['applicationFeeTotalPaid'] ?? 0
+        ), 2);
+
+        $totalOutstanding = max(
+            0.00,
+            round($totalAssessed - $totalPaid, 2)
+        );
+
+        if ($feeCount <= 0) {
+            $feeStatus = 'No Fees';
+        } elseif ($totalOutstanding <= 0) {
+            $feeStatus = 'Paid';
+        } elseif ($totalPaid > 0) {
+            $feeStatus = 'Partially Paid';
+        } else {
+            $feeStatus = 'Awaiting Payment';
+        }
+
+        $application['applicationFeeCount'] = $feeCount;
+        $application['applicationFeeTotalAssessed'] =
+            $totalAssessed;
+        $application['applicationFeeTotalPaid'] =
+            $totalPaid;
+        $application['applicationFeeTotalOutstanding'] =
+            $totalOutstanding;
+        $application['applicationFeeStatus'] = $feeStatus;
+    }
+    unset($application);
 
     return is_array($applications) ? $applications : [];
 }
@@ -294,6 +363,30 @@ function buildOpenApplicationReviewItems(
         ];
     }
 
+    $feeStatus = trim((string)(
+        $application['applicationFeeStatus'] ?? ''
+    ));
+
+    $feeOutstanding = round((float)(
+        $application['applicationFeeTotalOutstanding'] ?? 0
+    ), 2);
+
+    if ($feeOutstanding > 0) {
+        $reviewItems[] = [
+            'applicationID' => $applicationId,
+            'workOrderNumber' => $workOrderNumber,
+            'type' => 'fee_payment_required',
+            'message' => sprintf(
+                'Application #%d has a Fee Status of %s with $%s awaiting payment.',
+                $applicationId,
+                $feeStatus !== ''
+                    ? $feeStatus
+                    : 'Awaiting Payment',
+                number_format($feeOutstanding, 2)
+            )
+        ];
+    }
+
     return $reviewItems;
 }
 
@@ -372,6 +465,25 @@ function buildOpenApplicationsReportPayload(
             'statusDescription' => trim((string)(
                 $application['applicationStatusDescription'] ?? ''
             )),
+            'fees' => [
+                'status' => trim((string)(
+                    $application['applicationFeeStatus'] ?? 'No Fees'
+                )),
+                'feeCount' => (int)(
+                    $application['applicationFeeCount'] ?? 0
+                ),
+                'totalAssessed' => round((float)(
+                    $application['applicationFeeTotalAssessed'] ?? 0
+                ), 2),
+                'totalPaid' => round((float)(
+                    $application['applicationFeeTotalPaid'] ?? 0
+                ), 2),
+                'totalOutstanding' => round((float)(
+                    $application[
+                        'applicationFeeTotalOutstanding'
+                    ] ?? 0
+                ), 2)
+            ],
             'receivedDate' => formatOpenApplicationsPayloadDate(
                 $application['applicationCreatedUnix'] ?? null
             ),
@@ -392,7 +504,7 @@ function buildOpenApplicationsReportPayload(
     }
 
     return [
-        'schemaVersion' => '1.1.0',
+        'schemaVersion' => '1.2.0',
         'reportType' => 'open_applications_status',
         'audience' => 'internal_operations',
         'generatedDate' =>
