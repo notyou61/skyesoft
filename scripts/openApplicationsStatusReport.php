@@ -153,6 +153,44 @@ function renderOpenApplicationsDateRow(
         '</td></tr>';
 }
 
+function renderOpenApplicationsSummaryHeading(
+    string|false $rootDir
+): string {
+    // Resolve safe local Report Summary icon
+    $iconPath = $rootDir !== false
+        ? $rootDir .
+            '/assets/images/icons/memo.png'
+        : '';
+
+    $iconHtml = '';
+
+    // Render local icon when available
+    if (
+        $iconPath !== '' &&
+        is_file($iconPath)
+    ) {
+        $iconSource =
+            'file://' . $iconPath;
+
+        $iconHtml = sprintf(
+            '<img class="report-summary-icon" src="%s" alt="">',
+            htmlspecialchars(
+                $iconSource,
+                ENT_QUOTES,
+                'UTF-8'
+            )
+        );
+    }
+
+    return sprintf(
+        '<div class="report-summary-heading">%s<span>%s</span></div>',
+        $iconHtml,
+        escapeOpenApplicationsReportValue(
+            'Report Summary'
+        )
+    );
+}
+
 // #endregion
 
 // #region SECTION III — Authoritative Open Application Data
@@ -226,42 +264,70 @@ $recordReportAction = static function () use (
     $reportFingerprint,
     $reportSummarySource
 ): int {
+    // Resolve authoritative Application identifiers
     $applicationIds = array_map(
-        static function ($application): int {
-            return (int)$application['applicationID'];
+        static function (
+            array $application
+        ): int {
+            return (int)$application[
+                'applicationID'
+            ];
         },
         $applications
     );
 
+    // Record governed PDF report Action
     return insertActionPrompt([
-        'actionTypeId' => $actionTypeId,
-        'contactId' => $contactId,
-        'origin' => ACTION_ORIGIN_USER,
-        'activitySessionId' => $activitySessionId,
-        'promptText' => 'Generate Open Applications Status PDF',
+        'actionTypeId' =>
+            $actionTypeId,
+        'contactId' =>
+            $contactId,
+        'origin' =>
+            ACTION_ORIGIN_USER,
+        'activitySessionId' =>
+            $activitySessionId,
+        'promptText' =>
+            'Generate Open Applications Status PDF',
         'responseText' => sprintf(
             'Generated internal status PDF for %d open Application%s.',
             $applicationCount,
-            $applicationCount === 1 ? '' : 's'
+            $applicationCount === 1
+                ? ''
+                : 's'
         ),
-        'intent' => 'report.document.read',
-        'intentConfidence' => 1.00,
+        'intent' =>
+            'report.document.read',
+        'intentConfidence' =>
+            1.00,
         'actionPayloadData' => [
-            'operation' => 'applications.open_status_report',
-            'audience' => 'internal',
-            'outputFormat' => 'pdf',
-            'sort' => 'applicationCreatedUnix.asc',
-            'reportFingerprint' => $reportFingerprint,
-            'summarySource' => $reportSummarySource
+            'operation' =>
+                'applications.open_status_report',
+            'audience' =>
+                'internal',
+            'outputFormat' =>
+                'pdf',
+            'sort' =>
+                'applicationCreatedUnix.asc',
+            'reportFingerprint' =>
+                $reportFingerprint,
+            'summarySource' =>
+                $reportSummarySource
         ],
         'actionResponseData' => [
-            'success' => true,
-            'rowCount' => $applicationCount,
-            'applicationIDs' => $applicationIds,
-            'reportType' => 'open_applications_status',
-            'audience' => 'internal',
-            'outputFormat' => 'pdf',
-            'summarySource' => $reportSummarySource
+            'success' =>
+                true,
+            'rowCount' =>
+                $applicationCount,
+            'applicationIDs' =>
+                $applicationIds,
+            'reportType' =>
+                'open_applications_status',
+            'audience' =>
+                'internal',
+            'outputFormat' =>
+                'pdf',
+            'summarySource' =>
+                $reportSummarySource
         ]
     ], $db);
 };
@@ -314,8 +380,8 @@ ob_start();
             color: #222;
             background: #fff;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 9px;
-            line-height: 1.2;
+            font-size: 11px;
+            line-height: 1.25;
         }
 
         .report {
@@ -323,37 +389,61 @@ ob_start();
             margin: 0;
         }
 
+        /* Keep Report Summary together */
         .report-summary {
             margin: 0 0 8px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .report-summary-heading {
             margin: 0 0 3px;
             padding: 0 0 2px;
             color: #14377c;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
+            line-height: 16px;
             border-bottom: 2px solid #14377c;
+        }
+
+        .report-summary-heading span {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .report-summary-icon {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            vertical-align: middle;
+            object-fit: contain;
         }
 
         .report-summary-body {
             padding: 6px 8px;
             color: #333;
-            font-size: 8.5px;
-            line-height: 1.3;
-            background: #fff;
-            border: 1px solid #ccc;
+            font-size: 10px;
+            line-height: 1.35;
+            background: #f0f4f9;
+            border: 1px solid #b8cbe5;
+            border-left: 4px solid #14377c;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
+        /* Keep each Application together */
         .application-block {
             margin: 0 0 9px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .application-heading {
             margin: 0 0 3px;
             padding: 4px 6px;
             color: #fff;
-            font-size: 10px;
+            font-size: 12px;
             font-weight: bold;
             background: #14377c;
         }
@@ -361,6 +451,13 @@ ob_start();
         .application-table {
             width: 100%;
             border-collapse: collapse;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .application-table tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .application-table th,
@@ -400,6 +497,8 @@ ob_start();
             text-align: center;
             background: #f8f9fa;
             border: 1px solid #ccc;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
     </style>
 </head>
@@ -407,9 +506,14 @@ ob_start();
 
 <div class="report">
     <div class="report-summary">
-        <div class="report-summary-heading">Report Summary</div>
+        <?= renderOpenApplicationsSummaryHeading(
+            $rootDir
+        ) ?>
+
         <div class="report-summary-body">
-            <?= escapeOpenApplicationsReportValue($reportSummary) ?>
+            <?= escapeOpenApplicationsReportValue(
+                $reportSummary
+            ) ?>
         </div>
     </div>
 
@@ -513,20 +617,38 @@ ob_start();
                     ) ?></td>
                 </tr>
                 <?= renderOpenApplicationsDateRow(
-                    'Created',
-                    $application['applicationCreatedUnix']
+                    'Received',
+                    $application[
+                        'applicationCreatedUnix'
+                    ]
                 ) ?>
+
                 <?= renderOpenApplicationsDateRow(
                     'Submitted',
-                    $application['applicationSubmittedUnix']
+                    $application[
+                        'applicationSubmittedUnix'
+                    ]
                 ) ?>
+
                 <?= renderOpenApplicationsDateRow(
                     'Approved',
-                    $application['applicationApprovedUnix']
+                    $application[
+                        'applicationApprovedUnix'
+                    ]
                 ) ?>
+
                 <?= renderOpenApplicationsDateRow(
                     'Issued',
-                    $application['applicationIssuedUnix']
+                    $application[
+                        'applicationIssuedUnix'
+                    ]
+                ) ?>
+
+                <?= renderOpenApplicationsDateRow(
+                    'Finaled',
+                    $application[
+                        'applicationFinaledUnix'
+                    ]
                 ) ?>
             </table>
         </div>
