@@ -10347,17 +10347,42 @@ window.SkyIndex = {
                             </div>
                         </div>
 
-                        <span style="
-                            padding:3px 8px;
-                            border:1px solid rgba(17,122,139,0.25);
-                            border-radius:4px;
-                            background:rgba(17,122,139,0.12);
-                            color:#117a8b;
-                            font-family:monospace;
-                            font-weight:bold;
+                        <div style="
+                            display:flex;
+                            align-items:center;
+                            gap:8px;
                         ">
-                            LIST
-                        </span>
+                            <button
+                                type="button"
+                                onclick="
+                                    SkyIndex.openApplicationsStatusReport();
+                                "
+                                style="
+                                    padding:6px 10px;
+                                    border:1px solid #14377c;
+                                    border-radius:5px;
+                                    background:#14377c;
+                                    color:#fff;
+                                    cursor:pointer;
+                                    font-size:0.78em;
+                                    font-weight:700;
+                                "
+                            >
+                                Open Applications PDF
+                            </button>
+
+                            <span style="
+                                padding:3px 8px;
+                                border:1px solid rgba(17,122,139,0.25);
+                                border-radius:4px;
+                                background:rgba(17,122,139,0.12);
+                                color:#117a8b;
+                                font-family:monospace;
+                                font-weight:bold;
+                            ">
+                                LIST
+                            </span>
+                        </div>
                     </div>
 
                     <div
