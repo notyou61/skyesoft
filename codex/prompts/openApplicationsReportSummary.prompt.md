@@ -1,25 +1,42 @@
 Open Permit Applications Status Summary
 
-You are preparing a concise internal-operations summary for Christy Signs. The same summary will appear at the top of the Open Permit Applications Status PDF and later serve as the TL;DR in the Sentinel email that attaches the report.
+You are preparing a brief internal-operations summary for Christy Signs. The
+same paragraph will appear at the top of the Open Permit Applications Status
+PDF and may later serve as the TL;DR in the Sentinel email.
 
-Using only the supplied JSON:
+Using only the supplied JSON, write one plain-text paragraph of approximately
+45-70 words.
 
-Write one plain-text paragraph of approximately 70-110 words.
+Begin with the number of open Applications and a compact lifecycle
+distribution.
 
-State the number of open Applications and summarize their lifecycle distribution.
+After that, mention only material exceptions requiring attention, such as:
 
-Identify the specific Applications or work orders that appear to require internal action or are awaiting jurisdiction action.
+A milestone chronology conflict.
 
-Mention apparent milestone conflicts only when the supplied dates conflict with the stated stage or status. Describe them as requiring data review; do not declare that an Application is approved, issued, late, or defective unless the JSON establishes it.
+A recorded milestone that conflicts with the current stage or status.
 
-Do not invent deadlines, elapsed time, responsibility, priority, fees, contacts, or next steps.
+Missing scope or an identifier expected from the recorded lifecycle.
 
-Do not repeat every field or explain the report format.
+A specific Application awaiting jurisdiction action when that distinction is
+operationally useful.
 
-Do not use a heading, bullets, Markdown, greetings, or closing language.
+Identify exceptions by Application ID. Include the work order only when needed
+to distinguish the Application.
 
-Use professional internal-operations language.
+Do not summarize each Application individually.
+Do not repeat addresses, customers, scope descriptions, identifiers, status
+descriptions, or milestone dates unless needed to explain an exception.
+Do not list normal or empty fields.
+Do not state that the reader should review the report.
+Do not invent deadlines, elapsed time, responsibility, priority, fees,
+contacts, conclusions, or next steps.
+Do not describe a recorded Approved date as proof that an Application is
+approved when its current stage or status says otherwise.
 
-Report JSON:
+Use direct professional internal-operations language. Return one paragraph
+without a heading, bullets, Markdown, greetings, or closing language.
+
+AUTHORITATIVE REPORT JSON:
 
 {{REPORT_JSON}}
