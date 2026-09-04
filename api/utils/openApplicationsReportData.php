@@ -65,84 +65,388 @@ function loadOpenApplicationsReportData(PDO $db): array
 
 // #region SECTION II — Structured AI Context
 
+function formatOpenApplicationsPayloadDate(
+    mixed $unix
+): ?string {
+    if (!is_numeric($unix) || (int)$unix <= 0) {
+        return null;
+    }
+
+    // Format authoritative date in Phoenix time
+    $date = new DateTimeImmutable(
+        '@' . (int)$unix
+    );
+
+    $date = $date->setTimezone(
+        new DateTimeZone(
+            'America/Phoenix'
+        )
+    );
+
+    return $date->format(
+        'F j, Y'
+    );
+}
+
+function buildOpenApplicationReviewItems(
+    array $application
+): array {
+    $applicationId = (int)(
+        $application['applicationID'] ?? 0
+    );
+
+    $workOrderNumber = trim((string)(
+        $application['orderChristyNumber'] ?? ''
+    ));
+
+    $stage = trim((string)(
+        $application['applicationStageName'] ?? ''
+    ));
+
+    $stageKey = strtolower($stage);
+    $reviewItems = [];
+
+    $milestones = [
+        [
+            'label' => 'Received',
+            'unix' => $application[
+                'applicationCreatedUnix'
+            ] ?? null
+        ],
+        [
+            'label' => 'Submitted',
+            'unix' => $application[
+                'applicationSubmittedUnix'
+            ] ?? null
+        ],
+        [
+            'label' => 'Approved',
+            'unix' => $application[
+                'applicationApprovedUnix'
+            ] ?? null
+        ],
+        [
+            'label' => 'Issued',
+            'unix' => $application[
+                'applicationIssuedUnix'
+            ] ?? null
+        ],
+        [
+            'label' => 'Finaled',
+            'unix' => $application[
+                'applicationFinaledUnix'
+            ] ?? null
+        ]
+    ];
+
+    $resolvedMilestones = [];
+    $previousMilestone = null;
+
+    // Normalize and compare recorded milestones
+    foreach ($milestones as $milestone) {
+        if (
+            !is_numeric($milestone['unix']) ||
+            (int)$milestone['unix'] <= 0
+        ) {
+            continue;
+        }
+
+        $resolvedMilestone = [
+            'label' => $milestone['label'],
+            'unix' => (int)$milestone['unix'],
+            'date' => formatOpenApplicationsPayloadDate(
+                $milestone['unix']
+            )
+        ];
+
+        $resolvedMilestones[
+            $resolvedMilestone['label']
+        ] = $resolvedMilestone;
+
+        if (
+            $previousMilestone !== null &&
+            $resolvedMilestone['unix'] <
+                $previousMilestone['unix']
+        ) {
+            $reviewItems[] = [
+                'applicationID' => $applicationId,
+                'workOrderNumber' => $workOrderNumber,
+                'type' => 'chronological_inconsistency',
+                'message' => sprintf(
+                    'Application #%d has a recorded date inconsistency: %s date %s precedes %s date %s.',
+                    $applicationId,
+                    $resolvedMilestone['label'],
+                    $resolvedMilestone['date'],
+                    $previousMilestone['label'],
+                    $previousMilestone['date']
+                )
+            ];
+        }
+
+        $previousMilestone = $resolvedMilestone;
+    }
+
+    $stageConflictLabels = [];
+
+    // Identify milestone records beyond the current stage
+    if ($stageKey === 'pre-submittal') {
+        $stageConflictLabels = [
+            'Submitted',
+            'Approved',
+            'Issued',
+            'Finaled'
+        ];
+    } elseif ($stageKey === 'submitted') {
+        $stageConflictLabels = [
+            'Approved',
+            'Issued',
+            'Finaled'
+        ];
+    } elseif ($stageKey === 'approved') {
+        $stageConflictLabels = [
+            'Issued',
+            'Finaled'
+        ];
+    } elseif ($stageKey === 'issued') {
+        $stageConflictLabels = [
+            'Finaled'
+        ];
+    }
+
+    foreach ($stageConflictLabels as $stageConflictLabel) {
+        if (!isset($resolvedMilestones[$stageConflictLabel])) {
+            continue;
+        }
+
+        $reviewItems[] = [
+            'applicationID' => $applicationId,
+            'workOrderNumber' => $workOrderNumber,
+            'type' => 'stage_milestone_conflict',
+            'message' => sprintf(
+                'Application #%d is in %s stage while a %s date of %s is recorded.',
+                $applicationId,
+                $stage !== '' ? $stage : 'an unspecified',
+                $stageConflictLabel,
+                $resolvedMilestones[
+                    $stageConflictLabel
+                ]['date']
+            )
+        ];
+    }
+
+    $scope = trim((string)(
+        $application['applicationScope'] ?? ''
+    ));
+
+    if (
+        $scope === '' ||
+        strtolower($scope) === 'none'
+    ) {
+        $reviewItems[] = [
+            'applicationID' => $applicationId,
+            'workOrderNumber' => $workOrderNumber,
+            'type' => 'missing_scope',
+            'message' => sprintf(
+                'Application #%d does not have a recorded scope.',
+                $applicationId
+            )
+        ];
+    }
+
+    $applicationNumber = trim((string)(
+        $application['applicationNumber'] ?? ''
+    ));
+
+    if (
+        isset($resolvedMilestones['Submitted']) &&
+        $applicationNumber === ''
+    ) {
+        $reviewItems[] = [
+            'applicationID' => $applicationId,
+            'workOrderNumber' => $workOrderNumber,
+            'type' => 'missing_jurisdiction_application_number',
+            'message' => sprintf(
+                'Application #%d has a Submitted date but no jurisdiction Application number.',
+                $applicationId
+            )
+        ];
+    }
+
+    $permitNumber = trim((string)(
+        $application['applicationPermitNumber'] ?? ''
+    ));
+
+    if (
+        (
+            isset($resolvedMilestones['Approved']) ||
+            isset($resolvedMilestones['Issued'])
+        ) &&
+        $permitNumber === ''
+    ) {
+        $reviewItems[] = [
+            'applicationID' => $applicationId,
+            'workOrderNumber' => $workOrderNumber,
+            'type' => 'missing_permit_number',
+            'message' => sprintf(
+                'Application #%d has an Approved or Issued date but no permit number.',
+                $applicationId
+            )
+        ];
+    }
+
+    return $reviewItems;
+}
+
 function buildOpenApplicationsReportPayload(
     array $applications,
     int $generatedUnix
 ): array {
-    $applicationRows = array_map(
-        static function (array $application): array {
-            return [
-                'applicationID' => (int)$application['applicationID'],
-                'applicationTitle' => trim((string)(
-                    $application['applicationTitle'] ?? ''
-                )),
-                'workOrderNumber' => trim((string)(
-                    $application['orderChristyNumber'] ?? ''
-                )),
-                'customer' => trim((string)(
-                    $application['entityName'] ?? ''
-                )),
-                'location' => trim((string)(
-                    $application['locationName'] ?? ''
-                )),
-                'jurisdiction' => trim((string)(
-                    $application['applicationJurisdiction'] ?? ''
-                )),
-                'jurisdictionApplicationNumber' => trim((string)(
-                    $application['applicationNumber'] ?? ''
-                )),
-                'permitNumber' => trim((string)(
-                    $application['applicationPermitNumber'] ?? ''
-                )),
-                'scope' => trim((string)(
-                    $application['applicationScope'] ?? ''
-                )),
-                'stage' => trim((string)(
-                    $application['applicationStageName'] ?? ''
-                )),
-                'status' => trim((string)(
-                    $application['applicationStatusName'] ?? ''
-                )),
-                'statusDescription' => trim((string)(
-                    $application['applicationStatusDescription'] ?? ''
-                )),
-                'createdUnix' => is_numeric(
-                    $application['applicationCreatedUnix'] ?? null
-                ) ? (int)$application['applicationCreatedUnix'] : null,
-                'submittedUnix' => is_numeric(
-                    $application['applicationSubmittedUnix'] ?? null
-                ) ? (int)$application['applicationSubmittedUnix'] : null,
-                'approvedUnix' => is_numeric(
-                    $application['applicationApprovedUnix'] ?? null
-                ) ? (int)$application['applicationApprovedUnix'] : null,
-                'issuedUnix' => is_numeric(
-                    $application['applicationIssuedUnix'] ?? null
-                ) ? (int)$application['applicationIssuedUnix'] : null
-            ];
-        },
-        $applications
-    );
+    $applicationRows = [];
+    $stageCounts = [];
+    $statusCounts = [];
+    $reviewItems = [];
+
+    foreach ($applications as $application) {
+        $stage = trim((string)(
+            $application['applicationStageName'] ?? ''
+        ));
+
+        $status = trim((string)(
+            $application['applicationStatusName'] ?? ''
+        ));
+
+        $stageLabel = $stage !== ''
+            ? $stage
+            : 'Unspecified Stage';
+
+        $statusLabel = $status !== ''
+            ? $status
+            : 'Unspecified Status';
+
+        $stageCounts[$stageLabel] =
+            ($stageCounts[$stageLabel] ?? 0) + 1;
+
+        $statusCounts[$statusLabel] =
+            ($statusCounts[$statusLabel] ?? 0) + 1;
+
+        $applicationReviewItems =
+            buildOpenApplicationReviewItems(
+                $application
+            );
+
+        $reviewItems = array_merge(
+            $reviewItems,
+            $applicationReviewItems
+        );
+
+        $applicationRows[] = [
+            'applicationID' => (int)(
+                $application['applicationID'] ?? 0
+            ),
+            'applicationTitle' => trim((string)(
+                $application['applicationTitle'] ?? ''
+            )),
+            'workOrderNumber' => trim((string)(
+                $application['orderChristyNumber'] ?? ''
+            )),
+            'customer' => trim((string)(
+                $application['entityName'] ?? ''
+            )),
+            'location' => trim((string)(
+                $application['locationName'] ?? ''
+            )),
+            'jurisdiction' => trim((string)(
+                $application['applicationJurisdiction'] ?? ''
+            )),
+            'jurisdictionApplicationNumber' => trim((string)(
+                $application['applicationNumber'] ?? ''
+            )),
+            'permitNumber' => trim((string)(
+                $application['applicationPermitNumber'] ?? ''
+            )),
+            'scope' => trim((string)(
+                $application['applicationScope'] ?? ''
+            )),
+            'stage' => $stage,
+            'status' => $status,
+            'statusDescription' => trim((string)(
+                $application['applicationStatusDescription'] ?? ''
+            )),
+            'receivedDate' => formatOpenApplicationsPayloadDate(
+                $application['applicationCreatedUnix'] ?? null
+            ),
+            'submittedDate' => formatOpenApplicationsPayloadDate(
+                $application['applicationSubmittedUnix'] ?? null
+            ),
+            'approvedDate' => formatOpenApplicationsPayloadDate(
+                $application['applicationApprovedUnix'] ?? null
+            ),
+            'issuedDate' => formatOpenApplicationsPayloadDate(
+                $application['applicationIssuedUnix'] ?? null
+            ),
+            'finaledDate' => formatOpenApplicationsPayloadDate(
+                $application['applicationFinaledUnix'] ?? null
+            ),
+            'reviewItems' => $applicationReviewItems
+        ];
+    }
 
     return [
-        'schemaVersion' => '1.0.0',
+        'schemaVersion' => '1.1.0',
         'reportType' => 'open_applications_status',
         'audience' => 'internal_operations',
-        'generatedUnix' => $generatedUnix,
-        'applicationCount' => count($applicationRows),
-        'sortOrder' => 'applicationCreatedUnix.asc',
+        'generatedDate' =>
+            formatOpenApplicationsPayloadDate(
+                $generatedUnix
+            ),
+        'applicationCount' =>
+            count($applicationRows),
+        'sortOrder' =>
+            'applicationCreatedUnix.asc',
+        'lifecycleDistribution' => [
+            'stageCounts' => $stageCounts,
+            'statusCounts' => $statusCounts
+        ],
+        'reviewSummary' => [
+            'hasReviewItems' =>
+                count($reviewItems) > 0,
+            'reviewItemCount' =>
+                count($reviewItems),
+            'applicationCountWithReviewItems' =>
+                count(array_unique(array_map(
+                    static function (array $item): int {
+                        return (int)(
+                            $item['applicationID'] ?? 0
+                        );
+                    },
+                    $reviewItems
+                ))),
+            'items' => $reviewItems
+        ],
         'applications' => $applicationRows
     ];
 }
 
-function fingerprintOpenApplicationsReportPayload(array $payload): string
-{
+function fingerprintOpenApplicationsReportPayload(
+    array $payload
+): string {
     $fingerprintPayload = [
-        'schemaVersion' => $payload['schemaVersion'] ?? null,
-        'reportType' => $payload['reportType'] ?? null,
-        'applicationCount' => $payload['applicationCount'] ?? 0,
-        'sortOrder' => $payload['sortOrder'] ?? null,
-        'applications' => $payload['applications'] ?? []
+        'schemaVersion' =>
+            $payload['schemaVersion'] ?? null,
+        'reportType' =>
+            $payload['reportType'] ?? null,
+        'applicationCount' =>
+            $payload['applicationCount'] ?? 0,
+        'sortOrder' =>
+            $payload['sortOrder'] ?? null,
+        'lifecycleDistribution' =>
+            $payload['lifecycleDistribution'] ?? [],
+        'reviewSummary' =>
+            $payload['reviewSummary'] ?? [],
+        'applications' =>
+            $payload['applications'] ?? []
     ];
+
     $encodedPayload = json_encode(
         $fingerprintPayload,
         JSON_UNESCAPED_SLASHES |
@@ -151,7 +455,9 @@ function fingerprintOpenApplicationsReportPayload(array $payload): string
 
     return hash(
         'sha256',
-        $encodedPayload !== false ? $encodedPayload : '{}'
+        $encodedPayload !== false
+            ? $encodedPayload
+            : '{}'
     );
 }
 
@@ -159,36 +465,115 @@ function fingerprintOpenApplicationsReportPayload(array $payload): string
 
 // #region SECTION III — Deterministic Summary Fallback
 
-function buildOpenApplicationsFallbackSummary(array $payload): string
-{
-    $applications = is_array($payload['applications'] ?? null)
+function buildOpenApplicationsFallbackSummary(
+    array $payload
+): string {
+    $applications = is_array(
+        $payload['applications'] ?? null
+    )
         ? $payload['applications']
         : [];
+
     $applicationCount = count($applications);
 
     if ($applicationCount === 0) {
-        return 'No open permit Applications are currently recorded. This internal report contains no Applications awaiting preparation, jurisdiction processing, issuance, or inspection activity.';
+        return 'No open permit Applications are currently recorded.';
     }
 
-    $stageCounts = [];
+    $distribution = is_array(
+        $payload['lifecycleDistribution'] ?? null
+    )
+        ? $payload['lifecycleDistribution']
+        : [];
 
-    foreach ($applications as $application) {
-        $stageName = trim((string)($application['stage'] ?? ''));
-        $stageName = $stageName !== '' ? $stageName : 'Unspecified Stage';
-        $stageCounts[$stageName] = ($stageCounts[$stageName] ?? 0) + 1;
-    }
+    $stageCounts = is_array(
+        $distribution['stageCounts'] ?? null
+    )
+        ? $distribution['stageCounts']
+        : [];
+
+    $reviewSummary = is_array(
+        $payload['reviewSummary'] ?? null
+    )
+        ? $payload['reviewSummary']
+        : [];
 
     $stageParts = [];
 
     foreach ($stageCounts as $stageName => $stageCount) {
-        $stageParts[] = sprintf('%d in %s', $stageCount, $stageName);
+        $stageParts[] = sprintf(
+            '%d in %s',
+            (int)$stageCount,
+            (string)$stageName
+        );
     }
 
-    return sprintf(
-        'This internal report summarizes %d open permit Application%s, ordered by creation date from oldest to newest. Current lifecycle distribution: %s. Review each Application block for its scope, jurisdiction identifiers, current status, and recorded milestone dates.',
+    $sentences = [];
+
+    $sentences[] = sprintf(
+        '%d open permit Application%s are recorded.',
         $applicationCount,
-        $applicationCount === 1 ? '' : 's',
-        implode('; ', $stageParts)
+        $applicationCount === 1 ? '' : 's'
+    );
+
+    if (count($stageParts) > 0) {
+        $sentences[] = sprintf(
+            'Current lifecycle distribution: %s.',
+            implode('; ', $stageParts)
+        );
+    }
+
+    $reviewItems = is_array(
+        $reviewSummary['items'] ?? null
+    )
+        ? $reviewSummary['items']
+        : [];
+
+    if (count($reviewItems) > 0) {
+        $applicationCountWithReviewItems = (int)(
+            $reviewSummary[
+                'applicationCountWithReviewItems'
+            ] ?? 0
+        );
+
+        $sentences[] = sprintf(
+            '%d Application%s have records requiring data review.',
+            $applicationCountWithReviewItems,
+            $applicationCountWithReviewItems === 1
+                ? ''
+                : 's'
+        );
+
+        foreach (array_slice($reviewItems, 0, 3) as $reviewItem) {
+            $message = trim((string)(
+                $reviewItem['message'] ?? ''
+            ));
+
+            if ($message !== '') {
+                $sentences[] = $message;
+            }
+        }
+
+        $remainingReviewItemCount =
+            count($reviewItems) - 3;
+
+        if ($remainingReviewItemCount > 0) {
+            $sentences[] = sprintf(
+                '%d additional review item%s are recorded.',
+                $remainingReviewItemCount,
+                $remainingReviewItemCount === 1
+                    ? ''
+                    : 's'
+            );
+        }
+    } else {
+        $sentences[] =
+            'No deterministic data-review items were identified.';
+    }
+
+    return implode(
+        ' ',
+        $sentences
     );
 }
 
