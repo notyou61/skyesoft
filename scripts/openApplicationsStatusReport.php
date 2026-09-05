@@ -231,6 +231,24 @@ function formatOpenApplicationsFeeStatus(
     return 'No Fees';
 }
 
+function formatOpenApplicationsRequirementStatus(
+    array $application
+): string {
+    $activeCount = (int)(
+        $application[
+            'applicationActiveRequirementCount'
+        ] ?? 0
+    );
+
+    return $activeCount > 0
+        ? sprintf(
+            '%d Active Requirement%s',
+            $activeCount,
+            $activeCount === 1 ? '' : 's'
+        )
+        : 'No Active Requirements';
+}
+
 // #endregion
 
 // #region SECTION III — Authoritative Open Application Data
@@ -657,6 +675,14 @@ ob_start();
                             )
                         ) ?>
                     </td>
+                </tr>
+                <tr>
+                    <th>Special Requirements</th>
+                    <td><?= escapeOpenApplicationsReportValue(
+                        formatOpenApplicationsRequirementStatus(
+                            $application
+                        )
+                    ) ?></td>
                 </tr>
                 <tr>
                     <th>Status Description</th>

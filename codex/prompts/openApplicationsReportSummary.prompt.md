@@ -20,6 +20,8 @@ Missing scope or an identifier expected from the recorded lifecycle.
 
 A Fee Status showing an amount awaiting payment.
 
+One or more active Special Requirements.
+
 A specific Application awaiting jurisdiction action when that distinction is
 operationally useful.
 

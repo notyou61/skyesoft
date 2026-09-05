@@ -65,7 +65,17 @@ function loadOpenApplicationsReportData(PDO $db): array
                       f.feeVoidedUnix IS NULL OR
                       f.feeVoidedUnix <= 0
                   )
-            ), 0) AS applicationFeeTotalPaid
+            ), 0) AS applicationFeeTotalPaid,
+            (
+                SELECT COUNT(*)
+                FROM tblApplicationSpecialRequirements r
+                INNER JOIN tblApplicationSpecialRequirementStatuses rs
+                    ON rs.applicationSpecialRequirementStatusID =
+                       r.applicationSpecialRequirementStatusID
+                WHERE r.applicationID = a.applicationID
+                  AND r.applicationSpecialRequirementIsNotValid = 0
+                  AND rs.applicationSpecialRequirementStatusIsClosed = 0
+            ) AS applicationActiveRequirementCount
         FROM tblApplications a
         INNER JOIN tblOrders o
             ON o.orderID = a.applicationOrderID
@@ -124,6 +134,12 @@ function loadOpenApplicationsReportData(PDO $db): array
         $application['applicationFeeTotalOutstanding'] =
             $totalOutstanding;
         $application['applicationFeeStatus'] = $feeStatus;
+        $application['applicationActiveRequirementCount'] =
+            (int)(
+                $application[
+                    'applicationActiveRequirementCount'
+                ] ?? 0
+            );
     }
     unset($application);
 
@@ -387,6 +403,24 @@ function buildOpenApplicationReviewItems(
         ];
     }
 
+    $activeRequirementCount = (int)(
+        $application['applicationActiveRequirementCount'] ?? 0
+    );
+
+    if ($activeRequirementCount > 0) {
+        $reviewItems[] = [
+            'applicationID' => $applicationId,
+            'workOrderNumber' => $workOrderNumber,
+            'type' => 'active_special_requirements',
+            'message' => sprintf(
+                'Application #%d has %d active Special Requirement%s recorded.',
+                $applicationId,
+                $activeRequirementCount,
+                $activeRequirementCount === 1 ? '' : 's'
+            )
+        ];
+    }
+
     return $reviewItems;
 }
 
@@ -484,6 +518,13 @@ function buildOpenApplicationsReportPayload(
                     ] ?? 0
                 ), 2)
             ],
+            'specialRequirements' => [
+                'activeCount' => (int)(
+                    $application[
+                        'applicationActiveRequirementCount'
+                    ] ?? 0
+                )
+            ],
             'receivedDate' => formatOpenApplicationsPayloadDate(
                 $application['applicationCreatedUnix'] ?? null
             ),
@@ -504,7 +545,7 @@ function buildOpenApplicationsReportPayload(
     }
 
     return [
-        'schemaVersion' => '1.2.0',
+        'schemaVersion' => '1.3.0',
         'reportType' => 'open_applications_status',
         'audience' => 'internal_operations',
         'generatedDate' =>
