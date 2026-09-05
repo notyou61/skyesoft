@@ -509,8 +509,7 @@ ob_start();
         .application-table {
             width: 100%;
             border-collapse: collapse;
-            break-inside: avoid;
-            page-break-inside: avoid;
+            font-size: 10px;
         }
 
         .application-table tr {
@@ -522,6 +521,8 @@ ob_start();
         .application-table td {
             padding: 2.5px 5px;
             border: 1px solid #ccc;
+            font-size: 10px;
+            line-height: 1.2;
             text-align: left;
             vertical-align: top;
         }
