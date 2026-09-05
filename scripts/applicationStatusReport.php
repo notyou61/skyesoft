@@ -116,6 +116,65 @@ function formatApplicationReportDateTime(?int $unix): string
     return date('F j, Y · g:i A T', $unix);
 }
 
+function buildApplicationPermitDurationSummary(
+    ?int $receivedUnix,
+    ?int $finaledUnix,
+    int $reportGeneratedUnix
+): string {
+    if ($receivedUnix === null || $receivedUnix <= 0) {
+        return 'Permit duration is not available because the Received date is not recorded.';
+    }
+
+    $timezone = new DateTimeZone('America/Phoenix');
+
+    $receivedDate = (new DateTimeImmutable(
+        '@' . $receivedUnix
+    ))
+        ->setTimezone($timezone)
+        ->setTime(0, 0);
+
+    $isFinaled = $finaledUnix !== null &&
+        $finaledUnix > 0;
+
+    $endUnix = $isFinaled
+        ? $finaledUnix
+        : $reportGeneratedUnix;
+
+    $endDate = (new DateTimeImmutable(
+        '@' . $endUnix
+    ))
+        ->setTimezone($timezone)
+        ->setTime(0, 0);
+
+    if ($endDate < $receivedDate) {
+        return $isFinaled
+            ? 'Permit duration cannot be calculated because the Finaled date precedes the Received date.'
+            : 'Permit duration cannot be calculated because the Received date is later than the report date.';
+    }
+
+    $calendarDays = (int)$receivedDate
+        ->diff($endDate)
+        ->days;
+
+    if ($isFinaled) {
+        return sprintf(
+            'This permit was completed in %d calendar day%s, from receipt on %s through finalization on %s.',
+            $calendarDays,
+            $calendarDays === 1 ? '' : 's',
+            $receivedDate->format('F j, Y'),
+            $endDate->format('F j, Y')
+        );
+    }
+
+    return sprintf(
+        'This permit Application has been open for %d calendar day%s since it was received on %s.',
+        $calendarDays,
+        $calendarDays === 1 ? '' : 's',
+        $receivedDate->format('F j, Y')
+    );
+}
+
+
 function formatApplicationReportValue(mixed $value): string
 {
     $resolved = trim((string)($value ?? ''));
@@ -409,6 +468,16 @@ $addressParts = array_filter([
 });
 $locationAddress = implode(', ', $addressParts);
 $reportGeneratedUnix = time();
+$permitDurationSummary =
+    buildApplicationPermitDurationSummary(
+        $application['applicationCreatedUnix'] !== null
+            ? (int)$application['applicationCreatedUnix']
+            : null,
+        $application['applicationFinaledUnix'] !== null
+            ? (int)$application['applicationFinaledUnix']
+            : null,
+        $reportGeneratedUnix
+    );
 $statusSummary = buildApplicationStatusSummary(
     (string)$application['applicationStageName']
 );
@@ -1272,16 +1341,19 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Status Summary',
-            'information.png',
+            'information Bots.png',
             $rootDir
         ) ?>
+
         <div class="summary-box">
-            <div class="summary-title">Application Status</div>
+            <div class="summary-title">
+                Permit Duration
+            </div>
+
             <div class="summary-body">
-                This report reflects the permit application status recorded by Christy Signs as of
                 <?= escapeApplicationReportValue(
-                    formatApplicationReportDate($reportGeneratedUnix)
-                ) ?>. Jurisdiction processing times and requirements may change during review. Christy Signs will continue coordinating the application through the applicable permit process.
+                    $permitDurationSummary
+                ) ?>
             </div>
         </div>
     </div>
