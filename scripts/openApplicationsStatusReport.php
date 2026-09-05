@@ -450,7 +450,6 @@ ob_start();
         /* Keep Report Summary together */
         .report-summary {
             margin: 0 0 8px;
-            break-inside: avoid;
             page-break-inside: avoid;
         }
 
@@ -486,14 +485,11 @@ ob_start();
             background: #f0f4f9;
             border: 1px solid #b8cbe5;
             border-left: 4px solid #14377c;
-            break-inside: avoid;
-            page-break-inside: avoid;
         }
 
         /* Keep each Application together */
         .application-block {
             margin: 0 0 9px;
-            break-inside: avoid;
             page-break-inside: avoid;
         }
 
@@ -501,8 +497,9 @@ ob_start();
             margin: 0 0 3px;
             padding: 4px 6px;
             color: #fff;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: bold;
+            line-height: 1.2;
             background: #14377c;
         }
 
@@ -510,11 +507,6 @@ ob_start();
             width: 100%;
             border-collapse: collapse;
             font-size: 10px;
-        }
-
-        .application-table tr {
-            break-inside: avoid;
-            page-break-inside: avoid;
         }
 
         .application-table th,
@@ -556,7 +548,6 @@ ob_start();
             text-align: center;
             background: #f8f9fa;
             border: 1px solid #ccc;
-            break-inside: avoid;
             page-break-inside: avoid;
         }
     </style>
