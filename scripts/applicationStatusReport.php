@@ -260,6 +260,61 @@ if (!is_array($application)) {
     failApplicationStatusReport('Application was not found.', 404);
 }
 
+// Load active authoritative Special Requirements
+$requirementStmt = $db->prepare("
+    SELECT
+        r.applicationSpecialRequirementID,
+        r.applicationSpecialRequirementDescription,
+        r.applicationSpecialRequirementResponsibleParty,
+        r.applicationSpecialRequirementRequiredUnix,
+        r.applicationSpecialRequirementDueUnix,
+        s.applicationSpecialRequirementStatusName
+    FROM tblApplicationSpecialRequirements r
+    INNER JOIN tblApplicationSpecialRequirementStatuses s
+        ON s.applicationSpecialRequirementStatusID =
+           r.applicationSpecialRequirementStatusID
+    WHERE r.applicationID = :applicationId
+      AND r.applicationSpecialRequirementIsNotValid = 0
+      AND s.applicationSpecialRequirementStatusIsClosed = 0
+    ORDER BY
+        r.applicationSpecialRequirementDueUnix IS NULL ASC,
+        r.applicationSpecialRequirementDueUnix ASC,
+        r.applicationSpecialRequirementID ASC
+");
+
+$requirementStmt->execute([
+    'applicationId' => $applicationId
+]);
+
+$applicationSpecialRequirements = $requirementStmt->fetchAll(
+    PDO::FETCH_ASSOC
+);
+
+// Normalize authoritative Special Requirement values
+foreach ($applicationSpecialRequirements as &$requirement) {
+    $requirement['applicationSpecialRequirementID'] =
+        (int)$requirement['applicationSpecialRequirementID'];
+
+    $requirement['applicationSpecialRequirementRequiredUnix'] =
+        $requirement[
+            'applicationSpecialRequirementRequiredUnix'
+        ] !== null
+            ? (int)$requirement[
+                'applicationSpecialRequirementRequiredUnix'
+            ]
+            : null;
+
+    $requirement['applicationSpecialRequirementDueUnix'] =
+        $requirement[
+            'applicationSpecialRequirementDueUnix'
+        ] !== null
+            ? (int)$requirement[
+                'applicationSpecialRequirementDueUnix'
+            ]
+            : null;
+}
+unset($requirement);
+
 // Load authoritative Application Fees
 $feeStmt = $db->prepare("
     SELECT
@@ -684,6 +739,44 @@ ob_start();
             font-weight: bold;
         }
 
+        .requirement-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .requirement-table th,
+        .requirement-table td {
+            padding: 3px 4px;
+            border: 1px solid #ccc;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .requirement-table th {
+            color: #333;
+            font-size: 9px;
+            background: #f8f9fa;
+        }
+
+        .requirement-table td {
+            color: #111;
+            font-size: 10px;
+            background: #fff;
+        }
+
+        .requirement-status {
+            color: #b45309;
+            font-weight: bold;
+        }
+
+        .requirement-empty {
+            padding: 6px 8px;
+            color: #666;
+            border: 1px solid #ccc;
+            background: #f8f9fa;
+        }
+
         .fee-summary-paid {
             color: #18743a;
         }
@@ -940,6 +1033,77 @@ ob_start();
                 ) ?></td>
             </tr>
         </table>
+    </div>
+
+    <div class="section">
+        <?= renderApplicationReportSectionHeading(
+            'Special Requirements',
+            'information.png',
+            $rootDir
+        ) ?>
+
+        <?php if ($applicationSpecialRequirements !== []): ?>
+            <table class="requirement-table">
+                <thead>
+                    <tr>
+                        <th style="width:42%;">Requirement</th>
+                        <th style="width:16%;">Status</th>
+                        <th style="width:18%;">Responsible Party</th>
+                        <th style="width:12%;">Required</th>
+                        <th style="width:12%;">Due</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach (
+                        $applicationSpecialRequirements as $requirement
+                    ): ?>
+                        <tr>
+                            <td><?= escapeApplicationReportValue(
+                                formatApplicationReportValue(
+                                    $requirement[
+                                        'applicationSpecialRequirementDescription'
+                                    ]
+                                )
+                            ) ?></td>
+                            <td class="requirement-status"><?=
+                                escapeApplicationReportValue(
+                                    formatApplicationReportValue(
+                                        $requirement[
+                                            'applicationSpecialRequirementStatusName'
+                                        ]
+                                    )
+                                )
+                            ?></td>
+                            <td><?= escapeApplicationReportValue(
+                                formatApplicationReportValue(
+                                    $requirement[
+                                        'applicationSpecialRequirementResponsibleParty'
+                                    ]
+                                )
+                            ) ?></td>
+                            <td><?= escapeApplicationReportValue(
+                                formatApplicationReportDate(
+                                    $requirement[
+                                        'applicationSpecialRequirementRequiredUnix'
+                                    ]
+                                )
+                            ) ?></td>
+                            <td><?= escapeApplicationReportValue(
+                                formatApplicationReportDate(
+                                    $requirement[
+                                        'applicationSpecialRequirementDueUnix'
+                                    ]
+                                )
+                            ) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <div class="requirement-empty">
+                No active Special Requirements have been recorded.
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="section">
