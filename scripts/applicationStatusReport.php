@@ -296,7 +296,9 @@ $applicationStmt = $db->prepare("
         l.locationState,
         l.locationZip,
         s.applicationStageName,
-        st.applicationStatusName
+        s.applicationStageDescription,
+        st.applicationStatusName,
+        st.applicationStatusDescription
     FROM tblApplications a
     INNER JOIN tblOrders o
         ON o.orderID = a.applicationOrderID
@@ -1407,15 +1409,11 @@ ob_start();
                     <tr>
                         <th>
                             <?= escapeApplicationReportValue(
-                                formatApplicationReportDate($noteUnix)
+                                formatApplicationReportDate($noteUnix) .
+                                ($authorName !== ''
+                                    ? ' - ' . $authorName
+                                    : '')
                             ) ?>
-
-                            <?php if ($authorName !== ''): ?>
-                                <br>
-                                <?= escapeApplicationReportValue(
-                                    $authorName
-                                ) ?>
-                            <?php endif; ?>
                         </th>
 
                         <td>
@@ -1433,6 +1431,62 @@ ob_start();
                 No Application Notes have been recorded.
             </div>
         <?php endif; ?>
+    </div>
+
+    <div class="section">
+        <?= renderApplicationReportSectionHeading(
+            'Stage and Status Explanation',
+            'information.png',
+            $rootDir
+        ) ?>
+
+        <table class="data-table">
+            <tr>
+                <th>
+                    Stage:
+                    <?= escapeApplicationReportValue(
+                        formatApplicationReportValue(
+                            $application[
+                                'applicationStageName'
+                            ]
+                        )
+                    ) ?>
+                </th>
+
+                <td>
+                    <?= escapeApplicationReportValue(
+                        formatApplicationReportValue(
+                            $application[
+                                'applicationStageDescription'
+                            ]
+                        )
+                    ) ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>
+                    Status:
+                    <?= escapeApplicationReportValue(
+                        formatApplicationReportValue(
+                            $application[
+                                'applicationStatusName'
+                            ]
+                        )
+                    ) ?>
+                </th>
+
+                <td>
+                    <?= escapeApplicationReportValue(
+                        formatApplicationReportValue(
+                            $application[
+                                'applicationStatusDescription'
+                            ]
+                        )
+                    ) ?>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <div class="section">
