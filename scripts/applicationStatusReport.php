@@ -377,6 +377,38 @@ foreach ($applicationSpecialRequirements as &$requirement) {
 }
 unset($requirement);
 
+// Load active authoritative Application Notes
+$noteStmt = $db->prepare("
+    SELECT
+        n.noteID,
+        n.noteApplicationSpecialRequirementID,
+        n.noteText,
+        n.noteCreatedUnix,
+        n.noteUpdatedUnix,
+        c.contactFirstName,
+        c.contactLastName
+    FROM tblNotes n
+    INNER JOIN tblContacts c
+        ON c.contactId = n.noteAuthorContactID
+    WHERE n.noteApplicationID = :applicationId
+      AND n.noteIsNotValid = 0
+    ORDER BY
+        n.noteCreatedUnix DESC,
+        n.noteID DESC
+");
+
+$noteStmt->execute([
+    'applicationId' => $applicationId
+]);
+
+$applicationNotes = $noteStmt->fetchAll(
+    PDO::FETCH_ASSOC
+);
+
+if (!is_array($applicationNotes)) {
+    $applicationNotes = [];
+}
+
 // Load authoritative Application Fees
 $feeStmt = $db->prepare("
     SELECT
@@ -607,7 +639,7 @@ $recordReportAction = static function () use (
             'applicationID' => $applicationId,
             'audience' => 'external',
             'outputFormat' => 'pdf',
-            'internalNotesIncluded' => false,
+            'internalNotesIncluded' => true,
             'applicationNoteIncluded' => true
         ],
         'actionResponseData' => [
@@ -1349,16 +1381,49 @@ ob_start();
             $rootDir
         ) ?>
 
-        <div class="scope-box">
-            <?= escapeApplicationReportValue(
-                trim((string)(
-                    $application['applicationNote']
-                    ?? ''
-                )) !== ''
-                    ? $application['applicationNote']
-                    : 'No Application Notes have been recorded.'
-            ) ?>
-        </div>
+        <?php if ($applicationNotes !== []): ?>
+            <table class="data-table">
+                <?php foreach ($applicationNotes as $note): ?>
+                    <?php
+                    $authorName = trim(
+                        (string)$note['contactFirstName'] . ' ' .
+                        (string)$note['contactLastName']
+                    );
+
+                    $noteUnix = $note['noteUpdatedUnix'] !== null
+                        ? (int)$note['noteUpdatedUnix']
+                        : (int)$note['noteCreatedUnix'];
+                    ?>
+
+                    <tr>
+                        <th>
+                            <?= escapeApplicationReportValue(
+                                formatApplicationReportDate($noteUnix)
+                            ) ?>
+
+                            <?php if ($authorName !== ''): ?>
+                                <br>
+                                <?= escapeApplicationReportValue(
+                                    $authorName
+                                ) ?>
+                            <?php endif; ?>
+                        </th>
+
+                        <td>
+                            <?= nl2br(
+                                escapeApplicationReportValue(
+                                    $note['noteText']
+                                )
+                            ) ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php else: ?>
+            <div class="fee-empty">
+                No Application Notes have been recorded.
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="section">
