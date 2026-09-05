@@ -1341,19 +1341,29 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Status Summary',
-            'information Bots.png',
+            'information.png',
             $rootDir
         ) ?>
 
         <div class="summary-box">
             <div class="summary-title">
-                Permit Duration
+                Application Status
             </div>
 
             <div class="summary-body">
                 <?= escapeApplicationReportValue(
                     $permitDurationSummary
                 ) ?>
+
+                Christy Signs is coordinating this Application and
+                addressing the documented requirements necessary to
+                advance it toward permit completion. Reviews, approvals,
+                inspections, processing times, additional requirements,
+                and final determinations remain under the control of the
+                applicable agencies, jurisdictions, utilities, property
+                representatives, and other governing authorities. Christy
+                Signs is not responsible for their actions, processing
+                delays, or changes in requirements.
             </div>
         </div>
     </div>
