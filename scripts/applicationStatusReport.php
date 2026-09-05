@@ -746,6 +746,7 @@ ob_start();
         .data-table,
         .fee-summary-table,
         .fee-table,
+        .requirement-table,
         .scope-box,
         .summary-box {
             break-inside: avoid;
@@ -754,7 +755,8 @@ ob_start();
 
         .data-table tr,
         .fee-summary-table tr,
-        .fee-table tr {
+        .fee-table tr,
+        .requirement-table tr {
             break-inside: avoid;
             page-break-inside: avoid;
         }
@@ -790,12 +792,17 @@ ob_start();
         .scope-box,
         .summary-box {
             padding: 6px 8px;
-            white-space: normal;
             background: #fff;
             border: 1px solid #ccc;
         }
 
+        /* Preserve Application Scope carriage returns */
+        .scope-box {
+            white-space: normal;
+        }
+
         .summary-box {
+            white-space: normal;
             background: #f0f4f9;
             border-color: #b8cbe5;
             border-left: 4px solid #14377c;
@@ -1045,11 +1052,13 @@ ob_start();
             'clipboard.png',
             $rootDir
         ) ?>
-        <div class="scope-box"><?= escapeApplicationReportValue(
-            formatApplicationReportValue(
-                $application['applicationScope']
-            )
-        ) ?></div>
+        <div class="scope-box">
+            <?= nl2br(
+                escapeApplicationReportValue(
+                    $application['applicationScope']
+                )
+            ) ?>
+        </div>
     </div>
 
     <div class="section">
