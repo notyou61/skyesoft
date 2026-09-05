@@ -277,6 +277,9 @@ $applicationStmt = $db->prepare("
         a.applicationNumber,
         a.applicationPermitNumber,
         a.applicationScope,
+        a.applicationScope,
+        a.applicationNote,
+        a.applicationSubmittedUnix,
         a.applicationSubmittedUnix,
         a.applicationApprovedUnix,
         a.applicationIssuedUnix,
@@ -604,7 +607,8 @@ $recordReportAction = static function () use (
             'applicationID' => $applicationId,
             'audience' => 'external',
             'outputFormat' => 'pdf',
-            'internalNotesIncluded' => false
+            'internalNotesIncluded' => false,
+            'applicationNoteIncluded' => true
         ],
         'actionResponseData' => [
             'success' => true,
@@ -1336,6 +1340,25 @@ ob_start();
                 No Application Fees have been recorded.
             </div>
         <?php endif; ?>
+    </div>
+
+    <div class="section">
+        <?= renderApplicationReportSectionHeading(
+            'Application Notes',
+            'memo.png',
+            $rootDir
+        ) ?>
+
+        <div class="scope-box">
+            <?= escapeApplicationReportValue(
+                trim((string)(
+                    $application['applicationNote']
+                    ?? ''
+                )) !== ''
+                    ? $application['applicationNote']
+                    : 'No Application Notes have been recorded.'
+            ) ?>
+        </div>
     </div>
 
     <div class="section">
