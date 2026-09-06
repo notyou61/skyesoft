@@ -272,14 +272,16 @@ if ($applicationId <= 0) {
 $applicationStmt = $db->prepare("
     SELECT
         a.applicationID,
+        a.applicationOrderID,
+        a.applicationEntityID,
+        a.applicationLocationID,
+        a.applicationStageID,
+        a.applicationStatusID,
         a.applicationTitle,
         a.applicationJurisdiction,
         a.applicationNumber,
         a.applicationPermitNumber,
         a.applicationScope,
-        a.applicationScope,
-        a.applicationNote,
-        a.applicationSubmittedUnix,
         a.applicationSubmittedUnix,
         a.applicationApprovedUnix,
         a.applicationIssuedUnix,
@@ -315,13 +317,20 @@ $applicationStmt = $db->prepare("
       AND a.applicationIsNotValid = 0
     LIMIT 1
 ");
+
 $applicationStmt->execute([
     'applicationId' => $applicationId
 ]);
-$application = $applicationStmt->fetch(PDO::FETCH_ASSOC);
+
+$application = $applicationStmt->fetch(
+    PDO::FETCH_ASSOC
+);
 
 if (!is_array($application)) {
-    failApplicationStatusReport('Application was not found.', 404);
+    failApplicationStatusReport(
+        'Application was not found.',
+        404
+    );
 }
 
 // Load active authoritative Special Requirements
@@ -409,6 +418,82 @@ $applicationNotes = $noteStmt->fetchAll(
 
 if (!is_array($applicationNotes)) {
     $applicationNotes = [];
+}
+
+// Load the active Skyesoft Application workflow
+$workflowStageStmt = $db->query("
+    SELECT
+        applicationStageID,
+        applicationStageName,
+        applicationStageDescription,
+        applicationStageSortOrder
+    FROM tblApplicationStages
+    WHERE applicationStageIsActive = 1
+    ORDER BY applicationStageSortOrder ASC
+");
+
+$workflowStages = $workflowStageStmt
+    ? $workflowStageStmt->fetchAll(PDO::FETCH_ASSOC)
+    : [];
+
+$workflowStatusStmt = $db->query("
+    SELECT
+        applicationStatusID,
+        applicationStageID,
+        applicationStatusName,
+        applicationStatusDescription,
+        applicationStatusSortOrder
+    FROM tblApplicationStatuses
+    WHERE applicationStatusIsActive = 1
+    ORDER BY
+        applicationStageID ASC,
+        applicationStatusSortOrder ASC
+");
+
+$workflowStatuses = $workflowStatusStmt
+    ? $workflowStatusStmt->fetchAll(PDO::FETCH_ASSOC)
+    : [];
+
+// Group each Status under its governing Stage
+$workflowStatusesByStage = [];
+
+foreach ($workflowStatuses as $workflowStatus) {
+    $workflowStageId = (int)$workflowStatus[
+        'applicationStageID'
+    ];
+
+    $workflowStatusesByStage[$workflowStageId][] =
+        $workflowStatus;
+}
+
+// Resolve the current and next configured Stage
+$currentStageId = (int)$application[
+    'applicationStageID'
+];
+$currentStatusId = (int)$application[
+    'applicationStatusID'
+];
+$currentStageIndex = null;
+
+foreach ($workflowStages as $workflowStageIndex => $workflowStage) {
+    if (
+        (int)$workflowStage['applicationStageID'] ===
+        $currentStageId
+    ) {
+        $currentStageIndex = $workflowStageIndex;
+        break;
+    }
+}
+
+$nextStageId = null;
+
+if (
+    $currentStageIndex !== null &&
+    isset($workflowStages[$currentStageIndex + 1])
+) {
+    $nextStageId = (int)$workflowStages[
+        $currentStageIndex + 1
+    ]['applicationStageID'];
 }
 
 // Load authoritative Application Fees
@@ -955,6 +1040,93 @@ ob_start();
             border: 1px solid #ccc;
             background: #f8f9fa;
         }
+
+        .workflow-introduction {
+            margin-bottom: 4px;
+            padding: 5px 7px;
+            color: #444;
+            font-size: 10px;
+            line-height: 1.3;
+            border: 1px solid #ccc;
+            background: #f8f9fa;
+        }
+
+        .workflow-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .workflow-table tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .workflow-table th,
+        .workflow-table td {
+            padding: 4px 6px;
+            border: 1px solid #ccc;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .workflow-table th {
+            width: 24%;
+            color: #333;
+            font-size: 10px;
+            background: #f8f9fa;
+        }
+
+        .workflow-table td {
+            width: 76%;
+            color: #111;
+            font-size: 9px;
+            background: #fff;
+        }
+
+        .workflow-stage-current th,
+        .workflow-stage-current td {
+            background: #eaf2ff;
+            border-color: #8fb0df;
+        }
+
+        .workflow-stage-next th,
+        .workflow-stage-next td {
+            background: #fff8e8;
+            border-color: #e5c16c;
+        }
+
+        .workflow-badge {
+            display: inline-block;
+            margin: 2px 0 0 4px;
+            padding: 1px 5px;
+            color: #fff;
+            font-size: 8px;
+            font-weight: bold;
+            border-radius: 3px;
+            background: #14377c;
+        }
+
+        .workflow-badge-next {
+            color: #7a4a00;
+            background: #f5d98e;
+        }
+
+        .workflow-description {
+            margin-bottom: 3px;
+            color: #444;
+        }
+
+        .workflow-status {
+            display: block;
+            margin-top: 2px;
+            color: #555;
+        }
+
+        .workflow-status-current {
+            color: #14377c;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -1435,57 +1607,115 @@ ob_start();
 
     <div class="section">
         <?= renderApplicationReportSectionHeading(
-            'Stage and Status Explanation',
+            'Permit Application Process',
             'information.png',
             $rootDir
         ) ?>
 
-        <table class="data-table">
-            <tr>
-                <th>
-                    Stage:
-                    <?= escapeApplicationReportValue(
-                        formatApplicationReportValue(
-                            $application[
+        <div class="workflow-introduction">
+            The following stages and statuses represent the configured
+            Skyesoft permit workflow. Highlighted entries identify this
+            Application's current position and next configured stage.
+            Actual processing may vary according to jurisdiction and
+            project requirements.
+        </div>
+
+        <table class="workflow-table">
+            <?php foreach ($workflowStages as $workflowStage): ?>
+                <?php
+                $workflowStageId = (int)$workflowStage[
+                    'applicationStageID'
+                ];
+                $isCurrentStage =
+                    $workflowStageId === $currentStageId;
+                $isNextStage =
+                    $nextStageId !== null &&
+                    $workflowStageId === $nextStageId;
+                $stageClass = $isCurrentStage
+                    ? 'workflow-stage-current'
+                    : (
+                        $isNextStage
+                            ? 'workflow-stage-next'
+                            : ''
+                    );
+                $stageStatuses = $workflowStatusesByStage[
+                    $workflowStageId
+                ] ?? [];
+                ?>
+
+                <tr class="<?= escapeApplicationReportValue(
+                    $stageClass
+                ) ?>">
+                    <th>
+                        <?= escapeApplicationReportValue(
+                            $workflowStage[
                                 'applicationStageName'
                             ]
-                        )
-                    ) ?>
-                </th>
+                        ) ?>
 
-                <td>
-                    <?= escapeApplicationReportValue(
-                        formatApplicationReportValue(
-                            $application[
-                                'applicationStageDescription'
-                            ]
-                        )
-                    ) ?>
-                </td>
-            </tr>
+                        <?php if ($isCurrentStage): ?>
+                            <span class="workflow-badge">
+                                CURRENT
+                            </span>
+                        <?php elseif ($isNextStage): ?>
+                            <span class="workflow-badge workflow-badge-next">
+                                NEXT
+                            </span>
+                        <?php endif; ?>
+                    </th>
 
-            <tr>
-                <th>
-                    Status:
-                    <?= escapeApplicationReportValue(
-                        formatApplicationReportValue(
-                            $application[
-                                'applicationStatusName'
-                            ]
-                        )
-                    ) ?>
-                </th>
+                    <td>
+                        <div class="workflow-description">
+                            <?= escapeApplicationReportValue(
+                                formatApplicationReportValue(
+                                    $workflowStage[
+                                        'applicationStageDescription'
+                                    ]
+                                )
+                            ) ?>
+                        </div>
 
-                <td>
-                    <?= escapeApplicationReportValue(
-                        formatApplicationReportValue(
-                            $application[
-                                'applicationStatusDescription'
-                            ]
-                        )
-                    ) ?>
-                </td>
-            </tr>
+                        <?php foreach ($stageStatuses as $workflowStatus): ?>
+                            <?php
+                            $workflowStatusId = (int)$workflowStatus[
+                                'applicationStatusID'
+                            ];
+                            $isCurrentStatus =
+                                $workflowStatusId ===
+                                $currentStatusId;
+                            $statusClass = $isCurrentStatus
+                                ? 'workflow-status workflow-status-current'
+                                : 'workflow-status';
+                            $statusDescription = trim(
+                                (string)$workflowStatus[
+                                    'applicationStatusDescription'
+                                ]
+                            );
+                            ?>
+
+                            <span class="<?= escapeApplicationReportValue(
+                                $statusClass
+                            ) ?>">
+                                <?= escapeApplicationReportValue(
+                                    $workflowStatus[
+                                        'applicationStatusName'
+                                    ]
+                                ) ?>
+
+                                <?php if ($isCurrentStatus): ?>
+                                    - Current Status
+                                <?php endif; ?>
+
+                                <?php if ($statusDescription !== ''): ?>
+                                    - <?= escapeApplicationReportValue(
+                                        $statusDescription
+                                    ) ?>
+                                <?php endif; ?>
+                            </span>
+                        <?php endforeach; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
         </table>
     </div>
 
