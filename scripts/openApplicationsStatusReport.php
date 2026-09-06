@@ -888,6 +888,16 @@ ob_start();
             border: 1px solid #ccc;
             page-break-inside: avoid;
         }
+
+        .stage-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            margin-right: 4px;
+            vertical-align: -0.12em;
+            object-fit: contain;
+        }
+
     </style>
 </head>
 <body>
@@ -1249,57 +1259,10 @@ ob_start();
 
             <table class="workflow-table">
                 <?php foreach ($workflowStages as $workflowStage): ?>
-                    <tr>
-                        <th><?= escapeOpenApplicationsReportValue(
-                            $workflowStage['applicationStageName']
-                        ) ?></th>
-                        <td>
-                            <?php
-                            $stageDescription = trim((string)(
-                                $workflowStage[
-                                    'applicationStageDescription'
-                                ] ?? ''
-                            ));
-                            $stageStatuses = is_array(
-                                $workflowStage['statuses'] ?? null
-                            )
-                                ? $workflowStage['statuses']
-                                : [];
-                            ?>
-
-                            <?php if ($stageDescription !== ''): ?>
-                                <div class="workflow-description">
-                                    <?= escapeOpenApplicationsReportValue(
-                                        $stageDescription
-                                    ) ?>
-                                </div>
-                            <?php endif; ?>
-
-                            <?php foreach ($stageStatuses as $workflowStatus): ?>
-                                <?php
-                                $statusDescription = trim((string)(
-                                    $workflowStatus[
-                                        'applicationStatusDescription'
-                                    ] ?? ''
-                                ));
-                                ?>
-                                <span class="workflow-status">
-                                    <strong><?= escapeOpenApplicationsReportValue(
-                                        $workflowStatus[
-                                            'applicationStatusName'
-                                        ]
-                                    ) ?></strong><?=
-                                        $statusDescription !== ''
-                                            ? ' — ' .
-                                                escapeOpenApplicationsReportValue(
-                                                    $statusDescription
-                                                )
-                                            : ''
-                                    ?>
-                                </span>
-                            <?php endforeach; ?>
-                        </td>
-                    </tr>
+                <th><?= renderOpenApplicationStageValue(
+                    $workflowStage,
+                    $rootDir
+                ) ?></th>
                 <?php endforeach; ?>
             </table>
         </div>
