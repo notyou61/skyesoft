@@ -63,6 +63,10 @@ register_shutdown_function(
     }
 );
 
+// Confirm the deployed report begins execution
+logOpenApplicationsStatusReportError(
+    'Checkpoint 1 — report execution started.'
+);
 
 // #endregion
 
@@ -144,6 +148,8 @@ if (!is_array($actor)) {
         403
     );
 }
+
+// #endregion
 
 // #endregion
 
@@ -435,6 +441,10 @@ function formatOpenApplicationsRequirementStatus(
 // #region SECTION III — Authoritative Open Application Data
 
 $applications = loadOpenApplicationsReportData($db);
+
+logOpenApplicationsStatusReportError(
+    'Checkpoint 2 — Application data loaded.'
+);
 $workflow = loadOpenApplicationsWorkflowData($db);
 $workflowStages = is_array($workflow['stages'] ?? null)
     ? $workflow['stages']
@@ -1361,12 +1371,24 @@ try {
         'preparedBy' => $preparedBy,
         'reportName' => 'Skyesoft Open Applications Status'
     ]));
+    logOpenApplicationsStatusReportError(
+        'Checkpoint 3 — starting report HTML rendering.'
+    );
+
     $pdf->WriteHTML($reportHtml);
+
+    logOpenApplicationsStatusReportError(
+        'Checkpoint 4 — report HTML rendered.'
+    );
 
     $pdfFilename = 'Open-Permit-Applications-Status-Report.pdf';
     $pdfContent = $pdf->Output(
         '',
         \Mpdf\Output\Destination::STRING_RETURN
+    );
+
+    logOpenApplicationsStatusReportError(
+        'Checkpoint 5 — PDF output created.'
     );
 } catch (Throwable $exception) {
     logOpenApplicationsStatusReportError(
@@ -1385,14 +1407,29 @@ try {
     );
 }
 
+logOpenApplicationsStatusReportError(
+    'Checkpoint 6 — recording report Action.'
+);
+
 $actionId = $recordReportAction();
 
 if ($actionId <= 0) {
+    logOpenApplicationsStatusReportError(
+        'Report Action could not be recorded.'
+    );
+
     failOpenApplicationsStatusReport(
         'The report Action could not be recorded.',
         500
     );
 }
+
+logOpenApplicationsStatusReportError(
+    sprintf(
+        'Checkpoint 7 — report Action %d recorded.',
+        $actionId
+    )
+);
 
 header('Content-Type: application/pdf');
 header(
