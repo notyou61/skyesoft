@@ -4,7 +4,7 @@ declare(strict_types=1);
 /* =====================================================================
  *  Skyesoft — openApplicationsStatusReport.php
  *  Internal Open Permit Applications Status Report
- *  Codex-Governed Module • PHP 8.30
+ *  Codex-Governed Module • PHP 8.3
  * ===================================================================== */
 
 // #region SECTION 0 — REPORT ERROR LOGGING
@@ -334,9 +334,9 @@ function formatOpenApplicationWorkflowPosition(
     );
 }
 
-function renderOpenApplicationStageValue(
+function resolveOpenApplicationStageIconFile(
     array $application,
-    string|false $rootDir
+    bool $nativeSize = false
 ): string {
     // Define Stage icons (single source of truth)
     $iconFilesByStage = [
@@ -351,8 +351,33 @@ function renderOpenApplicationStageValue(
         $application['applicationStageName'] ?? null
     );
     $stageKey = strtolower(trim($stageName));
-    $iconFile = basename(
-        $iconFilesByStage[$stageKey] ?? 'document.png'
+    $iconFile = $iconFilesByStage[$stageKey] ?? '';
+
+    // Preserve the general fallback outside the workflow table
+    if ($iconFile === '') {
+        return $nativeSize ? '' : 'document.png';
+    }
+
+    if ($nativeSize) {
+        $iconParts = pathinfo($iconFile);
+        $iconFile =
+            ($iconParts['filename'] ?? '') .
+            '-10.' .
+            ($iconParts['extension'] ?? 'png');
+    }
+
+    return basename($iconFile);
+}
+
+function renderOpenApplicationStageValue(
+    array $application,
+    string|false $rootDir
+): string {
+    $stageName = formatOpenApplicationsReportValue(
+        $application['applicationStageName'] ?? null
+    );
+    $iconFile = resolveOpenApplicationStageIconFile(
+        $application
     );
     $iconPath = $rootDir !== false
         ? $rootDir . '/assets/images/icons/' . $iconFile
@@ -377,42 +402,38 @@ function renderOpenApplicationStageValue(
         '</span>';
 }
 
-function renderOpenApplicationStageCellStyle(
+function renderOpenApplicationsWorkflowStageCell(
     array $application,
     string|false $rootDir
 ): string {
-    // Define Stage icons
-    $iconFilesByStage = [
-        'pre-submittal' => 'clipboard.png',
-        'submitted' => 'upArrow.png',
-        'jurisdiction review' => 'temple.png',
-        'approval / issuance' => 'shield.png',
-        'inspection' => 'tools.png',
-        'finaled' => 'trophy.png'
-    ];
     $stageName = formatOpenApplicationsReportValue(
         $application['applicationStageName'] ?? null
     );
-    $stageKey = strtolower(trim($stageName));
-    $iconFile = basename(
-        $iconFilesByStage[$stageKey] ?? 'document.png'
+    $iconFile = resolveOpenApplicationStageIconFile(
+        $application,
+        true
     );
-    $iconPath = $rootDir !== false
+    $iconPath = $rootDir !== false && $iconFile !== ''
         ? $rootDir . '/assets/images/icons/' . $iconFile
         : '';
+    $escapedStageName = escapeOpenApplicationsReportValue(
+        $stageName
+    );
 
+    // Render a plain label until its native-size icon exists
     if ($iconPath === '' || !is_file($iconPath)) {
-        return '';
+        return '<th>' . $escapedStageName . '</th>';
     }
 
     return sprintf(
-        "background-image:url('%s');" .
-        "background-image-resize:6;",
+        '<th class="workflow-stage" ' .
+        'style="background-image:url(\'%s\');">%s</th>',
         htmlspecialchars(
             'file://' . $iconPath,
             ENT_QUOTES,
             'UTF-8'
-        )
+        ),
+        $escapedStageName
     );
 }
 
@@ -734,7 +755,6 @@ ob_start();
 
         .workflow-section {
             margin: 0 0 9px;
-            page-break-inside: avoid;
         }
 
         .workflow-introduction {
@@ -786,12 +806,13 @@ ob_start();
             font-size: 8.5px;
             background: #fff;
         }
-        .workflow-table td.workflow-stage {
+
+        .workflow-table th.workflow-stage {
             width: 24%;
-            color: #333;
-            font-size: 9px;
-            font-weight: bold;
-            background: #f8f9fa;
+            padding-left: 19px;
+            background-color: #f8f9fa;
+            background-repeat: no-repeat;
+            background-position: 5px center;
         }
 
         .workflow-table td.workflow-detail {
@@ -807,16 +828,6 @@ ob_start();
             display: block;
             margin-top: 1px;
             color: #555;
-        }
-
-        .workflow-stage-icon {
-            display: inline-block;
-            width: 9px;
-            height: 9px;
-            margin-right: 4px;
-            vertical-align: -1px;
-            background-repeat: no-repeat;
-            background-position: center center;
         }
 
         /* Allow long Applications to flow without font scaling */
@@ -1333,12 +1344,10 @@ ob_start();
                         ?>
 
                         <tr>
-                            <td class="workflow-stage">
-                                <?= renderOpenApplicationStageValue(
-                                    $workflowStage,
-                                    $rootDir
-                                ) ?>
-                            </td>
+                            <?= renderOpenApplicationsWorkflowStageCell(
+                                $workflowStage,
+                                $rootDir
+                            ) ?>
                             <td class="workflow-detail">
                                 <?php if ($stageDescription !== ''): ?>
                                     <div class="workflow-description">
