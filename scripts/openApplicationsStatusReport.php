@@ -812,7 +812,7 @@ ob_start();
             padding-left: 19px;
             background-color: #f8f9fa;
             background-repeat: no-repeat;
-            background-position: 5px center;
+            background-position: 5px 4px;
         }
 
         .workflow-table td.workflow-detail {
