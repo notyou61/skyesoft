@@ -25,7 +25,7 @@ function logOpenApplicationsStatusReportError(
         $logEntry,
         3,
         __DIR__ .
-            '/openApplicationsStatusReport.error.log'
+            '/openApplicationsStatusReport_error_log'
     );
 }
 
