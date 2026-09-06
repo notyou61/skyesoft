@@ -376,6 +376,51 @@ function renderOpenApplicationStageValue(
         '</span>';
 }
 
+function renderOpenApplicationStageCellStyle(
+    array $application,
+    string|false $rootDir
+): string {
+    // Define Stage icons (same authoritative mapping)
+    $iconFilesByStage = [
+        'pre-submittal' => 'clipboard.png',
+        'submitted' => 'upArrow.png',
+        'jurisdiction review' => 'temple.png',
+        'approval / issuance' => 'shield.png',
+        'inspection' => 'tools.png',
+        'finaled' => 'trophy.png'
+    ];
+    $stageName = formatOpenApplicationsReportValue(
+        $application['applicationStageName'] ?? null
+    );
+    $stageKey = strtolower(trim($stageName));
+    $iconFile = basename(
+        $iconFilesByStage[$stageKey] ?? 'document.png'
+    );
+    $iconPath = $rootDir !== false
+        ? $rootDir . '/assets/images/icons/' . $iconFile
+        : '';
+
+    // Return normal cell styling when no icon is available
+    if ($iconPath === '' || !is_file($iconPath)) {
+        return '';
+    }
+
+    $iconSource = htmlspecialchars(
+        'file://' . $iconPath,
+        ENT_QUOTES,
+        'UTF-8'
+    );
+
+    return sprintf(
+        "background-image:url('%s');" .
+        "background-repeat:no-repeat;" .
+        "background-position:5px 4px;" .
+        "background-size:9px 9px;" .
+        "padding-left:18px;",
+        $iconSource
+    );
+}
+
 function formatOpenApplicationsFeeStatus(
     array $application
 ): string {
@@ -1283,11 +1328,15 @@ ob_start();
                         ?>
 
                         <tr>
-                            <td class="workflow-stage">
+                            <td
+                                class="workflow-stage"
+                                style="<?= renderOpenApplicationStageCellStyle(
+                                    $workflowStage,
+                                    $rootDir
+                                ) ?>"
+                            >
                                 <?= escapeOpenApplicationsReportValue(
-                                    $workflowStage[
-                                        'applicationStageName'
-                                    ]
+                                    $workflowStage['applicationStageName']
                                 ) ?>
                             </td>
                             <td class="workflow-detail">
