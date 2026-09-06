@@ -1364,9 +1364,14 @@ try {
         \Mpdf\Output\Destination::STRING_RETURN
     );
 } catch (Throwable $exception) {
-    error_log(
-        '[openApplicationsStatusReport] PDF generation failed: ' .
-        $exception->getMessage()
+    logOpenApplicationsStatusReportError(
+        sprintf(
+            '%s: %s in %s on line %d',
+            get_class($exception),
+            $exception->getMessage(),
+            $exception->getFile(),
+            $exception->getLine()
+        )
     );
 
     failOpenApplicationsStatusReport(
