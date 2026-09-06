@@ -9,11 +9,85 @@ declare(strict_types=1);
 
 // #region SECTION I — Authoritative Data Loader
 
+function loadOpenApplicationsWorkflowData(PDO $db): array
+{
+    // Load active Stages in configured lifecycle order
+    $stageStmt = $db->query("
+        SELECT
+            applicationStageID,
+            applicationStageName,
+            applicationStageDescription,
+            applicationStageSortOrder
+        FROM tblApplicationStages
+        WHERE applicationStageIsActive = 1
+        ORDER BY applicationStageSortOrder ASC
+    ");
+
+    $stages = $stageStmt
+        ? $stageStmt->fetchAll(PDO::FETCH_ASSOC)
+        : [];
+
+    // Load active Statuses under their governing Stage
+    $statusStmt = $db->query("
+        SELECT
+            applicationStatusID,
+            applicationStageID,
+            applicationStatusName,
+            applicationStatusDescription,
+            applicationStatusSortOrder
+        FROM tblApplicationStatuses
+        WHERE applicationStatusIsActive = 1
+        ORDER BY
+            applicationStageID ASC,
+            applicationStatusSortOrder ASC
+    ");
+
+    $statuses = $statusStmt
+        ? $statusStmt->fetchAll(PDO::FETCH_ASSOC)
+        : [];
+
+    $statusesByStage = [];
+
+    // Normalize authoritative Status identifiers
+    foreach ($statuses as &$status) {
+        $status['applicationStatusID'] =
+            (int)$status['applicationStatusID'];
+        $status['applicationStageID'] =
+            (int)$status['applicationStageID'];
+        $status['applicationStatusSortOrder'] =
+            (int)$status['applicationStatusSortOrder'];
+
+        $statusesByStage[
+            $status['applicationStageID']
+        ][] = $status;
+    }
+    unset($status);
+
+    // Normalize Stages and attach configured Statuses
+    foreach ($stages as &$stage) {
+        $stage['applicationStageID'] =
+            (int)$stage['applicationStageID'];
+        $stage['applicationStageSortOrder'] =
+            (int)$stage['applicationStageSortOrder'];
+        $stage['statuses'] = $statusesByStage[
+            $stage['applicationStageID']
+        ] ?? [];
+    }
+    unset($stage);
+
+    return [
+        'stages' => $stages,
+        'statuses' => $statuses
+    ];
+}
+
 function loadOpenApplicationsReportData(PDO $db): array
 {
     $applicationsStmt = $db->prepare("
         SELECT
             a.applicationID,
+            a.applicationStageID,
+            a.applicationStatusID,
             a.applicationTitle,
             a.applicationJurisdiction,
             a.applicationNumber,
@@ -35,8 +109,11 @@ function loadOpenApplicationsReportData(PDO $db): array
             l.locationState,
             l.locationZip,
             s.applicationStageName,
+            s.applicationStageDescription,
+            s.applicationStageSortOrder,
             st.applicationStatusName,
             st.applicationStatusDescription,
+            st.applicationStatusSortOrder,
             (
                 SELECT COUNT(*)
                 FROM tblApplicationFees f
@@ -97,8 +174,82 @@ function loadOpenApplicationsReportData(PDO $db): array
     $applicationsStmt->execute();
     $applications = $applicationsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Normalize authoritative Fee totals and status
+    if (!is_array($applications)) {
+        return [];
+    }
+
+    $workflow = loadOpenApplicationsWorkflowData($db);
+    $workflowStages = is_array($workflow['stages'] ?? null)
+        ? $workflow['stages']
+        : [];
+    $workflowStageIndexes = [];
+
+    // Index configured Stages for next-Stage resolution
+    foreach ($workflowStages as $stageIndex => $workflowStage) {
+        $workflowStageIndexes[
+            (int)$workflowStage['applicationStageID']
+        ] = (int)$stageIndex;
+    }
+
+    // Prepare reusable active Special Requirement query
+    $requirementStmt = $db->prepare("
+        SELECT
+            r.applicationSpecialRequirementID,
+            r.applicationSpecialRequirementDescription,
+            r.applicationSpecialRequirementResponsibleParty,
+            r.applicationSpecialRequirementRequiredUnix,
+            r.applicationSpecialRequirementDueUnix,
+            s.applicationSpecialRequirementStatusName,
+            s.applicationSpecialRequirementStatusDescription
+        FROM tblApplicationSpecialRequirements r
+        INNER JOIN tblApplicationSpecialRequirementStatuses s
+            ON s.applicationSpecialRequirementStatusID =
+               r.applicationSpecialRequirementStatusID
+        WHERE r.applicationID = :applicationId
+          AND r.applicationSpecialRequirementIsNotValid = 0
+          AND s.applicationSpecialRequirementStatusIsClosed = 0
+        ORDER BY
+            r.applicationSpecialRequirementDueUnix IS NULL ASC,
+            r.applicationSpecialRequirementDueUnix ASC,
+            r.applicationSpecialRequirementID ASC
+    ");
+
+    // Prepare reusable one-to-many Application Notes query
+    $noteStmt = $db->prepare("
+        SELECT
+            n.noteID,
+            n.noteApplicationSpecialRequirementID,
+            n.noteText,
+            n.noteCreatedUnix,
+            n.noteUpdatedUnix,
+            c.contactFirstName,
+            c.contactLastName
+        FROM tblNotes n
+        INNER JOIN tblContacts c
+            ON c.contactId = n.noteAuthorContactID
+        WHERE n.noteApplicationID = :applicationId
+          AND n.noteIsNotValid = 0
+        ORDER BY
+            n.noteCreatedUnix DESC,
+            n.noteID DESC
+    ");
+
+    // Normalize and enrich each authoritative Application
     foreach ($applications as &$application) {
+        $applicationId = (int)$application['applicationID'];
+        $applicationStageId = (int)$application[
+            'applicationStageID'
+        ];
+
+        $application['applicationID'] = $applicationId;
+        $application['applicationStageID'] = $applicationStageId;
+        $application['applicationStatusID'] =
+            (int)$application['applicationStatusID'];
+        $application['applicationStageSortOrder'] =
+            (int)$application['applicationStageSortOrder'];
+        $application['applicationStatusSortOrder'] =
+            (int)$application['applicationStatusSortOrder'];
+
         $feeCount = (int)(
             $application['applicationFeeCount'] ?? 0
         );
@@ -140,10 +291,106 @@ function loadOpenApplicationsReportData(PDO $db): array
                     'applicationActiveRequirementCount'
                 ] ?? 0
             );
+
+        // Load detailed active Special Requirements
+        $requirementStmt->execute([
+            'applicationId' => $applicationId
+        ]);
+
+        $requirements = $requirementStmt->fetchAll(
+            PDO::FETCH_ASSOC
+        );
+
+        foreach ($requirements as &$requirement) {
+            $requirement['applicationSpecialRequirementID'] =
+                (int)$requirement[
+                    'applicationSpecialRequirementID'
+                ];
+            $requirement[
+                'applicationSpecialRequirementRequiredUnix'
+            ] = is_numeric($requirement[
+                'applicationSpecialRequirementRequiredUnix'
+            ] ?? null)
+                ? (int)$requirement[
+                    'applicationSpecialRequirementRequiredUnix'
+                ]
+                : null;
+            $requirement[
+                'applicationSpecialRequirementDueUnix'
+            ] = is_numeric($requirement[
+                'applicationSpecialRequirementDueUnix'
+            ] ?? null)
+                ? (int)$requirement[
+                    'applicationSpecialRequirementDueUnix'
+                ]
+                : null;
+        }
+        unset($requirement);
+
+        $application['applicationSpecialRequirements'] =
+            is_array($requirements) ? $requirements : [];
+
+        // Load detailed one-to-many Application Notes
+        $noteStmt->execute([
+            'applicationId' => $applicationId
+        ]);
+
+        $notes = $noteStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($notes as &$note) {
+            $note['noteID'] = (int)$note['noteID'];
+            $note['noteApplicationSpecialRequirementID'] =
+                is_numeric($note[
+                    'noteApplicationSpecialRequirementID'
+                ] ?? null)
+                    ? (int)$note[
+                        'noteApplicationSpecialRequirementID'
+                    ]
+                    : null;
+            $note['noteCreatedUnix'] =
+                (int)$note['noteCreatedUnix'];
+            $note['noteUpdatedUnix'] = is_numeric(
+                $note['noteUpdatedUnix'] ?? null
+            )
+                ? (int)$note['noteUpdatedUnix']
+                : null;
+        }
+        unset($note);
+
+        $application['applicationNotes'] =
+            is_array($notes) ? $notes : [];
+        $application['applicationNoteCount'] = count(
+            $application['applicationNotes']
+        );
+
+        // Resolve the next configured Stage
+        $stageIndex = $workflowStageIndexes[
+            $applicationStageId
+        ] ?? null;
+        $nextStage = $stageIndex !== null
+            ? ($workflowStages[$stageIndex + 1] ?? null)
+            : null;
+
+        $application['applicationNextStageID'] =
+            is_array($nextStage)
+                ? (int)$nextStage['applicationStageID']
+                : null;
+        $application['applicationNextStageName'] =
+            is_array($nextStage)
+                ? trim((string)$nextStage[
+                    'applicationStageName'
+                ])
+                : null;
+        $application['applicationNextStageDescription'] =
+            is_array($nextStage)
+                ? trim((string)($nextStage[
+                    'applicationStageDescription'
+                ] ?? ''))
+                : null;
     }
     unset($application);
 
-    return is_array($applications) ? $applications : [];
+    return $applications;
 }
 
 // #endregion
@@ -173,6 +420,38 @@ function formatOpenApplicationsPayloadDate(
     );
 }
 
+function calculateOpenApplicationCalendarDays(
+    mixed $receivedUnix,
+    mixed $endUnix
+): ?int {
+    if (
+        !is_numeric($receivedUnix) ||
+        (int)$receivedUnix <= 0 ||
+        !is_numeric($endUnix) ||
+        (int)$endUnix <= 0
+    ) {
+        return null;
+    }
+
+    $timezone = new DateTimeZone('America/Phoenix');
+    $receivedDate = (new DateTimeImmutable(
+        '@' . (int)$receivedUnix
+    ))
+        ->setTimezone($timezone)
+        ->setTime(0, 0);
+    $endDate = (new DateTimeImmutable(
+        '@' . (int)$endUnix
+    ))
+        ->setTimezone($timezone)
+        ->setTime(0, 0);
+
+    if ($endDate < $receivedDate) {
+        return null;
+    }
+
+    return (int)$receivedDate->diff($endDate)->days;
+}
+
 function buildOpenApplicationReviewItems(
     array $application
 ): array {
@@ -189,6 +468,9 @@ function buildOpenApplicationReviewItems(
     ));
 
     $stageKey = strtolower($stage);
+    $statusKey = strtolower(trim((string)(
+        $application['applicationStatusName'] ?? ''
+    )));
     $reviewItems = [];
 
     $milestones = [
@@ -287,12 +569,17 @@ function buildOpenApplicationReviewItems(
             'Issued',
             'Finaled'
         ];
-    } elseif ($stageKey === 'approved') {
+    } elseif ($stageKey === 'jurisdiction review') {
         $stageConflictLabels = [
+            'Approved',
             'Issued',
             'Finaled'
         ];
-    } elseif ($stageKey === 'issued') {
+    } elseif ($stageKey === 'approval / issuance') {
+        $stageConflictLabels = [
+            'Finaled'
+        ];
+    } elseif ($stageKey === 'inspection') {
         $stageConflictLabels = [
             'Finaled'
         ];
@@ -315,6 +602,46 @@ function buildOpenApplicationReviewItems(
                 $resolvedMilestones[
                     $stageConflictLabel
                 ]['date']
+            )
+        ];
+    }
+
+    $expectedMilestoneLabel = null;
+
+    // Identify a missing milestone implied by the current Stage
+    if ($stageKey === 'submitted') {
+        $expectedMilestoneLabel = 'Submitted';
+    } elseif ($stageKey === 'jurisdiction review') {
+        $expectedMilestoneLabel = 'Submitted';
+    } elseif (
+        $stageKey === 'approval / issuance' &&
+        str_contains($statusKey, 'issued')
+    ) {
+        $expectedMilestoneLabel = 'Issued';
+    } elseif (
+        $stageKey === 'approval / issuance' &&
+        str_contains($statusKey, 'approved')
+    ) {
+        $expectedMilestoneLabel = 'Approved';
+    } elseif ($stageKey === 'inspection') {
+        $expectedMilestoneLabel = 'Issued';
+    } elseif ($stageKey === 'finaled') {
+        $expectedMilestoneLabel = 'Finaled';
+    }
+
+    if (
+        $expectedMilestoneLabel !== null &&
+        !isset($resolvedMilestones[$expectedMilestoneLabel])
+    ) {
+        $reviewItems[] = [
+            'applicationID' => $applicationId,
+            'workOrderNumber' => $workOrderNumber,
+            'type' => 'missing_stage_milestone',
+            'message' => sprintf(
+                'Application #%d is in %s stage, but its %s date is not recorded.',
+                $applicationId,
+                $stage !== '' ? $stage : 'an unspecified',
+                $expectedMilestoneLabel
             )
         ];
     }
@@ -450,6 +777,105 @@ function buildOpenApplicationsReportPayload(
             ? $status
             : 'Unspecified Status';
 
+        $finaledUnix = is_numeric(
+            $application['applicationFinaledUnix'] ?? null
+        ) && (int)$application['applicationFinaledUnix'] > 0
+            ? (int)$application['applicationFinaledUnix']
+            : null;
+
+        $durationEndUnix = $finaledUnix
+            ?? $generatedUnix;
+
+        $calendarDays = calculateOpenApplicationCalendarDays(
+            $application['applicationCreatedUnix'] ?? null,
+            $durationEndUnix
+        );
+
+        $requirementRows = array_map(
+            static function (array $requirement): array {
+                return [
+                    'requirementID' => (int)(
+                        $requirement[
+                            'applicationSpecialRequirementID'
+                        ] ?? 0
+                    ),
+                    'description' => trim((string)(
+                        $requirement[
+                            'applicationSpecialRequirementDescription'
+                        ] ?? ''
+                    )),
+                    'status' => trim((string)(
+                        $requirement[
+                            'applicationSpecialRequirementStatusName'
+                        ] ?? ''
+                    )),
+                    'statusDescription' => trim((string)(
+                        $requirement[
+                            'applicationSpecialRequirementStatusDescription'
+                        ] ?? ''
+                    )),
+                    'responsibleParty' => trim((string)(
+                        $requirement[
+                            'applicationSpecialRequirementResponsibleParty'
+                        ] ?? ''
+                    )),
+                    'requiredDate' =>
+                        formatOpenApplicationsPayloadDate(
+                            $requirement[
+                                'applicationSpecialRequirementRequiredUnix'
+                            ] ?? null
+                        ),
+                    'dueDate' =>
+                        formatOpenApplicationsPayloadDate(
+                            $requirement[
+                                'applicationSpecialRequirementDueUnix'
+                            ] ?? null
+                        )
+                ];
+            },
+            is_array(
+                $application['applicationSpecialRequirements'] ?? null
+            )
+                ? $application['applicationSpecialRequirements']
+                : []
+        );
+
+        $noteRows = array_map(
+            static function (array $note): array {
+                $authorName = trim(
+                    (string)($note['contactFirstName'] ?? '') . ' ' .
+                    (string)($note['contactLastName'] ?? '')
+                );
+                $noteUnix = is_numeric(
+                    $note['noteUpdatedUnix'] ?? null
+                )
+                    ? (int)$note['noteUpdatedUnix']
+                    : ($note['noteCreatedUnix'] ?? null);
+
+                return [
+                    'noteID' => (int)($note['noteID'] ?? 0),
+                    'specialRequirementID' => is_numeric(
+                        $note[
+                            'noteApplicationSpecialRequirementID'
+                        ] ?? null
+                    )
+                        ? (int)$note[
+                            'noteApplicationSpecialRequirementID'
+                        ]
+                        : null,
+                    'text' => trim((string)(
+                        $note['noteText'] ?? ''
+                    )),
+                    'authorName' => $authorName,
+                    'recordedDate' =>
+                        formatOpenApplicationsPayloadDate($noteUnix)
+                ];
+            },
+            is_array($application['applicationNotes'] ?? null)
+                ? $application['applicationNotes']
+                : []
+        );
+
         $stageCounts[$stageLabel] =
             ($stageCounts[$stageLabel] ?? 0) + 1;
 
@@ -469,6 +895,12 @@ function buildOpenApplicationsReportPayload(
         $applicationRows[] = [
             'applicationID' => (int)(
                 $application['applicationID'] ?? 0
+            ),
+            'applicationStageID' => (int)(
+                $application['applicationStageID'] ?? 0
+            ),
+            'applicationStatusID' => (int)(
+                $application['applicationStatusID'] ?? 0
             ),
             'applicationTitle' => trim((string)(
                 $application['applicationTitle'] ?? ''
@@ -495,6 +927,9 @@ function buildOpenApplicationsReportPayload(
                 $application['applicationScope'] ?? ''
             )),
             'stage' => $stage,
+            'stageDescription' => trim((string)(
+                $application['applicationStageDescription'] ?? ''
+            )),
             'status' => $status,
             'statusDescription' => trim((string)(
                 $application['applicationStatusDescription'] ?? ''
@@ -523,7 +958,34 @@ function buildOpenApplicationsReportPayload(
                     $application[
                         'applicationActiveRequirementCount'
                     ] ?? 0
+                ),
+                'items' => $requirementRows
+            ],
+            'notes' => [
+                'count' => count($noteRows),
+                'items' => $noteRows
+            ],
+            'duration' => [
+                'basis' => $finaledUnix !== null
+                    ? 'received_to_finaled'
+                    : 'received_to_report',
+                'calendarDays' => $calendarDays,
+                'isCompleted' => $finaledUnix !== null
+            ],
+            'nextStage' => [
+                'applicationStageID' => is_numeric(
+                    $application['applicationNextStageID'] ?? null
                 )
+                    ? (int)$application['applicationNextStageID']
+                    : null,
+                'name' => trim((string)(
+                    $application['applicationNextStageName'] ?? ''
+                )),
+                'description' => trim((string)(
+                    $application[
+                        'applicationNextStageDescription'
+                    ] ?? ''
+                ))
             ],
             'receivedDate' => formatOpenApplicationsPayloadDate(
                 $application['applicationCreatedUnix'] ?? null
@@ -545,7 +1007,7 @@ function buildOpenApplicationsReportPayload(
     }
 
     return [
-        'schemaVersion' => '1.3.0',
+        'schemaVersion' => '1.4.0',
         'reportType' => 'open_applications_status',
         'audience' => 'internal_operations',
         'generatedDate' =>

@@ -153,13 +153,26 @@ function renderOpenApplicationsDateRow(
         '</td></tr>';
 }
 
-function renderOpenApplicationsSummaryHeading(
+function renderOpenApplicationsSectionHeading(
+    string $title,
     string|false $rootDir
 ): string {
-    // Resolve safe local Report Summary icon
+    // Define report icons (single source of truth)
+    $iconFilesByTitle = [
+        'Report Summary' => 'memo.png',
+        'Permit Application Process' => 'integration.png',
+        'Active Special Requirements' => 'warning.png',
+        'Application Notes' => 'notes.png'
+    ];
+
+    // Resolve the configured safe local icon
+    $iconFile = basename(
+        $iconFilesByTitle[$title] ?? 'document.png'
+    );
     $iconPath = $rootDir !== false
         ? $rootDir .
-            '/assets/images/icons/memo.png'
+            '/assets/images/icons/' .
+            $iconFile
         : '';
 
     $iconHtml = '';
@@ -173,7 +186,7 @@ function renderOpenApplicationsSummaryHeading(
             'file://' . $iconPath;
 
         $iconHtml = sprintf(
-            '<img class="report-summary-icon" src="%s" alt="">',
+            '<img class="section-icon" src="%s" alt="">',
             htmlspecialchars(
                 $iconSource,
                 ENT_QUOTES,
@@ -183,11 +196,77 @@ function renderOpenApplicationsSummaryHeading(
     }
 
     return sprintf(
-        '<div class="report-summary-heading">%s<span>%s</span></div>',
+        '<div class="section-heading">%s<span>%s</span></div>',
         $iconHtml,
-        escapeOpenApplicationsReportValue(
-            'Report Summary'
+        escapeOpenApplicationsReportValue($title)
+    );
+}
+
+function formatOpenApplicationDuration(
+    array $application,
+    int $reportGeneratedUnix
+): string {
+    $receivedUnix = is_numeric(
+        $application['applicationCreatedUnix'] ?? null
+    )
+        ? (int)$application['applicationCreatedUnix']
+        : null;
+    $finaledUnix = is_numeric(
+        $application['applicationFinaledUnix'] ?? null
+    )
+        ? (int)$application['applicationFinaledUnix']
+        : null;
+
+    if ($receivedUnix === null || $receivedUnix <= 0) {
+        return 'Duration unavailable';
+    }
+
+    $isFinaled = $finaledUnix !== null && $finaledUnix > 0;
+    $endUnix = $isFinaled
+        ? $finaledUnix
+        : $reportGeneratedUnix;
+    $calendarDays = calculateOpenApplicationCalendarDays(
+        $receivedUnix,
+        $endUnix
+    );
+
+    if ($calendarDays === null) {
+        return 'Duration cannot be calculated from the recorded dates';
+    }
+
+    return $isFinaled
+        ? sprintf(
+            '%d calendar day%s from Received to Finaled',
+            $calendarDays,
+            $calendarDays === 1 ? '' : 's'
         )
+        : sprintf(
+            '%d calendar day%s open as of the report date',
+            $calendarDays,
+            $calendarDays === 1 ? '' : 's'
+        );
+}
+
+function formatOpenApplicationWorkflowPosition(
+    array $application
+): string {
+    $currentStage = formatOpenApplicationsReportValue(
+        $application['applicationStageName'] ?? null
+    );
+    $currentStatus = formatOpenApplicationsReportValue(
+        $application['applicationStatusName'] ?? null
+    );
+    $nextStage = trim((string)(
+        $application['applicationNextStageName'] ?? ''
+    ));
+
+    return sprintf(
+        'Current: %s — %s%s',
+        $currentStage,
+        $currentStatus,
+        $nextStage !== ''
+            ? '; Next configured Stage: ' . $nextStage
+            : '; No later active Stage is configured'
     );
 }
 
@@ -254,6 +333,10 @@ function formatOpenApplicationsRequirementStatus(
 // #region SECTION III — Authoritative Open Application Data
 
 $applications = loadOpenApplicationsReportData($db);
+$workflow = loadOpenApplicationsWorkflowData($db);
+$workflowStages = is_array($workflow['stages'] ?? null)
+    ? $workflow['stages']
+    : [];
 $reportGeneratedUnix = time();
 $applicationCount = count($applications);
 $reportPayload = buildOpenApplicationsReportPayload(
@@ -369,7 +452,13 @@ $recordReportAction = static function () use (
             'reportFingerprint' =>
                 $reportFingerprint,
             'summarySource' =>
-                $reportSummarySource
+                $reportSummarySource,
+            'workflowIncluded' =>
+                true,
+            'specialRequirementsIncluded' =>
+                true,
+            'internalNotesIncluded' =>
+                true
         ],
         'actionResponseData' => [
             'success' =>
@@ -385,7 +474,13 @@ $recordReportAction = static function () use (
             'outputFormat' =>
                 'pdf',
             'summarySource' =>
-                $reportSummarySource
+                $reportSummarySource,
+            'workflowIncluded' =>
+                true,
+            'specialRequirementsIncluded' =>
+                true,
+            'internalNotesIncluded' =>
+                true
         ]
     ], $db);
 };
@@ -453,7 +548,7 @@ ob_start();
             page-break-inside: avoid;
         }
 
-        .report-summary-heading {
+        .section-heading {
             margin: 0 0 3px;
             padding: 0 0 2px;
             color: #14377c;
@@ -463,12 +558,12 @@ ob_start();
             border-bottom: 2px solid #14377c;
         }
 
-        .report-summary-heading span {
+        .section-heading span {
             display: inline-block;
             vertical-align: middle;
         }
 
-        .report-summary-icon {
+        .section-icon {
             display: inline-block;
             width: 15px;
             height: 15px;
@@ -487,10 +582,76 @@ ob_start();
             border-left: 4px solid #14377c;
         }
 
-        /* Keep each Application together */
-        .application-block {
+        .workflow-section {
             margin: 0 0 9px;
             page-break-inside: avoid;
+        }
+
+        .workflow-introduction {
+            margin-bottom: 4px;
+            padding: 5px 7px;
+            color: #444;
+            font-size: 9px;
+            line-height: 1.3;
+            background: #f8f9fa;
+            border: 1px solid #ccc;
+        }
+
+        .workflow-table,
+        .requirement-table,
+        .notes-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .workflow-table tr,
+        .requirement-table tr,
+        .notes-table tr {
+            page-break-inside: avoid;
+        }
+
+        .workflow-table th,
+        .workflow-table td,
+        .requirement-table th,
+        .requirement-table td,
+        .notes-table th,
+        .notes-table td {
+            padding: 3px 5px;
+            border: 1px solid #ccc;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .workflow-table th {
+            width: 24%;
+            color: #333;
+            font-size: 9px;
+            background: #f8f9fa;
+        }
+
+        .workflow-table td {
+            width: 76%;
+            color: #111;
+            font-size: 8.5px;
+            background: #fff;
+        }
+
+        .workflow-description {
+            margin-bottom: 2px;
+            color: #444;
+        }
+
+        .workflow-status {
+            display: block;
+            margin-top: 1px;
+            color: #555;
+        }
+
+        /* Allow long Applications to flow without font scaling */
+        .application-block {
+            margin: 0 0 9px;
+            page-break-inside: auto;
         }
 
         .application-heading {
@@ -501,12 +662,17 @@ ob_start();
             font-weight: bold;
             line-height: 1.2;
             background: #14377c;
+            page-break-after: avoid;
         }
 
         .application-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 10px;
+        }
+
+        .application-table tr {
+            page-break-inside: avoid;
         }
 
         .application-table th,
@@ -542,6 +708,55 @@ ob_start();
             white-space: pre-line;
         }
 
+        .application-subsection {
+            margin-top: 4px;
+            page-break-inside: avoid;
+        }
+
+        .application-subheading {
+            margin: 0;
+            padding: 3px 5px;
+            color: #14377c;
+            font-size: 9px;
+            font-weight: bold;
+            background: #f0f4f9;
+            border: 1px solid #b8cbe5;
+            border-bottom: 0;
+        }
+
+        .requirement-table th,
+        .notes-table th {
+            color: #333;
+            font-size: 8px;
+            background: #f8f9fa;
+        }
+
+        .requirement-table td,
+        .notes-table td {
+            color: #111;
+            font-size: 8.5px;
+            background: #fff;
+        }
+
+        .requirement-status {
+            color: #b45309;
+            font-weight: bold;
+        }
+
+        .note-meta {
+            width: 30%;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .empty-detail {
+            padding: 4px 6px;
+            color: #666;
+            font-size: 8.5px;
+            background: #f8f9fa;
+            border: 1px solid #ccc;
+        }
+
         .no-applications {
             padding: 12px;
             color: #555;
@@ -556,7 +771,8 @@ ob_start();
 
 <div class="report">
     <div class="report-summary">
-        <?= renderOpenApplicationsSummaryHeading(
+        <?= renderOpenApplicationsSectionHeading(
+            'Report Summary',
             $rootDir
         ) ?>
 
@@ -566,6 +782,79 @@ ob_start();
             ) ?>
         </div>
     </div>
+
+    <?php if ($workflowStages !== []): ?>
+        <div class="workflow-section">
+            <?= renderOpenApplicationsSectionHeading(
+                'Permit Application Process',
+                $rootDir
+            ) ?>
+
+            <div class="workflow-introduction">
+                These are the active Stages and Stage-specific Statuses
+                configured in Skyesoft, shown in lifecycle order. Each
+                Application below identifies its current position and next
+                configured Stage. Actual processing may vary by jurisdiction
+                and project requirements.
+            </div>
+
+            <table class="workflow-table">
+                <?php foreach ($workflowStages as $workflowStage): ?>
+                    <tr>
+                        <th><?= escapeOpenApplicationsReportValue(
+                            $workflowStage['applicationStageName']
+                        ) ?></th>
+                        <td>
+                            <?php
+                            $stageDescription = trim((string)(
+                                $workflowStage[
+                                    'applicationStageDescription'
+                                ] ?? ''
+                            ));
+                            $stageStatuses = is_array(
+                                $workflowStage['statuses'] ?? null
+                            )
+                                ? $workflowStage['statuses']
+                                : [];
+                            ?>
+
+                            <?php if ($stageDescription !== ''): ?>
+                                <div class="workflow-description">
+                                    <?= escapeOpenApplicationsReportValue(
+                                        $stageDescription
+                                    ) ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php foreach ($stageStatuses as $workflowStatus): ?>
+                                <?php
+                                $statusDescription = trim((string)(
+                                    $workflowStatus[
+                                        'applicationStatusDescription'
+                                    ] ?? ''
+                                ));
+                                ?>
+                                <span class="workflow-status">
+                                    <strong><?= escapeOpenApplicationsReportValue(
+                                        $workflowStatus[
+                                            'applicationStatusName'
+                                        ]
+                                    ) ?></strong><?=
+                                        $statusDescription !== ''
+                                            ? ' — ' .
+                                                escapeOpenApplicationsReportValue(
+                                                    $statusDescription
+                                                )
+                                            : ''
+                                    ?>
+                                </span>
+                            <?php endforeach; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        </div>
+    <?php endif; ?>
 
     <?php if ($applicationCount === 0): ?>
         <div class="no-applications">
@@ -684,6 +973,23 @@ ob_start();
                         )
                     ) ?></td>
                 </tr>
+                <tr>
+                    <th>Workflow Position</th>
+                    <td><?= escapeOpenApplicationsReportValue(
+                        formatOpenApplicationWorkflowPosition(
+                            $application
+                        )
+                    ) ?></td>
+                </tr>
+                <tr>
+                    <th>Permit Duration</th>
+                    <td><?= escapeOpenApplicationsReportValue(
+                        formatOpenApplicationDuration(
+                            $application,
+                            $reportGeneratedUnix
+                        )
+                    ) ?></td>
+                </tr>
                 <?= renderOpenApplicationsDateRow(
                     'Received',
                     $application[
@@ -719,6 +1025,155 @@ ob_start();
                     ]
                 ) ?>
             </table>
+
+            <?php
+            $applicationRequirements = is_array(
+                $application['applicationSpecialRequirements'] ?? null
+            )
+                ? $application['applicationSpecialRequirements']
+                : [];
+            $applicationNotes = is_array(
+                $application['applicationNotes'] ?? null
+            )
+                ? $application['applicationNotes']
+                : [];
+            ?>
+
+            <div class="application-subsection">
+                <div class="application-subheading">
+                    Active Special Requirements
+                </div>
+
+                <?php if ($applicationRequirements !== []): ?>
+                    <table class="requirement-table">
+                        <thead>
+                            <tr>
+                                <th style="width:42%;">Requirement</th>
+                                <th style="width:16%;">Status</th>
+                                <th style="width:18%;">Responsible Party</th>
+                                <th style="width:12%;">Required</th>
+                                <th style="width:12%;">Due</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach (
+                                $applicationRequirements as $requirement
+                            ): ?>
+                                <tr>
+                                    <td><?= nl2br(
+                                        escapeOpenApplicationsReportValue(
+                                            formatOpenApplicationsReportValue(
+                                                $requirement[
+                                                    'applicationSpecialRequirementDescription'
+                                                ] ?? null
+                                            )
+                                        )
+                                    ) ?></td>
+                                    <td class="requirement-status"><?=
+                                        escapeOpenApplicationsReportValue(
+                                            formatOpenApplicationsReportValue(
+                                                $requirement[
+                                                    'applicationSpecialRequirementStatusName'
+                                                ] ?? null
+                                            )
+                                        )
+                                    ?></td>
+                                    <td><?= escapeOpenApplicationsReportValue(
+                                        formatOpenApplicationsReportValue(
+                                            $requirement[
+                                                'applicationSpecialRequirementResponsibleParty'
+                                            ] ?? null
+                                        )
+                                    ) ?></td>
+                                    <td><?= escapeOpenApplicationsReportValue(
+                                        formatOpenApplicationsReportDate(
+                                            is_numeric($requirement[
+                                                'applicationSpecialRequirementRequiredUnix'
+                                            ] ?? null)
+                                                ? (int)$requirement[
+                                                    'applicationSpecialRequirementRequiredUnix'
+                                                ]
+                                                : null
+                                        )
+                                    ) ?></td>
+                                    <td><?= escapeOpenApplicationsReportValue(
+                                        formatOpenApplicationsReportDate(
+                                            is_numeric($requirement[
+                                                'applicationSpecialRequirementDueUnix'
+                                            ] ?? null)
+                                                ? (int)$requirement[
+                                                    'applicationSpecialRequirementDueUnix'
+                                                ]
+                                                : null
+                                        )
+                                    ) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <div class="empty-detail">
+                        No active Special Requirements have been recorded.
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <div class="application-subsection">
+                <div class="application-subheading">
+                    Application Notes
+                </div>
+
+                <?php if ($applicationNotes !== []): ?>
+                    <table class="notes-table">
+                        <?php foreach ($applicationNotes as $note): ?>
+                            <?php
+                            $authorName = trim(
+                                (string)($note['contactFirstName'] ?? '') .
+                                ' ' .
+                                (string)($note['contactLastName'] ?? '')
+                            );
+                            $noteUnix = is_numeric(
+                                $note['noteUpdatedUnix'] ?? null
+                            )
+                                ? (int)$note['noteUpdatedUnix']
+                                : (
+                                    is_numeric(
+                                        $note['noteCreatedUnix'] ?? null
+                                    )
+                                        ? (int)$note['noteCreatedUnix']
+                                        : null
+                                );
+                            $noteLabel = formatOpenApplicationsReportDate(
+                                $noteUnix
+                            );
+
+                            if ($authorName !== '') {
+                                $noteLabel .= ($noteLabel !== '' ? ' - ' : '') .
+                                    $authorName;
+                            }
+                            ?>
+                            <tr>
+                                <th class="note-meta"><?=
+                                    escapeOpenApplicationsReportValue(
+                                        formatOpenApplicationsReportValue(
+                                            $noteLabel
+                                        )
+                                    )
+                                ?></th>
+                                <td><?= nl2br(
+                                    escapeOpenApplicationsReportValue(
+                                        $note['noteText'] ?? ''
+                                    )
+                                ) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </table>
+                <?php else: ?>
+                    <div class="empty-detail">
+                        No Application Notes have been recorded.
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     <?php endforeach; ?>
 </div>
