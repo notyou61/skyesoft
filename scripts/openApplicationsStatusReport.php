@@ -694,8 +694,6 @@ ob_start();
         /* Allow long Applications to flow without font scaling */
         .application-block {
             margin: 0 0 9px;
-            break-inside: avoid;
-            page-break-inside: avoid;
         }
 
         .application-heading {
@@ -713,6 +711,8 @@ ob_start();
             width: 100%;
             border-collapse: collapse;
             font-size: 10px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .application-table tr {
@@ -760,9 +760,10 @@ ob_start();
         .scope-value {
             white-space: pre-line;
         }
-
+        
         .application-subsection {
             margin-top: 4px;
+            break-inside: avoid;
             page-break-inside: avoid;
         }
 
