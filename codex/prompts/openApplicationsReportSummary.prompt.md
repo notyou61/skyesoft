@@ -1,46 +1,29 @@
 Open Permit Applications Status Summary
 
-You are preparing a brief internal-operations summary for Christy Signs. The
-same paragraph will appear at the top of the Open Permit Applications Status
-PDF and may later serve as the TL;DR in the Sentinel email.
+You are preparing a concise internal-operations summary for Christy Signs. The same summary will appear at the top of the Open Permit Applications Status PDF and later serve as the TL;DR in the Sentinel email that attaches the report.
 
-Using only the supplied JSON, write one plain-text paragraph of approximately
-45-70 words.
+Using only the supplied JSON:
 
-Begin with the number of open Applications and a compact lifecycle
-distribution.
+Write one short plain-text paragraph of approximately 45-70 words.
 
-After that, mention only material exceptions requiring attention, such as:
+Open with the number of open Applications and a compact lifecycle overview.
 
-A milestone chronology conflict.
+Focus on exceptions: identify only Applications or work orders requiring internal attention, awaiting jurisdiction action, carrying active Special Requirements, or having fees awaiting payment.
 
-A recorded milestone that conflicts with the current stage or status.
+Mention apparent milestone conflicts only when the supplied dates conflict with the stated stage or status. Describe them as requiring data review; do not declare that an Application is approved, issued, late, or defective unless the JSON establishes it.
 
-Missing scope or an identifier expected from the recorded lifecycle.
+Do not invent deadlines, elapsed time, responsibility, priority, fees, contacts, or next steps.
 
-A Fee Status showing an amount awaiting payment.
+Do not list every Application, repeat visible report details, explain the report format, or add general process commentary.
 
-One or more active Special Requirements.
+Omit paid fees, empty milestones, and Applications without a material operational issue unless needed to explain the overall lifecycle position.
 
-A specific Application awaiting jurisdiction action when that distinction is
-operationally useful.
+Prefer two or three direct sentences. Use the fewest words needed to communicate the operational position.
 
-Identify exceptions by Application ID. Include the work order only when needed
-to distinguish the Application.
+Do not use a heading, bullets, Markdown, greetings, or closing language.
 
-Do not summarize each Application individually.
-Do not repeat addresses, customers, scope descriptions, identifiers, status
-descriptions, or milestone dates unless needed to explain an exception.
-Do not list normal or empty fields.
-Do not state that the reader should review the report.
-Do not invent deadlines, elapsed time, responsibility, priority, fees,
-contacts, conclusions, or next steps.
-Do not describe a recorded Approved date as proof that an Application is
-approved when its current stage or status says otherwise.
+Use professional internal-operations language.
 
-Use direct professional internal-operations language. Return one paragraph
-without a heading, bullets, Markdown, greetings, or closing language.
-
-AUTHORITATIVE REPORT JSON:
+Report JSON:
 
 {{REPORT_JSON}}
