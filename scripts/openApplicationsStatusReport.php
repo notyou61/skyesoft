@@ -223,6 +223,7 @@ function renderOpenApplicationsSectionHeading(
     // Define report icons (single source of truth)
     $iconFilesByTitle = [
         'Report Summary' => 'memo.png',
+        'Permit Fee Index' => 'document.png',
         'Permit Application Process' => 'integration.png',
         'Active Special Requirements' => 'warning.png',
         'Application Notes' => 'notes.png'
@@ -1017,6 +1018,8 @@ ob_start();
         /* Allow long Applications to flow without font scaling */
         .application-block {
             margin: 0 0 9px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .application-table th.application-heading {
@@ -1251,7 +1254,7 @@ ob_start();
             )
         );
         ?>
-        <div class="application-block">
+        <div class="application-block" style="page-break-inside:avoid;">
             <table class="application-table">
                 <tr>
                     <th class="application-heading" colspan="2">
@@ -1691,6 +1694,43 @@ ob_start();
             </div>
         </div>
     <?php endforeach; ?>
+
+        <div class="workflow-section" style="page-break-inside:avoid;">
+            <?= renderOpenApplicationsSectionHeading(
+                'Permit Fee Index',
+                $rootDir
+            ) ?>
+
+            <div class="workflow-introduction">
+                These are the Fee categories configured in Skyesoft. Each
+                Application above shows its recorded Fees by category, followed
+                by the dated transactions and running outstanding balance.
+            </div>
+
+            <table class="workflow-table">
+                <tr>
+                    <th>Application Fee</th>
+                    <td class="workflow-detail">
+                        A jurisdiction charge recorded for Application intake,
+                        filing, or initial processing.
+                    </td>
+                </tr>
+                <tr>
+                    <th>Review Fee</th>
+                    <td class="workflow-detail">
+                        A jurisdiction charge recorded for plan, document, or
+                        substantive review of the Application.
+                    </td>
+                </tr>
+                <tr>
+                    <th>Permit Fee</th>
+                    <td class="workflow-detail">
+                        A jurisdiction charge recorded for Permit approval,
+                        issuance, or release.
+                    </td>
+                </tr>
+            </table>
+        </div>
 
         <?php if ($workflowStages !== []): ?>
             <div class="workflow-section" style="page-break-inside:avoid;">
