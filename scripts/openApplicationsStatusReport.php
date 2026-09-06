@@ -1439,14 +1439,21 @@ logOpenApplicationsStatusReportError(
     )
 );
 
+// Remove any output buffered before the PDF response
+while (ob_get_level() > 0) {
+    ob_end_clean();
+}
+
+// Send the completed PDF
 header('Content-Type: application/pdf');
 header(
     'Content-Disposition: inline; filename="' .
     $pdfFilename .
     '"'
 );
-header('Content-Length: ' . strlen($pdfContent));
 header('Cache-Control: private, no-store, max-age=0');
+header('Pragma: no-cache');
+header('X-Content-Type-Options: nosniff');
 
 echo $pdfContent;
 exit;
