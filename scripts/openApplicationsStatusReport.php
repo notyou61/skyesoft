@@ -1019,13 +1019,15 @@ ob_start();
             margin: 0 0 9px;
         }
 
-        .application-heading {
-            margin: 0 0 3px;
+        .application-table th.application-heading {
+            width: 100%;
             padding: 4px 6px;
             color: #fff;
             font-size: 10px;
             font-weight: bold;
             line-height: 1.2;
+            text-align: left;
+            white-space: normal;
             background: #14377c;
             page-break-after: avoid;
         }
@@ -1250,12 +1252,14 @@ ob_start();
         );
         ?>
         <div class="application-block">
-            <div class="application-heading">
-                <?= escapeOpenApplicationsReportValue(
-                    $applicationHeading
-                ) ?>
-            </div>
             <table class="application-table">
+                <tr>
+                    <th class="application-heading" colspan="2">
+                        <?= escapeOpenApplicationsReportValue(
+                            $applicationHeading
+                        ) ?>
+                    </th>
+                </tr>
                 <tr>
                     <th>Application</th>
                     <td><?= escapeOpenApplicationsReportValue(
