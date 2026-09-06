@@ -504,6 +504,7 @@ function buildOpenApplicationsFeeLedger(
             'unix' => $assessedUnix,
             'sortOrder' => 1,
             'feeID' => $feeId,
+            'category' => $category,
             'description' => $description,
             'charge' => $amount,
             'credit' => 0.00,
@@ -515,6 +516,7 @@ function buildOpenApplicationsFeeLedger(
                 'unix' => (int)$fee['feePaidUnix'],
                 'sortOrder' => 2,
                 'feeID' => $feeId,
+                'category' => $category,
                 'description' => 'Payment — ' . $description,
                 'charge' => 0.00,
                 'credit' => $amount,
@@ -544,6 +546,7 @@ function buildOpenApplicationsFeeLedger(
                 'unix' => (int)$fee['feeVoidedUnix'],
                 'sortOrder' => 3,
                 'feeID' => $feeId,
+                'category' => $category,
                 'description' => $voidDescription,
                 'charge' => 0.00,
                 'credit' => $isPaid ? 0.00 : $amount,
@@ -580,6 +583,64 @@ function buildOpenApplicationsFeeLedger(
     unset($event);
 
     return $events;
+}
+
+function buildOpenApplicationsFeeBreakdown(
+    array $feeLedger
+): array {
+    // Define authoritative Fee categories (tblApplicationFees)
+    $categoryOrder = [
+        'Application',
+        'Review',
+        'Permit'
+    ];
+    $breakdown = [];
+
+    // Total activity within each recorded Fee category
+    foreach ($feeLedger as $event) {
+        $category = trim((string)($event['category'] ?? 'Permit'));
+
+        if (!isset($breakdown[$category])) {
+            $breakdown[$category] = [
+                'category' => $category,
+                'assessed' => 0.00,
+                'credits' => 0.00,
+                'outstanding' => 0.00
+            ];
+        }
+
+        $breakdown[$category]['assessed'] = round(
+            $breakdown[$category]['assessed'] +
+                (float)($event['charge'] ?? 0),
+            2
+        );
+        $breakdown[$category]['credits'] = round(
+            $breakdown[$category]['credits'] +
+                (float)($event['credit'] ?? 0),
+            2
+        );
+        $breakdown[$category]['outstanding'] = round(
+            $breakdown[$category]['assessed'] -
+                $breakdown[$category]['credits'],
+            2
+        );
+    }
+
+    $rows = [];
+
+    // Return configured categories first, then future values safely
+    foreach ($categoryOrder as $category) {
+        if (isset($breakdown[$category])) {
+            $rows[] = $breakdown[$category];
+            unset($breakdown[$category]);
+        }
+    }
+
+    foreach ($breakdown as $row) {
+        $rows[] = $row;
+    }
+
+    return $rows;
 }
 
 function formatOpenApplicationsLedgerAmount(
@@ -868,6 +929,8 @@ ob_start();
 
         .workflow-section {
             margin: 0 0 9px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .workflow-introduction {
@@ -881,6 +944,7 @@ ob_start();
         }
 
         .workflow-table,
+        .fee-breakdown-table,
         .fee-ledger-table,
         .requirement-table,
         .notes-table {
@@ -890,6 +954,7 @@ ob_start();
         }
 
         .workflow-table tr,
+        .fee-breakdown-table tr,
         .fee-ledger-table tr,
         .requirement-table tr,
         .notes-table tr {
@@ -898,6 +963,8 @@ ob_start();
 
         .workflow-table th,
         .workflow-table td,
+        .fee-breakdown-table th,
+        .fee-breakdown-table td,
         .fee-ledger-table th,
         .fee-ledger-table td,
         .requirement-table th,
@@ -1038,6 +1105,32 @@ ob_start();
             color: #333;
             font-size: 8px;
             background: #f8f9fa;
+        }
+
+        .fee-breakdown-table {
+            margin-bottom: 4px;
+        }
+
+        .fee-breakdown-table th {
+            color: #333;
+            font-size: 8px;
+            background: #e7eef8;
+        }
+
+        .fee-breakdown-table td {
+            color: #111;
+            font-size: 8.5px;
+            background: #fff;
+        }
+
+        .fee-breakdown-table .fee-amount {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .fee-breakdown-table .fee-balance {
+            color: #14377c;
+            font-weight: bold;
         }
 
         .fee-ledger-table td {
@@ -1317,6 +1410,9 @@ ob_start();
             $feeLedger = buildOpenApplicationsFeeLedger(
                 $applicationFees
             );
+            $feeBreakdown = buildOpenApplicationsFeeBreakdown(
+                $feeLedger
+            );
             $applicationNotes = is_array(
                 $application['applicationNotes'] ?? null
             )
@@ -1332,6 +1428,50 @@ ob_start();
                 </div>
 
                 <?php if ($feeLedger !== []): ?>
+                    <table class="fee-breakdown-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40%;">Fee Type</th>
+                                <th style="width:20%;text-align:right;">Assessed</th>
+                                <th style="width:20%;text-align:right;">Payments / Credits</th>
+                                <th style="width:20%;text-align:right;">Outstanding</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($feeBreakdown as $feeCategory): ?>
+                                <tr>
+                                    <td><?= escapeOpenApplicationsReportValue(
+                                        $feeCategory['category'] . ' Fees'
+                                    ) ?></td>
+                                    <td class="fee-amount"><?=
+                                        escapeOpenApplicationsReportValue(
+                                            '$' . number_format(
+                                                $feeCategory['assessed'],
+                                                2
+                                            )
+                                        )
+                                    ?></td>
+                                    <td class="fee-amount"><?=
+                                        escapeOpenApplicationsReportValue(
+                                            '$' . number_format(
+                                                $feeCategory['credits'],
+                                                2
+                                            )
+                                        )
+                                    ?></td>
+                                    <td class="fee-amount fee-balance"><?=
+                                        escapeOpenApplicationsReportValue(
+                                            '$' . number_format(
+                                                $feeCategory['outstanding'],
+                                                2
+                                            )
+                                        )
+                                    ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+
                     <table class="fee-ledger-table">
                         <thead>
                             <tr>
@@ -1549,7 +1689,7 @@ ob_start();
     <?php endforeach; ?>
 
         <?php if ($workflowStages !== []): ?>
-            <div class="workflow-section">
+            <div class="workflow-section" style="page-break-inside:avoid;">
                 <?= renderOpenApplicationsSectionHeading(
                     'Permit Application Process',
                     $rootDir
