@@ -214,6 +214,25 @@ function loadOpenApplicationsReportData(PDO $db): array
             r.applicationSpecialRequirementID ASC
     ");
 
+    // Prepare reusable authoritative Application Fee query
+    $feeStmt = $db->prepare("
+        SELECT
+            feeID,
+            feeCategory,
+            feeAmount,
+            feeNote,
+            feeAssessedUnix,
+            feePaidUnix,
+            feeVoidedUnix,
+            feeVoidReason,
+            feeCreatedUnix
+        FROM tblApplicationFees
+        WHERE applicationID = :applicationId
+        ORDER BY
+            COALESCE(feeAssessedUnix, feeCreatedUnix) ASC,
+            feeID ASC
+    ");
+
     // Prepare reusable one-to-many Application Notes query
     $noteStmt = $db->prepare("
         SELECT
@@ -291,6 +310,38 @@ function loadOpenApplicationsReportData(PDO $db): array
                     'applicationActiveRequirementCount'
                 ] ?? 0
             );
+
+        // Load all Fee records (including voided Fees for the ledger)
+        $feeStmt->execute([
+            'applicationId' => $applicationId
+        ]);
+
+        $fees = $feeStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($fees as &$fee) {
+            $fee['feeID'] = (int)$fee['feeID'];
+            $fee['feeAmount'] = round(
+                (float)$fee['feeAmount'],
+                2
+            );
+
+            foreach ([
+                'feeAssessedUnix',
+                'feePaidUnix',
+                'feeVoidedUnix',
+                'feeCreatedUnix'
+            ] as $feeUnixField) {
+                $fee[$feeUnixField] = is_numeric(
+                    $fee[$feeUnixField] ?? null
+                ) && (int)$fee[$feeUnixField] > 0
+                    ? (int)$fee[$feeUnixField]
+                    : null;
+            }
+        }
+        unset($fee);
+
+        $application['applicationFees'] =
+            is_array($fees) ? $fees : [];
 
         // Load detailed active Special Requirements
         $requirementStmt->execute([
