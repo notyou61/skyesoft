@@ -7,6 +7,60 @@ declare(strict_types=1);
  *  Codex-Governed Module • PHP 8.3
  * ===================================================================== */
 
+// #region SECTION 0 — REPORT ERROR LOGGING
+
+function logOpenApplicationsStatusReportError(
+    string $message
+): void {
+    $logEntry = sprintf(
+        "[%s] %s%s",
+        date('Y-m-d H:i:s T'),
+        $message,
+        PHP_EOL
+    );
+
+    error_log(
+        $logEntry,
+        3,
+        __DIR__ . '/openApplicationsStatusReport.error.log'
+    );
+}
+
+// Capture fatal runtime errors outside try/catch
+register_shutdown_function(
+    static function (): void {
+        $lastError = error_get_last();
+
+        if (
+            !is_array($lastError) ||
+            !in_array(
+                (int)$lastError['type'],
+                [
+                    E_ERROR,
+                    E_PARSE,
+                    E_CORE_ERROR,
+                    E_COMPILE_ERROR,
+                    E_USER_ERROR
+                ],
+                true
+            )
+        ) {
+            return;
+        }
+
+        logOpenApplicationsStatusReportError(
+            sprintf(
+                'Fatal error: %s in %s on line %d',
+                (string)$lastError['message'],
+                (string)$lastError['file'],
+                (int)$lastError['line']
+            )
+        );
+    }
+);
+
+// #endregion
+
 // #region SECTION I — Environment & Authentication
 
 date_default_timezone_set('America/Phoenix');
