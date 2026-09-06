@@ -224,6 +224,7 @@ function renderOpenApplicationsSectionHeading(
     $iconFilesByTitle = [
         'Report Summary' => 'memo.png',
         'Permit Application Process' => 'integration.png',
+        'Permit Fees' => 'document.png',
         'Active Special Requirements' => 'warning.png',
         'Application Notes' => 'notes.png'
     ];
@@ -1014,6 +1015,10 @@ ob_start();
             color: #555;
         }
 
+        .workflow-reference-subsection {
+            margin-top: 8px;
+        }
+
         /* Allow long Applications to flow without font scaling */
         .application-block {
             margin: 0 0 9px;
@@ -1770,6 +1775,44 @@ ob_start();
                         </tr>
                     <?php endforeach; ?>
                 </table>
+
+                <div class="workflow-reference-subsection">
+                    <?= renderOpenApplicationsSectionHeading(
+                        'Permit Fees',
+                        $rootDir
+                    ) ?>
+
+                    <div class="workflow-introduction">
+                        These are the Fee categories configured in Skyesoft.
+                        Each Application above shows its recorded Fees by
+                        category, followed by its dated transactions and running
+                        outstanding balance.
+                    </div>
+
+                    <table class="workflow-table">
+                        <tr>
+                            <th>Application Fee</th>
+                            <td class="workflow-detail">
+                                A jurisdiction charge recorded for Application
+                                intake, filing, or initial processing.
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Review Fee</th>
+                            <td class="workflow-detail">
+                                A jurisdiction charge recorded for plan,
+                                document, or substantive Application review.
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Permit Fee</th>
+                            <td class="workflow-detail">
+                                A jurisdiction charge recorded for Permit
+                                approval, issuance, or release.
+                            </td>
+                        </tr>
+                    </table>
+                </div>
             </div>
         <?php endif; ?>
 </div>
