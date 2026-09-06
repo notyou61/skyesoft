@@ -380,7 +380,7 @@ function renderOpenApplicationStageCellStyle(
     array $application,
     string|false $rootDir
 ): string {
-    // Define Stage icons (same authoritative mapping)
+    // Define Stage icons
     $iconFilesByStage = [
         'pre-submittal' => 'clipboard.png',
         'submitted' => 'upArrow.png',
@@ -400,24 +400,18 @@ function renderOpenApplicationStageCellStyle(
         ? $rootDir . '/assets/images/icons/' . $iconFile
         : '';
 
-    // Return normal cell styling when no icon is available
     if ($iconPath === '' || !is_file($iconPath)) {
         return '';
     }
 
-    $iconSource = htmlspecialchars(
-        'file://' . $iconPath,
-        ENT_QUOTES,
-        'UTF-8'
-    );
-
     return sprintf(
         "background-image:url('%s');" .
-        "background-repeat:no-repeat;" .
-        "background-position:5px 4px;" .
-        "background-size:9px 9px;" .
-        "padding-left:18px;",
-        $iconSource
+        "background-image-resize:6;",
+        htmlspecialchars(
+            'file://' . $iconPath,
+            ENT_QUOTES,
+            'UTF-8'
+        )
     );
 }
 
@@ -812,6 +806,16 @@ ob_start();
             display: block;
             margin-top: 1px;
             color: #555;
+        }
+
+        .workflow-stage-icon {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            margin-right: 4px;
+            vertical-align: -1px;
+            background-repeat: no-repeat;
+            background-position: center center;
         }
 
         /* Allow long Applications to flow without font scaling */
@@ -1328,16 +1332,17 @@ ob_start();
                         ?>
 
                         <tr>
-                            <td
-                                class="workflow-stage"
-                                style="<?= renderOpenApplicationStageCellStyle(
-                                    $workflowStage,
-                                    $rootDir
-                                ) ?>"
-                            >
-                                <?= escapeOpenApplicationsReportValue(
+                            <td class="workflow-stage">
+                                <div
+                                    class="workflow-stage-icon"
+                                    style="<?= renderOpenApplicationStageCellStyle(
+                                        $workflowStage,
+                                        $rootDir
+                                    ) ?>"
+                                ></div>
+                                <span><?= escapeOpenApplicationsReportValue(
                                     $workflowStage['applicationStageName']
-                                ) ?>
+                                ) ?></span>
                             </td>
                             <td class="workflow-detail">
                                 <?php if ($stageDescription !== ''): ?>
