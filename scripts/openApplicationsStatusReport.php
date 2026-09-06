@@ -4,7 +4,7 @@ declare(strict_types=1);
 /* =====================================================================
  *  Skyesoft — openApplicationsStatusReport.php
  *  Internal Open Permit Applications Status Report
- *  Codex-Governed Module • PHP 8.3
+ *  Codex-Governed Module • PHP 8.30
  * ===================================================================== */
 
 // #region SECTION 0 — REPORT ERROR LOGGING
