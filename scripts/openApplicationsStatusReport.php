@@ -64,11 +64,6 @@ register_shutdown_function(
     }
 );
 
-// Confirm dedicated log write access (temporary)
-logOpenApplicationsStatusReportError(
-    'Diagnostic log initialized.'
-);
-
 // #endregion
 
 // #region SECTION I — Environment & Authentication
