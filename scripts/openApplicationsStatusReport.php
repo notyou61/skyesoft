@@ -1022,6 +1022,8 @@ ob_start();
         /* Allow long Applications to flow without font scaling */
         .application-block {
             margin: 0 0 9px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .application-table th.application-heading {
