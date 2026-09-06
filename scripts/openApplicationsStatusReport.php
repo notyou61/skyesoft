@@ -12,6 +12,7 @@ declare(strict_types=1);
 function logOpenApplicationsStatusReportError(
     string $message
 ): void {
+    // Build the dedicated report log entry
     $logEntry = sprintf(
         "[%s] %s%s",
         date('Y-m-d H:i:s T'),
@@ -19,10 +20,12 @@ function logOpenApplicationsStatusReportError(
         PHP_EOL
     );
 
+    // Append the entry to the report-specific log
     error_log(
         $logEntry,
         3,
-        __DIR__ . '/openApplicationsStatusReport.error.log'
+        __DIR__ .
+            '/openApplicationsStatusReport.error.log'
     );
 }
 
@@ -31,6 +34,7 @@ register_shutdown_function(
     static function (): void {
         $lastError = error_get_last();
 
+        // Ignore normal successful shutdowns
         if (
             !is_array($lastError) ||
             !in_array(
@@ -48,6 +52,7 @@ register_shutdown_function(
             return;
         }
 
+        // Record the fatal runtime error
         logOpenApplicationsStatusReportError(
             sprintf(
                 'Fatal error: %s in %s on line %d',
@@ -57,6 +62,11 @@ register_shutdown_function(
             )
         );
     }
+);
+
+// Confirm dedicated log write access (temporary)
+logOpenApplicationsStatusReportError(
+    'Diagnostic log initialized.'
 );
 
 // #endregion
