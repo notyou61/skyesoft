@@ -249,9 +249,10 @@ function renderOpenApplicationsSectionHeading(
             'file://' . $iconPath;
 
         $iconHtml = sprintf(
-            '<img class="section-icon" src="%s" alt="">',
+            '<img src="%s" width="10" height="10" ' .
+            'style="margin-right:4px;vertical-align:-1px;" alt="">',
             htmlspecialchars(
-                $iconSource,
+                'file://' . $iconPath,
                 ENT_QUOTES,
                 'UTF-8'
             )
@@ -1333,16 +1334,10 @@ ob_start();
 
                         <tr>
                             <td class="workflow-stage">
-                                <div
-                                    class="workflow-stage-icon"
-                                    style="<?= renderOpenApplicationStageCellStyle(
-                                        $workflowStage,
-                                        $rootDir
-                                    ) ?>"
-                                ></div>
-                                <span><?= escapeOpenApplicationsReportValue(
-                                    $workflowStage['applicationStageName']
-                                ) ?></span>
+                                <?= renderOpenApplicationStageValue(
+                                    $workflowStage,
+                                    $rootDir
+                                ) ?>
                             </td>
                             <td class="workflow-detail">
                                 <?php if ($stageDescription !== ''): ?>
