@@ -12,20 +12,19 @@ declare(strict_types=1);
 function logOpenApplicationsStatusReportError(
     string $message
 ): void {
-    // Build the dedicated report log entry
+    // Build a uniquely labeled report log entry
     $logEntry = sprintf(
-        "[%s] %s%s",
+        "[%s] [openApplicationsStatusReport] %s%s",
         date('Y-m-d H:i:s T'),
         $message,
         PHP_EOL
     );
 
-    // Append the entry to the report-specific log
+    // Append to the host-managed writable log
     error_log(
         $logEntry,
         3,
-        __DIR__ .
-            '/openApplicationsStatusReport_error_log'
+        __DIR__ . '/error_log'
     );
 }
 
