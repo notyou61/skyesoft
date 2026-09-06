@@ -151,8 +151,6 @@ if (!is_array($actor)) {
 
 // #endregion
 
-// #endregion
-
 // #region SECTION II — Report Helpers
 
 function escapeOpenApplicationsReportValue(mixed $value): string
@@ -1286,9 +1284,10 @@ ob_start();
 
                         <tr>
                             <td class="workflow-stage">
-                                <?= renderOpenApplicationStageValue(
-                                    $workflowStage,
-                                    $rootDir
+                                <?= escapeOpenApplicationsReportValue(
+                                    $workflowStage[
+                                        'applicationStageName'
+                                    ]
                                 ) ?>
                             </td>
                             <td class="workflow-detail">
