@@ -1431,6 +1431,14 @@ logOpenApplicationsStatusReportError(
     )
 );
 
+logOpenApplicationsStatusReportError(
+    sprintf(
+        'Checkpoint 8 — sending %d bytes with signature %s.',
+        strlen($pdfContent),
+        substr($pdfContent, 0, 5)
+    )
+);
+
 header('Content-Type: application/pdf');
 header(
     'Content-Disposition: inline; filename="' .
