@@ -989,12 +989,6 @@ ob_start();
             page-break-inside: avoid;
         }
 
-        .reference-page {
-            page-break-before: always;
-            break-inside: avoid;
-            page-break-inside: avoid;
-        }
-
         .workflow-introduction {
             margin-bottom: 4px;
             padding: 5px 7px;
@@ -1099,7 +1093,7 @@ ob_start();
             color: #b45309;
         }
 
-        .applications-summary-table tfoot td {
+        .applications-summary-table .summary-total-row td {
             font-weight: bold;
             background: #f0f4f9;
         }
@@ -1429,9 +1423,7 @@ ob_start();
                             ?></td>
                         </tr>
                     <?php endforeach; ?>
-                </tbody>
-                <tfoot>
-                    <tr>
+                    <tr class="summary-total-row">
                         <td colspan="2">All Open Applications</td>
                         <td class="summary-amount">
                             $<?= number_format($reportFeeTotalAssessed, 2) ?>
@@ -1444,7 +1436,7 @@ ob_start();
                         </td>
                         <td></td>
                     </tr>
-                </tfoot>
+                </tbody>
             </table>
         </div>
     <?php endif; ?>
@@ -1908,7 +1900,8 @@ ob_start();
         </div>
     <?php endforeach; ?>
 
-        <div class="reference-page" style="page-break-before:always;page-break-inside:avoid;">
+        <pagebreak />
+        <div class="reference-page">
         <?php if ($workflowStages !== []): ?>
             <div class="workflow-section" style="page-break-inside:avoid;">
                 <?= renderOpenApplicationsSectionHeading(
