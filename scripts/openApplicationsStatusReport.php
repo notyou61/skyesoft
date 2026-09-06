@@ -64,10 +64,6 @@ register_shutdown_function(
     }
 );
 
-// Confirm dedicated report log access
-logOpenApplicationsStatusReportError(
-    'Diagnostic log write confirmed.'
-);
 
 // #endregion
 
