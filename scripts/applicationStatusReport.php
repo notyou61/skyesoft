@@ -195,9 +195,27 @@ function formatApplicationReportMoney(
 
 function renderApplicationReportSectionHeading(
     string $title,
-    string $iconFile,
     string|false $rootDir
 ): string {
+    // Define section icons (single source of truth)
+    $iconFilesByTitle = [
+        'Report Summary' => 'memo.png',
+        'Project Information' => 'property.png',
+        'Permit Identification' => 'temple.png',
+        'Application Scope' => 'clipboard.png',
+        'Application Status' => 'inProgress.png',
+        'Permit Milestones' => 'calendar.png',
+        'Special Requirements' => 'warning.png',
+        'Application Fees' => 'receipt.png',
+        'Application Notes' => 'notes.png',
+        'Permit Application Process' => 'integration.png',
+        'Status Summary' => 'information.png'
+    ];
+
+    // Resolve the configured icon
+    $iconFile = $iconFilesByTitle[$title]
+        ?? 'document.png';
+
     // Restrict icon resolution to one safe filename
     $resolvedIconFile = basename($iconFile);
     $iconPath = $rootDir !== false
@@ -1135,7 +1153,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Report Summary',
-            'memo.png',
             $rootDir
         ) ?>
 
@@ -1151,7 +1168,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Project Information',
-            'property.png',
             $rootDir
         ) ?>
         <table class="data-table">
@@ -1197,7 +1213,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Permit Identification',
-            'temple.png',
             $rootDir
         ) ?>
         <table class="data-table">
@@ -1223,7 +1238,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Application Scope',
-            'clipboard.png',
             $rootDir
         ) ?>
         <div class="scope-box">
@@ -1238,7 +1252,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Application Status',
-            'inProgress.png',
             $rootDir
         ) ?>
         <table class="data-table">
@@ -1266,7 +1279,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Permit Milestones',
-            'calendar.png',
             $rootDir
         ) ?>
         <table class="data-table">
@@ -1326,7 +1338,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Special Requirements',
-            'information.png',
             $rootDir
         ) ?>
 
@@ -1397,7 +1408,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Application Fees',
-            'receipt.png',
             $rootDir
         ) ?>
 
@@ -1560,7 +1570,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Application Notes',
-            'memo.png',
             $rootDir
         ) ?>
 
@@ -1608,7 +1617,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Permit Application Process',
-            'information.png',
             $rootDir
         ) ?>
 
@@ -1722,7 +1730,6 @@ ob_start();
     <div class="section">
         <?= renderApplicationReportSectionHeading(
             'Status Summary',
-            'information.png',
             $rootDir
         ) ?>
 
