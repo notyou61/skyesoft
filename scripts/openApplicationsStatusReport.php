@@ -477,6 +477,119 @@ function formatOpenApplicationsFeeStatus(
     return 'No Fees';
 }
 
+function buildOpenApplicationsFeeLedger(
+    array $fees
+): array {
+    $events = [];
+
+    // Expand each Fee into dated accounting events
+    foreach ($fees as $fee) {
+        $feeId = (int)($fee['feeID'] ?? 0);
+        $amount = round((float)($fee['feeAmount'] ?? 0), 2);
+        $category = trim((string)($fee['feeCategory'] ?? 'Permit'));
+        $note = trim((string)($fee['feeNote'] ?? ''));
+        $description = $category . ' Fee';
+        $isPaid = is_numeric($fee['feePaidUnix'] ?? null) &&
+            (int)$fee['feePaidUnix'] > 0;
+
+        if ($note !== '') {
+            $description .= ' — ' . $note;
+        }
+
+        $assessedUnix = is_numeric($fee['feeAssessedUnix'] ?? null)
+            ? (int)$fee['feeAssessedUnix']
+            : (int)($fee['feeCreatedUnix'] ?? 0);
+
+        $events[] = [
+            'unix' => $assessedUnix,
+            'sortOrder' => 1,
+            'feeID' => $feeId,
+            'description' => $description,
+            'charge' => $amount,
+            'credit' => 0.00,
+            'type' => 'assessment'
+        ];
+
+        if ($isPaid) {
+            $events[] = [
+                'unix' => (int)$fee['feePaidUnix'],
+                'sortOrder' => 2,
+                'feeID' => $feeId,
+                'description' => 'Payment — ' . $description,
+                'charge' => 0.00,
+                'credit' => $amount,
+                'type' => 'payment'
+            ];
+        }
+
+        if (
+            is_numeric($fee['feeVoidedUnix'] ?? null) &&
+            (int)$fee['feeVoidedUnix'] > 0
+        ) {
+            $voidReason = trim((string)(
+                $fee['feeVoidReason'] ?? ''
+            ));
+            $voidDescription = 'Void reversal — ' . $description;
+
+            if ($voidReason !== '') {
+                $voidDescription .= ' (' . $voidReason . ')';
+            }
+
+            if ($isPaid) {
+                $voidDescription .=
+                    ' — paid before void; refund status not recorded';
+            }
+
+            $events[] = [
+                'unix' => (int)$fee['feeVoidedUnix'],
+                'sortOrder' => 3,
+                'feeID' => $feeId,
+                'description' => $voidDescription,
+                'charge' => 0.00,
+                'credit' => $isPaid ? 0.00 : $amount,
+                'type' => 'void'
+            ];
+        }
+    }
+
+    usort(
+        $events,
+        static function (array $left, array $right): int {
+            return [
+                $left['unix'],
+                $left['sortOrder'],
+                $left['feeID']
+            ] <=> [
+                $right['unix'],
+                $right['sortOrder'],
+                $right['feeID']
+            ];
+        }
+    );
+
+    $balance = 0.00;
+
+    // Calculate the authoritative running balance
+    foreach ($events as &$event) {
+        $balance = round(
+            $balance + $event['charge'] - $event['credit'],
+            2
+        );
+        $event['balance'] = $balance;
+    }
+    unset($event);
+
+    return $events;
+}
+
+function formatOpenApplicationsLedgerAmount(
+    float $amount
+): string {
+    return $amount > 0
+        ? '$' . number_format($amount, 2)
+        : '—';
+}
+
 function formatOpenApplicationsRequirementStatus(
     array $application
 ): string {
@@ -768,6 +881,7 @@ ob_start();
         }
 
         .workflow-table,
+        .fee-ledger-table,
         .requirement-table,
         .notes-table {
             width: 100%;
@@ -776,6 +890,7 @@ ob_start();
         }
 
         .workflow-table tr,
+        .fee-ledger-table tr,
         .requirement-table tr,
         .notes-table tr {
             page-break-inside: avoid;
@@ -783,6 +898,8 @@ ob_start();
 
         .workflow-table th,
         .workflow-table td,
+        .fee-ledger-table th,
+        .fee-ledger-table td,
         .requirement-table th,
         .requirement-table td,
         .notes-table th,
@@ -915,6 +1032,41 @@ ob_start();
             background: #f0f4f9;
             border: 1px solid #b8cbe5;
             border-bottom: 0;
+        }
+
+        .fee-ledger-table th {
+            color: #333;
+            font-size: 8px;
+            background: #f8f9fa;
+        }
+
+        .fee-ledger-table td {
+            color: #111;
+            font-size: 8.5px;
+            background: #fff;
+        }
+
+        .fee-ledger-table .fee-amount {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .fee-ledger-table .fee-payment {
+            color: #20733a;
+        }
+
+        .fee-ledger-table .fee-void {
+            color: #b91c1c;
+        }
+
+        .fee-ledger-table .fee-balance {
+            color: #14377c;
+            font-weight: bold;
+        }
+
+        .fee-ledger-table tfoot td {
+            font-weight: bold;
+            background: #f0f4f9;
         }
 
         .requirement-table th,
@@ -1083,16 +1235,6 @@ ob_start();
                     ) ?></td>
                 </tr>
                 <tr>
-                    <th>Fee Status</th>
-                    <td class="status-value">
-                        <?= escapeOpenApplicationsReportValue(
-                            formatOpenApplicationsFeeStatus(
-                                $application
-                            )
-                        ) ?>
-                    </td>
-                </tr>
-                <tr>
                     <th>Special Requirements</th>
                     <td><?= escapeOpenApplicationsReportValue(
                         formatOpenApplicationsRequirementStatus(
@@ -1167,12 +1309,106 @@ ob_start();
             )
                 ? $application['applicationSpecialRequirements']
                 : [];
+            $applicationFees = is_array(
+                $application['applicationFees'] ?? null
+            )
+                ? $application['applicationFees']
+                : [];
+            $feeLedger = buildOpenApplicationsFeeLedger(
+                $applicationFees
+            );
             $applicationNotes = is_array(
                 $application['applicationNotes'] ?? null
             )
                 ? $application['applicationNotes']
                 : [];
             ?>
+
+            <div class="application-subsection">
+                <div class="application-subheading">
+                    Permit Fees — <?= escapeOpenApplicationsReportValue(
+                        formatOpenApplicationsFeeStatus($application)
+                    ) ?>
+                </div>
+
+                <?php if ($feeLedger !== []): ?>
+                    <table class="fee-ledger-table">
+                        <thead>
+                            <tr>
+                                <th style="width:12%;">Date</th>
+                                <th style="width:52%;">Transaction</th>
+                                <th style="width:12%;text-align:right;">Charge</th>
+                                <th style="width:12%;text-align:right;">Payment / Credit</th>
+                                <th style="width:12%;text-align:right;">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($feeLedger as $feeEvent): ?>
+                                <?php
+                                $feeEventClass = $feeEvent['type'] === 'void'
+                                    ? 'fee-void'
+                                    : (
+                                        $feeEvent['type'] === 'payment'
+                                            ? 'fee-payment'
+                                            : ''
+                                    );
+                                ?>
+                                <tr class="<?= $feeEventClass ?>">
+                                    <td><?= escapeOpenApplicationsReportValue(
+                                        formatOpenApplicationsReportDate(
+                                            $feeEvent['unix']
+                                        )
+                                    ) ?></td>
+                                    <td><?= escapeOpenApplicationsReportValue(
+                                        $feeEvent['description']
+                                    ) ?></td>
+                                    <td class="fee-amount"><?=
+                                        escapeOpenApplicationsReportValue(
+                                            formatOpenApplicationsLedgerAmount(
+                                                $feeEvent['charge']
+                                            )
+                                        )
+                                    ?></td>
+                                    <td class="fee-amount"><?=
+                                        escapeOpenApplicationsReportValue(
+                                            formatOpenApplicationsLedgerAmount(
+                                                $feeEvent['credit']
+                                            )
+                                        )
+                                    ?></td>
+                                    <td class="fee-amount fee-balance"><?=
+                                        escapeOpenApplicationsReportValue(
+                                            '$' . number_format(
+                                                $feeEvent['balance'],
+                                                2
+                                            )
+                                        )
+                                    ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4">Current Outstanding Balance</td>
+                                <td class="fee-amount fee-balance">
+                                    $<?= number_format(
+                                        (float)(
+                                            $application[
+                                                'applicationFeeTotalOutstanding'
+                                            ] ?? 0
+                                        ),
+                                        2
+                                    ) ?>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                <?php else: ?>
+                    <div class="empty-detail">
+                        No permit Fees have been recorded.
+                    </div>
+                <?php endif; ?>
+            </div>
 
             <div class="application-subsection">
                 <div class="application-subheading">
