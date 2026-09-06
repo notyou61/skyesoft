@@ -748,6 +748,17 @@ ob_start();
             font-size: 8.5px;
             background: #fff;
         }
+        .workflow-table td.workflow-stage {
+            width: 24%;
+            color: #333;
+            font-size: 9px;
+            font-weight: bold;
+            background: #f8f9fa;
+        }
+
+        .workflow-table td.workflow-detail {
+            width: 76%;
+        }
 
         .workflow-description {
             margin-bottom: 2px;
@@ -1242,31 +1253,88 @@ ob_start();
         </div>
     <?php endforeach; ?>
 
-    <?php if ($workflowStages !== []): ?>
-        <div class="workflow-section">
-            <?= renderOpenApplicationsSectionHeading(
-                'Permit Application Process',
-                $rootDir
-            ) ?>
-
-            <div class="workflow-introduction">
-                These are the active Stages and Stage-specific Statuses
-                configured in Skyesoft, shown in lifecycle order. Each
-                Application above identifies its current position and next
-                configured Stage. Actual processing may vary by jurisdiction
-                and project requirements.
-            </div>
-
-            <table class="workflow-table">
-                <?php foreach ($workflowStages as $workflowStage): ?>
-                <th><?= renderOpenApplicationStageValue(
-                    $workflowStage,
+        <?php if ($workflowStages !== []): ?>
+            <div class="workflow-section">
+                <?= renderOpenApplicationsSectionHeading(
+                    'Permit Application Process',
                     $rootDir
-                ) ?></th>
-                <?php endforeach; ?>
-            </table>
-        </div>
-    <?php endif; ?>
+                ) ?>
+
+                <div class="workflow-introduction">
+                    These are the active Stages and Stage-specific Statuses
+                    configured in Skyesoft, shown in lifecycle order. Each
+                    Application above identifies its current position and next
+                    configured Stage. Actual processing may vary by jurisdiction
+                    and project requirements.
+                </div>
+
+                <table class="workflow-table">
+                    <?php foreach ($workflowStages as $workflowStage): ?>
+                        <?php
+                        // Resolve Stage details
+                        $stageDescription = trim((string)(
+                            $workflowStage[
+                                'applicationStageDescription'
+                            ] ?? ''
+                        ));
+                        $stageStatuses = is_array(
+                            $workflowStage['statuses'] ?? null
+                        )
+                            ? $workflowStage['statuses']
+                            : [];
+                        ?>
+
+                        <tr>
+                            <td class="workflow-stage">
+                                <?= renderOpenApplicationStageValue(
+                                    $workflowStage,
+                                    $rootDir
+                                ) ?>
+                            </td>
+                            <td class="workflow-detail">
+                                <?php if ($stageDescription !== ''): ?>
+                                    <div class="workflow-description">
+                                        <?= escapeOpenApplicationsReportValue(
+                                            $stageDescription
+                                        ) ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php foreach (
+                                    $stageStatuses as $workflowStatus
+                                ): ?>
+                                    <?php
+                                    // Resolve Status description
+                                    $statusDescription = trim((string)(
+                                        $workflowStatus[
+                                            'applicationStatusDescription'
+                                        ] ?? ''
+                                    ));
+                                    ?>
+
+                                    <span class="workflow-status">
+                                        <strong><?=
+                                            escapeOpenApplicationsReportValue(
+                                                $workflowStatus[
+                                                    'applicationStatusName'
+                                                ]
+                                            )
+                                        ?></strong><?=
+                                            $statusDescription !== ''
+                                                ? ' — ' .
+                                                    escapeOpenApplicationsReportValue(
+                                                        $statusDescription
+                                                    )
+                                                : ''
+                                        ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            </div>
+        <?php endif; ?>
 </div>
 
 </body>
