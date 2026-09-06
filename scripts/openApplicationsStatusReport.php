@@ -223,8 +223,6 @@ function renderOpenApplicationsSectionHeading(
     // Define report icons (single source of truth)
     $iconFilesByTitle = [
         'Report Summary' => 'memo.png',
-        'Open Applications Summary' => 'clipboard.png',
-        'Permit Fee Index' => 'document.png',
         'Permit Application Process' => 'integration.png',
         'Active Special Requirements' => 'warning.png',
         'Application Notes' => 'notes.png'
@@ -479,28 +477,6 @@ function formatOpenApplicationsFeeStatus(
     return 'No Fees';
 }
 
-function formatOpenApplicationsFeePaymentState(
-    array $application
-): string {
-    $feeStatus = trim((string)(
-        $application['applicationFeeStatus'] ?? 'No Fees'
-    ));
-
-    if ($feeStatus === 'Paid') {
-        return 'Paid';
-    }
-
-    if ($feeStatus === 'Partially Paid') {
-        return 'Partially Paid - Balance Due';
-    }
-
-    if ($feeStatus === 'Awaiting Payment') {
-        return 'Due';
-    }
-
-    return 'No Fees';
-}
-
 function buildOpenApplicationsFeeLedger(
     array $fees
 ): array {
@@ -708,32 +684,6 @@ $workflowStages = is_array($workflow['stages'] ?? null)
     : [];
 $reportGeneratedUnix = time();
 $applicationCount = count($applications);
-$reportFeeTotalAssessed = 0.00;
-$reportFeeTotalPaid = 0.00;
-$reportFeeTotalDue = 0.00;
-
-// Calculate report-wide authoritative Fee totals
-foreach ($applications as $application) {
-    $reportFeeTotalAssessed = round(
-        $reportFeeTotalAssessed + (float)(
-            $application['applicationFeeTotalAssessed'] ?? 0
-        ),
-        2
-    );
-    $reportFeeTotalPaid = round(
-        $reportFeeTotalPaid + (float)(
-            $application['applicationFeeTotalPaid'] ?? 0
-        ),
-        2
-    );
-    $reportFeeTotalDue = round(
-        $reportFeeTotalDue + (float)(
-            $application['applicationFeeTotalOutstanding'] ?? 0
-        ),
-        2
-    );
-}
-
 $reportPayload = buildOpenApplicationsReportPayload(
     $applications,
     $reportGeneratedUnix
@@ -943,12 +893,6 @@ ob_start();
             page-break-inside: avoid;
         }
 
-        .applications-summary-section {
-            margin: 0 0 9px;
-            break-inside: avoid;
-            page-break-inside: avoid;
-        }
-
         .section-heading {
             margin: 0 0 3px;
             padding: 0 0 2px;
@@ -1000,7 +944,6 @@ ob_start();
         }
 
         .workflow-table,
-        .applications-summary-table,
         .fee-breakdown-table,
         .fee-ledger-table,
         .requirement-table,
@@ -1011,7 +954,6 @@ ob_start();
         }
 
         .workflow-table tr,
-        .applications-summary-table tr,
         .fee-breakdown-table tr,
         .fee-ledger-table tr,
         .requirement-table tr,
@@ -1021,8 +963,6 @@ ob_start();
 
         .workflow-table th,
         .workflow-table td,
-        .applications-summary-table th,
-        .applications-summary-table td,
         .fee-breakdown-table th,
         .fee-breakdown-table td,
         .fee-ledger-table th,
@@ -1063,41 +1003,6 @@ ob_start();
             width: 76%;
         }
 
-        .applications-summary-table th {
-            color: #333;
-            font-size: 8px;
-            background: #e7eef8;
-        }
-
-        .applications-summary-table td {
-            color: #111;
-            font-size: 8.5px;
-            background: #fff;
-        }
-
-        .applications-summary-table .summary-amount {
-            text-align: right;
-            white-space: nowrap;
-        }
-
-        .applications-summary-table .summary-payment-state {
-            color: #14377c;
-            font-weight: bold;
-        }
-
-        .applications-summary-table .summary-paid {
-            color: #20733a;
-        }
-
-        .applications-summary-table .summary-due {
-            color: #b45309;
-        }
-
-        .applications-summary-table .summary-total-row td {
-            font-weight: bold;
-            background: #f0f4f9;
-        }
-
         .workflow-description {
             margin-bottom: 2px;
             color: #444;
@@ -1112,8 +1017,6 @@ ob_start();
         /* Allow long Applications to flow without font scaling */
         .application-block {
             margin: 0 0 9px;
-            break-inside: avoid;
-            page-break-inside: avoid;
         }
 
         .application-table th.application-heading {
@@ -1330,117 +1233,6 @@ ob_start();
         </div>
     </div>
 
-    <?php if ($applicationCount > 0): ?>
-        <div class="applications-summary-section" style="page-break-inside:avoid;">
-            <?= renderOpenApplicationsSectionHeading(
-                'Open Applications Summary',
-                $rootDir
-            ) ?>
-
-            <table class="applications-summary-table">
-                <thead>
-                    <tr>
-                        <th style="width:32%;">Open Application</th>
-                        <th style="width:18%;">Status</th>
-                        <th style="width:11%;text-align:right;">Total Fees</th>
-                        <th style="width:11%;text-align:right;">Paid</th>
-                        <th style="width:11%;text-align:right;">Due</th>
-                        <th style="width:17%;">Fee Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($applications as $summaryApplication): ?>
-                        <?php
-                        $summaryApplicationLabel = sprintf(
-                            '#%d - %s (%s)',
-                            (int)$summaryApplication['applicationID'],
-                            formatOpenApplicationsReportValue(
-                                $summaryApplication['locationName'] ?? null
-                            ),
-                            formatOpenApplicationsReportValue(
-                                $summaryApplication['orderChristyNumber'] ?? null
-                            )
-                        );
-                        $summaryFeeState =
-                            formatOpenApplicationsFeePaymentState(
-                                $summaryApplication
-                            );
-                        $summaryFeeStateClass = $summaryFeeState === 'Paid'
-                            ? 'summary-paid'
-                            : (
-                                str_contains($summaryFeeState, 'Due')
-                                    ? 'summary-due'
-                                    : ''
-                            );
-                        ?>
-                        <tr>
-                            <td><?= escapeOpenApplicationsReportValue(
-                                $summaryApplicationLabel
-                            ) ?></td>
-                            <td><?= escapeOpenApplicationsReportValue(
-                                formatOpenApplicationsReportValue(
-                                    $summaryApplication[
-                                        'applicationStatusName'
-                                    ] ?? null
-                                )
-                            ) ?></td>
-                            <td class="summary-amount">
-                                $<?= number_format(
-                                    (float)(
-                                        $summaryApplication[
-                                            'applicationFeeTotalAssessed'
-                                        ] ?? 0
-                                    ),
-                                    2
-                                ) ?>
-                            </td>
-                            <td class="summary-amount">
-                                $<?= number_format(
-                                    (float)(
-                                        $summaryApplication[
-                                            'applicationFeeTotalPaid'
-                                        ] ?? 0
-                                    ),
-                                    2
-                                ) ?>
-                            </td>
-                            <td class="summary-amount">
-                                $<?= number_format(
-                                    (float)(
-                                        $summaryApplication[
-                                            'applicationFeeTotalOutstanding'
-                                        ] ?? 0
-                                    ),
-                                    2
-                                ) ?>
-                            </td>
-                            <td class="summary-payment-state <?=
-                                $summaryFeeStateClass
-                            ?>"><?=
-                                escapeOpenApplicationsReportValue(
-                                    $summaryFeeState
-                                )
-                            ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    <tr class="summary-total-row">
-                        <td colspan="2">All Open Applications</td>
-                        <td class="summary-amount">
-                            $<?= number_format($reportFeeTotalAssessed, 2) ?>
-                        </td>
-                        <td class="summary-amount">
-                            $<?= number_format($reportFeeTotalPaid, 2) ?>
-                        </td>
-                        <td class="summary-amount">
-                            $<?= number_format($reportFeeTotalDue, 2) ?>
-                        </td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-
     <?php if ($applicationCount === 0): ?>
         <div class="no-applications">
             No open permit Applications were found.
@@ -1459,7 +1251,7 @@ ob_start();
             )
         );
         ?>
-        <div class="application-block" style="page-break-inside:avoid;">
+        <div class="application-block">
             <table class="application-table">
                 <tr>
                     <th class="application-heading" colspan="2">
@@ -1900,8 +1692,6 @@ ob_start();
         </div>
     <?php endforeach; ?>
 
-        <pagebreak />
-        <div class="reference-page">
         <?php if ($workflowStages !== []): ?>
             <div class="workflow-section" style="page-break-inside:avoid;">
                 <?= renderOpenApplicationsSectionHeading(
@@ -1982,44 +1772,6 @@ ob_start();
                 </table>
             </div>
         <?php endif; ?>
-
-        <div class="workflow-section" style="page-break-inside:avoid;">
-            <?= renderOpenApplicationsSectionHeading(
-                'Permit Fee Index',
-                $rootDir
-            ) ?>
-
-            <div class="workflow-introduction">
-                These are the Fee categories configured in Skyesoft. Each
-                Application above shows its recorded Fees by category, followed
-                by the dated transactions and running outstanding balance.
-            </div>
-
-            <table class="workflow-table">
-                <tr>
-                    <th>Application Fee</th>
-                    <td class="workflow-detail">
-                        A jurisdiction charge recorded for Application intake,
-                        filing, or initial processing.
-                    </td>
-                </tr>
-                <tr>
-                    <th>Review Fee</th>
-                    <td class="workflow-detail">
-                        A jurisdiction charge recorded for plan, document, or
-                        substantive review of the Application.
-                    </td>
-                </tr>
-                <tr>
-                    <th>Permit Fee</th>
-                    <td class="workflow-detail">
-                        A jurisdiction charge recorded for Permit approval,
-                        issuance, or release.
-                    </td>
-                </tr>
-            </table>
-        </div>
-        </div>
 </div>
 
 </body>
