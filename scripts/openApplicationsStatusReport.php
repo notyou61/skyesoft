@@ -760,7 +760,7 @@ ob_start();
         .scope-value {
             white-space: pre-line;
         }
-        
+
         .application-subsection {
             margin-top: 4px;
             break-inside: avoid;
@@ -1310,6 +1310,11 @@ try {
         \Mpdf\Output\Destination::STRING_RETURN
     );
 } catch (Throwable $exception) {
+    error_log(
+        '[openApplicationsStatusReport] PDF generation failed: ' .
+        $exception->getMessage()
+    );
+
     failOpenApplicationsStatusReport(
         'The Open Permit Applications Status PDF could not be generated.',
         500
