@@ -1106,7 +1106,7 @@ const ActivePermitsCard = {
                 <td>${p.customer}</td>
                 <td>${p.jobsite}</td>
                 <td>${resolveJurisdictionLabel(p.jurisdiction)}</td>
-                <td>${getStatusIcon(p.status)}${formatStatus(p.status)}</td>
+                <td>${getStatusIcon(p.stage)}${formatStatus(p.status)}</td>
             `;
             frag.appendChild(tr);
         });
