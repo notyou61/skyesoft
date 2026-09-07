@@ -357,39 +357,44 @@ function renderTodaysHighlightsSkeleton() {
             </div>
 
             <!-- RIGHT COLUMN -->
-            <div class="highlights-col right-col">
+            <div class="highlights-col">
 
-                <div class="section-block">
-                    <div class="section-header">
-                        📅 <span class="section-title">3-Day Forecast</span>
-                    </div>
-
-                    <div class="forecast-grid">
-                        <div class="forecast-row">
-                            <span class="day">—</span>
-                            <span class="icon">—</span>
-                            <span class="temps">— / —</span>
-                        </div>
-                        <div class="forecast-row">
-                            <span class="day">—</span>
-                            <span class="icon">—</span>
-                            <span class="temps">— / —</span>
-                        </div>
-                        <div class="forecast-row">
-                            <span class="day">—</span>
-                            <span class="icon">—</span>
-                            <span class="temps">— / —</span>
-                        </div>
-                    </div>
+                <div class="entry section-header">
+                    📈 Performance
                 </div>
 
-                <div class="section-block">
-                    <div class="section-header">
-                        💡 <span class="section-title">Skyesoft Tip</span>
-                    </div>
-                    <div class="entry compact" id="skyesoftTips">
-                        —
-                    </div>
+                <div class="entry kpi-row">
+                    <span>Avg Notes per Application</span>
+                    <strong id="kpiAvgNotes">—</strong>
+                </div>
+
+                <div class="entry kpi-row">
+                    <span>Avg Turnaround</span>
+                    <strong id="kpiAvgTurnaround">—</strong>
+                </div>
+
+                <div class="entry section-header">
+                    📋 Workload
+                </div>
+
+                <div class="entry kpi-row">
+                    <span>Oldest Open Application</span>
+                    <strong id="kpiOldestOpen">—</strong>
+                </div>
+
+                <div class="entry kpi-row">
+                    <span>Outstanding Fees</span>
+                    <strong id="kpiOutstandingFees">—</strong>
+                </div>
+
+                <div class="entry kpi-row">
+                    <span>Active Requirements</span>
+                    <strong id="kpiActiveRequirements">—</strong>
+                </div>
+
+                <div class="entry kpi-row">
+                    <span>Most Active Jurisdiction</span>
+                    <strong id="kpiTopJurisdiction">—</strong>
                 </div>
 
             </div>
@@ -1261,6 +1266,30 @@ const KPICard = {
                         <strong id="kpiAvgTurnaround">—</strong>
                     </div>
 
+                    <div class="entry section-header">
+                        📋 Workload
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>Oldest Open Application</span>
+                        <strong id="kpiOldestOpen">—</strong>
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>Outstanding Fees</span>
+                        <strong id="kpiOutstandingFees">—</strong>
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>Active Requirements</span>
+                        <strong id="kpiActiveRequirements">—</strong>
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>Most Active Jurisdiction</span>
+                        <strong id="kpiTopJurisdiction">—</strong>
+                    </div>
+
                 </div>
 
             </div>
@@ -1356,6 +1385,68 @@ const KPICard = {
             turnEl.textContent = Number.isFinite(avgDays)
                 ? `${avgDays.toFixed(1)} days`
                 : '—';
+        }
+
+        /* ─────────────────────────────
+        WORKLOAD
+        Database-authoritative
+        ───────────────────────────── */
+        const workload = payload.kpi.workload || {};
+
+        const oldestEl =
+            this.instance.root.querySelector('#kpiOldestOpen');
+
+        const oldest =
+            workload.oldestOpenApplication;
+
+        if (oldestEl) {
+            oldestEl.textContent =
+                oldest?.wo && Number.isFinite(oldest?.ageDays)
+                    ? `WO ${oldest.wo} — ${oldest.ageDays.toFixed(1)} days`
+                    : '—';
+        }
+
+        const feesEl =
+            this.instance.root.querySelector('#kpiOutstandingFees');
+
+        if (feesEl) {
+            const feeCount =
+                workload.applicationsWithOutstandingFees;
+
+            const feeTotal =
+                workload.totalOutstandingFees;
+
+            feesEl.textContent =
+                Number.isInteger(feeCount) &&
+                Number.isFinite(feeTotal)
+                    ? `${feeCount} application${feeCount !== 1 ? 's' : ''} — $${feeTotal.toFixed(2)}`
+                    : '—';
+        }
+
+        const requirementsEl =
+            this.instance.root.querySelector('#kpiActiveRequirements');
+
+        if (requirementsEl) {
+            const requirementCount =
+                workload.applicationsWithActiveRequirements;
+
+            requirementsEl.textContent =
+                Number.isInteger(requirementCount)
+                    ? `${requirementCount} application${requirementCount !== 1 ? 's' : ''}`
+                    : '—';
+        }
+
+        const jurisdictionEl =
+            this.instance.root.querySelector('#kpiTopJurisdiction');
+
+        if (jurisdictionEl) {
+            const top =
+                workload.mostActiveJurisdiction;
+
+            jurisdictionEl.textContent =
+                top?.jurisdiction && Number.isInteger(top?.count)
+                    ? `${top.jurisdiction} — ${top.count}`
+                    : '—';
         }
 
         /* ─────────────────────────────
