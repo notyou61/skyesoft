@@ -1350,55 +1350,41 @@ const KPICard = {
                 <div class="highlights-col">
 
                     <div class="entry section-header">
-                        📊 Skyesoft Activity
+                        📈 Performance
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Entities</span>
-                        <strong id="activityEntityCount">—</strong>
+                        <span>Avg Notes per Application</span>
+                        <strong id="kpiAvgNotes">—</strong>
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Locations</span>
-                        <strong id="activityLocationCount">—</strong>
-                    </div>
-
-                    <div class="entry kpi-row">
-                        <span>Contacts</span>
-                        <strong id="activityContactCount">—</strong>
+                        <span>Avg Turnaround</span>
+                        <strong id="kpiAvgTurnaround">—</strong>
                     </div>
 
                     <div class="entry section-header">
-                        ⚡ Actions
+                        📋 Workload
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Today</span>
-                        <strong id="activityActionsToday">—</strong>
+                        <span>Oldest Open Application</span>
+                        <strong id="kpiOldestOpen">—</strong>
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Total</span>
-                        <strong id="activityActionsTotal">—</strong>
-                    </div>
-
-                    <div class="entry section-header">
-                        🕒 Last Action
+                        <span>Outstanding Fees</span>
+                        <strong id="kpiOutstandingFees">—</strong>
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Who</span>
-                        <strong id="activityLastActionWho">—</strong>
+                        <span>Active Requirements</span>
+                        <strong id="kpiActiveRequirements">—</strong>
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>What</span>
-                        <strong id="activityLastActionWhat">—</strong>
-                    </div>
-
-                    <div class="entry kpi-row">
-                        <span>When</span>
-                        <strong id="activityLastActionWhen">—</strong>
+                        <span>Most Active Jurisdiction</span>
+                        <strong id="kpiTopJurisdiction">—</strong>
                     </div>
 
                 </div>
