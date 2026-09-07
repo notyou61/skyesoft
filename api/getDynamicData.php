@@ -1333,8 +1333,6 @@ if (
 
 #endregion
 
-#endregion
-
 #region SECTION 3.C — System Activity Projection (MySQL Database)
 
 $systemActivity = [
