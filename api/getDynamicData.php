@@ -1069,6 +1069,134 @@ if (
 
 #endregion
 
+#region SECTION 3.C — System Activity Projection (MySQL Database)
+
+$systemActivity = [
+    "meta" => [
+        "generatedOn" => time(),
+        "source"      => "database"
+    ],
+
+    "elc" => [
+        "entities"  => 0,
+        "locations" => 0,
+        "contacts"  => 0
+    ],
+
+    "actions" => [
+        "today"          => 0,
+        "total"          => 0,
+        "lastActionUnix" => null
+    ],
+
+    // No authoritative login-history source has been established yet.
+    "lastLogin" => null
+];
+
+if ($db !== null) {
+    try {
+
+        // ------------------------------------------------------------
+        // Entity Count
+        // ------------------------------------------------------------
+        $entityCountStmt = $db->query("
+            SELECT COUNT(*)
+            FROM tblEntities
+        ");
+
+        $systemActivity["elc"]["entities"] =
+            (int)$entityCountStmt->fetchColumn();
+
+        // ------------------------------------------------------------
+        // Location Count
+        // ------------------------------------------------------------
+        $locationCountStmt = $db->query("
+            SELECT COUNT(*)
+            FROM tblLocations
+        ");
+
+        $systemActivity["elc"]["locations"] =
+            (int)$locationCountStmt->fetchColumn();
+
+        // ------------------------------------------------------------
+        // Contact Count
+        // ------------------------------------------------------------
+        $contactCountStmt = $db->query("
+            SELECT COUNT(*)
+            FROM tblContacts
+        ");
+
+        $systemActivity["elc"]["contacts"] =
+            (int)$contactCountStmt->fetchColumn();
+
+        // ------------------------------------------------------------
+        // Phoenix "Today" Boundary
+        // ------------------------------------------------------------
+        $phoenixToday = new DateTime(
+            "today",
+            new DateTimeZone("America/Phoenix")
+        );
+
+        $todayStartUnix =
+            $phoenixToday->getTimestamp();
+
+        // ------------------------------------------------------------
+        // Actions Today
+        // ------------------------------------------------------------
+        $actionsTodayStmt = $db->prepare("
+            SELECT COUNT(*)
+            FROM tblActions
+            WHERE actionUnix >= :todayStartUnix
+        ");
+
+        $actionsTodayStmt->bindValue(
+            ":todayStartUnix",
+            $todayStartUnix,
+            PDO::PARAM_INT
+        );
+
+        $actionsTodayStmt->execute();
+
+        $systemActivity["actions"]["today"] =
+            (int)$actionsTodayStmt->fetchColumn();
+
+        // ------------------------------------------------------------
+        // Total Actions
+        // ------------------------------------------------------------
+        $actionsTotalStmt = $db->query("
+            SELECT COUNT(*)
+            FROM tblActions
+        ");
+
+        $systemActivity["actions"]["total"] =
+            (int)$actionsTotalStmt->fetchColumn();
+
+        // ------------------------------------------------------------
+        // Most Recent Action
+        // ------------------------------------------------------------
+        $lastActionStmt = $db->query("
+            SELECT MAX(actionUnix)
+            FROM tblActions
+        ");
+
+        $lastActionUnix =
+            (int)($lastActionStmt->fetchColumn() ?: 0);
+
+        $systemActivity["actions"]["lastActionUnix"] =
+            $lastActionUnix > 0
+                ? $lastActionUnix
+                : null;
+
+    } catch (Throwable $e) {
+        error_log(
+            "[SYSTEM ACTIVITY DB PROJECTION ERROR] " .
+            $e->getMessage()
+        );
+    }
+}
+
+#endregion
+
 #region SECTION 4 — Build Time Context + Weather + Final Payload
 
 // Compute time context
@@ -1130,6 +1258,7 @@ $payload = [
     "holidayState"    => $timeContext["holidayState"],
     "weather"         => $weather,
     "kpi"             => $kpi,
+    "systemActivity"  => $systemActivity,
     "roadmap"         => $roadmap,
 
     "activePermits"   => $permitList,
