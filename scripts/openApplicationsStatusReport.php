@@ -1050,6 +1050,20 @@ ob_start();
         .application-list-table .application-list-heading-cell {
             padding: 0;
             border: 0;
+            border-bottom: 2px solid #14377c;
+            background: #fff;
+        }
+
+        .application-list-table .application-list-heading-cell .section-heading {
+            margin: 0;
+            padding: 0 0 2px;
+            border-bottom: 0;
+        }
+
+        .application-list-table .application-list-spacer {
+            height: 4px;
+            padding: 0;
+            border: 0;
             background: #fff;
         }
 
@@ -1315,6 +1329,9 @@ ob_start();
                             $rootDir
                         ) ?>
                     </td>
+                </tr>
+                <tr>
+                    <td class="application-list-spacer" colspan="5"></td>
                 </tr>
                 <tr>
                     <th style="width:25%;">Application Name</th>
