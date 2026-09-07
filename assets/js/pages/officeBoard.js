@@ -960,7 +960,7 @@ function renderLiveFooter({ text = '' }) {
 
 // #region CARD TIMING
 
-const DEFAULT_CARD_DURATION_MS = 60000;
+const DEFAULT_CARD_DURATION_MS = 10000;
 
 // #endregion
 
@@ -1309,7 +1309,7 @@ const KPICard = {
                         return;
                     }
 
-                    const separatorIndex = stageStatus.indexOf(' / ');
+                    const separatorIndex = stageStatus.lastIndexOf(' / ');
 
                     const stage =
                         separatorIndex >= 0
