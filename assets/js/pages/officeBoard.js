@@ -1401,6 +1401,30 @@ const KPICard = {
                         <strong id="kpiTopJurisdiction">—</strong>
                     </div>
 
+                    <div class="entry section-header">
+                        🕒 Last Permit Activity
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>Who</span>
+                        <strong id="kpiLastPermitWho">—</strong>
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>What</span>
+                        <strong id="kpiLastPermitWhat">—</strong>
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>Permit</span>
+                        <strong id="kpiLastPermitApplication">—</strong>
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>When</span>
+                        <strong id="kpiLastPermitWhen">—</strong>
+                    </div>
+
                 </div>
 
             </div>
@@ -1557,6 +1581,55 @@ const KPICard = {
             jurisdictionEl.textContent =
                 top?.jurisdiction && Number.isInteger(top?.count)
                     ? `${top.jurisdiction} — ${top.count}`
+                    : '—';
+        }
+
+        /* ─────────────────────────────
+        LAST PERMIT ACTIVITY
+        Database-authoritative
+        ───────────────────────────── */
+        const lastPermitActivity =
+            payload.kpi.lastPermitActivity;
+
+        const lastPermitWhoEl =
+            this.instance.root.querySelector('#kpiLastPermitWho');
+
+        const lastPermitWhatEl =
+            this.instance.root.querySelector('#kpiLastPermitWhat');
+
+        const lastPermitApplicationEl =
+            this.instance.root.querySelector('#kpiLastPermitApplication');
+
+        const lastPermitWhenEl =
+            this.instance.root.querySelector('#kpiLastPermitWhen');
+
+        if (lastPermitWhoEl) {
+            lastPermitWhoEl.textContent =
+                lastPermitActivity?.contactName || '—';
+        }
+
+        if (lastPermitWhatEl) {
+            lastPermitWhatEl.textContent =
+                lastPermitActivity?.actionName || '—';
+        }
+
+        if (lastPermitApplicationEl) {
+            const wo =
+                lastPermitActivity?.wo;
+
+            const customer =
+                lastPermitActivity?.customer;
+
+            lastPermitApplicationEl.textContent =
+                wo
+                    ? `WO ${wo}${customer ? ` — ${customer}` : ''}`
+                    : '—';
+        }
+
+        if (lastPermitWhenEl) {
+            lastPermitWhenEl.textContent =
+                Number.isFinite(lastPermitActivity?.actionUnix)
+                    ? formatTimestamp(lastPermitActivity.actionUnix)
                     : '—';
         }
 
