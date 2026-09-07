@@ -1090,6 +1090,7 @@ if ($db !== null) {
                 a.actionTypeId,
                 a.actionUnix,
                 a.actionPayloadData,
+                a.actionResponseData,
                 t.actionName,
                 c.contactFirstName,
                 c.contactLastName
@@ -1102,7 +1103,7 @@ if ($db !== null) {
             ORDER BY
                 a.actionUnix DESC,
                 a.actionId DESC
-            LIMIT 1
+            LIMIT 50
         ");
 
         $lastPermitAction =
