@@ -1084,14 +1084,16 @@ $systemActivity = [
     ],
 
     "actions" => [
-        "today"          => 0,
-        "total"          => 0,
-        "lastActionUnix" => null
-    ],
+        "today" => 0,
+        "total" => 0,
 
-    "lastLogin" => [
-        "contactId" => null,
-        "loginUnix" => null
+        "lastAction" => [
+            "contactId"    => null,
+            "contactName"  => null,
+            "actionTypeId" => null,
+            "actionName"   => null,
+            "actionUnix"   => null
+        ]
     ]
 ];
 
@@ -1174,54 +1176,77 @@ if ($db !== null) {
             (int)$actionsTotalStmt->fetchColumn();
 
         // ------------------------------------------------------------
-        // Most Recent Action
+        // Most Recent Action — Who / What / When
         // ------------------------------------------------------------
         $lastActionStmt = $db->query("
-            SELECT MAX(actionUnix)
-            FROM tblActions
-        ");
-
-        $lastActionUnix =
-            (int)($lastActionStmt->fetchColumn() ?: 0);
-
-        $systemActivity["actions"]["lastActionUnix"] =
-            $lastActionUnix > 0
-                ? $lastActionUnix
-                : null;
-
-        // ------------------------------------------------------------
-        // Most Recent Login
-        // actionTypeId 1 = auth.session.login
-        // ------------------------------------------------------------
-        $lastLoginStmt = $db->query("
             SELECT
-                contactId,
-                actionUnix
-            FROM tblActions
-            WHERE actionTypeId = 1
-            ORDER BY actionUnix DESC
+                a.contactId,
+                a.actionTypeId,
+                a.actionUnix,
+                t.actionName,
+                c.contactFirstName,
+                c.contactLastName
+            FROM tblActions a
+            LEFT JOIN tblActionTypes t
+                ON t.actionTypeId = a.actionTypeId
+            LEFT JOIN tblContacts c
+                ON c.contactId = a.contactId
+            ORDER BY
+                a.actionUnix DESC,
+                a.actionId DESC
             LIMIT 1
         ");
 
-        $lastLogin =
-            $lastLoginStmt->fetch(PDO::FETCH_ASSOC);
+        $lastAction =
+            $lastActionStmt->fetch(PDO::FETCH_ASSOC);
 
-        if (is_array($lastLogin)) {
-            $loginContactId =
-                (int)($lastLogin["contactId"] ?? 0);
+        if (is_array($lastAction)) {
 
-            $loginUnix =
-                (int)($lastLogin["actionUnix"] ?? 0);
+            $lastActionContactId =
+                (int)($lastAction["contactId"] ?? 0);
 
-            $systemActivity["lastLogin"] = [
+            $lastActionTypeId =
+                (int)($lastAction["actionTypeId"] ?? 0);
+
+            $lastActionUnix =
+                (int)($lastAction["actionUnix"] ?? 0);
+
+            $contactFirstName =
+                trim((string)($lastAction["contactFirstName"] ?? ""));
+
+            $contactLastName =
+                trim((string)($lastAction["contactLastName"] ?? ""));
+
+            $contactName =
+                trim($contactFirstName . " " . $contactLastName);
+
+            $actionName =
+                trim((string)($lastAction["actionName"] ?? ""));
+
+            $systemActivity["actions"]["lastAction"] = [
                 "contactId" =>
-                    $loginContactId > 0
-                        ? $loginContactId
+                    $lastActionContactId > 0
+                        ? $lastActionContactId
                         : null,
 
-                "loginUnix" =>
-                    $loginUnix > 0
-                        ? $loginUnix
+                "contactName" =>
+                    $contactName !== ""
+                        ? $contactName
+                        : null,
+
+                "actionTypeId" =>
+                    $lastActionTypeId > 0
+                        ? $lastActionTypeId
+                        : null,
+
+                "actionName" =>
+                    $actionName !== ""
+                        ? $actionName
+                        : null,
+
+                "actionUnix" =>
+                    $lastActionUnix > 0
+                        ? $lastActionUnix
                         : null
             ];
         }
