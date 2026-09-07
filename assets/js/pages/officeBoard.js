@@ -1217,46 +1217,56 @@ const KPICard = {
     lastSignature: null,
     // Create
     create() {
-        // Instace
+        // Instance
         this.instance = createGenericCardElement(this);
+
         // Inner HTML
         this.instance.content.innerHTML = `
             <div class="highlights-grid kpi-grid">
+
                 <!-- LEFT COLUMN -->
                 <div class="highlights-col">
+
                     <div class="entry section-header">
                         <span aria-hidden="true">📌</span> At a Glance
                     </div>
+
                     <div class="entry kpi-row kpi-total">
-                        <span>📦 Active Permits</span>
+                        <span>📦 Active Applications</span>
                         <strong id="kpiTotalPermits">—</strong>
                     </div>
-                    ${PERMIT_STATUSES.map(status => `
-                        <div class="entry kpi-row">
-                            <span class="kpi-label-wrap">
-                                ${getStatusIcon(status)} ${formatStatus(status)}
-                            </span>
-                            <strong data-kpi-status="${status}">—</strong>
-                        </div>
-                    `).join('')}
+
+                    <!--
+                        Database-authoritative Stage / Status rows
+                        are rendered dynamically during update().
+                    -->
+                    <div id="kpiStageStatusBreakdown"></div>
+
                 </div>
+
                 <!-- RIGHT COLUMN -->
                 <div class="highlights-col">
+
                     <div class="entry section-header">
                         📈 Performance
                     </div>
+
                     <div class="entry kpi-row">
-                        <span>Avg Notes per Permit</span>
+                        <span>Avg Notes per Application</span>
                         <strong id="kpiAvgNotes">—</strong>
                     </div>
+
                     <div class="entry kpi-row">
                         <span>Avg Turnaround</span>
                         <strong id="kpiAvgTurnaround">—</strong>
                     </div>
+
                 </div>
+
             </div>
         `;
-        // Return                 
+
+        // Return
         return this.instance.root;
     },
     // Update
@@ -1265,52 +1275,67 @@ const KPICard = {
         if (!payload?.kpi) return;
         if (!this.instance || !this.instance.root) return;
 
-        const breakdown = payload.kpi.statusBreakdown || {};
-
         /* ─────────────────────────────
-        TOTAL PERMITS (authoritative)
+        TOTAL APPLICATIONS (authoritative)
         ───────────────────────────── */
         const totalEl = this.instance.root.querySelector('#kpiTotalPermits');
 
         if (totalEl) {
-            const total = Object.values(breakdown)
-                .filter(v => Number.isInteger(v))
-                .reduce((sum, v) => sum + v, 0);
+            const total = payload.kpi.atAGlance?.totalActive;
 
-            totalEl.textContent = total;
+            totalEl.textContent = Number.isInteger(total)
+                ? total
+                : '—';
         }
 
         /* ─────────────────────────────
-        STATUS BREAKDOWN
-        Auto-collapse zero / empty rows
+        STAGE / STATUS BREAKDOWN
+        Database-authoritative
         ───────────────────────────── */
-        PERMIT_STATUSES.forEach(status => {
-            const el = this.instance.root.querySelector(
-                `[data-kpi-status="${status}"]`
+        const breakdownEl = this.instance.root.querySelector(
+            '#kpiStageStatusBreakdown'
+        );
+
+        const stageStatusBreakdown =
+            payload.kpi.stageStatusBreakdown || {};
+
+        if (breakdownEl) {
+            breakdownEl.innerHTML = '';
+
+            Object.entries(stageStatusBreakdown).forEach(
+                ([stageStatus, value]) => {
+
+                    if (!Number.isInteger(value) || value <= 0) {
+                        return;
+                    }
+
+                    const separatorIndex = stageStatus.indexOf(' / ');
+
+                    const stage =
+                        separatorIndex >= 0
+                            ? stageStatus.slice(0, separatorIndex)
+                            : stageStatus;
+
+                    const status =
+                        separatorIndex >= 0
+                            ? stageStatus.slice(separatorIndex + 3)
+                            : '';
+
+                    const row = document.createElement('div');
+                    row.className = 'entry kpi-row';
+
+                    row.innerHTML = `
+                        <span class="kpi-label-wrap">
+                            ${getStatusIcon(stage)}
+                            ${stage}${status ? ` — ${status}` : ''}
+                        </span>
+                        <strong>${value}</strong>
+                    `;
+
+                    breakdownEl.appendChild(row);
+                }
             );
-            if (!el) return;
-
-            const row = el.closest('.kpi-row');
-            const value = breakdown[status];
-
-            if (Number.isInteger(value)) {
-                el.textContent = value;
-                el.classList.toggle('zero', value === 0);
-
-                // Hide rows with zero count
-                if (row) {
-                    row.style.display = value === 0 ? 'none' : '';
-                }
-            } else {
-                el.textContent = '—';
-                el.classList.remove('zero');
-
-                // Hide rows with non-numeric values
-                if (row) {
-                    row.style.display = 'none';
-                }
-            }
-        });
+        }
 
         /* ─────────────────────────────
         PERFORMANCE (placeholder-safe)
