@@ -1192,6 +1192,107 @@ const TodaysHighlightsCard = {
             if (iconEl) iconEl.textContent = getSeasonIcon(season.name);
         }
 
+        /* ─────────────────────────────
+        PERMIT PERFORMANCE + WORKLOAD
+        SSE-authoritative
+        ───────────────────────────── */
+        const kpi = payload?.kpi;
+
+        if (kpi) {
+
+            // ------------------------------------------------------------
+            // Performance
+            // ------------------------------------------------------------
+            const notesEl =
+                this.instance.root.querySelector('#kpiAvgNotes');
+
+            const avgNotes =
+                kpi.performance?.averageNotesPerPermit;
+
+            if (notesEl) {
+                notesEl.textContent =
+                    Number.isFinite(avgNotes)
+                        ? avgNotes.toFixed(1)
+                        : '—';
+            }
+
+            const turnEl =
+                this.instance.root.querySelector('#kpiAvgTurnaround');
+
+            const avgDays =
+                kpi.atAGlance?.averageTurnaroundDays;
+
+            if (turnEl) {
+                turnEl.textContent =
+                    Number.isFinite(avgDays)
+                        ? `${avgDays.toFixed(1)} days`
+                        : '—';
+            }
+
+            // ------------------------------------------------------------
+            // Workload
+            // ------------------------------------------------------------
+            const workload =
+                kpi.workload || {};
+
+            const oldestEl =
+                this.instance.root.querySelector('#kpiOldestOpen');
+
+            const oldest =
+                workload.oldestOpenApplication;
+
+            if (oldestEl) {
+                oldestEl.textContent =
+                    oldest?.wo &&
+                    Number.isFinite(oldest?.ageDays)
+                        ? `WO ${oldest.wo} — ${oldest.ageDays.toFixed(1)} days`
+                        : '—';
+            }
+
+            const feesEl =
+                this.instance.root.querySelector('#kpiOutstandingFees');
+
+            if (feesEl) {
+                const feeCount =
+                    workload.applicationsWithOutstandingFees;
+
+                const feeTotal =
+                    workload.totalOutstandingFees;
+
+                feesEl.textContent =
+                    Number.isInteger(feeCount) &&
+                    Number.isFinite(feeTotal)
+                        ? `${feeCount} application${feeCount !== 1 ? 's' : ''} — $${feeTotal.toFixed(2)}`
+                        : '—';
+            }
+
+            const requirementsEl =
+                this.instance.root.querySelector('#kpiActiveRequirements');
+
+            if (requirementsEl) {
+                const requirementCount =
+                    workload.applicationsWithActiveRequirements;
+
+                requirementsEl.textContent =
+                    Number.isInteger(requirementCount)
+                        ? `${requirementCount} application${requirementCount !== 1 ? 's' : ''}`
+                        : '—';
+            }
+
+            const jurisdictionEl =
+                this.instance.root.querySelector('#kpiTopJurisdiction');
+
+            if (jurisdictionEl) {
+                const top =
+                    workload.mostActiveJurisdiction;
+
+                jurisdictionEl.textContent =
+                    top?.jurisdiction &&
+                    Number.isInteger(top?.count)
+                        ? `${top.jurisdiction} — ${top.count}`
+                        : '—';
+            }
+        }
     },
     // Show handler
     onShow() {
