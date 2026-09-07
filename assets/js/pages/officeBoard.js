@@ -177,31 +177,86 @@ window.glbVar.tipsLoaded = false;
 // get status icon HTML from status string
 function getStatusIcon(status) {
     if (!status) return '';
-    const s = status.toLowerCase();
-    // Key Map
+
+    // Normalize database / legacy status values to one lookup format
+    const s = String(status)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+    // Status → icon key map
+    // Supports both legacy permit keys and current Application status names.
     const keyMap = {
-        'need_to_submit':   'warning',     // ⚠️
-        'submitted':        'clipboard',   // 📋
-        'qc_passed':        'target',      // 🎯 (passed / approved)
-        'under_review':     'clock',       // ⏰
-        'corrections':      'tools',       // 🛠️
-        'ready_to_issue':   'memo',        // 📝
-        'issued':           'shield',      // 🛡️
-        'inspections':      'camera',      // 📷
-        'finaled':          'trophy'       // 🏆
+
+        // Pre-Submittal
+        'need_to_submit':                  'warning',
+        'application_preparation':         'warning',
+        'awaiting_required_documents':     'warning',
+        'completeness_check':              'clipboard',
+        'internal_corrections_required':   'tools',
+        'internal_corrections_in_progress':'tools',
+        'ready_for_check':                 'target',
+        'submit':                          'clipboard',
+
+        // Submitted / Intake
+        'submitted':                       'clipboard',
+        'awaiting_jurisdiction_intake':    'clock',
+        'jurisdiction_intake_deficiencies':'tools',
+        'resubmitted_for_intake':          'clipboard',
+        'accepted_for_review':             'target',
+
+        // Jurisdiction Review
+        'under_review':                    'clock',
+        'corrections':                     'tools',
+        'corrections_required':            'tools',
+        'corrections_in_progress':         'tools',
+        'ready_to_resubmit':               'memo',
+        'resubmitted':                     'clipboard',
+
+        // Approval / Issuance
+        'qc_passed':                       'target',
+        'approved':                        'target',
+        'fees_due':                        'warning',
+        'fees_paid':                       'target',
+        'ready_to_issue':                  'memo',
+        'issuance':                        'memo',
+        'issued':                          'shield',
+
+        // Inspection
+        'inspections':                     'camera',
+        'inspection_required':             'camera',
+        'inspection_requested':            'camera',
+        'inspection_scheduled':            'camera',
+        'inspection_failed':               'warning',
+        'inspection_passed':               'target',
+
+        // Final
+        'finaled':                         'trophy'
     };
+
     const iconKey = keyMap[s];
+
     if (!iconKey || !iconMap) return '';
+
     const entry = Object.values(iconMap).find(e =>
         (e.file && e.file.toLowerCase().includes(iconKey)) ||
         (e.alt && e.alt.toLowerCase().includes(iconKey))
     );
+
     if (!entry) return '';
-    if (entry.emoji) return entry.emoji + ' ';
+
+    if (entry.emoji) {
+        return entry.emoji + ' ';
+    }
+
     if (entry.file) {
-        const url = `https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
+        const url =
+            `https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
+
         return `<img src="${url}" alt="${entry.alt || 'status icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
     }
+
     return '';
 }
 // format seconds into smart interval string (no seconds)
