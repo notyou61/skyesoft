@@ -360,41 +360,55 @@ function renderTodaysHighlightsSkeleton() {
             <div class="highlights-col">
 
                 <div class="entry section-header">
-                    📈 Performance
+                    📊 Skyesoft Activity
                 </div>
 
                 <div class="entry kpi-row">
-                    <span>Avg Notes per Application</span>
-                    <strong id="kpiAvgNotes">—</strong>
+                    <span>Entities</span>
+                    <strong id="activityEntityCount">—</strong>
                 </div>
 
                 <div class="entry kpi-row">
-                    <span>Avg Turnaround</span>
-                    <strong id="kpiAvgTurnaround">—</strong>
+                    <span>Locations</span>
+                    <strong id="activityLocationCount">—</strong>
+                </div>
+
+                <div class="entry kpi-row">
+                    <span>Contacts</span>
+                    <strong id="activityContactCount">—</strong>
                 </div>
 
                 <div class="entry section-header">
-                    📋 Workload
+                    ⚡ Actions
                 </div>
 
                 <div class="entry kpi-row">
-                    <span>Oldest Open Application</span>
-                    <strong id="kpiOldestOpen">—</strong>
+                    <span>Today</span>
+                    <strong id="activityActionsToday">—</strong>
                 </div>
 
                 <div class="entry kpi-row">
-                    <span>Outstanding Fees</span>
-                    <strong id="kpiOutstandingFees">—</strong>
+                    <span>Total</span>
+                    <strong id="activityActionsTotal">—</strong>
+                </div>
+
+                <div class="entry section-header">
+                    🕒 Last Action
                 </div>
 
                 <div class="entry kpi-row">
-                    <span>Active Requirements</span>
-                    <strong id="kpiActiveRequirements">—</strong>
+                    <span>Who</span>
+                    <strong id="activityLastActionWho">—</strong>
                 </div>
 
                 <div class="entry kpi-row">
-                    <span>Most Active Jurisdiction</span>
-                    <strong id="kpiTopJurisdiction">—</strong>
+                    <span>What</span>
+                    <strong id="activityLastActionWhat">—</strong>
+                </div>
+
+                <div class="entry kpi-row">
+                    <span>When</span>
+                    <strong id="activityLastActionWhen">—</strong>
                 </div>
 
             </div>
