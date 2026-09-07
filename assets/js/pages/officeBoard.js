@@ -1051,7 +1051,7 @@ const ActivePermitsCard = {
             const totalPermits = permits.length;
 
             // SSE time represents the current dynamic snapshot.
-            const updatedUnix = payload?.timeDateArray?.currentUnixTime;
+            const updatedUnix = payload?.activePermitsMeta?.lastUpdatedUnix;
 
             if (!updatedUnix) {
                 footer.innerHTML = renderLiveFooter({

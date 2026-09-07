@@ -726,9 +726,10 @@ if (!function_exists('getTimeContext')) {
 #endregion
 
 #region SECTION 3.A — Active Application Projection (MySQL Database)
-// Phase 1C — Consume authoritative Open Applications via shared function
+
 $permitList = [];
 $permitProjectionSucceeded = false;
+$lastApplicationUpdatedUnix = null;
 
 if ($db !== null) {
     try {
@@ -737,38 +738,54 @@ if ($db !== null) {
 
         if (is_array($rawApplications)) {
             foreach ($rawApplications as $app) {
+
+                $applicationUpdatedUnix = (int)(
+                    $app["applicationUpdatedUnix"]
+                    ?? 0
+                );
+
+                $applicationCreatedUnix = (int)(
+                    $app["applicationCreatedUnix"]
+                    ?? 0
+                );
+
+                $effectiveUpdatedUnix =
+                    $applicationUpdatedUnix > 0
+                        ? $applicationUpdatedUnix
+                        : $applicationCreatedUnix;
+
+                if (
+                    $effectiveUpdatedUnix > 0 &&
+                    (
+                        $lastApplicationUpdatedUnix === null ||
+                        $effectiveUpdatedUnix > $lastApplicationUpdatedUnix
+                    )
+                ) {
+                    $lastApplicationUpdatedUnix =
+                        $effectiveUpdatedUnix;
+                }
+
                 $permitList[] = [
-                    "wo"           => (string)($app["orderChristyNumber"] ?? ""),
-                    "customer"     => (string)($app["entityName"] ?? ""),
-                    "jobsite"      => (string)($app["locationName"] ?? ""),
-                    "jurisdiction" => (string)($app["applicationJurisdiction"] ?? ""),
-                    "status"       => (string)($app["applicationStatusName"] ?? "")
+                    "wo"           =>
+                        (string)($app["orderChristyNumber"] ?? ""),
+                    "customer"     =>
+                        (string)($app["entityName"] ?? ""),
+                    "jobsite"      =>
+                        (string)($app["locationName"] ?? ""),
+                    "jurisdiction" =>
+                        (string)($app["applicationJurisdiction"] ?? ""),
+                    "status"       =>
+                        (string)($app["applicationStatusName"] ?? "")
                 ];
             }
         }
     } catch (Throwable $e) {
-        error_log("[ACTIVE PERMITS DB PROJECTION ERROR] " . $e->getMessage());
+        error_log(
+            "[ACTIVE PERMITS DB PROJECTION ERROR] " .
+            $e->getMessage()
+        );
     }
 }
-
-// Fallback to legacy JSON source ONLY if the database query actually failed
-if (
-    !$permitProjectionSucceeded &&
-    isset($activePermits["workOrders"]) &&
-    is_array($activePermits["workOrders"])
-) {
-    error_log("[ACTIVE PERMITS] DB Query failed — Falling back to permitRegistry.json");
-    foreach ($activePermits["workOrders"] as $wo) {
-        $permitList[] = [
-            "wo"           => $wo["workOrder"] ?? "",
-            "customer"     => $wo["customer"] ?? "",
-            "jobsite"      => $wo["jobsite"] ?? "",
-            "jurisdiction" => $wo["jurisdiction"] ?? "",
-            "status"       => $wo["permit"]["status"] ?? ""
-        ];
-    }
-}
-#endregion
 
 #region SECTION 4 — Build Time Context + Weather + Final Payload
 
@@ -804,17 +821,20 @@ $lastUpdateUnix = (int)(
 // Update Decay — Canonical (server-authoritative)
 // ------------------------------------------------------------
 $siteMeta = [
-    "siteVersion"     => $versions["system"]["siteVersion"] ?? "unknown",
-    "lastUpdateUnix"  => $lastUpdateUnix ?: null,
-    "updateOccurred"  => (bool)($versions["system"]["updateOccurred"] ?? false)
+    "siteVersion"    => $versions["system"]["siteVersion"] ?? "unknown",
+    "lastUpdateUnix" => $lastUpdateUnix ?: null,
+    "updateOccurred" => (bool)($versions["system"]["updateOccurred"] ?? false)
 ];
 
 if ($lastUpdateUnix > 0) {
     $dt = new DateTime('@' . $lastUpdateUnix);
     $dt->setTimezone(new DateTimeZone('America/Phoenix'));
 
-    $siteMeta["lastUpdateLocal"] = $dt->format('Y-m-d h:i:s A');
-    $siteMeta["lastUpdateAgeSeconds"] = time() - $lastUpdateUnix;
+    $siteMeta["lastUpdateLocal"] =
+        $dt->format('Y-m-d h:i:s A');
+
+    $siteMeta["lastUpdateAgeSeconds"] =
+        time() - $lastUpdateUnix;
 }
 
 // ------------------------------------------------------------
@@ -829,7 +849,12 @@ $payload = [
     "weather"         => $weather,
     "kpi"             => $kpi,
     "roadmap"         => $roadmap,
+
     "activePermits"   => $permitList,
+    "activePermitsMeta" => [
+        "lastUpdatedUnix" => $lastApplicationUpdatedUnix
+    ],
+
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta"        => $siteMeta,
     "idle"            => $idle,
