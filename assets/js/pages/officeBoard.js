@@ -1193,103 +1193,99 @@ const TodaysHighlightsCard = {
         }
 
         /* ─────────────────────────────
-        PERMIT PERFORMANCE + WORKLOAD
+        SKYESOFT ACTIVITY
         SSE-authoritative
         ───────────────────────────── */
-        const kpi = payload?.kpi;
+        const systemActivity =
+            payload?.systemActivity;
 
-        if (kpi) {
-
-            // ------------------------------------------------------------
-            // Performance
-            // ------------------------------------------------------------
-            const notesEl =
-                this.instance.root.querySelector('#kpiAvgNotes');
-
-            const avgNotes =
-                kpi.performance?.averageNotesPerPermit;
-
-            if (notesEl) {
-                notesEl.textContent =
-                    Number.isFinite(avgNotes)
-                        ? avgNotes.toFixed(1)
-                        : '—';
-            }
-
-            const turnEl =
-                this.instance.root.querySelector('#kpiAvgTurnaround');
-
-            const avgDays =
-                kpi.atAGlance?.averageTurnaroundDays;
-
-            if (turnEl) {
-                turnEl.textContent =
-                    Number.isFinite(avgDays)
-                        ? `${avgDays.toFixed(1)} days`
-                        : '—';
-            }
+        if (systemActivity) {
 
             // ------------------------------------------------------------
-            // Workload
+            // ELC Counts
             // ------------------------------------------------------------
-            const workload =
-                kpi.workload || {};
+            const entityEl =
+                this.instance.root.querySelector('#activityEntityCount');
 
-            const oldestEl =
-                this.instance.root.querySelector('#kpiOldestOpen');
+            const locationEl =
+                this.instance.root.querySelector('#activityLocationCount');
 
-            const oldest =
-                workload.oldestOpenApplication;
+            const contactEl =
+                this.instance.root.querySelector('#activityContactCount');
 
-            if (oldestEl) {
-                oldestEl.textContent =
-                    oldest?.wo &&
-                    Number.isFinite(oldest?.ageDays)
-                        ? `WO ${oldest.wo} — ${oldest.ageDays.toFixed(1)} days`
+            if (entityEl) {
+                entityEl.textContent =
+                    Number.isInteger(systemActivity.elc?.entities)
+                        ? systemActivity.elc.entities.toLocaleString()
                         : '—';
             }
 
-            const feesEl =
-                this.instance.root.querySelector('#kpiOutstandingFees');
-
-            if (feesEl) {
-                const feeCount =
-                    workload.applicationsWithOutstandingFees;
-
-                const feeTotal =
-                    workload.totalOutstandingFees;
-
-                feesEl.textContent =
-                    Number.isInteger(feeCount) &&
-                    Number.isFinite(feeTotal)
-                        ? `${feeCount} application${feeCount !== 1 ? 's' : ''} — $${feeTotal.toFixed(2)}`
+            if (locationEl) {
+                locationEl.textContent =
+                    Number.isInteger(systemActivity.elc?.locations)
+                        ? systemActivity.elc.locations.toLocaleString()
                         : '—';
             }
 
-            const requirementsEl =
-                this.instance.root.querySelector('#kpiActiveRequirements');
-
-            if (requirementsEl) {
-                const requirementCount =
-                    workload.applicationsWithActiveRequirements;
-
-                requirementsEl.textContent =
-                    Number.isInteger(requirementCount)
-                        ? `${requirementCount} application${requirementCount !== 1 ? 's' : ''}`
+            if (contactEl) {
+                contactEl.textContent =
+                    Number.isInteger(systemActivity.elc?.contacts)
+                        ? systemActivity.elc.contacts.toLocaleString()
                         : '—';
             }
 
-            const jurisdictionEl =
-                this.instance.root.querySelector('#kpiTopJurisdiction');
+            // ------------------------------------------------------------
+            // Action Counts
+            // ------------------------------------------------------------
+            const actionsTodayEl =
+                this.instance.root.querySelector('#activityActionsToday');
 
-            if (jurisdictionEl) {
-                const top =
-                    workload.mostActiveJurisdiction;
+            const actionsTotalEl =
+                this.instance.root.querySelector('#activityActionsTotal');
 
-                jurisdictionEl.textContent =
-                    top?.jurisdiction &&
-                    Number.isInteger(top?.count)
-                        ? `${top.jurisdiction} — ${top.count}`
+            if (actionsTodayEl) {
+                actionsTodayEl.textContent =
+                    Number.isInteger(systemActivity.actions?.today)
+                        ? systemActivity.actions.today.toLocaleString()
+                        : '—';
+            }
+
+            if (actionsTotalEl) {
+                actionsTotalEl.textContent =
+                    Number.isInteger(systemActivity.actions?.total)
+                        ? systemActivity.actions.total.toLocaleString()
+                        : '—';
+            }
+
+            // ------------------------------------------------------------
+            // Most Recent Action — Who / What / When
+            // ------------------------------------------------------------
+            const lastAction =
+                systemActivity.actions?.lastAction;
+
+            const whoEl =
+                this.instance.root.querySelector('#activityLastActionWho');
+
+            const whatEl =
+                this.instance.root.querySelector('#activityLastActionWhat');
+
+            const whenEl =
+                this.instance.root.querySelector('#activityLastActionWhen');
+
+            if (whoEl) {
+                whoEl.textContent =
+                    lastAction?.contactName || '—';
+            }
+
+            if (whatEl) {
+                whatEl.textContent =
+                    lastAction?.actionName || '—';
+            }
+
+            if (whenEl) {
+                whenEl.textContent =
+                    Number.isFinite(lastAction?.actionUnix)
+                        ? formatTimestamp(lastAction.actionUnix)
                         : '—';
             }
         }
@@ -1354,41 +1350,55 @@ const KPICard = {
                 <div class="highlights-col">
 
                     <div class="entry section-header">
-                        📈 Performance
+                        📊 Skyesoft Activity
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Avg Notes per Application</span>
-                        <strong id="kpiAvgNotes">—</strong>
+                        <span>Entities</span>
+                        <strong id="activityEntityCount">—</strong>
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Avg Turnaround</span>
-                        <strong id="kpiAvgTurnaround">—</strong>
+                        <span>Locations</span>
+                        <strong id="activityLocationCount">—</strong>
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>Contacts</span>
+                        <strong id="activityContactCount">—</strong>
                     </div>
 
                     <div class="entry section-header">
-                        📋 Workload
+                        ⚡ Actions
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Oldest Open Application</span>
-                        <strong id="kpiOldestOpen">—</strong>
+                        <span>Today</span>
+                        <strong id="activityActionsToday">—</strong>
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Outstanding Fees</span>
-                        <strong id="kpiOutstandingFees">—</strong>
+                        <span>Total</span>
+                        <strong id="activityActionsTotal">—</strong>
+                    </div>
+
+                    <div class="entry section-header">
+                        🕒 Last Action
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Active Requirements</span>
-                        <strong id="kpiActiveRequirements">—</strong>
+                        <span>Who</span>
+                        <strong id="activityLastActionWho">—</strong>
                     </div>
 
                     <div class="entry kpi-row">
-                        <span>Most Active Jurisdiction</span>
-                        <strong id="kpiTopJurisdiction">—</strong>
+                        <span>What</span>
+                        <strong id="activityLastActionWhat">—</strong>
+                    </div>
+
+                    <div class="entry kpi-row">
+                        <span>When</span>
+                        <strong id="activityLastActionWhen">—</strong>
                     </div>
 
                 </div>
