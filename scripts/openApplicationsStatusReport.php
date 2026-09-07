@@ -921,8 +921,6 @@ ob_start();
 
         .application-list-section {
             margin: 0 0 9px;
-            break-inside: avoid;
-            page-break-inside: avoid;
         }
 
         .section-heading {
@@ -1045,6 +1043,16 @@ ob_start();
             background: #e7eef8;
         }
 
+        .application-list-table {
+            page-break-inside: avoid;
+        }
+
+        .application-list-table .application-list-heading-cell {
+            padding: 0;
+            border: 0;
+            background: #fff;
+        }
+
         .application-list-table td {
             color: #111;
             font-size: 8.5px;
@@ -1059,14 +1067,6 @@ ob_start();
         .application-list-table .application-list-due {
             color: #b91c1c;
             font-weight: bold;
-        }
-
-        .application-list-table .application-list-badge {
-            display: inline-block;
-            padding: 1px 4px;
-            color: #fff;
-            background: #b91c1c;
-            border-radius: 2px;
         }
 
         .workflow-description {
@@ -1306,23 +1306,23 @@ ob_start();
     </div>
 
     <?php if ($applicationCount > 0): ?>
-        <div class="application-list-section" style="page-break-inside:avoid;">
-            <?= renderOpenApplicationsSectionHeading(
-                'Application List',
-                $rootDir
-            ) ?>
-
+        <div class="application-list-section">
             <table class="application-list-table">
-                <thead>
-                    <tr>
-                        <th style="width:25%;">Application Name</th>
-                        <th style="width:18%;">Jurisdiction Application #</th>
-                        <th style="width:22%;">Stage - Status</th>
-                        <th style="width:21%;">Permit Duration</th>
-                        <th style="width:14%;text-align:right;">Outstanding Fees Balance</th>
-                    </tr>
-                </thead>
-                <tbody>
+                <tr>
+                    <td class="application-list-heading-cell" colspan="5">
+                        <?= renderOpenApplicationsSectionHeading(
+                            'Application List',
+                            $rootDir
+                        ) ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th style="width:25%;">Application Name</th>
+                    <th style="width:18%;">Jurisdiction Application #</th>
+                    <th style="width:22%;">Stage - Status</th>
+                    <th style="width:21%;">Permit Duration</th>
+                    <th style="width:14%;text-align:right;">Outstanding Fees Balance</th>
+                </tr>
                     <?php foreach ($applications as $listApplication): ?>
                         <?php
                         $outstandingFees = is_numeric(
@@ -1383,19 +1383,16 @@ ob_start();
                                 <?php if ($outstandingFees === null): ?>
                                     Not Available
                                 <?php elseif ($hasOutstandingFees): ?>
-                                    <span class="application-list-badge">
-                                        $<?= number_format(
-                                            $outstandingFees,
-                                            2
-                                        ) ?> Due
-                                    </span>
+                                    $<?= number_format(
+                                        $outstandingFees,
+                                        2
+                                    ) ?> Due
                                 <?php else: ?>
                                     $0.00
                                 <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                </tbody>
             </table>
         </div>
     <?php endif; ?>
