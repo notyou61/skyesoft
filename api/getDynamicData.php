@@ -156,7 +156,7 @@ error_log('[DYNAMIC AUTH] ' . json_encode($auth));
 
 #endregion
 
-#region SECTION 1 — Registry Loading
+// #region SECTION 1 — Registry Loading
 $root = dirname(__DIR__);
 
 $paths = [
@@ -187,7 +187,7 @@ foreach ($paths as $key => $path) {
 $codex          = json_decode(file_get_contents($paths["codex"]), true);
 $versions       = json_decode(file_get_contents($paths["versions"]), true);
 $systemRegistry = json_decode(file_get_contents($paths["systemRegistry"]), true);
-$roadmap         = json_decode(file_get_contents($paths["roadmap"]), true);
+$roadmap        = json_decode(file_get_contents($paths["roadmap"]), true);
 
 $kpi            = json_decode(file_get_contents($paths["kpi"]), true);
 $activePermits  = json_decode(file_get_contents($paths["permits"]), true); // Kept temporarily for comparison/fallback
@@ -329,9 +329,9 @@ if (file_exists($paths["sentinel"])) {
     }
 }
 
-#endregion
+// #endregion
 
-#region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
+// #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
 
 // ── Load .env from /secure (cPanel-safe, absolute anchor) ───────────
 $envPath = dirname(__DIR__, 3) . '/secure/.env';
@@ -613,7 +613,7 @@ if ($shouldFetch) {
     error_log("[weather] No fetch needed: valid cache + not stale yet");
 }
 
-#endregion
+// #endregion
 
 #region SECTION 3 — Time Context (TIS)
 
@@ -794,6 +794,8 @@ if ($db !== null) {
     }
 }
 
+#endregion
+
 #region SECTION 3.B — Permit KPI Projection (MySQL Database)
 
 $kpi = [
@@ -833,6 +835,16 @@ if (
 
     $nowUnix = time();
 
+    $oldestApplication = null;
+    $oldestApplicationAgeDays = null;
+
+    $applicationsWithOutstandingFees = 0;
+    $totalOutstandingFees = 0.00;
+
+    $applicationsWithActiveRequirements = 0;
+
+    $jurisdictionCounts = [];
+
     foreach ($rawApplications as $app) {
 
         $stageName = trim((string)(
@@ -843,39 +855,119 @@ if (
             $app["applicationStatusName"] ?? ""
         ));
 
+        // ------------------------------------------------------------
         // Stage count
+        // ------------------------------------------------------------
         if ($stageName !== "") {
             $stageBreakdown[$stageName] =
                 ($stageBreakdown[$stageName] ?? 0) + 1;
         }
 
+        // ------------------------------------------------------------
         // Stage / Status count
-        $stageStatusKey = $stageName . " / " . $statusName;
+        // ------------------------------------------------------------
+        $stageStatusKey =
+            $stageName . " / " . $statusName;
 
         if ($stageName !== "" || $statusName !== "") {
             $stageStatusBreakdown[$stageStatusKey] =
                 ($stageStatusBreakdown[$stageStatusKey] ?? 0) + 1;
         }
 
-        // Open duration
+        // ------------------------------------------------------------
+        // Open duration + Oldest Open Application
+        // ------------------------------------------------------------
         $createdUnix = (int)(
             $app["applicationCreatedUnix"] ?? 0
         );
 
         if ($createdUnix > 0) {
+
             $openSeconds = max(
                 0,
                 $nowUnix - $createdUnix
             );
 
-            $totalOpenDays +=
+            $openDays =
                 $openSeconds / 86400;
+
+            $totalOpenDays +=
+                $openDays;
+
+            if (
+                $oldestApplicationAgeDays === null ||
+                $openDays > $oldestApplicationAgeDays
+            ) {
+                $oldestApplicationAgeDays =
+                    $openDays;
+
+                $oldestApplication = [
+                    "applicationID" =>
+                        (int)($app["applicationID"] ?? 0),
+
+                    "wo" =>
+                        (string)($app["orderChristyNumber"] ?? ""),
+
+                    "customer" =>
+                        (string)($app["entityName"] ?? ""),
+
+                    "jobsite" =>
+                        (string)($app["locationName"] ?? ""),
+
+                    "stage" =>
+                        $stageName,
+
+                    "status" =>
+                        $statusName,
+
+                    "ageDays" =>
+                        round($openDays, 1)
+                ];
+            }
         }
 
+        // ------------------------------------------------------------
         // Notes
+        // ------------------------------------------------------------
         $totalNotes += (int)(
             $app["applicationNoteCount"] ?? 0
         );
+
+        // ------------------------------------------------------------
+        // Outstanding Fees
+        // ------------------------------------------------------------
+        $outstandingFees = (float)(
+            $app["applicationFeeTotalOutstanding"] ?? 0
+        );
+
+        if ($outstandingFees > 0) {
+            $applicationsWithOutstandingFees++;
+            $totalOutstandingFees +=
+                $outstandingFees;
+        }
+
+        // ------------------------------------------------------------
+        // Active Special Requirements
+        // ------------------------------------------------------------
+        $activeRequirementCount = (int)(
+            $app["applicationActiveRequirementCount"] ?? 0
+        );
+
+        if ($activeRequirementCount > 0) {
+            $applicationsWithActiveRequirements++;
+        }
+
+        // ------------------------------------------------------------
+        // Jurisdiction workload
+        // ------------------------------------------------------------
+        $jurisdiction = trim((string)(
+            $app["applicationJurisdiction"] ?? ""
+        ));
+
+        if ($jurisdiction !== "") {
+            $jurisdictionCounts[$jurisdiction] =
+                ($jurisdictionCounts[$jurisdiction] ?? 0) + 1;
+        }
     }
 
     $averageOpenDays =
