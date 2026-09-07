@@ -766,15 +766,22 @@ if ($db !== null) {
                 }
 
                 $permitList[] = [
-                    "wo"           =>
+                    "wo" =>
                         (string)($app["orderChristyNumber"] ?? ""),
-                    "customer"     =>
+
+                    "customer" =>
                         (string)($app["entityName"] ?? ""),
-                    "jobsite"      =>
+
+                    "jobsite" =>
                         (string)($app["locationName"] ?? ""),
+
                     "jurisdiction" =>
                         (string)($app["applicationJurisdiction"] ?? ""),
-                    "status"       =>
+
+                    "stage" =>
+                        (string)($app["applicationStageName"] ?? ""),
+
+                    "status" =>
                         (string)($app["applicationStatusName"] ?? "")
                 ];
             }
