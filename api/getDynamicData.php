@@ -794,6 +794,124 @@ if ($db !== null) {
     }
 }
 
+#region SECTION 3.B — Permit KPI Projection (MySQL Database)
+
+$kpi = [
+    "meta" => [
+        "generatedOn" => $lastApplicationUpdatedUnix,
+        "source"      => "database"
+    ],
+
+    "atAGlance" => [
+        "totalActive" => 0,
+        "averageTurnaroundDays" => 0
+    ],
+
+    "statusBreakdown" => [],
+
+    "stageBreakdown" => [],
+
+    "stageStatusBreakdown" => [],
+
+    "performance" => [
+        "averageNotesPerPermit" => 0
+    ]
+];
+
+if (
+    $permitProjectionSucceeded &&
+    isset($rawApplications) &&
+    is_array($rawApplications)
+) {
+    $applicationCount = count($rawApplications);
+
+    $totalOpenDays = 0;
+    $totalNotes = 0;
+
+    $stageBreakdown = [];
+    $stageStatusBreakdown = [];
+
+    $nowUnix = time();
+
+    foreach ($rawApplications as $app) {
+
+        $stageName = trim((string)(
+            $app["applicationStageName"] ?? ""
+        ));
+
+        $statusName = trim((string)(
+            $app["applicationStatusName"] ?? ""
+        ));
+
+        // Stage count
+        if ($stageName !== "") {
+            $stageBreakdown[$stageName] =
+                ($stageBreakdown[$stageName] ?? 0) + 1;
+        }
+
+        // Stage / Status count
+        $stageStatusKey = $stageName . " / " . $statusName;
+
+        if ($stageName !== "" || $statusName !== "") {
+            $stageStatusBreakdown[$stageStatusKey] =
+                ($stageStatusBreakdown[$stageStatusKey] ?? 0) + 1;
+        }
+
+        // Open duration
+        $createdUnix = (int)(
+            $app["applicationCreatedUnix"] ?? 0
+        );
+
+        if ($createdUnix > 0) {
+            $openSeconds = max(
+                0,
+                $nowUnix - $createdUnix
+            );
+
+            $totalOpenDays +=
+                $openSeconds / 86400;
+        }
+
+        // Notes
+        $totalNotes += (int)(
+            $app["applicationNoteCount"] ?? 0
+        );
+    }
+
+    $averageOpenDays =
+        $applicationCount > 0
+            ? round(
+                $totalOpenDays / $applicationCount,
+                1
+            )
+            : 0;
+
+    $averageNotes =
+        $applicationCount > 0
+            ? round(
+                $totalNotes / $applicationCount,
+                1
+            )
+            : 0;
+
+    $kpi["atAGlance"]["totalActive"] =
+        $applicationCount;
+
+    $kpi["atAGlance"]["averageTurnaroundDays"] =
+        $averageOpenDays;
+
+    $kpi["stageBreakdown"] =
+        $stageBreakdown;
+
+    $kpi["stageStatusBreakdown"] =
+        $stageStatusBreakdown;
+
+    $kpi["performance"]["averageNotesPerPermit"] =
+        $averageNotes;
+}
+
+#endregion
+
 #region SECTION 4 — Build Time Context + Weather + Final Payload
 
 // Compute time context
