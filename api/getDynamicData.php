@@ -1078,86 +1078,143 @@ if (
     ];
 }
 
-// ------------------------------------------------------------
-// Most Recent Permit Activity — Who / What / Permit / When
-// ------------------------------------------------------------
-if ($db !== null) {
-    try {
-
-        $lastPermitActionStmt = $db->query("
-            SELECT
-                a.contactId,
-                a.actionTypeId,
-                a.actionUnix,
-                a.actionPayloadData,
-                a.actionResponseData,
-                t.actionName,
-                c.contactFirstName,
-                c.contactLastName
-            FROM tblActions a
-            INNER JOIN tblActionTypes t
-                ON t.actionTypeId = a.actionTypeId
-            LEFT JOIN tblContacts c
-                ON c.contactId = a.contactId
-            WHERE t.actionName LIKE 'application.%'
-            ORDER BY
-                a.actionUnix DESC,
-                a.actionId DESC
-            LIMIT 50
-        ");
-
-        $lastPermitAction =
-            $lastPermitActionStmt->fetch(PDO::FETCH_ASSOC);
-
-        if (is_array($lastPermitAction)) {
+    // ------------------------------------------------------------
+    // Most Recent Permit Activity — Who / What / Permit / When
+    // ------------------------------------------------------------
+    if ($db !== null) {
+        try {
 
             // --------------------------------------------------------
-            // Resolve Application ID from Action Payload
+            // Retrieve Recent Application Actions
             // --------------------------------------------------------
-            $actionPayload = json_decode(
-                (string)(
-                    $lastPermitAction["actionPayloadData"] ?? ""
-                ),
-                true
-            );
+            $lastPermitActionStmt = $db->query("
+                SELECT
+                    a.actionId,
+                    a.contactId,
+                    a.actionTypeId,
+                    a.actionUnix,
+                    a.actionPayloadData,
+                    a.actionResponseData,
+                    t.actionName,
+                    c.contactFirstName,
+                    c.contactLastName
+                FROM tblActions a
+                INNER JOIN tblActionTypes t
+                    ON t.actionTypeId = a.actionTypeId
+                LEFT JOIN tblContacts c
+                    ON c.contactId = a.contactId
+                WHERE t.actionName LIKE 'application.%'
+                ORDER BY
+                    a.actionUnix DESC,
+                    a.actionId DESC
+                LIMIT 50
+            ");
 
+            $recentPermitActions =
+                $lastPermitActionStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $lastPermitAction = null;
             $applicationID = 0;
 
-            if (is_array($actionPayload)) {
-                $applicationID = (int)(
-                    $actionPayload["applicationID"]
-                    ?? $actionPayload["requestedApplicationID"]
-                    ?? 0
+            // --------------------------------------------------------
+            // Find Most Recent Action for a Specific Application
+            // --------------------------------------------------------
+            foreach ($recentPermitActions as $permitAction) {
+
+                $actionPayload = json_decode(
+                    (string)(
+                        $permitAction["actionPayloadData"] ?? ""
+                    ),
+                    true
                 );
+
+                $actionResponse = json_decode(
+                    (string)(
+                        $permitAction["actionResponseData"] ?? ""
+                    ),
+                    true
+                );
+
+                $payloadOperation =
+                    is_array($actionPayload)
+                        ? trim((string)(
+                            $actionPayload["operation"] ?? ""
+                        ))
+                        : "";
+
+                // Ignore general Applications list reads.
+                if ($payloadOperation === "applications.list") {
+                    continue;
+                }
+
+                // ----------------------------------------------------
+                // Resolve Application ID
+                // ----------------------------------------------------
+                $candidateApplicationID = 0;
+
+                if (is_array($actionPayload)) {
+                    $candidateApplicationID = (int)(
+                        $actionPayload["applicationID"]
+                        ?? $actionPayload["requestedApplicationID"]
+                        ?? 0
+                    );
+                }
+
+                if (
+                    $candidateApplicationID <= 0 &&
+                    is_array($actionResponse)
+                ) {
+                    $candidateApplicationID = (int)(
+                        $actionResponse["applicationID"]
+                        ?? 0
+                    );
+                }
+
+                // This Action must identify a specific Application.
+                if ($candidateApplicationID <= 0) {
+                    continue;
+                }
+
+                $lastPermitAction =
+                    $permitAction;
+
+                $applicationID =
+                    $candidateApplicationID;
+
+                break;
             }
 
             // --------------------------------------------------------
-            // Resolve Actor
+            // Populate Most Recent Specific Permit Activity
             // --------------------------------------------------------
-            $contactFirstName =
-                trim((string)(
-                    $lastPermitAction["contactFirstName"] ?? ""
-                ));
+            if (
+                is_array($lastPermitAction) &&
+                $applicationID > 0
+            ) {
 
-            $contactLastName =
-                trim((string)(
-                    $lastPermitAction["contactLastName"] ?? ""
-                ));
+                // ----------------------------------------------------
+                // Resolve Actor
+                // ----------------------------------------------------
+                $contactFirstName =
+                    trim((string)(
+                        $lastPermitAction["contactFirstName"] ?? ""
+                    ));
 
-            $contactName =
-                trim(
-                    $contactFirstName .
-                    " " .
-                    $contactLastName
-                );
+                $contactLastName =
+                    trim((string)(
+                        $lastPermitAction["contactLastName"] ?? ""
+                    ));
 
-            // --------------------------------------------------------
-            // Resolve Application / WO / Customer
-            // --------------------------------------------------------
-            $permitActivityApplication = null;
+                $contactName =
+                    trim(
+                        $contactFirstName .
+                        " " .
+                        $contactLastName
+                    );
 
-            if ($applicationID > 0) {
-
+                // ----------------------------------------------------
+                // Resolve Application / WO / Customer
+                // ----------------------------------------------------
                 $permitActivityStmt = $db->prepare("
                     SELECT
                         a.applicationID,
@@ -1182,97 +1239,99 @@ if ($db !== null) {
 
                 $permitActivityApplication =
                     $permitActivityStmt->fetch(PDO::FETCH_ASSOC);
+
+                // ----------------------------------------------------
+                // Resolve Action Values
+                // ----------------------------------------------------
+                $lastPermitContactId =
+                    (int)(
+                        $lastPermitAction["contactId"] ?? 0
+                    );
+
+                $lastPermitActionTypeId =
+                    (int)(
+                        $lastPermitAction["actionTypeId"] ?? 0
+                    );
+
+                $lastPermitActionName =
+                    trim((string)(
+                        $lastPermitAction["actionName"] ?? ""
+                    ));
+
+                $lastPermitActionUnix =
+                    (int)(
+                        $lastPermitAction["actionUnix"] ?? 0
+                    );
+
+                $permitActivityWo =
+                    is_array($permitActivityApplication)
+                        ? trim((string)(
+                            $permitActivityApplication["orderChristyNumber"]
+                            ?? ""
+                        ))
+                        : "";
+
+                $permitActivityCustomer =
+                    is_array($permitActivityApplication)
+                        ? trim((string)(
+                            $permitActivityApplication["entityName"]
+                            ?? ""
+                        ))
+                        : "";
+
+                // ----------------------------------------------------
+                // Project Last Permit Activity
+                // ----------------------------------------------------
+                $kpi["lastPermitActivity"] = [
+                    "contactId" =>
+                        $lastPermitContactId > 0
+                            ? $lastPermitContactId
+                            : null,
+
+                    "contactName" =>
+                        $contactName !== ""
+                            ? $contactName
+                            : null,
+
+                    "actionTypeId" =>
+                        $lastPermitActionTypeId > 0
+                            ? $lastPermitActionTypeId
+                            : null,
+
+                    "actionName" =>
+                        $lastPermitActionName !== ""
+                            ? $lastPermitActionName
+                            : null,
+
+                    "applicationID" =>
+                        $applicationID,
+
+                    "wo" =>
+                        $permitActivityWo !== ""
+                            ? $permitActivityWo
+                            : null,
+
+                    "customer" =>
+                        $permitActivityCustomer !== ""
+                            ? $permitActivityCustomer
+                            : null,
+
+                    "actionUnix" =>
+                        $lastPermitActionUnix > 0
+                            ? $lastPermitActionUnix
+                            : null
+                ];
             }
 
-            // --------------------------------------------------------
-            // Populate Last Permit Activity
-            // --------------------------------------------------------
-            $lastPermitContactId =
-                (int)(
-                    $lastPermitAction["contactId"] ?? 0
-                );
-
-            $lastPermitActionTypeId =
-                (int)(
-                    $lastPermitAction["actionTypeId"] ?? 0
-                );
-
-            $lastPermitActionName =
-                trim((string)(
-                    $lastPermitAction["actionName"] ?? ""
-                ));
-
-            $lastPermitActionUnix =
-                (int)(
-                    $lastPermitAction["actionUnix"] ?? 0
-                );
-
-            $permitActivityWo =
-                is_array($permitActivityApplication)
-                    ? trim((string)(
-                        $permitActivityApplication["orderChristyNumber"]
-                        ?? ""
-                    ))
-                    : "";
-
-            $permitActivityCustomer =
-                is_array($permitActivityApplication)
-                    ? trim((string)(
-                        $permitActivityApplication["entityName"]
-                        ?? ""
-                    ))
-                    : "";
-
-            $kpi["lastPermitActivity"] = [
-                "contactId" =>
-                    $lastPermitContactId > 0
-                        ? $lastPermitContactId
-                        : null,
-
-                "contactName" =>
-                    $contactName !== ""
-                        ? $contactName
-                        : null,
-
-                "actionTypeId" =>
-                    $lastPermitActionTypeId > 0
-                        ? $lastPermitActionTypeId
-                        : null,
-
-                "actionName" =>
-                    $lastPermitActionName !== ""
-                        ? $lastPermitActionName
-                        : null,
-
-                "applicationID" =>
-                    $applicationID > 0
-                        ? $applicationID
-                        : null,
-
-                "wo" =>
-                    $permitActivityWo !== ""
-                        ? $permitActivityWo
-                        : null,
-
-                "customer" =>
-                    $permitActivityCustomer !== ""
-                        ? $permitActivityCustomer
-                        : null,
-
-                "actionUnix" =>
-                    $lastPermitActionUnix > 0
-                        ? $lastPermitActionUnix
-                        : null
-            ];
+        } catch (Throwable $e) {
+            error_log(
+                "[LAST PERMIT ACTIVITY PROJECTION ERROR] " .
+                $e->getMessage()
+            );
         }
-
-    } catch (Throwable $e) {
-        error_log(
-            "[LAST PERMIT ACTIVITY PROJECTION ERROR] " .
-            $e->getMessage()
-        );
     }
-}
+
+#endregion
 
 #endregion
 
