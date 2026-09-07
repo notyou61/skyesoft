@@ -1333,7 +1333,7 @@ ob_start();
                 <tr>
                     <td class="application-list-heading-cell" colspan="5">
                         <?= renderOpenApplicationsSectionHeading(
-                            'Application List',
+                            'Applications List',
                             $rootDir
                         ) ?>
                     </td>
