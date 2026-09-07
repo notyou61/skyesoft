@@ -3,28 +3,51 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — getDynamicData.php
-//  Version: 1.0.1
-//  Last Updated: 2026-02-08  Codex Tier: 4 — Backend Module
+//  Version: 1.1.0
+//  Last Updated: 2026-09-07  Codex Tier: 4 — Backend Module
 //  Provides: TIS + Weather + KPI + Permits + Permit News + Site Meta
 //  NO Output • NO Loop • NO Exit — Consumed by sse.php only
 // ======================================================================
 
-#region SECTION 0 — Dependencies
+#region SECTION 0 — Dependencies & Core Database Connection
 require_once __DIR__ . '/holidayInterpreter.php';
 require_once __DIR__ . '/utils/envLoader.php';
+require_once __DIR__ . '/utils/openApplicationsReportData.php';
 
+// ─────────────────────────────────────────
+// DATABASE CONNECTION (FILE-WIDE SCOPE)
+// Phase 1A — Establish shared PDO instance
+// ─────────────────────────────────────────
+skyesoftLoadEnv();
+
+$dbHost = getenv('DB_HOST') ?: 'localhost';
+$dbName = getenv('DB_NAME') ?: '';
+$dbUser = getenv('DB_USER') ?: '';
+$dbPass = getenv('DB_PASS') ?: '';
+$dbChar = getenv('DB_CHARSET') ?: 'utf8mb4';
+
+$db = null;
+$dbConnectionError = null;
+
+try {
+    $db = new PDO(
+        "mysql:host={$dbHost};dbname={$dbName};charset={$dbChar}",
+        $dbUser,
+        $dbPass,
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+    );
+} catch (Throwable $e) {
+    $dbConnectionError = $e->getMessage();
+    error_log('[DYNAMIC DB] Connection error: ' . $dbConnectionError);
+}
+
+// ─────────────────────────────────────────
+// IDLE STATE (CONSUMES SHARED DB HANDLE)
+// ─────────────────────────────────────────
 $auth = $SKYE_CONTEXT['auth'] ?? ['authenticated' => false];
-
-// ─────────────────────────────────────────
-// IDLE STATE (CONTACT-BASED)
-// ─────────────────────────────────────────
-
 $contactId = (int)($auth['contactId'] ?? 0);
 $isAuthenticated = $auth['authenticated'] ?? false;
 
-//$idleTimeoutSeconds = 900; // 900 seconds (15 minutes), adjust as needed
-// Use the single source of truth defined in sse.php
-// (constant is already defined by the time this file is required)
 $idleTimeoutSeconds = defined('SKYESOFT_IDLE_TIMEOUT')
     ? SKYESOFT_IDLE_TIMEOUT
     : 900;   // fallback only if somehow loaded outside SSE
@@ -36,80 +59,65 @@ $idle = [
     "lastActivity" => null
 ];
 
+$idleDebug = null;
+
 if ($isAuthenticated && $contactId > 0) {
 
     $lastActivity = null;
     $idleDebug = [
         "contactId" => $contactId,
-        "isAuthenticated" => $isAuthenticated
-    ];
-
-    try {
-
-        // Load environment
-        skyesoftLoadEnv();
-
-        $idleDebug["envCheck"] = [
-            "user_env"    => $_ENV['DB_USER'] ?? null,
-            "pass_env"    => $_ENV['DB_PASS'] ?? null,
-            "user_getenv" => getenv('DB_USER') ?: null,
-            "pass_getenv" => getenv('DB_PASS') ?: null
-        ];
-
-        $dbHost = getenv('DB_HOST') ?: 'localhost';
-        $dbName = getenv('DB_NAME') ?: '';
-        $dbUser = getenv('DB_USER') ?: '';
-        $dbPass = getenv('DB_PASS') ?: '';
-        $dbChar = getenv('DB_CHARSET') ?: 'utf8mb4';
-
-        $idleDebug["env"] = [
+        "isAuthenticated" => $isAuthenticated,
+        "envCheck" => [
+            "dbConfigured"       => (getenv('DB_NAME') !== false),
+            "userConfigured"     => (getenv('DB_USER') !== false),
+            "passwordConfigured" => (getenv('DB_PASS') !== false)
+        ],
+        "env" => [
             "host" => $dbHost,
             "db"   => $dbName,
             "user" => $dbUser
-        ];
+        ]
+    ];
 
-        // DB connection
-        $db = new PDO(
-            "mysql:host={$dbHost};dbname={$dbName};charset={$dbChar}",
-            $dbUser,
-            $dbPass,
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-        );
+    if ($db !== null) {
+        try {
+            // DB identity
+            $identityStmt = $db->query("SELECT DATABASE() as db, USER() as user");
+            $idleDebug["dbIdentity"] = $identityStmt->fetch(PDO::FETCH_ASSOC);
 
-        // DB identity
-        $identityStmt = $db->query("SELECT DATABASE() as db, USER() as user");
-        $idleDebug["dbIdentity"] = $identityStmt->fetch(PDO::FETCH_ASSOC);
+            // Table sample
+            $sampleStmt = $db->query("
+                SELECT contactId, actionUnix
+                FROM tblActions
+                ORDER BY actionUnix DESC
+                LIMIT 5
+            ");
+            $idleDebug["tableSample"] = $sampleStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Table sample
-        $sampleStmt = $db->query("
-            SELECT contactId, actionUnix
-            FROM tblActions
-            ORDER BY actionUnix DESC
-            LIMIT 5
-        ");
-        $idleDebug["tableSample"] = $sampleStmt->fetchAll(PDO::FETCH_ASSOC);
+            // Target query (Corrected schema mapping)
+            $stmt = $db->prepare("
+                SELECT actionUnix
+                FROM tblActions
+                WHERE contactId = :contactId
+                ORDER BY actionUnix DESC
+                LIMIT 1
+            ");
 
-        // Target query
-        $stmt = $db->prepare("
-            SELECT actionUnix
-            FROM tblActions
-            WHERE contactId = :contactId
-            ORDER BY actionUnix DESC
-            LIMIT 1
-        ");
+            $stmt->bindValue(':contactId', $contactId, PDO::PARAM_INT);
+            $stmt->execute();
 
-        $stmt->bindValue(':contactId', $contactId, PDO::PARAM_INT);
-        $stmt->execute();
+            $value = $stmt->fetchColumn();
 
-        $value = $stmt->fetchColumn();
+            $idleDebug["rawQueryResult"] = $value;
 
-        $idleDebug["rawQueryResult"] = $value;
+            $lastActivity = (int)($value ?: 0);
+            $idleDebug["castLastActivity"] = $lastActivity;
 
-        $lastActivity = (int)($value ?: 0);
-        $idleDebug["castLastActivity"] = $lastActivity;
-
-    } catch (Throwable $e) {
-        $idleDebug["error"] = $e->getMessage();
+        } catch (Throwable $e) {
+            $idleDebug["error"] = $e->getMessage();
+        }
+    } else {
+        $idleDebug["error"] = "Database connection unavailable: " . ($dbConnectionError ?? "Unknown error");
     }
 
     // Idle calculation
@@ -182,7 +190,7 @@ $systemRegistry = json_decode(file_get_contents($paths["systemRegistry"]), true)
 $roadmap         = json_decode(file_get_contents($paths["roadmap"]), true);
 
 $kpi            = json_decode(file_get_contents($paths["kpi"]), true);
-$activePermits  = json_decode(file_get_contents($paths["permits"]), true);
+$activePermits  = json_decode(file_get_contents($paths["permits"]), true); // Kept temporarily for comparison/fallback
 $permitNews     = json_decode(file_get_contents($paths["permitNews"]), true);
 
 $tz = new DateTimeZone("America/Phoenix");
@@ -233,11 +241,11 @@ if (file_exists($paths["sentinel"])) {
             "constitutionalViolations" => (int)($sentinelRaw["constitutionalViolations"] ?? 0),
             "governanceStatus"         => $sentinelRaw["governanceStatus"] ?? "unknown"
         ];
+
         // ------------------------------------------------------------
         // Governance Detail Projection (Unresolved Violations Only)
         // Derived from canonical auditResults.json
         // ------------------------------------------------------------
-
         $sentinelMeta["unresolved"] = []; // Always initialize
 
         $shouldProject = (int)($sentinelMeta["unresolvedViolations"] ?? 0) > 0;
@@ -277,10 +285,9 @@ if (file_exists($paths["sentinel"])) {
                                 ];
                             }
 
-                            // Optional: reconcile counts to what we actually projected
+                            // Reconcile counts to what we actually projected
                             $sentinelMeta["unresolvedViolations"] = count($sentinelMeta["unresolved"]);
 
-                            // Optional: derive constitutional count from ruleId (adjust mapping as your constitution defines)
                             $constitutionalRuleIds = [
                                 "criticalArtifactPresence" => true
                             ];
@@ -310,6 +317,7 @@ if (file_exists($paths["sentinel"])) {
                 error_log("[sentinelMeta] auditResults.json missing at: " . ($auditPath ?: "null"));
             }
         }
+
         // Derived metrics (statistical, read-only)
         if ($baselineEstablished && $runCount > 1) {
             $uptimeSeconds = $now - $initialRunUnix;
@@ -320,8 +328,6 @@ if (file_exists($paths["sentinel"])) {
         }
     }
 }
-
-//error_log("SSE READING: " . $paths["sentinel"]);
 
 #endregion
 
@@ -433,8 +439,6 @@ if ($weatherKey === '') {
 }
 
 // ── Decide whether to fetch ──
-// Bootstrap: always fetch if no valid data
-// Refresh: only if stale (≥15 min) AND we have key
 $shouldFetch = $weatherKey !== ''
     && (
         !$weatherValid                       // Bootstrap: no good data → fetch NOW
@@ -464,110 +468,109 @@ if ($shouldFetch) {
     } else {
         $data = json_decode($rawCurrent, true);
 
-    if (
-        is_array($data) &&
-        array_key_exists('cod', $data) &&
-        ((string)$data['cod'] === '200' || (int)$data['cod'] === 200) &&
-        isset($data['main']) && is_array($data['main']) &&
-        array_key_exists('temp', $data['main']) && $data['main']['temp'] !== null
-    ) {
-        error_log("[weather] MAIN SUCCESS PATH — cod = " . $data['cod'] . ", temp = " . $data['main']['temp']);
+        if (
+            is_array($data) &&
+            array_key_exists('cod', $data) &&
+            ((string)$data['cod'] === '200' || (int)$data['cod'] === 200) &&
+            isset($data['main']) && is_array($data['main']) &&
+            array_key_exists('temp', $data['main']) && $data['main']['temp'] !== null
+        ) {
+            error_log("[weather] MAIN SUCCESS PATH — cod = " . $data['cod'] . ", temp = " . $data['main']['temp']);
 
-        // ── SUCCESS PATH ──
-        $sunrise = $data['sys']['sunrise'] ?? null;
-        $sunset  = $data['sys']['sunset']  ?? null;
+            // ── SUCCESS PATH ──
+            $sunrise = $data['sys']['sunrise'] ?? null;
+            $sunset  = $data['sys']['sunset']  ?? null;
 
-        $currentWeather = [
-            'temp'            => round($data['main']['temp']),
-            'condition'       => $data['weather'][0]['description'] ?? 'unknown',
-            'icon'            => $data['weather'][0]['icon']       ?? '04d',
-            'sunrise'         => $sunrise ? date('g:i A', $sunrise) : null,
-            'sunset'          => $sunset  ? date('g:i A', $sunset)  : null,
-            'sunriseUnix'     => $sunrise,
-            'sunsetUnix'      => $sunset,
-            'daylightSeconds' => ($sunrise && $sunset) ? ($sunset - $sunrise) : null,
-            'nightSeconds'    => ($sunrise && $sunset) ? (86400 - ($sunset - $sunrise)) : null,
-            'source'          => 'openweathermap'
-        ];
+            $currentWeather = [
+                'temp'            => round($data['main']['temp']),
+                'condition'       => $data['weather'][0]['description'] ?? 'unknown',
+                'icon'            => $data['weather'][0]['icon']       ?? '04d',
+                'sunrise'         => $sunrise ? date('g:i A', $sunrise) : null,
+                'sunset'          => $sunset  ? date('g:i A', $sunset)  : null,
+                'sunriseUnix'     => $sunrise,
+                'sunsetUnix'      => $sunset,
+                'daylightSeconds' => ($sunrise && $sunset) ? ($sunset - $sunrise) : null,
+                'nightSeconds'    => ($sunrise && $sunset) ? (86400 - ($sunset - $sunrise)) : null,
+                'source'          => 'openweathermap'
+            ];
 
-        $success = true;
+            $success = true;
 
-        // ── Fetch 3-day forecast (best-effort, non-blocking) ──
-        $urlForecast = "https://api.openweathermap.org/data/2.5/forecast?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
-        $rawForecast = @file_get_contents($urlForecast, false, $ctx);
+            // ── Fetch 3-day forecast (best-effort, non-blocking) ──
+            $urlForecast = "https://api.openweathermap.org/data/2.5/forecast?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
+            $rawForecast = @file_get_contents($urlForecast, false, $ctx);
 
-        if ($rawForecast !== false) {
-            $f = json_decode($rawForecast, true);
+            if ($rawForecast !== false) {
+                $f = json_decode($rawForecast, true);
 
-            if (
-                is_array($f) &&
-                isset($f['cod']) &&
-                ((string)$f['cod'] === '200' || (int)$f['cod'] === 200) &&
-                isset($f['list']) && is_array($f['list'])
-            ) {
-                $daily = [];
-                $forecastDays = [];
+                if (
+                    is_array($f) &&
+                    isset($f['cod']) &&
+                    ((string)$f['cod'] === '200' || (int)$f['cod'] === 200) &&
+                    isset($f['list']) && is_array($f['list'])
+                ) {
+                    $daily = [];
+                    $forecastDays = [];
 
-                foreach ($f['list'] as $slot) {
-                    $date = (new DateTime("@{$slot['dt']}"))
-                        ->setTimezone(new DateTimeZone('America/Phoenix'))
-                        ->format('Y-m-d');
+                    foreach ($f['list'] as $slot) {
+                        $date = (new DateTime("@{$slot['dt']}"))
+                            ->setTimezone(new DateTimeZone('America/Phoenix'))
+                            ->format('Y-m-d');
 
-                    if (!isset($daily[$date])) {
-                        $daily[$date] = [
-                            'high' => -INF,
-                            'low'  => INF,
-                            'icon' => null
+                        if (!isset($daily[$date])) {
+                            $daily[$date] = [
+                                'high' => -INF,
+                                'low'  => INF,
+                                'icon' => null
+                            ];
+                        }
+
+                        $daily[$date]['high'] = max($daily[$date]['high'], $slot['main']['temp_max']);
+                        $daily[$date]['low']  = min($daily[$date]['low'],  $slot['main']['temp_min']);
+
+                        // Prefer midday icon
+                        if (date('G', $slot['dt']) >= 11 && date('G', $slot['dt']) <= 14) {
+                            $daily[$date]['icon'] = $slot['weather'][0]['icon'] ?? '04d';
+                        }
+                    }
+
+                    ksort($daily);
+
+                    $phoenix = new DateTime('now', new DateTimeZone('America/Phoenix'));
+                    $phoenix->setTime(0,0,0);
+                    $todayUnix = $phoenix->getTimestamp();
+
+                    $count = 0;
+
+                    foreach ($daily as $date => $d) {
+
+                        $dateUnix = strtotime($date . ' America/Phoenix');
+
+                        if ($dateUnix < $todayUnix) {
+                            continue; // skip yesterday
+                        }
+
+                        if ($count >= 3) {
+                            break;
+                        }
+
+                        $forecastDays[] = [
+                            'dateUnix' => $dateUnix,
+                            'high'     => round($d['high']),
+                            'low'      => round($d['low']),
+                            'icon'     => $d['icon'] ?? '04d'
                         ];
+
+                        $count++;
                     }
 
-                    $daily[$date]['high'] = max($daily[$date]['high'], $slot['main']['temp_max']);
-                    $daily[$date]['low']  = min($daily[$date]['low'],  $slot['main']['temp_min']);
-
-                    // Prefer midday icon
-                    if (date('G', $slot['dt']) >= 11 && date('G', $slot['dt']) <= 14) {
-                        $daily[$date]['icon'] = $slot['weather'][0]['icon'] ?? '04d';
-                    }
+                    error_log("[weather] Forecast populated (" . count($forecastDays) . " days)");
+                } else {
+                    error_log("[weather] Forecast API returned invalid structure");
                 }
-
-                ksort($daily);
-
-                $phoenix = new DateTime('now', new DateTimeZone('America/Phoenix'));
-                $phoenix->setTime(0,0,0);
-                $todayUnix = $phoenix->getTimestamp();
-
-                $count = 0;
-
-                foreach ($daily as $date => $d) {
-
-                    $dateUnix = strtotime($date . ' America/Phoenix');
-
-                    if ($dateUnix < $todayUnix) {
-                        continue; // skip yesterday
-                    }
-
-                    if ($count >= 3) {
-                        break;
-                    }
-
-                    $forecastDays[] = [
-                        'dateUnix' => $dateUnix,
-                        'high'     => round($d['high']),
-                        'low'      => round($d['low']),
-                        'icon'     => $d['icon'] ?? '04d'
-                    ];
-
-                    $count++;
-                }
-
-                error_log("[weather] Forecast populated (" . count($forecastDays) . " days)");
             } else {
-                error_log("[weather] Forecast API returned invalid structure");
+                error_log("[weather] Forecast fetch failed (non-fatal)");
             }
-        } else {
-            error_log("[weather] Forecast fetch failed (non-fatal)");
-        }
-
 
         } else {
             error_log("[weather] current API error — cod=" . ($data['cod'] ?? 'unknown') .
@@ -614,16 +617,12 @@ if ($shouldFetch) {
 
 #region SECTION 3 — Time Context (TIS)
 
-/**
- * Build full time context snapshot
- */
 if (!function_exists('buildTimeContext')) {
     function buildTimeContext(DateTime $dt, array $systemRegistry, string $holidayPath): array
     {
         $nowUnix = (int)$dt->format("U");
         $weekday = (int)$dt->format("N");
 
-        // --- Determine Calendar Type (Holiday > Weekend > Workday) ---
         $holidayState = resolveHolidayState($holidayPath, $dt);
         $isHoliday = $holidayState["isHoliday"];
 
@@ -635,7 +634,6 @@ if (!function_exists('buildTimeContext')) {
             $calendarType = "workday";
         }
 
-        // --- Office Hours ---
         [$startH, $startM] = array_map('intval',
             explode(":", $systemRegistry["schedule"]["officeHours"]["start"])
         );
@@ -650,7 +648,6 @@ if (!function_exists('buildTimeContext')) {
             ((int)$dt->format("i") * 60) +
             ((int)$dt->format("s"));
 
-        // --- Compute Next Valid Work Start ---
         $next = clone $dt;
         if ($nowSecs >= $workEndSecs) {
             $next->modify("+1 day");
@@ -671,7 +668,6 @@ if (!function_exists('buildTimeContext')) {
         $nextUnix = (int)$next->format("U");
         $secondsToNextWork = max(0, $nextUnix - $nowUnix);
 
-        // --- Determine Interval ---
         if ($calendarType === "workday" && $nowSecs >= $workStartSecs && $nowSecs < $workEndSecs) {
             $intervalKey = "worktime";
             $intervalStartUnix = (clone $dt)->setTime($startH, $startM, 0)->format("U");
@@ -688,7 +684,6 @@ if (!function_exists('buildTimeContext')) {
             $intervalEndUnix   = $nextUnix;
             $secondsRemaining  = $secondsToNextWork;
         } else {
-            // Weekend or Holiday
             $intervalKey = $calendarType;
             $intervalStartUnix = $nowUnix;
             $intervalEndUnix   = $nextUnix;
@@ -719,9 +714,6 @@ if (!function_exists('buildTimeContext')) {
     }
 }
 
-/**
- * Public accessor
- */
 if (!function_exists('getTimeContext')) {
     function getTimeContext(DateTimeZone $tz, array $systemRegistry, string $holidayPath): array
     {
@@ -731,9 +723,51 @@ if (!function_exists('getTimeContext')) {
     }
 }
 
-// Note: The final weather safety check has been MOVED to SECTION 4
-// right before assembling $weather — do not keep it here.
+#endregion
 
+#region SECTION 3.A — Active Application Projection (MySQL Database)
+// Phase 1C — Consume authoritative Open Applications via shared function
+$permitList = [];
+$permitProjectionSucceeded = false;
+
+if ($db !== null) {
+    try {
+        $rawApplications = loadOpenApplicationsReportData($db);
+        $permitProjectionSucceeded = true;
+
+        if (is_array($rawApplications)) {
+            foreach ($rawApplications as $app) {
+                $permitList[] = [
+                    "wo"           => (string)($app["orderChristyNumber"] ?? ""),
+                    "customer"     => (string)($app["entityName"] ?? ""),
+                    "jobsite"      => (string)($app["locationName"] ?? ""),
+                    "jurisdiction" => (string)($app["applicationJurisdiction"] ?? ""),
+                    "status"       => (string)($app["applicationStatusName"] ?? "")
+                ];
+            }
+        }
+    } catch (Throwable $e) {
+        error_log("[ACTIVE PERMITS DB PROJECTION ERROR] " . $e->getMessage());
+    }
+}
+
+// Fallback to legacy JSON source ONLY if the database query actually failed
+if (
+    !$permitProjectionSucceeded &&
+    isset($activePermits["workOrders"]) &&
+    is_array($activePermits["workOrders"])
+) {
+    error_log("[ACTIVE PERMITS] DB Query failed — Falling back to permitRegistry.json");
+    foreach ($activePermits["workOrders"] as $wo) {
+        $permitList[] = [
+            "wo"           => $wo["workOrder"] ?? "",
+            "customer"     => $wo["customer"] ?? "",
+            "jobsite"      => $wo["jobsite"] ?? "",
+            "jurisdiction" => $wo["jurisdiction"] ?? "",
+            "status"       => $wo["permit"]["status"] ?? ""
+        ];
+    }
+}
 #endregion
 
 #region SECTION 4 — Build Time Context + Weather + Final Payload
@@ -743,8 +777,6 @@ $timeContext = getTimeContext($tz, $systemRegistry, $paths["holiday"]);
 
 // ─────────────────────────────────────────────
 // FINAL WEATHER SAFETY BARRIER
-// Ensures weather never emits as 'openweathermap-unavailable' if any
-// valid cache exists. Runs immediately before payload assembly.
 // ─────────────────────────────────────────────
 if (!$weatherValid && file_exists($cachePath)) {
     $cached = json_decode(file_get_contents($cachePath), true);
@@ -756,27 +788,8 @@ if (!$weatherValid && file_exists($cachePath)) {
     }
 }
 
-// Now safe to assemble final weather structure
 $weather = $currentWeather;
 $weather['forecast'] = $forecastDays;
-
-// ------------------------------------------------------------
-// Normalize active permits into flat array for frontend
-// Source: permitRegistry.json → workOrders (map)
-// ------------------------------------------------------------
-$permitList = [];
-
-if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"])) {
-    foreach ($activePermits["workOrders"] as $wo) {
-        $permitList[] = [
-            "wo"           => $wo["workOrder"] ?? "",
-            "customer"     => $wo["customer"] ?? "",
-            "jobsite"      => $wo["jobsite"] ?? "",
-            "jurisdiction" => $wo["jurisdiction"] ?? "",
-            "status"       => $wo["permit"]["status"] ?? ""
-        ];
-    }
-}
 
 // ------------------------------------------------------------
 // Site Meta — Canonical (Unix-only, UI-aligned)
@@ -796,9 +809,8 @@ $siteMeta = [
     "updateOccurred"  => (bool)($versions["system"]["updateOccurred"] ?? false)
 ];
 
-// Derived, presentation-only (non-authoritative)
 if ($lastUpdateUnix > 0) {
-    $dt = new DateTime('@' . $lastUpdateUnix); // UTC baseline
+    $dt = new DateTime('@' . $lastUpdateUnix);
     $dt->setTimezone(new DateTimeZone('America/Phoenix'));
 
     $siteMeta["lastUpdateLocal"] = $dt->format('Y-m-d h:i:s A');
@@ -821,18 +833,12 @@ $payload = [
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta"        => $siteMeta,
     "idle"            => $idle,
-    "idleDebug"       => $idleDebug ?? null,
-    // Sentinel Runtime Meta
+    "idleDebug"       => $idleDebug,
     "sentinelMeta"    => $sentinelMeta
 ];
 
 #endregion
 
-#region SECTION 5 — Output for SSE (Flush every update) (portions commented out)
-//header('Content-Type: application/json');
-//echo json_encode($payload, JSON_PRETTY_PRINT);
-//echo "data: " . json_encode($payload) . "\n\n";
-//@ob_flush();
-//flush();
+#region SECTION 5 — Output for SSE
 return $payload;
 #endregion
