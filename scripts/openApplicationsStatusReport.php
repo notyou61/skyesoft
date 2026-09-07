@@ -2076,7 +2076,11 @@ try {
         'Checkpoint 4 — report HTML rendered.'
     );
 
-    $pdfFilename = 'Open-Permit-Applications-Status-Report.pdf';
+    // Build dated PDF filename (Phoenix report date)
+    $pdfFilename = sprintf(
+        'Open Applications Status Report (%s).pdf',
+        date('m-d-Y', $reportGeneratedUnix)
+    );
     $pdfContent = $pdf->Output(
         '',
         \Mpdf\Output\Destination::STRING_RETURN
