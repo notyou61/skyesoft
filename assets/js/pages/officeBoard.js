@@ -1043,35 +1043,27 @@ const ActivePermitsCard = {
             ? permits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}|${p.customer}|${p.jobsite}`).join('::')
             : 'empty';
 
-        // ── Common footer rendering logic (KPI-authoritative) ──
+        // ── Common footer rendering logic (Active Permits authoritative) ──
         const renderFooter = () => {
             if (!footer) return;
 
-            const updatedUnix = payload?.kpi?.meta?.generatedOn;
+            // Active Permits are now supplied dynamically from the database.
+            const totalPermits = permits.length;
 
-            // Prefer SoT™ total count
-            const totalPermits =
-                payload?.permitRegistry?.totalCount ??
-                payload?.kpi?.atAGlance?.totalActive ??
-                permits.length;
+            // SSE time represents the current dynamic snapshot.
+            const updatedUnix = payload?.timeDateArray?.currentUnixTime;
 
             if (!updatedUnix) {
                 footer.innerHTML = renderLiveFooter({
-                    text: `${totalPermits} total permit${totalPermits !== 1 ? 's' : ''} • Timestamp unavailable`
+                    text: `${totalPermits} active permit${totalPermits !== 1 ? 's' : ''} • Timestamp unavailable`
                 });
                 return;
             }
 
-            const nowUnix = payload?.timeDateArray?.currentUnixTime;
-
-            const relativeTime = nowUnix
-                ? humanizeRelativeTime(updatedUnix, nowUnix)
-                : formatTimestamp(updatedUnix);
-
             const absoluteTime = formatTimestamp(updatedUnix);
 
             footer.innerHTML = renderLiveFooter({
-                text: `${totalPermits} total permit${totalPermits !== 1 ? 's' : ''} • Updated ${absoluteTime} (${relativeTime})`
+                text: `${totalPermits} active permit${totalPermits !== 1 ? 's' : ''} • Updated ${absoluteTime}`
             });
         };
 
@@ -1225,7 +1217,7 @@ const KPICard = {
                         <span aria-hidden="true">📌</span> At a Glance
                     </div>
                     <div class="entry kpi-row kpi-total">
-                        <span>📦 Total Permits</span>
+                        <span>📦 Active Permits</span>
                         <strong id="kpiTotalPermits">—</strong>
                     </div>
                     ${PERMIT_STATUSES.map(status => `
