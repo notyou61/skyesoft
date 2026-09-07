@@ -809,6 +809,7 @@ $kpi = [
         "averageTurnaroundDays" => 0
     ],
 
+    // Legacy payload key retained temporarily for compatibility
     "statusBreakdown" => [],
 
     "stageBreakdown" => [],
@@ -817,6 +818,14 @@ $kpi = [
 
     "performance" => [
         "averageNotesPerPermit" => 0
+    ],
+
+    "workload" => [
+        "oldestOpenApplication" => null,
+        "applicationsWithOutstandingFees" => 0,
+        "totalOutstandingFees" => 0.00,
+        "applicationsWithActiveRequirements" => 0,
+        "mostActiveJurisdiction" => null
     ]
 ];
 
@@ -942,6 +951,7 @@ if (
 
         if ($outstandingFees > 0) {
             $applicationsWithOutstandingFees++;
+
             $totalOutstandingFees +=
                 $outstandingFees;
         }
@@ -970,6 +980,9 @@ if (
         }
     }
 
+    // ------------------------------------------------------------
+    // Average Open Duration
+    // ------------------------------------------------------------
     $averageOpenDays =
         $applicationCount > 0
             ? round(
@@ -978,6 +991,9 @@ if (
             )
             : 0;
 
+    // ------------------------------------------------------------
+    // Average Notes per Application
+    // ------------------------------------------------------------
     $averageNotes =
         $applicationCount > 0
             ? round(
@@ -986,20 +1002,69 @@ if (
             )
             : 0;
 
+    // ------------------------------------------------------------
+    // Most Active Jurisdiction
+    // ------------------------------------------------------------
+    $mostActiveJurisdiction = null;
+
+    if (!empty($jurisdictionCounts)) {
+        arsort($jurisdictionCounts);
+
+        $jurisdictionName =
+            (string)array_key_first($jurisdictionCounts);
+
+        $mostActiveJurisdiction = [
+            "jurisdiction" =>
+                $jurisdictionName,
+
+            "count" =>
+                (int)$jurisdictionCounts[$jurisdictionName]
+        ];
+    }
+
+    // ------------------------------------------------------------
+    // At-a-Glance KPI Projection
+    // ------------------------------------------------------------
     $kpi["atAGlance"]["totalActive"] =
         $applicationCount;
 
     $kpi["atAGlance"]["averageTurnaroundDays"] =
         $averageOpenDays;
 
+    // ------------------------------------------------------------
+    // Stage / Status KPI Projection
+    // ------------------------------------------------------------
     $kpi["stageBreakdown"] =
         $stageBreakdown;
 
     $kpi["stageStatusBreakdown"] =
         $stageStatusBreakdown;
 
+    // ------------------------------------------------------------
+    // Performance KPI Projection
+    // ------------------------------------------------------------
     $kpi["performance"]["averageNotesPerPermit"] =
         $averageNotes;
+
+    // ------------------------------------------------------------
+    // Workload KPI Projection
+    // ------------------------------------------------------------
+    $kpi["workload"] = [
+        "oldestOpenApplication" =>
+            $oldestApplication,
+
+        "applicationsWithOutstandingFees" =>
+            $applicationsWithOutstandingFees,
+
+        "totalOutstandingFees" =>
+            round($totalOutstandingFees, 2),
+
+        "applicationsWithActiveRequirements" =>
+            $applicationsWithActiveRequirements,
+
+        "mostActiveJurisdiction" =>
+            $mostActiveJurisdiction
+    ];
 }
 
 #endregion
