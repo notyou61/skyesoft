@@ -230,6 +230,11 @@ function renderOpenApplicationsSectionHeading(
         'Application Notes' => 'notes.png'
     ];
 
+    // Normalize visible icon sizes (source artwork has unequal padding)
+    $iconSizeByTitle = [
+        'Permit Application Process' => 10
+    ];
+
     // Resolve the configured safe local icon
     $iconFile = basename(
         $iconFilesByTitle[$title] ?? 'document.png'
@@ -241,6 +246,7 @@ function renderOpenApplicationsSectionHeading(
         : '';
 
     $iconHtml = '';
+    $iconSize = $iconSizeByTitle[$title] ?? 13;
 
     // Render local icon when available
     if (
@@ -251,13 +257,15 @@ function renderOpenApplicationsSectionHeading(
             'file://' . $iconPath;
 
         $iconHtml = sprintf(
-            '<img src="%s" width="10" height="10" ' .
-            'style="margin-right:4px;vertical-align:-1px;" alt="">',
+            '<img src="%s" width="%d" height="%d" ' .
+            'style="margin-right:4px;vertical-align:-2px;" alt="">',
             htmlspecialchars(
                 'file://' . $iconPath,
                 ENT_QUOTES,
                 'UTF-8'
-            )
+            ),
+            $iconSize,
+            $iconSize
         );
     }
 
