@@ -223,6 +223,7 @@ function renderOpenApplicationsSectionHeading(
     // Define report icons (single source of truth)
     $iconFilesByTitle = [
         'Report Summary' => 'memo.png',
+        'Application List' => 'clipboard.png',
         'Permit Application Process' => 'integration.png',
         'Permit Fees' => 'document.png',
         'Active Special Requirements' => 'warning.png',
@@ -310,6 +311,26 @@ function formatOpenApplicationDuration(
             $calendarDays,
             $calendarDays === 1 ? '' : 's'
         );
+}
+
+function formatOpenApplicationListDuration(
+    array $application,
+    int $reportGeneratedUnix
+): string {
+    $receivedUnix = $application['applicationCreatedUnix'] ?? null;
+
+    if (!is_numeric($receivedUnix) || (int)$receivedUnix <= 0) {
+        return 'Not Available';
+    }
+
+    $duration = formatOpenApplicationDuration(
+        $application,
+        $reportGeneratedUnix
+    );
+
+    return str_contains($duration, 'cannot be calculated')
+        ? 'Not Available'
+        : $duration;
 }
 
 function formatOpenApplicationWorkflowPosition(
@@ -799,6 +820,8 @@ $recordReportAction = static function () use (
                 $reportFingerprint,
             'summarySource' =>
                 $reportSummarySource,
+            'applicationListIncluded' =>
+                true,
             'workflowIncluded' =>
                 true,
             'specialRequirementsIncluded' =>
@@ -821,6 +844,8 @@ $recordReportAction = static function () use (
                 'pdf',
             'summarySource' =>
                 $reportSummarySource,
+            'applicationListIncluded' =>
+                true,
             'workflowIncluded' =>
                 true,
             'specialRequirementsIncluded' =>
@@ -894,6 +919,12 @@ ob_start();
             page-break-inside: avoid;
         }
 
+        .application-list-section {
+            margin: 0 0 9px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
         .section-heading {
             margin: 0 0 3px;
             padding: 0 0 2px;
@@ -945,6 +976,7 @@ ob_start();
         }
 
         .workflow-table,
+        .application-list-table,
         .fee-breakdown-table,
         .fee-ledger-table,
         .requirement-table,
@@ -955,6 +987,7 @@ ob_start();
         }
 
         .workflow-table tr,
+        .application-list-table tr,
         .fee-breakdown-table tr,
         .fee-ledger-table tr,
         .requirement-table tr,
@@ -964,6 +997,8 @@ ob_start();
 
         .workflow-table th,
         .workflow-table td,
+        .application-list-table th,
+        .application-list-table td,
         .fee-breakdown-table th,
         .fee-breakdown-table td,
         .fee-ledger-table th,
@@ -1002,6 +1037,36 @@ ob_start();
 
         .workflow-table td.workflow-detail {
             width: 76%;
+        }
+
+        .application-list-table th {
+            color: #333;
+            font-size: 8px;
+            background: #e7eef8;
+        }
+
+        .application-list-table td {
+            color: #111;
+            font-size: 8.5px;
+            background: #fff;
+        }
+
+        .application-list-table .application-list-balance {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .application-list-table .application-list-due {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+
+        .application-list-table .application-list-badge {
+            display: inline-block;
+            padding: 1px 4px;
+            color: #fff;
+            background: #b91c1c;
+            border-radius: 2px;
         }
 
         .workflow-description {
@@ -1239,6 +1304,101 @@ ob_start();
             ) ?>
         </div>
     </div>
+
+    <?php if ($applicationCount > 0): ?>
+        <div class="application-list-section" style="page-break-inside:avoid;">
+            <?= renderOpenApplicationsSectionHeading(
+                'Application List',
+                $rootDir
+            ) ?>
+
+            <table class="application-list-table">
+                <thead>
+                    <tr>
+                        <th style="width:25%;">Application Name</th>
+                        <th style="width:18%;">Jurisdiction Application #</th>
+                        <th style="width:22%;">Stage - Status</th>
+                        <th style="width:21%;">Permit Duration</th>
+                        <th style="width:14%;text-align:right;">Outstanding Fees Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($applications as $listApplication): ?>
+                        <?php
+                        $outstandingFees = is_numeric(
+                            $listApplication[
+                                'applicationFeeTotalOutstanding'
+                            ] ?? null
+                        )
+                            ? round((float)$listApplication[
+                                'applicationFeeTotalOutstanding'
+                            ], 2)
+                            : null;
+                        $hasOutstandingFees =
+                            $outstandingFees !== null &&
+                            $outstandingFees > 0;
+                        $stageStatus = sprintf(
+                            '%s - %s',
+                            formatOpenApplicationsReportValue(
+                                $listApplication[
+                                    'applicationStageName'
+                                ] ?? null
+                            ),
+                            formatOpenApplicationsReportValue(
+                                $listApplication[
+                                    'applicationStatusName'
+                                ] ?? null
+                            )
+                        );
+                        ?>
+                        <tr>
+                            <td><?= escapeOpenApplicationsReportValue(
+                                formatOpenApplicationsReportValue(
+                                    $listApplication[
+                                        'applicationTitle'
+                                    ] ?? null
+                                )
+                            ) ?></td>
+                            <td><?= escapeOpenApplicationsReportValue(
+                                formatOpenApplicationsReportValue(
+                                    $listApplication[
+                                        'applicationNumber'
+                                    ] ?? null
+                                )
+                            ) ?></td>
+                            <td><?= escapeOpenApplicationsReportValue(
+                                $stageStatus
+                            ) ?></td>
+                            <td><?= escapeOpenApplicationsReportValue(
+                                formatOpenApplicationListDuration(
+                                    $listApplication,
+                                    $reportGeneratedUnix
+                                )
+                            ) ?></td>
+                            <td class="application-list-balance <?=
+                                $hasOutstandingFees
+                                    ? 'application-list-due'
+                                    : ''
+                            ?>">
+                                <?php if ($outstandingFees === null): ?>
+                                    Not Available
+                                <?php elseif ($hasOutstandingFees): ?>
+                                    <span class="application-list-badge">
+                                        $<?= number_format(
+                                            $outstandingFees,
+                                            2
+                                        ) ?> Due
+                                    </span>
+                                <?php else: ?>
+                                    $0.00
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
 
     <?php if ($applicationCount === 0): ?>
         <div class="no-applications">
