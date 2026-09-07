@@ -1089,8 +1089,10 @@ $systemActivity = [
         "lastActionUnix" => null
     ],
 
-    // No authoritative login-history source has been established yet.
-    "lastLogin" => null
+    "lastLogin" => [
+        "contactId" => null,
+        "loginUnix" => null
+    ]
 ];
 
 if ($db !== null) {
@@ -1186,6 +1188,43 @@ if ($db !== null) {
             $lastActionUnix > 0
                 ? $lastActionUnix
                 : null;
+
+        // ------------------------------------------------------------
+        // Most Recent Login
+        // actionTypeId 1 = auth.session.login
+        // ------------------------------------------------------------
+        $lastLoginStmt = $db->query("
+            SELECT
+                contactId,
+                actionUnix
+            FROM tblActions
+            WHERE actionTypeId = 1
+            ORDER BY actionUnix DESC
+            LIMIT 1
+        ");
+
+        $lastLogin =
+            $lastLoginStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (is_array($lastLogin)) {
+            $loginContactId =
+                (int)($lastLogin["contactId"] ?? 0);
+
+            $loginUnix =
+                (int)($lastLogin["actionUnix"] ?? 0);
+
+            $systemActivity["lastLogin"] = [
+                "contactId" =>
+                    $loginContactId > 0
+                        ? $loginContactId
+                        : null,
+
+                "loginUnix" =>
+                    $loginUnix > 0
+                        ? $loginUnix
+                        : null
+            ];
+        }
 
     } catch (Throwable $e) {
         error_log(
