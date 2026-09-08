@@ -1689,15 +1689,79 @@ const PermitNewsCard = {
         this.instance.content.innerHTML = `
             <div class="highlights-grid">
                 <div class="highlights-col">
-                    <div class="entry section-header">🌐 Latest Permit News</div>
+
+                    <div class="entry section-header">
+                        🌐 Latest Permit News
+                    </div>
+
                     <div class="entry" id="permitNewsEntry">
                         <div class="entry-title" id="permitNewsHeadline">
                             Permit News
                         </div>
+
                         <div class="entry-body" id="permitNewsBody">
                             —
                         </div>
                     </div>
+
+                    <div class="entry section-header">
+                        📊 Permit Snapshot
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Active Applications
+                        </div>
+                        <div class="entry-body" id="permitNewsActiveCount">
+                            —
+                        </div>
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Oldest Open Application
+                        </div>
+                        <div class="entry-body" id="permitNewsOldestOpen">
+                            —
+                        </div>
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Outstanding Fees
+                        </div>
+                        <div class="entry-body" id="permitNewsOutstandingFees">
+                            —
+                        </div>
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Active Requirements
+                        </div>
+                        <div class="entry-body" id="permitNewsActiveRequirements">
+                            —
+                        </div>
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Most Active Jurisdiction
+                        </div>
+                        <div class="entry-body" id="permitNewsJurisdiction">
+                            —
+                        </div>
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Stage Mix
+                        </div>
+                        <div class="entry-body" id="permitNewsStageMix">
+                            —
+                        </div>
+                    </div>
+
                 </div>
             </div>
         `;
@@ -1811,6 +1875,106 @@ const PermitNewsCard = {
 
             entryEl.dataset.storyType =
                 meta.storyType || 'general';
+        }
+
+        // --------------------------------------------------------
+        // Permit Snapshot
+        // --------------------------------------------------------
+
+        const kpi =
+            payload?.kpi || {};
+
+        const workload =
+            kpi.workload || {};
+
+        const activeCountEl =
+            this.instance.root.querySelector(
+                '#permitNewsActiveCount'
+            );
+
+        const oldestOpenEl =
+            this.instance.root.querySelector(
+                '#permitNewsOldestOpen'
+            );
+
+        const outstandingFeesEl =
+            this.instance.root.querySelector(
+                '#permitNewsOutstandingFees'
+            );
+
+        const activeRequirementsEl =
+            this.instance.root.querySelector(
+                '#permitNewsActiveRequirements'
+            );
+
+        const jurisdictionEl =
+            this.instance.root.querySelector(
+                '#permitNewsJurisdiction'
+            );
+
+        const stageMixEl =
+            this.instance.root.querySelector(
+                '#permitNewsStageMix'
+            );
+
+        if (activeCountEl) {
+            activeCountEl.textContent =
+                `${kpi?.atAGlance?.totalActive ?? 0}`;
+        }
+
+        if (oldestOpenEl) {
+
+            const oldest =
+                workload.oldestOpenApplication;
+
+            oldestOpenEl.textContent =
+                oldest
+                    ? `WO ${oldest.wo} — ${oldest.ageDays} days`
+                    : 'None';
+        }
+
+        if (outstandingFeesEl) {
+
+            const feeCount =
+                workload.applicationsWithOutstandingFees ?? 0;
+
+            const feeTotal =
+                Number(
+                    workload.totalOutstandingFees ?? 0
+                );
+
+            outstandingFeesEl.textContent =
+                `${feeCount} application${feeCount === 1 ? '' : 's'} — $${feeTotal.toFixed(2)}`;
+        }
+
+        if (activeRequirementsEl) {
+            activeRequirementsEl.textContent =
+                `${workload.applicationsWithActiveRequirements ?? 0}`;
+        }
+
+        if (jurisdictionEl) {
+
+            const jurisdiction =
+                workload.mostActiveJurisdiction;
+
+            jurisdictionEl.textContent =
+                jurisdiction?.jurisdiction
+                    ? `${jurisdiction.jurisdiction} — ${jurisdiction.count}`
+                    : '—';
+        }
+
+        if (stageMixEl) {
+
+            const stages =
+                kpi.stageBreakdown || {};
+
+            stageMixEl.textContent =
+                Object.entries(stages)
+                    .map(
+                        ([stage, count]) =>
+                            `${count} ${stage}`
+                    )
+                    .join(' • ') || '—';
         }
 
         // --------------------------------------------------------
