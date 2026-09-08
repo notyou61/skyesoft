@@ -1578,22 +1578,38 @@ if (
     }
 }
 
-// ----------------------------------------------------------------------
+// ======================================================================
 // Default Output
-// ----------------------------------------------------------------------
+// ======================================================================
+
 $permitNews =
     is_array($currentPermitNews)
         ? $currentPermitNews
         : [
             "meta" => [
-                "source"        => "database-ai",
-                "type"          => "ephemeral-derived-state",
-                "generatedAt"   => null,
-                "signature"     => null,
-                "storyType"     => "general",
-                "eventUnix"     => null,
-                "isRecentEvent" => false,
-                "celebrate"     => false
+                "source" =>
+                    "database-ai",
+
+                "type" =>
+                    "ephemeral-derived-state",
+
+                "generatedAt" =>
+                    null,
+
+                "signature" =>
+                    null,
+
+                "storyType" =>
+                    "general",
+
+                "eventUnix" =>
+                    null,
+
+                "isRecentEvent" =>
+                    false,
+
+                "celebrate" =>
+                    false
             ],
 
             "headline" => [
@@ -1955,9 +1971,9 @@ if (
             null
     ];
 
-    // ------------------------------------------------------------------
+    // ==================================================================
     // Recent Event Facts
-    // ------------------------------------------------------------------
+    // ==================================================================
 
     if (
         $permitStateChangeIsRecent &&
@@ -2176,7 +2192,7 @@ if (
     }
 
     // ==================================================================
-    // Build AI Prompt from Deterministic Facts Only
+    // Build Verified Facts JSON
     // ==================================================================
 
     $permitNewsFactsJson =
@@ -2186,41 +2202,65 @@ if (
             JSON_UNESCAPED_UNICODE
         );
 
-    $permitNewsPrompt = <<<PROMPT
-Create the current Skyesoft Permit News item using ONLY the verified facts below.
+    if ($permitNewsFactsJson === false) {
 
-This is an internal office bulletin-board news card.
+        error_log(
+            "[PERMIT NEWS FACTS ERROR] Unable to encode Permit News facts."
+        );
 
-Rules:
-- Do not invent facts.
-- Do not predict outcomes.
-- Do not assign blame or intent.
-- Do not exaggerate urgency.
-- Prefer a recent verified stage/status transition if recentStateChange is present.
-- A recent event may be highlighted only if it occurred within the last 24 hours.
-- If there is no recent event, create a useful current operational news item from the active permit facts.
-- Vary the operational angle when generating routine news so the card does not become repetitive.
-- If the verified status is Approved, Issued, or Finaled, make the tone appropriately upbeat and festive while remaining professional.
-- Keep the headline concise.
-- Keep the body to 1 or 2 short sentences.
-- Do not mention that you are an AI.
-- Do not include markdown.
-- Return ONLY valid JSON in exactly this structure:
-
-{
-  "headline": "string",
-  "body": "string"
-}
-
-Verified permit facts:
-{$permitNewsFactsJson}
-PROMPT;
+        $permitNewsFactsJson =
+            "{}";
+    }
 
     // ==================================================================
-    // AI Generation Through Existing askOpenAI.php
+    // Load Governed Permit News Prompt
     // ==================================================================
 
     try {
+
+        $permitNewsPromptPath =
+            dirname(__DIR__) .
+            "/codex/prompts/permitNewsPrompt.prompt.md";
+
+        if (
+            !file_exists($permitNewsPromptPath) ||
+            !is_readable($permitNewsPromptPath)
+        ) {
+            throw new RuntimeException(
+                "Permit News prompt file is unavailable."
+            );
+        }
+
+        $permitNewsPromptTemplate =
+            file_get_contents(
+                $permitNewsPromptPath
+            );
+
+        if (
+            $permitNewsPromptTemplate === false ||
+            trim($permitNewsPromptTemplate) === ""
+        ) {
+            throw new RuntimeException(
+                "Permit News prompt file is empty."
+            );
+        }
+
+        // ==============================================================
+        // Append Verified Permit Facts
+        // ==============================================================
+
+        $permitNewsPrompt =
+            rtrim(
+                $permitNewsPromptTemplate
+            )
+            .
+            "\n\nVERIFIED PERMIT NEWS FACTS:\n"
+            .
+            $permitNewsFactsJson;
+
+        // ==================================================================
+        // AI Generation Through Existing askOpenAI.php
+        // ==================================================================
 
         $permitNewsApiUrl =
             "https://www.skyelighting.com/skyesoft/api/askOpenAI.php";
@@ -2234,6 +2274,12 @@ PROMPT;
             curl_init(
                 $permitNewsApiUrl
             );
+
+        if ($permitNewsCurl === false) {
+            throw new RuntimeException(
+                "Unable to initialize Permit News AI request."
+            );
+        }
 
         curl_setopt_array(
             $permitNewsCurl,
@@ -2272,11 +2318,19 @@ PROMPT;
         if (
             $permitNewsApiRaw === false
         ) {
-            throw new RuntimeException(
-                "askOpenAI.php request failed: " .
+
+            $permitNewsCurlError =
                 curl_error(
                     $permitNewsCurl
-                )
+                );
+
+            curl_close(
+                $permitNewsCurl
+            );
+
+            throw new RuntimeException(
+                "askOpenAI.php request failed: " .
+                $permitNewsCurlError
             );
         }
 
@@ -2288,8 +2342,9 @@ PROMPT;
                 )
             );
 
-        $permitNewsCurl =
-            null;
+        curl_close(
+            $permitNewsCurl
+        );
 
         if (
             $permitNewsHttpCode !== 200
@@ -2334,9 +2389,9 @@ PROMPT;
             );
         }
 
-        // --------------------------------------------------------------
+        // ==================================================================
         // Remove Optional Markdown JSON Fence Defensively
-        // --------------------------------------------------------------
+        // ==================================================================
 
         $permitNewsAiText =
             preg_replace(
@@ -2476,22 +2531,39 @@ PROMPT;
         // Persist Ephemeral Current News
         // ==================================================================
 
-        file_put_contents(
-            $permitNewsPath,
+        $permitNewsEncoded =
             json_encode(
                 $permitNews,
                 JSON_PRETTY_PRINT |
                 JSON_UNESCAPED_SLASHES |
                 JSON_UNESCAPED_UNICODE
-            ),
-            LOCK_EX
-        );
+            );
+
+        if ($permitNewsEncoded === false) {
+            throw new RuntimeException(
+                "Unable to encode Permit News output."
+            );
+        }
+
+        $permitNewsWriteResult =
+            file_put_contents(
+                $permitNewsPath,
+                $permitNewsEncoded,
+                LOCK_EX
+            );
+
+        if ($permitNewsWriteResult === false) {
+            throw new RuntimeException(
+                "Unable to persist Permit News output."
+            );
+        }
 
     } catch (Throwable $e) {
 
-        // --------------------------------------------------------------
-        // Preserve Last Valid Permit News on AI Failure
-        // --------------------------------------------------------------
+        // ==================================================================
+        // Preserve Last Valid Permit News on AI / Prompt Failure
+        // ==================================================================
+
         error_log(
             "[PERMIT NEWS AI ERROR] " .
             $e->getMessage()
