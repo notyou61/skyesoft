@@ -2221,7 +2221,7 @@ if (
     // Load Governed Permit News Prompt
     // ==================================================================
 
-    try {
+        try {
 
         // ==================================================================
         // Load Governed Permit News Prompt
@@ -2290,7 +2290,9 @@ if (
                 JSON_UNESCAPED_UNICODE
             );
 
-        if ($permitNewsRequestJson === false) {
+        if (
+            $permitNewsRequestJson === false
+        ) {
             throw new RuntimeException(
                 "Unable to encode Permit News AI request."
             );
@@ -2301,7 +2303,9 @@ if (
                 $permitNewsApiUrl
             );
 
-        if ($permitNewsCurl === false) {
+        if (
+            $permitNewsCurl === false
+        ) {
             throw new RuntimeException(
                 "Unable to initialize Permit News AI request."
             );
@@ -2337,7 +2341,9 @@ if (
                 $permitNewsCurl
             );
 
-        if ($permitNewsApiRaw === false) {
+        if (
+            $permitNewsApiRaw === false
+        ) {
 
             $permitNewsCurlError =
                 curl_error(
@@ -2564,6 +2570,11 @@ if (
                     ? $latestPermitStateUnix
                     : null,
 
+            "stateWatermarkUnix" =>
+                $latestPermitStateUnix > 0
+                    ? $latestPermitStateUnix
+                    : null,
+
             "headline" =>
                 $permitNewsHeadline,
 
@@ -2615,6 +2626,11 @@ if (
 
                 "eventUnix" =>
                     $permitStateChangeIsRecent
+                        ? $latestPermitStateUnix
+                        : null,
+
+                "stateWatermarkUnix" =>
+                    $latestPermitStateUnix > 0
                         ? $latestPermitStateUnix
                         : null,
 
