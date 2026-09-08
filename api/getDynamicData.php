@@ -2218,6 +2218,10 @@ if (
 
     try {
 
+        // ==================================================================
+        // Load Governed Permit News Prompt
+        // ==================================================================
+
         $permitNewsPromptPath =
             dirname(__DIR__) .
             "/codex/prompts/permitNewsPrompt.prompt.md";
@@ -2227,7 +2231,8 @@ if (
             !is_readable($permitNewsPromptPath)
         ) {
             throw new RuntimeException(
-                "Permit News prompt file is unavailable."
+                "Permit News prompt file is unavailable at: " .
+                $permitNewsPromptPath
             );
         }
 
@@ -2245,9 +2250,9 @@ if (
             );
         }
 
-        // ==============================================================
+        // ==================================================================
         // Append Verified Permit Facts
-        // ==============================================================
+        // ==================================================================
 
         $permitNewsPrompt =
             rtrim(
@@ -2266,9 +2271,25 @@ if (
             "https://www.skyelighting.com/skyesoft/api/askOpenAI.php";
 
         $permitNewsRequest = [
-            "input" =>
+            "type" =>
+                "structured",
+
+            "userQuery" =>
                 $permitNewsPrompt
         ];
+
+        $permitNewsRequestJson =
+            json_encode(
+                $permitNewsRequest,
+                JSON_UNESCAPED_SLASHES |
+                JSON_UNESCAPED_UNICODE
+            );
+
+        if ($permitNewsRequestJson === false) {
+            throw new RuntimeException(
+                "Unable to encode Permit News AI request."
+            );
+        }
 
         $permitNewsCurl =
             curl_init(
@@ -2302,11 +2323,7 @@ if (
                     ],
 
                 CURLOPT_POSTFIELDS =>
-                    json_encode(
-                        $permitNewsRequest,
-                        JSON_UNESCAPED_SLASHES |
-                        JSON_UNESCAPED_UNICODE
-                    )
+                    $permitNewsRequestJson
             ]
         );
 
@@ -2315,9 +2332,7 @@ if (
                 $permitNewsCurl
             );
 
-        if (
-            $permitNewsApiRaw === false
-        ) {
+        if ($permitNewsApiRaw === false) {
 
             $permitNewsCurlError =
                 curl_error(
@@ -2351,13 +2366,23 @@ if (
         ) {
             throw new RuntimeException(
                 "askOpenAI.php returned HTTP " .
-                $permitNewsHttpCode
+                $permitNewsHttpCode .
+                ". Response: " .
+                substr(
+                    (string)$permitNewsApiRaw,
+                    0,
+                    500
+                )
             );
         }
 
+        // ==================================================================
+        // Decode askOpenAI.php Response Envelope
+        // ==================================================================
+
         $permitNewsApiResponse =
             json_decode(
-                $permitNewsApiRaw,
+                (string)$permitNewsApiRaw,
                 true
             );
 
@@ -2367,7 +2392,36 @@ if (
             )
         ) {
             throw new RuntimeException(
-                "askOpenAI.php returned invalid JSON."
+                "askOpenAI.php returned invalid JSON. Response: " .
+                substr(
+                    (string)$permitNewsApiRaw,
+                    0,
+                    500
+                )
+            );
+        }
+
+        if (
+            array_key_exists(
+                "success",
+                $permitNewsApiResponse
+            ) &&
+            $permitNewsApiResponse["success"] === false
+        ) {
+
+            $permitNewsApiError =
+                trim(
+                    (string)(
+                        $permitNewsApiResponse[
+                            "error"
+                        ]
+                        ?? "Unknown askOpenAI.php error."
+                    )
+                );
+
+            throw new RuntimeException(
+                "askOpenAI.php reported failure: " .
+                $permitNewsApiError
             );
         }
 
@@ -2385,7 +2439,12 @@ if (
             $permitNewsAiText === ""
         ) {
             throw new RuntimeException(
-                "askOpenAI.php returned an empty Permit News response."
+                "askOpenAI.php returned an empty Permit News response. Envelope: " .
+                substr(
+                    (string)$permitNewsApiRaw,
+                    0,
+                    500
+                )
             );
         }
 
@@ -2400,11 +2459,18 @@ if (
                 $permitNewsAiText
             );
 
+        $permitNewsAiText =
+            trim(
+                (string)$permitNewsAiText
+            );
+
+        // ==================================================================
+        // Decode Generated Permit News JSON
+        // ==================================================================
+
         $permitNewsAi =
             json_decode(
-                trim(
-                    (string)$permitNewsAiText
-                ),
+                $permitNewsAiText,
                 true
             );
 
@@ -2414,7 +2480,12 @@ if (
             )
         ) {
             throw new RuntimeException(
-                "Permit News AI response was not valid structured JSON."
+                "Permit News AI response was not valid structured JSON. Response: " .
+                substr(
+                    $permitNewsAiText,
+                    0,
+                    500
+                )
             );
         }
 
@@ -2470,14 +2541,23 @@ if (
                 $permitNewsBody
         ];
 
+        $permitNewsSignatureJson =
+            json_encode(
+                $permitNewsSignatureSource,
+                JSON_UNESCAPED_SLASHES |
+                JSON_UNESCAPED_UNICODE
+            );
+
+        if ($permitNewsSignatureJson === false) {
+            throw new RuntimeException(
+                "Unable to encode Permit News signature source."
+            );
+        }
+
         $permitNewsSignature =
             hash(
                 "sha256",
-                json_encode(
-                    $permitNewsSignatureSource,
-                    JSON_UNESCAPED_SLASHES |
-                    JSON_UNESCAPED_UNICODE
-                )
+                $permitNewsSignatureJson
             );
 
         // ==================================================================
@@ -2554,7 +2634,8 @@ if (
 
         if ($permitNewsWriteResult === false) {
             throw new RuntimeException(
-                "Unable to persist Permit News output."
+                "Unable to persist Permit News output at: " .
+                $permitNewsPath
             );
         }
 
