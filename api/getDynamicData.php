@@ -1578,6 +1578,11 @@ if (
     }
 }
 
+$permitNewsDebug = [
+    "step" => "section-started",
+    "detail" => null
+];
+
 // ======================================================================
 // Default Output
 // ======================================================================
@@ -2376,6 +2381,15 @@ if (
             );
         }
 
+        $permitNewsDebug = [
+            "step" => "ai-response-received",
+            "detail" => substr(
+                (string)$permitNewsApiRaw,
+                0,
+                1000
+            )
+        ];
+
         // ==================================================================
         // Decode askOpenAI.php Response Envelope
         // ==================================================================
@@ -2447,6 +2461,11 @@ if (
                 )
             );
         }
+
+        $permitNewsDebug = [
+            "step" => "ai-text-extracted",
+            "detail" => $permitNewsAiText
+        ];
 
         // ==================================================================
         // Remove Optional Markdown JSON Fence Defensively
@@ -2653,9 +2672,10 @@ if (
 
     } catch (Throwable $e) {
 
-        // ==================================================================
-        // Preserve Last Valid Permit News on AI / Prompt Failure
-        // ==================================================================
+        $permitNewsDebug = [
+            "step" => "error",
+            "detail" => $e->getMessage()
+        ];
 
         error_log(
             "[PERMIT NEWS AI ERROR] " .
@@ -2671,6 +2691,11 @@ if (
                 $currentPermitNews;
         }
     }
+
+// ======================================================================
+// Close Permit News Regeneration Block
+// ======================================================================
+
 }
 
 #endregion
@@ -2744,7 +2769,16 @@ $payload = [
         "lastUpdatedUnix" => $lastApplicationUpdatedUnix
     ],
 
-    "permitNews"      => is_array($permitNews) ? $permitNews : null,
+    "permitNews" =>
+    is_array($permitNews)
+        ? $permitNews
+        : null,
+
+    "permitNewsDebug" =>
+        $permitNewsDebug
+            ?? null,
+    "dynamicDataDebugVersion" =>
+    "permit-news-debug-2026-09-08-1250",
     "siteMeta"        => $siteMeta,
     "idle"            => $idle,
     "idleDebug"       => $idleDebug,
