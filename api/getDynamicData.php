@@ -1525,6 +1525,991 @@ if ($db !== null) {
 
 #endregion
 
+#region SECTION 3.D — AI Permit News Projection
+
+// ======================================================================
+// Permit News Policy
+// ======================================================================
+//
+// Regenerate when:
+// 1. A specific Application stage/status transition occurs.
+// 2. The current AI Permit News is >= 1 hour old.
+//
+// Recent significant Application events remain eligible for event-focused
+// news for up to 24 hours.
+//
+// AI is editorial only.
+// All facts are constructed deterministically before the AI call.
+// ======================================================================
+
+$permitNewsStaleSeconds = 3600;      // 1 hour
+$permitNewsRecentSeconds = 86400;    // 24 hours
+
+$permitNewsPath =
+    $paths["permitNews"];
+
+$permitNewsNowUnix =
+    time();
+
+$currentPermitNews =
+    null;
+
+if (
+    file_exists($permitNewsPath) &&
+    is_readable($permitNewsPath)
+) {
+    $permitNewsRaw =
+        file_get_contents($permitNewsPath);
+
+    if (
+        $permitNewsRaw !== false &&
+        trim($permitNewsRaw) !== ""
+    ) {
+        $decodedPermitNews =
+            json_decode(
+                $permitNewsRaw,
+                true
+            );
+
+        if (is_array($decodedPermitNews)) {
+            $currentPermitNews =
+                $decodedPermitNews;
+        }
+    }
+}
+
+// ----------------------------------------------------------------------
+// Default Output
+// ----------------------------------------------------------------------
+$permitNews =
+    is_array($currentPermitNews)
+        ? $currentPermitNews
+        : [
+            "meta" => [
+                "source"        => "database-ai",
+                "type"          => "ephemeral-derived-state",
+                "generatedAt"   => null,
+                "signature"     => null,
+                "storyType"     => "general",
+                "eventUnix"     => null,
+                "isRecentEvent" => false,
+                "celebrate"     => false
+            ],
+
+            "headline" => [
+                "headline" =>
+                    "Permit News",
+
+                "body" =>
+                    "Current permit news is being prepared."
+            ]
+        ];
+
+// ======================================================================
+// Resolve Current News Age
+// ======================================================================
+
+$currentNewsGeneratedUnix =
+    (int)(
+        $currentPermitNews["meta"]["generatedAt"]
+        ?? 0
+    );
+
+$permitNewsIsStale =
+    $currentNewsGeneratedUnix <= 0 ||
+    (
+        $permitNewsNowUnix -
+        $currentNewsGeneratedUnix
+    ) >= $permitNewsStaleSeconds;
+
+// ======================================================================
+// Find Most Recent Stage / Status Transition
+// ======================================================================
+
+$latestPermitStateChange =
+    null;
+
+if ($db !== null) {
+
+    try {
+
+        $permitStateActionStmt =
+            $db->query("
+                SELECT
+                    a.actionId,
+                    a.contactId,
+                    a.actionTypeId,
+                    a.actionUnix,
+                    a.actionPayloadData,
+                    t.actionName,
+                    c.contactFirstName,
+                    c.contactLastName
+                FROM tblActions a
+                INNER JOIN tblActionTypes t
+                    ON t.actionTypeId = a.actionTypeId
+                LEFT JOIN tblContacts c
+                    ON c.contactId = a.contactId
+                WHERE t.actionName = 'application.update'
+                ORDER BY
+                    a.actionUnix DESC,
+                    a.actionId DESC
+                LIMIT 50
+            ");
+
+        $permitStateActionRows =
+            $permitStateActionStmt->fetchAll(
+                PDO::FETCH_ASSOC
+            );
+
+        foreach (
+            $permitStateActionRows
+            as $permitStateActionRow
+        ) {
+
+            $statePayload =
+                json_decode(
+                    (string)(
+                        $permitStateActionRow[
+                            "actionPayloadData"
+                        ] ?? ""
+                    ),
+                    true
+                );
+
+            if (!is_array($statePayload)) {
+                continue;
+            }
+
+            if (
+                (
+                    $statePayload["operation"]
+                    ?? null
+                ) !== "application.update"
+            ) {
+                continue;
+            }
+
+            $before =
+                $statePayload["before"]
+                ?? null;
+
+            $after =
+                $statePayload["after"]
+                ?? null;
+
+            if (
+                !is_array($before) ||
+                !is_array($after)
+            ) {
+                continue;
+            }
+
+            $beforeStageId =
+                (int)(
+                    $before["stageID"]
+                    ?? 0
+                );
+
+            $afterStageId =
+                (int)(
+                    $after["stageID"]
+                    ?? 0
+                );
+
+            $beforeStatusId =
+                (int)(
+                    $before["statusID"]
+                    ?? 0
+                );
+
+            $afterStatusId =
+                (int)(
+                    $after["statusID"]
+                    ?? 0
+                );
+
+            $stageChanged =
+                $beforeStageId !==
+                $afterStageId;
+
+            $statusChanged =
+                $beforeStatusId !==
+                $afterStatusId;
+
+            if (
+                !$stageChanged &&
+                !$statusChanged
+            ) {
+                continue;
+            }
+
+            $applicationId =
+                (int)(
+                    $statePayload[
+                        "applicationID"
+                    ]
+                    ?? 0
+                );
+
+            if ($applicationId <= 0) {
+                continue;
+            }
+
+            $latestPermitStateChange = [
+                "actionId" =>
+                    (int)(
+                        $permitStateActionRow[
+                            "actionId"
+                        ] ?? 0
+                    ),
+
+                "applicationID" =>
+                    $applicationId,
+
+                "actionUnix" =>
+                    (int)(
+                        $permitStateActionRow[
+                            "actionUnix"
+                        ] ?? 0
+                    ),
+
+                "contactId" =>
+                    (int)(
+                        $permitStateActionRow[
+                            "contactId"
+                        ] ?? 0
+                    ),
+
+                "contactName" =>
+                    trim(
+                        (string)(
+                            $permitStateActionRow[
+                                "contactFirstName"
+                            ] ?? ""
+                        )
+                        .
+                        " "
+                        .
+                        (string)(
+                            $permitStateActionRow[
+                                "contactLastName"
+                            ] ?? ""
+                        )
+                    ),
+
+                "beforeStageID" =>
+                    $beforeStageId,
+
+                "afterStageID" =>
+                    $afterStageId,
+
+                "beforeStatusID" =>
+                    $beforeStatusId,
+
+                "afterStatusID" =>
+                    $afterStatusId,
+
+                "stageChanged" =>
+                    $stageChanged,
+
+                "statusChanged" =>
+                    $statusChanged
+            ];
+
+            break;
+        }
+
+    } catch (Throwable $e) {
+
+        error_log(
+            "[PERMIT NEWS STATE CHANGE ERROR] " .
+            $e->getMessage()
+        );
+    }
+}
+
+// ======================================================================
+// Resolve Latest Transition Against Authoritative Application Data
+// ======================================================================
+
+$latestPermitStateApplication =
+    null;
+
+if (
+    is_array($latestPermitStateChange) &&
+    isset($rawApplications) &&
+    is_array($rawApplications)
+) {
+
+    $targetApplicationId =
+        (int)(
+            $latestPermitStateChange[
+                "applicationID"
+            ]
+            ?? 0
+        );
+
+    foreach ($rawApplications as $app) {
+
+        if (
+            (int)(
+                $app["applicationID"]
+                ?? 0
+            ) !== $targetApplicationId
+        ) {
+            continue;
+        }
+
+        $latestPermitStateApplication =
+            $app;
+
+        break;
+    }
+}
+
+// ======================================================================
+// Determine Whether State Change Is Recent
+// ======================================================================
+
+$latestPermitStateUnix =
+    (int)(
+        $latestPermitStateChange[
+            "actionUnix"
+        ]
+        ?? 0
+    );
+
+$permitStateChangeIsRecent =
+    $latestPermitStateUnix > 0 &&
+    (
+        $permitNewsNowUnix -
+        $latestPermitStateUnix
+    ) <= $permitNewsRecentSeconds;
+
+// ======================================================================
+// Detect Whether a New State Change Occurred Since Last AI Story
+// ======================================================================
+
+$currentPermitNewsEventUnix =
+    (int)(
+        $currentPermitNews[
+            "meta"
+        ]["eventUnix"]
+        ?? 0
+    );
+
+$permitStateChangedSinceNews =
+    $latestPermitStateUnix > 0 &&
+    $latestPermitStateUnix >
+        $currentPermitNewsEventUnix;
+
+// ======================================================================
+// Regeneration Decision
+// ======================================================================
+
+$shouldRegeneratePermitNews =
+    $permitNewsIsStale ||
+    $permitStateChangedSinceNews;
+
+// ======================================================================
+// Prepare Deterministic Permit Facts
+// ======================================================================
+
+if (
+    $shouldRegeneratePermitNews &&
+    isset($rawApplications) &&
+    is_array($rawApplications)
+) {
+
+    $permitNewsFacts = [
+        "generatedUnix" =>
+            $permitNewsNowUnix,
+
+        "totalActiveApplications" =>
+            (int)(
+                $kpi[
+                    "atAGlance"
+                ]["totalActive"]
+                ?? 0
+            ),
+
+        "stageBreakdown" =>
+            $kpi[
+                "stageBreakdown"
+            ]
+            ?? [],
+
+        "stageStatusBreakdown" =>
+            $kpi[
+                "stageStatusBreakdown"
+            ]
+            ?? [],
+
+        "workload" =>
+            $kpi[
+                "workload"
+            ]
+            ?? [],
+
+        "recentStateChange" =>
+            null
+    ];
+
+    // ------------------------------------------------------------------
+    // Recent Event Facts
+    // ------------------------------------------------------------------
+
+    if (
+        $permitStateChangeIsRecent &&
+        is_array(
+            $latestPermitStateChange
+        )
+    ) {
+
+        $recentApplication =
+            $latestPermitStateApplication;
+
+        $permitNewsFacts[
+            "recentStateChange"
+        ] = [
+            "applicationID" =>
+                (int)(
+                    $latestPermitStateChange[
+                        "applicationID"
+                    ]
+                    ?? 0
+                ),
+
+            "wo" =>
+                is_array($recentApplication)
+                    ? (string)(
+                        $recentApplication[
+                            "orderChristyNumber"
+                        ]
+                        ?? ""
+                    )
+                    : "",
+
+            "customer" =>
+                is_array($recentApplication)
+                    ? (string)(
+                        $recentApplication[
+                            "entityName"
+                        ]
+                        ?? ""
+                    )
+                    : "",
+
+            "jobsite" =>
+                is_array($recentApplication)
+                    ? (string)(
+                        $recentApplication[
+                            "locationName"
+                        ]
+                        ?? ""
+                    )
+                    : "",
+
+            "jurisdiction" =>
+                is_array($recentApplication)
+                    ? (string)(
+                        $recentApplication[
+                            "applicationJurisdiction"
+                        ]
+                        ?? ""
+                    )
+                    : "",
+
+            "stage" =>
+                is_array($recentApplication)
+                    ? (string)(
+                        $recentApplication[
+                            "applicationStageName"
+                        ]
+                        ?? ""
+                    )
+                    : "",
+
+            "status" =>
+                is_array($recentApplication)
+                    ? (string)(
+                        $recentApplication[
+                            "applicationStatusName"
+                        ]
+                        ?? ""
+                    )
+                    : "",
+
+            "stageChanged" =>
+                (bool)(
+                    $latestPermitStateChange[
+                        "stageChanged"
+                    ]
+                    ?? false
+                ),
+
+            "statusChanged" =>
+                (bool)(
+                    $latestPermitStateChange[
+                        "statusChanged"
+                    ]
+                    ?? false
+                ),
+
+            "changedBy" =>
+                (string)(
+                    $latestPermitStateChange[
+                        "contactName"
+                    ]
+                    ?? ""
+                ),
+
+            "eventUnix" =>
+                $latestPermitStateUnix
+        ];
+    }
+
+    // ==================================================================
+    // Determine Story Classification
+    // ==================================================================
+
+    $storyType =
+        "general";
+
+    $celebrate =
+        false;
+
+    $recentState =
+        $permitNewsFacts[
+            "recentStateChange"
+        ];
+
+    if (is_array($recentState)) {
+
+        $recentStatus =
+            trim(
+                (string)(
+                    $recentState[
+                        "status"
+                    ]
+                    ?? ""
+                )
+            );
+
+        $recentStage =
+            trim(
+                (string)(
+                    $recentState[
+                        "stage"
+                    ]
+                    ?? ""
+                )
+            );
+
+        if (
+            strcasecmp(
+                $recentStatus,
+                "Approved"
+            ) === 0
+        ) {
+            $storyType =
+                "approval";
+
+            $celebrate =
+                true;
+
+        } elseif (
+            strcasecmp(
+                $recentStatus,
+                "Issued"
+            ) === 0
+        ) {
+            $storyType =
+                "issued";
+
+            $celebrate =
+                true;
+
+        } elseif (
+            strcasecmp(
+                $recentStatus,
+                "Finaled"
+            ) === 0
+        ) {
+            $storyType =
+                "finaled";
+
+            $celebrate =
+                true;
+
+        } elseif (
+            stripos(
+                $recentStatus,
+                "Correction"
+            ) !== false
+        ) {
+            $storyType =
+                "corrections";
+
+        } elseif (
+            stripos(
+                $recentStatus,
+                "Fees Due"
+            ) !== false
+        ) {
+            $storyType =
+                "fees";
+
+        } elseif (
+            stripos(
+                $recentStage,
+                "Inspection"
+            ) !== false
+        ) {
+            $storyType =
+                "inspection";
+
+        } else {
+            $storyType =
+                "state-change";
+        }
+    }
+
+    // ==================================================================
+    // Build AI Prompt from Deterministic Facts Only
+    // ==================================================================
+
+    $permitNewsFactsJson =
+        json_encode(
+            $permitNewsFacts,
+            JSON_UNESCAPED_SLASHES |
+            JSON_UNESCAPED_UNICODE
+        );
+
+    $permitNewsPrompt = <<<PROMPT
+Create the current Skyesoft Permit News item using ONLY the verified facts below.
+
+This is an internal office bulletin-board news card.
+
+Rules:
+- Do not invent facts.
+- Do not predict outcomes.
+- Do not assign blame or intent.
+- Do not exaggerate urgency.
+- Prefer a recent verified stage/status transition if recentStateChange is present.
+- A recent event may be highlighted only if it occurred within the last 24 hours.
+- If there is no recent event, create a useful current operational news item from the active permit facts.
+- Vary the operational angle when generating routine news so the card does not become repetitive.
+- If the verified status is Approved, Issued, or Finaled, make the tone appropriately upbeat and festive while remaining professional.
+- Keep the headline concise.
+- Keep the body to 1 or 2 short sentences.
+- Do not mention that you are an AI.
+- Do not include markdown.
+- Return ONLY valid JSON in exactly this structure:
+
+{
+  "headline": "string",
+  "body": "string"
+}
+
+Verified permit facts:
+{$permitNewsFactsJson}
+PROMPT;
+
+    // ==================================================================
+    // AI Generation Through Existing askOpenAI.php
+    // ==================================================================
+
+    try {
+
+        $permitNewsApiUrl =
+            "https://www.skyelighting.com/skyesoft/api/askOpenAI.php";
+
+        $permitNewsRequest = [
+            "input" =>
+                $permitNewsPrompt
+        ];
+
+        $permitNewsCurl =
+            curl_init(
+                $permitNewsApiUrl
+            );
+
+        curl_setopt_array(
+            $permitNewsCurl,
+            [
+                CURLOPT_POST =>
+                    true,
+
+                CURLOPT_RETURNTRANSFER =>
+                    true,
+
+                CURLOPT_TIMEOUT =>
+                    45,
+
+                CURLOPT_CONNECTTIMEOUT =>
+                    10,
+
+                CURLOPT_HTTPHEADER =>
+                    [
+                        "Content-Type: application/json"
+                    ],
+
+                CURLOPT_POSTFIELDS =>
+                    json_encode(
+                        $permitNewsRequest,
+                        JSON_UNESCAPED_SLASHES |
+                        JSON_UNESCAPED_UNICODE
+                    )
+            ]
+        );
+
+        $permitNewsApiRaw =
+            curl_exec(
+                $permitNewsCurl
+            );
+
+        if (
+            $permitNewsApiRaw === false
+        ) {
+            throw new RuntimeException(
+                "askOpenAI.php request failed: " .
+                curl_error(
+                    $permitNewsCurl
+                )
+            );
+        }
+
+        $permitNewsHttpCode =
+            (int)(
+                curl_getinfo(
+                    $permitNewsCurl,
+                    CURLINFO_HTTP_CODE
+                )
+            );
+
+        $permitNewsCurl =
+            null;
+
+        if (
+            $permitNewsHttpCode !== 200
+        ) {
+            throw new RuntimeException(
+                "askOpenAI.php returned HTTP " .
+                $permitNewsHttpCode
+            );
+        }
+
+        $permitNewsApiResponse =
+            json_decode(
+                $permitNewsApiRaw,
+                true
+            );
+
+        if (
+            !is_array(
+                $permitNewsApiResponse
+            )
+        ) {
+            throw new RuntimeException(
+                "askOpenAI.php returned invalid JSON."
+            );
+        }
+
+        $permitNewsAiText =
+            trim(
+                (string)(
+                    $permitNewsApiResponse[
+                        "response"
+                    ]
+                    ?? ""
+                )
+            );
+
+        if (
+            $permitNewsAiText === ""
+        ) {
+            throw new RuntimeException(
+                "askOpenAI.php returned an empty Permit News response."
+            );
+        }
+
+        // --------------------------------------------------------------
+        // Remove Optional Markdown JSON Fence Defensively
+        // --------------------------------------------------------------
+
+        $permitNewsAiText =
+            preg_replace(
+                '/^```(?:json)?\s*|\s*```$/i',
+                '',
+                $permitNewsAiText
+            );
+
+        $permitNewsAi =
+            json_decode(
+                trim(
+                    (string)$permitNewsAiText
+                ),
+                true
+            );
+
+        if (
+            !is_array(
+                $permitNewsAi
+            )
+        ) {
+            throw new RuntimeException(
+                "Permit News AI response was not valid structured JSON."
+            );
+        }
+
+        $permitNewsHeadline =
+            trim(
+                (string)(
+                    $permitNewsAi[
+                        "headline"
+                    ]
+                    ?? ""
+                )
+            );
+
+        $permitNewsBody =
+            trim(
+                (string)(
+                    $permitNewsAi[
+                        "body"
+                    ]
+                    ?? ""
+                )
+            );
+
+        if (
+            $permitNewsHeadline === "" ||
+            $permitNewsBody === ""
+        ) {
+            throw new RuntimeException(
+                "Permit News AI response omitted headline or body."
+            );
+        }
+
+        // ==================================================================
+        // Build Signature
+        // ==================================================================
+
+        $permitNewsSignatureSource = [
+            "generatedAt" =>
+                $permitNewsNowUnix,
+
+            "storyType" =>
+                $storyType,
+
+            "eventUnix" =>
+                $permitStateChangeIsRecent
+                    ? $latestPermitStateUnix
+                    : null,
+
+            "headline" =>
+                $permitNewsHeadline,
+
+            "body" =>
+                $permitNewsBody
+        ];
+
+        $permitNewsSignature =
+            hash(
+                "sha256",
+                json_encode(
+                    $permitNewsSignatureSource,
+                    JSON_UNESCAPED_SLASHES |
+                    JSON_UNESCAPED_UNICODE
+                )
+            );
+
+        // ==================================================================
+        // Final Permit News Projection
+        // ==================================================================
+
+        $permitNews = [
+            "meta" => [
+                "source" =>
+                    "database-ai",
+
+                "type" =>
+                    "ephemeral-derived-state",
+
+                "generatedAt" =>
+                    $permitNewsNowUnix,
+
+                "signature" =>
+                    $permitNewsSignature,
+
+                "storyType" =>
+                    $storyType,
+
+                "eventUnix" =>
+                    $permitStateChangeIsRecent
+                        ? $latestPermitStateUnix
+                        : null,
+
+                "isRecentEvent" =>
+                    $permitStateChangeIsRecent,
+
+                "celebrate" =>
+                    $celebrate,
+
+                "regenerationReason" =>
+                    $permitStateChangedSinceNews
+                        ? "permit-state-change"
+                        : "stale-news"
+            ],
+
+            "headline" => [
+                "headline" =>
+                    $permitNewsHeadline,
+
+                "body" =>
+                    $permitNewsBody
+            ]
+        ];
+
+        // ==================================================================
+        // Persist Ephemeral Current News
+        // ==================================================================
+
+        file_put_contents(
+            $permitNewsPath,
+            json_encode(
+                $permitNews,
+                JSON_PRETTY_PRINT |
+                JSON_UNESCAPED_SLASHES |
+                JSON_UNESCAPED_UNICODE
+            ),
+            LOCK_EX
+        );
+
+    } catch (Throwable $e) {
+
+        // --------------------------------------------------------------
+        // Preserve Last Valid Permit News on AI Failure
+        // --------------------------------------------------------------
+        error_log(
+            "[PERMIT NEWS AI ERROR] " .
+            $e->getMessage()
+        );
+
+        if (
+            is_array(
+                $currentPermitNews
+            )
+        ) {
+            $permitNews =
+                $currentPermitNews;
+        }
+    }
+}
+
+#endregion
+
 #region SECTION 4 — Build Time Context + Weather + Final Payload
 
 // Compute time context
