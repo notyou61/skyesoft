@@ -2476,7 +2476,10 @@ if (
 
         error_log(
             "[PERMIT NEWS AI RAW] " .
-            $permitNewsAiText
+            $permitNewsAiText .
+            PHP_EOL,
+            3,
+            __DIR__ . "/permit-news-debug.log"
         );
 
         if (
