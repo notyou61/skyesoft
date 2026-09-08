@@ -2474,6 +2474,11 @@ if (
                 true
             );
 
+        error_log(
+            "[PERMIT NEWS AI RAW] " .
+            $permitNewsAiText
+        );
+
         if (
             !is_array(
                 $permitNewsAi
