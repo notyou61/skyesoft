@@ -2474,12 +2474,16 @@ if (
                 true
             );
 
-        error_log(
+        $permitNewsDebugPath =
+            dirname($permitNewsPath) .
+            "/permit-news-debug.log";
+
+        file_put_contents(
+            $permitNewsDebugPath,
             "[PERMIT NEWS AI RAW] " .
             $permitNewsAiText .
             PHP_EOL,
-            3,
-            __DIR__ . "/permit-news-debug.log"
+            FILE_APPEND | LOCK_EX
         );
 
         if (
