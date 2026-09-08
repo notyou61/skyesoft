@@ -1674,89 +1674,197 @@ const KPICard = {
 const PermitNewsCard = {
     id: 'permit-news',
     icon: '📰',
-    title: 'Permits News',
+    title: 'Permit News',
     durationMs: DEFAULT_CARD_DURATION_MS,
     instance: null,
     lastSignature: null,
+    lastCelebratedSignature: null,
     // Create
     create() {
         this.instance = createGenericCardElement(this);
 
         this.instance.content.innerHTML = `
-            <div class="highlights-grid">
+            <div class="highlights-grid permit-news-grid">
+
                 <div class="highlights-col">
+
                     <div class="entry section-header">
-                        🌐 Latest Update
+                        🌐 Latest Permit News
                     </div>
 
-                    <div class="entry" id="permitNewsEntry">
-                        <div class="entry-title" id="permitNewsHeadline">
-                            Coming Soon
+                    <div
+                        class="entry permit-news-entry"
+                        id="permitNewsEntry"
+                    >
+                        <div
+                            class="entry-title permit-news-headline"
+                            id="permitNewsHeadline"
+                        >
+                            Loading latest permit news…
                         </div>
-                        <div class="entry-body" id="permitNewsBody">
-                            Permit system news will appear here.
+
+                        <div
+                            class="entry-body permit-news-body"
+                            id="permitNewsBody"
+                        >
+                            —
                         </div>
                     </div>
+
                 </div>
+
             </div>
         `;
 
         return this.instance.root;
     },
-    // Internal footer renderer (DRY + truthful)
+
+    // Internal footer renderer
     renderFooter(payload, newsMeta) {
         if (!this.instance?.footer) return;
 
-        const meta = newsMeta || payload?.permitNews?.meta || null;
+        const meta =
+            newsMeta ||
+            payload?.permitNews?.meta ||
+            null;
+
         const updatedUnix =
-            meta?.lastUpdatedAt ??
             meta?.generatedAt ??
             null;
+
+        if (!updatedUnix) {
+            this.instance.footer.innerHTML = renderLiveFooter({
+                text: 'Permit news awaiting current data'
+            });
+            return;
+        }
 
         const nowUnix =
             payload?.timeDateArray?.currentUnixTime ??
             Math.floor(Date.now() / 1000);
 
-        const absolute = formatTimestamp(updatedUnix);
-        const relative = humanizeRelativeTime(updatedUnix, nowUnix);
+        const absolute =
+            formatTimestamp(updatedUnix);
+
+        const relative =
+            humanizeRelativeTime(
+                updatedUnix,
+                nowUnix
+            );
 
         this.instance.footer.innerHTML = renderLiveFooter({
-            text: `AI-generated permit news • Updated ${absolute} (${relative})`
+            text: `AI-generated from live permit data • Updated ${absolute} (${relative})`
         });
     },
+
     // Update
     update(payload) {
-        if (!payload?.permitNews || !this.instance?.root) return;
-
-        const news = payload.permitNews;
-        const meta = news.meta || {};
-        const headline = news.headline;
-
-        // Signature guard (prevents unnecessary DOM updates)
-        if (meta.signature && meta.signature === this.lastSignature) {
-            // Keep footer fresh even when content signature is unchanged
-            this.renderFooter(payload, meta);
+        if (
+            !payload?.permitNews ||
+            !this.instance?.root
+        ) {
             return;
         }
-        this.lastSignature = meta.signature || null;
 
-        const titleEl = this.instance.root.querySelector('#permitNewsHeadline');
-        const bodyEl  = this.instance.root.querySelector('#permitNewsBody');
-        if (!titleEl || !bodyEl) return;
-        // Placeholder-safe rendering
-        titleEl.textContent = headline?.headline || 'Permits News';
-        bodyEl.textContent  = headline?.body || 'No permit news available.';
+        const news =
+            payload.permitNews;
+
+        const meta =
+            news.meta || {};
+
+        const headline =
+            news.headline || {};
+
+        const signature =
+            meta.signature || null;
+
+        const titleEl =
+            this.instance.root.querySelector(
+                '#permitNewsHeadline'
+            );
+
+        const bodyEl =
+            this.instance.root.querySelector(
+                '#permitNewsBody'
+            );
+
+        const entryEl =
+            this.instance.root.querySelector(
+                '#permitNewsEntry'
+            );
+
+        if (
+            !titleEl ||
+            !bodyEl ||
+            !entryEl
+        ) {
+            return;
+        }
+
+        // --------------------------------------------------------
+        // Update Narrative Only When Story Changes
+        // --------------------------------------------------------
+        if (
+            !signature ||
+            signature !== this.lastSignature
+        ) {
+            this.lastSignature =
+                signature;
+
+            titleEl.textContent =
+                headline.headline ||
+                'Permit News';
+
+            bodyEl.textContent =
+                headline.body ||
+                'No current permit news available.';
+
+            entryEl.dataset.storyType =
+                meta.storyType || 'general';
+        }
+
+        // --------------------------------------------------------
+        // Celebration State
+        // --------------------------------------------------------
+        if (
+            meta.celebrate === true &&
+            signature &&
+            signature !== this.lastCelebratedSignature
+        ) {
+            this.lastCelebratedSignature =
+                signature;
+
+            entryEl.classList.add(
+                'permit-news-celebration'
+            );
+
+            setTimeout(() => {
+                entryEl.classList.remove(
+                    'permit-news-celebration'
+                );
+            }, 5000);
+        }
+
+        // --------------------------------------------------------
         // Footer
-        this.renderFooter(payload, meta);
-    },
-    // On Show
-    onShow() {
-        if (!lastBoardPayload?.permitNews) return;
+        // --------------------------------------------------------
         this.renderFooter(
-            lastBoardPayload,
-            lastBoardPayload.permitNews.meta
+            payload,
+            meta
         );
     },
+
+    // On Show
+    onShow() {
+        if (!lastBoardPayload?.permitNews) {
+            return;
+        }
+
+        this.update(
+            lastBoardPayload
+        );
+    },
+
     // On Hide
     onHide() {}
 };
