@@ -1888,7 +1888,7 @@ if (
     }
 }
 
-// ======================================================================
+/// ======================================================================
 // Determine Whether State Change Is Recent
 // ======================================================================
 
@@ -1911,18 +1911,18 @@ $permitStateChangeIsRecent =
 // Detect Whether a New State Change Occurred Since Last AI Story
 // ======================================================================
 
-$currentPermitNewsEventUnix =
+$currentPermitNewsStateWatermarkUnix =
     (int)(
         $currentPermitNews[
             "meta"
-        ]["eventUnix"]
+        ]["stateWatermarkUnix"]
         ?? 0
     );
 
 $permitStateChangedSinceNews =
     $latestPermitStateUnix > 0 &&
     $latestPermitStateUnix >
-        $currentPermitNewsEventUnix;
+        $currentPermitNewsStateWatermarkUnix;
 
 // ======================================================================
 // Regeneration Decision
@@ -2105,7 +2105,11 @@ if (
             "recentStateChange"
         ];
 
-    if (is_array($recentState)) {
+    if (
+        is_array(
+            $recentState
+        )
+    ) {
 
         $recentStatus =
             trim(
@@ -2207,7 +2211,9 @@ if (
             JSON_UNESCAPED_UNICODE
         );
 
-    if ($permitNewsFactsJson === false) {
+    if (
+        $permitNewsFactsJson === false
+    ) {
 
         error_log(
             "[PERMIT NEWS FACTS ERROR] Unable to encode Permit News facts."
