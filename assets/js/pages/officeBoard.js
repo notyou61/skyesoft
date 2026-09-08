@@ -1679,42 +1679,32 @@ const PermitNewsCard = {
     instance: null,
     lastSignature: null,
     lastCelebratedSignature: null,
+
     // Create
     create() {
+        this.lastSignature = null;
+
         this.instance = createGenericCardElement(this);
 
         this.instance.content.innerHTML = `
-            <div class="highlights-grid permit-news-grid">
-
+            <div class="highlights-grid">
                 <div class="highlights-col">
-
-                    <div class="entry section-header">
-                        🌐 Latest Permit News
-                    </div>
-
-                    <div
-                        class="entry permit-news-entry"
-                        id="permitNewsEntry"
-                    >
-                        <div
-                            class="entry-title permit-news-headline"
-                            id="permitNewsHeadline"
-                        >
-                            Loading latest permit news…
+                    <div class="entry section-header">🌐 Latest Permit News</div>
+                    <div class="entry" id="permitNewsEntry">
+                        <div class="entry-title" id="permitNewsHeadline">
+                            Permit News
                         </div>
-
-                        <div
-                            class="entry-body permit-news-body"
-                            id="permitNewsBody"
-                        >
+                        <div class="entry-body" id="permitNewsBody">
                             —
                         </div>
                     </div>
-
                 </div>
-
             </div>
         `;
+
+        if (lastBoardPayload?.permitNews) {
+            this.update(lastBoardPayload);
+        }
 
         return this.instance.root;
     },
@@ -1856,9 +1846,7 @@ const PermitNewsCard = {
 
     // On Show
     onShow() {
-        if (!lastBoardPayload?.permitNews) {
-            return;
-        }
+        if (!lastBoardPayload?.permitNews) return;
 
         this.update(
             lastBoardPayload
