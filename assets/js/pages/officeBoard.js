@@ -968,7 +968,7 @@ function renderLiveFooter({ text = '' }) {
 
 // #region CARD TIMING
 
-const DEFAULT_CARD_DURATION_MS = 60000;
+const DEFAULT_CARD_DURATION_MS = 10000;
 
 // #endregion
 
@@ -1942,10 +1942,18 @@ const PermitNewsCard = {
 
             stageMixEl.textContent =
                 Object.entries(stages)
-                    .map(
-                        ([stage, count]) =>
-                            `${count} ${stage}`
-                    )
+                    .map(([stage, count]) => {
+                        const shortStage =
+                            stage === 'Pre-Submittal'
+                                ? 'Pre'
+                                : stage === 'Jurisdiction Review'
+                                    ? 'Review'
+                                    : stage === 'Approval / Issuance'
+                                        ? 'Approval'
+                                        : stage;
+
+                        return `${count} ${shortStage}`;
+                    })
                     .join(' • ') || '—';
         }
 
