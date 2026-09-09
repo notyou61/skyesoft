@@ -1343,11 +1343,6 @@ const KPICard = {
                     -->
                     <div id="kpiStageStatusBreakdown"></div>
 
-                </div>
-
-                <!-- RIGHT COLUMN -->
-                <div class="highlights-col">
-
                     <div class="entry section-header">
                         📈 Performance
                     </div>
@@ -1361,6 +1356,11 @@ const KPICard = {
                         <span>Avg Turnaround</span>
                         <strong id="kpiAvgTurnaround">—</strong>
                     </div>
+
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div class="highlights-col">
 
                     <div class="entry section-header">
                         📋 Workload
