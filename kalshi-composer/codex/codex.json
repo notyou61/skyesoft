@@ -1,0 +1,474 @@
+{
+  "meta": {
+    "title": "Skyesoft Prediction Market Lab Codex",
+    "version": "0.1.0",
+    "status": "Research Governance",
+    "project": "Prediction Market Lab",
+    "initialDomain": "Kalshi BTC 15-Minute Markets",
+    "parentGovernance": "Skyesoft Codex",
+    "purpose": "Defines the research doctrine, integrity rules, evidence standards, execution assumptions, strategy governance, evaluation requirements, and expansion boundaries for the Skyesoft Prediction Market Lab.",
+    "principle": "Begin with the end in mind."
+  },
+
+  "mission": {
+    "longTermPurpose": "Develop, validate, and potentially operate a disciplined methodology for identifying repeatable positive-expected-value opportunities in prediction markets.",
+    "initialObjective": "Develop expertise in Kalshi BTC 15-minute markets and determine whether statistically defensible positive expected value can be demonstrated using information available before a decision is committed.",
+    "initialScope": "Kalshi BTC 15-minute prediction markets only.",
+    "researchMode": "Paper trading only.",
+    "economicThesis": "Meaningful cumulative results may arise from repeatedly and conservatively executing small, demonstrated positive-EV opportunities rather than relying on large speculative bets.",
+    "expansionIntent": "If the methodology demonstrates sufficient validity and positive EV within the initial domain, the research framework may later be evaluated for additional market families and trading venues."
+  },
+
+  "operatingPhilosophy": {
+    "specializationBeforeExpansion": "Develop expertise in one narrowly defined market before considering expansion.",
+    "edgeBeforeCapital": "Demonstrated expected value must precede increased capital exposure.",
+    "evidenceBeforeAutomation": "Automation may execute only rules and methods that have first been defined and validated.",
+    "selectivityBeforeActivity": "The Lab is not required to trade every market. PASS is a valid and expected decision.",
+    "repetitionDoctrine": "Repetition may amplify a demonstrated edge but must never substitute for evidence that an edge exists.",
+    "capitalDoctrine": "Profitability is expected to depend primarily on disciplined repetition of qualified opportunities rather than large individual wagers.",
+    "preservationDoctrine": "Preservation of capital and integrity of evidence take precedence over trade frequency or short-term profit."
+  },
+
+  "constitutionalPrinciples": {
+    "historicalIntegrity": {
+      "rule": "Historical research records may not be rewritten.",
+      "requirements": [
+        "Raw observations are immutable after commitment.",
+        "Committed strategy decisions are immutable.",
+        "Paper executions are immutable.",
+        "Official settlement records are immutable once recorded and verified.",
+        "A changed strategy must receive a new strategy version.",
+        "Historical records may never be altered to improve apparent strategy performance."
+      ]
+    },
+
+    "noLookAhead": {
+      "rule": "A decision may use only information available at or before its recorded decision timestamp.",
+      "requirements": [
+        "Every decision input must be temporally eligible.",
+        "External data used by a strategy must have a source timestamp no later than the decision timestamp.",
+        "Settlement information may never be used as a decision feature.",
+        "Information obtained after a decision may not be retroactively incorporated into that historical decision."
+      ]
+    },
+
+    "officialSettlementAuthority": {
+      "rule": "The official Kalshi market outcome is the sole grading authority for the initial research domain.",
+      "requirements": [
+        "Official Kalshi settlement or expiration data determines the research outcome.",
+        "The BTC 15-minute settlement reference is the applicable CF Benchmarks Real-Time Index methodology represented by the Kalshi market.",
+        "External BTC feeds may be used as predictive inputs.",
+        "External BTC feeds may not replace official Kalshi settlement data.",
+        "Any external settlement proxy must be explicitly labeled as a proxy and may not grade strategy performance."
+      ]
+    },
+
+    "executableEconomics": {
+      "rule": "Expected value must be based on realistically executable economics.",
+      "requirements": [
+        "YES expected value must use an eligible executable YES price.",
+        "NO expected value must use an eligible executable NO price.",
+        "Last traded price may be retained for diagnostics but may not substitute for an executable price.",
+        "Midpoint may be retained for diagnostics but may not substitute for an executable price.",
+        "Applicable transaction costs must be included before an opportunity is classified as positive EV.",
+        "Execution assumptions must be defined before subsequent outcomes are known."
+      ]
+    },
+
+    "honestPaperExecution": {
+      "rule": "Paper execution must follow a predefined and frozen simulation standard.",
+      "requirements": [
+        "A paper trade may not assume a fill solely because a favorable displayed price existed.",
+        "The paper fill rule must be defined before the strategy begins evaluation.",
+        "Liquidity assumptions must be explicit.",
+        "Slippage or adverse execution assumptions must be explicit where applicable.",
+        "Historical fills may not be retroactively improved."
+      ]
+    },
+
+    "sampleIntegrity": {
+      "rule": "One market window is one market sample.",
+      "requirements": [
+        "Repeated observations within one market window do not create additional independent market samples.",
+        "Observation count and market sample count must remain separate metrics.",
+        "A strategy version may commit only the number of decisions per market explicitly permitted by that strategy's frozen rules."
+      ]
+    },
+
+    "strategyFreeze": {
+      "rule": "A strategy under evaluation is immutable for its defined evaluation cohort.",
+      "requirements": [
+        "Material strategy changes require a new version.",
+        "Historical decisions remain attributed to the strategy version that produced them.",
+        "A new strategy version may not inherit historical decisions as though it generated them.",
+        "Evaluation cohorts must identify the exact strategy version used."
+      ]
+    },
+
+    "conservativeCapital": {
+      "rule": "Positive estimated EV does not independently authorize increased position size.",
+      "requirements": [
+        "Position sizing must remain subordinate to uncertainty.",
+        "Position sizing must remain subordinate to risk limits.",
+        "Position sizing must account for potential drawdown.",
+        "Capital preservation takes precedence over maximizing individual trade profit.",
+        "Large speculative position sizing is outside the initial research doctrine."
+      ]
+    },
+
+    "expansionByEvidence": {
+      "rule": "Expansion requires evidence, not dissatisfaction with the current market.",
+      "requirements": [
+        "Failure to demonstrate positive EV does not justify moving to another market merely in search of easier profits.",
+        "Expansion may be considered only after the research methodology and infrastructure have demonstrated sufficient validity.",
+        "Positive EV permits consideration of expansion but does not require expansion.",
+        "Each new market family or venue requires its own validated domain rules and data contracts."
+      ]
+    },
+
+    "humanAuthority": {
+      "rule": "Human authority remains superior to automated trading authority.",
+      "requirements": [
+        "Version 0.1.0 permits research and paper trading only.",
+        "No live-order execution path is authorized.",
+        "Paper mode may not be converted into live mode by changing a simple runtime flag.",
+        "Live trading requires a separately defined gate.",
+        "Live trading requires explicit human authorization."
+      ]
+    }
+  },
+
+  "definitions": {
+    "venue": "The prediction-market platform on which a market is listed and traded.",
+
+    "marketFamily": "A group of markets sharing a common economic or settlement structure.",
+
+    "market": "A specific prediction contract offered by a venue.",
+
+    "marketWindow": "One distinct BTC 15-minute prediction contract period. For research sample counting, one market window equals one market sample.",
+
+    "marketTicker": "The venue-defined identifier for a specific market.",
+
+    "strike": "The locked threshold or price-to-beat specified by the market contract.",
+
+    "officialSettlementValue": "The value published or recognized by Kalshi for determination of the market outcome.",
+
+    "settlementReference": "The authoritative price methodology specified by the market contract. For the initial BTC 15-minute domain, this is based on the applicable CF Benchmarks Real-Time Index methodology used by Kalshi.",
+
+    "observation": "A timestamped point-in-time capture of information that existed during a market window.",
+
+    "observationTs": "The timestamp representing when a research observation was captured.",
+
+    "sourceTs": "The timestamp supplied by or attributable to the origin of an individual data item.",
+
+    "decisionTs": "The timestamp at which a strategy irrevocably commits its YES, NO, or PASS decision.",
+
+    "settlementTs": "The timestamp at which the official market outcome becomes available or is recorded.",
+
+    "externalMarketData": "Timestamped information obtained from sources outside the prediction-market venue and used only as a potential predictive input.",
+
+    "yes": "A strategy decision or contract position that benefits when the market's YES condition settles true.",
+
+    "no": "A strategy decision or contract position that benefits when the market's NO condition settles true.",
+
+    "pass": "An affirmative strategy decision to take no position because the strategy's requirements for a qualified trade are not satisfied.",
+
+    "executableYesPrice": "The price at which the paper execution model determines a YES contract could reasonably have been acquired at decision time.",
+
+    "executableNoPrice": "The price at which the paper execution model determines a NO contract could reasonably have been acquired at decision time.",
+
+    "midpointPrice": "The midpoint between relevant bid and ask prices. It is diagnostic only unless a future approved execution standard explicitly establishes otherwise.",
+
+    "lastTradePrice": "The most recently reported transaction price. It is diagnostic only and is not presumed executable.",
+
+    "paperFill": "A simulated execution produced according to the frozen paper-execution standard.",
+
+    "feeSchedule": "The venue fee rules applicable to the market and transaction at the relevant time.",
+
+    "transactionCost": "The total modeled cost attributable to executing a position, including applicable venue fees and approved execution assumptions.",
+
+    "estimatedProbability": "The strategy's pre-decision estimate of the probability that a specified market outcome will settle true.",
+
+    "marketImpliedProbability": "A probability interpretation derived from market pricing for analytical comparison. It must not be assumed to equal executable economics without adjustment for spread, fees, and execution.",
+
+    "edge": "The modeled advantage between the strategy's probability assessment and the economics represented by an eligible executable market price.",
+
+    "expectedValue": "The estimated average economic result of an eligible decision after incorporating outcome probability, executable price, applicable costs, and the paper-execution standard.",
+
+    "positiveEv": "Expected value greater than zero after all required costs and assumptions. A strategy may require an additional safety threshold above zero before permitting a trade.",
+
+    "strategy": "A defined and versioned set of rules that transforms eligible pre-decision information into YES, NO, or PASS.",
+
+    "strategyVersion": "An immutable identifier for a specific frozen strategy definition.",
+
+    "evaluationCohort": "The collection of market samples prospectively evaluated under one frozen strategy version.",
+
+    "sample": "One independent market window included in an evaluation cohort.",
+
+    "bankroll": "The capital base designated for a trading strategy or research simulation.",
+
+    "drawdown": "The reduction from a prior peak in cumulative strategy value or designated bankroll.",
+
+    "payloadHash": "A cryptographic digest used to establish the identity and integrity of a captured raw payload."
+  },
+
+  "timeIntegrity": {
+    "clocks": {
+      "observationClock": "When information was captured.",
+      "decisionClock": "When the strategy committed its decision.",
+      "settlementClock": "When the official result became known or was recorded."
+    },
+    "rule": "The three clocks must remain logically and structurally distinct.",
+    "decisionEligibility": "A strategy input is eligible only when its information was available no later than decisionTs.",
+    "invalidDecision": "A decision made after the applicable market decision boundary or using future information is invalid for performance evaluation."
+  },
+
+  "dataDoctrine": {
+    "rawVsDerived": {
+      "rawData": "Source information captured without strategy interpretation.",
+      "derivedData": "Features or calculations produced from eligible raw data.",
+      "decisionData": "The immutable output of a versioned strategy.",
+      "executionData": "The simulated or future authorized execution record.",
+      "settlementData": "The authoritative recorded market outcome.",
+      "evaluationData": "Performance measurements derived from immutable decision, execution, and settlement records."
+    },
+
+    "immutability": "Raw observations, committed decisions, executions, and verified settlements must remain historically immutable.",
+
+    "provenance": "Research data should retain sufficient source, timestamp, market, and version information to reconstruct why a decision was made.",
+
+    "rawPayloadRetention": "Material source payloads used to construct observations should be retained or otherwise reproducibly referenced when practical.",
+
+    "payloadIntegrity": "Captured raw payloads should receive a payload hash when persisted as canonical research evidence."
+  },
+
+  "allowedDecisionData": {
+    "rule": "Any legitimate information source may be researched as a predictive input provided it was genuinely available at or before decisionTs and is captured with adequate provenance.",
+
+    "initialCategories": [
+      "Kalshi market metadata",
+      "Kalshi market lifecycle data",
+      "Kalshi order-book data",
+      "Kalshi executable price data",
+      "Kalshi-provided settlement-reference data available before decision",
+      "External BTC spot-market data",
+      "External BTC order-book data",
+      "External BTC derivatives-market data",
+      "Derived momentum measurements",
+      "Derived volatility measurements",
+      "Derived liquidity and spread measurements",
+      "Derived cross-market relationships"
+    ],
+
+    "prohibitedInputs": [
+      "Official outcome data unavailable at decision time",
+      "Future external-market data",
+      "Future Kalshi order-book data",
+      "Post-decision derived values containing future information",
+      "Settlement-aware features unavailable at decision time"
+    ]
+  },
+
+  "experimentProtocol": {
+    "initialDomain": "Kalshi BTC 15-minute markets",
+
+    "marketDiscovery": "Each research sample must bind to a uniquely identified market window.",
+
+    "marketLifecycle": [
+      "initialized",
+      "active",
+      "determined",
+      "finalized"
+    ],
+
+    "requiredMarketContext": [
+      "marketTicker",
+      "marketWindow",
+      "openTime",
+      "closeTime",
+      "marketStatus",
+      "strike",
+      "observationTs"
+    ],
+
+    "decisionSet": [
+      "YES",
+      "NO",
+      "PASS"
+    ],
+
+    "sampleUnit": "One market window.",
+
+    "initialEvaluationTarget": {
+      "minimumMarketWindows": 500,
+      "interpretation": "A minimum initial evaluation cohort for a frozen decision strategy, not a guarantee of statistical significance."
+    },
+
+    "observationStrategy": {
+      "version": "v0.1.0-observe",
+      "purpose": "Validate market discovery, timestamps, data capture, lifecycle handling, settlement capture, and research integrity before introducing predictive trading logic.",
+      "legalDecisions": [
+        "PASS"
+      ]
+    }
+  },
+
+  "paperExecutionStandard": {
+    "status": "Must be frozen before first decision strategy evaluation.",
+    "principle": "Paper execution must approximate a realistically obtainable transaction rather than an idealized screen price.",
+    "requiredElements": [
+      "Eligible executable price definition",
+      "Minimum liquidity or size requirement",
+      "Applicable fee treatment",
+      "Slippage assumption where required",
+      "Decision-to-fill timing assumption",
+      "Contract quantity rule"
+    ],
+    "midpointPermittedForExecution": false,
+    "lastTradePermittedForExecution": false,
+    "retroactiveFillAdjustmentPermitted": false
+  },
+
+  "feeDoctrine": {
+    "rule": "The fee schedule applicable to the market and transaction at the relevant timestamp must be included in expected-value and paper-performance calculations.",
+    "feeScheduleVersioning": "Fee assumptions are versioned research inputs and may not be silently changed.",
+    "hardCodedUniversalFeeFormulaPermitted": false,
+    "settlementFeeAssumption": "Must follow the applicable venue rules rather than an assumed universal constant."
+  },
+
+  "strategyGovernance": {
+    "baselineResearchStrategy": "v0.1.0-observe",
+    "baselineResearchDecision": "PASS",
+
+    "futureStrategyNamingExample": "v0.2.0-baseline",
+
+    "freezeRule": "A strategy definition must be frozen before its evaluation cohort begins.",
+
+    "changeRule": "Any material change to signals, thresholds, probability calculations, execution assumptions, or decision rules requires a new strategy version.",
+
+    "historicalReprocessing": "A new strategy may be evaluated retrospectively for exploratory research if clearly labeled as retrospective analysis, but its hypothetical outputs may not replace or masquerade as prospectively committed historical decisions.",
+
+    "noTradeRule": "A strategy is permitted and expected to PASS whenever its qualification criteria are not satisfied."
+  },
+
+  "evaluationStandard": {
+    "primaryObjective": "Determine whether a frozen strategy demonstrates repeatable positive expected value after realistic transaction costs and execution assumptions.",
+
+    "winRateRole": "Win rate is descriptive and is not the primary measure of strategy quality.",
+
+    "requiredMetrics": [
+      "marketCount",
+      "observationCount",
+      "paperTradeCount",
+      "passCount",
+      "yesTradeCount",
+      "noTradeCount",
+      "winRate",
+      "grossProfitLoss",
+      "transactionCosts",
+      "netProfitLoss",
+      "averageEstimatedEv",
+      "realizedReturn",
+      "maximumDrawdown",
+      "probabilityCalibration",
+      "performanceByContractPriceBucket",
+      "performanceByEstimatedEdgeBucket",
+      "performanceByTimeToExpiryBucket",
+      "performanceBySpreadWidth",
+      "performanceByLiquidityCondition"
+    ],
+
+    "researchQuestions": [
+      "Does the strategy's estimated probability demonstrate useful calibration?",
+      "Does the strategy outperform executable market economics after applicable costs?",
+      "Is apparent edge persistent across a meaningful number of independent market windows?",
+      "Is performance concentrated in identifiable and repeatable market conditions?",
+      "Does the strategy remain viable under conservative execution assumptions?",
+      "Is drawdown compatible with the capital-preservation doctrine?"
+    ]
+  },
+
+  "expansionGate": {
+    "status": "Closed",
+
+    "principle": "Expansion is earned through evidence.",
+
+    "initialDomainMustBeEvaluatedFirst": true,
+
+    "positiveEvRequiredForExpansionConsideration": true,
+
+    "expansionAutomatic": false,
+
+    "possibleFutureDimensions": {
+      "additionalKalshiMarketFamilies": true,
+      "additionalPredictionMarketVenues": true,
+      "additionalAssetClasses": true
+    },
+
+    "requirements": [
+      "Research infrastructure demonstrates data integrity.",
+      "Paper execution methodology is validated.",
+      "At least one frozen strategy has completed an adequate evaluation cohort.",
+      "Positive EV survives applicable costs and conservative execution assumptions.",
+      "Results warrant additional validation.",
+      "Human authorization is provided before expansion work begins."
+    ]
+  },
+
+  "liveTradingGate": {
+    "status": "Prohibited",
+    "liveOrdersAuthorized": false,
+    "liveOrderCodeAuthorized": false,
+    "runtimeToggleToLivePermitted": false,
+
+    "principle": "Paper research and live financial execution are separate stages requiring separate authority.",
+
+    "futureGateRequirements": [
+      "Completed research evaluation",
+      "Demonstrated positive EV",
+      "Out-of-sample validation",
+      "Validated execution assumptions",
+      "Defined bankroll policy",
+      "Defined position-sizing policy",
+      "Defined exposure limits",
+      "Defined drawdown limits",
+      "Operational failure controls",
+      "Human review",
+      "Explicit human authorization"
+    ]
+  },
+
+  "changeControl": {
+    "codexRole": "The Codex is the research contract and should change deliberately and infrequently.",
+    "roadmapRole": "The roadmap records implementation progress and may change as development proceeds.",
+    "codexChangeAuthority": "Human approval required.",
+    "materialDoctrineChange": "Requires a Codex version increment.",
+    "silentDoctrineChangePermitted": false,
+    "historicalDoctrineApplication": "New doctrine does not retroactively rewrite historical observations, decisions, executions, settlements, or strategy attribution."
+  },
+
+  "architectureDoctrine": {
+    "principle": "The software should be designed as a prediction-market research platform with Kalshi BTC 15-minute markets as its first implementation rather than as a permanently BTC-specific bot.",
+
+    "conceptualHierarchy": [
+      "Venue",
+      "MarketFamily",
+      "MarketWindow",
+      "Observation",
+      "StrategyVersion",
+      "Decision",
+      "PaperExecution",
+      "Settlement",
+      "Evaluation"
+    ],
+
+    "separationOfConcerns": {
+      "codex": "Research doctrine and governance.",
+      "roadmap": "Implementation state and development sequence.",
+      "rawData": "Source evidence.",
+      "derivedData": "Calculated research features.",
+      "strategy": "Versioned decision logic.",
+      "evaluation": "Measurement of frozen strategy results."
+    }
+  }
+}

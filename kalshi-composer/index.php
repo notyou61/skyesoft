@@ -2,12 +2,11 @@
 declare(strict_types=1);
 
 
-// ======================================================================
-// Skyesoft — Kalshi BTC Lab
-// 15-Minute Market Research & Paper Trading
-// ======================================================================
+// #region SECTION 1 — Project Configuration
 
 $roadmapPath = __DIR__ . '/roadmap.json';
+$codexPath   = __DIR__ . '/codex/codex.json';
+
 $roadmap = null;
 
 
@@ -22,6 +21,76 @@ if (file_exists($roadmapPath)) {
 $projectVersion = $roadmap['project']['version'] ?? '0.1.0';
 $projectStatus  = $roadmap['project']['status'] ?? 'Development';
 $nextAction     = $roadmap['nextAction']['task'] ?? 'Build read-only Kalshi market API layer';
+
+$currentPhase = (int) ($roadmap['currentState']['currentPhase'] ?? 1);
+
+$currentStrategyVersion =
+    $roadmap['currentState']['currentStrategyVersion']
+    ?? $roadmap['strategyResearch']['currentStrategy']['version']
+    ?? 'v0.1.0-observe';
+
+$currentStrategyType =
+    $roadmap['strategyResearch']['currentStrategy']['type']
+    ?? 'observation';
+
+$currentStrategyLabel =
+    $currentStrategyType === 'observation'
+        ? 'Observation only'
+        : 'Baseline development';
+
+$phases = is_array($roadmap['phases'] ?? null)
+    ? $roadmap['phases']
+    : [];
+
+$authenticationVerified =
+    ($roadmap['currentState']['kalshiAuthentication'] ?? null) === 'verified';
+
+$codexAvailable   = file_exists($codexPath);
+$roadmapAvailable = file_exists($roadmapPath);
+
+// #endregion
+
+
+// #region SECTION 2 — Roadmap Display Helpers
+
+function resolvePhaseClass(string $status): string
+{
+    return match ($status) {
+        'complete', 'completed' => 'complete',
+        'next', 'current', 'in_progress', 'in progress' => 'active',
+        'blocked' => 'blocked',
+        default => ''
+    };
+}
+
+
+function resolvePhaseStatusLabel(array $phase): string
+{
+    $status = strtolower((string) ($phase['status'] ?? 'planned'));
+
+    if ($status === 'next' || $status === 'current' || $status === 'in_progress' || $status === 'in progress') {
+        return 'Current development';
+    }
+
+    if ($status === 'blocked') {
+        return 'Blocked';
+    }
+
+    if ($status === 'complete' || $status === 'completed') {
+        return 'Complete';
+    }
+
+    if (
+        (int) ($phase['phase'] ?? 0) === 6
+        && isset($phase['minimumInitialSampleMarkets'])
+    ) {
+        return number_format((int) $phase['minimumInitialSampleMarkets']) . '-market initial sample';
+    }
+
+    return 'Planned';
+}
+
+// #endregion
 
 ?>
 <!doctype html>
@@ -74,6 +143,19 @@ $nextAction     = $roadmap['nextAction']['task'] ?? 'Build read-only Kalshi mark
         font-size: .72rem;
         font-weight: 700;
         letter-spacing: .08em;
+    }
+
+    .lab-nav-link {
+        color: rgba(255, 255, 255, .72);
+        font-size: .76rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .lab-nav-link:hover,
+    .lab-nav-link:focus {
+        color: #fff;
+        text-decoration: underline;
     }
 
     .lab-card {
@@ -173,6 +255,11 @@ $nextAction     = $roadmap['nextAction']['task'] ?? 'Build read-only Kalshi mark
         color: #084298;
     }
 
+    .phase-number.blocked {
+        background: #f8d7da;
+        color: #842029;
+    }
+
     .next-action {
         border-left: 4px solid #0d6efd;
         background: #f8fbff;
@@ -208,7 +295,29 @@ $nextAction     = $roadmap['nextAction']['task'] ?? 'Build read-only Kalshi mark
             </div>
         </div>
 
-        <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center gap-3 flex-wrap justify-content-end">
+
+            <?php if ($codexAvailable): ?>
+                <a
+                    class="lab-nav-link"
+                    href="codex/codex.json"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    Codex
+                </a>
+            <?php endif; ?>
+
+            <?php if ($roadmapAvailable): ?>
+                <a
+                    class="lab-nav-link"
+                    href="roadmap.json"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    Roadmap
+                </a>
+            <?php endif; ?>
 
             <span class="badge rounded-pill lab-mode px-3 py-2">
                 PAPER ONLY
@@ -282,11 +391,11 @@ $nextAction     = $roadmap['nextAction']['task'] ?? 'Build read-only Kalshi mark
                     </div>
 
                     <div class="metric-value metric-small">
-                        v0.1.0
+                        <?= htmlspecialchars($currentStrategyVersion) ?>
                     </div>
 
                     <div class="small text-muted mt-1">
-                        Baseline development
+                        <?= htmlspecialchars($currentStrategyLabel) ?>
                     </div>
 
                 </div>
@@ -488,7 +597,7 @@ $nextAction     = $roadmap['nextAction']['task'] ?? 'Build read-only Kalshi mark
                                 Strategy
                             </div>
                             <div class="metric-value metric-small">
-                                v0.1.0
+                                <?= htmlspecialchars($currentStrategyVersion) ?>
                             </div>
                         </div>
 
@@ -514,95 +623,64 @@ $nextAction     = $roadmap['nextAction']['task'] ?? 'Build read-only Kalshi mark
 
             <div class="card lab-card mb-3">
 
-                <div class="card-header">
-                    Development Roadmap
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Development Roadmap</span>
+
+                    <?php if ($roadmapAvailable): ?>
+                        <a
+                            class="small text-decoration-none text-capitalize"
+                            href="roadmap.json"
+                            target="_blank"
+                            rel="noopener"
+                        >
+                            View Roadmap
+                        </a>
+                    <?php endif; ?>
                 </div>
 
                 <div class="card-body py-2">
 
                     <div class="phase-row">
-                        <div class="phase-number complete">✓</div>
+                        <div class="phase-number <?= $authenticationVerified ? 'complete' : '' ?>">
+                            <?= $authenticationVerified ? '✓' : 'A' ?>
+                        </div>
                         <div>
                             <div class="fw-semibold small">
                                 Authentication
                             </div>
                             <div class="text-muted small">
-                                GoDaddy → Kalshi verified
+                                <?= $authenticationVerified
+                                    ? 'GoDaddy → Kalshi verified'
+                                    : 'Pending verification' ?>
                             </div>
                         </div>
                     </div>
 
-                    <div class="phase-row">
-                        <div class="phase-number active">1</div>
-                        <div>
-                            <div class="fw-semibold small">
-                                Read-Only Market API
-                            </div>
-                            <div class="text-muted small">
-                                Current development
-                            </div>
-                        </div>
-                    </div>
+                    <?php foreach ($phases as $phase): ?>
+                        <?php
+                            $phaseNumber = (int) ($phase['phase'] ?? 0);
+                            $phaseName = (string) ($phase['name'] ?? ('Phase ' . $phaseNumber));
+                            $phaseStatus = (string) ($phase['status'] ?? 'planned');
+                            $phaseClass = resolvePhaseClass(strtolower($phaseStatus));
+                            $phaseStatusLabel = resolvePhaseStatusLabel($phase);
+                        ?>
 
-                    <div class="phase-row">
-                        <div class="phase-number">2</div>
-                        <div>
-                            <div class="fw-semibold small">
-                                Opening Snapshot
+                        <div class="phase-row">
+                            <div class="phase-number <?= htmlspecialchars($phaseClass) ?>">
+                                <?= htmlspecialchars((string) $phaseNumber) ?>
                             </div>
-                            <div class="text-muted small">
-                                Planned
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="phase-row">
-                        <div class="phase-number">3</div>
-                        <div>
-                            <div class="fw-semibold small">
-                                Observation Capture
-                            </div>
-                            <div class="text-muted small">
-                                Planned
-                            </div>
-                        </div>
-                    </div>
+                            <div>
+                                <div class="fw-semibold small">
+                                    <?= htmlspecialchars($phaseName) ?>
+                                </div>
 
-                    <div class="phase-row">
-                        <div class="phase-number">4</div>
-                        <div>
-                            <div class="fw-semibold small">
-                                Paper Decision Engine
-                            </div>
-                            <div class="text-muted small">
-                                Planned
+                                <div class="text-muted small">
+                                    <?= htmlspecialchars($phaseStatusLabel) ?>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="phase-row">
-                        <div class="phase-number">5</div>
-                        <div>
-                            <div class="fw-semibold small">
-                                Settlement &amp; Performance
-                            </div>
-                            <div class="text-muted small">
-                                Planned
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="phase-row">
-                        <div class="phase-number">6</div>
-                        <div>
-                            <div class="fw-semibold small">
-                                Strategy Evaluation
-                            </div>
-                            <div class="text-muted small">
-                                500-market initial sample
-                            </div>
-                        </div>
-                    </div>
+                    <?php endforeach; ?>
 
                 </div>
             </div>
@@ -637,6 +715,28 @@ $nextAction     = $roadmap['nextAction']['task'] ?? 'Build read-only Kalshi mark
         </span>
 
         <span>
+            <?php if ($codexAvailable): ?>
+                <a
+                    class="text-reset text-decoration-none me-3"
+                    href="codex/codex.json"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    Codex
+                </a>
+            <?php endif; ?>
+
+            <?php if ($roadmapAvailable): ?>
+                <a
+                    class="text-reset text-decoration-none me-3"
+                    href="roadmap.json"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    Roadmap
+                </a>
+            <?php endif; ?>
+
             Research Environment · Live Trading Disabled
         </span>
 

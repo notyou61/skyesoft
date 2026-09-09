@@ -1,237 +1,429 @@
 {
-    "project": {
-        "name": "Skyesoft Kalshi BTC 15-Minute Paper Trading",
-        "version": "0.1.0",
-        "status": "paper_test_development",
-        "createdAt": "2026-08-12",
-        "objective": "Determine whether a repeatable and economically useful edge exists in Kalshi 15-minute Bitcoin price prediction markets before enabling live trading."
+  "project": {
+    "name": "Skyesoft Prediction Market Lab",
+    "workingName": "Kalshi BTC Lab",
+    "version": "0.1.0",
+    "status": "paper_test_development",
+    "createdAt": "2026-08-12",
+    "initialDomain": "Kalshi BTC 15-Minute Markets",
+    "objective": "Determine whether a repeatable and economically useful positive-EV edge exists in Kalshi 15-minute Bitcoin price prediction markets before enabling live trading.",
+    "longTermObjective": "Develop a disciplined and reusable prediction-market research methodology that may expand to additional market families and venues only when warranted by demonstrated positive EV."
+  },
+
+  "governance": {
+    "codexPath": "codex/codex.json",
+    "codexVersion": "0.1.0",
+    "codexStatus": "established",
+    "principle": "Begin with the end in mind.",
+    "initialDomain": "Kalshi BTC 15-Minute Markets",
+    "liveTradingAuthorized": false,
+    "expansionAuthorized": false
+  },
+
+  "currentState": {
+    "kalshiAuthentication": "verified",
+    "server": "GoDaddy",
+    "httpStatus": 200,
+    "rsaSigning": "RSA-PSS SHA-256",
+    "environmentLoader": "skyesoftLoadEnv",
+    "composerLibrary": "phpseclib/phpseclib",
+    "liveTradingEnabled": false,
+    "paperTradingEnabled": false,
+    "predictiveTradingEnabled": false,
+    "currentPhase": 1,
+    "currentStrategyVersion": "v0.1.0-observe",
+    "verifiedCapabilities": [
+      "Load Kalshi credentials from Skyesoft environment",
+      "Read private RSA key outside public web root",
+      "Generate Kalshi RSA-PSS signatures",
+      "Make authenticated HTTPS requests from GoDaddy",
+      "Retrieve authenticated portfolio balance"
+    ]
+  },
+
+  "principles": {
+    "paperFirst": true,
+    "noLiveOrdersDuringTesting": true,
+    "decisionRecordedBeforeOutcome": true,
+    "preserveRawMarketData": true,
+    "historicalResearchImmutable": true,
+    "strategyVersionRequired": true,
+    "passIsValidDecision": true,
+    "evaluateNetOfFees": true,
+    "avoidLookAheadBias": true,
+    "officialSettlementOnly": true,
+    "executablePricesRequiredForEv": true,
+    "specializationBeforeExpansion": true,
+    "edgeBeforeCapital": true,
+    "evidenceBeforeAutomation": true,
+    "expansionRequiresEvidence": true
+  },
+
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Read-Only Kalshi API Layer",
+      "status": "next",
+      "objective": "Convert the successful authentication test into reusable read-only Skyesoft Kalshi API components and inspect the actual BTC 15-minute market payload before designing the persistence schema.",
+      "tasks": [
+        "Create reusable Kalshi authentication/client component",
+        "Retrieve active markets",
+        "Identify BTC 15-minute markets",
+        "Retrieve individual market details",
+        "Retrieve YES and NO pricing",
+        "Retrieve order book data",
+        "Retrieve market open and close times",
+        "Retrieve settlement results",
+        "Preserve raw API responses for development",
+        "Inspect actual Kalshi BTC 15-minute payload structure",
+        "Identify verified fields required for research data contracts",
+        "Define canonical research data contracts from verified API fields",
+        "Design persistence schema from verified data contracts"
+      ],
+      "researchObjectsToValidate": [
+        "Venue",
+        "MarketFamily",
+        "MarketWindow",
+        "Observation",
+        "StrategyVersion",
+        "Decision",
+        "PaperExecution",
+        "Settlement",
+        "Evaluation"
+      ],
+      "constraints": [
+        "No live orders",
+        "No predictive trading decisions",
+        "No final database schema based on assumed API fields"
+      ],
+      "liveOrderCapability": false
     },
-    "currentState": {
-        "kalshiAuthentication": "verified",
-        "server": "GoDaddy",
-        "httpStatus": 200,
-        "rsaSigning": "RSA-PSS SHA-256",
-        "environmentLoader": "skyesoftLoadEnv",
-        "composerLibrary": "phpseclib/phpseclib",
-        "liveTradingEnabled": false,
-        "paperTradingEnabled": false,
-        "verifiedCapabilities": [
-            "Load Kalshi credentials from Skyesoft environment",
-            "Read private RSA key outside public web root",
-            "Generate Kalshi RSA-PSS signatures",
-            "Make authenticated HTTPS requests from GoDaddy",
-            "Retrieve authenticated portfolio balance"
-        ]
+
+    {
+      "phase": 2,
+      "name": "Opening Market Snapshot",
+      "status": "planned",
+      "objective": "Capture the market state at the beginning of each 15-minute BTC prediction cycle using verified Kalshi fields and approved external market inputs.",
+      "candidateFields": [
+        "marketTicker",
+        "openedAt",
+        "closesAt",
+        "btcStartPrice",
+        "targetPrice",
+        "yesBid",
+        "yesAsk",
+        "noBid",
+        "noAsk",
+        "spread",
+        "orderBookDepth",
+        "observationTimestamp",
+        "strategyVersion",
+        "rawPayloadHash"
+      ],
+      "note": "Final schema and canonical field names will be based on actual Kalshi API payloads rather than assumed field names."
     },
-    "principles": {
-        "paperFirst": true,
-        "noLiveOrdersDuringTesting": true,
-        "decisionRecordedBeforeOutcome": true,
-        "preserveRawMarketData": true,
-        "strategyVersionRequired": true,
-        "passIsValidDecision": true,
-        "evaluateNetOfFees": true,
-        "avoidLookAheadBias": true
+
+    {
+      "phase": 3,
+      "name": "Intraperiod Observation Capture",
+      "status": "planned",
+      "objective": "Record how BTC and the prediction market evolve during each 15-minute cycle while preserving point-in-time integrity and source timestamps.",
+      "initialIntervalSeconds": 5,
+      "candidateFields": [
+        "observedAt",
+        "sourceTimestamp",
+        "elapsedSeconds",
+        "btcPrice",
+        "distanceFromTarget",
+        "yesBid",
+        "yesAsk",
+        "noBid",
+        "noAsk",
+        "spread",
+        "orderBookDepth"
+      ],
+      "externalDataPolicy": "External BTC market data may be used as a predictive research input only when its source timestamp is no later than the relevant observation or decision timestamp. External prices may not substitute for official Kalshi settlement data.",
+      "purpose": [
+        "Analyze whether entry at market open is optimal",
+        "Measure short-term momentum",
+        "Measure volatility",
+        "Measure prediction-market repricing",
+        "Measure cross-market price relationships",
+        "Identify potentially superior entry windows",
+        "Build a trustworthy synchronized research dataset"
+      ]
     },
-    "phases": [
-        {
-            "phase": 1,
-            "name": "Read-Only Kalshi API Layer",
-            "status": "next",
-            "objective": "Convert the successful authentication test into reusable read-only Skyesoft Kalshi API components.",
-            "tasks": [
-                "Create reusable Kalshi authentication/client component",
-                "Retrieve active markets",
-                "Identify BTC 15-minute markets",
-                "Retrieve individual market details",
-                "Retrieve YES and NO pricing",
-                "Retrieve order book data",
-                "Retrieve market open and close times",
-                "Retrieve settlement results",
-                "Preserve raw API responses for development"
-            ],
-            "liveOrderCapability": false
-        },
-        {
-            "phase": 2,
-            "name": "Opening Market Snapshot",
-            "status": "planned",
-            "objective": "Capture the market state at the beginning of each 15-minute BTC prediction cycle.",
-            "candidateFields": [
-                "marketTicker",
-                "openedAt",
-                "closesAt",
-                "btcStartPrice",
-                "targetPrice",
-                "yesBid",
-                "yesAsk",
-                "noBid",
-                "noAsk",
-                "spread",
-                "orderBookDepth",
-                "strategyVersion"
-            ],
-            "note": "Final schema will be based on actual Kalshi API payloads rather than assumed field names."
-        },
-        {
-            "phase": 3,
-            "name": "Intraperiod Observation Capture",
-            "status": "planned",
-            "objective": "Record how BTC and the prediction market evolve during each 15-minute cycle.",
-            "initialIntervalSeconds": 5,
-            "candidateFields": [
-                "observedAt",
-                "elapsedSeconds",
-                "btcPrice",
-                "distanceFromTarget",
-                "yesBid",
-                "yesAsk",
-                "noBid",
-                "noAsk",
-                "spread",
-                "orderBookDepth"
-            ],
-            "purpose": [
-                "Analyze whether entry at market open is optimal",
-                "Measure short-term momentum",
-                "Measure volatility",
-                "Measure prediction-market repricing",
-                "Identify potentially superior entry windows"
-            ]
-        },
-        {
-            "phase": 4,
-            "name": "Paper Decision Engine",
-            "status": "planned",
-            "objective": "Generate and permanently record the action that would have been taken using only information available at decision time.",
-            "allowedDecisions": [
-                "YES",
-                "NO",
-                "PASS"
-            ],
-            "candidateOutputs": [
-                "modelProbability",
-                "marketImpliedProbability",
-                "estimatedEdge",
-                "decision",
-                "entryPrice",
-                "paperQuantity",
-                "paperCost",
-                "decisionTimestamp",
-                "strategyVersion"
-            ],
-            "rule": "A recorded decision must not be altered based on subsequent market movement or settlement."
-        },
-        {
-            "phase": 5,
-            "name": "Paper Settlement and Performance",
-            "status": "planned",
-            "objective": "Settle each simulated position against the actual Kalshi result and calculate performance.",
-            "metrics": [
-                "grossProfitLoss",
-                "estimatedFees",
-                "netProfitLoss",
-                "capitalRisked",
-                "returnOnRisk",
-                "winLoss",
-                "settlementResult"
-            ]
-        },
-        {
-            "phase": 6,
-            "name": "Strategy Evaluation",
-            "status": "planned",
-            "objective": "Determine whether the strategy demonstrates a repeatable edge sufficient to justify further development.",
-            "minimumInitialSampleMarkets": 500,
-            "metrics": [
-                "marketsObserved",
-                "paperTrades",
-                "passes",
-                "winRate",
-                "averageEntryPrice",
-                "grossProfitLoss",
-                "netProfitLoss",
-                "maximumDrawdown",
-                "longestLosingStreak",
-                "returnPerDollarRisked",
-                "performanceByEdgeBand",
-                "performanceByConfidenceBand",
-                "performanceByTimeOfDay",
-                "probabilityCalibration"
-            ]
-        },
-        {
-            "phase": 7,
-            "name": "Strategy Refinement",
-            "status": "planned",
-            "objective": "Use accumulated observations to test whether alternative signals or entry timing improve out-of-sample results.",
-            "candidateSignals": [
-                "btcShortTermMomentum",
-                "distanceFromTarget",
-                "marketImpliedProbability",
-                "orderBookImbalance",
-                "recentVolatility",
-                "elapsedTime"
-            ],
-            "requirement": "Each material strategy change receives a new strategyVersion."
-        },
-        {
-            "phase": 8,
-            "name": "Live Trading Decision",
-            "status": "blocked",
-            "objective": "Consider controlled live execution only after paper results demonstrate a durable net-positive edge.",
-            "requirements": [
-                "Sufficient paper-test sample",
-                "Positive results after estimated fees",
-                "Acceptable drawdown",
-                "Out-of-sample validation",
-                "Defined position sizing",
-                "Defined maximum loss limits",
-                "Defined kill switch",
-                "Explicit approval to enable live order capability"
-            ]
-        }
-    ],
-    "proposedStorage": {
-        "primary": "MySQL",
-        "rawPayloads": "JSON",
-        "tables": [
-            {
-                "name": "tblKalshiMarkets",
-                "purpose": "One record per BTC 15-minute market."
-            },
-            {
-                "name": "tblKalshiObservations",
-                "purpose": "Time-series observations captured during each market."
-            },
-            {
-                "name": "tblKalshiPaperTrades",
-                "purpose": "Immutable simulated decisions and settlement results."
-            }
+
+    {
+      "phase": 4,
+      "name": "Paper Decision Engine",
+      "status": "planned",
+      "objective": "Generate and permanently record the action that would have been taken using only information available at decision time.",
+      "baselineStrategy": {
+        "version": "v0.1.0-observe",
+        "type": "observation",
+        "status": "planned",
+        "purpose": "Validate market discovery, lifecycle handling, timestamps, observation capture, raw-data integrity, settlement capture, and research lineage before introducing predictive trading logic.",
+        "allowedDecisions": [
+          "PASS"
         ],
-        "status": "schema_not_yet_created"
+        "predictiveTradingEnabled": false
+      },
+      "futureDecisionSet": [
+        "YES",
+        "NO",
+        "PASS"
+      ],
+      "candidateOutputs": [
+        "modelProbability",
+        "marketImpliedProbability",
+        "estimatedEdge",
+        "decision",
+        "entryPrice",
+        "paperQuantity",
+        "paperCost",
+        "estimatedFees",
+        "estimatedNetEv",
+        "decisionTimestamp",
+        "strategyVersion",
+        "decisionReason"
+      ],
+      "rules": [
+        "A recorded decision must not be altered based on subsequent market movement or settlement.",
+        "A strategy may use only information available at or before decisionTimestamp.",
+        "Each market window counts as one market sample regardless of the number of observations collected.",
+        "PASS is a valid and expected decision."
+      ]
     },
-    "initialStrategy": {
-        "version": "0.1.0",
-        "status": "not_implemented",
-        "purpose": "Establish a simple baseline strategy before introducing optimization.",
-        "decisionModel": "Compare estimated event probability with executable Kalshi market price and trade only when estimated edge exceeds the required threshold.",
-        "signals": [
-            "btcShortTermMomentum",
-            "distanceFromTarget",
-            "kalshiMarketPrice",
-            "orderBookImbalance",
-            "recentVolatility",
-            "timeIntoContract"
-        ],
-        "decisions": [
-            "YES",
-            "NO",
-            "PASS"
-        ]
+
+    {
+      "phase": 5,
+      "name": "Paper Settlement and Performance",
+      "status": "planned",
+      "objective": "Settle each simulated position against the official Kalshi result and calculate performance under a predefined paper-execution standard.",
+      "paperExecutionRequirements": [
+        "Define executable YES price standard",
+        "Define executable NO price standard",
+        "Define minimum liquidity requirement",
+        "Define applicable fee treatment",
+        "Define slippage assumption where applicable",
+        "Define decision-to-fill timing assumption",
+        "Define paper quantity rule"
+      ],
+      "settlementAuthority": "Official Kalshi market outcome and applicable settlement data.",
+      "metrics": [
+        "grossProfitLoss",
+        "estimatedFees",
+        "netProfitLoss",
+        "capitalRisked",
+        "returnOnRisk",
+        "winLoss",
+        "settlementResult",
+        "entryPrice",
+        "realizedEdge"
+      ],
+      "rules": [
+        "External BTC spot prices may not grade settlement.",
+        "Paper fills may not be retroactively improved.",
+        "Midpoint and last trade price are diagnostic only unless explicitly authorized by a future frozen execution standard."
+      ]
     },
-    "nextAction": {
-        "phase": 1,
-        "task": "Query the Kalshi API from GoDaddy to discover the active BTC 15-minute market and inspect the actual market payload before designing the database schema."
+
+    {
+      "phase": 6,
+      "name": "Strategy Evaluation",
+      "status": "planned",
+      "objective": "Determine whether a frozen strategy demonstrates a repeatable edge sufficient to justify further development.",
+      "minimumInitialSampleMarkets": 500,
+      "sampleUnit": "One independent BTC 15-minute market window",
+      "interpretation": "The 500-market target is a minimum initial evaluation cohort and is not by itself proof of statistical significance.",
+      "metrics": [
+        "marketsObserved",
+        "observationsCaptured",
+        "paperTrades",
+        "passes",
+        "yesTrades",
+        "noTrades",
+        "winRate",
+        "averageEntryPrice",
+        "grossProfitLoss",
+        "estimatedFees",
+        "netProfitLoss",
+        "maximumDrawdown",
+        "longestLosingStreak",
+        "returnPerDollarRisked",
+        "averageEstimatedEv",
+        "performanceByEdgeBand",
+        "performanceByConfidenceBand",
+        "performanceByContractPriceBand",
+        "performanceByTimeOfDay",
+        "performanceByTimeToExpiry",
+        "performanceBySpreadWidth",
+        "performanceByLiquidityCondition",
+        "probabilityCalibration"
+      ],
+      "primaryQuestion": "Does the frozen strategy demonstrate repeatable positive EV after realistic transaction costs and execution assumptions?"
+    },
+
+    {
+      "phase": 7,
+      "name": "Strategy Refinement",
+      "status": "planned",
+      "objective": "Use accumulated observations to test whether alternative signals, probability models, trade thresholds, or entry timing improve out-of-sample results.",
+      "candidateSignals": [
+        "btcShortTermMomentum",
+        "distanceFromTarget",
+        "kalshiMarketPrice",
+        "orderBookImbalance",
+        "recentVolatility",
+        "elapsedTime",
+        "externalExchangePriceDifference",
+        "settlementReferenceDistance",
+        "spreadWidth",
+        "liquidityCondition"
+      ],
+      "requirements": [
+        "Each material strategy change receives a new strategyVersion.",
+        "Historical decisions remain attributed to the strategy version that produced them.",
+        "Retrospective analysis may inform a future strategy but may not replace prospectively recorded historical decisions.",
+        "A new strategy version must be frozen before its evaluation cohort begins."
+      ]
+    },
+
+    {
+      "phase": 8,
+      "name": "Live Trading Decision",
+      "status": "blocked",
+      "objective": "Consider controlled live execution only after paper results demonstrate a durable net-positive edge.",
+      "requirements": [
+        "Sufficient paper-test sample",
+        "Positive results after applicable fees",
+        "Positive results under realistic execution assumptions",
+        "Acceptable drawdown",
+        "Out-of-sample validation",
+        "Defined bankroll policy",
+        "Defined position sizing",
+        "Defined exposure limits",
+        "Defined maximum loss limits",
+        "Defined kill switch",
+        "Operational failure controls",
+        "Explicit human approval to enable live order capability"
+      ],
+      "liveOrderCapability": false,
+      "runtimeToggleToLivePermitted": false
+    },
+
+    {
+      "phase": 9,
+      "name": "Expansion Decision",
+      "status": "blocked",
+      "objective": "Consider applying the validated prediction-market research methodology to additional market families or venues only when evidence from the initial domain warrants expansion.",
+      "candidateDirections": [
+        "Additional Kalshi market families",
+        "Additional objectively modelable prediction markets",
+        "Additional asset classes",
+        "Additional prediction-market venues"
+      ],
+      "venueExamples": [
+        "Kalshi",
+        "Polymarket",
+        "Crypto.com"
+      ],
+      "requirements": [
+        "Validated research infrastructure",
+        "Verified data integrity",
+        "Completed frozen-strategy evaluation",
+        "Demonstrated positive EV after costs",
+        "Out-of-sample validation",
+        "Evidence that expansion is warranted",
+        "Explicit human approval"
+      ],
+      "principle": "Failure to demonstrate positive EV in the initial domain does not justify expansion merely in search of easier profits.",
+      "automatic": false
     }
+  ],
+
+  "proposedStorage": {
+    "primary": "MySQL",
+    "rawPayloads": "JSON",
+    "architectureDirection": "Design storage around reusable prediction-market research objects while implementing Kalshi BTC 15-minute markets first.",
+    "candidateResearchHierarchy": [
+      "Venue",
+      "MarketFamily",
+      "MarketWindow",
+      "Observation",
+      "StrategyVersion",
+      "Decision",
+      "PaperExecution",
+      "Settlement",
+      "Evaluation"
+    ],
+    "currentCandidateTables": [
+      {
+        "name": "tblKalshiMarkets",
+        "purpose": "One record per BTC 15-minute market window."
+      },
+      {
+        "name": "tblKalshiObservations",
+        "purpose": "Time-series observations captured during each market window."
+      },
+      {
+        "name": "tblKalshiPaperTrades",
+        "purpose": "Immutable simulated decisions, execution assumptions, and settlement results."
+      }
+    ],
+    "note": "Current table names are provisional. Final schema will be designed after inspection of actual Kalshi BTC 15-minute API payloads and definition of canonical research data contracts.",
+    "status": "schema_not_yet_created"
+  },
+
+  "strategyResearch": {
+    "currentStrategy": {
+      "version": "v0.1.0-observe",
+      "status": "not_implemented",
+      "type": "observation",
+      "purpose": "Establish trustworthy data collection, lifecycle handling, settlement capture, and research integrity before introducing predictive decisions.",
+      "signals": [],
+      "decisions": [
+        "PASS"
+      ],
+      "predictiveTradingEnabled": false
+    },
+
+    "firstPredictiveStrategy": {
+      "expectedVersion": "v0.2.0-baseline",
+      "status": "not_defined",
+      "purpose": "Establish the first frozen prospective baseline strategy after sufficient real BTC 15-minute market observations have been collected and researched.",
+      "decisionModel": "Estimate event probability using temporally eligible information, compare that estimate with realistically executable Kalshi market economics, and trade only when estimated net EV exceeds the frozen strategy threshold.",
+      "candidateSignals": [
+        "btcShortTermMomentum",
+        "distanceFromTarget",
+        "kalshiMarketPrice",
+        "orderBookImbalance",
+        "recentVolatility",
+        "timeIntoContract",
+        "externalExchangePriceDifference",
+        "settlementReferenceDistance"
+      ],
+      "decisions": [
+        "YES",
+        "NO",
+        "PASS"
+      ],
+      "note": "Candidate signals are research hypotheses only and are not yet an implemented strategy."
+    }
+  },
+
+  "longTermStrategy": {
+    "doctrine": "Specialize first, demonstrate edge, repeat conservatively, and expand only when warranted by evidence.",
+    "profitModel": "The project does not depend on large individual bets. Its working hypothesis is that small, statistically defensible positive-EV opportunities may produce meaningful cumulative results through disciplined repetition.",
+    "scalingPrinciple": "Repetition may scale a demonstrated edge. Increasing individual bet size is not the primary scaling mechanism.",
+    "capitalPrinciple": "Position size remains subordinate to uncertainty, bankroll preservation, drawdown limits, and risk controls.",
+    "noTradeRequirement": "The system is never required to trade. PASS is preferable to taking a position without sufficient expected value.",
+    "futureArchitecture": "The long-term platform should support additional venues and market families without weakening the specialized research requirements of each domain."
+  },
+
+  "nextAction": {
+    "phase": 1,
+    "task": "Query the Kalshi API from GoDaddy to discover the active BTC 15-minute market and inspect the actual market payload before designing the database schema."
+  }
 }
