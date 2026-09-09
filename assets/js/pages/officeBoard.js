@@ -397,8 +397,9 @@ function renderTodaysHighlightsSkeleton() {
                     <strong id="activityActionsTotal">—</strong>
                 </div>
 
-                <div class="entry section-header">
-                    🕒 Last Action
+                <div class="entry kpi-row">
+                    <span>Last Action</span>
+                    <strong id="activityLastActionSummary">—</strong>
                 </div>
 
                 <div class="entry compact" id="activityLastActionSummary">
@@ -1680,58 +1681,34 @@ const PermitNewsCard = {
                         📊 Permit Snapshot
                     </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Active Applications
-                        </div>
-                        <div class="entry-body" id="permitNewsActiveCount">
-                            —
-                        </div>
+                    <div class="entry kpi-row">
+                        <span>Active Applications</span>
+                        <strong id="permitNewsActiveCount">—</strong>
                     </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Oldest Open Application
-                        </div>
-                        <div class="entry-body" id="permitNewsOldestOpen">
-                            —
-                        </div>
+                    <div class="entry kpi-row">
+                        <span>Oldest Open Application</span>
+                        <strong id="permitNewsOldestOpen">—</strong>
                     </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Outstanding Fees
-                        </div>
-                        <div class="entry-body" id="permitNewsOutstandingFees">
-                            —
-                        </div>
+                    <div class="entry kpi-row">
+                        <span>Outstanding Fees</span>
+                        <strong id="permitNewsOutstandingFees">—</strong>
                     </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Active Requirements
-                        </div>
-                        <div class="entry-body" id="permitNewsActiveRequirements">
-                            —
-                        </div>
+                    <div class="entry kpi-row">
+                        <span>Active Requirements</span>
+                        <strong id="permitNewsActiveRequirements">—</strong>
                     </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Most Active Jurisdiction
-                        </div>
-                        <div class="entry-body" id="permitNewsJurisdiction">
-                            —
-                        </div>
+                    <div class="entry kpi-row">
+                        <span>Most Active Jurisdiction</span>
+                        <strong id="permitNewsJurisdiction">—</strong>
                     </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Stage Mix
-                        </div>
-                        <div class="entry-body" id="permitNewsStageMix">
-                            —
-                        </div>
+                    <div class="entry kpi-row">
+                        <span>Stage Mix</span>
+                        <strong id="permitNewsStageMix">—</strong>
                     </div>
 
                 </div>
