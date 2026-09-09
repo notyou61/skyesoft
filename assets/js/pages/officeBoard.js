@@ -306,6 +306,7 @@ function renderTodaysHighlightsSkeleton() {
                     <div class="section-header">
                         📅 <span class="section-title">Today</span>
                     </div>
+
                     <div class="entry compact">
                         <span id="todaysDate">—</span>
                         &nbsp;|&nbsp;
@@ -320,6 +321,7 @@ function renderTodaysHighlightsSkeleton() {
                         <span id="seasonIcon">❄️</span>
                         <span class="section-title">Season</span>
                     </div>
+
                     <div class="entry compact highlight-season">
                         <span id="seasonName">—</span>
                         — Day <span id="seasonDay">—</span>
@@ -332,11 +334,13 @@ function renderTodaysHighlightsSkeleton() {
                     <div class="section-header">
                         🌄 <span class="section-title">Sun & Light</span>
                     </div>
+
                     <div class="entry compact">
                         Sunrise: <span id="sunriseTime">—</span>
                         &nbsp;|&nbsp;
                         Sunset: <span id="sunsetTime">—</span>
                     </div>
+
                     <div class="entry compact">
                         Daylight: <span id="daylightTime">—</span>
                         &nbsp;|&nbsp;
@@ -349,6 +353,7 @@ function renderTodaysHighlightsSkeleton() {
                     <div class="section-header">
                         🎉 <span class="section-title">Upcoming</span>
                     </div>
+
                     <div class="entry compact">
                         <span id="nextHoliday">—</span>
                     </div>
@@ -1648,6 +1653,8 @@ const PermitNewsCard = {
 
         this.instance.content.innerHTML = `
             <div class="highlights-grid">
+
+                <!-- LEFT COLUMN -->
                 <div class="highlights-col">
 
                     <div class="entry section-header">
@@ -1664,77 +1671,71 @@ const PermitNewsCard = {
                         </div>
                     </div>
 
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div class="highlights-col">
+
                     <div class="entry section-header">
                         📊 Permit Snapshot
                     </div>
 
-                    <div class="highlights-grid permit-news-snapshot-grid">
-
-                        <div class="highlights-col">
-
-                            <div class="entry">
-                                <div class="entry-title">
-                                    Active Applications
-                                </div>
-                                <div class="entry-body" id="permitNewsActiveCount">
-                                    —
-                                </div>
-                            </div>
-
-                            <div class="entry">
-                                <div class="entry-title">
-                                    Outstanding Fees
-                                </div>
-                                <div class="entry-body" id="permitNewsOutstandingFees">
-                                    —
-                                </div>
-                            </div>
-
-                            <div class="entry">
-                                <div class="entry-title">
-                                    Most Active Jurisdiction
-                                </div>
-                                <div class="entry-body" id="permitNewsJurisdiction">
-                                    —
-                                </div>
-                            </div>
-
+                    <div class="entry">
+                        <div class="entry-title">
+                            Active Applications
                         </div>
-
-                        <div class="highlights-col">
-
-                            <div class="entry">
-                                <div class="entry-title">
-                                    Oldest Open Application
-                                </div>
-                                <div class="entry-body" id="permitNewsOldestOpen">
-                                    —
-                                </div>
-                            </div>
-
-                            <div class="entry">
-                                <div class="entry-title">
-                                    Active Requirements
-                                </div>
-                                <div class="entry-body" id="permitNewsActiveRequirements">
-                                    —
-                                </div>
-                            </div>
-
-                            <div class="entry">
-                                <div class="entry-title">
-                                    Stage Mix
-                                </div>
-                                <div class="entry-body" id="permitNewsStageMix">
-                                    —
-                                </div>
-                            </div>
-
+                        <div class="entry-body" id="permitNewsActiveCount">
+                            —
                         </div>
+                    </div>
 
+                    <div class="entry">
+                        <div class="entry-title">
+                            Oldest Open Application
+                        </div>
+                        <div class="entry-body" id="permitNewsOldestOpen">
+                            —
+                        </div>
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Outstanding Fees
+                        </div>
+                        <div class="entry-body" id="permitNewsOutstandingFees">
+                            —
+                        </div>
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Active Requirements
+                        </div>
+                        <div class="entry-body" id="permitNewsActiveRequirements">
+                            —
+                        </div>
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Most Active Jurisdiction
+                        </div>
+                        <div class="entry-body" id="permitNewsJurisdiction">
+                            —
+                        </div>
+                    </div>
+
+                    <div class="entry">
+                        <div class="entry-title">
+                            Stage Mix
+                        </div>
+                        <div class="entry-body" id="permitNewsStageMix">
+                            —
+                        </div>
                     </div>
 
                 </div>
+
             </div>
         `;
 
