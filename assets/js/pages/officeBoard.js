@@ -1390,24 +1390,8 @@ const KPICard = {
                         🕒 Last Permit Activity
                     </div>
 
-                    <div class="entry kpi-row">
-                        <span>Who</span>
-                        <strong id="kpiLastPermitWho">—</strong>
-                    </div>
-
-                    <div class="entry kpi-row">
-                        <span>What</span>
-                        <strong id="kpiLastPermitWhat">—</strong>
-                    </div>
-
-                    <div class="entry kpi-row">
-                        <span>Permit</span>
-                        <strong id="kpiLastPermitApplication">—</strong>
-                    </div>
-
-                    <div class="entry kpi-row">
-                        <span>When</span>
-                        <strong id="kpiLastPermitWhen">—</strong>
+                    <div class="entry compact" id="kpiLastPermitSummary">
+                        —
                     </div>
 
                 </div>
@@ -1576,46 +1560,37 @@ const KPICard = {
         const lastPermitActivity =
             payload.kpi.lastPermitActivity;
 
-        const lastPermitWhoEl =
-            this.instance.root.querySelector('#kpiLastPermitWho');
+        const lastPermitSummaryEl =
+            this.instance.root.querySelector(
+                '#kpiLastPermitSummary'
+            );
 
-        const lastPermitWhatEl =
-            this.instance.root.querySelector('#kpiLastPermitWhat');
+        if (lastPermitSummaryEl) {
 
-        const lastPermitApplicationEl =
-            this.instance.root.querySelector('#kpiLastPermitApplication');
-
-        const lastPermitWhenEl =
-            this.instance.root.querySelector('#kpiLastPermitWhen');
-
-        if (lastPermitWhoEl) {
-            lastPermitWhoEl.textContent =
+            const who =
                 lastPermitActivity?.contactName || '—';
-        }
 
-        if (lastPermitWhatEl) {
-            lastPermitWhatEl.textContent =
+            const what =
                 lastPermitActivity?.actionName || '—';
-        }
 
-        if (lastPermitApplicationEl) {
             const wo =
-                lastPermitActivity?.wo;
+                lastPermitActivity?.wo || null;
 
             const customer =
-                lastPermitActivity?.customer;
+                lastPermitActivity?.customer || '';
 
-            lastPermitApplicationEl.textContent =
+            const permit =
                 wo
-                    ? `WO ${wo}${customer ? ` — ${customer}` : ''}`
+                    ? `WO ${wo}${customer ? ` ${customer}` : ''}`
                     : '—';
-        }
 
-        if (lastPermitWhenEl) {
-            lastPermitWhenEl.textContent =
+            const when =
                 Number.isFinite(lastPermitActivity?.actionUnix)
                     ? formatTimestamp(lastPermitActivity.actionUnix)
                     : '—';
+
+            lastPermitSummaryEl.textContent =
+                `${who} • ${what} • ${permit} • ${when}`;
         }
 
         /* ─────────────────────────────
@@ -1693,58 +1668,70 @@ const PermitNewsCard = {
                         📊 Permit Snapshot
                     </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Active Applications
-                        </div>
-                        <div class="entry-body" id="permitNewsActiveCount">
-                            —
-                        </div>
-                    </div>
+                    <div class="highlights-grid permit-news-snapshot-grid">
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Oldest Open Application
-                        </div>
-                        <div class="entry-body" id="permitNewsOldestOpen">
-                            —
-                        </div>
-                    </div>
+                        <div class="highlights-col">
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Outstanding Fees
-                        </div>
-                        <div class="entry-body" id="permitNewsOutstandingFees">
-                            —
-                        </div>
-                    </div>
+                            <div class="entry">
+                                <div class="entry-title">
+                                    Active Applications
+                                </div>
+                                <div class="entry-body" id="permitNewsActiveCount">
+                                    —
+                                </div>
+                            </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Active Requirements
-                        </div>
-                        <div class="entry-body" id="permitNewsActiveRequirements">
-                            —
-                        </div>
-                    </div>
+                            <div class="entry">
+                                <div class="entry-title">
+                                    Outstanding Fees
+                                </div>
+                                <div class="entry-body" id="permitNewsOutstandingFees">
+                                    —
+                                </div>
+                            </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Most Active Jurisdiction
-                        </div>
-                        <div class="entry-body" id="permitNewsJurisdiction">
-                            —
-                        </div>
-                    </div>
+                            <div class="entry">
+                                <div class="entry-title">
+                                    Most Active Jurisdiction
+                                </div>
+                                <div class="entry-body" id="permitNewsJurisdiction">
+                                    —
+                                </div>
+                            </div>
 
-                    <div class="entry">
-                        <div class="entry-title">
-                            Stage Mix
                         </div>
-                        <div class="entry-body" id="permitNewsStageMix">
-                            —
+
+                        <div class="highlights-col">
+
+                            <div class="entry">
+                                <div class="entry-title">
+                                    Oldest Open Application
+                                </div>
+                                <div class="entry-body" id="permitNewsOldestOpen">
+                                    —
+                                </div>
+                            </div>
+
+                            <div class="entry">
+                                <div class="entry-title">
+                                    Active Requirements
+                                </div>
+                                <div class="entry-body" id="permitNewsActiveRequirements">
+                                    —
+                                </div>
+                            </div>
+
+                            <div class="entry">
+                                <div class="entry-title">
+                                    Stage Mix
+                                </div>
+                                <div class="entry-body" id="permitNewsStageMix">
+                                    —
+                                </div>
+                            </div>
+
                         </div>
+
                     </div>
 
                 </div>
