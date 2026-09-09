@@ -7,14 +7,29 @@ declare(strict_types=1);
 $roadmapPath = __DIR__ . '/roadmap.json';
 $codexPath   = __DIR__ . '/codex/codex.json';
 
-$roadmap = null;
 
+function loadJsonObject(string $path): ?array
+{
+    if (!file_exists($path)) {
+        return null;
+    }
 
-// Load roadmap
-if (file_exists($roadmapPath)) {
-    $roadmapJson = file_get_contents($roadmapPath);
-    $roadmap = json_decode($roadmapJson, true);
+    $json = file_get_contents($path);
+
+    if ($json === false) {
+        return null;
+    }
+
+    $decoded = json_decode($json, true);
+
+    return is_array($decoded)
+        ? $decoded
+        : null;
 }
+
+
+$roadmap = loadJsonObject($roadmapPath);
+$codex   = loadJsonObject($codexPath);
 
 
 // Resolve project state
@@ -45,8 +60,8 @@ $phases = is_array($roadmap['phases'] ?? null)
 $authenticationVerified =
     ($roadmap['currentState']['kalshiAuthentication'] ?? null) === 'verified';
 
-$codexAvailable   = file_exists($codexPath);
-$roadmapAvailable = file_exists($roadmapPath);
+$codexAvailable   = $codex !== null;
+$roadmapAvailable = $roadmap !== null;
 
 // #endregion
 
@@ -68,7 +83,7 @@ function resolvePhaseStatusLabel(array $phase): string
 {
     $status = strtolower((string) ($phase['status'] ?? 'planned'));
 
-    if ($status === 'next' || $status === 'current' || $status === 'in_progress' || $status === 'in progress') {
+    if (in_array($status, ['next', 'current', 'in_progress', 'in progress'], true)) {
         return 'Current development';
     }
 
@@ -76,7 +91,7 @@ function resolvePhaseStatusLabel(array $phase): string
         return 'Blocked';
     }
 
-    if ($status === 'complete' || $status === 'completed') {
+    if (in_array($status, ['complete', 'completed'], true)) {
         return 'Complete';
     }
 
@@ -89,6 +104,82 @@ function resolvePhaseStatusLabel(array $phase): string
 
     return 'Planned';
 }
+
+// #endregion
+
+
+// #region SECTION 3 — Modal Document Pages
+
+function makeDisplayTitle(string $key): string
+{
+    $title = preg_replace('/([a-z0-9])([A-Z])/', '$1 $2', $key);
+    $title = str_replace(['_', '-'], ' ', (string) $title);
+
+    return ucwords(trim((string) $title));
+}
+
+
+function buildCodexPages(?array $codex): array
+{
+    if ($codex === null) {
+        return [];
+    }
+
+    $pages = [];
+
+    foreach ($codex as $key => $value) {
+        $pages[] = [
+            'title' => makeDisplayTitle((string) $key),
+            'key'   => (string) $key,
+            'data'  => $value
+        ];
+    }
+
+    return $pages;
+}
+
+
+function buildRoadmapPages(?array $roadmap): array
+{
+    if ($roadmap === null) {
+        return [];
+    }
+
+    $pages = [];
+
+    foreach ($roadmap as $key => $value) {
+        if ($key === 'phases' && is_array($value)) {
+            foreach ($value as $phase) {
+                if (!is_array($phase)) {
+                    continue;
+                }
+
+                $phaseNumber = (string) ($phase['phase'] ?? '');
+                $phaseName   = (string) ($phase['name'] ?? 'Roadmap Phase');
+
+                $pages[] = [
+                    'title' => trim('Phase ' . $phaseNumber . ' — ' . $phaseName),
+                    'key'   => 'phase_' . $phaseNumber,
+                    'data'  => $phase
+                ];
+            }
+
+            continue;
+        }
+
+        $pages[] = [
+            'title' => makeDisplayTitle((string) $key),
+            'key'   => (string) $key,
+            'data'  => $value
+        ];
+    }
+
+    return $pages;
+}
+
+
+$codexPages   = buildCodexPages($codex);
+$roadmapPages = buildRoadmapPages($roadmap);
 
 // #endregion
 
@@ -270,6 +361,137 @@ function resolvePhaseStatusLabel(array $phase): string
         font-size: .72rem;
     }
 
+    .document-link {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: rgba(255, 255, 255, .72);
+        font-size: .76rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .document-link:hover,
+    .document-link:focus {
+        color: #fff;
+        text-decoration: underline;
+    }
+
+    .document-modal .modal-dialog {
+        max-width: 980px;
+    }
+
+    .document-modal .modal-content {
+        border: 0;
+        border-radius: .9rem;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, .22);
+        overflow: hidden;
+    }
+
+    .document-modal .modal-header {
+        background: var(--lab-navy);
+        color: #fff;
+        border-bottom: 0;
+        padding: 1rem 1.25rem;
+    }
+
+    .document-modal .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
+
+    .document-modal .modal-body {
+        background: #f7f9fc;
+        padding: 1.25rem;
+        min-height: 520px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .document-modal .modal-footer {
+        background: #fff;
+        border-top: 1px solid var(--lab-border);
+        padding: .8rem 1.25rem;
+    }
+
+    .document-page-title {
+        color: var(--lab-navy);
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .document-section {
+        background: #fff;
+        border: 1px solid var(--lab-border);
+        border-radius: .65rem;
+        padding: 1rem;
+        margin-bottom: .85rem;
+    }
+
+    .document-field {
+        padding: .65rem 0;
+        border-bottom: 1px solid #edf0f2;
+    }
+
+    .document-field:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .document-key {
+        color: var(--lab-muted);
+        font-size: .7rem;
+        font-weight: 700;
+        letter-spacing: .035em;
+        text-transform: uppercase;
+        margin-bottom: .2rem;
+    }
+
+    .document-value {
+        color: #212529;
+        font-size: .9rem;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .document-array {
+        margin: .25rem 0 0;
+        padding-left: 1.2rem;
+    }
+
+    .document-array li {
+        margin-bottom: .35rem;
+    }
+
+    .document-object {
+        border-left: 3px solid #dfe6ef;
+        margin-top: .45rem;
+        padding-left: .9rem;
+    }
+
+    .document-page-count {
+        color: var(--lab-muted);
+        font-size: .78rem;
+        white-space: nowrap;
+    }
+
+    .roadmap-view-link {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: #0d6efd;
+        font-size: .74rem;
+        font-weight: 600;
+        text-decoration: none;
+        text-transform: none;
+        letter-spacing: 0;
+    }
+
+    .roadmap-view-link:hover,
+    .roadmap-view-link:focus {
+        text-decoration: underline;
+    }
+
     @media (max-width: 767.98px) {
         .market-price {
             font-size: 1.6rem;
@@ -298,25 +520,25 @@ function resolvePhaseStatusLabel(array $phase): string
         <div class="d-flex align-items-center gap-3 flex-wrap justify-content-end">
 
             <?php if ($codexAvailable): ?>
-                <a
-                    class="lab-nav-link"
-                    href="codex/codex.json"
-                    target="_blank"
-                    rel="noopener"
+                <button
+                    type="button"
+                    class="document-link"
+                    data-bs-toggle="modal"
+                    data-bs-target="#codexModal"
                 >
                     Codex
-                </a>
+                </button>
             <?php endif; ?>
 
             <?php if ($roadmapAvailable): ?>
-                <a
-                    class="lab-nav-link"
-                    href="roadmap.json"
-                    target="_blank"
-                    rel="noopener"
+                <button
+                    type="button"
+                    class="document-link"
+                    data-bs-toggle="modal"
+                    data-bs-target="#roadmapModal"
                 >
                     Roadmap
-                </a>
+                </button>
             <?php endif; ?>
 
             <span class="badge rounded-pill lab-mode px-3 py-2">
@@ -627,14 +849,14 @@ function resolvePhaseStatusLabel(array $phase): string
                     <span>Development Roadmap</span>
 
                     <?php if ($roadmapAvailable): ?>
-                        <a
-                            class="small text-decoration-none text-capitalize"
-                            href="roadmap.json"
-                            target="_blank"
-                            rel="noopener"
+                        <button
+                            type="button"
+                            class="roadmap-view-link"
+                            data-bs-toggle="modal"
+                            data-bs-target="#roadmapModal"
                         >
                             View Roadmap
-                        </a>
+                        </button>
                     <?php endif; ?>
                 </div>
 
@@ -716,25 +938,25 @@ function resolvePhaseStatusLabel(array $phase): string
 
         <span>
             <?php if ($codexAvailable): ?>
-                <a
-                    class="text-reset text-decoration-none me-3"
-                    href="codex/codex.json"
-                    target="_blank"
-                    rel="noopener"
+                <button
+                    type="button"
+                    class="btn btn-link text-reset text-decoration-none p-0 me-3 footer"
+                    data-bs-toggle="modal"
+                    data-bs-target="#codexModal"
                 >
                     Codex
-                </a>
+                </button>
             <?php endif; ?>
 
             <?php if ($roadmapAvailable): ?>
-                <a
-                    class="text-reset text-decoration-none me-3"
-                    href="roadmap.json"
-                    target="_blank"
-                    rel="noopener"
+                <button
+                    type="button"
+                    class="btn btn-link text-reset text-decoration-none p-0 me-3 footer"
+                    data-bs-toggle="modal"
+                    data-bs-target="#roadmapModal"
                 >
                     Roadmap
-                </a>
+                </button>
             <?php endif; ?>
 
             Research Environment · Live Trading Disabled
@@ -744,6 +966,381 @@ function resolvePhaseStatusLabel(array $phase): string
 
 
 </main>
+
+
+
+<!-- #region SECTION 4 — Codex & Roadmap Modals -->
+
+<?php if ($codexAvailable): ?>
+<div
+    class="modal fade document-modal"
+    id="codexModal"
+    tabindex="-1"
+    aria-labelledby="codexModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5 mb-0" id="codexModalLabel">
+                        Prediction Market Lab Codex
+                    </h2>
+                    <div class="small text-white-50 mt-1">
+                        Governance · v<?= htmlspecialchars((string) ($codex['meta']['version'] ?? '0.1.0')) ?>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+            </div>
+
+            <div class="modal-body">
+                <div
+                    id="codexDocumentBody"
+                    data-document-viewer="codex"
+                ></div>
+            </div>
+
+            <div class="modal-footer d-flex justify-content-between">
+                <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    data-document-prev="codex"
+                >
+                    ← Previous
+                </button>
+
+                <div
+                    class="document-page-count"
+                    data-document-count="codex"
+                ></div>
+
+                <button
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    data-document-next="codex"
+                >
+                    Next →
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+
+<?php if ($roadmapAvailable): ?>
+<div
+    class="modal fade document-modal"
+    id="roadmapModal"
+    tabindex="-1"
+    aria-labelledby="roadmapModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5 mb-0" id="roadmapModalLabel">
+                        Prediction Market Lab Roadmap
+                    </h2>
+                    <div class="small text-white-50 mt-1">
+                        Development Plan · v<?= htmlspecialchars($projectVersion) ?>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+            </div>
+
+            <div class="modal-body">
+                <div
+                    id="roadmapDocumentBody"
+                    data-document-viewer="roadmap"
+                ></div>
+            </div>
+
+            <div class="modal-footer d-flex justify-content-between">
+                <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    data-document-prev="roadmap"
+                >
+                    ← Previous
+                </button>
+
+                <div
+                    class="document-page-count"
+                    data-document-count="roadmap"
+                ></div>
+
+                <button
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    data-document-next="roadmap"
+                >
+                    Next →
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- #endregion -->
+
+
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+></script>
+
+<script>
+// #region SECTION 5 — Paginated Document Viewer
+
+const documentViewerData = {
+    codex: <?= json_encode(
+        $codexPages,
+        JSON_UNESCAPED_SLASHES
+        | JSON_UNESCAPED_UNICODE
+        | JSON_HEX_TAG
+        | JSON_HEX_AMP
+        | JSON_HEX_APOS
+        | JSON_HEX_QUOT
+    ) ?>,
+    roadmap: <?= json_encode(
+        $roadmapPages,
+        JSON_UNESCAPED_SLASHES
+        | JSON_UNESCAPED_UNICODE
+        | JSON_HEX_TAG
+        | JSON_HEX_AMP
+        | JSON_HEX_APOS
+        | JSON_HEX_QUOT
+    ) ?>
+};
+
+const documentViewerState = {
+    codex: 0,
+    roadmap: 0
+};
+
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+
+function humanizeKey(key) {
+    return String(key)
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, character => character.toUpperCase());
+}
+
+
+function renderDocumentValue(value) {
+    if (value === null) {
+        return '<span class="text-muted">Not set</span>';
+    }
+
+    if (typeof value === 'boolean') {
+        return value
+            ? '<span class="badge text-bg-success">Yes</span>'
+            : '<span class="badge text-bg-secondary">No</span>';
+    }
+
+    if (Array.isArray(value)) {
+        if (value.length === 0) {
+            return '<span class="text-muted">None</span>';
+        }
+
+        const allScalar = value.every(
+            item => item === null || typeof item !== 'object'
+        );
+
+        if (allScalar) {
+            return `
+                <ul class="document-array">
+                    ${value.map(item => `<li>${renderDocumentValue(item)}</li>`).join('')}
+                </ul>
+            `;
+        }
+
+        return value.map((item, index) => `
+            <div class="document-section">
+                <div class="document-key">Item ${index + 1}</div>
+                ${renderDocumentValue(item)}
+            </div>
+        `).join('');
+    }
+
+    if (typeof value === 'object') {
+        return `
+            <div class="document-object">
+                ${Object.entries(value).map(([key, childValue]) => `
+                    <div class="document-field">
+                        <div class="document-key">
+                            ${escapeHtml(humanizeKey(key))}
+                        </div>
+                        <div class="document-value">
+                            ${renderDocumentValue(childValue)}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    return escapeHtml(value);
+}
+
+
+function renderDocumentPage(documentType) {
+    const pages = documentViewerData[documentType] ?? [];
+
+    if (pages.length === 0) {
+        return;
+    }
+
+    const currentIndex = Math.max(
+        0,
+        Math.min(documentViewerState[documentType], pages.length - 1)
+    );
+
+    documentViewerState[documentType] = currentIndex;
+
+    const page = pages[currentIndex];
+    const body = document.querySelector(
+        `[data-document-viewer="${documentType}"]`
+    );
+    const count = document.querySelector(
+        `[data-document-count="${documentType}"]`
+    );
+    const previousButton = document.querySelector(
+        `[data-document-prev="${documentType}"]`
+    );
+    const nextButton = document.querySelector(
+        `[data-document-next="${documentType}"]`
+    );
+
+    if (!body || !count || !previousButton || !nextButton) {
+        return;
+    }
+
+    body.innerHTML = `
+        <div class="document-page-title">
+            ${escapeHtml(page.title)}
+        </div>
+
+        <div class="document-section">
+            ${renderDocumentValue(page.data)}
+        </div>
+    `;
+
+    count.textContent = `Section ${currentIndex + 1} of ${pages.length}`;
+    previousButton.disabled = currentIndex === 0;
+    nextButton.disabled = currentIndex === pages.length - 1;
+
+    const modalBody = body.closest('.modal-body');
+
+    if (modalBody) {
+        modalBody.scrollTop = 0;
+    }
+}
+
+
+function changeDocumentPage(documentType, direction) {
+    const pages = documentViewerData[documentType] ?? [];
+
+    if (pages.length === 0) {
+        return;
+    }
+
+    const nextIndex =
+        documentViewerState[documentType] + direction;
+
+    if (nextIndex < 0 || nextIndex >= pages.length) {
+        return;
+    }
+
+    documentViewerState[documentType] = nextIndex;
+    renderDocumentPage(documentType);
+}
+
+
+document.querySelectorAll('[data-document-prev]').forEach(button => {
+    button.addEventListener('click', () => {
+        changeDocumentPage(
+            button.dataset.documentPrev,
+            -1
+        );
+    });
+});
+
+
+document.querySelectorAll('[data-document-next]').forEach(button => {
+    button.addEventListener('click', () => {
+        changeDocumentPage(
+            button.dataset.documentNext,
+            1
+        );
+    });
+});
+
+
+['codex', 'roadmap'].forEach(documentType => {
+    const modalElement = document.getElementById(`${documentType}Modal`);
+
+    if (!modalElement) {
+        return;
+    }
+
+    modalElement.addEventListener('show.bs.modal', () => {
+        renderDocumentPage(documentType);
+    });
+});
+
+
+document.addEventListener('keydown', event => {
+    const openModal = document.querySelector('.document-modal.show');
+
+    if (!openModal) {
+        return;
+    }
+
+    const documentType =
+        openModal.id === 'codexModal'
+            ? 'codex'
+            : 'roadmap';
+
+    if (event.key === 'ArrowLeft') {
+        changeDocumentPage(documentType, -1);
+    }
+
+    if (event.key === 'ArrowRight') {
+        changeDocumentPage(documentType, 1);
+    }
+});
+
+// #endregion
+</script>
 
 </body>
 </html>
