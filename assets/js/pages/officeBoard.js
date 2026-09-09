@@ -396,19 +396,8 @@ function renderTodaysHighlightsSkeleton() {
                     🕒 Last Action
                 </div>
 
-                <div class="entry kpi-row">
-                    <span>Who</span>
-                    <strong id="activityLastActionWho">—</strong>
-                </div>
-
-                <div class="entry kpi-row">
-                    <span>What</span>
-                    <strong id="activityLastActionWhat">—</strong>
-                </div>
-
-                <div class="entry kpi-row">
-                    <span>When</span>
-                    <strong id="activityLastActionWhen">—</strong>
+                <div class="entry compact" id="activityLastActionSummary">
+                    —
                 </div>
 
             </div>
@@ -1272,35 +1261,31 @@ const TodaysHighlightsCard = {
             }
 
             // ------------------------------------------------------------
-            // Most Recent Action — Who / What / When
+            // Most Recent Action — Compact Summary
             // ------------------------------------------------------------
             const lastAction =
                 systemActivity.actions?.lastAction;
 
-            const whoEl =
-                this.instance.root.querySelector('#activityLastActionWho');
+            const lastActionSummaryEl =
+                this.instance.root.querySelector(
+                    '#activityLastActionSummary'
+                );
 
-            const whatEl =
-                this.instance.root.querySelector('#activityLastActionWhat');
+            if (lastActionSummaryEl) {
 
-            const whenEl =
-                this.instance.root.querySelector('#activityLastActionWhen');
-
-            if (whoEl) {
-                whoEl.textContent =
+                const who =
                     lastAction?.contactName || '—';
-            }
 
-            if (whatEl) {
-                whatEl.textContent =
+                const what =
                     lastAction?.actionName || '—';
-            }
 
-            if (whenEl) {
-                whenEl.textContent =
+                const when =
                     Number.isFinite(lastAction?.actionUnix)
                         ? formatTimestamp(lastAction.actionUnix)
                         : '—';
+
+                lastActionSummaryEl.textContent =
+                    `${who} • ${what} • ${when}`;
             }
         }
     },
