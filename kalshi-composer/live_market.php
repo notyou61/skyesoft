@@ -547,6 +547,10 @@ if (($_GET['mode'] ?? '') === 'data') {
 
 
 // #region SECTION 4 — Page
+
+$embedMode = isset($_GET['embed'])
+    && $_GET['embed'] === '1';
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -808,6 +812,29 @@ h1{
     font-weight:700;
 }
 
+
+body.embed-mode{
+    background:#fff;
+}
+
+body.embed-mode .shell{
+    max-width:none;
+    padding:14px;
+}
+
+body.embed-mode .header{
+    display:none;
+}
+
+body.embed-mode .market-card{
+    margin-bottom:14px;
+    box-shadow:none;
+}
+
+body.embed-mode .footer-panel{
+    margin-bottom:0;
+}
+
 @media (max-width:850px){
     .grid{
         grid-template-columns:repeat(2, 1fr);
@@ -858,7 +885,7 @@ h1{
 </style>
 </head>
 
-<body>
+<body<?= $embedMode ? ' class="embed-mode"' : '' ?>>
 
 <div class="shell">
 

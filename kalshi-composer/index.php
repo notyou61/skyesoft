@@ -492,9 +492,58 @@ $roadmapPages = buildRoadmapPages($roadmap);
         text-decoration: underline;
     }
 
+    /* #region SECTION — Live Market Modal */
+
+    .live-market-modal .modal-dialog {
+        max-width: 1200px;
+    }
+
+    .live-market-modal .modal-content {
+        height: calc(100vh - 2rem);
+        min-height: 640px;
+        border: 0;
+        border-radius: .75rem;
+        overflow: hidden;
+    }
+
+    .live-market-modal .modal-header {
+        padding: .7rem 1rem;
+        border-bottom: 1px solid var(--lab-border);
+    }
+
+    .live-market-modal .modal-title {
+        color: var(--lab-navy);
+        font-size: .95rem;
+        font-weight: 700;
+    }
+
+    .live-market-modal .modal-body {
+        min-height: 0;
+    }
+
+    .live-market-frame {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #fff;
+    }
+
+    /* #endregion */
+
+
     @media (max-width: 767.98px) {
         .market-price {
             font-size: 1.6rem;
+        }
+
+        .live-market-modal .modal-dialog {
+            max-width: none;
+            margin: .5rem;
+        }
+
+        .live-market-modal .modal-content {
+            height: calc(100vh - 1rem);
+            min-height: 0;
         }
     }
 </style>
@@ -742,13 +791,14 @@ $roadmapPages = buildRoadmapPages($roadmap);
                     <button
                         type="button"
                         class="btn btn-primary px-4"
-                        disabled
+                        data-bs-toggle="modal"
+                        data-bs-target="#liveMarketModal"
                     >
-                        Find Current Market
+                        View Live BTC Market
                     </button>
 
                     <span class="small text-muted ms-2">
-                        Enabled during Phase 1.
+                        Live read-only Kalshi + BRTI monitor.
                     </span>
 
                 </div>
@@ -969,7 +1019,58 @@ $roadmapPages = buildRoadmapPages($roadmap);
 
 
 
-<!-- #region SECTION 4 — Codex & Roadmap Modals -->
+<!-- #region SECTION 4 — Live Market Modal -->
+
+<div
+    class="modal fade live-market-modal"
+    id="liveMarketModal"
+    tabindex="-1"
+    aria-labelledby="liveMarketModalLabel"
+    aria-hidden="true"
+>
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <div>
+                    <div
+                        class="modal-title"
+                        id="liveMarketModalLabel"
+                    >
+                        Kalshi BTC Lab — Live BTC 15-Minute Market
+                    </div>
+
+                    <div class="small text-muted">
+                        Read-only observational monitor
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+            </div>
+
+            <div class="modal-body p-0">
+                <iframe
+                    id="liveMarketFrame"
+                    class="live-market-frame"
+                    title="Kalshi BTC Live Market"
+                    src="about:blank"
+                ></iframe>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- #endregion -->
+
+
+
+<!-- #region SECTION 5 — Codex & Roadmap Modals -->
 
 <?php if ($codexAvailable): ?>
 <div
@@ -1108,7 +1209,7 @@ $roadmapPages = buildRoadmapPages($roadmap);
 ></script>
 
 <script>
-// #region SECTION 5 — Paginated Document Viewer
+// #region SECTION 6 — Paginated Document Viewer
 
 const documentViewerData = {
     codex: <?= json_encode(
@@ -1338,6 +1439,47 @@ document.addEventListener('keydown', event => {
         changeDocumentPage(documentType, 1);
     }
 });
+
+// #endregion
+</script>
+
+
+<script>
+// #region SECTION 7 — Live Market Modal Controller
+
+document.addEventListener(
+    'DOMContentLoaded',
+    () => {
+        const modalElement =
+            document.getElementById(
+                'liveMarketModal'
+            );
+
+        const frame =
+            document.getElementById(
+                'liveMarketFrame'
+            );
+
+        if (!modalElement || !frame) {
+            return;
+        }
+
+        modalElement.addEventListener(
+            'shown.bs.modal',
+            () => {
+                frame.src =
+                    'live_market.php?embed=1';
+            }
+        );
+
+        modalElement.addEventListener(
+            'hidden.bs.modal',
+            () => {
+                frame.src = 'about:blank';
+            }
+        );
+    }
+);
 
 // #endregion
 </script>
