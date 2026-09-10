@@ -21,16 +21,13 @@ declare(strict_types=1);
 //
 // ======================================================================
 
-
 require_once __DIR__ . '/src/KalshiClient.php';
-
 
 // #region SECTION 1 — Configuration
 
 $seriesTicker = 'KXBTC15M';
 
 // #endregion
-
 
 // #region SECTION 2 — Helpers
 
@@ -91,7 +88,6 @@ function findCurrentMarket(array $markets, int $nowUnix): ?array
 }
 
 // #endregion
-
 
 // #region SECTION 3 — Market Discovery
 
