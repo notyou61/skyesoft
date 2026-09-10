@@ -66,7 +66,7 @@ function findCurrentMarket(array $markets, int $nowUnix): ?array
         }
 
         if (
-            $status === 'open'
+            in_array($status, ['active', 'open'], true)
             && $openUnix <= $nowUnix
             && $closeUnix > $nowUnix
         ) {
