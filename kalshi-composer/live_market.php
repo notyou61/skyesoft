@@ -5,16 +5,17 @@ declare(strict_types=1);
 // ======================================================================
 // Skyesoft — live_market.php
 // Kalshi BTC Lab — Live BTC 15-Minute Market Monitor
+// Version: 0.2.0
 //
 // Purpose:
 //  • Provide a live, read-only view of the current KXBTC15M market
-//  • Reuse the authenticated KalshiClient already verified in production
-//  • Refresh current market detail and order book every 5 seconds
-//  • Display executable market prices and timing information
+//  • Display the current CF Benchmarks BRTI value used by Kalshi
+//  • Show distance from the current BRTI value to the market target
+//  • Refresh live market information once per second
 //
 // Roadmap:
 //  • Phase 1 — Read-Only Kalshi API Layer
-//  • Supports later Phase 3 observation capture without writing data yet
+//  • Prepares the observational surface for Phase 3 capture
 //
 // Safety:
 //  • GET requests only
@@ -32,7 +33,8 @@ require_once __DIR__ . '/src/KalshiClient.php';
 // #region SECTION 1 — Configuration
 
 $seriesTicker = 'KXBTC15M';
-$refreshMilliseconds = 5000;
+$benchmarkIndexId = 'BRTI';
+$refreshMilliseconds = 1000;
 
 // #endregion
 
@@ -47,7 +49,9 @@ function parseUnixTime(?string $isoTime): ?int
 
     $unix = strtotime($isoTime);
 
-    return $unix === false ? null : $unix;
+    return $unix === false
+        ? null
+        : $unix;
 }
 
 
@@ -96,10 +100,6 @@ function findCurrentMarket(array $markets, int $nowUnix): ?array
 
 function getBestOrderBookBid(array $levels): ?array
 {
-    if ($levels === []) {
-        return null;
-    }
-
     $bestPrice = null;
     $bestSize  = null;
 
@@ -128,40 +128,128 @@ function getBestOrderBookBid(array $levels): ?array
 }
 
 
-function buildLiveSnapshot(KalshiClient $kalshi, string $seriesTicker): array
-{
-    $retrievedUnix = time();
+function extractBenchmarkLatestValue(
+    array $benchmarkResponse,
+    string $indexId
+): array {
+    $latestValue = $benchmarkResponse['data']['payload']['latest_values'][$indexId]
+        ?? null;
 
-    $marketsResponse = $kalshi->get(
-        '/trade-api/v2/markets',
-        [
-            'series_ticker' => $seriesTicker,
-            'status'        => 'open',
-            'limit'         => 100,
-            'mve_filter'    => 'exclude'
-        ]
-    );
-
-    $markets = is_array($marketsResponse['markets'] ?? null)
-        ? $marketsResponse['markets']
-        : [];
-
-    $currentMarket = findCurrentMarket(
-        $markets,
-        $retrievedUnix
-    );
-
-    if ($currentMarket === null) {
+    if (!is_array($latestValue)) {
         return [
-            'ok'                  => true,
-            'retrievedUnix'       => $retrievedUnix,
-            'seriesTicker'        => $seriesTicker,
-            'currentMarketFound'  => false,
-            'message'             => 'No active BTC 15-minute market window was found.'
+            'value'    => null,
+            'sourceMs' => null
         ];
     }
 
-    $ticker = (string) ($currentMarket['ticker'] ?? '');
+    return [
+        'value' => isset($latestValue['value'])
+            ? (float) $latestValue['value']
+            : null,
+
+        'sourceMs' => isset($latestValue['time'])
+            ? (int) $latestValue['time']
+            : null
+    ];
+}
+
+
+function buildLiveSnapshot(
+    KalshiClient $kalshi,
+    string $seriesTicker,
+    string $benchmarkIndexId,
+    ?string $requestedTicker = null
+): array {
+    $retrievedUnix = time();
+    $currentMarket = null;
+
+    // Reuse the ticker supplied by the browser when possible.
+    // This avoids running market discovery on every one-second refresh.
+    if ($requestedTicker) {
+        try {
+            $detailResponse = $kalshi->get(
+                '/trade-api/v2/markets/'
+                . rawurlencode($requestedTicker)
+            );
+
+            $candidate = is_array(
+                $detailResponse['market'] ?? null
+            )
+                ? $detailResponse['market']
+                : null;
+
+            if ($candidate !== null) {
+                $openUnix = parseUnixTime(
+                    $candidate['open_time'] ?? null
+                );
+
+                $closeUnix = parseUnixTime(
+                    $candidate['close_time'] ?? null
+                );
+
+                $status = strtolower(
+                    (string) ($candidate['status'] ?? '')
+                );
+
+                if (
+                    $openUnix !== null
+                    && $closeUnix !== null
+                    && in_array(
+                        $status,
+                        ['active', 'open'],
+                        true
+                    )
+                    && $openUnix <= $retrievedUnix
+                    && $closeUnix > $retrievedUnix
+                ) {
+                    $currentMarket = $candidate;
+                }
+            }
+
+        } catch (Throwable $e) {
+            $currentMarket = null;
+        }
+    }
+
+    // Discover the active market only when the supplied ticker is absent
+    // or no longer represents the current market window.
+    if ($currentMarket === null) {
+        $marketsResponse = $kalshi->get(
+            '/trade-api/v2/markets',
+            [
+                'series_ticker' => $seriesTicker,
+                'status'        => 'open',
+                'limit'         => 100,
+                'mve_filter'    => 'exclude'
+            ]
+        );
+
+        $markets = is_array(
+            $marketsResponse['markets'] ?? null
+        )
+            ? $marketsResponse['markets']
+            : [];
+
+        $currentMarket = findCurrentMarket(
+            $markets,
+            $retrievedUnix
+        );
+    }
+
+    if ($currentMarket === null) {
+        return [
+            'ok'                 => true,
+            'retrievedUnix'      => $retrievedUnix,
+            'seriesTicker'       => $seriesTicker,
+            'currentMarketFound' => false,
+            'message'            =>
+                'No active BTC 15-minute market window was found.'
+        ];
+    }
+
+    $ticker = (string) (
+        $currentMarket['ticker'] ?? ''
+    );
 
     if ($ticker === '') {
         throw new RuntimeException(
@@ -169,9 +257,14 @@ function buildLiveSnapshot(KalshiClient $kalshi, string $seriesTicker): array
         );
     }
 
-    $detailResponse = $kalshi->get(
-        '/trade-api/v2/markets/' . rawurlencode($ticker)
-    );
+    // Always retrieve fresh market detail when discovery supplied the
+    // market object, because quotes may have moved since discovery.
+    if (!isset($detailResponse) || $requestedTicker !== $ticker) {
+        $detailResponse = $kalshi->get(
+            '/trade-api/v2/markets/'
+            . rawurlencode($ticker)
+        );
+    }
 
     $orderBookResponse = $kalshi->get(
         '/trade-api/v2/markets/'
@@ -179,7 +272,16 @@ function buildLiveSnapshot(KalshiClient $kalshi, string $seriesTicker): array
         . '/orderbook'
     );
 
-    $market = is_array($detailResponse['market'] ?? null)
+    $benchmarkResponse = $kalshi->get(
+        '/trade-api/v2/cfbenchmarks/latest_values',
+        [
+            'id' => $benchmarkIndexId
+        ]
+    );
+
+    $market = is_array(
+        $detailResponse['market'] ?? null
+    )
         ? $detailResponse['market']
         : $currentMarket;
 
@@ -189,16 +291,25 @@ function buildLiveSnapshot(KalshiClient $kalshi, string $seriesTicker): array
         ? $orderBookResponse['orderbook_fp']
         : [];
 
-    $yesLevels = is_array($orderBook['yes_dollars'] ?? null)
+    $yesLevels = is_array(
+        $orderBook['yes_dollars'] ?? null
+    )
         ? $orderBook['yes_dollars']
         : [];
 
-    $noLevels = is_array($orderBook['no_dollars'] ?? null)
+    $noLevels = is_array(
+        $orderBook['no_dollars'] ?? null
+    )
         ? $orderBook['no_dollars']
         : [];
 
-    $bestYesBid = getBestOrderBookBid($yesLevels);
-    $bestNoBid  = getBestOrderBookBid($noLevels);
+    $bestYesBid = getBestOrderBookBid(
+        $yesLevels
+    );
+
+    $bestNoBid = getBestOrderBookBid(
+        $noLevels
+    );
 
     $yesBid = isset($market['yes_bid_dollars'])
         ? (float) $market['yes_bid_dollars']
@@ -224,65 +335,162 @@ function buildLiveSnapshot(KalshiClient $kalshi, string $seriesTicker): array
                 : null
         );
 
+    $benchmark = extractBenchmarkLatestValue(
+        $benchmarkResponse,
+        $benchmarkIndexId
+    );
+
+    $currentBtcPrice = $benchmark['value'];
+
+    $strike = isset($market['floor_strike'])
+        ? (float) $market['floor_strike']
+        : null;
+
+    $distanceFromTarget = (
+        $currentBtcPrice !== null
+        && $strike !== null
+    )
+        ? $currentBtcPrice - $strike
+        : null;
+
+    $distancePercent = (
+        $distanceFromTarget !== null
+        && $strike !== null
+        && $strike != 0.0
+    )
+        ? ($distanceFromTarget / $strike) * 100
+        : null;
+
+    $benchmarkSourceMs =
+        $benchmark['sourceMs'];
+
+    $benchmarkAgeMs = (
+        $benchmarkSourceMs !== null
+    )
+        ? max(
+            0,
+            (int) round(microtime(true) * 1000)
+            - $benchmarkSourceMs
+        )
+        : null;
+
     $closeUnix = parseUnixTime(
         $market['close_time'] ?? null
     );
 
     $secondsRemaining = $closeUnix !== null
-        ? max(0, $closeUnix - $retrievedUnix)
+        ? max(
+            0,
+            $closeUnix - $retrievedUnix
+        )
         : null;
 
     return [
         'ok'                 => true,
         'retrievedUnix'      => $retrievedUnix,
-        'retrievedIsoUtc'    => gmdate('c', $retrievedUnix),
+        'retrievedIsoUtc'    => gmdate(
+            'c',
+            $retrievedUnix
+        ),
         'seriesTicker'       => $seriesTicker,
         'currentMarketFound' => true,
+
         'ticker'             => $ticker,
-        'eventTicker'        => $market['event_ticker'] ?? null,
-        'title'              => $market['title'] ?? null,
-        'status'             => $market['status'] ?? null,
-        'strike'             => isset($market['floor_strike'])
-            ? (float) $market['floor_strike']
-            : null,
-        'strikeType'         => $market['strike_type'] ?? null,
-        'openTime'           => $market['open_time'] ?? null,
-        'closeTime'          => $market['close_time'] ?? null,
-        'secondsRemaining'   => $secondsRemaining,
+        'eventTicker'        =>
+            $market['event_ticker'] ?? null,
+        'title'              =>
+            $market['title'] ?? null,
+        'status'             =>
+            $market['status'] ?? null,
+
+        'benchmarkIndexId'   =>
+            $benchmarkIndexId,
+        'currentBtcPrice'    =>
+            $currentBtcPrice,
+        'benchmarkSourceMs'  =>
+            $benchmarkSourceMs,
+        'benchmarkAgeMs'     =>
+            $benchmarkAgeMs,
+
+        'strike'             => $strike,
+        'distanceFromTarget' =>
+            $distanceFromTarget,
+        'distancePercent'    =>
+            $distancePercent,
+        'targetPosition'     =>
+            $distanceFromTarget === null
+                ? null
+                : (
+                    $distanceFromTarget >= 0
+                        ? 'ABOVE'
+                        : 'BELOW'
+                ),
+
+        'strikeType'         =>
+            $market['strike_type'] ?? null,
+        'openTime'           =>
+            $market['open_time'] ?? null,
+        'closeTime'          =>
+            $market['close_time'] ?? null,
+        'secondsRemaining'   =>
+            $secondsRemaining,
+
         'yesBid'             => $yesBid,
         'yesAsk'             => $yesAsk,
         'noBid'              => $noBid,
         'noAsk'              => $noAsk,
-        'yesBidSize'         => $bestYesBid['size']
+
+        'yesBidSize'         =>
+            $bestYesBid['size']
             ?? (
                 isset($market['yes_bid_size_fp'])
                     ? (float) $market['yes_bid_size_fp']
                     : null
             ),
-        'yesAskSize'         => isset($market['yes_ask_size_fp'])
-            ? (float) $market['yes_ask_size_fp']
-            : null,
-        'noBidSize'          => $bestNoBid['size'] ?? null,
+
+        'yesAskSize'         =>
+            isset($market['yes_ask_size_fp'])
+                ? (float) $market['yes_ask_size_fp']
+                : null,
+
+        'noBidSize'          =>
+            $bestNoBid['size'] ?? null,
+
         'yesSpread'          => (
-            $yesBid !== null && $yesAsk !== null
+            $yesBid !== null
+            && $yesAsk !== null
         )
             ? $yesAsk - $yesBid
             : null,
-        'lastPrice'          => isset($market['last_price_dollars'])
-            ? (float) $market['last_price_dollars']
-            : null,
-        'openInterest'       => isset($market['open_interest_fp'])
-            ? (float) $market['open_interest_fp']
-            : null,
-        'volume'             => isset($market['volume_fp'])
-            ? (float) $market['volume_fp']
-            : null,
-        'volume24h'          => isset($market['volume_24h_fp'])
-            ? (float) $market['volume_24h_fp']
-            : null,
-        'result'             => $market['result'] ?? '',
-        'expirationValue'    => $market['expiration_value'] ?? '',
-        'rulesPrimary'       => $market['rules_primary'] ?? null
+
+        'lastPrice'          =>
+            isset($market['last_price_dollars'])
+                ? (float) $market['last_price_dollars']
+                : null,
+
+        'openInterest'       =>
+            isset($market['open_interest_fp'])
+                ? (float) $market['open_interest_fp']
+                : null,
+
+        'volume'             =>
+            isset($market['volume_fp'])
+                ? (float) $market['volume_fp']
+                : null,
+
+        'volume24h'          =>
+            isset($market['volume_24h_fp'])
+                ? (float) $market['volume_24h_fp']
+                : null,
+
+        'result'             =>
+            $market['result'] ?? '',
+
+        'expirationValue'    =>
+            $market['expiration_value'] ?? '',
+
+        'rulesPrimary'       =>
+            $market['rules_primary'] ?? null
     ];
 }
 
@@ -303,10 +511,16 @@ if (($_GET['mode'] ?? '') === 'data') {
     try {
         $kalshi = new KalshiClient();
 
+        $requestedTicker = isset($_GET['ticker'])
+            ? trim((string) $_GET['ticker'])
+            : null;
+
         echo json_encode(
             buildLiveSnapshot(
                 $kalshi,
-                $seriesTicker
+                $seriesTicker,
+                $benchmarkIndexId,
+                $requestedTicker
             ),
             JSON_PRETTY_PRINT
             | JSON_UNESCAPED_SLASHES
@@ -353,7 +567,6 @@ if (($_GET['mode'] ?? '') === 'data') {
     --muted:#687386;
     --green:#16794f;
     --red:#a33a3a;
-    --blue:#225ea8;
     --shadow:0 3px 12px rgba(0,0,0,.06);
 }
 
@@ -497,6 +710,20 @@ h1{
     font-variant-numeric:tabular-nums;
 }
 
+.stat-sub{
+    margin-top:4px;
+    color:var(--muted);
+    font-size:11px;
+}
+
+.above{
+    color:var(--green);
+}
+
+.below{
+    color:var(--red);
+}
+
 .quote-grid{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -637,8 +864,12 @@ h1{
 
     <div class="header">
         <div>
-            <div class="eyebrow">Skyesoft Prediction Market Lab</div>
+            <div class="eyebrow">
+                Skyesoft Prediction Market Lab
+            </div>
+
             <h1>Kalshi BTC Lab</h1>
+
             <div class="subtitle">
                 Live BTC 15-Minute Market Monitor
             </div>
@@ -675,6 +906,7 @@ h1{
                 <div class="timer-label">
                     Time Remaining
                 </div>
+
                 <div
                     class="timer"
                     id="timeRemaining"
@@ -688,42 +920,79 @@ h1{
         <div class="grid">
 
             <div class="stat">
-                <div class="stat-label">Target / Strike</div>
+                <div class="stat-label">
+                    Current BRTI
+                </div>
+
+                <div
+                    class="stat-value"
+                    id="currentBtcPrice"
+                >
+                    —
+                </div>
+
+                <div
+                    class="stat-sub"
+                    id="benchmarkAge"
+                >
+                    CF Benchmarks BRTI
+                </div>
+            </div>
+
+
+            <div class="stat">
+                <div class="stat-label">
+                    Target / Strike
+                </div>
+
                 <div
                     class="stat-value"
                     id="strike"
                 >
                     —
                 </div>
+
+                <div class="stat-sub">
+                    Opening 60-second reference
+                </div>
             </div>
 
+
             <div class="stat">
-                <div class="stat-label">YES Spread</div>
+                <div class="stat-label">
+                    Distance From Target
+                </div>
+
+                <div
+                    class="stat-value"
+                    id="distanceFromTarget"
+                >
+                    —
+                </div>
+
+                <div
+                    class="stat-sub"
+                    id="distancePercent"
+                >
+                    —
+                </div>
+            </div>
+
+
+            <div class="stat">
+                <div class="stat-label">
+                    YES Spread
+                </div>
+
                 <div
                     class="stat-value"
                     id="yesSpread"
                 >
                     —
                 </div>
-            </div>
 
-            <div class="stat">
-                <div class="stat-label">Last Price</div>
-                <div
-                    class="stat-value"
-                    id="lastPrice"
-                >
-                    —
-                </div>
-            </div>
-
-            <div class="stat">
-                <div class="stat-label">Open Interest</div>
-                <div
-                    class="stat-value"
-                    id="openInterest"
-                >
-                    —
+                <div class="stat-sub">
+                    Executable market spread
                 </div>
             </div>
 
@@ -733,11 +1002,16 @@ h1{
         <div class="quote-grid">
 
             <div class="quote yes">
-                <div class="quote-title">YES Market</div>
+                <div class="quote-title">
+                    YES Market
+                </div>
 
                 <div class="quote-row">
                     <div class="price-box">
-                        <div class="price-label">Bid</div>
+                        <div class="price-label">
+                            Bid
+                        </div>
+
                         <div
                             class="price"
                             id="yesBid"
@@ -747,7 +1021,10 @@ h1{
                     </div>
 
                     <div class="price-box">
-                        <div class="price-label">Ask</div>
+                        <div class="price-label">
+                            Ask
+                        </div>
+
                         <div
                             class="price"
                             id="yesAsk"
@@ -760,11 +1037,16 @@ h1{
 
 
             <div class="quote no">
-                <div class="quote-title">NO Market</div>
+                <div class="quote-title">
+                    NO Market
+                </div>
 
                 <div class="quote-row">
                     <div class="price-box">
-                        <div class="price-label">Bid</div>
+                        <div class="price-label">
+                            Bid
+                        </div>
+
                         <div
                             class="price"
                             id="noBid"
@@ -774,7 +1056,10 @@ h1{
                     </div>
 
                     <div class="price-box">
-                        <div class="price-label">Ask</div>
+                        <div class="price-label">
+                            Ask
+                        </div>
+
                         <div
                             class="price"
                             id="noAsk"
@@ -787,6 +1072,70 @@ h1{
 
         </div>
 
+
+        <div class="grid">
+
+            <div class="stat">
+                <div class="stat-label">
+                    Last Contract Price
+                </div>
+
+                <div
+                    class="stat-value"
+                    id="lastPrice"
+                >
+                    —
+                </div>
+            </div>
+
+
+            <div class="stat">
+                <div class="stat-label">
+                    Open Interest
+                </div>
+
+                <div
+                    class="stat-value"
+                    id="openInterest"
+                >
+                    —
+                </div>
+            </div>
+
+
+            <div class="stat">
+                <div class="stat-label">
+                    Market Volume
+                </div>
+
+                <div
+                    class="stat-value"
+                    id="volume"
+                >
+                    —
+                </div>
+            </div>
+
+
+            <div class="stat">
+                <div class="stat-label">
+                    BRTI Position
+                </div>
+
+                <div
+                    class="stat-value"
+                    id="targetPosition"
+                >
+                    —
+                </div>
+
+                <div class="stat-sub">
+                    Current value vs. target
+                </div>
+            </div>
+
+        </div>
+
     </div>
 
 
@@ -794,6 +1143,7 @@ h1{
         <div class="status-line">
             <div>
                 <span class="status-dot"></span>
+
                 <span id="connectionStatus">
                     Connecting to Kalshi…
                 </span>
@@ -816,10 +1166,11 @@ h1{
 <script>
 // #region SECTION 5 — Live Market UI
 
-const refreshMilliseconds = <?= (int) $refreshMilliseconds ?>;
+const refreshMilliseconds =
+    <?= (int) $refreshMilliseconds ?>;
 
 let latestSecondsRemaining = null;
-let lastSnapshotUnix = null;
+let currentTicker = null;
 
 
 function formatContractPrice(value) {
@@ -843,6 +1194,44 @@ function formatUsd(value) {
             maximumFractionDigits: 2
         }
     );
+}
+
+
+function formatSignedUsd(value) {
+    if (value === null || value === undefined) {
+        return '—';
+    }
+
+    const number = Number(value);
+    const sign = number > 0
+        ? '+'
+        : '';
+
+    return sign
+        + '$'
+        + number.toLocaleString(
+            undefined,
+            {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }
+        );
+}
+
+
+function formatSignedPercent(value) {
+    if (value === null || value === undefined) {
+        return '—';
+    }
+
+    const number = Number(value);
+    const sign = number > 0
+        ? '+'
+        : '';
+
+    return sign
+        + number.toFixed(3)
+        + '%';
 }
 
 
@@ -885,11 +1274,37 @@ function formatDuration(seconds) {
 
 
 function setText(id, value) {
-    const element = document.getElementById(id);
+    const element =
+        document.getElementById(id);
 
     if (element) {
         element.textContent = value;
     }
+}
+
+
+function setDirectionClass(id, value) {
+    const element =
+        document.getElementById(id);
+
+    if (!element) {
+        return;
+    }
+
+    element.classList.remove(
+        'above',
+        'below'
+    );
+
+    if (value === null || value === undefined) {
+        return;
+    }
+
+    element.classList.add(
+        Number(value) >= 0
+            ? 'above'
+            : 'below'
+    );
 }
 
 
@@ -901,6 +1316,8 @@ function renderSnapshot(data) {
     }
 
     if (!data.currentMarketFound) {
+        currentTicker = null;
+
         setText(
             'marketTitle',
             'Waiting for active BTC 15-minute market…'
@@ -921,6 +1338,8 @@ function renderSnapshot(data) {
         return;
     }
 
+    currentTicker = data.ticker || null;
+
     setText(
         'marketTitle',
         data.title || 'BTC price up in next 15 mins?'
@@ -932,8 +1351,53 @@ function renderSnapshot(data) {
     );
 
     setText(
+        'currentBtcPrice',
+        formatUsd(data.currentBtcPrice)
+    );
+
+    setText(
         'strike',
         formatUsd(data.strike)
+    );
+
+    setText(
+        'distanceFromTarget',
+        formatSignedUsd(data.distanceFromTarget)
+    );
+
+    setText(
+        'distancePercent',
+        formatSignedPercent(data.distancePercent)
+    );
+
+    setDirectionClass(
+        'distanceFromTarget',
+        data.distanceFromTarget
+    );
+
+    setDirectionClass(
+        'distancePercent',
+        data.distanceFromTarget
+    );
+
+    setText(
+        'targetPosition',
+        data.targetPosition || '—'
+    );
+
+    setDirectionClass(
+        'targetPosition',
+        data.distanceFromTarget
+    );
+
+    setText(
+        'benchmarkAge',
+        data.benchmarkAgeMs !== null
+            && data.benchmarkAgeMs !== undefined
+            ? 'BRTI source age: '
+                + data.benchmarkAgeMs
+                + ' ms'
+            : 'CF Benchmarks BRTI'
     );
 
     setText(
@@ -949,6 +1413,11 @@ function renderSnapshot(data) {
     setText(
         'openInterest',
         formatNumber(data.openInterest, 2)
+    );
+
+    setText(
+        'volume',
+        formatNumber(data.volume, 2)
     );
 
     setText(
@@ -974,12 +1443,9 @@ function renderSnapshot(data) {
     latestSecondsRemaining =
         data.secondsRemaining;
 
-    lastSnapshotUnix =
-        data.retrievedUnix;
-
     setText(
         'connectionStatus',
-        'Live Kalshi data — '
+        'Live Kalshi + BRTI data — '
         + (data.status || 'active')
     );
 
@@ -1004,8 +1470,16 @@ function renderSnapshot(data) {
 
 async function refreshMarket() {
     try {
+        const tickerQuery = currentTicker
+            ? '&ticker='
+                + encodeURIComponent(currentTicker)
+            : '';
+
         const response = await fetch(
-            'live_market.php?mode=data&_=' + Date.now(),
+            'live_market.php?mode=data'
+            + tickerQuery
+            + '&_='
+            + Date.now(),
             {
                 cache: 'no-store'
             }
@@ -1015,10 +1489,22 @@ async function refreshMarket() {
 
         renderSnapshot(data);
 
+        const statusElement =
+            document.getElementById(
+                'connectionStatus'
+            );
+
+        if (statusElement) {
+            statusElement.classList.remove(
+                'error'
+            );
+        }
+
     } catch (error) {
         setText(
             'connectionStatus',
-            'Live data error: ' + error.message
+            'Live data error: '
+            + error.message
         );
 
         const statusElement =
@@ -1027,7 +1513,9 @@ async function refreshMarket() {
             );
 
         if (statusElement) {
-            statusElement.classList.add('error');
+            statusElement.classList.add(
+                'error'
+            );
         }
     }
 }
@@ -1048,6 +1536,10 @@ setInterval(
                 latestSecondsRemaining
             )
         );
+
+        if (latestSecondsRemaining === 0) {
+            currentTicker = null;
+        }
     },
     1000
 );
