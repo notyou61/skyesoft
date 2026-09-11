@@ -1,24 +1,22 @@
 {
   "meta": {
     "title": "Skyesoft Prediction Market Lab Codex",
-    "version": "0.1.0",
-    "status": "Research Governance",
+    "version": "0.2.0",
+    "status": "Research Governance — Dynamic Strategy Doctrine",
     "project": "Prediction Market Lab",
     "initialDomain": "Kalshi BTC 15-Minute Markets",
     "parentGovernance": "Skyesoft Codex",
-    "purpose": "Defines the research doctrine, integrity rules, evidence standards, execution assumptions, strategy governance, evaluation requirements, and expansion boundaries for the Skyesoft Prediction Market Lab.",
+    "purpose": "Defines the research doctrine, integrity rules, evidence standards, execution assumptions, dynamic strategy governance, evaluation requirements, and expansion boundaries for the Skyesoft Prediction Market Lab.",
     "principle": "Begin with the end in mind."
   },
-
   "mission": {
     "longTermPurpose": "Develop, validate, and potentially operate a disciplined methodology for identifying repeatable positive-expected-value opportunities in prediction markets.",
     "initialObjective": "Develop expertise in Kalshi BTC 15-minute markets and determine whether statistically defensible positive expected value can be demonstrated using information available before a decision is committed.",
     "initialScope": "Kalshi BTC 15-minute prediction markets only.",
     "researchMode": "Paper trading only.",
-    "economicThesis": "Meaningful cumulative results may arise from repeatedly and conservatively executing small, demonstrated positive-EV opportunities rather than relying on large speculative bets.",
+    "economicThesis": "Meaningful cumulative results may arise from repeatedly and conservatively executing demonstrated positive-EV trading instances, including selective entry and evidence-based position management, rather than relying on large speculative bets or maximizing win rate.",
     "expansionIntent": "If the methodology demonstrates sufficient validity and positive EV within the initial domain, the research framework may later be evaluated for additional market families and trading venues."
   },
-
   "operatingPhilosophy": {
     "specializationBeforeExpansion": "Develop expertise in one narrowly defined market before considering expansion.",
     "edgeBeforeCapital": "Demonstrated expected value must precede increased capital exposure.",
@@ -26,9 +24,11 @@
     "selectivityBeforeActivity": "The Lab is not required to trade every market. PASS is a valid and expected decision.",
     "repetitionDoctrine": "Repetition may amplify a demonstrated edge but must never substitute for evidence that an edge exists.",
     "capitalDoctrine": "Profitability is expected to depend primarily on disciplined repetition of qualified opportunities rather than large individual wagers.",
-    "preservationDoctrine": "Preservation of capital and integrity of evidence take precedence over trade frequency or short-term profit."
+    "preservationDoctrine": "Preservation of capital and integrity of evidence take precedence over trade frequency or short-term profit.",
+    "expectancyBeforeWinRate": "Strategy quality is judged primarily by expected and realized economic value after costs, not by raw win percentage.",
+    "dynamicReevaluation": "An existing position receives no special preference. As eligible information changes, the strategy may reevaluate whether the highest expected value action is to hold, add, reduce, exit, or reverse direction.",
+    "selectivitySpectrum": "The Lab will research the full opportunity-selectivity spectrum, from higher-frequency smaller-edge approaches to lower-frequency larger-edge approaches, rather than assuming either extreme is optimal."
   },
-
   "constitutionalPrinciples": {
     "historicalIntegrity": {
       "rule": "Historical research records may not be rewritten.",
@@ -41,7 +41,6 @@
         "Historical records may never be altered to improve apparent strategy performance."
       ]
     },
-
     "noLookAhead": {
       "rule": "A decision may use only information available at or before its recorded decision timestamp.",
       "requirements": [
@@ -51,7 +50,6 @@
         "Information obtained after a decision may not be retroactively incorporated into that historical decision."
       ]
     },
-
     "officialSettlementAuthority": {
       "rule": "The official Kalshi market outcome is the sole grading authority for the initial research domain.",
       "requirements": [
@@ -62,7 +60,6 @@
         "Any external settlement proxy must be explicitly labeled as a proxy and may not grade strategy performance."
       ]
     },
-
     "executableEconomics": {
       "rule": "Expected value must be based on realistically executable economics.",
       "requirements": [
@@ -74,7 +71,6 @@
         "Execution assumptions must be defined before subsequent outcomes are known."
       ]
     },
-
     "honestPaperExecution": {
       "rule": "Paper execution must follow a predefined and frozen simulation standard.",
       "requirements": [
@@ -85,7 +81,6 @@
         "Historical fills may not be retroactively improved."
       ]
     },
-
     "sampleIntegrity": {
       "rule": "One market window is one market sample.",
       "requirements": [
@@ -94,7 +89,6 @@
         "A strategy version may commit only the number of decisions per market explicitly permitted by that strategy's frozen rules."
       ]
     },
-
     "strategyFreeze": {
       "rule": "A strategy under evaluation is immutable for its defined evaluation cohort.",
       "requirements": [
@@ -104,7 +98,6 @@
         "Evaluation cohorts must identify the exact strategy version used."
       ]
     },
-
     "conservativeCapital": {
       "rule": "Positive estimated EV does not independently authorize increased position size.",
       "requirements": [
@@ -115,7 +108,6 @@
         "Large speculative position sizing is outside the initial research doctrine."
       ]
     },
-
     "expansionByEvidence": {
       "rule": "Expansion requires evidence, not dissatisfaction with the current market.",
       "requirements": [
@@ -125,93 +117,82 @@
         "Each new market family or venue requires its own validated domain rules and data contracts."
       ]
     },
-
     "humanAuthority": {
       "rule": "Human authority remains superior to automated trading authority.",
       "requirements": [
-        "Version 0.1.0 permits research and paper trading only.",
+        "Codex version 0.2.0 permits research and paper trading only.",
         "No live-order execution path is authorized.",
         "Paper mode may not be converted into live mode by changing a simple runtime flag.",
         "Live trading requires a separately defined gate.",
         "Live trading requires explicit human authorization."
       ]
+    },
+    "dynamicDecisionIntegrity": {
+      "rule": "Position management decisions must be evaluated from the current eligible information state and may not be justified solely by whether an existing position is winning or losing.",
+      "requirements": [
+        "A losing position may not be exited solely because it is losing.",
+        "A winning position may not be increased solely because it is winning.",
+        "An existing YES or NO position receives no loyalty preference over an economically superior alternative.",
+        "A reversal from YES to NO or NO to YES requires the alternative action to overcome applicable switching friction and any required safety margin.",
+        "Each position-management action must be attributable to the strategy version and decision timestamp that produced it.",
+        "Multiple actions within one market window do not create additional independent market samples."
+      ]
     }
   },
-
   "definitions": {
     "venue": "The prediction-market platform on which a market is listed and traded.",
-
     "marketFamily": "A group of markets sharing a common economic or settlement structure.",
-
     "market": "A specific prediction contract offered by a venue.",
-
     "marketWindow": "One distinct BTC 15-minute prediction contract period. For research sample counting, one market window equals one market sample.",
-
     "marketTicker": "The venue-defined identifier for a specific market.",
-
     "strike": "The locked threshold or price-to-beat specified by the market contract.",
-
     "officialSettlementValue": "The value published or recognized by Kalshi for determination of the market outcome.",
-
     "settlementReference": "The authoritative price methodology specified by the market contract. For the initial BTC 15-minute domain, this is based on the applicable CF Benchmarks Real-Time Index methodology used by Kalshi.",
-
     "observation": "A timestamped point-in-time capture of information that existed during a market window.",
-
     "observationTs": "The timestamp representing when a research observation was captured.",
-
     "sourceTs": "The timestamp supplied by or attributable to the origin of an individual data item.",
-
     "decisionTs": "The timestamp at which a strategy irrevocably commits its YES, NO, or PASS decision.",
-
     "settlementTs": "The timestamp at which the official market outcome becomes available or is recorded.",
-
     "externalMarketData": "Timestamped information obtained from sources outside the prediction-market venue and used only as a potential predictive input.",
-
     "yes": "A strategy decision or contract position that benefits when the market's YES condition settles true.",
-
     "no": "A strategy decision or contract position that benefits when the market's NO condition settles true.",
-
     "pass": "An affirmative strategy decision to take no position because the strategy's requirements for a qualified trade are not satisfied.",
-
     "executableYesPrice": "The price at which the paper execution model determines a YES contract could reasonably have been acquired at decision time.",
-
     "executableNoPrice": "The price at which the paper execution model determines a NO contract could reasonably have been acquired at decision time.",
-
     "midpointPrice": "The midpoint between relevant bid and ask prices. It is diagnostic only unless a future approved execution standard explicitly establishes otherwise.",
-
     "lastTradePrice": "The most recently reported transaction price. It is diagnostic only and is not presumed executable.",
-
     "paperFill": "A simulated execution produced according to the frozen paper-execution standard.",
-
     "feeSchedule": "The venue fee rules applicable to the market and transaction at the relevant time.",
-
     "transactionCost": "The total modeled cost attributable to executing a position, including applicable venue fees and approved execution assumptions.",
-
     "estimatedProbability": "The strategy's pre-decision estimate of the probability that a specified market outcome will settle true.",
-
     "marketImpliedProbability": "A probability interpretation derived from market pricing for analytical comparison. It must not be assumed to equal executable economics without adjustment for spread, fees, and execution.",
-
     "edge": "The modeled advantage between the strategy's probability assessment and the economics represented by an eligible executable market price.",
-
     "expectedValue": "The estimated average economic result of an eligible decision after incorporating outcome probability, executable price, applicable costs, and the paper-execution standard.",
-
     "positiveEv": "Expected value greater than zero after all required costs and assumptions. A strategy may require an additional safety threshold above zero before permitting a trade.",
-
-    "strategy": "A defined and versioned set of rules that transforms eligible pre-decision information into YES, NO, or PASS.",
-
+    "strategy": "A defined and versioned set of rules that transforms eligible pre-decision information and, where applicable, current position state into entry, pass, hold, add, reduce, exit, or reversal actions.",
     "strategyVersion": "An immutable identifier for a specific frozen strategy definition.",
-
     "evaluationCohort": "The collection of market samples prospectively evaluated under one frozen strategy version.",
-
     "sample": "One independent market window included in an evaluation cohort.",
-
     "bankroll": "The capital base designated for a trading strategy or research simulation.",
-
     "drawdown": "The reduction from a prior peak in cumulative strategy value or designated bankroll.",
-
-    "payloadHash": "A cryptographic digest used to establish the identity and integrity of a captured raw payload."
+    "payloadHash": "A cryptographic digest used to establish the identity and integrity of a captured raw payload.",
+    "tradingInstance": "A specific eligible decision opportunity within a market window at which a versioned strategy may choose to enter, hold, add, reduce, exit, reverse, or pass.",
+    "positionState": "The strategy's current simulated exposure within a market window, including side, quantity, average executable cost, realized and unrealized economics, and relevant timestamps.",
+    "entryDecision": "A strategy decision that initiates a YES or NO paper position from no existing exposure.",
+    "positionAction": "A strategy action affecting an existing paper position. Supported research actions may include HOLD, ADD, REDUCE, EXIT, FLIP_TO_YES, and FLIP_TO_NO.",
+    "hold": "A position action that leaves current exposure unchanged.",
+    "add": "A position action that increases exposure on the current side only when the incremental position satisfies the strategy's frozen positive-EV and risk requirements.",
+    "reduce": "A position action that decreases but does not fully close existing exposure.",
+    "exit": "A position action that fully closes the existing simulated exposure.",
+    "flip": "A compound position action that closes exposure on one side and establishes exposure on the opposite side when the opposite side satisfies the strategy's frozen economic, confidence, and switching-cost requirements.",
+    "switchingCost": "The modeled economic friction attributable to reversing or materially changing exposure, including applicable fees, spread, slippage assumptions, and other approved execution costs.",
+    "opportunityThreshold": "The minimum estimated net expected-value requirement, potentially including a safety margin, that a trading instance must satisfy before a strategy may act.",
+    "selectivityProfile": "The frozen rule set describing how selective a strategy is when accepting eligible positive-EV trading instances.",
+    "aggregateExpectancy": "The sum or average expected economic result across a defined population of qualified trading instances or market windows.",
+    "payoffRatio": "The relationship between average net gain on winning executions and average net loss on losing executions.",
+    "breakEvenWinRate": "The success rate at which average gains and average losses, after modeled costs, produce zero aggregate expectancy.",
+    "kellyCriterion": "A bankroll-sizing framework that may be researched only after probability calibration and positive expected value are demonstrated. It does not determine whether an opportunity itself is positive EV."
   },
-
   "timeIntegrity": {
     "clocks": {
       "observationClock": "When information was captured.",
@@ -222,7 +203,6 @@
     "decisionEligibility": "A strategy input is eligible only when its information was available no later than decisionTs.",
     "invalidDecision": "A decision made after the applicable market decision boundary or using future information is invalid for performance evaluation."
   },
-
   "dataDoctrine": {
     "rawVsDerived": {
       "rawData": "Source information captured without strategy interpretation.",
@@ -232,19 +212,15 @@
       "settlementData": "The authoritative recorded market outcome.",
       "evaluationData": "Performance measurements derived from immutable decision, execution, and settlement records."
     },
-
     "immutability": "Raw observations, committed decisions, executions, and verified settlements must remain historically immutable.",
-
     "provenance": "Research data should retain sufficient source, timestamp, market, and version information to reconstruct why a decision was made.",
-
     "rawPayloadRetention": "Material source payloads used to construct observations should be retained or otherwise reproducibly referenced when practical.",
-
-    "payloadIntegrity": "Captured raw payloads should receive a payload hash when persisted as canonical research evidence."
+    "payloadIntegrity": "Captured raw payloads should receive a payload hash when persisted as canonical research evidence.",
+    "observationPurpose": "Historical observations must preserve sufficient point-in-time state to support later reconstruction of entry, hold, add, reduce, exit, and reversal scenarios without using future information.",
+    "pathPreservation": "The research dataset should preserve the market path through time rather than only opening and settlement states."
   },
-
   "allowedDecisionData": {
     "rule": "Any legitimate information source may be researched as a predictive input provided it was genuinely available at or before decisionTs and is captured with adequate provenance.",
-
     "initialCategories": [
       "Kalshi market metadata",
       "Kalshi market lifecycle data",
@@ -259,7 +235,6 @@
       "Derived liquidity and spread measurements",
       "Derived cross-market relationships"
     ],
-
     "prohibitedInputs": [
       "Official outcome data unavailable at decision time",
       "Future external-market data",
@@ -268,19 +243,15 @@
       "Settlement-aware features unavailable at decision time"
     ]
   },
-
   "experimentProtocol": {
     "initialDomain": "Kalshi BTC 15-minute markets",
-
     "marketDiscovery": "Each research sample must bind to a uniquely identified market window.",
-
     "marketLifecycle": [
       "initialized",
       "active",
       "determined",
       "finalized"
     ],
-
     "requiredMarketContext": [
       "marketTicker",
       "marketWindow",
@@ -290,29 +261,54 @@
       "strike",
       "observationTs"
     ],
-
     "decisionSet": [
       "YES",
       "NO",
-      "PASS"
+      "PASS",
+      "HOLD",
+      "ADD",
+      "REDUCE",
+      "EXIT",
+      "FLIP_TO_YES",
+      "FLIP_TO_NO"
     ],
-
     "sampleUnit": "One market window.",
-
     "initialEvaluationTarget": {
       "minimumMarketWindows": 500,
       "interpretation": "A minimum initial evaluation cohort for a frozen decision strategy, not a guarantee of statistical significance."
     },
-
     "observationStrategy": {
       "version": "v0.1.0-observe",
       "purpose": "Validate market discovery, timestamps, data capture, lifecycle handling, settlement capture, and research integrity before introducing predictive trading logic.",
       "legalDecisions": [
         "PASS"
       ]
+    },
+    "entryDecisionSet": [
+      "YES",
+      "NO",
+      "PASS"
+    ],
+    "positionActionSet": [
+      "HOLD",
+      "ADD",
+      "REDUCE",
+      "EXIT",
+      "FLIP_TO_YES",
+      "FLIP_TO_NO"
+    ],
+    "dynamicStrategyResearch": {
+      "status": "Research only until a future strategy version explicitly freezes dynamic rules.",
+      "principle": "The strategy may eventually make multiple position-management decisions within one market window, but the market window remains one independent market sample.",
+      "requirements": [
+        "Dynamic actions must be evaluated using only temporally eligible information.",
+        "Each action must use realistically executable economics.",
+        "A reversal must account for the full cost of closing and establishing the opposite exposure.",
+        "Retrospective dynamic-path research must remain clearly separated from prospective frozen-strategy evaluation.",
+        "No dynamic trading action is authorized under v0.1.0-observe."
+      ]
     }
   },
-
   "paperExecutionStandard": {
     "status": "Must be frozen before first decision strategy evaluation.",
     "principle": "Paper execution must approximate a realistically obtainable transaction rather than an idealized screen price.",
@@ -326,36 +322,69 @@
     ],
     "midpointPermittedForExecution": false,
     "lastTradePermittedForExecution": false,
-    "retroactiveFillAdjustmentPermitted": false
+    "retroactiveFillAdjustmentPermitted": false,
+    "dynamicExecutionRequirements": [
+      "Rules for simulated exits must be frozen before dynamic strategy evaluation.",
+      "Rules for simulated adds and reductions must be frozen before dynamic strategy evaluation.",
+      "Rules for simulated reversals must account for both closing and opposite-side entry economics.",
+      "Sequential paper actions may not assume favorable fills unavailable under the frozen execution standard."
+    ]
   },
-
   "feeDoctrine": {
     "rule": "The fee schedule applicable to the market and transaction at the relevant timestamp must be included in expected-value and paper-performance calculations.",
     "feeScheduleVersioning": "Fee assumptions are versioned research inputs and may not be silently changed.",
     "hardCodedUniversalFeeFormulaPermitted": false,
     "settlementFeeAssumption": "Must follow the applicable venue rules rather than an assumed universal constant."
   },
-
   "strategyGovernance": {
     "baselineResearchStrategy": "v0.1.0-observe",
     "baselineResearchDecision": "PASS",
-
     "futureStrategyNamingExample": "v0.2.0-baseline",
-
     "freezeRule": "A strategy definition must be frozen before its evaluation cohort begins.",
-
     "changeRule": "Any material change to signals, thresholds, probability calculations, execution assumptions, or decision rules requires a new strategy version.",
-
     "historicalReprocessing": "A new strategy may be evaluated retrospectively for exploratory research if clearly labeled as retrospective analysis, but its hypothetical outputs may not replace or masquerade as prospectively committed historical decisions.",
-
-    "noTradeRule": "A strategy is permitted and expected to PASS whenever its qualification criteria are not satisfied."
+    "noTradeRule": "A strategy is permitted and expected to PASS whenever its qualification criteria are not satisfied.",
+    "selectivityResearch": {
+      "principle": "The Lab will not assume that either a high-frequency small-edge approach or a low-frequency large-edge approach is optimal.",
+      "researchSpectrum": {
+        "rLike": "More qualifying positive-EV trading instances with lower minimum edge thresholds and greater reliance on repetition.",
+        "kLike": "Fewer qualifying trading instances with higher minimum edge thresholds and greater selectivity.",
+        "continuumRule": "Selectivity is treated as a measurable continuum rather than a binary choice."
+      },
+      "evaluationConcept": "Candidate selectivity thresholds should be compared using aggregate expectancy, realized net P/L, drawdown, trade frequency, calibration, execution quality, and statistical confidence.",
+      "illustrativeObjective": "For threshold T, research may compare N(T) multiplied by average EV(T), subject to risk and evidence constraints."
+    },
+    "dynamicPositionManagement": {
+      "principle": "The strategy's obligation is to choose the highest-quality eligible forward-looking action, not to defend its original position.",
+      "allowedFutureActions": [
+        "ENTER_YES",
+        "ENTER_NO",
+        "PASS",
+        "HOLD",
+        "ADD",
+        "REDUCE",
+        "EXIT",
+        "FLIP_TO_YES",
+        "FLIP_TO_NO"
+      ],
+      "rules": [
+        "A current loss is not by itself an EXIT signal.",
+        "A current profit is not by itself an ADD signal.",
+        "A position may be exited when forward-looking hold economics no longer satisfy the frozen strategy.",
+        "A position may be increased only when incremental exposure independently satisfies the frozen strategy.",
+        "A reversal may occur only when the opposite side satisfies the frozen strategy and exceeds applicable switching friction and safety requirements.",
+        "Frequent switching is not presumed beneficial and must survive transaction-cost and out-of-sample evaluation."
+      ]
+    },
+    "kellyResearch": {
+      "status": "Deferred",
+      "principle": "Kelly Criterion or fractional-Kelly sizing may be researched only after the Lab demonstrates calibrated probability estimates, positive EV, and a defined bankroll-risk framework.",
+      "notAnEntryRule": true
+    }
   },
-
   "evaluationStandard": {
     "primaryObjective": "Determine whether a frozen strategy demonstrates repeatable positive expected value after realistic transaction costs and execution assumptions.",
-
     "winRateRole": "Win rate is descriptive and is not the primary measure of strategy quality.",
-
     "requiredMetrics": [
       "marketCount",
       "observationCount",
@@ -375,36 +404,47 @@
       "performanceByEstimatedEdgeBucket",
       "performanceByTimeToExpiryBucket",
       "performanceBySpreadWidth",
-      "performanceByLiquidityCondition"
+      "performanceByLiquidityCondition",
+      "averageWinner",
+      "averageLoser",
+      "payoffRatio",
+      "breakEvenWinRate",
+      "aggregateExpectancy",
+      "entryCount",
+      "holdCount",
+      "addCount",
+      "reduceCount",
+      "exitCount",
+      "flipCount",
+      "averageHoldingTime",
+      "switchingCosts",
+      "performanceBySelectivityThreshold"
     ],
-
     "researchQuestions": [
       "Does the strategy's estimated probability demonstrate useful calibration?",
       "Does the strategy outperform executable market economics after applicable costs?",
       "Is apparent edge persistent across a meaningful number of independent market windows?",
       "Is performance concentrated in identifiable and repeatable market conditions?",
       "Does the strategy remain viable under conservative execution assumptions?",
-      "Is drawdown compatible with the capital-preservation doctrine?"
+      "Is drawdown compatible with the capital-preservation doctrine?",
+      "Does a more r-like or more K-like selectivity profile produce superior risk-adjusted aggregate expectancy?",
+      "Do early exits improve net expectancy after execution costs?",
+      "Do position reversals improve net expectancy after full switching costs?",
+      "Does adding to qualifying positions improve aggregate expectancy without unacceptable drawdown?",
+      "Are dynamic strategy improvements robust out of sample rather than artifacts of retrospective path optimization?"
     ]
   },
-
   "expansionGate": {
     "status": "Closed",
-
     "principle": "Expansion is earned through evidence.",
-
     "initialDomainMustBeEvaluatedFirst": true,
-
     "positiveEvRequiredForExpansionConsideration": true,
-
     "expansionAutomatic": false,
-
     "possibleFutureDimensions": {
       "additionalKalshiMarketFamilies": true,
       "additionalPredictionMarketVenues": true,
       "additionalAssetClasses": true
     },
-
     "requirements": [
       "Research infrastructure demonstrates data integrity.",
       "Paper execution methodology is validated.",
@@ -414,15 +454,12 @@
       "Human authorization is provided before expansion work begins."
     ]
   },
-
   "liveTradingGate": {
     "status": "Prohibited",
     "liveOrdersAuthorized": false,
     "liveOrderCodeAuthorized": false,
     "runtimeToggleToLivePermitted": false,
-
     "principle": "Paper research and live financial execution are separate stages requiring separate authority.",
-
     "futureGateRequirements": [
       "Completed research evaluation",
       "Demonstrated positive EV",
@@ -437,38 +474,78 @@
       "Explicit human authorization"
     ]
   },
-
   "changeControl": {
     "codexRole": "The Codex is the research contract and should change deliberately and infrequently.",
     "roadmapRole": "The roadmap records implementation progress and may change as development proceeds.",
     "codexChangeAuthority": "Human approval required.",
     "materialDoctrineChange": "Requires a Codex version increment.",
     "silentDoctrineChangePermitted": false,
-    "historicalDoctrineApplication": "New doctrine does not retroactively rewrite historical observations, decisions, executions, settlements, or strategy attribution."
+    "historicalDoctrineApplication": "New doctrine does not retroactively rewrite historical observations, decisions, executions, settlements, or strategy attribution.",
+    "currentRevision": {
+      "version": "0.2.0",
+      "reason": "Adds dynamic strategy doctrine, r/K selectivity research, aggregate expectancy concepts, position-management actions, switching-cost requirements, and deferred Kelly sizing governance."
+    }
   },
-
   "architectureDoctrine": {
     "principle": "The software should be designed as a prediction-market research platform with Kalshi BTC 15-minute markets as its first implementation rather than as a permanently BTC-specific bot.",
-
     "conceptualHierarchy": [
       "Venue",
       "MarketFamily",
       "MarketWindow",
       "Observation",
       "StrategyVersion",
+      "TradingInstance",
       "Decision",
+      "PositionState",
+      "PositionAction",
       "PaperExecution",
       "Settlement",
       "Evaluation"
     ],
-
     "separationOfConcerns": {
       "codex": "Research doctrine and governance.",
       "roadmap": "Implementation state and development sequence.",
       "rawData": "Source evidence.",
       "derivedData": "Calculated research features.",
       "strategy": "Versioned decision logic.",
-      "evaluation": "Measurement of frozen strategy results."
+      "evaluation": "Measurement of frozen strategy results.",
+      "positionManagement": "Versioned logic for hold, add, reduce, exit, and reversal decisions applied to current position state.",
+      "positionSizing": "A distinct downstream risk layer that determines exposure only after an opportunity independently qualifies."
+    }
+  },
+  "dynamicStrategyDoctrine": {
+    "purpose": "Defines the research doctrine for evaluating repeated trading instances and dynamic position management within a market window.",
+    "corePrinciple": "Every eligible action is judged by its forward-looking expected value using only information available at that decision timestamp.",
+    "opportunitySelection": {
+      "rule": "The Lab seeks repeatable positive-EV trading instances rather than maximizing win rate or trade frequency.",
+      "positiveOutcomeNotRequired": "A positive-EV trading instance may produce a losing realized outcome without invalidating the original decision.",
+      "negativeEvExclusion": "Known or estimated negative-EV instances should not be added merely because other positive-EV instances are expected to offset them, except where a separately validated portfolio or hedging doctrine explicitly justifies the combined position."
+    },
+    "expectancyFramework": {
+      "generalForm": "EV = (P_win × netWin) - (P_loss × netLoss)",
+      "breakEvenWinRate": "P_breakEven = netLoss / (netWin + netLoss)",
+      "aggregateForm": "Aggregate EV = sum(EV_i) across qualified trading instances.",
+      "selectivityForm": "For an opportunity threshold T, a useful research summary is N(T) × averageEV(T), subject to risk and evidence constraints."
+    },
+    "rKSelectionResearch": {
+      "rLike": "Higher-frequency participation in more qualifying positive-EV instances with smaller average edge.",
+      "kLike": "Lower-frequency participation in fewer qualifying instances requiring larger average edge or stronger evidence.",
+      "doctrine": "Neither profile is preferred in advance. Historical discovery and prospective out-of-sample evaluation must determine whether the best strategy is r-like, K-like, or intermediate."
+    },
+    "dynamicActions": {
+      "principle": "The optimal action may change as the market evolves. The strategy may eventually evaluate ENTER, HOLD, ADD, REDUCE, EXIT, or FLIP actions at eligible decision points.",
+      "positionNeutrality": "The current position is a state variable, not a commitment. Existing exposure does not receive preference over a superior eligible alternative.",
+      "switchingRule": "A flip must overcome the modeled cost of closing the current position, opening the opposite position, and any required strategy safety margin.",
+      "antiChurnRule": "Small or noisy EV differences do not justify repeated switching. Dynamic strategies must explicitly control churn and survive full execution-cost evaluation."
+    },
+    "historicalResearchBoundary": {
+      "retrospectiveUse": "Historical observations may be replayed to discover candidate entry, exit, scaling, reversal, and selectivity rules.",
+      "prospectiveValidation": "A discovered rule set must be frozen into a new strategy version and evaluated prospectively on unseen market windows before it may be treated as validated evidence.",
+      "noHistoricalRewrite": "Retrospective hypothetical actions may never replace historical committed decisions or be represented as though they were known and executed at the time."
+    },
+    "positionSizingBoundary": {
+      "rule": "Opportunity selection and position sizing are separate research layers.",
+      "kellyStatus": "Kelly Criterion and related sizing methods are deferred until calibrated probabilities, demonstrated positive EV, and bankroll-risk governance exist."
     }
   }
 }
