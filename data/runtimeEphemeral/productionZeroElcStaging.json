@@ -1,0 +1,1332 @@
+{
+  "meta": {
+    "name": "productionZeroElcStaging",
+    "version": "1.0.0",
+    "createdDate": "2026-09-11",
+    "purpose": "Non-authoritative ELC staging dataset derived from 30 scanned Christy Signs work orders for Skyesoft Production Zero entry.",
+    "authority": "staging-only",
+    "sourceOfTruth": "scannedWorkOrders",
+    "targetRepositoryPath": "/data/runtimeEphemeral/productionZeroElcStaging.json",
+    "targetLocalPath": "C:\\Users\\steve\\OneDrive\\Documents\\skyesoft\\data\\runtimeEphemeral\\productionZeroElcStaging.json",
+    "workOrderNormalization": "Use the five-digit Christy work order number only; ignore trailing suffixes such as -P or -B.",
+    "recordCount": 30,
+    "rules": [
+      "Work Order scans govern when other project spreadsheets conflict.",
+      "Preserve scan-derived names, addresses, contacts, and phone values; do not invent missing data.",
+      "Existing Skyesoft IDs are included only where established by the prior read-only ELC audit.",
+      "A proposed Location is permitted without Contact information.",
+      "New Contacts are not proposal-ready unless all Codex-required contact fields are available.",
+      "SQL becomes authoritative only after governed proposal acceptance and database persistence."
+    ]
+  },
+  "sourceFiles": [
+    {
+      "file": "SKM_C360i26091114490.pdf",
+      "pages": 8
+    },
+    {
+      "file": "SKM_C360i26091114530.pdf",
+      "pages": 10
+    },
+    {
+      "file": "SKM_C360i26091114560.pdf",
+      "pages": 9
+    },
+    {
+      "file": "SKM_C360i26091115060.pdf",
+      "pages": 3
+    }
+  ],
+  "knownExistingElc": {
+    "entities": [
+      {
+        "entityId": 4,
+        "entityName": "Everbrite"
+      },
+      {
+        "entityId": 5,
+        "entityName": "Silicon Signs"
+      },
+      {
+        "entityId": 35,
+        "entityName": "Jas Diesel"
+      },
+      {
+        "entityId": 41,
+        "entityName": "Federal Heath"
+      },
+      {
+        "entityId": 52,
+        "entityName": "Pattison ID"
+      },
+      {
+        "entityId": 56,
+        "entityName": "U-Haul International"
+      },
+      {
+        "entityId": 86,
+        "entityName": "Transformer Technologies"
+      }
+    ],
+    "locations": [
+      {
+        "locationId": 87,
+        "entityId": 56,
+        "locationName": "U-Haul International - 2727 N. Central Avenue",
+        "use": "billing",
+        "note": "Existing billing location; not one of the four permit jobsites in this staging set."
+      },
+      {
+        "locationId": 120,
+        "entityId": 86,
+        "locationName": "Transformer Technologies - 2950 W Catalina Dr.",
+        "use": "jobsite",
+        "note": "Matches WO 27886."
+      },
+      {
+        "locationId": 39,
+        "entityId": 35,
+        "locationName": "Jas Diesel - Primary Location",
+        "use": "review",
+        "note": "Existing database address was 905 N 43rd Ave; WO 26124 scan reads 935 N 43rd Ave."
+      }
+    ]
+  },
+  "workOrders": [
+    {
+      "workOrder": "27461",
+      "source": {
+        "file": "SKM_C360i26091114490.pdf",
+        "page": 1
+      },
+      "customer": {
+        "name": "SILICON SIGNS",
+        "addressLines": [
+          "3537 N MAIN ST",
+          "SPANISH FORK UT 84660"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 5,
+          "canonicalName": "Silicon Signs"
+        }
+      },
+      "jobsite": {
+        "name": "CRUMBL",
+        "addressLines": [
+          "2827 W PEORIA AVE",
+          "PHOENIX, AZ 85029"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "SARAH CORDELL",
+        "phoneRaw": "801-820-5550",
+        "resolution": {
+          "status": "checkExisting",
+          "knownExistingContactId": 14
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "26397",
+      "source": {
+        "file": "SKM_C360i26091114490.pdf",
+        "page": 2
+      },
+      "customer": {
+        "name": "U-HAUL INTERNATIONAL, INC.",
+        "addressLines": [
+          "ACCOUNTS PAYABLE",
+          "PO BOX 21505",
+          "PHOENIX, AZ 85036-1505"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 56,
+          "canonicalName": "U-Haul International"
+        }
+      },
+      "jobsite": {
+        "name": "U-HAUL #723061",
+        "addressLines": [
+          "550 N SCOTTSDALE RD",
+          "TEMPE, AZ 85288"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "JEREMY SIES",
+        "phoneRaw": "480-910-1176",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27613",
+      "source": {
+        "file": "SKM_C360i26091114490.pdf",
+        "page": 3
+      },
+      "customer": {
+        "name": "U-HAUL INTERNATIONAL, INC.",
+        "addressLines": [
+          "ACCOUNTS PAYABLE",
+          "PO BOX 21505",
+          "PHOENIX, AZ 85036-1505"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 56,
+          "canonicalName": "U-Haul International"
+        }
+      },
+      "jobsite": {
+        "name": "U-HAUL",
+        "addressLines": [
+          "40455 W HONEYCUTT RD",
+          "MARICOPA, AZ 85138"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "REBECCA",
+        "phoneRaw": "602-708-3482",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactLastName",
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27325",
+      "source": {
+        "file": "SKM_C360i26091114490.pdf",
+        "page": 4
+      },
+      "customer": {
+        "name": "U-HAUL INTERNATIONAL, INC.",
+        "addressLines": [
+          "ACCOUNTS PAYABLE",
+          "PO BOX 21505",
+          "PHOENIX, AZ 85036-1505"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 56,
+          "canonicalName": "U-Haul International"
+        }
+      },
+      "jobsite": {
+        "name": "U-HAUL",
+        "addressLines": [
+          "2629 W THATCHER BLVD",
+          "THATCHER, AZ 85552"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "SHAWN JOHNSON",
+        "phoneRaw": "480-910-1176",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27385",
+      "source": {
+        "file": "SKM_C360i26091114490.pdf",
+        "page": 5
+      },
+      "customer": {
+        "name": "U-HAUL INTERNATIONAL, INC.",
+        "addressLines": [
+          "ACCOUNTS PAYABLE",
+          "PO BOX 21505",
+          "PHOENIX, AZ 85036-1505"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 56,
+          "canonicalName": "U-Haul International"
+        }
+      },
+      "jobsite": {
+        "name": "U-HAUL",
+        "addressLines": [
+          "115 W DUVAL MINE RD",
+          "SAHUARITA, AZ 85614"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "SHAWN JOHNSON",
+        "phoneRaw": "480-910-1176",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27043",
+      "source": {
+        "file": "SKM_C360i26091114490.pdf",
+        "page": 6
+      },
+      "customer": {
+        "name": "BURROS AND FRIES",
+        "addressLines": [
+          "3225 E GUADALUPE RD",
+          "GILBERT, AZ 85234"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "Burros & Fries"
+        }
+      },
+      "jobsite": {
+        "name": "BURROS AND FRIES",
+        "addressLines": [
+          "3225 E GUADALUPE RD",
+          "GILBERT, AZ 85234"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "FERNANDO RUIZ",
+        "phoneRaw": "619-983-8014",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27782",
+      "source": {
+        "file": "SKM_C360i26091114490.pdf",
+        "page": 7
+      },
+      "customer": {
+        "name": "EVERBRITE",
+        "addressLines": [
+          "4949 S. 110 ST",
+          "GREENFIELD, WI 53228"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 4,
+          "canonicalName": "Everbrite"
+        }
+      },
+      "jobsite": {
+        "name": "HABIT BURGER #65027",
+        "addressLines": [
+          "6800 N 95TH AVE",
+          "GLENDALE, AZ 85305"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "TAYLOR WENZEL",
+        "phoneRaw": "414-529-7181",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27966",
+      "source": {
+        "file": "SKM_C360i26091114490.pdf",
+        "page": 8
+      },
+      "customer": {
+        "name": "EVERBRITE",
+        "addressLines": [
+          "4949 S. 110 ST",
+          "GREENFIELD, WI 53228"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 4,
+          "canonicalName": "Everbrite"
+        }
+      },
+      "jobsite": {
+        "name": "HABIT BURGER 53531",
+        "addressLines": [
+          "16577 W WADDELL RD",
+          "SURPRISE, AZ 85388"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "TAYLOR WENZEL",
+        "phoneRaw": "414-529-7181",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27783",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 1
+      },
+      "customer": {
+        "name": "COCINA MADRIGAL",
+        "addressLines": [
+          "1530 E WOOD ST",
+          "PHOENIX, AZ 85040"
+        ],
+        "entityResolution": {
+          "status": "checkExisting"
+        }
+      },
+      "jobsite": {
+        "name": "COCINA MADRIGAL",
+        "addressLines": [
+          "1530 E WOOD ST",
+          "PHOENIX, AZ 85040"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "AL PEREZ",
+        "phoneRaw": "480-430-1404",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27732",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 2
+      },
+      "customer": {
+        "name": "BAMBU DESSERT DRINKS",
+        "addressLines": [
+          "4815 E CAREFREE HWY SUITE 114",
+          "CAVE CREEK, AZ 85331"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "Bambu Dessert Drinks"
+        }
+      },
+      "jobsite": {
+        "name": "BAMBU DESSERT DRINKS",
+        "addressLines": [
+          "4815 E CAREFREE HWY SUITE 114",
+          "CAVE CREEK, AZ 85331"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "JAMES HOLTZ",
+        "phoneRaw": "480-782-3067",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27886",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 3
+      },
+      "customer": {
+        "name": "TRANSFORMER TECHNOLOGIES",
+        "addressLines": [
+          "2950 W CATALINA DR",
+          "PHOENIX, AZ 85017"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 86,
+          "canonicalName": "Transformer Technologies"
+        }
+      },
+      "jobsite": {
+        "name": "TRANSFORMER TECHNOLOGIES",
+        "addressLines": [
+          "2950 W CATALINA DR",
+          "PHOENIX, AZ 85017"
+        ],
+        "locationResolution": {
+          "status": "reuse",
+          "locationId": 120
+        }
+      },
+      "contact": {
+        "nameRaw": "RYAN",
+        "phoneRaw": "623-313-5442",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactLastName",
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27841",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 4
+      },
+      "customer": {
+        "name": "EXALTED HOMECARE",
+        "addressLines": [
+          "3602 S CENTRAL AVE",
+          "PHOENIX, AZ 85040"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "Exalted Homecare"
+        }
+      },
+      "jobsite": {
+        "name": "EXALTED HOMECARE",
+        "addressLines": [
+          "3602 S CENTRAL AVE",
+          "PHOENIX, AZ 85040"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "REMI",
+        "phoneRaw": "480-231-7846",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactLastName",
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "26366",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 5
+      },
+      "customer": {
+        "name": "TAIT DEVELOPMENT",
+        "addressLines": [
+          "3131 E CAMELBACK RD, STE 310",
+          "PHOENIX, AZ 85016"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "Tait Development"
+        }
+      },
+      "jobsite": {
+        "name": "TAIT DEVELOPMENT",
+        "addressLines": [
+          "9155 W LATHAM ST",
+          "TOLLESON, AZ"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": null,
+        "phoneRaw": "602-279-3999",
+        "resolution": {
+          "status": "incomplete"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactFirstName",
+          "contactLastName",
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27589",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 6
+      },
+      "customer": {
+        "name": "FEDERAL HEATH",
+        "addressLines": [
+          "1845 PRECINCT LINE RD",
+          "HURST TX 76054"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 41,
+          "canonicalName": "Federal Heath"
+        }
+      },
+      "jobsite": {
+        "name": "ROSS DRESS FOR LESS",
+        "addressLines": [
+          "SEC I-10 & VERRADO WAY",
+          "VERRADO MARKETPLACE",
+          "BUCKEYE, AZ 85326"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "AMY MCMAHON",
+        "phoneRaw": "817-685-9075",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "25525",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 7
+      },
+      "customer": {
+        "name": "CLINICAL LA FAMILIA",
+        "addressLines": [
+          "101 E COTTONWOOD LN",
+          "CASA GRANDE, AZ 85122"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "reviewNote": "Work Order scan is SOT and reads 'CLINICAL LA FAMILIA'. Prior discussion used 'Clinica La Familia'. Do not silently alter."
+        }
+      },
+      "jobsite": {
+        "name": "CLINICAL LA FAMILIA",
+        "addressLines": [
+          "101 E COTTONWOOD LN",
+          "CASA GRANDE, AZ 85122"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "AL PEREZ",
+        "phoneRaw": "480-430-1404",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "26636",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 8
+      },
+      "customer": {
+        "name": "EISENBERG COMPANY",
+        "addressLines": [
+          "2710 E CAMELBACK RD STE 210",
+          "PHOENIX, AZ 85016"
+        ],
+        "entityResolution": {
+          "status": "checkExisting"
+        }
+      },
+      "jobsite": {
+        "name": "ALMA PARKS",
+        "addressLines": [
+          "2050 N ALMA SCHOOL RD",
+          "CHANDLER, AZ 85224"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "FELIX MARCELA",
+        "phoneRaw": "602-468-6105",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27533",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 9
+      },
+      "customer": {
+        "name": "THE ELEMENT GROUP",
+        "addressLines": [
+          "155 BREWERY LANE, STE. #1",
+          "PORTSMOUTH, NH 03801"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "The Element Group"
+        }
+      },
+      "jobsite": {
+        "name": "TRU GROCER CREDIT UNION",
+        "addressLines": [
+          "675 N 99TH AVE",
+          "TOLLESON, AZ"
+        ],
+        "locationResolution": {
+          "status": "propose",
+          "reviewNote": "Street number is handwritten on the Work Order scan."
+        }
+      },
+      "contact": {
+        "nameRaw": "TRENT WIGHTMAN",
+        "phoneRaw": "603-319-8951",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27855",
+      "source": {
+        "file": "SKM_C360i26091114530.pdf",
+        "page": 10
+      },
+      "customer": {
+        "name": "NATURAL GRAPHICS, INC.",
+        "addressLines": [
+          "6376 ALDER",
+          "HOUSTON, TX 77081"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "Natural Graphics"
+        }
+      },
+      "jobsite": {
+        "name": "MAGNOLIA WATERSIDE",
+        "addressLines": [
+          "6824 E INDIAN SCHOOL RD",
+          "SCOTTSDALE, AZ 85251"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "MIKE GUILLORY",
+        "phoneRaw": "713-661-5075",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27606",
+      "source": {
+        "file": "SKM_C360i26091114560.pdf",
+        "page": 1
+      },
+      "customer": {
+        "name": "SILICON SIGNS",
+        "addressLines": [
+          "3537 N MAIN ST",
+          "SPANISH FORK UT 84660"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 5,
+          "canonicalName": "Silicon Signs"
+        }
+      },
+      "jobsite": {
+        "name": "BACK NINE",
+        "addressLines": [
+          "20940 W SENTINEL DR",
+          "BUCKEYE, AZ 85396"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "SARAH CORDELL",
+        "phoneRaw": "801-820-5550",
+        "resolution": {
+          "status": "checkExisting",
+          "knownExistingContactId": 14
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27543",
+      "source": {
+        "file": "SKM_C360i26091114560.pdf",
+        "page": 2
+      },
+      "customer": {
+        "name": "UES",
+        "addressLines": [
+          "3331 E WOOD ST",
+          "PHOENIX, AZ 85040"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "UES"
+        }
+      },
+      "jobsite": {
+        "name": "UES",
+        "addressLines": [
+          "3331 E WOOD ST",
+          "PHOENIX, AZ 85040"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "RAY STINEBAUGH",
+        "phoneRaw": "602-977-6391",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27497",
+      "source": {
+        "file": "SKM_C360i26091114560.pdf",
+        "page": 3
+      },
+      "customer": {
+        "name": "EVERBRITE",
+        "addressLines": [
+          "4949 S. 110 ST",
+          "GREENFIELD, WI 53220"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 4,
+          "canonicalName": "Everbrite",
+          "reviewNote": "This scan reads ZIP 53220; other Everbrite Work Orders in this set read 53228."
+        }
+      },
+      "jobsite": {
+        "name": "STATE FARM / BRAYDEN HOUGH",
+        "addressLines": [
+          "3126 S HIGLEY RD #106",
+          "GILBERT, AZ 85297"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "ADAM MIKES",
+        "phoneRaw": "414-529-7287",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27776",
+      "source": {
+        "file": "SKM_C360i26091114560.pdf",
+        "page": 4
+      },
+      "customer": {
+        "name": "EVERBRITE",
+        "addressLines": [
+          "4949 S. 110 ST",
+          "GREENFIELD, WI 53228"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 4,
+          "canonicalName": "Everbrite"
+        }
+      },
+      "jobsite": {
+        "name": "DOLLAR GENERAL",
+        "addressLines": [
+          "10633 W PEORIA AVE",
+          "SUN CITY, AZ 85351"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "JANICE HUESEMANN",
+        "phoneRaw": "414-529-7213",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "25767",
+      "source": {
+        "file": "SKM_C360i26091114560.pdf",
+        "page": 5
+      },
+      "customer": {
+        "name": "PATTISON SIGN GROUP INC",
+        "addressLines": [
+          "520 W. SUMMIT HILL DRIVE, SUITE 702",
+          "KNOXVILLE, TN 37902"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 52,
+          "canonicalName": "Pattison ID"
+        }
+      },
+      "jobsite": {
+        "name": "STOTZ EQUIPMENT #074063",
+        "addressLines": [
+          "225 N 1ST ST",
+          "BUCKEYE, AZ 85326"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "EMILY ELLISON",
+        "phoneRaw": "866-635-1110",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "26124",
+      "source": {
+        "file": "SKM_C360i26091114560.pdf",
+        "page": 6
+      },
+      "customer": {
+        "name": "JAS DIESEL",
+        "addressLines": [
+          "935 N 43RD AVE",
+          "PHOENIX, AZ 85009"
+        ],
+        "entityResolution": {
+          "status": "reuse",
+          "entityId": 35,
+          "canonicalName": "Jas Diesel"
+        }
+      },
+      "jobsite": {
+        "name": "JAS DIESEL",
+        "addressLines": [
+          "935 N 43RD AVE",
+          "PHOENIX, AZ 85009"
+        ],
+        "locationResolution": {
+          "status": "review",
+          "existingLocationId": 39,
+          "reviewNote": "Existing Skyesoft location 39 was audited as 905 N 43rd Ave. Work Order scan is SOT and reads 935 N 43rd Ave."
+        }
+      },
+      "contact": {
+        "nameRaw": "JIM",
+        "phoneRaw": "480-246-4055",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactLastName",
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27793",
+      "source": {
+        "file": "SKM_C360i26091114560.pdf",
+        "page": 7
+      },
+      "customer": {
+        "name": "I. D. ASSOCIATES",
+        "addressLines": [
+          "1771 INDUSTRIAL RD.",
+          "DOTHAN, AL 36303"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "I.D. Associates"
+        }
+      },
+      "jobsite": {
+        "name": "TRACTOR SUPPLY CO",
+        "addressLines": [
+          "17050 W CUSTER LN",
+          "SURPRISE, AZ 85388"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "KRISTI FRANKLIN",
+        "phoneRaw": "888-303-5534 x375",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27849",
+      "source": {
+        "file": "SKM_C360i26091114560.pdf",
+        "page": 8
+      },
+      "customer": {
+        "name": "I. D. ASSOCIATES",
+        "addressLines": [
+          "1771 INDUSTRIAL RD.",
+          "DOTHAN, AL 36303"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "I.D. Associates"
+        }
+      },
+      "jobsite": {
+        "name": "AARON'S C1467",
+        "addressLines": [
+          "700 N DYSART RD",
+          "GOODYEAR, AZ 85338"
+        ],
+        "locationResolution": {
+          "status": "propose",
+          "reviewNote": "Existing Aaron's locationID 84 is a different store/address and should not be reused."
+        }
+      },
+      "contact": {
+        "nameRaw": "MACKENZIE FOSTER",
+        "phoneRaw": "8880-303-5534X121",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ],
+        "reviewNote": "Phone preserved exactly as legible on scan; verify before use."
+      }
+    },
+    {
+      "workOrder": "26858",
+      "source": {
+        "file": "SKM_C360i26091114560.pdf",
+        "page": 9
+      },
+      "customer": {
+        "name": "CASTLE MEGASTORE",
+        "addressLines": [
+          "2202 E. UNIVERSITY DR., STE 1",
+          "PHOENIX, AZ 85034"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "Castle Megastore"
+        }
+      },
+      "jobsite": {
+        "name": "CASTLE MEGASTORE",
+        "addressLines": [
+          "12202 N CAVE CREEK RD",
+          "PHOENIX, AZ 85022"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "JONI JACOBSON",
+        "phoneRaw": "480-518-2621",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27734",
+      "source": {
+        "file": "SKM_C360i26091115060.pdf",
+        "page": 1
+      },
+      "customer": {
+        "name": "NATIONAL SIGN & MARKETING",
+        "addressLines": [
+          "13580 5TH STREET, STE 130",
+          "CHINO, CA 91710"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "National Sign & Marketing"
+        }
+      },
+      "jobsite": {
+        "name": "CHICK FIL A 5601",
+        "addressLines": [
+          "1160 E UNIVERSITY",
+          "TEMPE, AZ 85281"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "WE",
+        "phoneRaw": "909-591-4742",
+        "resolution": {
+          "status": "incomplete"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactFirstName",
+          "contactLastName",
+          "contactTitle",
+          "contactEmail"
+        ],
+        "reviewNote": "Contact field on scan reads 'WE'; do not infer a person."
+      }
+    },
+    {
+      "workOrder": "27787",
+      "source": {
+        "file": "SKM_C360i26091115060.pdf",
+        "page": 2
+      },
+      "customer": {
+        "name": "NATIONAL SIGN & MARKETING",
+        "addressLines": [
+          "13580 5TH STREET, STE 130",
+          "CHINO, CA 91710"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "National Sign & Marketing"
+        }
+      },
+      "jobsite": {
+        "name": "CHICK FIL A #2567",
+        "addressLines": [
+          "2550 CHANDLER BLVD",
+          "CHANDLER, AZ 85224"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "WENDY MONGE",
+        "phoneRaw": "909-591-4742",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    },
+    {
+      "workOrder": "27733",
+      "source": {
+        "file": "SKM_C360i26091115060.pdf",
+        "page": 3
+      },
+      "customer": {
+        "name": "NATIONAL SIGN & MARKETING",
+        "addressLines": [
+          "13580 5TH STREET, STE 130",
+          "CHINO, CA 91710"
+        ],
+        "entityResolution": {
+          "status": "propose",
+          "canonicalName": "National Sign & Marketing"
+        }
+      },
+      "jobsite": {
+        "name": "CHICK FIL A #1738 / MESA RIVERVIEW",
+        "addressLines": [
+          "905 N DOBSON RD",
+          "MESA, AZ 85201"
+        ],
+        "locationResolution": {
+          "status": "propose"
+        }
+      },
+      "contact": {
+        "nameRaw": "GIL PONCE",
+        "phoneRaw": "909-287-7382",
+        "resolution": {
+          "status": "checkExisting"
+        },
+        "proposalEligibility": "incomplete",
+        "missingRequiredFields": [
+          "contactTitle",
+          "contactEmail"
+        ]
+      }
+    }
+  ]
+}
