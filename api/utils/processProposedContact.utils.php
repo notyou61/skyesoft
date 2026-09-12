@@ -2116,10 +2116,8 @@ function parseLocationProposal(array $lines, array $clientData, string $rawInput
             // Only store values for fields we care about
             if (array_key_exists($currentKey, $fields)) {
                 if ($detected['value'] !== '') {
-                    // Inline value present
-                    if ($fields[$currentKey] === '') {
-                        $fields[$currentKey] = $detected['value'];
-                    }
+                    // Explicit prompt values override structured client defaults.
+                    $fields[$currentKey] = $detected['value'];
                 }
                 // If value is empty, the next non-label line(s) belong to this field
             } else {
@@ -2134,10 +2132,13 @@ function parseLocationProposal(array $lines, array $clientData, string $rawInput
 
             // Special case: a City/State/ZIP line must never be appended to Address
             if ($currentKey === 'address' && ($parsedCity = parseCityStateZip($line))) {
-                if ($fields['city']  === '') $fields['city']  = $parsedCity['city'];
-                if ($fields['state'] === '') $fields['state'] = $parsedCity['state'];
-                if ($fields['zip']   === '') $fields['zip']   = $parsedCity['zip'];
-                $currentKey = null; // stop collecting for address
+
+                // Explicit user-supplied geography overrides client/default values.
+                $fields['city']  = $parsedCity['city'];
+                $fields['state'] = $parsedCity['state'];
+                $fields['zip']   = $parsedCity['zip'];
+
+                $currentKey = null;
                 continue;
             }
 
