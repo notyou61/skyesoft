@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "productionZeroElcStaging",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "createdDate": "2026-09-11",
     "purpose": "Non-authoritative ELC staging dataset derived from 30 scanned Christy Signs work orders for Skyesoft Production Zero entry.",
     "authority": "staging-only",
@@ -17,6 +17,11 @@
       "A proposed Location is permitted without Contact information.",
       "New Contacts are not proposal-ready unless all Codex-required contact fields are available.",
       "SQL becomes authoritative only after governed proposal acceptance and database persistence."
+    ],
+    "lastUpdatedDate": "2026-09-12",
+    "changeNotes": [
+      "Resolved I.D. Associates work orders 27793 and 27849 to existing PSCO Sign Group entityID 6.",
+      "Reclassified Kristi Franklin contactID 88 as reusable for WO 27793."
     ]
   },
   "sourceFiles": [
@@ -46,6 +51,11 @@
       {
         "entityId": 5,
         "entityName": "Silicon Signs"
+      },
+      {
+        "entityId": 6,
+        "entityName": "PSCO Sign Group",
+        "note": "I.D. Associates merged with PSCO Sign Group; Production Zero records resolve to this existing Entity."
       },
       {
         "entityId": 35,
@@ -1096,9 +1106,12 @@
           "DOTHAN, AL 36303"
         ],
         "entityResolution": {
-          "status": "propose",
-          "canonicalName": "I.D. Associates"
-        }
+          "status": "reuse",
+          "entityId": 6,
+          "canonicalName": "PSCO Sign Group",
+          "note": "Source Work Order names I.D. Associates. User confirmed I.D. Associates merged with PSCO Sign Group; reuse existing Entity."
+        },
+        "sourceName": "I. D. ASSOCIATES"
       },
       "jobsite": {
         "name": "TRACTOR SUPPLY CO",
@@ -1114,13 +1127,12 @@
         "nameRaw": "KRISTI FRANKLIN",
         "phoneRaw": "888-303-5534 x375",
         "resolution": {
-          "status": "checkExisting"
+          "status": "reuse",
+          "knownExistingContactId": 88
         },
-        "proposalEligibility": "incomplete",
-        "missingRequiredFields": [
-          "contactTitle",
-          "contactEmail"
-        ]
+        "proposalEligibility": "reuse",
+        "missingRequiredFields": [],
+        "reviewNote": "Kristi Franklin already exists under PSCO Sign Group (entityID 6). Reuse existing Contact; do not create duplicate."
       }
     },
     {
@@ -1136,9 +1148,12 @@
           "DOTHAN, AL 36303"
         ],
         "entityResolution": {
-          "status": "propose",
-          "canonicalName": "I.D. Associates"
-        }
+          "status": "reuse",
+          "entityId": 6,
+          "canonicalName": "PSCO Sign Group",
+          "note": "Source Work Order names I.D. Associates. User confirmed I.D. Associates merged with PSCO Sign Group; reuse existing Entity."
+        },
+        "sourceName": "I. D. ASSOCIATES"
       },
       "jobsite": {
         "name": "AARON'S C1467",
